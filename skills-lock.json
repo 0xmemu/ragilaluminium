@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "skills": {
+    "alpine-js": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "alpine-js/SKILL.md",
+      "computedHash": "12155a49ae5c0f68a548945bbca49f5cef365118de9913442c86da6171ce4ce5"
+    },
+    "create-agentsmd": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/create-agentsmd/SKILL.md",
+      "computedHash": "bfbdbb76b17cca970d1d624e36ce72b6847860d740581c8865da796c1fef8552"
+    },
+    "documentation-and-adrs": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/documentation-and-adrs/SKILL.md",
+      "computedHash": "1c1b33b3c8ff1d5f9fdcf9d8a7a67f82384b3224e88af567fd4688f3f2d9e85b"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "781bd6d3f9b19f8c9af6b53d8d0e4876d0183841b565db34ca7092ffa412d111"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
+    },
+    "laravel-blade": {
+      "source": "fusengine/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/laravel-expert/skills/laravel-blade/SKILL.md",
+      "computedHash": "3cfaf1922d20be6d889984d51047b5ec82774292ef6f7828784669c302885ee0"
+    },
+    "laravel-specialist": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-specialist/SKILL.md",
+      "computedHash": "805be17bd59f759e2f2f2dcbd6bd205ca6678420a87b21da1c16e0793093615c"
+    },
+    "tailwind-design-system": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/frontend-mobile-development/skills/tailwind-design-system/SKILL.md",
+      "computedHash": "992ab1e874c4f4159aa18d4ff45d1c3f86f322f0bd2a6744cc32f7d6147f9f06"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
+    },
+    "design-taste-frontend": {
+      "source": "local-copy-from-user-agents",
+      "sourceType": "local",
+      "skillPath": "design-taste-frontend/SKILL.md",
+      "computedHash": "2e064e92aca020b2e0bad69326fe7ea55d59005ed53d1a8cbce1bd135d44b8b3",
+      "note": "Overhaul / anti-slop only; skip when preserving Figma SoT"
+    },
+    "laravel-testing": {
+      "source": "ragil-local",
+      "sourceType": "local",
+      "skillPath": "laravel-testing/SKILL.md",
+      "computedHash": "6feee3f61d382155f59e719e2abd4e7b7147c10fc90a6145fb0cdb88c7f76b3b",
+      "note": "PHPUnit 11 + Laravel 11 Ragil feature tests; optional upgrade AsyrafHussin/agent-skills laravel-testing"
+    }
+  }
+}

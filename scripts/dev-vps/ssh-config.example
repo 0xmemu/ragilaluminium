@@ -1,0 +1,10 @@
+# Contoh — salin ke ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config)
+# Ganti HostName dan IdentityFile.
+
+Host ragil-dev
+  HostName 203.0.113.10
+  User ubuntu
+  IdentityFile ~/.ssh/id_ed25519_ragil_dev
+  IdentitiesOnly yes
+  ServerAliveInterval 60
+  ServerAliveCountMax 3

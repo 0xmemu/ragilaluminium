@@ -1,0 +1,399 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Logo accent: Signal Red from light-logo.png (#C00000) + Graphite ink */
+  :root {
+    color-scheme: light;
+    --background: 0 0% 100%;
+    --foreground: 150 6% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 6% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 6% 11%;
+    --primary: 0 100% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 8% 93%;
+    --secondary-foreground: 150 6% 11%;
+    --muted: 150 8% 94%;
+    --muted-foreground: 150 5% 38%;
+    --accent: 0 72% 96%;
+    --accent-foreground: 0 100% 28%;
+    --destructive: 0 84% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --sale: 0 100% 38%;
+    --success: 149 45% 31%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 84% 42%;
+    --warning-foreground: 35 92% 10%;
+    --info: 205 56% 39%;
+    --info-foreground: 0 0% 100%;
+    --border: 150 8% 88%;
+    --input: 150 6% 82%;
+    --ring: 0 100% 38%;
+    --surface: 0 0% 100%;
+    --surface-muted: 150 8% 97%;
+    /* Panel/sheet: --radius. Search + labeled buttons: Tailwind rounded-full (pill). */
+    --radius: 0.875rem;
+    --radius-control: 9999px;
+    --shadow-soft: 0 1px 2px hsl(150 6% 11% / 0.04);
+    --shadow-float: 0 8px 24px hsl(150 6% 11% / 0.08);
+    --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-emphasized: cubic-bezier(0.32, 0.72, 0, 1);
+    /* Mobile bottom nav (~3.5rem chrome) + iOS home indicator */
+    --mobile-bottom-nav-height: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+    /* Sticky commerce CTA strip above bottom nav */
+    --mobile-sticky-cta-height: 4.25rem;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 150 6% 8%;
+    --foreground: 150 8% 96%;
+    --card: 150 6% 12%;
+    --card-foreground: 150 8% 96%;
+    --popover: 150 6% 12%;
+    --popover-foreground: 150 8% 96%;
+    --primary: 0 100% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 6% 18%;
+    --secondary-foreground: 150 8% 96%;
+    --muted: 150 6% 16%;
+    --muted-foreground: 150 8% 78%;
+    --accent: 0 40% 18%;
+    --accent-foreground: 0 92% 72%;
+    --destructive: 0 78% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --sale: 0 100% 38%;
+    --success: 149 42% 46%;
+    --warning: 35 78% 54%;
+    --info: 205 62% 56%;
+    --border: 150 6% 24%;
+    --input: 150 6% 28%;
+    --ring: 0 100% 38%;
+    --surface: 150 6% 12%;
+    --surface-muted: 150 6% 16%;
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.3);
+    --shadow-float: 0 8px 24px hsl(0 0% 0% / 0.4);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    min-width: 320px;
+    scroll-behavior: smooth;
+    background: hsl(var(--background));
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans text-foreground antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+    text-wrap: balance;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+  }
+
+  :focus-visible {
+    outline: 3px solid hsl(var(--ring) / 0.36);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    color: hsl(var(--primary-foreground));
+    background: hsl(var(--primary));
+  }
+}
+
+@layer components {
+  /* Container ala IKEA (hnf-content-container): max-width 112rem di-center,
+     padding samping 20px → 32px (≥600px) → 48px (≥900px). Gutter besar di layar
+     lebar datang dari sisa ruang max-width, bukan padding. */
+  .container-page {
+    width: 100%;
+    max-width: 112rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 37.5em) {
+    .container-page {
+      padding-inline: 2rem;
+    }
+  }
+
+  @media (min-width: 56.25em) {
+    .container-page {
+      padding-inline: 3rem;
+    }
+  }
+
+  /* Ritme vertikal antar section ala IKEA: 30px mobile, 60px desktop. */
+  .section-space {
+    padding-block: 1.875rem;
+  }
+
+  @media (min-width: 56.25em) {
+    .section-space {
+      padding-block: 3.75rem;
+    }
+  }
+
+  .surface-panel {
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    background: hsl(var(--surface));
+  }
+
+  .precision-frame {
+    position: relative;
+    isolation: isolate;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: hsl(var(--surface));
+  }
+
+  .precision-frame::after {
+    display: none;
+    content: none;
+  }
+
+  .cms-content {
+    @apply text-base leading-8 text-foreground;
+  }
+
+  .cms-content > * + * {
+    margin-top: 1.25rem;
+  }
+
+  .cms-content h2 {
+    margin-top: 2.75rem;
+    font-size: clamp(1.75rem, 3vw, 2.35rem);
+    line-height: 1.15;
+  }
+
+  .cms-content h3 {
+    margin-top: 2rem;
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .cms-content ul,
+  .cms-content ol {
+    padding-left: 1.35rem;
+  }
+
+  .cms-content ul {
+    list-style: disc;
+  }
+
+  .cms-content ol {
+    list-style: decimal;
+  }
+
+  .cms-content a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .cms-content blockquote {
+    border-left: 3px solid hsl(var(--primary));
+    padding-left: 1.25rem;
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  /* Clear fixed mobile bottom nav so page content / sticky CTAs do not collide */
+  .pb-mobile-nav {
+    padding-bottom: var(--mobile-bottom-nav-height);
+  }
+
+  @media (min-width: 1024px) {
+    .pb-mobile-nav {
+      padding-bottom: 0;
+    }
+  }
+
+  .mobile-sticky-cta {
+    position: fixed;
+    inset-inline: 0;
+    bottom: var(--mobile-bottom-nav-height);
+    z-index: 40;
+  }
+
+  .pb-mobile-sticky-cta {
+    padding-bottom: calc(var(--mobile-sticky-cta-height) + var(--mobile-bottom-nav-height));
+  }
+
+  @media (min-width: 1024px) {
+    .pb-mobile-sticky-cta {
+      padding-bottom: 0;
+    }
+  }
+
+  .animate-reveal {
+    animation: reveal-up 420ms var(--ease-standard) both;
+  }
+
+  .skeleton-shimmer {
+    background:
+      linear-gradient(
+        100deg,
+        hsl(var(--muted)) 20%,
+        hsl(var(--secondary)) 42%,
+        hsl(var(--muted)) 64%
+      );
+    background-size: 240% 100%;
+    animation: skeleton-shimmer 1.4s var(--ease-standard) infinite;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -240% 0;
+  }
+}
+
+@keyframes announcement-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.announcement-marquee {
+  animation-name: announcement-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Inertia NProgress — yellow bar above sticky header */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: #f5c518;
+  position: fixed;
+  z-index: 1031;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+}
+
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px #f5c518, 0 0 5px #f5c518;
+  opacity: 1;
+  transform: rotate(3deg) translate(0px, -4px);
+}
+
+/* Public storefront: capitalize headings/nav/CTA labels only — body stays sentence case. */
+.public-title-case :is(h1, h2, h3, h4, h5, h6),
+.public-title-case :is(nav, header) a,
+.public-title-case button,
+.public-title-case [role="button"],
+.public-title-case .uppercase {
+  text-transform: capitalize;
+}
+
+.public-title-case :is(p, li, dd, dt, figcaption, label, input, textarea, select),
+.public-title-case [role="alert"] {
+  text-transform: none;
+}
+
+.group\/announce:hover .announcement-marquee,
+.announcement-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Keep promo ticker readable as a slow continuous scroll even with reduced motion off animations elsewhere */
+  .announcement-marquee {
+    animation: announcement-marquee 48s linear infinite !important;
+  }
+}

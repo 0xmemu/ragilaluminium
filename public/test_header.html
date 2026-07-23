@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test Header</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .desktop-header-wrapper { display: none; }
+        @media (min-width: 768px) {
+            .desktop-header-wrapper { display: block !important; }
+            .mobile-header-wrapper { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif">
+
+<div class="desktop-header-wrapper">
+    <!-- Bar 1: utility -->
+    <div class="w-full bg-white border-b border-gray-200 text-xs">
+      <div class="max-w-6xl mx-auto flex justify-between items-center py-1 px-4">
+        <div class="flex items-center gap-3">
+          <span>ragilaluminium29@gmail.com</span>
+          <span>|</span>
+          <span>+62 81234589065</span>
+        </div>
+        <div>Pusat Belanja Jendela Aluminium</div>
+      </div>
+    </div>
+
+    <!-- Bar 2: brand -->
+    <div class="w-full bg-[#111111] rounded-b-[10px] shadow-md relative z-30">
+      <div class="max-w-6xl mx-auto flex items-center py-3 px-4">
+        <a href="#" class="flex items-center">
+          <div class="h-8 w-8 mr-3 bg-red-600 rounded-full flex items-center justify-center text-white font-bold">R</div>
+          <span class="text-white font-semibold text-lg">
+            Jendela Ragil Aluminium
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Bar 3: nav + search -->
+    <div class="w-full bg-[#d50000] shadow-sm relative z-20" style="margin-top: -10px; padding-top: 10px;">
+      <div class="max-w-6xl mx-auto flex items-center justify-between py-2 px-4 gap-4">
+        <div class="flex items-center gap-6">
+          <!-- hamburger tanpa kotak putih -->
+          <button type="button" class="text-white bg-transparent border-none p-0 cursor-pointer focus:outline-none">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+          <a href="#" class="text-white text-sm font-semibold">MODEL PRODUK</a>
+          <a href="#" class="text-white text-sm font-semibold">PRODUK</a>
+          <a href="#" class="text-white text-sm font-semibold">TESTIMONI</a>
+          <a href="#" class="text-white text-sm font-semibold">HASIL PEMASANGAN</a>
+          <a href="#" class="text-white text-sm font-semibold">TENTANG</a>
+        </div>
+
+        <!-- search bar pendek -->
+        <form action="#" method="GET" class="relative w-72">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <i data-lucide="search" class="w-4 h-4"></i>
+          </span>
+          <input
+            type="text"
+            name="q"
+            placeholder="Cari Produk"
+            class="w-full pl-9 pr-9 py-1.5 rounded-full bg-white text-sm text-gray-700 focus:outline-none"
+          />
+          <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 bg-transparent border-none p-0 cursor-pointer focus:outline-none">
+            <i data-lucide="mic" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+</div>
+<div class="max-w-6xl mx-auto mt-10 h-64 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
+  Hero Image Area
+</div>
+<script>
+  lucide.createIcons();
+</script>
+</body>
+</html>

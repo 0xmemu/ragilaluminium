@@ -1,0 +1,201 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
+
+class ProductMedia extends Model
+{
+    protected $fillable = [
+        'product_id',
+        'product_variant_id',
+        'position',
+        'is_main_image',
+        'show_in_catalog',
+        'is_installation',
+        'visibility',
+        'source_url',
+        'stored_path',
+        'stored_url',
+        'derivatives',
+        'mime_type',
+        'size_bytes',
+        'width_px',
+        'height_px',
+        'status',
+        'error_reason',
+        'created_by_import_job_id',
+        'last_updated_by_import_job_id',
+        'created_by_user_id',
+        'updated_by_user_id',
+    ];
+
+    protected $casts = [
+        'is_main_image' => 'boolean',
+        'show_in_catalog' => 'boolean',
+        'is_installation' => 'boolean',
+        'position' => 'integer',
+        'size_bytes' => 'integer',
+        'width_px' => 'integer',
+        'height_px' => 'integer',
+        'derivatives' => 'array',
+    ];
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function productVariant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class);
+    }
+
+    public function createdByImportJob(): BelongsTo
+    {
+        return $this->belongsTo(ImportJob::class, 'created_by_import_job_id');
+    }
+
+    public function lastUpdatedByImportJob(): BelongsTo
+    {
+        return $this->belongsTo(ImportJob::class, 'last_updated_by_import_job_id');
+    }
+
+    public function scopeVisible(Builder $query): Builder
+    {
+        return $query->where('visibility', 'visible');
+    }
+
+    public function scopeCatalog(Builder $query): Builder
+    {
+        return $query->where('show_in_catalog', true);
+    }
+
+    public function scopeInstallation(Builder $query): Builder
+    {
+        return $query->where('is_installation', true);
+    }
+
+    /**
+     * Local stored/derivative URL only (no remote source_url fallback).
+     * Prefers disk path → live URL so APP_URL / host changes do not break storefront images.
+     */
+    public function localUrlFor(string $variant = 'card'): ?string
+    {
+        $variant = in_array($variant, ['thumb', 'card', 'pdp'], true) ? $variant : 'card';
+
+        $derivatives = $this->derivatives ?? [];
+        if (! empty($derivatives[$variant]['path'])) {
+            return $this->publicUrlForPath((string) $derivatives[$variant]['path']);
+        }
+
+        foreach (['card', 'pdp', 'thumb'] as $fallback) {
+            if ($fallback !== $variant && ! empty($derivatives[$fallback]['path'])) {
+                return $this->publicUrlForPath((string) $derivatives[$fallback]['path']);
+            }
+        }
+
+        if ($this->status === 'downloaded' && $this->stored_path) {
+            return $this->publicUrlForPath((string) $this->stored_path);
+        }
+
+        if (! empty($derivatives[$variant]['url'])) {
+            return $this->normalizePublicUrl((string) $derivatives[$variant]['url']);
+        }
+
+        foreach (['card', 'pdp', 'thumb'] as $fallback) {
+            if ($fallback !== $variant && ! empty($derivatives[$fallback]['url'])) {
+                return $this->normalizePublicUrl((string) $derivatives[$fallback]['url']);
+            }
+        }
+
+        if ($this->status === 'downloaded' && $this->stored_url) {
+            return $this->normalizePublicUrl((string) $this->stored_url);
+        }
+
+        return null;
+    }
+
+    /**
+     * Build a browser-usable URL from a media disk path.
+     * Local disk → root-relative `/storage/media/...` (works on 127.0.0.1 and WSL IP).
+     * S3/R2 → absolute object URL.
+     */
+    public function publicUrlForPath(string $path): string
+    {
+        $disk = Storage::disk(config('media.disk', 'media'));
+        $url = $disk->url(ltrim($path, '/'));
+
+        if ((config('filesystems.disks.media.driver') ?? 'local') === 's3') {
+            return $url;
+        }
+
+        return $this->normalizePublicUrl($url);
+    }
+
+    protected function normalizePublicUrl(string $url): string
+    {
+        if ((config('filesystems.disks.media.driver') ?? 'local') === 's3') {
+            return $url;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+        if (! is_string($path) || $path === '') {
+            return $url;
+        }
+
+        // Hanya URL disk lokal (`/storage/...`) yang diubah ke path relatif.
+        // URL CDN/eksternal (mis. fixture tes atau sumber lama) tetap absolut.
+        if (str_starts_with($path, '/storage/')) {
+            return $path;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Public URL for a derivative size (thumb|card|pdp), or original, never Shopee in prod.
+     */
+    public function urlFor(string $variant = 'card'): ?string
+    {
+        $local = $this->localUrlFor($variant);
+        if ($local) {
+            return $local;
+        }
+
+        if (config('media.allow_source_url_fallback') && $this->source_url) {
+            return $this->source_url;
+        }
+
+        return null;
+    }
+
+    public function getDisplayUrlAttribute(): ?string
+    {
+        return $this->urlFor('card');
+    }
+
+    public function srcsetForCard(): ?string
+    {
+        $thumb = $this->urlFor('thumb');
+        $card = $this->urlFor('card');
+        if (! $thumb && ! $card) {
+            return null;
+        }
+
+        $parts = [];
+        if ($thumb) {
+            $w = data_get($this->derivatives, 'thumb.width', 400);
+            $parts[] = "{$thumb} {$w}w";
+        }
+        if ($card) {
+            $w = data_get($this->derivatives, 'card.width', 800);
+            $parts[] = "{$card} {$w}w";
+        }
+
+        return implode(', ', $parts);
+    }
+}

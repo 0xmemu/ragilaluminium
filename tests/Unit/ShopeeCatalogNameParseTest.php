@@ -1,0 +1,47 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Imports\ShopeeCatalogExport;
+use ReflectionMethod;
+use Tests\TestCase;
+
+class ShopeeCatalogNameParseTest extends TestCase
+{
+    public function test_parse_dimensions_from_new_shopee_title_case(): void
+    {
+        $name = 'Jendela Aluminium 3 Daun Swing Casement Ornamen Tinggi 200 cm x Panjang 160 cm (200x160)';
+        $import = new ShopeeCatalogExport(1);
+
+        $dimensions = $this->invoke($import, 'parseDimensions', [$name]);
+        $taxonomy = $this->invoke($import, 'parseTaxonomy', [$name]);
+        $short = $this->invoke($import, 'shortName', [$name]);
+
+        $this->assertSame(200.0, $dimensions['height_cm']);
+        $this->assertSame(160.0, $dimensions['width_cm']);
+        $this->assertSame('WINDOW', $taxonomy['category']);
+        $this->assertSame('SWING', $taxonomy['model']);
+        $this->assertSame('ORNAMEN', $taxonomy['design']);
+        $this->assertSame('200x160', $short);
+    }
+
+    public function test_parse_dimensions_falls_back_to_paren_compact(): void
+    {
+        $name = 'Jendela Sliding Polos (120x80)';
+        $import = new ShopeeCatalogExport(1);
+
+        $dimensions = $this->invoke($import, 'parseDimensions', [$name]);
+
+        $this->assertSame(120.0, $dimensions['height_cm']);
+        $this->assertSame(80.0, $dimensions['width_cm']);
+    }
+
+    /** @param  list<mixed>  $args */
+    protected function invoke(object $target, string $method, array $args = []): mixed
+    {
+        $ref = new ReflectionMethod($target, $method);
+        $ref->setAccessible(true);
+
+        return $ref->invokeArgs($target, $args);
+    }
+}

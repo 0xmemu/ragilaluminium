@@ -1,0 +1,130 @@
+import { Head, useForm } from "@inertiajs/react"
+
+import { Button } from "@/components/ui/button"
+import { Field, FormErrorSummary } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { StatusBadge } from "@/components/ui/status-badge"
+import AdminLayout from "@/layouts/admin-layout"
+
+interface ProfileRecord {
+  name: string
+  email: string
+  role_label: string
+  status: string
+}
+
+export default function ProfileEdit({
+  profile,
+  submitUrl,
+}: {
+  profile: ProfileRecord
+  submitUrl: string
+}) {
+  const form = useForm({
+    name: profile.name,
+    email: profile.email,
+    current_password: "",
+    password: "",
+    password_confirmation: "",
+  })
+
+  return (
+    <AdminLayout
+      title="Profil Saya"
+      description="Perbarui nama, email, dan password akun yang sedang login."
+    >
+      <Head title="Profil Saya | Admin" />
+
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          form.put(submitUrl, {
+            onSuccess: () => form.reset("current_password", "password", "password_confirmation"),
+          })
+        }}
+        className="mx-auto max-w-2xl space-y-6"
+      >
+        <FormErrorSummary errors={form.errors} />
+
+        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+          <div className="flex flex-wrap items-center gap-3 border-b border-border pb-5">
+            <div>
+              <p className="text-xs font-bold tracking-tight text-muted-foreground">Peran & status</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{profile.role_label}</p>
+            </div>
+            <StatusBadge status={profile.status} />
+            <p className="w-full text-xs text-muted-foreground sm:ml-auto sm:w-auto">
+              Semua admin setara; akses login diatur lewat status aktif/nonaktif.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-5">
+            <Field id="profile-name" label="Nama" required error={form.errors.name}>
+              <Input
+                value={form.data.name}
+                onChange={(event) => form.setData("name", event.target.value)}
+                autoComplete="name"
+              />
+            </Field>
+            <Field id="profile-email" label="Email" required error={form.errors.email}>
+              <Input
+                type="email"
+                value={form.data.email}
+                onChange={(event) => form.setData("email", event.target.value)}
+                autoComplete="email"
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+          <h2 className="text-base font-semibold tracking-tight">Ganti password</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Kosongkan jika password tidak diubah. Wajib isi password saat ini bila mengganti.
+          </p>
+          <div className="mt-5 grid gap-5">
+            <Field id="profile-current-password" label="Password saat ini" error={form.errors.current_password}>
+              <Input
+                type="password"
+                value={form.data.current_password}
+                onChange={(event) => form.setData("current_password", event.target.value)}
+                autoComplete="current-password"
+              />
+            </Field>
+            <Field
+              id="profile-password"
+              label="Password baru"
+              error={form.errors.password}
+              hint="Minimal 8 karakter."
+            >
+              <Input
+                type="password"
+                value={form.data.password}
+                onChange={(event) => form.setData("password", event.target.value)}
+                autoComplete="new-password"
+              />
+            </Field>
+            <Field
+              id="profile-password-confirmation"
+              label="Ulangi password baru"
+              error={form.errors.password_confirmation}
+            >
+              <Input
+                type="password"
+                value={form.data.password_confirmation}
+                onChange={(event) => form.setData("password_confirmation", event.target.value)}
+                autoComplete="new-password"
+              />
+            </Field>
+          </div>
+        </section>
+
+        <div className="flex justify-end">
+          <Button type="submit" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan profil"}
+          </Button>
+        </div>
+      </form>
+    </AdminLayout>
+  )
+}
