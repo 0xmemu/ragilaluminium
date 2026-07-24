@@ -269,12 +269,12 @@ export function PublicHeader() {
 
         {/* Mobile: flex search. Desktop: centered bar that yields space to side actions. */}
         <HeaderSearchForm className="relative z-20 min-w-0 flex-1 md:hidden" />
-        <HeaderSearchForm className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden w-[min(36rem,calc(100%-17rem))] max-w-2xl -translate-x-1/2 -translate-y-1/2 px-3 lg:w-[min(42rem,calc(100%-22rem))] lg:px-4 xl:w-[min(42rem,calc(100%-26rem))] md:block [&>div]:pointer-events-auto" />
+        <HeaderSearchForm className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden w-[min(28rem,calc(100%-15rem))] max-w-2xl -translate-x-1/2 -translate-y-1/2 px-3 lg:w-[min(36rem,calc(100%-26rem))] lg:px-4 xl:w-[min(42rem,calc(100%-30rem))] md:block [&>div]:pointer-events-auto" />
 
-        <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-0.5 md:gap-1 lg:gap-2">
+        <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-1 md:gap-1.5 lg:gap-3">
           <Link
             href={routeUrl("order.status")}
-            className="relative hidden size-11 shrink-0 items-center justify-center gap-1.5 rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:inline-flex lg:min-w-11 lg:px-3"
+            className="relative hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:inline-flex lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
             aria-label="Pesanan"
             aria-current={isRouteActive(["order.status"]) ? "page" : undefined}
           >
@@ -294,7 +294,7 @@ export function PublicHeader() {
           >
             <Link
               href={routeUrl("cart.index")}
-              className="relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11 lg:min-w-11 lg:gap-1.5 lg:px-3"
+              className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:h-11 md:w-11 lg:h-11 lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
               aria-label={`Keranjang, ${cartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"

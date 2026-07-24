@@ -533,8 +533,14 @@ function HeroSlideContent({
         wrapperClassName="absolute inset-0"
         className="object-cover object-center"
       />
+      {/* Mobile: full-bleed dark scrim so white headline stays readable on bright photos. */}
       <div
-        className="pointer-events-none absolute inset-y-0 left-0 w-[52%] max-w-[520px] bg-gradient-to-r from-[rgba(91,91,91,0.84)] to-[rgba(153,153,153,0.15)]"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/85 via-foreground/50 to-foreground/25 md:hidden"
+        aria-hidden="true"
+      />
+      {/* Desktop: left-edge scrim only — photo remains the dominant plane. */}
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 hidden w-[52%] max-w-[520px] bg-gradient-to-r from-foreground/85 to-transparent md:block"
         aria-hidden="true"
       />
       <div className="absolute inset-0 flex items-center">
