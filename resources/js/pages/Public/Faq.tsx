@@ -114,6 +114,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                   <ul className="mt-4 divide-y divide-border border border-border bg-surface">
                     {group.items.map((item) => {
                       const open = openId === item.id
+                      const panelId = `faq-panel-${item.id}`
                       return (
                         <li key={item.id}>
                           <button
@@ -121,6 +122,8 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                             className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left sm:px-5"
                             onClick={() => setOpenId(open ? null : item.id)}
                             aria-expanded={open}
+                            aria-controls={panelId}
+                            id={`faq-trigger-${item.id}`}
                           >
                             <span className="text-sm font-semibold text-foreground sm:text-base">{item.question}</span>
                             <Icon
@@ -130,7 +133,12 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                             />
                           </button>
                           {open ? (
-                            <div className="border-t border-border px-4 pb-4 pt-3 sm:px-5">
+                            <div
+                              id={panelId}
+                              role="region"
+                              aria-labelledby={`faq-trigger-${item.id}`}
+                              className="border-t border-border px-4 pb-4 pt-3 sm:px-5"
+                            >
                               <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{item.answer}</p>
                             </div>
                           ) : null}

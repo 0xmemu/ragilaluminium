@@ -30,8 +30,8 @@ class ShippingController extends Controller
         $signature = $request->header(config('jnt.webhook.signature_header'))
             ?? $request->input('digest');
 
-        // Verifikasi tanda tangan hanya jika integrasi & kunci webhook aktif.
-        if (config('jnt.enabled') && config('jnt.webhook.private_key')) {
+        // Verifikasi tanda tangan bila private key tersedia (lepas dari JNT_ENABLED).
+        if (filled(config('jnt.webhook.private_key'))) {
             if (! $this->jnt->verifyWebhookSignature($rawJson, $signature)) {
                 Log::channel('jnt')->warning('JNT webhook signature invalid', [
                     'ip' => $request->ip(),

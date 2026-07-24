@@ -32,6 +32,7 @@ const SheetContent = React.forwardRef<
         )}
         {...props}
       >
+        <DialogPrimitive.Title className="sr-only">Panel navigasi</DialogPrimitive.Title>
         {children}
         <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground">
           <Icon name="x" className="h-5 w-5" aria-hidden="true" />

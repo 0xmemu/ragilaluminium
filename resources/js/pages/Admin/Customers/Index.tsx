@@ -122,75 +122,159 @@ export default function CustomersIndex({
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         {rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-3 font-semibold">No</th>
-                  <th className="px-3 py-3 font-semibold">Nama lengkap</th>
-                  <th className="px-3 py-3 font-semibold">Kontak WhatsApp</th>
-                  <th className="px-3 py-3 font-semibold">Lokasi</th>
-                  <th className="px-3 py-3 font-semibold">Status</th>
-                  <th className="px-3 py-3 font-semibold">Fraud score</th>
-                  <th className="px-3 py-3 font-semibold text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-border align-top">
-                    <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
-                    <td className="px-3 py-3">
-                      <Link href={row.href} className="font-semibold hover:text-primary hover:underline">
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full text-sm">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3 font-semibold">No</th>
+                    <th className="px-3 py-3 font-semibold">Nama lengkap</th>
+                    <th className="px-3 py-3 font-semibold">Kontak WhatsApp</th>
+                    <th className="px-3 py-3 font-semibold">Lokasi</th>
+                    <th className="px-3 py-3 font-semibold">Status</th>
+                    <th className="px-3 py-3 font-semibold">Fraud score</th>
+                    <th className="px-3 py-3 font-semibold text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-t border-border align-top">
+                      <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
+                      <td className="px-3 py-3">
+                        <Link href={row.href} className="font-semibold hover:text-primary hover:underline">
+                          {row.name}
+                        </Link>
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          {formatNumber(row.order_count)} pesanan · {formatCurrency(row.total_spent)}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <a
+                          href={row.whatsapp_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-primary hover:underline"
+                        >
+                          <Icon name="whatsapp" className="size-4" aria-hidden="true" />
+                          {row.phone}
+                        </a>
+                      </td>
+                      <td className="max-w-[14rem] px-3 py-3 text-muted-foreground">{row.location}</td>
+                      <td className="px-3 py-3">
+                        <StatusBadge status={row.status.key} label={row.status.label} />
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-bold tabular-nums">{row.fraud.score}/100</p>
+                        <p
+                          className={cn(
+                            "text-[11px] font-semibold",
+                            row.fraud.tone === "success" && "text-success",
+                            row.fraud.tone === "warning" && "text-warning-foreground",
+                            row.fraud.tone === "danger" && "text-destructive",
+                          )}
+                        >
+                          {row.fraud.label}
+                        </p>
+                      </td>
+                      <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
+                        <RowActions>
+                          <Button asChild variant="secondary" size="xs">
+                            <Link href={row.edit_href}>Edit</Link>
+                          </Button>
+                          <Button asChild variant="secondary" size="xs">
+                            <Link href={row.href}>Detail</Link>
+                          </Button>
+                        </RowActions>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="divide-y divide-border md:hidden">
+              {rows.map((row) => (
+                <article key={row.id} className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">Nama lengkap</p>
+                      <Link href={row.href} className="mt-1 block font-semibold text-primary">
                         {row.name}
                       </Link>
                       <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {formatNumber(row.order_count)} pesanan · {formatCurrency(row.total_spent)}
                       </p>
-                    </td>
-                    <td className="px-3 py-3">
-                      <a
-                        href={row.whatsapp_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-primary hover:underline"
-                      >
-                        <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-                        {row.phone}
-                      </a>
-                    </td>
-                    <td className="max-w-[14rem] px-3 py-3 text-muted-foreground">{row.location}</td>
-                    <td className="px-3 py-3">
-                      <StatusBadge status={row.status.key} label={row.status.label} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <p className="font-bold tabular-nums">{row.fraud.score}/100</p>
-                      <p
-                        className={cn(
-                          "text-[11px] font-semibold",
-                          row.fraud.tone === "success" && "text-success",
-                          row.fraud.tone === "warning" && "text-warning-foreground",
-                          row.fraud.tone === "danger" && "text-destructive",
-                        )}
-                      >
-                        {row.fraud.label}
-                      </p>
-                    </td>
-                    <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
-                      <RowActions>
-                        <Button asChild variant="secondary" size="xs">
-                          <Link href={row.edit_href}>Edit</Link>
-                        </Button>
-                        <Button asChild variant="secondary" size="xs">
-                          <Link href={row.href}>Detail</Link>
-                        </Button>
-                      </RowActions>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                    <Link
+                      href={row.href}
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent"
+                      aria-label="Buka detail"
+                    >
+                      <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </div>
+                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">No</dt>
+                      <dd className="mt-1 text-sm tabular-nums text-muted-foreground">{row.no}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Kontak WhatsApp</dt>
+                      <dd className="mt-1 text-sm">
+                        <a
+                          href={row.whatsapp_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-primary hover:underline"
+                        >
+                          <Icon name="whatsapp" className="size-4" aria-hidden="true" />
+                          {row.phone}
+                        </a>
+                      </dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Lokasi</dt>
+                      <dd className="mt-1 text-sm text-muted-foreground">{row.location}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Status</dt>
+                      <dd className="mt-1 text-sm">
+                        <StatusBadge status={row.status.key} label={row.status.label} />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Fraud score</dt>
+                      <dd className="mt-1 text-sm">
+                        <p className="font-bold tabular-nums">{row.fraud.score}/100</p>
+                        <p
+                          className={cn(
+                            "text-[11px] font-semibold",
+                            row.fraud.tone === "success" && "text-success",
+                            row.fraud.tone === "warning" && "text-warning-foreground",
+                            row.fraud.tone === "danger" && "text-destructive",
+                          )}
+                        >
+                          {row.fraud.label}
+                        </p>
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-4">
+                    <RowActions>
+                      <Button asChild variant="secondary" size="xs">
+                        <Link href={row.edit_href}>Edit</Link>
+                      </Button>
+                      <Button asChild variant="secondary" size="xs">
+                        <Link href={row.href}>Detail</Link>
+                      </Button>
+                    </RowActions>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState
             title="Belum ada pelanggan"
