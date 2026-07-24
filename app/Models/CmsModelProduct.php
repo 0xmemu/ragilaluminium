@@ -16,6 +16,7 @@ class CmsModelProduct extends Model
         'product_category',
         'product_model',
         'image_url',
+        'content',
         'type',
         'status',
         'sort_order',
@@ -23,6 +24,7 @@ class CmsModelProduct extends Model
 
     protected $casts = [
         'sort_order' => 'integer',
+        'content' => 'array',
     ];
 
     public function scopeActive(Builder $query): Builder

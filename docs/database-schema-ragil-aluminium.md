@@ -716,6 +716,7 @@ Kurasi kartu model di storefront (beranda / hub `/products` / menu model), terpi
 - `product_category` (varchar 32, nullable) — `WINDOW` | `DOOR` | `BOUVEN`
 - `product_model` (varchar 64, nullable) — e.g. `JUNGKIT`, `SLIDING`
 - `image_url` (varchar, nullable)
+- `content` (json, nullable) — copy halaman penjelasan model (`/model/{category}/{model}`): `description`, `hero_caption`, `hero_image_url`, `benefits[]` (`icon`, `title`), `specs[]` (`label`, `value`). Null/empty → default storefront.
 - `type` (enum: `polos`, `ornamen`, `lainnya`, default `polos`)
 - `status` (enum: `active`, `draft`, default `draft`)
 - `sort_order` (integer, default 0)
@@ -729,6 +730,7 @@ Notes:
 
 - Admin: Pengaturan Website → **Model Produk** (`admin.model-products.*`). Sync membuat baris dari pasangan kategori+model katalog yang belum ada.
 - Storefront memakai baris `active` berurutan; jika tidak ada baris aktif → fallback taxonomy dari produk.
+- Kartu model di hub `/products` mengarah ke **halaman penjelasan model** (`model.show`), bukan langsung listing SKU.
 - Bukan pengganti `products` / `admin.products.*`.
 
 ---

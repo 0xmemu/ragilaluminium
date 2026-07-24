@@ -60,6 +60,15 @@ return [
             'group' => 'catalog',
             'status' => 'implemented',
         ],
+        'Halaman Penjelasan Model' => [
+            'route' => 'model.show',
+            'path' => '/model/{category}/{model}',
+            'view' => 'Public/ModelShow',
+            'controller' => 'ModelShowcaseController@show',
+            'group' => 'catalog',
+            'status' => 'implemented',
+            'notes' => 'Penjelasan per model (bukan listing SKU). category=windows|doors|bouven; model=slug.',
+        ],
         'Halaman Produk Satuan' => [
             'route' => 'product.show',
             'path' => '/product/{parent_sku}',

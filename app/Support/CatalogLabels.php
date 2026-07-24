@@ -144,6 +144,59 @@ class CatalogLabels
         return $cat.' Aluminium '.$modelLabel;
     }
 
+    /** Public path segment: WINDOW → windows, DOOR → doors, BOUVEN → bouven. */
+    public static function categoryPath(?string $category): string
+    {
+        return match (strtoupper((string) $category)) {
+            'DOOR' => 'doors',
+            'BOUVEN' => 'bouven',
+            default => 'windows',
+        };
+    }
+
+    /** Inverse of categoryPath. */
+    public static function categoryFromPath(string $path): ?string
+    {
+        return match (strtolower($path)) {
+            'windows', 'window' => 'WINDOW',
+            'doors', 'door' => 'DOOR',
+            'bouven' => 'BOUVEN',
+            default => null,
+        };
+    }
+
+    /** URL slug for product_model: KACA_MATI → kaca-mati. */
+    public static function modelPath(?string $model): string
+    {
+        $key = self::normalizeModel($model);
+        if ($key === null) {
+            return '';
+        }
+
+        return strtolower(str_replace('_', '-', $key));
+    }
+
+    /** Inverse of modelPath. */
+    public static function modelFromPath(string $path): ?string
+    {
+        return self::normalizeModel(str_replace('-', '_', $path));
+    }
+
+    /** Storefront penjelasan-model URL (absolute: false). */
+    public static function modelShowcaseHref(?string $category, ?string $model): string
+    {
+        $categoryPath = self::categoryPath($category);
+        $modelPath = self::modelPath($model);
+        if ($modelPath === '') {
+            return route('catalog.index', absolute: false);
+        }
+
+        return route('model.show', [
+            'category' => $categoryPath,
+            'model' => $modelPath,
+        ], absolute: false);
+    }
+
     /** @return list<string> */
     public static function modelCodes(): array
     {

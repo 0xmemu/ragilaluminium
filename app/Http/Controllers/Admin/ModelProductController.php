@@ -91,6 +91,7 @@ class ModelProductController extends Controller
                 'product_category' => $modelProduct->product_category,
                 'product_model' => $modelProduct->product_model,
                 'image_url' => $modelProduct->image_url,
+                'content' => is_array($modelProduct->content) ? $modelProduct->content : null,
                 'type' => $modelProduct->type,
                 'status' => $modelProduct->status,
                 'sort_order' => $modelProduct->sort_order,
@@ -175,14 +176,83 @@ class ModelProductController extends Controller
             'type' => ['required', Rule::in(CmsModelProduct::TYPES)],
             'status' => ['required', Rule::in(CmsModelProduct::STATUSES)],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            'content' => ['nullable', 'array'],
+            'content.description' => ['nullable', 'string', 'max:5000'],
+            'content.hero_caption' => ['nullable', 'string', 'max:255'],
+            'content.hero_image_url' => ['nullable', 'string', 'max:2048'],
+            'content.benefits' => ['nullable', 'array', 'max:6'],
+            'content.benefits.*.icon' => ['nullable', 'string', 'max:64'],
+            'content.benefits.*.title' => ['nullable', 'string', 'max:255'],
+            'content.specs' => ['nullable', 'array', 'max:12'],
+            'content.specs.*.label' => ['nullable', 'string', 'max:120'],
+            'content.specs.*.value' => ['nullable', 'string', 'max:255'],
         ]);
 
         $validated['product_category'] = $validated['product_category'] ?: null;
         $validated['product_model'] = CatalogLabels::normalizeModel($validated['product_model'] ?? null);
         $validated['image_url'] = $validated['image_url'] ?: null;
         $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
+        $validated['content'] = $this->normalizeContent($validated['content'] ?? null);
 
         return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $content
+     * @return array<string, mixed>|null
+     */
+    protected function normalizeContent(?array $content): ?array
+    {
+        if ($content === null) {
+            return null;
+        }
+
+        $description = trim((string) ($content['description'] ?? ''));
+        $heroCaption = trim((string) ($content['hero_caption'] ?? ''));
+        $heroImage = trim((string) ($content['hero_image_url'] ?? ''));
+
+        $benefits = [];
+        foreach (($content['benefits'] ?? []) as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $title = trim((string) ($row['title'] ?? ''));
+            if ($title === '') {
+                continue;
+            }
+            $benefits[] = [
+                'icon' => trim((string) ($row['icon'] ?? 'badge-check')) ?: 'badge-check',
+                'title' => $title,
+            ];
+        }
+
+        $specs = [];
+        foreach (($content['specs'] ?? []) as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $label = trim((string) ($row['label'] ?? ''));
+            $value = trim((string) ($row['value'] ?? ''));
+            if ($label === '' && $value === '') {
+                continue;
+            }
+            $specs[] = [
+                'label' => $label,
+                'value' => $value,
+            ];
+        }
+
+        if ($description === '' && $heroCaption === '' && $heroImage === '' && $benefits === [] && $specs === []) {
+            return null;
+        }
+
+        return [
+            'description' => $description !== '' ? $description : null,
+            'hero_caption' => $heroCaption !== '' ? $heroCaption : null,
+            'hero_image_url' => $heroImage !== '' ? $heroImage : null,
+            'benefits' => $benefits !== [] ? $benefits : null,
+            'specs' => $specs !== [] ? $specs : null,
+        ];
     }
 
     /** @return list<array{value:string,label:string}> */

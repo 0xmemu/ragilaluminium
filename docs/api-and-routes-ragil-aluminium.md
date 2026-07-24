@@ -68,6 +68,14 @@ All agents must use these routes and endpoints as the primary integration surfac
 - `GET /bouven`
   - Controller: `CatalogController@bouven`
 
+- `GET /model/{category}/{model}`
+  - Controller: `ModelShowcaseController@show`
+  - Route name: `model.show`
+  - Path params: `category` = `windows|doors|bouven`; `model` = slug (`kaca-mati` → `KACA_MATI`).
+  - Purpose (Inertia): halaman **penjelasan per model** — `Public/ModelShow` (hero, detail, manfaat, spesifikasi, inspirasi pemasangan dari `product_media` instalasi + paginasi `?page=`).
+  - CTA: listing SKU terkait (`catalog.windows|doors|bouven?model=`), WhatsApp/telepon brand, `/hasil-pemasangan`.
+  - Copy opsional dari `cms_model_products.content` (aktif); kosong → default `ModelProductService`.
+
 Common query parameters for category pages:
 
 - `model` (e.g. `JUNGKIT`, `SLIDING`, `SWING`, `KACA_MATI`, `ZIGZAG`)  
