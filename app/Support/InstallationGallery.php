@@ -84,7 +84,7 @@ class InstallationGallery
                 'video_count' => $videoCount,
                 'source' => 'import',
                 'product_sku' => $product->parent_sku,
-                'href' => route('installation.show', ['parent_sku' => $product->parent_sku]),
+                'href' => route('installation.show', ['parent_sku' => $product->parent_sku], absolute: false),
             ];
 
             if (count($cards) >= $limit) {
@@ -110,7 +110,7 @@ class InstallationGallery
                     'video_count' => 0,
                     'source' => 'manual',
                     'product_sku' => null,
-                    'href' => route('installation.index'),
+                    'href' => route('installation.index', absolute: false),
                 ])
                 ->all();
 
@@ -194,7 +194,7 @@ class InstallationGallery
                 'id' => $product->id,
                 'parent_sku' => $product->parent_sku,
                 'name' => $title !== '' ? $title : $product->parent_sku,
-                'href' => route('product.show', ['parent_sku' => $product->parent_sku]),
+                'href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
             ],
             'media' => $media,
         ];

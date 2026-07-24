@@ -65,6 +65,7 @@ export default {
                 },
             },
             borderRadius: {
+                // Moderate corners for form surfaces (textarea, chips). Pills use rounded-full.
                 sm: 'calc(var(--radius-control) - 2px)',
                 DEFAULT: 'var(--radius-control)',
                 md: 'var(--radius-control)',

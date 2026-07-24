@@ -68,7 +68,7 @@ class CmsTestimonial extends Model
                 'id' => $product->id,
                 'parent_sku' => $product->parent_sku,
                 'name' => $product->short_name ?: $product->name,
-                'href' => route('product.show', $product->parent_sku),
+                'href' => route('product.show', $product->parent_sku, absolute: false),
             ] : null,
         ];
     }

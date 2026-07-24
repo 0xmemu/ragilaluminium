@@ -34,15 +34,16 @@
     --ring: 0 100% 38%;
     --surface: 0 0% 100%;
     --surface-muted: 150 8% 97%;
-    /* Panel/sheet: --radius. Search + labeled buttons: Tailwind rounded-full (pill). */
+    /* Panel/sheet: --radius. Form surfaces (rounded-md/sm): --radius-control.
+       Search + labeled buttons + single-line Input/Select: Tailwind rounded-full (pill). */
     --radius: 0.875rem;
-    --radius-control: 9999px;
+    --radius-control: 0.5rem;
     --shadow-soft: 0 1px 2px hsl(150 6% 11% / 0.04);
     --shadow-float: 0 8px 24px hsl(150 6% 11% / 0.08);
     --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-emphasized: cubic-bezier(0.32, 0.72, 0, 1);
-    /* Mobile bottom nav (~3.5rem chrome) + iOS home indicator */
-    --mobile-bottom-nav-height: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+    /* Mobile bottom nav (h-14 chrome) + iOS home indicator */
+    --mobile-bottom-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
     /* Sticky commerce CTA strip above bottom nav */
     --mobile-sticky-cta-height: 4.25rem;
   }
@@ -333,6 +334,11 @@
   animation-iteration-count: infinite;
 }
 
+.group\/announce:hover .announcement-marquee,
+.announcement-marquee:hover {
+  animation-play-state: paused;
+}
+
 /* Inertia NProgress — yellow bar above sticky header */
 #nprogress {
   pointer-events: none;
@@ -373,11 +379,6 @@
   text-transform: none;
 }
 
-.group\/announce:hover .announcement-marquee,
-.announcement-marquee:hover {
-  animation-play-state: paused;
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -392,7 +393,7 @@
     transition-duration: 0.01ms !important;
   }
 
-  /* Keep promo ticker readable as a slow continuous scroll even with reduced motion off animations elsewhere */
+  /* Desktop ticker: keep a very slow scroll so promos remain discoverable */
   .announcement-marquee {
     animation: announcement-marquee 48s linear infinite !important;
   }

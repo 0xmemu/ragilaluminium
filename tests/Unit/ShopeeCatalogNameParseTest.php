@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Imports\ShopeeCatalogExport;
+use App\Support\ShopeeVariationAxes;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -34,6 +35,26 @@ class ShopeeCatalogNameParseTest extends TestCase
 
         $this->assertSame(120.0, $dimensions['height_cm']);
         $this->assertSame(80.0, $dimensions['width_cm']);
+    }
+
+    public function test_door_variation_uses_opening_and_color_glass_axes(): void
+    {
+        $axes = ShopeeVariationAxes::fromVariationName('Buka Kanan,Serat Kayu KcaBening');
+
+        $this->assertSame('Arah Buka', $axes['variation_1_name']);
+        $this->assertSame('Buka Kanan', $axes['variation_1_option']);
+        $this->assertSame('Warna & Kaca', $axes['variation_2_name']);
+        $this->assertSame('Serat Kayu Kaca Bening', $axes['variation_2_option']);
+    }
+
+    public function test_window_variation_keeps_warna_and_kaca(): void
+    {
+        $axes = ShopeeVariationAxes::fromVariationName('Putih,Kaca Riben');
+
+        $this->assertSame('Warna', $axes['variation_1_name']);
+        $this->assertSame('Putih', $axes['variation_1_option']);
+        $this->assertSame('Kaca', $axes['variation_2_name']);
+        $this->assertSame('Kaca Riben', $axes['variation_2_option']);
     }
 
     /** @param  list<mixed>  $args */

@@ -22,21 +22,30 @@ class HomeController extends Controller
         $installationMeta = null;
 
         try {
-            $featuredProducts = Product::visible()
-                ->with(['mainImage', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
-                ->latest()
-                ->limit(8)
-                ->get();
-
-            // Home “Paling Banyak Dipesan”: hanya produk nyata yang dipilih admin (max 10).
+            // Home “Paling Banyak Dipesan”: kurasi admin (max 10), fallback penjualan website.
             $popularProducts = Product::visible()
                 ->homepagePopular()
-                ->with(['mainImage', 'activeVariants', 'attributes'])
+                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
                 ->withSum('orderItems as sold_count', 'quantity')
                 ->orderBy('homepage_popular_sort')
                 ->orderByDesc('id')
                 ->limit(10)
+                ->get();
+
+            if ($popularProducts->isEmpty()) {
+                $popularProducts = Product::visible()
+                    ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                    ->withSum('orderItems as sold_count', 'quantity')
+                    ->orderByWebsiteSales()
+                    ->limit(10)
+                    ->get();
+            }
+
+            $featuredProducts = Product::visible()
+                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                ->withSum('orderItems as sold_count', 'quantity')
+                ->latest()
+                ->limit(8)
                 ->get();
 
             $modelCards = app(\App\Services\ModelProductService::class)->storefrontCards(8);

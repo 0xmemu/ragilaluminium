@@ -121,36 +121,52 @@ class ProductMedia extends Model
 
     /**
      * Build a browser-usable URL from a media disk path.
-     * Local disk → root-relative `/storage/media/...` (works on 127.0.0.1 and WSL IP).
-     * S3/R2 → absolute object URL.
+     * Prefer root-relative paths (`/media-cdn/...`, `/storage/...`) so cards work
+     * on both the Cloudflare host and http://VPS_IP:8200.
      */
     public function publicUrlForPath(string $path): string
     {
         $disk = Storage::disk(config('media.disk', 'media'));
         $url = $disk->url(ltrim($path, '/'));
 
-        if ((config('filesystems.disks.media.driver') ?? 'local') === 's3') {
-            return $url;
-        }
-
         return $this->normalizePublicUrl($url);
     }
 
     protected function normalizePublicUrl(string $url): string
     {
-        if ((config('filesystems.disks.media.driver') ?? 'local') === 's3') {
-            return $url;
-        }
+        $url = $this->rewriteR2DevToAppProxy($url);
 
         $path = parse_url($url, PHP_URL_PATH);
         if (! is_string($path) || $path === '') {
             return $url;
         }
 
-        // Hanya URL disk lokal (`/storage/...`) yang diubah ke path relatif.
-        // URL CDN/eksternal (mis. fixture tes atau sumber lama) tetap absolut.
-        if (str_starts_with($path, '/storage/')) {
+        // Same-origin media proxy and local disk — root-relative for any host/scheme.
+        if (str_starts_with($path, '/media-cdn/') || str_starts_with($path, '/storage/')) {
             return $path;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Map legacy *.r2.dev object URLs onto the same-origin /media-cdn proxy
+     * (nginx → R2) so storefront images work when r2.dev is throttled/blocked.
+     */
+    protected function rewriteR2DevToAppProxy(string $url): string
+    {
+        $legacy = rtrim((string) env('AWS_R2_DEV_URL', 'https://pub-e0bf1b0315804ca58f84ecd92654b902.r2.dev'), '/');
+        $proxyBase = rtrim((string) config('filesystems.disks.media.url', ''), '/');
+
+        if ($legacy !== '' && str_starts_with($url, $legacy.'/')) {
+            $suffix = substr($url, strlen($legacy));
+            if ($proxyBase !== '') {
+                $proxyPath = parse_url($proxyBase, PHP_URL_PATH) ?: '/media-cdn';
+
+                return rtrim($proxyPath, '/').$suffix;
+            }
+
+            return '/media-cdn'.$suffix;
         }
 
         return $url;

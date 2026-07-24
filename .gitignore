@@ -30,3 +30,5 @@ xlsx/
 /database/e2e.sqlite
 /playwright-report
 /test-results
+
+.venv/

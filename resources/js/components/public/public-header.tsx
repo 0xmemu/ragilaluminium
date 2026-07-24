@@ -40,7 +40,7 @@ function HeaderSearchForm({
       <div className="relative w-full">
         <Icon
           name="search"
-          className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-background/55 md:left-4"
+          className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-background/55 md:left-4 md:size-5"
           aria-hidden="true"
         />
         <input
@@ -52,7 +52,7 @@ function HeaderSearchForm({
           onBlur={() => setFocused(false)}
           placeholder={placeholder}
           className={cn(
-            "h-10 w-full rounded-full border-0 bg-white/10 py-1.5 pl-10 pr-4 text-base text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-11 md:pl-12 md:pr-5",
+            "h-9 w-full rounded-full border-0 bg-white/10 py-1.5 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-11 md:pl-12 md:pr-5 md:text-base",
             inputClassName,
           )}
           aria-label="Cari produk"
@@ -101,15 +101,15 @@ export function PublicHeader() {
   return (
     <>
     <header className="sticky top-0 z-header border-b border-white/10 bg-foreground text-background">
-      <div className="container-page relative flex min-h-14 items-center gap-2 py-2 md:gap-0">
+      <div className="container-page relative flex h-14 items-center gap-1.5 py-0 md:min-h-14 md:gap-0 md:py-2">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
             <button
               type="button"
-              className="relative z-20 -ml-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 sm:mr-2"
+              className="relative z-20 -ml-1.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11"
               aria-label="Buka menu utama"
             >
-              <Icon name="menu" className="size-6" weight="bold" aria-hidden="true" />
+              <Icon name="menu" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
             </button>
           </SheetTrigger>
           <SheetContent
@@ -259,28 +259,30 @@ export function PublicHeader() {
           </SheetContent>
         </Sheet>
 
+        {/* Mobile: emblem beside search. Desktop: wordmark (narrows on mid widths). */}
+        <BrandWordmark mark variant="dark" className="relative z-20 md:hidden" />
         <BrandWordmark
           compact
           variant="dark"
-          className="relative z-20 hidden min-w-0 shrink md:inline-flex"
+          className="relative z-20 hidden min-w-0 shrink md:inline-flex [&_img]:max-w-[7.5rem] lg:[&_img]:max-w-[10.5rem] xl:[&_img]:max-w-none"
         />
 
-        {/* Mobile (Figma): search field in header row. Desktop: centered absolute bar. */}
+        {/* Mobile: flex search. Desktop: centered bar that yields space to side actions. */}
         <HeaderSearchForm className="relative z-20 min-w-0 flex-1 md:hidden" />
-        <HeaderSearchForm className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden w-[min(100%,42rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 px-4 md:block [&>div]:pointer-events-auto" />
+        <HeaderSearchForm className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden w-[min(36rem,calc(100%-17rem))] max-w-2xl -translate-x-1/2 -translate-y-1/2 px-3 lg:w-[min(42rem,calc(100%-22rem))] lg:px-4 xl:w-[min(42rem,calc(100%-26rem))] md:block [&>div]:pointer-events-auto" />
 
-        <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-0.5 sm:gap-2 md:ml-auto">
+        <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-0.5 md:gap-1 lg:gap-2">
           <Link
             href={routeUrl("order.status")}
-            className="relative hidden h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2 text-background transition-colors hover:bg-white/10 active:bg-white/20 sm:px-3 md:inline-flex"
+            className="relative hidden size-11 shrink-0 items-center justify-center gap-1.5 rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:inline-flex lg:min-w-11 lg:px-3"
             aria-label="Pesanan"
             aria-current={isRouteActive(["order.status"]) ? "page" : undefined}
           >
-            <Icon name="clipboard-list" className="size-7 shrink-0" aria-hidden="true" />
-            <span className="hidden text-xs font-bold sm:inline">Pesanan</span>
+            <Icon name="clipboard-list" className="size-6 shrink-0 lg:size-7" aria-hidden="true" />
+            <span className="hidden text-xs font-bold lg:inline">Pesanan</span>
           </Link>
           <div
-            className="relative"
+            className="relative shrink-0"
             onMouseEnter={() => setCartPreviewOpen(true)}
             onMouseLeave={() => setCartPreviewOpen(false)}
             onFocusCapture={() => setCartPreviewOpen(true)}
@@ -292,20 +294,20 @@ export function PublicHeader() {
           >
             <Link
               href={routeUrl("cart.index")}
-              className="relative inline-flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2 text-background transition-colors hover:bg-white/10 active:bg-white/20 sm:px-3"
+              className="relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11 lg:min-w-11 lg:gap-1.5 lg:px-3"
               aria-label={`Keranjang, ${cartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
             >
               <span className="relative inline-flex shrink-0">
-                <Icon name="shopping-cart" className="size-7" aria-hidden="true" />
+                <Icon name="shopping-cart" className="size-5 md:size-6 lg:size-7" aria-hidden="true" />
                 {cartCount > 0 ? (
-                  <span className="tabular-nums absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-1 text-[9px] font-bold text-white">
+                  <span className="tabular-nums absolute -right-1 -top-1 flex min-h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sale px-0.5 text-[8px] font-bold leading-none text-white md:-right-0.5 md:-top-0.5 md:min-h-4 md:min-w-4 md:px-1 md:text-[9px]">
                     {Math.min(cartCount, 99)}
                   </span>
                 ) : null}
               </span>
-              <span className="hidden text-xs font-bold sm:inline">Keranjang</span>
+              <span className="hidden text-xs font-bold lg:inline">Keranjang</span>
             </Link>
 
             <div

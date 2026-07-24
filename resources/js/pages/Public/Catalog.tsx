@@ -125,6 +125,8 @@ export default function Catalog({
     priceMax: priceMax?.toString() ?? "",
     sort: resolvedSort,
   })
+  const filtersRef = React.useRef(filters)
+  filtersRef.current = filters
 
   React.useEffect(() => {
     setFilters({
@@ -137,9 +139,10 @@ export default function Catalog({
   }, [activeModel, activeDesign, priceMin, priceMax, activeSort])
 
   function visit(next: Partial<FilterState> = {}) {
-    const merged = { ...filters, ...next }
+    const merged = { ...filtersRef.current, ...next }
     const sort = resolveSortValue(merged.sort)
 
+    setFilters(merged)
     setLoading(true)
     router.get(
       basePath,
@@ -170,18 +173,18 @@ export default function Catalog({
       priceMax: "",
       sort: pageSort,
     }
-    setFilters(empty)
     setMobileFiltersOpen(false)
     visit(empty)
   }
 
   function handleLiveSidebarChange(next: Partial<CatalogListingFilters>) {
-    const merged = { ...filters, ...next }
-    setFilters(merged)
+    const merged = { ...filtersRef.current, ...next }
 
     const touchesPrice = "priceMin" in next || "priceMax" in next
     const clearingPrice = touchesPrice && !merged.priceMin && !merged.priceMax
     const editingPrice = touchesPrice && !clearingPrice
+
+    setFilters(merged)
 
     if (editingPrice) {
       return
@@ -191,7 +194,7 @@ export default function Catalog({
   }
 
   function applyLivePrice() {
-    visit(filters)
+    visit(filtersRef.current)
   }
 
   const activeFilterCount = [activeModel, activeDesign, priceMin, priceMax, searchQuery]
@@ -202,10 +205,12 @@ export default function Catalog({
     filterModels,
     filterDesigns,
     filters,
-    activeModel: activeModel ?? null,
-    activeDesign: activeDesign ?? null,
-    priceMin,
-    priceMax,
+    // Optimistic UI: bind radios to local filter state so clicks don't snap back
+    // while waiting for Inertia. useEffect syncs from server props after visit.
+    activeModel: filters.model || null,
+    activeDesign: filters.design || null,
+    priceMin: filters.priceMin ? Number(filters.priceMin) : null,
+    priceMax: filters.priceMax ? Number(filters.priceMax) : null,
     currentHref: listingAllProducts
       ? withQuery(routeUrl("catalog.index"), {
           sort: resolvedSort === "popular" ? "popular" : "newest",

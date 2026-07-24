@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Support\ShopeeStyleSku;
+use App\Support\ShopeeVariationAxes;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
@@ -105,14 +106,16 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
                 $variantSkuRaw !== '' ? $variantSkuRaw : null,
             );
 
+            $axes = ShopeeVariationAxes::fromVariationName($variationName);
+
             $variant = ProductVariant::updateOrCreate(
                 ['variant_sku' => $variantSku],
                 array_merge([
                     'product_id' => $product->id,
-                    'variation_1_name' => 'Warna',
-                    'variation_1_option' => $this->parseColor($variationName),
-                    'variation_2_name' => 'Kaca',
-                    'variation_2_option' => $this->parseGlass($variationName),
+                    'variation_1_name' => $axes['variation_1_name'],
+                    'variation_1_option' => $axes['variation_1_option'],
+                    'variation_2_name' => $axes['variation_2_name'],
+                    'variation_2_option' => $axes['variation_2_option'],
                     'price' => $price,
                     'stock_mode' => $job->stock_mode,
                     'file_stock' => $fileStock,
@@ -217,24 +220,6 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
             $out['width_cm'] = (float) $m[2];
         }
         return $out;
-    }
-
-    protected function parseColor(string $variationName): ?string
-    {
-        $parts = explode(',', $variationName);
-        $color = trim($parts[0] ?? '');
-        // Strip any trailing dimension text that sometimes sits in the color slot.
-        $color = preg_replace('/T\d+\s*X\s*P\d+/i', '', $color);
-        return $color === '' ? null : trim($color);
-    }
-
-    protected function parseGlass(string $variationName): ?string
-    {
-        $parts = explode(',', $variationName);
-        $rest = isset($parts[1]) ? $parts[1] : '';
-        $rest = preg_replace('/T\d+\s*X\s*P\d+/i', '', $rest);
-        $rest = trim($rest);
-        return $rest === '' ? null : $rest;
     }
 
     protected function shortName(string $name): string

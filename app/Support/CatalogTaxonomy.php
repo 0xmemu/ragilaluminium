@@ -147,7 +147,7 @@ class CatalogTaxonomy
                     'meta' => '3 Model Kaca | 4 Model Warna',
                     'desc' => self::modelDescription($w['model']),
                     'image' => $sample?->mainImage?->urlFor('card'),
-                    'href' => route($route, $params),
+                    'href' => route($route, $params, absolute: false),
                     'model' => $w['model'],
                     'category' => $w['category'],
                     'designs' => $w['designs'],
@@ -283,7 +283,7 @@ class CatalogTaxonomy
                         'label' => $item['label'],
                         'model' => $params['model'] ?? null,
                         'design' => $params['design'] ?? null,
-                        'href' => route($meta['route'], $params),
+                        'href' => route($meta['route'], $params, absolute: false),
                     ];
                 })->all();
             } else {
@@ -309,7 +309,7 @@ class CatalogTaxonomy
                             'label' => CatalogLabels::productLine($category, $model, $design),
                             'model' => $model,
                             'design' => $design === 'POLOS' ? null : $design,
-                            'href' => route($meta['route'], $params),
+                            'href' => route($meta['route'], $params, absolute: false),
                         ];
                     }
                 }
@@ -328,7 +328,7 @@ class CatalogTaxonomy
             $panels[$category] = [
                 'title' => $meta['title'],
                 'route' => $meta['route'],
-                'shop_all' => route($meta['route']),
+                'shop_all' => route($meta['route'], absolute: false),
                 'items' => $items,
                 'samples' => $samplesByCategory[$category] ?? [],
             ];
@@ -365,7 +365,7 @@ class CatalogTaxonomy
                 $out[$cat][] = [
                     'title' => $p->short_name ?: mb_strimwidth($p->name, 0, 48, '…'),
                     'image' => $p->mainImage?->urlFor('card'),
-                    'href' => route('product.show', $p->parent_sku),
+                    'href' => route('product.show', $p->parent_sku, absolute: false),
                 ];
             }
         } catch (\Throwable) {
@@ -412,7 +412,7 @@ class CatalogTaxonomy
                     'label' => $item['label'],
                     'model' => $params['model'] ?? null,
                     'design' => $params['design'] ?? null,
-                    'href' => route($column['route'], $params),
+                    'href' => route($column['route'], $params, absolute: false),
                 ];
             })->all();
 
@@ -429,7 +429,7 @@ class CatalogTaxonomy
             $panels[$key] = [
                 'title' => $column['title'],
                 'route' => $column['route'],
-                'shop_all' => route($column['route']),
+                'shop_all' => route($column['route'], absolute: false),
                 'items' => $items,
                 'samples' => [],
             ];

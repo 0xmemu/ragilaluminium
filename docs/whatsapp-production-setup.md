@@ -97,6 +97,33 @@ Ragil Aluminium
 
 Minimal produksi: dua template pertama (COD + transfer).
 
+### 4.1 WhatsApp Flow “konfirmasi pesanan” (opsional)
+
+Flow di WhatsApp Manager **bukan** pengganti template Stage 8. Template tetap wajib untuk outbound bisnis; Flow = UI interaktif (bisa dilampirkan ke tombol template / pesan interactive nanti).
+
+Screenshot draft Meta yang masih Hello World diganti dengan JSON di repo:
+
+| File | Versi Flow JSON | Kegunaan |
+|------|-----------------|----------|
+| [`docs/whatsapp-flow-konfirmasi-pesanan.static.json`](whatsapp-flow-konfirmasi-pesanan.static.json) | **`7.3`** (publish) | Paste langsung; teks statis |
+| [`docs/whatsapp-flow-konfirmasi-pesanan.json`](whatsapp-flow-konfirmasi-pesanan.json) | **`7.3`** + `${data.*}` | Nomor/item/total dinamis saat kirim Flow dengan payload |
+
+**Versi:** editor Meta hanya menerima versi **publish** (`5.1`–`7.3`). `2.1` / `3.1` hanya untuk *mengirim* Flow yang sudah terbit — bukan untuk draft di Editor. Pakai **`7.3`** ([changelog supported versions](https://developers.facebook.com/docs/whatsapp/flows/changelogs#currently-supported-versions)).
+
+Langkah di Meta: **Flows → konfirmasi pesanan → Editor** → ganti JSON → **Simpan** → uji **Jalankan** → **Terbitkan** setelah lolos validasi.
+
+Mapping data dinamis (v3.1) ke variabel template Ragil:
+
+| Flow `data` | Sumber Ragil (`WhatsAppService`) |
+|-------------|-----------------------------------|
+| `order_number` | `{{1}}` / `$order->order_number` |
+| `items_summary` | `{{2}}` ringkasan item |
+| `total_formatted` | `{{3}}` total |
+| `payment_note` | COD vs transfer |
+| `status_url` | route publik `order.status` |
+
+Backend belum mengirim Flow message (hanya template). Endpoint Flow / tombol template Flow = follow-up setelah template Approved + `WHATSAPP_BUSINESS_NUMBER_ID` terisi.
+
 ---
 
 ## 5. Mapping `.env`

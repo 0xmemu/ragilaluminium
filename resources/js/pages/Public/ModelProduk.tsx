@@ -26,9 +26,14 @@ export default function ModelProduk({
   activeDesign = null,
 }: ModelProdukProps) {
   const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false)
-  const resolvedDesign = activeDesign ?? null
+  const [design, setDesign] = React.useState<string | null>(activeDesign ?? null)
+
+  React.useEffect(() => {
+    setDesign(activeDesign ?? null)
+  }, [activeDesign])
 
   function selectDesign(value: string | null) {
+    setDesign(value)
     setMobileFiltersOpen(false)
     router.get(
       routeUrl("catalog.index"),
@@ -41,7 +46,7 @@ export default function ModelProduk({
     selectDesign(null)
   }
 
-  const hasActiveFilter = Boolean(resolvedDesign)
+  const hasActiveFilter = Boolean(design)
 
   return (
     <PublicLayout>
@@ -88,7 +93,7 @@ export default function ModelProduk({
                 >
                   <ModelProdukListingSidebar
                     filterDesigns={filterDesigns}
-                    activeDesign={resolvedDesign}
+                    activeDesign={design}
                     onSelectDesign={selectDesign}
                     onClearDesign={clearDesign}
                   />
@@ -114,7 +119,7 @@ export default function ModelProduk({
             <div className="sticky top-28">
               <ModelProdukListingSidebar
                 filterDesigns={filterDesigns}
-                activeDesign={resolvedDesign}
+                activeDesign={design}
                 onSelectDesign={selectDesign}
                 onClearDesign={clearDesign}
               />
@@ -133,12 +138,12 @@ export default function ModelProduk({
                 icon="funnel"
                 title="Belum Ada Model Yang Cocok"
                 description={
-                  resolvedDesign
+                  design
                     ? "Desain ini belum tersedia pada model aktif. Hapus filter untuk melihat pilihan lain."
                     : "Model produk belum tersedia pada katalog aktif."
                 }
                 action={
-                  resolvedDesign ? (
+                  design ? (
                     <Button onClick={clearDesign}>Hapus Filter</Button>
                   ) : (
                     <Button asChild>

@@ -26,14 +26,33 @@ class InertiaCatalog
             'flash_sale' => $promo['flash_sale'],
             'cod_eligible' => $promo['cod_eligible'],
             'warranty_label' => $promo['warranty_label'],
-            'image' => $product->relationLoaded('mainImage')
-                ? ($product->mainImage?->urlFor('card') ?? asset(config('media.placeholder', 'images/home/product-flash.png')))
-                : asset(config('media.placeholder', 'images/home/product-flash.png')),
-            'href' => route('product.show', $product->parent_sku),
+            'image' => self::cardImage($product),
+            // Relative URLs keep Inertia on the current origin/scheme (critical behind Cloudflare HTTPS).
+            'href' => route('product.show', $product->parent_sku, absolute: false),
             'installation_href' => ((bool) ($product->has_installation_gallery ?? false))
-                ? route('installation.show', ['parent_sku' => $product->parent_sku])
+                ? route('installation.show', ['parent_sku' => $product->parent_sku], absolute: false)
                 : null,
         ];
+    }
+
+    public static function cardImage(Product $product): string
+    {
+        $placeholder = '/'.ltrim((string) config('media.placeholder', 'images/home/product-flash.png'), '/');
+
+        if ($product->relationLoaded('mainImage') && $product->mainImage) {
+            return $product->mainImage->urlFor('card') ?? $placeholder;
+        }
+
+        if ($product->relationLoaded('media')) {
+            $fallback = $product->media
+                ->first(fn ($m) => $m->show_in_catalog && $m->visibility === 'visible' && $m->status === 'downloaded');
+
+            if ($fallback) {
+                return $fallback->urlFor('card') ?? $placeholder;
+            }
+        }
+
+        return $placeholder;
     }
 
     /** @param  Collection<int, Product>|iterable<Product>  $products */

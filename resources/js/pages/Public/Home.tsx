@@ -65,7 +65,7 @@ function SectionTitle({
       {actionHref ? (
         <Link
           href={actionHref}
-          className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] transition hover:bg-[#1A1D1C]/5"
+          className="hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] transition hover:bg-[#1A1D1C]/5 md:inline-flex"
         >
           {actionLabel}
         </Link>
@@ -74,9 +74,12 @@ function SectionTitle({
   )
 }
 
-/** Tombol next/back sama seperti banner promosi. */
+/** Desktop next/back — disembunyikan di mobile (swipe-only). */
 const carouselNavBtnClass =
-  "absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:size-12"
+  "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
+
+const mobileSeeMoreLinkClass =
+  "inline-flex min-h-11 items-center justify-center rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] active:bg-[#1A1D1C]/5"
 
 function useHorizontalCarousel(itemCount: number) {
   const trackRef = React.useRef<HTMLDivElement>(null)
@@ -151,8 +154,8 @@ function CarouselNavButton({
       className={cn(
         carouselNavBtnClass,
         side === "left"
-          ? "left-2 translate-x-0 md:left-0 md:-translate-x-1/2"
-          : "right-2 translate-x-0 md:right-0 md:translate-x-1/2",
+          ? "md:left-0 md:-translate-x-1/2"
+          : "md:right-0 md:translate-x-1/2",
       )}
     >
       <Icon
@@ -165,7 +168,40 @@ function CarouselNavButton({
   )
 }
 
-function ModelCardCarousel({ models }: { models: ModelCardData[] }) {
+/** Slot swipe terakhir di mobile — setelah maks. 10 kartu. */
+function MobileSeeMoreSlide({
+  href,
+  label = "Lihat selengkapnya",
+  wide = false,
+}: {
+  href: string
+  label?: string
+  wide?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 snap-start flex-col items-center justify-center border border-dashed border-border bg-muted/40 px-4 md:hidden",
+        wide
+          ? "w-[88%] sm:w-[calc((100%_-_1.25rem)/2)]"
+          : "w-[calc((100%_-_1.25rem)/2)] sm:w-[calc((100%_-_2.5rem)/3)]",
+      )}
+    >
+      <Link href={href} className={mobileSeeMoreLinkClass}>
+        {label}
+        <Icon name="caret-right" className="ml-1.5 size-4" weight="bold" aria-hidden="true" />
+      </Link>
+    </div>
+  )
+}
+
+function ModelCardCarousel({
+  models,
+  seeMoreHref,
+}: {
+  models: ModelCardData[]
+  seeMoreHref: string
+}) {
   const items = models.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
@@ -174,7 +210,7 @@ function ModelCardCarousel({ models }: { models: ModelCardData[] }) {
       <div
         ref={trackRef}
         id={trackId}
-        className="scrollbar-none flex snap-x snap-mandatory gap-5 overflow-x-auto pb-1"
+        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
       >
         {items.map((model) => (
           <div
@@ -184,6 +220,7 @@ function ModelCardCarousel({ models }: { models: ModelCardData[] }) {
             <ModelCard model={model} />
           </div>
         ))}
+        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -203,7 +240,13 @@ function ModelCardCarousel({ models }: { models: ModelCardData[] }) {
   )
 }
 
-function ProductCardCarousel({ products }: { products: ProductCardData[] }) {
+function ProductCardCarousel({
+  products,
+  seeMoreHref,
+}: {
+  products: ProductCardData[]
+  seeMoreHref: string
+}) {
   const items = products.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
@@ -212,7 +255,7 @@ function ProductCardCarousel({ products }: { products: ProductCardData[] }) {
       <div
         ref={trackRef}
         id={trackId}
-        className="scrollbar-none flex snap-x snap-mandatory gap-5 overflow-x-auto pb-1"
+        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
       >
         {items.map((product, index) => (
           <div
@@ -222,6 +265,7 @@ function ProductCardCarousel({ products }: { products: ProductCardData[] }) {
             <ProductCard product={product} priority={index < 4} />
           </div>
         ))}
+        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -241,7 +285,13 @@ function ProductCardCarousel({ products }: { products: ProductCardData[] }) {
   )
 }
 
-function InstallationCarousel({ items }: { items: InstallationItem[] }) {
+function InstallationCarousel({
+  items,
+  seeMoreHref,
+}: {
+  items: InstallationItem[]
+  seeMoreHref: string
+}) {
   const slides = items.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(slides.length)
 
@@ -250,7 +300,7 @@ function InstallationCarousel({ items }: { items: InstallationItem[] }) {
       <div
         ref={trackRef}
         id={trackId}
-        className="scrollbar-none flex snap-x snap-mandatory gap-5 overflow-x-auto pb-1"
+        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
       >
         {slides.map((item) => (
           <div
@@ -260,6 +310,9 @@ function InstallationCarousel({ items }: { items: InstallationItem[] }) {
             <InstallationCard item={item} />
           </div>
         ))}
+        {slides.length > 0 ? (
+          <MobileSeeMoreSlide href={seeMoreHref} label="Lihat selengkapnya" />
+        ) : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -279,7 +332,13 @@ function InstallationCarousel({ items }: { items: InstallationItem[] }) {
   )
 }
 
-function TestimonialCarousel({ testimonials }: { testimonials: Testimonial[] }) {
+function TestimonialCarousel({
+  testimonials,
+  seeMoreHref,
+}: {
+  testimonials: Testimonial[]
+  seeMoreHref: string
+}) {
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
@@ -288,7 +347,7 @@ function TestimonialCarousel({ testimonials }: { testimonials: Testimonial[] }) 
       <div
         ref={trackRef}
         id={trackId}
-        className="scrollbar-none flex snap-x snap-mandatory items-stretch gap-5 overflow-x-auto pb-1"
+        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory items-stretch gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
       >
         {items.map((testimonial) => (
           <div
@@ -302,6 +361,7 @@ function TestimonialCarousel({ testimonials }: { testimonials: Testimonial[] }) 
             />
           </div>
         ))}
+        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} wide /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -541,6 +601,7 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const total = slides.length
   const visibleIndex = total ? Math.min(activeIndex, total - 1) : 0
+  const touchStartX = React.useRef<number | null>(null)
 
   React.useEffect(() => {
     if (total < 2) return
@@ -554,13 +615,30 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
     setActiveIndex((index + total) % total)
   }
 
+  function onTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    touchStartX.current = event.touches[0]?.clientX ?? null
+  }
+
+  function onTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (touchStartX.current === null || total < 2) return
+    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current
+    const delta = endX - touchStartX.current
+    touchStartX.current = null
+    if (Math.abs(delta) < 40) return
+    goTo(visibleIndex + (delta < 0 ? 1 : -1))
+  }
+
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
-      <div className="relative w-full overflow-hidden bg-[rgba(10,0,0,0.05)]">
+      <div
+        className="relative w-full overflow-hidden bg-[rgba(10,0,0,0.05)] touch-pan-y"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
           {total ? (
             <>
               <div
@@ -593,17 +671,17 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
                     type="button"
                     onClick={() => goTo(visibleIndex - 1)}
                     aria-label="Slide sebelumnya"
-                    className="absolute left-3 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:left-5 md:size-12"
+                    className="absolute left-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
                   >
-                    <Icon name="caret-left" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
+                    <Icon name="caret-left" className="size-6" weight="bold" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => goTo(visibleIndex + 1)}
                     aria-label="Slide berikutnya"
-                    className="absolute right-3 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:right-5 md:size-12"
+                    className="absolute right-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
                   >
-                    <Icon name="caret-right" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
+                    <Icon name="caret-right" className="size-6" weight="bold" aria-hidden="true" />
                   </button>
 
                   <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
@@ -639,23 +717,25 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
 }
 
 function PilihModelProduk({ models }: { models: ModelCardData[] }) {
+  const seeMoreHref = routeUrl("catalog.index")
+
   return (
     <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
         <SectionTitle
           title="Pilih model produk"
           subtitle="Bandingkan model produk sebelum memilih ukuran."
-          actionHref={routeUrl("catalog.index")}
+          actionHref={seeMoreHref}
         />
         {models.length ? (
-          <ModelCardCarousel models={models} />
+          <ModelCardCarousel models={models} seeMoreHref={seeMoreHref} />
         ) : (
           <EmptyState
             title="Model belum tersedia"
             description="Model produk akan tampil setelah katalog aktif."
             action={
               <Button asChild>
-                <Link href={routeUrl("catalog.index")}>Buka katalog</Link>
+                <Link href={seeMoreHref}>Buka katalog</Link>
               </Button>
             }
           />
@@ -666,16 +746,18 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
 }
 
 function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
+  const seeMoreHref = `${routeUrl("catalog.index")}?sort=popular`
+
   return (
     <section id="paling-banyak-dipesan" className="scroll-mt-20 border-t border-border section-space">
       <div className="container-page">
         <SectionTitle
           title="Paling banyak dipesan"
           subtitle="Untuk inspirasi Anda."
-          actionHref={`${routeUrl("catalog.index")}?sort=popular`}
+          actionHref={seeMoreHref}
         />
         {products.length ? (
-          <ProductCardCarousel products={products} />
+          <ProductCardCarousel products={products} seeMoreHref={seeMoreHref} />
         ) : (
           <EmptyState
             title="Belum ada produk populer"
@@ -763,17 +845,19 @@ function HasilPemasangan({
   items: InstallationItem[]
   meta?: { heading?: string; subtitle?: string } | null
 }) {
+  const seeMoreHref = routeUrl("installation.index")
+
   return (
     <section className="border-t border-border section-space">
       <div className="container-page">
         <SectionTitle
           title={meta?.heading?.trim() || "Hasil pemasangan kami"}
           subtitle={meta?.subtitle?.trim() || "Dokumentasi pemasangan dari pelanggan dan galeri toko."}
-          actionHref={routeUrl("installation.index")}
+          actionHref={seeMoreHref}
           actionLabel="Semua hasil pemasangan"
         />
         {items.length ? (
-          <InstallationCarousel items={items} />
+          <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
         ) : (
           <EmptyState
             icon="image"
@@ -787,17 +871,19 @@ function HasilPemasangan({
 }
 
 function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
+  const seeMoreHref = routeUrl("reviews")
+
   return (
     <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
         <SectionTitle
           title="Apa kata pelanggan kami"
           subtitle="Cuplikan ulasan terbit. Semua sumber (Shopee, WhatsApp, website) digabung di halaman Ulasan dengan filter."
-          actionHref={routeUrl("reviews")}
+          actionHref={seeMoreHref}
           actionLabel="Semua ulasan"
         />
         {testimonials.length ? (
-          <TestimonialCarousel testimonials={testimonials} />
+          <TestimonialCarousel testimonials={testimonials} seeMoreHref={seeMoreHref} />
         ) : (
           <EmptyState
             icon="star"

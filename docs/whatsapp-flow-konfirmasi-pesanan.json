@@ -1,0 +1,65 @@
+{
+  "version": "7.3",
+  "screens": [
+    {
+      "id": "ORDER_SUMMARY",
+      "title": "Konfirmasi pesanan",
+      "terminal": true,
+      "success": true,
+      "data": {
+        "order_number": {
+          "type": "string",
+          "__example__": "RA-20260724-001"
+        },
+        "items_summary": {
+          "type": "string",
+          "__example__": "Jendela Sliding 190x160 × 1, Pintu Swing 210x80 × 1"
+        },
+        "total_formatted": {
+          "type": "string",
+          "__example__": "4.555.000"
+        },
+        "payment_note": {
+          "type": "string",
+          "__example__": "Bayar di tempat (COD). Siapkan uang pas saat barang tiba."
+        },
+        "status_url": {
+          "type": "string",
+          "__example__": "https://ra.natauma.me/order/status"
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Pesanan diterima"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Nomor ${data.order_number}"
+          },
+          {
+            "type": "TextBody",
+            "text": "Ringkasan:\n${data.items_summary}\n\nTotal: Rp ${data.total_formatted}\n\n${data.payment_note}"
+          },
+          {
+            "type": "TextCaption",
+            "text": "Cek status kapan saja di ${data.status_url} (tanpa login)."
+          },
+          {
+            "type": "Footer",
+            "label": "Mengerti",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "acknowledged": true,
+                "order_number": "${data.order_number}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

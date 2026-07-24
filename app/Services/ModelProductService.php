@@ -219,7 +219,7 @@ class ModelProductService
                 'meta' => $this->metaFromDesigns($designs),
                 'desc' => $this->descriptionFor($row->product_model),
                 'image' => $image,
-                'href' => route($route, $params),
+                'href' => route($route, $params, absolute: false),
                 'model' => $row->product_model,
                 'category' => $row->product_category,
                 'designs' => $designs,

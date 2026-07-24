@@ -1,0 +1,34 @@
+{
+  "version": "7.3",
+  "screens": [
+    {
+      "id": "ORDER_SUMMARY",
+      "title": "Konfirmasi pesanan",
+      "terminal": true,
+      "success": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Pesanan diterima"
+          },
+          {
+            "type": "TextBody",
+            "text": "Terima kasih. Pesanan Ragil Aluminium Anda sudah kami terima.\n\nSimpan nomor pesanan dari chat sebelumnya untuk cek status di website (menu Pesanan), tanpa login.\n\nCOD: siapkan uang pas saat barang tiba.\nTransfer: ikuti instruksi pembayaran di chat."
+          },
+          {
+            "type": "Footer",
+            "label": "Mengerti",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "acknowledged": true
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
