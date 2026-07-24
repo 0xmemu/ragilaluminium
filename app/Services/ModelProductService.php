@@ -212,6 +212,9 @@ class ModelProductService
                 $sample = (clone $productQuery)->with('mainImage')->latest('id')->first();
                 $image = $sample?->mainImage?->urlFor('card');
             }
+            if (! $image) {
+                $image = '/'.ltrim((string) config('media.placeholder', 'images/home/product-flash.png'), '/');
+            }
 
             $cards[] = [
                 'title' => $row->name,
