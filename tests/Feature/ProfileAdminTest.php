@@ -29,7 +29,7 @@ class ProfileAdminTest extends TestCase
                 ->component('Admin/Profile/Edit')
                 ->where('profile.name', 'Admin Lama')
                 ->where('profile.email', 'admin@example.com')
-                ->where('profile.role', 'admin'));
+                ->where('profile.role_label', 'Admin'));
 
         $this->actingAs($admin)
             ->put(route('admin.profile.update'), [
