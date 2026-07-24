@@ -29,15 +29,17 @@ export function AdminCommandSearch({
 
   React.useEffect(() => {
     if (!open) return
-    setQuery("")
-    setActiveIndex(0)
     const id = window.setTimeout(() => inputRef.current?.focus(), 10)
     return () => window.clearTimeout(id)
   }, [open])
 
-  React.useEffect(() => {
-    setActiveIndex(0)
-  }, [query])
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      setQuery("")
+      setActiveIndex(0)
+    }
+    onOpenChange(next)
+  }
 
   function goTo(_hit: AdminSearchHit) {
     onOpenChange(false)
@@ -64,7 +66,7 @@ export function AdminCommandSearch({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:p-0">
         <div className="border-b border-border px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
           <DialogTitle className="text-lg">Cari di admin</DialogTitle>
@@ -83,7 +85,10 @@ export function AdminCommandSearch({
               data-admin-search
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setActiveIndex(0)
+              }}
               onKeyDown={onKeyDown}
               placeholder="Contoh: pesanan, import, voucher…"
               className="h-11 w-full rounded-full border border-border bg-background pl-10 pr-3 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
