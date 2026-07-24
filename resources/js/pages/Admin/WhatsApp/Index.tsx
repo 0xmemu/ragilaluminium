@@ -4,8 +4,8 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { Switch } from "@/components/ui/switch"
 import AdminLayout from "@/layouts/admin-layout"
-import { cn } from "@/lib/utils"
 
 interface AutomationRow {
   id: number
@@ -98,26 +98,12 @@ export default function WhatsAppIndex({
                   </div>
 
                   <div className="flex items-center gap-2 sm:justify-start">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={active}
-                      aria-label={`${active ? "Nonaktifkan" : "Aktifkan"} ${row.label}`}
+                    <Switch
+                      checked={active}
                       disabled={busy}
-                      onClick={() => toggle(row)}
-                      className={cn(
-                        "relative h-7 w-12 shrink-0 rounded-full transition-colors",
-                        active ? "bg-foreground" : "bg-muted",
-                        busy && "opacity-60",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "absolute top-0.5 size-6 rounded-full bg-surface shadow transition-transform",
-                          active ? "translate-x-5" : "translate-x-0.5",
-                        )}
-                      />
-                    </button>
+                      label={`${active ? "Nonaktifkan" : "Aktifkan"} ${row.label}`}
+                      onCheckedChange={() => toggle(row)}
+                    />
                     <StatusBadge status={active ? "active" : "inactive"} />
                   </div>
 
