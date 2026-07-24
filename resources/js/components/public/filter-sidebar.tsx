@@ -32,7 +32,7 @@ export function FilterOptionChip({
         "min-h-10 rounded-md border px-3.5 text-xs font-semibold transition",
         selected
           ? "border-primary bg-primary text-primary-foreground shadow-sm"
-          : "border-[#DEDEDE] bg-surface text-foreground hover:border-foreground/25 hover:bg-muted/40",
+          : "border-border bg-surface text-foreground hover:border-foreground/25 hover:bg-muted/40",
       )}
     >
       {children}
@@ -62,7 +62,7 @@ export function FilterSheetContent({
       )}
     >
       <div className="flex shrink-0 justify-center pt-3" aria-hidden="true">
-        <span className="h-1 w-10 rounded-full bg-[#DEDEDE]" />
+        <span className="h-1 w-10 rounded-full bg-border" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-5 pt-3">

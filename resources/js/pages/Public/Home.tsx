@@ -65,7 +65,7 @@ function SectionTitle({
       {actionHref ? (
         <Link
           href={actionHref}
-          className="hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] transition hover:bg-[#1A1D1C]/5 md:inline-flex"
+          className="hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5 md:inline-flex"
         >
           {actionLabel}
         </Link>
@@ -79,7 +79,7 @@ const carouselNavBtnClass =
   "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
 const mobileSeeMoreLinkClass =
-  "inline-flex min-h-11 items-center justify-center rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] active:bg-[#1A1D1C]/5"
+  "inline-flex min-h-11 items-center justify-center rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground active:bg-foreground/5"
 
 function useHorizontalCarousel(itemCount: number) {
   const trackRef = React.useRef<HTMLDivElement>(null)
@@ -404,28 +404,28 @@ const PROMO_CARD_VARIANTS = [
     headline: "text-white drop-shadow-[0_1px_2px_rgba(10,0,0,0.25)]",
     chip: "bg-white text-primary",
     subheadline: "text-white/90",
-    cta: "bg-white text-[#1A1D1C] hover:bg-white/90",
+    cta: "bg-background text-foreground hover:bg-background/90",
     disclaimer: "text-white/70",
   },
   {
-    card: "bg-[#1A1D1C]",
+    card: "bg-foreground",
     eyebrow: "text-white/85",
     eyebrowAccent: "text-white",
     headline: "text-white",
     chip: "bg-primary text-white",
     subheadline: "text-white/85",
-    cta: "bg-white text-[#1A1D1C] hover:bg-white/90",
+    cta: "bg-background text-foreground hover:bg-background/90",
     disclaimer: "text-white/60",
   },
   {
-    card: "bg-[#DDE2E0]",
-    eyebrow: "text-[#1A1D1C]/85",
+    card: "bg-border",
+    eyebrow: "text-foreground/85",
     eyebrowAccent: "text-primary",
-    headline: "text-[#1A1D1C]",
+    headline: "text-foreground",
     chip: "bg-primary text-white",
-    subheadline: "text-[#1A1D1C]/80",
-    cta: "bg-[#1A1D1C] text-white hover:bg-[#1A1D1C]/85",
-    disclaimer: "text-[#1A1D1C]/60",
+    subheadline: "text-foreground/80",
+    cta: "bg-foreground text-background hover:bg-foreground/85",
+    disclaimer: "text-foreground/60",
   },
 ] as const
 
@@ -448,7 +448,7 @@ function HeroPromoCard({
   const v = PROMO_CARD_VARIANTS[Math.abs(variantIndex) % PROMO_CARD_VARIANTS.length]
 
   return (
-    <div className="relative h-full w-full bg-[#e8e8e8]">
+    <div className="relative h-full w-full bg-muted">
       <ResponsiveImage
         src={slide.image}
         alt={slide.image_alt ?? slide.headline}
@@ -635,7 +635,7 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
       <div
-        className="relative w-full overflow-hidden bg-[rgba(10,0,0,0.05)] touch-pan-y"
+        className="relative w-full overflow-hidden bg-foreground/5 touch-pan-y"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -816,7 +816,7 @@ function CaraPesan({
           <p className="mt-3 text-sm leading-6 text-muted-foreground">{subtitle}</p>
           <Link
             href={routeUrl("cara-pemesanan")}
-            className="mt-5 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] transition hover:bg-[#1A1D1C]/5"
+            className="mt-5 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5"
           >
             Lihat panduan
           </Link>
@@ -977,7 +977,7 @@ function ClosingCta() {
           Pilih model aluminium yang tepat untuk rumah yang lebih rapi, terang, dan tahan lama.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button asChild className="bg-white text-[#a00000] hover:bg-white/90">
+          <Button asChild className="bg-background text-primary hover:bg-background/90">
             <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
           </Button>
           <Button asChild variant="secondary" className="border-white/40 bg-transparent text-white hover:bg-white/10">

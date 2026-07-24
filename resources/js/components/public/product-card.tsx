@@ -55,13 +55,13 @@ export function ProductCard({
         href={product.href}
         className="flex min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-[rgba(244,244,244,0.5)]">
+        <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-muted/50">
           <ResponsiveImage
             src={product.image}
             alt={title}
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
-            wrapperClassName="aspect-square size-full bg-[rgba(244,244,244,0.5)]"
+            wrapperClassName="aspect-square size-full bg-muted/50"
             className="object-cover transition duration-300 group-hover:scale-[1.03]"
           />
           {flashEmphasis ? (
@@ -73,7 +73,7 @@ export function ProductCard({
         </div>
 
         <div className="relative flex flex-1 flex-col gap-0 pt-2">
-          <h3 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-[#262626]">
+          <h3 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-foreground">
             {title}
           </h3>
 
@@ -90,7 +90,7 @@ export function ProductCard({
                       {formatCurrency(compareValue)}
                     </span>
                     {discountPercent !== null && discountPercent > 0 ? (
-                      <span className="rounded bg-[#fdf2f2] px-1.5 text-xs font-semibold leading-5 text-[#c81e1e] lg:text-sm lg:leading-6">
+                      <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground lg:text-sm lg:leading-6">
                         -{discountPercent}%
                       </span>
                     ) : null}
@@ -157,7 +157,7 @@ export function ProductCard({
           </div>
 
           <div className="mt-auto flex items-end justify-between gap-2 pt-1">
-            <span className="inline-flex min-w-0 items-center gap-1 text-[10px] font-medium leading-4 text-[#b06c00] lg:text-xs lg:leading-5">
+            <span className="inline-flex min-w-0 items-center gap-1 text-[10px] font-medium leading-4 text-warning lg:text-xs lg:leading-5">
               <SealCheck weight="fill" className="size-3.5 shrink-0 lg:size-4" aria-hidden />
               <span className="truncate">{warrantyLabel}</span>
             </span>

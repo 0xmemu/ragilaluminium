@@ -10,7 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-primary text-primary-foreground hover:bg-[#a00000]",
+          "bg-primary text-primary-foreground hover:bg-primary-hover",
         secondary:
           "border border-foreground bg-surface text-foreground hover:bg-muted",
         ghost: "text-foreground hover:bg-muted",
@@ -20,7 +20,7 @@ const buttonVariants = cva(
         link:
           "h-auto min-h-0 rounded-full px-0 text-primary underline-offset-4 hover:underline",
         sale:
-          "bg-sale text-white hover:bg-[#a00000]",
+          "bg-sale text-primary-foreground hover:bg-primary-hover",
       },
       size: {
         xs: "h-8 min-h-8 gap-1 px-2 text-xs",

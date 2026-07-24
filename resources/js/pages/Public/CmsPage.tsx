@@ -145,7 +145,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
         </Head>
 
         {/* Hero — brand first, editorial stats */}
-        <section className="relative overflow-hidden border-b border-[#DDE2E0] bg-[#F7F8F7]">
+        <section className="relative overflow-hidden border-b border-border bg-surface-muted">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"
@@ -172,7 +172,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                   decoding="async"
                 />
               </h1>
-              <p className="mt-2 max-w-md text-pretty text-sm font-semibold leading-6 tracking-tight text-[#5A635E] sm:mt-2.5 sm:text-base">
+              <p className="mt-2 max-w-md text-pretty text-sm font-semibold leading-6 tracking-tight text-muted-foreground sm:mt-2.5 sm:text-base">
                 {brand.tagline || "Pusat Belanja Jendela Aluminium"}
               </p>
             </div>
@@ -191,7 +191,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                   <p className="tabular-nums text-2xl font-bold tracking-tight text-primary sm:text-3xl">
                     {years.figure || "15+"}
                   </p>
-                  <p className="mt-0.5 text-xs font-semibold tracking-tight text-[#5A635E] sm:text-sm">
+                  <p className="mt-0.5 text-xs font-semibold tracking-tight text-muted-foreground sm:text-sm">
                     {years.caption || "Tahun Pengalaman"}
                   </p>
                 </div>
@@ -208,7 +208,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                   <p className="tabular-nums text-2xl font-bold tracking-tight text-primary sm:text-3xl">
                     {units.figure || "1.000.000+"}
                   </p>
-                  <p className="mt-0.5 text-xs font-semibold tracking-tight text-[#5A635E] sm:text-sm">
+                  <p className="mt-0.5 text-xs font-semibold tracking-tight text-muted-foreground sm:text-sm">
                     {units.caption || "Unit Terpasang"}
                   </p>
                 </div>
@@ -231,7 +231,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
 
           {/* Why */}
           <section
-            className="relative border-y border-[#DDE2E0] bg-[#F7F8F7] py-14 lg:py-20"
+            className="relative border-y border-border bg-surface-muted py-14 lg:py-20"
             aria-labelledby="why-ragil"
           >
             <div
@@ -248,7 +248,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                     key={item.title}
                     className={cn(
                       "flex flex-col items-center px-5 py-8 text-center sm:px-6",
-                      index > 0 && "border-t border-[#DDE2E0] sm:border-t-0 sm:border-l",
+                      index > 0 && "border-t border-border sm:border-t-0 sm:border-l",
                       index === 2 && "lg:border-l",
                     )}
                   >
@@ -258,7 +258,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                     <p className="mt-5 text-sm font-bold tracking-tight text-foreground sm:text-base">
                       {item.title}
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-[#5A635E]">{item.body}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
                   </li>
                 ))}
               </ul>
@@ -271,14 +271,14 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
             <ul className="mx-auto mt-12 grid max-w-4xl gap-8 sm:grid-cols-2">
               {TRUST_POINTS.map((item) => (
                 <li key={item.title} className="flex gap-4 text-left">
-                  <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-md bg-[#F7F8F7] text-primary">
+                  <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary">
                     <Icon name={item.icon} className="size-5" aria-hidden="true" />
                   </span>
                   <div>
                     <p className="text-sm font-bold tracking-tight text-foreground sm:text-base">
                       {item.title}
                     </p>
-                    <p className="mt-1.5 text-sm leading-6 text-[#5A635E]">{item.body}</p>
+                    <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{item.body}</p>
                   </div>
                 </li>
               ))}
@@ -286,7 +286,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
           </section>
 
           {/* How */}
-          <section className="border-y border-[#DDE2E0] bg-[#F7F8F7] py-14 lg:py-20" aria-labelledby="how-ragil">
+          <section className="border-y border-border bg-surface-muted py-14 lg:py-20" aria-labelledby="how-ragil">
             <div className="container-page">
               <SectionHeading id="how-ragil">Cara Kerja Kami</SectionHeading>
               <ol className="mx-auto mt-10 grid max-w-3xl gap-4">
@@ -343,7 +343,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                   >
                     Informasi Kontak
                   </h2>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-[#c8cdc9]">
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-background/75">
                     Kunjungi toko atau hubungi tim Ragil Aluminium.
                   </p>
 
@@ -356,7 +356,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                         <p className="text-base font-bold tracking-tight text-background">
                           Alamat
                         </p>
-                        <p className="mt-1.5 text-sm font-normal leading-6 text-[#c8cdc9]">
+                        <p className="mt-1.5 text-sm font-normal leading-6 text-background/75">
                           {brand.address}
                         </p>
                         {brand.maps_url ? (
@@ -382,7 +382,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                           <p className="text-base font-bold tracking-tight text-background">
                             WhatsApp / Telepon
                           </p>
-                          <p className="mt-1.5 text-sm font-normal text-[#c8cdc9]">
+                          <p className="mt-1.5 text-sm font-normal text-background/75">
                             {phoneHref ? (
                               <a href={phoneHref} className="transition hover:text-primary">
                                 {brand.phone}
@@ -415,7 +415,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                           <p className="text-base font-bold tracking-tight text-background">
                             Email
                           </p>
-                          <p className="mt-1.5 break-all text-sm font-normal text-[#c8cdc9]">
+                          <p className="mt-1.5 break-all text-sm font-normal text-background/75">
                             <a
                               href={`mailto:${brand.email}`}
                               className="transition hover:text-primary"
@@ -435,7 +435,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                         <p className="text-base font-bold tracking-tight text-background">
                           Jam Operasional
                         </p>
-                        <p className="mt-1.5 text-sm font-normal text-[#c8cdc9]">
+                        <p className="mt-1.5 text-sm font-normal text-background/75">
                           {brand.hours ?? "Senin – Sabtu, 08.00 – 17.00 WIB"}
                         </p>
                       </div>

@@ -43,7 +43,7 @@ export default function Login({ email = "" }: { email?: string }) {
         </Field>
         <div className="grid gap-2">
           <label htmlFor="login-password" className="text-sm font-semibold text-foreground">
-            Password <span className="ml-1 text-[#ff8a8a]" aria-hidden="true">*</span>
+            Password <span className="ml-1 text-accent-foreground" aria-hidden="true">*</span>
           </label>
           <div className="relative">
             <Input

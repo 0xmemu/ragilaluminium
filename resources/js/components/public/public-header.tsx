@@ -356,7 +356,7 @@ export function PublicHeader() {
                               {item.variation ? (
                                 <p className="truncate text-xs text-muted-foreground">{item.variation}</p>
                               ) : null}
-                              <p className="tabular-nums text-xs text-[#484848]">
+                              <p className="tabular-nums text-xs text-muted-foreground">
                                 {item.quantity} × {formatCurrency(item.unit_price)}
                               </p>
                             </div>
@@ -443,7 +443,7 @@ export function PublicHeader() {
                       )
                     : cn(
                         "hover:text-background",
-                        active ? "text-[#ff8a8a]" : "text-[#c8cdc9]",
+                        active ? "text-[#ff8a8a]" : "text-background/75",
                       ),
                 )}
                 aria-current={active ? "page" : undefined}

@@ -714,7 +714,7 @@ export default function Checkout({
                           </span>
                         ) : null}
                         {discountPercent ? (
-                          <span className="rounded bg-[#fdf2f2] px-1.5 text-[11px] font-semibold leading-5 text-[#c81e1e]">
+                          <span className="rounded bg-accent px-1.5 text-[11px] font-semibold leading-5 text-accent-foreground">
                             −{discountPercent}%
                           </span>
                         ) : null}
