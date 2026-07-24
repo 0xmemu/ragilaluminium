@@ -6,6 +6,7 @@ import { InstallationCard } from "@/components/public/installation-card"
 import { ProductCard } from "@/components/public/product-card"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import { Icon } from "@/components/shared/icon"
+import { SectionHeading } from "@/components/shared/section-heading"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -53,24 +54,22 @@ function SectionTitle({
   actionLabel?: string
 }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4 md:mb-8">
-      <div className="min-w-0 text-left">
-        <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
-          {title}
-        </h2>
-        {subtitle ? (
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
-        ) : null}
-      </div>
-      {actionHref ? (
-        <Link
-          href={actionHref}
-          className="hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5 md:inline-flex"
-        >
-          {actionLabel}
-        </Link>
-      ) : null}
-    </div>
+    <SectionHeading
+      align="left"
+      className="mb-6 gap-4 md:mb-8"
+      title={title}
+      description={subtitle}
+      action={
+        actionHref ? (
+          <Link
+            href={actionHref}
+            className="hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5 md:inline-flex"
+          >
+            {actionLabel}
+          </Link>
+        ) : undefined
+      }
+    />
   )
 }
 
@@ -818,16 +817,18 @@ function CaraPesan({
     <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
         <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
-          <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
-            {title}
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">{subtitle}</p>
-          <Link
-            href={routeUrl("cara-pemesanan")}
-            className="mt-5 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5"
-          >
-            Lihat panduan
-          </Link>
+          <SectionHeading
+            title={title}
+            description={subtitle}
+            action={
+              <Link
+                href={routeUrl("cara-pemesanan")}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5"
+              >
+                Lihat panduan
+              </Link>
+            }
+          />
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((item) => (
@@ -936,12 +937,14 @@ function KamiBantu() {
     <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
         <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
-          <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
-            Kami bantu dari <span className="text-primary">awal sampai jadi</span>
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Proses mudah, aman, dan nyaman untuk hasil yang sesuai harapan Anda.
-          </p>
+          <SectionHeading
+            title={
+              <>
+                Kami bantu dari <span className="text-primary">awal sampai jadi</span>
+              </>
+            }
+            description="Proses mudah, aman, dan nyaman untuk hasil yang sesuai harapan Anda."
+          />
         </div>
         <div className="mx-auto grid max-w-3xl gap-4">
           {HELP_STEPS.map((item, index) => (
@@ -978,12 +981,11 @@ function ClosingCta() {
   return (
     <section className="section-space border-t border-border bg-foreground text-background">
       <div className="container-page flex flex-col items-center text-center">
-        <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">
-          Tingkatkan kualitas bangunan bersama kami
-        </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white">
-          Pilih model aluminium yang tepat untuk rumah yang lebih rapi, terang, dan tahan lama.
-        </p>
+        <SectionHeading
+          className="text-background [&_h2]:text-background [&_p]:text-white"
+          title="Tingkatkan kualitas bangunan bersama kami"
+          description="Pilih model aluminium yang tepat untuk rumah yang lebih rapi, terang, dan tahan lama."
+        />
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button asChild className="bg-background text-primary hover:bg-background/90">
             <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>

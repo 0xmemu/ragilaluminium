@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { StorefrontPlatforms } from "@/components/public/storefront-platforms"
 import { Icon } from "@/components/shared/icon"
+import { SectionHeading } from "@/components/shared/section-heading"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
@@ -91,28 +92,6 @@ function parseStatFigure(label: string): { figure: string; caption: string } {
     figure: match[1].replace(/\u00a0/g, " ").trim(),
     caption: match[2].trim(),
   }
-}
-
-function SectionHeading({
-  id,
-  children,
-  className,
-}: {
-  id: string
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <h2
-      id={id}
-      className={cn(
-        "text-balance text-center text-2xl font-bold tracking-tight text-foreground sm:text-3xl",
-        className,
-      )}
-    >
-      {children}
-    </h2>
-  )
 }
 
 export default function CmsPage({ page }: { page: CmsPageData }) {
@@ -239,7 +218,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent"
             />
             <div className="container-page">
-              <SectionHeading id="why-ragil">
+              <SectionHeading id="why-ragil" size="display">
                 Kenapa Memilih Ragil Aluminium
               </SectionHeading>
               <ul className="mx-auto mt-12 grid max-w-5xl gap-0 sm:grid-cols-2 lg:grid-cols-4">
@@ -267,7 +246,9 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
 
           {/* Trust */}
           <section className="container-page py-14 lg:py-20" aria-labelledby="trust-ragil">
-            <SectionHeading id="trust-ragil">Dipercaya Oleh Banyak Pelanggan</SectionHeading>
+            <SectionHeading id="trust-ragil" size="display">
+              Dipercaya Oleh Banyak Pelanggan
+            </SectionHeading>
             <ul className="mx-auto mt-12 grid max-w-4xl gap-8 sm:grid-cols-2">
               {TRUST_POINTS.map((item) => (
                 <li key={item.title} className="flex gap-4 text-left">
@@ -288,7 +269,9 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
           {/* How */}
           <section className="border-y border-border bg-surface-muted py-14 lg:py-20" aria-labelledby="how-ragil">
             <div className="container-page">
-              <SectionHeading id="how-ragil">Cara Kerja Kami</SectionHeading>
+              <SectionHeading id="how-ragil" size="display">
+                Cara Kerja Kami
+              </SectionHeading>
               <ol className="mx-auto mt-10 grid max-w-3xl gap-4">
                 {WORK_STEPS.map((item, index) => (
                   <li

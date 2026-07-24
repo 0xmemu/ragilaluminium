@@ -3,6 +3,7 @@ import DOMPurify from "dompurify"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { SectionHeading } from "@/components/shared/section-heading"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
@@ -129,9 +130,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         <section className="border-t border-border bg-surface section-space">
           <div className="container-page">
             <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
-              <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
-                Pembayaran, pengiriman & bantuan
-              </h2>
+              <SectionHeading title="Pembayaran, pengiriman & bantuan" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {guide.info_cards.map((card) => (
@@ -150,10 +149,11 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
 
       <section className="section-space border-t border-border bg-foreground text-background">
         <div className="container-page flex flex-col items-center text-center">
-          <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">Siap memesan?</h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-background/80">
-            Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu.
-          </p>
+          <SectionHeading
+            className="text-background [&_h2]:text-background [&_p]:text-background/80"
+            title="Siap memesan?"
+            description="Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu."
+          />
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button asChild className="bg-white text-primary hover:bg-white/90">
               <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>

@@ -4,6 +4,7 @@ import * as React from "react"
 import { ModelProdukListingSidebar } from "@/components/public/catalog-listing-sidebar"
 import { ModelCard } from "@/components/public/model-card"
 import { FilterSheetContent } from "@/components/public/filter-sidebar"
+import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -128,11 +129,11 @@ export default function ModelProduk({
 
           <div>
             {models.length ? (
-              <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4">
+              <ShowcaseCardGrid>
                 {models.map((model) => (
                   <ModelCard key={`${model.category}-${model.model}`} model={model} />
                 ))}
-              </div>
+              </ShowcaseCardGrid>
             ) : (
               <EmptyState
                 icon="funnel"
