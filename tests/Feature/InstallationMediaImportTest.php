@@ -125,7 +125,7 @@ class InstallationMediaImportTest extends \Tests\TestCase
             ->component('Public/Installations')
             ->has('installations', 1)
             ->where('installations.0.image_url', 'https://example.com/hasil.jpg')
-            ->where('installations.0.href', route('installation.show', ['parent_sku' => 'WIN-REV-1']))
+            ->where('installations.0.href', route('installation.show', ['parent_sku' => 'WIN-REV-1'], absolute: false))
         );
 
         $detail = $this->get(route('installation.show', ['parent_sku' => 'WIN-REV-1']));

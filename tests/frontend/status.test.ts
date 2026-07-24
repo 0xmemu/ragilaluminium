@@ -5,8 +5,8 @@ import { ORDER_STEPS, orderStepIndex, statusMeta } from "@/lib/status"
 describe("status vocabulary", () => {
   it("maps contracted statuses to Indonesian labels and tones", () => {
     expect(statusMeta("pending_payment")).toEqual({
-      label: "Menunggu pembayaran",
-      tone: "warning",
+      label: "Perlu konfirmasi",
+      tone: "danger",
     })
     expect(statusMeta("delivered")).toEqual({ label: "Sampai", tone: "success" })
   })

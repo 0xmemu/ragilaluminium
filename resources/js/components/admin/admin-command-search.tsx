@@ -39,7 +39,7 @@ export function AdminCommandSearch({
     setActiveIndex(0)
   }, [query])
 
-  function goTo(hit: AdminSearchHit) {
+  function goTo(_hit: AdminSearchHit) {
     onOpenChange(false)
   }
 

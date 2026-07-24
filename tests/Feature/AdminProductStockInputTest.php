@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Support\ShopeeStyleSku;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,9 +20,6 @@ class AdminProductStockInputTest extends TestCase
             'status' => 'active',
         ]);
 
-        $floor = (int) config('storefront.manual_sku_floor', 1);
-        $expectedParentSku = ShopeeStyleSku::formatManualParentSku($floor);
-
         $response = $this->actingAs($admin)->post(route('admin.products.store'), [
             'name' => 'Jendela manual',
             'category_id' => 1,
@@ -36,16 +35,25 @@ class AdminProductStockInputTest extends TestCase
         ]);
 
         $response->assertRedirect(route('admin.products.index'));
-        $this->assertDatabaseHas('products', [
-            'parent_sku' => $expectedParentSku,
-        ]);
+
+        // Allocator kini menghasilkan public ID acak: {prefix}{10 karakter}.
+        // (manual_sku_floor legacy era sequential - tidak dipakai lagi.)
+        $prefix = ShopeeStyleSku::manualPrefix();
+        $product = Product::where('name', 'Jendela manual')->firstOrFail();
+
+        $this->assertStringStartsWith($prefix, $product->parent_sku);
+        $this->assertSame(strlen($prefix) + 10, strlen($product->parent_sku));
+        $this->assertSame(
+            10,
+            strspn(substr($product->parent_sku, strlen($prefix)), ShopeeStyleSku::RANDOM_ALPHABET),
+        );
+
         $this->assertDatabaseHas('product_variants', [
-            'variant_sku' => $expectedParentSku,
+            'variant_sku' => $product->parent_sku,
             'price' => 1500000,
             'stock' => 5000,
             'status' => 'active',
         ]);
-        $this->assertStringStartsWith('WEB', $expectedParentSku);
     }
 
     public function test_admin_variant_store_auto_generates_unique_variant_sku(): void
@@ -54,9 +62,6 @@ class AdminProductStockInputTest extends TestCase
             'role' => 'admin',
             'status' => 'active',
         ]);
-
-        $floor = (int) config('storefront.manual_sku_floor', 1);
-        $parentSku = ShopeeStyleSku::formatManualParentSku($floor);
 
         $create = $this->actingAs($admin)->post(route('admin.products.store'), [
             'name' => 'Produk varian',
@@ -71,7 +76,8 @@ class AdminProductStockInputTest extends TestCase
         ]);
         $create->assertRedirect(route('admin.products.index'));
 
-        $product = \App\Models\Product::where('parent_sku', $parentSku)->firstOrFail();
+        $product = Product::where('name', 'Produk varian')->firstOrFail();
+        $parentSku = $product->parent_sku;
 
         $this->actingAs($admin)->post(route('admin.products.variants.store', $product), [
             'variation_1_name' => 'Ukuran',
@@ -89,7 +95,19 @@ class AdminProductStockInputTest extends TestCase
             'status' => 'active',
         ])->assertRedirect(route('admin.products.variants.index', $product));
 
+        // Varian pertama memakai parent ID; berikutnya parent + suffix acak 6 karakter.
         $this->assertDatabaseHas('product_variants', ['variant_sku' => $parentSku]);
-        $this->assertDatabaseHas('product_variants', ['variant_sku' => $parentSku.'-1']);
+
+        $suffixed = ProductVariant::query()
+            ->where('product_id', $product->id)
+            ->where('variant_sku', '!=', $parentSku)
+            ->firstOrFail();
+
+        $this->assertStringStartsWith($parentSku.'-', $suffixed->variant_sku);
+        $this->assertSame(strlen($parentSku) + 7, strlen($suffixed->variant_sku));
+        $this->assertSame(
+            6,
+            strspn(substr($suffixed->variant_sku, strlen($parentSku) + 1), ShopeeStyleSku::RANDOM_ALPHABET),
+        );
     }
 }
