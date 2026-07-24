@@ -45,7 +45,7 @@ Runtime token berada di `resources/css/app.css`.
 - Public reading width: maksimum 68ch.
 - Grid desktop: 12 columns; mobile selalu satu column kecuali data ringkas. Gutter grid/carousel storefront: `1.25rem` (20px, `gap-5`) mengikuti gutter grid IKEA.
 - Header desktop: 68-76px.
-- Section public: ritme vertikal ala IKEA via utility `.section-space` — `padding-block: 1.875rem` (30px) mobile, `3.75rem` (60px) mulai `56.25em`.
+- Section public: ritme vertikal via utility `.section-space` — `padding-block: 2.5rem` (40px) mobile, `5rem` (80px) mulai `56.25em`. Home memakai band `bg-surface` / `bg-surface-muted` selang-seling + heading section `size="display"`.
 - Admin: 20-32px panel spacing, 12-20px internal spacing.
 - Hero memakai `min-height` berbasis `dvh`, bukan `h-screen`.
 - Hero Home adalah campaign slider full-bleed (lebar penuh layar, gaya campaign IKEA): track `translateX` per slide, dimensi mengikuti rasio referensi campaign IKEA `aspect-[1024/426]` (±2.4:1, min-height `320px` di layar kecil), tombol back/next bulat putih di tepi kiri/kanan banner, dot indikator di bawah, auto-advance 6 detik, dan menghormati reduced motion. CTA graphite `Belanja Sekarang` (`rounded-full`).
