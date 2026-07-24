@@ -210,7 +210,7 @@ function FlashSaleSectionIntro({
       ? "Flash Sale segera dimulai."
       : resolved?.status === "ended"
         ? "Periode Flash Sale sudah berakhir."
-        : "Flash Sale belum diaktifkan."
+        : "Flash Sale sedang disiapkan."
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
@@ -299,7 +299,7 @@ export function FlashSalePeriodBadge({
   if (!resolved || resolved.status === "disabled") {
     return (
       <p className={cn("text-sm font-medium", tone === "onDark" ? "text-white/70" : "text-muted-foreground")}>
-        Periode Flash Sale belum diaktifkan.
+        Flash Sale sedang disiapkan. Pantau pengumuman atau lihat promo yang sedang berjalan.
       </p>
     )
   }

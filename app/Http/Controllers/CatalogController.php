@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Support\CatalogLabels;
+use App\Support\CatalogSearch;
 use App\Support\CatalogTaxonomy;
 use App\Support\FlashSalePeriodSettings;
 use App\Support\InertiaCatalog;
@@ -103,13 +104,7 @@ class CatalogController extends Controller
             ->when(
                 $request->filled('q'),
                 function ($q) use ($request) {
-                    $term = trim((string) $request->input('q'));
-                    $q->where(function ($inner) use ($term) {
-                        $inner->where('name', 'like', "%{$term}%")
-                            ->orWhere('parent_sku', 'like', "%{$term}%")
-                            ->orWhere('short_name', 'like', "%{$term}%")
-                            ->orWhereHas('attributes', fn ($qa) => $qa->where('attribute_value', 'like', "%{$term}%"));
-                    });
+                    CatalogSearch::apply($q, (string) $request->input('q'));
                 }
             )
             ->when(
@@ -258,13 +253,9 @@ class CatalogController extends Controller
         }
 
         $matchedModels = Product::visible()
-            ->when($category, fn ($q) => $q->where('product_category', $category))
-            ->where(function ($inner) use ($term) {
-                $inner->where('name', 'like', "%{$term}%")
-                    ->orWhere('parent_sku', 'like', "%{$term}%")
-                    ->orWhere('short_name', 'like', "%{$term}%")
-                    ->orWhereHas('attributes', fn ($qa) => $qa->where('attribute_value', 'like', "%{$term}%"));
-            })
+            ->when($category, fn ($q) => $q->where('product_category', $category));
+        CatalogSearch::apply($matchedModels, $term);
+        $matchedModels = $matchedModels
             ->limit(48)
             ->pluck('product_model')
             ->filter()
@@ -276,10 +267,7 @@ class CatalogController extends Controller
         $this->scopeFlashSaleActive($flashQuery);
 
         $flashQuery->where(function ($inner) use ($term, $matchedModels) {
-            $inner->where('name', 'like', "%{$term}%")
-                ->orWhere('parent_sku', 'like', "%{$term}%")
-                ->orWhere('short_name', 'like', "%{$term}%")
-                ->orWhereHas('attributes', fn ($qa) => $qa->where('attribute_value', 'like', "%{$term}%"));
+            CatalogSearch::apply($inner, $term);
             if ($matchedModels !== []) {
                 $inner->orWhereIn('product_model', $matchedModels);
             }

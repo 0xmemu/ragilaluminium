@@ -129,9 +129,12 @@ export default function ProductDetail({
 
   const variantMedia = React.useMemo(() => {
     if (!selectedVariant) return media
-    const dedicated = media.filter((item) => item.product_variant_id === selectedVariant.id)
+    const variantId = Number(selectedVariant.id)
+    const dedicated = media.filter((item) => Number(item.product_variant_id) === variantId)
     if (dedicated.length) return dedicated
-    return media.filter((item) => !item.product_variant_id)
+    const productLevel = media.filter((item) => item.product_variant_id == null)
+    if (productLevel.length) return productLevel
+    return media
   }, [media, selectedVariant])
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
 
@@ -713,7 +716,8 @@ export default function ProductDetail({
                 </ul>
               ) : (
                 <p className="mt-3 border-t border-border pt-4 text-sm text-muted-foreground">
-                  Belum ada ulasan untuk produk ini.
+                  Belum ada ulasan untuk produk ini. Lihat ulasan pelanggan lain di halaman Ulasan
+                  atau tanya detail pemasangan via WhatsApp.
                 </p>
               )}
               {reviews.length ? (

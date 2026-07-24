@@ -868,7 +868,7 @@ function HasilPemasangan({
           <EmptyState
             icon="image"
             title="Dokumentasi segera hadir"
-            description="Hasil pemasangan akan tampil setelah admin menambahkan galeri atau import foto instalasi."
+            description="Dokumentasi pemasangan akan segera hadir."
           />
         )}
       </div>
@@ -894,7 +894,7 @@ function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
           <EmptyState
             icon="star"
             title="Belum ada ulasan"
-            description="Ulasan pelanggan akan tampil setelah dipublikasikan di admin."
+            description="Belum ada ulasan yang tampil. Lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
           />
         )}
       </div>

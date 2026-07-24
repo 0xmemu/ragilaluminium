@@ -188,7 +188,7 @@ export default function OrderStatus({
       <Head title="Pesanan">
         <meta
           name="description"
-          content="Lihat pesanan dari perangkat ini, atau lacak ulang dengan nomor pesanan jika data sementara browser hilang."
+          content="Cek status pesanan dari perangkat ini, atau masukkan nomor pesanan beserta HP/email checkout."
         />
       </Head>
 
@@ -196,13 +196,13 @@ export default function OrderStatus({
         <div className="container-page grid gap-6 py-10 lg:grid-cols-[1fr_0.82fr] lg:items-end lg:py-14">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {has_session_orders ? "Pesanan di perangkat ini." : "Lacak pesanan Anda."}
+              {has_session_orders ? "Pesanan di perangkat ini" : "Cek pesanan"}
             </h1>
           </div>
           <p className="max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
             {has_session_orders
-              ? "Tanpa login. Status pembayaran dan pengiriman J&T ditampilkan dari pesanan yang tersimpan sementara di browser ini."
-              : "Data sementara browser hilang atau belum ada. Masukkan nomor pesanan plus nomor HP atau email checkout untuk membuka status."}
+              ? "Tanpa login. Status pembayaran dan pengiriman ditampilkan dari pesanan yang dibuat di perangkat ini."
+              : "Masukkan nomor pesanan plus nomor HP atau email yang dipakai saat checkout untuk membuka status."}
           </p>
         </div>
       </section>
@@ -211,10 +211,9 @@ export default function OrderStatus({
         {showLookupForm ? (
           <div className="grid gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">
-              <h2 className="text-lg font-semibold sm:text-xl">Lacak pesanan</h2>
+              <h2 className="text-lg font-semibold sm:text-xl">Cek pesanan</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Dipakai hanya jika data sementara di perangkat ini hilang. Gunakan data yang sama
-                dengan checkout.
+                Gunakan data yang sama dengan saat checkout.
               </p>
               <FormErrorSummary className="mt-5" errors={form.errors} />
               <div className="mt-6 space-y-5">
@@ -302,11 +301,11 @@ export default function OrderStatus({
                     <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
                   </span>
                   <h2 className="mt-6 text-xl font-semibold sm:text-2xl">
-                    Form lacak sebagai cadangan
+                    Cek pesanan Anda
                   </h2>
                   <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
                     Setelah checkout di perangkat yang sama, pesanan biasanya tampil otomatis.
-                    Form ini dipakai jika cache atau data sementara browser hilang.
+                    Jika daftar kosong, isi formulir di samping dengan nomor pesanan dan HP/email.
                   </p>
                 </div>
               ) : order ? (
@@ -374,7 +373,7 @@ export default function OrderStatus({
                 <EmptyState
                   icon="clipboard-list"
                   title="Belum ada pesanan di perangkat ini"
-                  description="Selesaikan checkout untuk menyimpan pesanan sementara di browser, atau gunakan form lacak jika data session hilang."
+                  description="Selesaikan checkout di perangkat ini, atau gunakan formulir Cek pesanan di samping."
                 />
               )}
             </div>

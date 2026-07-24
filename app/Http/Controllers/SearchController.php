@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Support\CatalogSearch;
 use App\Support\FlashSalePeriodSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,13 +22,7 @@ class SearchController extends Controller
         $products = Product::visible()
             ->with(['mainImage', 'activeVariants', 'attributes'])
             ->withSum('orderItems as sold_count', 'quantity')
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(fn ($q2) => $q2
-                    ->where('name', 'like', "%{$q}%")
-                    ->orWhere('parent_sku', 'like', "%{$q}%")
-                    ->orWhere('short_name', 'like', "%{$q}%")
-                    ->orWhereHas('attributes', fn ($qa) => $qa->where('attribute_value', 'like', "%{$q}%")));
-            })
+            ->when($q !== '', fn ($query) => CatalogSearch::apply($query, $q))
             ->when($q !== '' && $flashPeriodLive, function ($query) {
                 $query->orderByRaw(
                     "CASE WHEN EXISTS (
