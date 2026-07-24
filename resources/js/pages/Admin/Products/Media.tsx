@@ -139,13 +139,12 @@ function MediaRowCard({
               variant="secondary"
               size="sm"
               onClick={() => {
-                updateForm
-                  .transform((data) => ({
+                updateForm.transform((data) => ({
                     ...data,
                     product_variant_id:
                       data.product_variant_id === "" ? null : Number(data.product_variant_id),
                   }))
-                  .put(row.update_url, { preserveScroll: true })
+                updateForm.put(row.update_url, { preserveScroll: true })
               }}
               disabled={updateForm.processing}
             >
@@ -304,13 +303,12 @@ export default function ProductMediaPage({
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            form
-              .transform((data) => ({
+            form.transform((data) => ({
                 ...data,
                 product_variant_id:
                   data.product_variant_id === "" ? null : Number(data.product_variant_id),
               }))
-              .post(storeUrl, {
+            form.post(storeUrl, {
               forceFormData: true,
               preserveScroll: true,
               onSuccess: () => {

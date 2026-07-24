@@ -35,15 +35,14 @@ export default function CodSettingsEdit({
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form
-      .transform((data) => ({
+    form.transform((data) => ({
         ...data,
         max_order_amount:
           data.max_order_amount === "" || data.max_order_amount === null
             ? null
             : Number(data.max_order_amount),
       }))
-      .put(submitUrl)
+    form.put(submitUrl)
   }
 
   return (

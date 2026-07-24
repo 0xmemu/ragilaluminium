@@ -82,13 +82,12 @@ function PeriodForm({
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form
-      .transform((data) => ({
+    form.transform((data) => ({
         enabled: data.enabled,
         starts_at: data.starts_at || null,
         ends_at: data.ends_at || null,
       }))
-      .put(updateUrl, { preserveScroll: true })
+    form.put(updateUrl, { preserveScroll: true })
   }
 
   return (

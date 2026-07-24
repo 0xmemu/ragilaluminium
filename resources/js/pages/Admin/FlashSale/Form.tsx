@@ -63,11 +63,13 @@ export default function FlashSaleForm({
     }
 
     if (method === "post") {
-      form.transform(() => payload).post(submitUrl)
+      form.transform(() => payload)
+      form.post(submitUrl)
       return
     }
 
-    form.transform(() => payload).put(submitUrl)
+    form.transform(() => payload)
+    form.put(submitUrl)
   }
 
   return (
