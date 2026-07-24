@@ -3,39 +3,49 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
 use App\Models\ImportJob;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\WhatsAppMessage;
+use App\Services\StorePerformanceService;
 use App\Support\PhoneNumber;
 use App\Support\ProductPromotionMetadata;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(): Response
+    public function __construct(
+        protected StorePerformanceService $performance,
+    ) {
+    }
+
+    public function index(Request $request): Response
     {
         $today = now()->startOfDay();
         $yesterday = now()->subDay()->startOfDay();
+        $yesterdayEnd = $today->copy()->subSecond();
 
         $todaysOrders = Order::where('created_at', '>=', $today)->count();
         $todaysRevenue = (float) Order::where('created_at', '>=', $today)->sum('total_amount');
-        $yesterdaysRevenue = (float) Order::whereBetween('created_at', [$yesterday, $today])->sum('total_amount');
+        $yesterdaysOrders = Order::whereBetween('created_at', [$yesterday, $yesterdayEnd])->count();
+        $yesterdaysRevenue = (float) Order::whereBetween('created_at', [$yesterday, $yesterdayEnd])->sum('total_amount');
 
         $todaysUnits = (int) OrderItem::query()
             ->whereHas('order', fn ($q) => $q->where('created_at', '>=', $today))
+            ->sum('quantity');
+        $yesterdaysUnits = (int) OrderItem::query()
+            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$yesterday, $yesterdayEnd]))
             ->sum('quantity');
 
         $revenueChangePercent = $yesterdaysRevenue > 0
             ? round((($todaysRevenue - $yesterdaysRevenue) / $yesterdaysRevenue) * 100, 1)
             : ($todaysRevenue > 0 ? 100.0 : 0.0);
 
-        // Sparkline 7 hari: omzet harian (untuk kartu Omset).
         $revenueSparkline = collect(range(6, 0))->map(function (int $daysAgo) {
             $day = now()->subDays($daysAgo)->startOfDay();
 
@@ -59,7 +69,7 @@ class DashboardController extends Controller
         $attention = [
             [
                 'key' => 'confirm_overdue',
-                'label' => 'Pesanan menunggu konfirmasi > 24 jam',
+                'label' => 'Perlu Konfirmasi > 24 Jam',
                 'count' => Order::where('order_status', 'pending_payment')
                     ->where('updated_at', '<', now()->subDay())
                     ->count(),
@@ -67,7 +77,7 @@ class DashboardController extends Controller
             ],
             [
                 'key' => 'processing_overdue',
-                'label' => 'Pesanan diproses > 24 jam',
+                'label' => 'Diproses > 24 Jam',
                 'count' => Order::where('order_status', 'processing')
                     ->where('updated_at', '<', now()->subDay())
                     ->count(),
@@ -75,7 +85,7 @@ class DashboardController extends Controller
             ],
             [
                 'key' => 'delivered_stale',
-                'label' => 'Pesanan sampai belum selesai > 2 hari',
+                'label' => 'Pesanan Sampai > 2 Hari Belum Selesai',
                 'count' => Order::where('order_status', 'delivered')
                     ->where('updated_at', '<', now()->subDays(2))
                     ->count(),
@@ -83,7 +93,7 @@ class DashboardController extends Controller
             ],
             [
                 'key' => 'return_overdue',
-                'label' => 'Retur menunggu tindak lanjut > 7 hari',
+                'label' => 'Retur Diproses > 7 Hari',
                 'count' => Order::where('order_status', 'return_in_process')
                     ->where('updated_at', '<', now()->subDays(7))
                     ->count(),
@@ -91,14 +101,49 @@ class DashboardController extends Controller
             ],
         ];
 
+        // Nilai plus: alert operasional di luar Figma status-aging.
         $failedMedia = ProductMedia::where('status', 'failed')->count();
         $failedMessages = WhatsAppMessage::where('status', 'failed')->count();
         $runningImports = ImportJob::running()->count();
 
-        $newCustomersToday = Customer::where('created_at', '>=', $today)->count();
-        $repeatCustomers = (int) Customer::query()->has('orders', '>=', 2)->count();
+        if ($failedMedia > 0) {
+            $attention[] = [
+                'key' => 'failed_media',
+                'label' => 'Media Produk Gagal Unduh',
+                'count' => $failedMedia,
+                'href' => route('admin.media.index', ['status' => 'failed']),
+            ];
+        }
+        if ($failedMessages > 0) {
+            $attention[] = [
+                'key' => 'failed_wa',
+                'label' => 'Pesan WhatsApp Gagal',
+                'count' => $failedMessages,
+                'href' => route('admin.whatsapp.messages.index'),
+            ];
+        }
+        if ($runningImports > 0) {
+            $attention[] = [
+                'key' => 'running_imports',
+                'label' => 'Import Sedang Berjalan',
+                'count' => $runningImports,
+                'href' => route('admin.imports.index'),
+            ];
+        }
 
-        // Promo aktif (dipertahankan dari dashboard lama).
+        $performaPeriod = (string) $request->query('performa_period', 'today');
+        if (! in_array($performaPeriod, ['today', 'yesterday', 'last_7', 'last_30', 'this_month'], true)) {
+            $performaPeriod = 'today';
+        }
+
+        $performance = $this->performance->build($performaPeriod);
+        $trafficKpis = collect($performance['sections'] ?? [])
+            ->firstWhere('key', 'traffic')['kpis'] ?? [];
+        $performaMetrics = collect($trafficKpis)
+            ->whereIn('key', ['visitors', 'conversion', 'new_customers', 'repeat_customers'])
+            ->values()
+            ->all();
+
         $promoProducts = Product::visible()
             ->with(['activeVariants', 'attributes'])
             ->whereHas('attributes', function ($attr) {
@@ -170,14 +215,22 @@ class DashboardController extends Controller
                 'orders' => $todaysOrders,
                 'units' => $todaysUnits,
                 'change_percent' => $revenueChangePercent,
+                'orders_delta' => $todaysOrders - $yesterdaysOrders,
+                'units_delta' => $todaysUnits - $yesterdaysUnits,
                 'sparkline' => $revenueSparkline,
             ],
             'performa' => [
-                'running_imports' => $runningImports,
-                'failed_media' => $failedMedia,
-                'failed_messages' => $failedMessages,
-                'new_customers' => $newCustomersToday,
-                'repeat_customers' => $repeatCustomers,
+                'period' => $performaPeriod,
+                'period_label' => $performance['range']['label'] ?? 'Hari ini',
+                'period_options' => [
+                    ['value' => 'today', 'label' => 'Hari Ini'],
+                    ['value' => 'yesterday', 'label' => 'Kemarin'],
+                    ['value' => 'last_7', 'label' => '7 Hari Terakhir'],
+                    ['value' => 'last_30', 'label' => '30 Hari Terakhir'],
+                    ['value' => 'this_month', 'label' => 'Bulan Ini'],
+                ],
+                'metrics' => $performaMetrics,
+                'detail_href' => route('admin.analytics.store-performance', ['period' => $performaPeriod]),
             ],
             'statusOrder' => collect($statusOrder)->map(fn ($row) => [
                 ...$row,
@@ -187,26 +240,26 @@ class DashboardController extends Controller
             'attention' => $attention,
             'quickActions' => [
                 [
-                    'label' => 'Kelola promo / banner',
-                    'description' => 'Atur banner dan produk promo di storefront',
-                    'href' => route('admin.banners.index'),
+                    'label' => 'Buat Promo Toko',
+                    'description' => 'Tambah banner promo beranda',
+                    'href' => route('admin.banners.create'),
                     'icon' => 'ticket',
                 ],
                 [
-                    'label' => 'Import katalog',
-                    'description' => 'Upload Excel Shopee / sinkron media',
-                    'href' => route('admin.imports.index'),
-                    'icon' => 'upload',
+                    'label' => 'Buat Voucher',
+                    'description' => 'Buat kode diskon checkout',
+                    'href' => route('admin.vouchers.create'),
+                    'icon' => 'voucher',
                 ],
                 [
-                    'label' => 'WhatsApp otomatis',
-                    'description' => 'Template & log pesan transaksi',
+                    'label' => 'WhatsApp Otomatis',
+                    'description' => 'Template & status otomasi WA',
                     'href' => route('admin.whatsapp.templates.index'),
                     'icon' => 'whatsapp',
                 ],
                 [
-                    'label' => 'Performa toko',
-                    'description' => 'Ringkasan analitik operasional',
+                    'label' => 'Lihat Performa Toko',
+                    'description' => 'Analitik penjualan & kunjungan',
                     'href' => route('admin.analytics.store-performance'),
                     'icon' => 'trend-up',
                 ],
@@ -214,16 +267,6 @@ class DashboardController extends Controller
             'recentOrders' => $recentOrders,
             'promoProducts' => $promoProducts->take(6)->all(),
             'promoTotal' => $promoProducts->count(),
-            'stats' => [
-                'todaysOrders' => $todaysOrders,
-                'todaysRevenue' => $todaysRevenue,
-                'pendingPayment' => (int) ($statusCounts['pending_payment'] ?? 0),
-                'inTransit' => Order::whereIn('shipping_status', ['in_process', 'in_transit'])->count(),
-                'needsAttention' => collect($attention)->sum('count'),
-                'runningImports' => $runningImports,
-                'failedMedia' => $failedMedia,
-                'failedMessages' => $failedMessages,
-            ],
         ]);
     }
 }
