@@ -62,7 +62,7 @@ export function ProductCard({
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
             wrapperClassName="aspect-square size-full bg-muted/50"
-            className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            className="object-cover transition-transform duration-300 ease-standard group-hover:scale-[1.03]"
           />
           {flashEmphasis ? (
             <span className="absolute left-0 top-0 z-10 inline-flex items-center gap-0.5 bg-primary px-2 py-1 text-[10px] font-extrabold uppercase italic leading-none tracking-tight text-primary-foreground sm:text-[11px]">
@@ -73,7 +73,7 @@ export function ProductCard({
         </div>
 
         <div className="relative flex flex-1 flex-col gap-0 pt-2">
-          <h3 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-foreground group-hover:underline">
+          <h3 className="line-clamp-2 min-h-10 min-w-0 text-sm font-medium leading-5 text-foreground group-hover:underline lg:min-h-[2.75rem]">
             {title}
           </h3>
 
@@ -81,7 +81,7 @@ export function ProductCard({
           <div className="mt-1 flex min-h-6 flex-col">
             {priceValue !== null && Number.isFinite(priceValue) ? (
               <>
-                <span className="tabular-nums text-base font-bold leading-6 text-sale lg:text-xl lg:leading-7">
+                <span className="text-lg font-extrabold leading-6 text-sale tabular-nums lg:text-xl lg:leading-7">
                   {formatCurrency(priceValue)}
                 </span>
                 {hasCompare ? (
@@ -90,7 +90,7 @@ export function ProductCard({
                       {formatCurrency(compareValue)}
                     </span>
                     {discountPercent !== null && discountPercent > 0 ? (
-                      <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground lg:text-sm lg:leading-6">
+                      <span className="rounded bg-accent px-1.5 text-xs font-bold leading-5 text-accent-foreground lg:text-sm lg:leading-6">
                         -{discountPercent}%
                       </span>
                     ) : null}
@@ -102,10 +102,10 @@ export function ProductCard({
             )}
           </div>
 
-          <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1.5">
+          <div className="mt-2 flex min-h-5 flex-wrap items-center gap-2">
             {showCod ? (
               <span
-                className="relative inline-flex h-[17px] w-[34px] shrink-0"
+                className="relative inline-flex h-[17px] w-[34px] shrink-0 items-center gap-1"
                 aria-label="COD tersedia"
               >
                 <img
@@ -147,7 +147,7 @@ export function ProductCard({
               </span>
             ) : null}
             {showFlash ? (
-              <span className="inline-flex min-w-0 max-w-full items-center">
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1">
                 <Lightning weight="fill" className="-mr-px size-3.5 shrink-0 text-sale lg:size-4" aria-hidden />
                 <span className="truncate text-[11px] font-extrabold italic leading-4 tracking-tight text-sale sm:text-sm lg:text-base lg:leading-5">
                   FLASH SALE
