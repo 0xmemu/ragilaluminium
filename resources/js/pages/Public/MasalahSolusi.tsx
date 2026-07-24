@@ -67,14 +67,14 @@ export default function MasalahSolusi({ guide }: { guide: Guide }) {
                       <span className="tabular-nums flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
                         {index + 1}
                       </span>
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Masalah</p>
+                      <p className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">Masalah</p>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-6 text-foreground sm:text-base">
                       {item.problem}
                     </p>
                   </article>
                   <article className="bg-accent/30 p-5 sm:p-6">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-primary">Solusi Ragil</p>
+                    <p className="text-[11px] font-bold uppercase tracking-tight text-primary">Solusi Ragil</p>
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground sm:text-base">
                       {item.solution}
                     </p>

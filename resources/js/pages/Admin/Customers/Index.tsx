@@ -124,7 +124,7 @@ export default function CustomersIndex({
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                 <tr>
                   <th className="px-3 py-3 font-semibold">No</th>
                   <th className="px-3 py-3 font-semibold">Nama lengkap</th>
@@ -207,22 +207,22 @@ export default function CustomersIndex({
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Provinsi teratas</p>
+          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Provinsi teratas</p>
           <p className="mt-3 text-xl font-bold">{summary.top_province.name}</p>
           <p className="mt-1 text-sm text-muted-foreground">{summary.top_province.share_percent}% dari total pelanggan</p>
         </article>
         <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total pelanggan</p>
+          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Total pelanggan</p>
           <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.total_customers)}</p>
           <p className="mt-1 text-sm text-muted-foreground">+{formatNumber(summary.growth_percent)}% dari bulan lalu</p>
         </article>
         <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Peringatan alamat ganda</p>
+          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Peringatan alamat ganda</p>
           <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.multi_address_customers)} pelanggan</p>
           <p className="mt-1 text-sm text-muted-foreground">Memiliki lebih dari satu alamat aktif</p>
         </article>
         <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Skor fraud rata-rata</p>
+          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Skor fraud rata-rata</p>
           <p className="mt-3 text-xl font-bold tabular-nums">{summary.avg_fraud_score} / 100</p>
           <p className="mt-1 text-sm text-muted-foreground">Status: {summary.avg_fraud_label}</p>
         </article>

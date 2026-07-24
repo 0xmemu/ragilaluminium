@@ -221,11 +221,11 @@ export default function MasalahSolusiIndex({
                   )}
                   <div className="grid min-w-0 flex-1 gap-3 lg:grid-cols-2">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Masalah</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">Masalah</p>
                       <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-foreground">{row.problem}</p>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Solusi</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">Solusi</p>
                       <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{row.solution}</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5 lg:col-span-2">

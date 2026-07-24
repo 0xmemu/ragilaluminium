@@ -159,7 +159,7 @@ export function FlashSaleRedBanner({
             </h1>
             <p
               className={cn(
-                "mt-0.5 font-semibold uppercase tracking-[0.08em] text-white/95",
+                "mt-0.5 font-semibold uppercase tracking-tight text-white/95",
                 compact ? "text-[11px] sm:text-sm" : "text-xs sm:text-base",
               )}
             >

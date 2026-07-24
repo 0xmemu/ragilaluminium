@@ -121,7 +121,7 @@ export default function CustomerEdit({
             </div>
           </div>
           <div className="rounded-md border border-border px-4 py-3 text-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Skor penipuan</p>
+            <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Skor penipuan</p>
             <p className="mt-1 text-2xl font-bold tabular-nums">{metrics.fraud.score}</p>
             <p
               className={cn(

@@ -209,7 +209,7 @@ export function PublicHeader() {
                           {item.label}
                         </span>
                         {isFlashSale && flashLive ? (
-                          <span className="rounded bg-sale px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                          <span className="rounded bg-sale px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-white">
                             Live
                           </span>
                         ) : null}

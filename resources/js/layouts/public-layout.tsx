@@ -11,7 +11,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     <div className="public-title-case min-h-screen bg-background text-foreground">
       <a
         href="#main-content"
-        className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition focus:translate-y-0"
+        className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition focus:translate-y-0"
       >
         Lewati ke konten utama
       </a>

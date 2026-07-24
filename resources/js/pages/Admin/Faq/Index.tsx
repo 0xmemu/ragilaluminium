@@ -531,7 +531,7 @@ export default function FaqIndex({
                             aria-expanded={open}
                           >
                             <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
                                 {row.category}
                               </p>
                               <p className="mt-1 text-sm font-bold text-foreground">{row.question}</p>
