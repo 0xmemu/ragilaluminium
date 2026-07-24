@@ -78,10 +78,14 @@ hanya boleh dipakai pada string teknis pendek, bukan body copy.
 - Surface utama (panel, filter, sheet): radius 14px (`--radius`).
 - Control, search bar, dan button berlabel: **pill penuh** (`rounded-full`) — search header, CTA, dan input satu baris. Jangan siku tajam (`rounded-none`).
 - **Listing cards** (product, model, testimonial, galeri hasil pemasangan): sudut siku — frame dan foto 1:1 tanpa radius.
-- Chip/status: tetap pill (`rounded-full`).
+- Chip/status dan **chip pilihan varian PDP**: tetap pill (`rounded-full`).
 - Panel besar / sheet / textarea multi-baris: tetap `--radius` (14px), bukan pill.
 - Shadow sangat lembut dan berwarna neutral; depth utama berasal dari spacing dan surface.
 - Precision Frame hanya untuk hero media, galeri utama, dan featured product.
+
+## Header storefront
+
+- Header publik memakai **Graphite** (`bg-foreground` / gelap) dengan teks/ikon terang — disengaja (bukan Signal Red penuh). Aksen merah hanya pada search submit, badge keranjang, dan Flash Sale.
 
 ## Wordmark and logo
 

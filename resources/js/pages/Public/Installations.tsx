@@ -17,7 +17,7 @@ export default function Installations({
   installations?: InstallationItem[]
   reviewsHref?: string
 }) {
-  const heading = pageMeta?.heading?.trim() || "Hasil pemasangan kami."
+  const heading = pageMeta?.heading?.trim() || "Hasil pemasangan kami"
   const subtitle =
     pageMeta?.subtitle?.trim() ||
     "Dokumentasi visual pemasangan dari pelanggan, dikelompokkan per produk."

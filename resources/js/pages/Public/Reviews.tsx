@@ -50,7 +50,7 @@ export default function Reviews({
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const totalCount = stats?.total ?? testimonials.length
   const averageRating = stats?.average_rating ?? null
-  const heading = pageMeta?.heading?.trim() || "Apa kata pelanggan kami."
+  const heading = pageMeta?.heading?.trim() || "Apa kata pelanggan kami"
   const subtitle =
     pageMeta?.subtitle?.trim() ||
     "Ulasan pelanggan dari Shopee, WhatsApp, dan website."

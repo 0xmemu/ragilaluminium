@@ -46,7 +46,7 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "group flex h-full min-w-0 flex-col bg-white p-2 shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "group flex h-full min-w-0 flex-col border border-transparent bg-white p-2 shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         flashEmphasis && "ring-1 ring-primary/25 shadow-[0_2px_8px_rgba(192,0,0,0.12)]",
         className,
       )}
@@ -73,7 +73,7 @@ export function ProductCard({
         </div>
 
         <div className="relative flex flex-1 flex-col gap-0 pt-2">
-          <h3 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-foreground">
+          <h3 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-foreground group-hover:underline">
             {title}
           </h3>
 
@@ -161,9 +161,13 @@ export function ProductCard({
               <SealCheck weight="fill" className="size-3.5 shrink-0 lg:size-4" aria-hidden />
               <span className="truncate">{warrantyLabel}</span>
             </span>
-            <span className="shrink-0 text-[10px] font-light leading-4 text-muted-foreground lg:text-xs lg:leading-5">
-              {Number.isFinite(soldCount) ? soldCount.toLocaleString("id-ID") : "0"} terjual
-            </span>
+            {soldCount > 0 ? (
+              <span className="shrink-0 text-[10px] font-light leading-4 text-muted-foreground lg:text-xs lg:leading-5">
+                {soldCount.toLocaleString("id-ID")} terjual
+              </span>
+            ) : (
+              <span className="shrink-0" aria-hidden="true" />
+            )}
           </div>
         </div>
       </Link>

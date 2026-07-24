@@ -143,6 +143,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
             </div>
           ) : (
             <EmptyState
+              icon="circle-help"
               title="Belum ada pertanyaan"
               description="Tim kami siap membantu lewat WhatsApp jika Anda punya pertanyaan."
               className="mx-auto max-w-lg"

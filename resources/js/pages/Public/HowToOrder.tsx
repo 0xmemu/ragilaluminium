@@ -148,7 +148,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       ) : null}
 
-      <section className="section-space border-t border-border bg-primary text-background">
+      <section className="section-space border-t border-border bg-foreground text-background">
         <div className="container-page flex flex-col items-center text-center">
           <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">Siap memesan?</h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-background/80">

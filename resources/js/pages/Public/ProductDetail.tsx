@@ -473,7 +473,9 @@ export default function ProductDetail({
                     )}
                   >
                     {selectedVariant.stock > 0
-                      ? `Stok ${selectedVariant.stock} tersedia`
+                      ? selectedVariant.stock > 999
+                        ? "Stok tersedia"
+                        : `Stok ${selectedVariant.stock} tersedia`
                       : "Stok tidak tersedia"}
                   </span>
                 </div>

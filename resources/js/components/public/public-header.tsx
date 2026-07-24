@@ -143,8 +143,6 @@ export function PublicHeader() {
                       <div
                         key={`${item.label}-${item.route}`}
                         className="group flex items-center"
-                        onMouseEnter={isModels ? () => setModelsOpen(true) : undefined}
-                        onFocus={isModels ? () => setModelsOpen(true) : undefined}
                       >
                         <Link
                           href={navHref(item)}
@@ -161,9 +159,10 @@ export function PublicHeader() {
                           <button
                             type="button"
                             onClick={() => setModelsOpen((open) => !open)}
-                            className="inline-flex size-11 shrink-0 items-center justify-center text-foreground transition hover:bg-muted md:hidden"
+                            className="inline-flex size-11 shrink-0 items-center justify-center text-foreground transition hover:bg-muted"
                             aria-label={modelsOpen ? "Tutup daftar model" : "Buka daftar model"}
                             aria-expanded={modelsOpen}
+                            aria-controls="drawer-model-submenu"
                           >
                             <Icon
                               name="caret-right"
@@ -178,7 +177,7 @@ export function PublicHeader() {
                   })}
                 </div>
 
-                <div className="mt-8 grid gap-0.5" onMouseEnter={() => setModelsOpen(false)}>
+                <div className="mt-8 grid gap-0.5">
                   {secondaryItems.map((item) => {
                     const active = !item.hash && isRouteActive(item.active ?? [item.route])
                     const isFlashSale = item.route === "catalog.flash-sale"
@@ -220,6 +219,7 @@ export function PublicHeader() {
               </nav>
 
               <div
+                id="drawer-model-submenu"
                 className={cn(
                   "bg-surface px-6 py-7 sm:px-10 md:px-8 md:py-9",
                   modelsOpen ? "block" : "hidden",
