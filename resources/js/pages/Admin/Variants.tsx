@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button"
 import { ConfirmAction } from "@/components/ui/confirm-action"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
+import { StatusSelect } from "@/components/ui/status-select"
 import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
+
+const VARIANT_STATUSES = ["active", "inactive", "archived"] as const
 
 interface VariantRow {
   id: number
@@ -190,11 +192,7 @@ export default function Variants({
               ))}
             </div>
             <Field id="variant-status" label="Status" required error={form.errors.status}>
-              <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="archived">Archived</option>
-              </Select>
+              <StatusSelect statuses={VARIANT_STATUSES} value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} />
             </Field>
             <Button type="submit" className="w-full" disabled={form.processing}>
               {form.processing ? "Menyimpan..." : "Tambah varian"}

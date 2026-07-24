@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 
 interface CustomerForm {
@@ -229,7 +230,7 @@ export default function CustomerEdit({
                     {order.order_number}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {order.order_status} · {order.payment_status}
+                    {statusMeta(order.order_status).label} · {statusMeta(order.payment_status).label}
                   </p>
                   <p className="mt-1 tabular-nums font-semibold">{formatCurrency(order.total_amount)}</p>
                   <p className="text-[11px] text-muted-foreground">

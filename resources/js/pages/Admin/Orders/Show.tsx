@@ -769,7 +769,7 @@ export default function OrderShow({
                 >
                   {["pending", "completed", "failed", "refunded"].map((status) => (
                     <option key={status} value={status}>
-                      {humanize(status)}
+                      {statusMeta(status).label}
                     </option>
                   ))}
                 </Select>
