@@ -137,7 +137,7 @@ function OrderCardRow({
   const visibleItems = expanded ? order.items : order.items.slice(0, 2)
   const hiddenCount = Math.max(order.items_total - visibleItems.length, 0)
 
-  function applyStatus(nextStatus: string) {
+  function applyStatus(nextStatus: string, cancelReason?: string) {
     setBusy(true)
     router.put(
       routeUrl("admin.orders.status", { order: order.id }),
@@ -147,6 +147,7 @@ function OrderCardRow({
         filter_status: queryState.order_status,
         filter_q: queryState.q,
         filter_sort: queryState.sort,
+        ...(nextStatus === "cancelled" && cancelReason ? { cancel_reason: cancelReason } : {}),
       },
       {
         preserveScroll: true,
@@ -162,10 +163,6 @@ function OrderCardRow({
     }
     if (!order.primary_action?.next_status) return
     applyStatus(order.primary_action.next_status)
-  }
-
-  function cancelOrder() {
-    applyStatus("cancelled")
   }
 
   return (
@@ -320,7 +317,9 @@ function OrderCardRow({
               description={`Pesanan ${order.order_number} akan berstatus dibatalkan.`}
               confirmLabel="Batalkan"
               processing={busy}
-              onConfirm={cancelOrder}
+              reasonLabel="Alasan (opsional)"
+              reasonPlaceholder="Misalnya: pelanggan meminta pembatalan"
+              onConfirm={(reason) => applyStatus("cancelled", reason)}
             />
           ) : null}
         </aside>

@@ -161,6 +161,12 @@ return array (
   'uuid' => ':Attribute harus merupakan UUID yang valid.',
   'custom' => 
   array (
+    'file' => 
+    array (
+      'mimes' => 'Unggah file Excel atau CSV (.xls, .xlsx, .xlsm, atau .csv).',
+      'required' => 'Pilih file Excel/CSV untuk diimpor.',
+      'max' => 'Ukuran file maksimal :max kilobyte.',
+    ),
     'attribute-name' => 
     array (
       'rule-name' => 'custom-message',
@@ -192,5 +198,6 @@ return array (
     'variant_sku' => 'Varian',
     'quantity' => 'Jumlah',
     'line_id' => 'Item keranjang',
+    'file' => 'File Excel',
   ),
 );

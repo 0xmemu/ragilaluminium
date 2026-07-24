@@ -190,9 +190,10 @@ class ActivityLogService
                 isset($payload['total']) ? ' (total '.number_format((float) $payload['total'], 0, ',', '.').')' : ''
             ),
             'order_status_changed' => sprintf(
-                'Status pesanan diubah dari %s menjadi %s',
-                $payload['from'] ?? '—',
-                $payload['order_status'] ?? $payload['to'] ?? '—'
+                'Status pesanan diubah dari %s menjadi %s%s',
+                \App\Support\OrderEventLabels::orderStatus(isset($payload['from']) ? (string) $payload['from'] : null),
+                \App\Support\OrderEventLabels::orderStatus(isset($payload['order_status']) ? (string) $payload['order_status'] : (isset($payload['to']) ? (string) $payload['to'] : null)),
+                filled($payload['reason'] ?? null) ? ' · alasan: '.$payload['reason'] : ''
             ),
             'payment.confirmed' => sprintf(
                 'Pembayaran dikonfirmasi untuk pesanan #%s%s',

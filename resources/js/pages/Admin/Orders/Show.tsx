@@ -85,6 +85,7 @@ interface OrderDetail {
     direction: string
     status: string
     internal_template_key?: string | null
+    label?: string | null
     phone_number?: string | null
     sent_at?: string | null
     received_at?: string | null
@@ -106,6 +107,7 @@ interface ShippingActions {
 
 interface OrderEvent {
   event_type: string
+  label?: string
   payload?: Record<string, unknown> | null
   created_at: string | null
   user_id?: number | null
@@ -197,13 +199,16 @@ export default function OrderShow({
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
 
-  function updateStatus(next?: string) {
+  function updateStatus(next?: string, cancelReason?: string) {
     const nextStatus = next ?? statusForm.data.order_status
     statusForm.setData("order_status", nextStatus)
     setStatusBusy(true)
     router.put(
       updateStatusUrl,
-      { order_status: nextStatus },
+      {
+        order_status: nextStatus,
+        ...(nextStatus === "cancelled" && cancelReason ? { cancel_reason: cancelReason } : {}),
+      },
       {
         preserveScroll: true,
         onFinish: () => setStatusBusy(false),
@@ -354,7 +359,10 @@ export default function OrderShow({
             <ul className="mt-3 space-y-2 text-xs">
               {events.slice(0, 4).map((event, index) => (
                 <li key={`${event.event_type}-${index}`} className="border-b border-border pb-2 last:border-0">
-                  <p className="font-semibold">{humanize(event.event_type)}</p>
+                  <p className="font-semibold">{event.label || humanize(event.event_type)}</p>
+                  {typeof event.payload?.reason === "string" && event.payload.reason ? (
+                    <p className="mt-0.5 text-muted-foreground">Alasan: {event.payload.reason}</p>
+                  ) : null}
                   <p className="mt-0.5 text-muted-foreground">{formatDateTime(event.created_at)}</p>
                 </li>
               ))}
@@ -370,9 +378,10 @@ export default function OrderShow({
               {order.whatsapp_messages.slice(0, 4).map((message) => (
                 <li key={message.id} className="border-b border-border pb-2 last:border-0">
                   <p className="font-semibold">
-                    {message.internal_template_key
-                      ? humanize(message.internal_template_key)
-                      : humanize(message.direction)}
+                    {message.label ||
+                      (message.internal_template_key
+                        ? humanize(message.internal_template_key)
+                        : humanize(message.direction))}
                   </p>
                   <p className="mt-0.5 text-muted-foreground">
                     <StatusBadge status={message.status} />
@@ -430,10 +439,12 @@ export default function OrderShow({
           <ConfirmAction
             trigger={<Button variant="destructive">Batalkan Pesanan</Button>}
             title="Batalkan pesanan?"
-            description="Status akan berubah menjadi dibatalkan dan tercatat di event log."
+            description="Status akan berubah menjadi dibatalkan dan tercatat di log."
             confirmLabel="Batalkan"
             processing={statusBusy}
-            onConfirm={() => updateStatus("cancelled")}
+            reasonLabel="Alasan (opsional)"
+            reasonPlaceholder="Misalnya: pelanggan meminta pembatalan"
+            onConfirm={(reason) => updateStatus("cancelled", reason)}
           />
         ) : null}
       </section>

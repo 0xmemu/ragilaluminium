@@ -22,6 +22,7 @@ interface MediaRow {
   id: number
   position: number
   status: string
+  error_reason?: string | null
   visibility: string
   is_main_image: boolean
   show_in_catalog: boolean
@@ -33,6 +34,7 @@ interface MediaRow {
   set_main_url: string
   archive_url: string
   redownload_url: string
+  destroy_url?: string | null
 }
 
 function MediaRowCard({
@@ -73,6 +75,9 @@ function MediaRowCard({
             {!row.show_in_catalog ? <StatusBadge tone="neutral" label="Non-katalog" /> : null}
             <span className="truncate text-xs text-muted-foreground">{row.variant_label}</span>
           </div>
+          {row.status === "failed" && row.error_reason ? (
+            <p className="text-xs leading-5 text-destructive">{row.error_reason}</p>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-3">
             <Field id={`media-position-${row.id}`} label="Posisi" error={updateForm.errors.position}>
@@ -169,6 +174,22 @@ function MediaRowCard({
               >
                 Unduh ulang
               </Button>
+            ) : null}
+            {row.destroy_url ? (
+              <ConfirmAction
+                trigger={
+                  <Button variant="ghost" size="sm" className="text-destructive">
+                    Hapus
+                  </Button>
+                }
+                title="Hapus media gagal?"
+                description="Media berstatus gagal akan dihapus permanen dari database (dan file lokal bila ada)."
+                confirmLabel="Hapus permanen"
+                processing={actionForm.processing}
+                onConfirm={() =>
+                  actionForm.delete(row.destroy_url!, { preserveScroll: true })
+                }
+              />
             ) : null}
             {row.visibility !== "archived" ? (
               <ConfirmAction

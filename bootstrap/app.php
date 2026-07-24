@@ -42,12 +42,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 return $response;
             }
 
-            // Keep JSON/API error payloads; brand HTML + Inertia storefront responses.
+            // Keep JSON/API error payloads; brand HTML + Inertia responses.
             if ($request->expectsJson() && ! $request->header('X-Inertia')) {
                 return $response;
             }
 
-            return Inertia::render('Public/Error', [
+            $page = $request->is('admin', 'admin/*')
+                ? 'Admin/Error'
+                : 'Public/Error';
+
+            return Inertia::render($page, [
                 'status' => $status,
             ])
                 ->toResponse($request)
