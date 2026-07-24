@@ -1,6 +1,7 @@
 import { Head, Link } from "@inertiajs/react"
 
 import { InstallationCard } from "@/components/public/installation-card"
+import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -46,7 +47,7 @@ export default function Installations({
       <section className="section-space">
         <div className="container-page">
           {installations.length ? (
-            <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4">
+            <ShowcaseCardGrid>
               {installations.map((item) => (
                 <InstallationCard
                   key={`install-${item.id}`}
@@ -56,7 +57,7 @@ export default function Installations({
                   }}
                 />
               ))}
-            </div>
+            </ShowcaseCardGrid>
           ) : (
             <EmptyState
               icon="image"
