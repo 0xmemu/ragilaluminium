@@ -269,7 +269,7 @@ export function PublicHeader() {
 
         {/* Mobile: flex search. Desktop: centered bar that yields space to side actions. */}
         <HeaderSearchForm className="relative z-20 min-w-0 flex-1 md:hidden" />
-        <HeaderSearchForm className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden w-[min(28rem,calc(100%-15rem))] max-w-2xl -translate-x-1/2 -translate-y-1/2 px-3 lg:w-[min(36rem,calc(100%-26rem))] lg:px-4 xl:w-[min(42rem,calc(100%-30rem))] md:block [&>div]:pointer-events-auto" />
+        <HeaderSearchForm className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden w-[min(28rem,calc(100%-15rem))] max-w-xl -translate-x-1/2 -translate-y-1/2 px-3 transition-[max-width] duration-300 ease-standard focus-within:max-w-2xl lg:w-[min(36rem,calc(100%-26rem))] lg:px-4 xl:w-[min(42rem,calc(100%-30rem))] md:block [&>div]:pointer-events-auto" />
 
         <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-1 md:gap-1.5 lg:gap-3">
           <Link
@@ -302,7 +302,10 @@ export function PublicHeader() {
               <span className="relative inline-flex shrink-0">
                 <Icon name="shopping-cart" className="size-5 md:size-6 lg:size-7" aria-hidden="true" />
                 {cartCount > 0 ? (
-                  <span className="tabular-nums absolute -right-1 -top-1 flex min-h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sale px-0.5 text-[8px] font-bold leading-none text-white md:-right-0.5 md:-top-0.5 md:min-h-4 md:min-w-4 md:px-1 md:text-[9px]">
+                  <span
+                    key={cartCount}
+                    className="tabular-nums absolute -right-1 -top-1 flex min-h-3.5 min-w-3.5 animate-cart-pop items-center justify-center rounded-full bg-sale px-0.5 text-[8px] font-bold leading-none text-white md:-right-0.5 md:-top-0.5 md:min-h-4 md:min-w-4 md:px-1 md:text-[9px]"
+                  >
                     {Math.min(cartCount, 99)}
                   </span>
                 ) : null}
@@ -435,7 +438,8 @@ export function PublicHeader() {
                 key={`${item.label}-${item.route}-${item.hash ?? ""}`}
                 href={navHref(item)}
                 className={cn(
-                  "inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold transition",
+                  "relative inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold transition after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:origin-left after:bg-primary after:transition-transform after:duration-300",
+                  active ? "after:scale-x-100" : "after:scale-x-0",
                   isFlashSale
                     ? cn(
                         "font-extrabold italic text-sale hover:text-white",

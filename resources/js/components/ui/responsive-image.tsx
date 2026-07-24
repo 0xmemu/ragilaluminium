@@ -16,6 +16,7 @@ export function ResponsiveImage({
   wrapperClassName,
   loading = "lazy",
   onError,
+  onLoad,
   ...props
 }: ResponsiveImageProps) {
   const [failed, setFailed] = React.useState(false)
@@ -33,7 +34,14 @@ export function ResponsiveImage({
           src={src ?? undefined}
           alt={alt}
           loading={loading}
-          className={cn("absolute inset-0 h-full w-full object-cover", className)}
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-200 ease-standard",
+            className,
+          )}
+          onLoad={(event) => {
+            event.currentTarget.classList.remove("opacity-0")
+            onLoad?.(event)
+          }}
           onError={(event) => {
             setFailed(true)
             onError?.(event)
