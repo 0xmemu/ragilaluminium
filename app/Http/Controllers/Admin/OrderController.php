@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
 use App\Support\InertiaAdmin;
+use App\Support\OrderEventLabels;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -256,6 +257,10 @@ class OrderController extends Controller
             ->get()
             ->map(fn (EventLog $log) => [
                 'event_type' => $log->event_type,
+                'label' => OrderEventLabels::eventType(
+                    (string) $log->event_type,
+                    is_array($log->payload) ? $log->payload : [],
+                ),
                 'payload' => $log->payload,
                 'created_at' => optional($log->created_at)?->toIso8601String(),
                 'user_id' => $log->created_by_user_id,
@@ -339,6 +344,9 @@ class OrderController extends Controller
                     'direction' => $m->direction,
                     'status' => $m->status,
                     'internal_template_key' => $m->internal_template_key,
+                    'label' => OrderEventLabels::whatsappTemplate(
+                        $m->internal_template_key ?: $m->direction
+                    ),
                     'phone_number' => $m->phone_number,
                     'sent_at' => optional($m->sent_at)?->toIso8601String(),
                     'received_at' => optional($m->received_at)?->toIso8601String(),
@@ -431,12 +439,16 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'order_status' => ['required', 'in:pending_payment,processing,shipped,delivered,completed,issue,return_in_process,cancelled'],
+            'cancel_reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         $from = $order->order_status;
         $to = $validated['order_status'];
         $userId = $request->user()->id;
         $isCod = $this->isCod($order);
+        $cancelReason = filled($validated['cancel_reason'] ?? null)
+            ? trim((string) $validated['cancel_reason'])
+            : null;
 
         // Transfer: proses dari "perlu konfirmasi" = konfirmasi transfer dulu.
         if ($from === 'pending_payment' && $to === 'processing' && ! $isCod && $order->payment_status !== 'paid') {
@@ -465,11 +477,12 @@ class OrderController extends Controller
                 'event_type' => 'order_status_changed',
                 'entity_type' => 'order',
                 'entity_id' => $order->id,
-                'payload' => [
+                'payload' => array_filter([
                     'from' => $from,
                     'order_status' => $to,
                     'flow' => $isCod ? 'cod' : 'transfer',
-                ],
+                    'reason' => $to === 'cancelled' ? $cancelReason : null,
+                ], fn ($value) => $value !== null && $value !== ''),
                 'created_by_user_id' => $userId,
                 'created_at' => now(),
             ]);

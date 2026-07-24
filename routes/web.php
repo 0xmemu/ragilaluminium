@@ -152,6 +152,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('media/{media}/set-main', [ProductMediaController::class, 'setMain'])->name('media.set-main');
     Route::post('media/{media}/archive', [ProductMediaController::class, 'archive'])->name('media.archive');
     Route::post('media/{media}/redownload', [ProductMediaController::class, 'redownload'])->name('media.redownload');
+    Route::delete('media/{media}', [ProductMediaController::class, 'destroy'])->name('media.destroy');
 
     // Imports
     Route::get('imports', [ImportJobController::class, 'index'])->name('imports.index');

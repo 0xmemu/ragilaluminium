@@ -46,4 +46,42 @@ class PublicUxBlockersTest extends TestCase
                 ->where('status', 404)
             );
     }
+
+    public function test_unknown_admin_url_renders_admin_branded_error(): void
+    {
+        $admin = \App\Models\User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/halaman-yang-pasti-tidak-ada-xyz')
+            ->assertNotFound()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Error')
+                ->where('status', 404)
+            );
+    }
+
+    public function test_import_file_mimes_message_is_indonesian(): void
+    {
+        $admin = \App\Models\User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'imp');
+        file_put_contents($tmp, 'not-an-excel');
+        $upload = new \Illuminate\Http\UploadedFile($tmp, 'notes.txt', 'text/plain', null, true);
+
+        $response = $this->actingAs($admin)->post(route('admin.imports.store'), [
+            'file' => $upload,
+        ]);
+
+        $response->assertSessionHasErrors(['file']);
+        $joined = implode(' ', session('errors')->getBag('default')->all());
+        $this->assertStringContainsString('Excel', $joined);
+        $this->assertStringNotContainsString('validation.mimes', strtolower($joined));
+        $this->assertStringNotContainsString('must be a file of type', strtolower($joined));
+    }
 }

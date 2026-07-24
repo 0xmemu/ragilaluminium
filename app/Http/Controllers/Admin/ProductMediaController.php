@@ -61,7 +61,14 @@ class ProductMediaController extends Controller
                         'url' => route('admin.media.set-main', $m),
                     ];
                 }
-                if ($m->visibility !== 'archived') {
+                if ($m->status === 'failed') {
+                    $actions[] = [
+                        'label' => 'Hapus',
+                        'method' => 'delete',
+                        'url' => route('admin.media.destroy', $m),
+                        'confirm' => 'Hapus media gagal #'.$m->id.' secara permanen?',
+                    ];
+                } elseif ($m->visibility !== 'archived') {
                     $actions[] = [
                         'label' => 'Arsipkan',
                         'method' => 'post',
@@ -79,6 +86,7 @@ class ProductMediaController extends Controller
                         : 'Semua (produk)',
                     'position' => $m->position,
                     'status' => $m->status,
+                    'error_reason' => $m->error_reason,
                     'visibility' => $m->visibility,
                     'is_main' => $m->is_main_image ? 'ya' : 'tidak',
                     'actions' => $actions,
@@ -127,6 +135,7 @@ class ProductMediaController extends Controller
                 'id' => $m->id,
                 'position' => $m->position,
                 'status' => $m->status,
+                'error_reason' => $m->error_reason,
                 'visibility' => $m->visibility,
                 'is_main_image' => (bool) $m->is_main_image,
                 'show_in_catalog' => (bool) $m->show_in_catalog,
@@ -140,6 +149,9 @@ class ProductMediaController extends Controller
                 'set_main_url' => route('admin.media.set-main', $m),
                 'archive_url' => route('admin.media.archive', $m),
                 'redownload_url' => route('admin.media.redownload', $m),
+                'destroy_url' => $m->status === 'failed'
+                    ? route('admin.media.destroy', $m)
+                    : null,
             ])->values()->all(),
         ]);
     }
@@ -265,6 +277,33 @@ class ProductMediaController extends Controller
         DownloadProductMedia::dispatch($media->id);
 
         return redirect()->back()->with('success', 'Download media dijadwalkan ulang.');
+    }
+
+    public function destroy(ProductMedia $media): RedirectResponse
+    {
+        if ($media->status !== 'failed') {
+            return redirect()->back()->with('error', 'Hanya media berstatus gagal yang dapat dihapus permanen. Arsipkan media lain.');
+        }
+
+        $paths = array_filter([
+            $media->stored_path,
+            ...collect($media->derivatives ?? [])->pluck('path')->filter()->all(),
+        ]);
+
+        $disk = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'));
+        foreach ($paths as $path) {
+            try {
+                if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                    $disk->delete($path);
+                }
+            } catch (\Throwable) {
+                // Ignore storage cleanup errors; DB row still removed.
+            }
+        }
+
+        $media->delete();
+
+        return redirect()->back()->with('success', 'Media gagal dihapus.');
     }
 
     protected function variantLabel(ProductVariant $variant): string

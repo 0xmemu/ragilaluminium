@@ -39,7 +39,7 @@ export default function BannerForm({
     title: banner?.title ?? "",
     link_url: banner?.link_url ?? "",
     sort_order: banner?.sort_order ?? 0,
-    published: banner?.published ?? true,
+    published: banner?.published ?? false,
     image: null,
   })
 
