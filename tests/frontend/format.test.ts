@@ -27,9 +27,10 @@ describe("format helpers", () => {
     expect(humanize("")).toBe("Belum tersedia")
   })
 
-  it("strips markup and chooses a meaningful product name", () => {
+  it("strips markup and prefers full catalog name over short_name", () => {
     expect(stripHtml("<p>Pintu <strong>minimalis</strong></p>")).toBe("Pintu minimalis")
-    expect(productName("Nama panjang", " Nama pendek ")).toBe("Nama pendek")
+    expect(productName("Nama panjang", " Nama pendek ")).toBe("Nama panjang")
+    expect(productName(" ", " Nama pendek ")).toBe("Nama pendek")
     expect(productName("Nama panjang", " ")).toBe("Nama panjang")
   })
 })

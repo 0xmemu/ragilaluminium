@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface HighlightItem {
