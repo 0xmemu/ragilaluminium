@@ -40,8 +40,11 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        // Stage 2 equal-admin: every `users` row is a Store Admin (customers live in `customers`).
-        return true;
+        // Stage 2 equal-admin: semua akun dashboard memakai role kanonik `admin`
+        // (lihat migration 2026_07_22_000001_normalize_users_to_equal_admin_role).
+        // Role tetap dievaluasi agar penambahan role lain di masa depan
+        // tidak otomatis mendapatkan akses admin.
+        return $this->role === 'admin';
     }
 
     public function createdProducts(): HasMany

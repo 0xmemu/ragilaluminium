@@ -16,6 +16,10 @@ class EnsureUserIsAdmin
             return redirect()->route('login');
         }
 
+        if (! $user->isAdmin()) {
+            abort(403);
+        }
+
         return $next($request);
     }
 }
