@@ -30,6 +30,11 @@ export function formatDate(
   }).format(date)
 }
 
+/** Alias: tanggal + jam, tanpa em dash. */
+export function formatDateTime(value: string | number | Date | null | undefined): string {
+  return formatDate(value, true)
+}
+
 export function humanize(value: unknown): string {
   if (value === null || value === undefined || value === "") return "Belum tersedia"
   if (typeof value === "boolean") return value ? "Ya" : "Tidak"

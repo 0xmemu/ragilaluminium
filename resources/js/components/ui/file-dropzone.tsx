@@ -52,6 +52,7 @@ export function FileDropzone({
         className={cn(
           "flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-surface-muted/55 p-8 text-center transition",
           dragging ? "border-primary bg-accent" : "border-border hover:border-primary/45 hover:bg-accent",
+          error && "border-destructive",
         )}
       >
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface text-primary shadow-sm">
@@ -68,10 +69,16 @@ export function FileDropzone({
           type="file"
           accept={accept}
           className="sr-only"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
           onChange={(event) => handleFiles(event.target.files)}
         />
       </label>
-      {error ? <p className="mt-2 text-xs font-medium text-destructive">{error}</p> : null}
+      {error ? (
+        <p id={`${id}-error`} className="mt-2 text-xs font-medium text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

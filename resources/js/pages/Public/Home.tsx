@@ -611,6 +611,8 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
 
   React.useEffect(() => {
     if (total < 2) return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (media.matches) return
     const id = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % total)
     }, 6000)

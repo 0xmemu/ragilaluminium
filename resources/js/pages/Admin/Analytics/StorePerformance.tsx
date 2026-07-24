@@ -327,31 +327,59 @@ export default function StorePerformance({
             <p className="text-xs text-muted-foreground">Omzet & unit dari pesanan fulfillment (processing–completed).</p>
           </header>
           {report.top_products.length ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2 font-semibold">Produk</th>
-                    <th className="px-4 py-2 font-semibold">Unit</th>
-                    <th className="px-4 py-2 font-semibold">Order</th>
-                    <th className="px-4 py-2 font-semibold">Omzet</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.top_products.map((product) => (
-                    <tr key={`${product.parent_sku}-${product.name}`} className="border-t border-border">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold">{product.name}</p>
-                        <p className="font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">{formatNumber(product.units)}</td>
-                      <td className="px-4 py-3 tabular-nums">{formatNumber(product.order_count)}</td>
-                      <td className="px-4 py-3 tabular-nums font-semibold">{formatCurrency(product.revenue)}</td>
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2 font-semibold">Produk</th>
+                      <th className="px-4 py-2 font-semibold">Unit</th>
+                      <th className="px-4 py-2 font-semibold">Order</th>
+                      <th className="px-4 py-2 font-semibold">Omzet</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {report.top_products.map((product) => (
+                      <tr key={`${product.parent_sku}-${product.name}`} className="border-t border-border">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold">{product.name}</p>
+                          <p className="font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
+                        </td>
+                        <td className="px-4 py-3 tabular-nums">{formatNumber(product.units)}</td>
+                        <td className="px-4 py-3 tabular-nums">{formatNumber(product.order_count)}</td>
+                        <td className="px-4 py-3 tabular-nums font-semibold">{formatCurrency(product.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="divide-y divide-border md:hidden">
+                {report.top_products.map((product) => (
+                  <article key={`${product.parent_sku}-${product.name}`} className="p-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">Produk</p>
+                      <p className="mt-1 font-semibold">{product.name}</p>
+                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
+                    </div>
+                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                      <div>
+                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Unit</dt>
+                        <dd className="mt-1 text-sm tabular-nums">{formatNumber(product.units)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Order</dt>
+                        <dd className="mt-1 text-sm tabular-nums">{formatNumber(product.order_count)}</dd>
+                      </div>
+                      <div className="col-span-2">
+                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Omzet</dt>
+                        <dd className="mt-1 text-sm tabular-nums font-semibold">{formatCurrency(product.revenue)}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+            </>
           ) : (
             <EmptyState
               className="min-h-40 border-0 bg-transparent"
@@ -367,32 +395,59 @@ export default function StorePerformance({
             <p className="text-xs text-muted-foreground">Agregat per nomor WhatsApp pada periode terpilih.</p>
           </header>
           {report.customers.length ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2 font-semibold">Customer</th>
-                    <th className="px-4 py-2 font-semibold">Order</th>
-                    <th className="px-4 py-2 font-semibold">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.customers.map((customer) => (
-                    <tr key={customer.customer_phone} className="border-t border-border">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold">{customer.customer_name}</p>
-                        <p className="font-mono text-[11px] text-muted-foreground">{customer.customer_phone}</p>
-                        {customer.last_order_at ? (
-                          <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">{formatNumber(customer.order_count)}</td>
-                      <td className="px-4 py-3 tabular-nums font-semibold">{formatCurrency(customer.total_spent)}</td>
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2 font-semibold">Customer</th>
+                      <th className="px-4 py-2 font-semibold">Order</th>
+                      <th className="px-4 py-2 font-semibold">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {report.customers.map((customer) => (
+                      <tr key={customer.customer_phone} className="border-t border-border">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold">{customer.customer_name}</p>
+                          <p className="font-mono text-[11px] text-muted-foreground">{customer.customer_phone}</p>
+                          {customer.last_order_at ? (
+                            <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3 tabular-nums">{formatNumber(customer.order_count)}</td>
+                        <td className="px-4 py-3 tabular-nums font-semibold">{formatCurrency(customer.total_spent)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="divide-y divide-border md:hidden">
+                {report.customers.map((customer) => (
+                  <article key={customer.customer_phone} className="p-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">Customer</p>
+                      <p className="mt-1 font-semibold">{customer.customer_name}</p>
+                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{customer.customer_phone}</p>
+                      {customer.last_order_at ? (
+                        <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
+                      ) : null}
+                    </div>
+                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                      <div>
+                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Order</dt>
+                        <dd className="mt-1 text-sm tabular-nums">{formatNumber(customer.order_count)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Total</dt>
+                        <dd className="mt-1 text-sm tabular-nums font-semibold">{formatCurrency(customer.total_spent)}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+            </>
           ) : (
             <EmptyState
               className="min-h-40 border-0 bg-transparent"

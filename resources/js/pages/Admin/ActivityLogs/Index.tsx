@@ -158,64 +158,134 @@ export default function ActivityLogsIndex({
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         {rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-3 font-semibold">No</th>
-                  <th className="px-3 py-3 font-semibold">Nama Admin</th>
-                  <th className="px-3 py-3 font-semibold">Waktu</th>
-                  <th className="px-3 py-3 font-semibold">Kategori</th>
-                  <th className="px-3 py-3 font-semibold">Aktivitas</th>
-                  <th className="px-3 py-3 font-semibold">Status</th>
-                  <th className="px-3 py-3 font-semibold text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-border align-top">
-                    <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2">
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full text-sm">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3 font-semibold">No</th>
+                    <th className="px-3 py-3 font-semibold">Nama Admin</th>
+                    <th className="px-3 py-3 font-semibold">Waktu</th>
+                    <th className="px-3 py-3 font-semibold">Kategori</th>
+                    <th className="px-3 py-3 font-semibold">Aktivitas</th>
+                    <th className="px-3 py-3 font-semibold">Status</th>
+                    <th className="px-3 py-3 font-semibold text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-t border-border align-top">
+                      <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <Icon name="user" className="size-4" aria-hidden="true" />
+                          </span>
+                          <span className="font-semibold">{row.actor}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-medium">{formatDate(row.created_at)}</p>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">{formatTime(row.created_at)}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusBadge status={row.category.key} label={row.category.label} />
+                      </td>
+                      <td className="max-w-[24rem] px-3 py-3 text-muted-foreground">
+                        <p>{row.activity}</p>
+                        <p className="mt-0.5 font-mono text-[11px]">{row.event_type}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusBadge
+                          status={row.status.key}
+                          label={row.status.label}
+                        />
+                      </td>
+                      <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
+                        <RowActions>
+                          {row.href ? (
+                            <Button asChild variant="secondary" size="xs">
+                              <Link href={row.href}>Detail</Link>
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </RowActions>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="divide-y divide-border md:hidden">
+              {rows.map((row) => (
+                <article key={row.id} className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">Nama Admin</p>
+                      <div className="mt-1 flex items-center gap-2">
                         <span className="inline-flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
                           <Icon name="user" className="size-4" aria-hidden="true" />
                         </span>
                         <span className="font-semibold">{row.actor}</span>
                       </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <p className="font-medium">{formatDate(row.created_at)}</p>
-                      <p className="text-[11px] tabular-nums text-muted-foreground">{formatTime(row.created_at)}</p>
-                    </td>
-                    <td className="px-3 py-3">
-                      <StatusBadge status={row.category.key} label={row.category.label} />
-                    </td>
-                    <td className="max-w-[24rem] px-3 py-3 text-muted-foreground">
-                      <p>{row.activity}</p>
-                      <p className="mt-0.5 font-mono text-[11px]">{row.event_type}</p>
-                    </td>
-                    <td className="px-3 py-3">
-                      <StatusBadge
-                        status={row.status.key}
-                        label={row.status.label}
-                      />
-                    </td>
-                    <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
+                    </div>
+                    {row.href ? (
+                      <Link
+                        href={row.href}
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent"
+                        aria-label="Buka detail"
+                      >
+                        <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    ) : null}
+                  </div>
+                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">No</dt>
+                      <dd className="mt-1 text-sm tabular-nums text-muted-foreground">{row.no}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Waktu</dt>
+                      <dd className="mt-1 text-sm">
+                        <p className="font-medium">{formatDate(row.created_at)}</p>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">{formatTime(row.created_at)}</p>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Kategori</dt>
+                      <dd className="mt-1 text-sm">
+                        <StatusBadge status={row.category.key} label={row.category.label} />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Status</dt>
+                      <dd className="mt-1 text-sm">
+                        <StatusBadge status={row.status.key} label={row.status.label} />
+                      </dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Aktivitas</dt>
+                      <dd className="mt-1 text-sm text-muted-foreground">
+                        <p>{row.activity}</p>
+                        <p className="mt-0.5 font-mono text-[11px]">{row.event_type}</p>
+                      </dd>
+                    </div>
+                  </dl>
+                  {row.href ? (
+                    <div className="mt-4">
                       <RowActions>
-                        {row.href ? (
-                          <Button asChild variant="secondary" size="xs">
-                            <Link href={row.href}>Detail</Link>
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                        <Button asChild variant="secondary" size="xs">
+                          <Link href={row.href}>Detail</Link>
+                        </Button>
                       </RowActions>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState
             title="Belum ada log pada kategori ini"

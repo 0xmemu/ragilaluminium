@@ -149,7 +149,7 @@ class CheckoutController extends Controller
             'address_line1' => ['required', 'string', 'max:255'],
             'address_line2' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:20'],
-            'notes' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $request->session()->put('checkout_details', $validated);
