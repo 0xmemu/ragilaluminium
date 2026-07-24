@@ -138,7 +138,7 @@ export default function Catalog({
     })
   }, [activeModel, activeDesign, priceMin, priceMax, activeSort])
 
-  function visit(next: Partial<FilterState> = {}) {
+  function visit(next: Partial<FilterState> = {}, options?: { clearSearch?: boolean }) {
     const merged = { ...filtersRef.current, ...next }
     const sort = resolveSortValue(merged.sort)
 
@@ -147,7 +147,7 @@ export default function Catalog({
     router.get(
       basePath,
       {
-        q: searchQuery || undefined,
+        q: options?.clearSearch ? undefined : searchQuery || undefined,
         model: merged.model || undefined,
         design: merged.design || undefined,
         price_min: merged.priceMin || undefined,
@@ -404,7 +404,7 @@ export default function Catalog({
                   useModelToggles
                     ? visit({ model: "", design: "", priceMin: "", priceMax: "" })
                     : searchQuery
-                      ? visit({ q: "" })
+                      ? visit({}, { clearSearch: true })
                       : reset()
                 }
               >
