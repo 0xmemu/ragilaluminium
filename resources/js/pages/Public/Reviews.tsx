@@ -1,4 +1,4 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, usePage } from "@inertiajs/react"
 
 import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
 import { TestimonialCard } from "@/components/public/testimonial-card"
@@ -10,7 +10,7 @@ import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
-import type { Pagination as PaginationData, Testimonial } from "@/types"
+import type { Pagination as PaginationData, SharedPageProps, Testimonial } from "@/types"
 
 const REVIEW_SORT_OPTIONS = [
   { value: "newest", label: "Terbaru" },
@@ -47,6 +47,7 @@ export default function Reviews({
   activeSource?: string
   installationsHref?: string
 }) {
+  const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const totalCount = stats?.total ?? testimonials.length
   const averageRating = stats?.average_rating ?? null
   const heading = pageMeta?.heading?.trim() || "Apa kata pelanggan kami."
@@ -181,8 +182,24 @@ export default function Reviews({
               title="Belum ada testimoni"
               description={
                 activeSource === "all"
-                  ? "Testimoni pelanggan akan tampil di sini setelah disetujui untuk publikasi."
+                  ? "Belum ada ulasan yang tampil. Lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
                   : "Tidak ada ulasan untuk filter sumber ini."
+              }
+              action={
+                activeSource === "all" ? (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button asChild variant="secondary">
+                      <Link href={routeUrl("installation.index")}>Hasil pemasangan</Link>
+                    </Button>
+                    {consultationWhatsApp?.directUrl ? (
+                      <Button asChild>
+                        <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
+                          WhatsApp
+                        </a>
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : undefined
               }
             />
           )}

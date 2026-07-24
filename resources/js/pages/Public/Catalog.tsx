@@ -1,4 +1,4 @@
-import { Head, router, usePage } from "@inertiajs/react"
+import { Head, Link, router, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import {
@@ -367,12 +367,14 @@ export default function Catalog({
                 ? "Flash Sale belum dimulai"
                 : period?.status === "ended"
                   ? "Flash Sale sudah berakhir"
-                  : "Flash Sale belum aktif"
+                  : "Flash Sale sedang disiapkan"
               : isFlash
                 ? "Belum ada produk Flash Sale"
                 : isPromo
                   ? "Belum ada produk promo"
-                  : "Belum ada produk yang cocok"
+                  : searchQuery
+                    ? `Tidak ada hasil untuk “${searchQuery}”`
+                    : "Belum ada produk yang cocok"
           }
           description={
             isFlash && !flashLive
@@ -380,25 +382,37 @@ export default function Catalog({
                 ? `Periode dimulai ${period.starts_at_label ?? "segera"}. Produk akan tampil otomatis saat waktu mulai.`
                 : period?.status === "ended"
                   ? `Periode berakhir ${period.ends_at_label ?? "sudah lewat"}. Pantau menu Flash Sale untuk periode berikutnya.`
-                  : "Admin perlu mengaktifkan jangka waktu Flash Sale sebelum produk tampil di halaman ini."
+                  : "Flash Sale sedang disiapkan. Pantau pengumuman kami atau lihat promo yang sedang berjalan."
               : useModelToggles && activeModel
                 ? `Belum ada produk ${isFlash ? "Flash Sale" : "promo"} untuk model ini. Coba model lain atau pilih Semua.`
                 : isFlash
-                  ? "Produk Flash Sale akan muncul di sini ketika admin menandai produk sebagai Flash Sale dan periode sedang berlangsung."
+                  ? "Flash Sale sedang disiapkan. Produk akan tampil di sini saat periode berlangsung."
                   : isPromo
-                    ? "Produk promo akan muncul di sini ketika ada atribut diskon atau Flash Sale aktif."
-                    : "Hapus sebagian filter atau coba kata pencarian lain untuk melihat pilihan yang tersedia."
+                    ? "Produk promo akan muncul di sini ketika ada penawaran aktif."
+                    : searchQuery
+                      ? `Tidak ada hasil untuk “${searchQuery}”. Coba kata lain atau lihat semua model.`
+                      : "Hapus sebagian filter atau coba kata pencarian lain untuk melihat pilihan yang tersedia."
           }
           action={
-            isFlash && !flashLive ? undefined : (
+            isFlash && !flashLive ? (
+              <Button asChild>
+                <Link href={routeUrl("catalog.promo")}>Lihat promo</Link>
+              </Button>
+            ) : (
               <Button
                 onClick={() =>
                   useModelToggles
                     ? visit({ model: "", design: "", priceMin: "", priceMax: "" })
-                    : reset()
+                    : searchQuery
+                      ? visit({ q: "" })
+                      : reset()
                 }
               >
-                {useModelToggles && activeModel ? "Lihat semua model" : "Hapus semua filter"}
+                {searchQuery
+                  ? "Lihat semua model"
+                  : useModelToggles && activeModel
+                    ? "Lihat semua model"
+                    : "Hapus semua filter"}
               </Button>
             )
           }

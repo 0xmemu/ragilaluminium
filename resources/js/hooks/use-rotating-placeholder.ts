@@ -1,14 +1,12 @@
 import * as React from "react"
 
 export const SEARCH_PLACEHOLDER_ROTATIONS = [
-  "Cari produk...",
+  "Cari: jendela sliding / 120x80",
   "Jendela jungkit",
   "100x50",
-  "Boven swing",
-  "Tinggi x panjang",
+  "Boven zigzag",
   "Pintu sliding",
   "120x80",
-  "Jendela zigzag",
   "Kaca mati",
   "Warna hitam",
 ] as const
