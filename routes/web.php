@@ -40,6 +40,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ModelShowcaseController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
@@ -69,6 +70,10 @@ Route::get('/flash-sale', [CatalogController::class, 'flashSale'])->name('catalo
 Route::get('/windows', [CatalogController::class, 'windows'])->name('catalog.windows');
 Route::get('/doors', [CatalogController::class, 'doors'])->name('catalog.doors');
 Route::get('/bouven', [CatalogController::class, 'bouven'])->name('catalog.bouven');
+
+Route::get('/model/{category}/{model}', [ModelShowcaseController::class, 'show'])
+    ->where(['category' => 'windows|doors|bouven', 'model' => '[a-z0-9\-]+'])
+    ->name('model.show');
 
 Route::get('/search', function (\Illuminate\Http\Request $request) {
     return redirect()->route('catalog.index', $request->query());

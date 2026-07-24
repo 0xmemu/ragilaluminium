@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CmsModelProduct;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Support\CatalogLabels;
 use App\Support\CatalogTaxonomy;
@@ -222,7 +223,8 @@ class ModelProductService
                 'meta' => $this->metaFromDesigns($designs),
                 'desc' => $this->descriptionFor($row->product_model),
                 'image' => $image,
-                'href' => route($route, $params, absolute: false),
+                'href' => CatalogLabels::modelShowcaseHref($row->product_category, $row->product_model),
+                'catalog_href' => route($route, $params, absolute: false),
                 'model' => $row->product_model,
                 'category' => $row->product_category,
                 'designs' => $designs,
@@ -326,5 +328,189 @@ class ModelProductService
             'ZIGZAG' => 'Boven zigzag untuk ventilasi memanjang di area tinggi. Sirkulasi udara merata tanpa mengorbankan privasi.',
             default => 'Pilih ukuran dan warna sesuai kebutuhan bangunan Anda.',
         };
+    }
+
+    /**
+     * Public penjelasan-model page payload (Figma node model showcase).
+     *
+     * @return array{
+     *   title: string,
+     *   category: string,
+     *   model: string,
+     *   hero: array{image: string|null, caption: string|null},
+     *   description: string,
+     *   benefits: list<array{icon: string, title: string}>,
+     *   specs: list<array{label: string, value: string}>,
+     *   inspirations: list<array{id: string, image_url: string, label: string, href: string|null}>,
+     *   pagination: array{current_page: int, last_page: int, per_page: int, total: int, from: int|null, to: int|null, links: list<array{url: ?string, label: string, active: bool}>},
+     *   catalog_href: string,
+     *   installations_href: string,
+     *   back_href: string
+     * }
+     */
+    public function showcase(string $categoryCode, string $modelCode, int $page = 1, int $perPage = 16): array
+    {
+        $categoryCode = strtoupper($categoryCode);
+        $modelCode = CatalogLabels::normalizeModel($modelCode) ?? strtoupper($modelCode);
+
+        $cms = CmsModelProduct::query()
+            ->active()
+            ->where('product_category', $categoryCode)
+            ->where('product_model', $modelCode)
+            ->first();
+
+        $content = is_array($cms?->content) ? $cms->content : [];
+
+        $title = filled($cms?->name)
+            ? (string) $cms->name
+            : CatalogLabels::modelCardTitle($categoryCode, $modelCode);
+
+        $catalogRoute = match ($categoryCode) {
+            'DOOR' => 'catalog.doors',
+            'BOUVEN' => 'catalog.bouven',
+            default => 'catalog.windows',
+        };
+        $catalogHref = route($catalogRoute, ['model' => $modelCode], absolute: false);
+
+        $productQuery = Product::visible()
+            ->where('product_category', $categoryCode)
+            ->where('product_model', $modelCode);
+
+        $heroImage = $content['hero_image_url']
+            ?? $cms?->image_url
+            ?? null;
+        if (! $heroImage) {
+            $sample = (clone $productQuery)->with('mainImage')->latest('id')->first();
+            $heroImage = $sample?->mainImage?->urlFor('pdp')
+                ?? $sample?->mainImage?->urlFor('card');
+        }
+
+        $description = trim((string) ($content['description'] ?? ''));
+        if ($description === '') {
+            $description = $this->descriptionFor($modelCode);
+        }
+
+        $benefits = $content['benefits'] ?? null;
+        if (! is_array($benefits) || $benefits === []) {
+            $benefits = [
+                ['icon' => 'badge-check', 'title' => 'Kualitas terbaik dan terjamin'],
+                ['icon' => 'sun', 'title' => 'Tahan panas dan cuaca'],
+                ['icon' => 'shield-check', 'title' => 'Dukungan dan garansi pemasangan'],
+            ];
+        }
+
+        $specs = $content['specs'] ?? null;
+        if (! is_array($specs) || $specs === []) {
+            $designCode = $cms?->type ? strtoupper((string) $cms->type) : 'POLOS';
+            $specs = [
+                ['label' => 'Kategori', 'value' => CatalogLabels::category($categoryCode)],
+                ['label' => 'Model', 'value' => CatalogLabels::model($modelCode)],
+                ['label' => 'Frame', 'value' => 'Aluminium'],
+                ['label' => 'Tipe', 'value' => CatalogLabels::design($designCode) ?: 'Polos'],
+            ];
+        }
+
+        $inspirations = $this->inspirationsForModel($categoryCode, $modelCode, max(1, $page), max(1, min(48, $perPage)));
+
+        return [
+            'title' => $title,
+            'category' => $categoryCode,
+            'model' => $modelCode,
+            'hero' => [
+                'image' => $heroImage,
+                'caption' => filled($content['hero_caption'] ?? null)
+                    ? (string) $content['hero_caption']
+                    : null,
+            ],
+            'description' => $description,
+            'benefits' => array_values(array_map(function ($row) {
+                return [
+                    'icon' => (string) ($row['icon'] ?? 'badge-check'),
+                    'title' => (string) ($row['title'] ?? ''),
+                ];
+            }, $benefits)),
+            'specs' => array_values(array_map(function ($row) {
+                return [
+                    'label' => (string) ($row['label'] ?? ''),
+                    'value' => (string) ($row['value'] ?? ''),
+                ];
+            }, $specs)),
+            'inspirations' => $inspirations['items'],
+            'pagination' => $inspirations['pagination'],
+            'catalog_href' => $catalogHref,
+            'installations_href' => route('installation.index', absolute: false),
+            'back_href' => route('catalog.index', absolute: false),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   items: list<array{id: string, image_url: string, label: string, href: string|null}>,
+     *   pagination: array{current_page: int, last_page: int, per_page: int, total: int, from: int|null, to: int|null, links: list<array{url: ?string, label: string, active: bool}>}
+     * }
+     */
+    protected function inspirationsForModel(string $categoryCode, string $modelCode, int $page, int $perPage): array
+    {
+        $emptyPagination = [
+            'current_page' => 1,
+            'last_page' => 1,
+            'per_page' => $perPage,
+            'total' => 0,
+            'from' => null,
+            'to' => null,
+            'links' => [],
+        ];
+
+        $productIds = Product::visible()
+            ->where('product_category', $categoryCode)
+            ->where('product_model', $modelCode)
+            ->pluck('id');
+
+        if ($productIds->isEmpty()) {
+            return ['items' => [], 'pagination' => $emptyPagination];
+        }
+
+        $paginator = ProductMedia::query()
+            ->installation()
+            ->visible()
+            ->whereIn('product_id', $productIds)
+            ->with(['product:id,parent_sku,name,short_name'])
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'page', $page)
+            ->withQueryString();
+
+        $items = [];
+        foreach ($paginator->items() as $item) {
+            /** @var ProductMedia $item */
+            $url = $item->urlFor('card')
+                ?? $item->urlFor('thumb')
+                ?? (config('media.allow_source_url_fallback') ? $item->source_url : null);
+            if (! filled($url)) {
+                continue;
+            }
+            $product = $item->product;
+            $label = trim((string) ($product?->short_name ?: $product?->name ?: 'Hasil pemasangan'));
+            $items[] = [
+                'id' => 'media-'.$item->id,
+                'image_url' => (string) $url,
+                'label' => $label !== '' ? $label : 'Hasil pemasangan',
+                'href' => $product?->parent_sku
+                    ? route('installation.show', ['parent_sku' => $product->parent_sku], absolute: false)
+                    : null,
+            ];
+        }
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+                'links' => $paginator->linkCollection()->toArray(),
+            ],
+        ];
     }
 }

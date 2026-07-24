@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  */
 class CatalogTaxonomy
 {
-    private const CACHE_KEY = 'catalog.taxonomy.v3';
+    private const CACHE_KEY = 'catalog.taxonomy.v4';
 
     private const CACHE_TTL_SECONDS = 300;
 
@@ -44,9 +44,11 @@ class CatalogTaxonomy
         Cache::forget(self::CACHE_KEY.'.megaNav');
         Cache::forget('catalog.taxonomy.v1');
         Cache::forget('catalog.taxonomy.v2');
+        Cache::forget('catalog.taxonomy.v3');
         Cache::forget('catalog.taxonomy.v2.megaNav');
         Cache::forget('catalog.taxonomy.v2.modelCards.8');
         Cache::forget('catalog.taxonomy.v2.modelCards.v2.8');
+        Cache::forget('catalog.taxonomy.v3.megaNav');
     }
 
     /**
@@ -147,7 +149,8 @@ class CatalogTaxonomy
                     'meta' => '3 Model Kaca | 4 Model Warna',
                     'desc' => self::modelDescription($w['model']),
                     'image' => $sample?->mainImage?->urlFor('card'),
-                    'href' => route($route, $params, absolute: false),
+                    'href' => CatalogLabels::modelShowcaseHref($w['category'], $w['model']),
+                    'catalog_href' => route($route, $params, absolute: false),
                     'model' => $w['model'],
                     'category' => $w['category'],
                     'designs' => $w['designs'],

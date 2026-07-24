@@ -40,7 +40,8 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 | Figma frame | Path | Route | View | Status |
 |-------------|------|-------|------|--------|
 | Halaman Beranda | `/` | `home` | `Public/Home` | implemented |
-| Halaman Semua Model Produk | `/products` | `catalog.index` | `Public/ModelProduk` | implemented — **kartu model** (`card-model-produk`), bukan daftar SKU |
+| Halaman Semua Model Produk | `/products` | `catalog.index` | `Public/ModelProduk` | implemented — **kartu model** (`card-model-produk`), bukan daftar SKU; kartu → penjelasan model |
+| Halaman Penjelasan Model | `/model/{category}/{model}` | `model.show` | `Public/ModelShow` | implemented — hero + detail + spesifikasi + inspirasi pemasangan (bukan listing SKU) |
 | Halaman Semua Produk | `/products?sort=newest` | `catalog.index` | `Public/Catalog` | implemented — **kartu produk/SKU** (`card-produk`); berbeda dari hub model |
 | Halaman Tampilan Model Produk | `/windows` (+ doors/bouven) | `catalog.windows` dll. | `Public/Catalog` | implemented — daftar produk (`card-produk`) |
 | Halaman Promo | `/promo` | `catalog.promo` | `Public/Catalog` | implemented — tanpa sidebar; toggle model di atas galeri; strip Flash Sale di atas listing |
@@ -75,7 +76,7 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 ## 2. User flow (ringkas)
 
 ```text
-[Beranda] → [Model Produk / Katalog] → [PDP] → [Keranjang] → [Order/Checkout]
+[Beranda] → [Model Produk hub] → [Penjelasan Model] → [Listing SKU / PDP] → [Keranjang] → [Order/Checkout]
                 ↓                              ↓
          [Info CMS / FAQ]              [Konfirmasi] → [Status pesanan]
 ```

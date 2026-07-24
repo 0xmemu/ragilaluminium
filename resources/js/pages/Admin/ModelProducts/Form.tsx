@@ -4,8 +4,17 @@ import { Button } from "@/components/ui/button"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
+
+interface ContentPayload {
+  description?: string | null
+  hero_caption?: string | null
+  hero_image_url?: string | null
+  benefits?: Array<{ icon?: string; title?: string }>
+  specs?: Array<{ label?: string; value?: string }>
+}
 
 interface ModelRecord {
   id: number
@@ -13,9 +22,39 @@ interface ModelRecord {
   product_category?: string | null
   product_model?: string | null
   image_url?: string | null
+  content?: ContentPayload | null
   type: string
   status: string
   sort_order: number
+}
+
+const DEFAULT_BENEFITS = [
+  { icon: "badge-check", title: "Kualitas terbaik dan terjamin" },
+  { icon: "sun", title: "Tahan panas dan cuaca" },
+  { icon: "shield-check", title: "Dukungan dan garansi pemasangan" },
+]
+
+const DEFAULT_SPECS = [
+  { label: "Kategori", value: "" },
+  { label: "Model", value: "" },
+  { label: "Frame", value: "Aluminium" },
+  { label: "Tipe", value: "" },
+]
+
+function normalizeBenefits(content?: ContentPayload | null) {
+  const rows = content?.benefits?.length ? content.benefits : DEFAULT_BENEFITS
+  return [0, 1, 2].map((index) => ({
+    icon: rows[index]?.icon || DEFAULT_BENEFITS[index].icon,
+    title: rows[index]?.title || "",
+  }))
+}
+
+function normalizeSpecs(content?: ContentPayload | null) {
+  const rows = content?.specs?.length ? content.specs : DEFAULT_SPECS
+  return [0, 1, 2, 3].map((index) => ({
+    label: rows[index]?.label || DEFAULT_SPECS[index].label,
+    value: rows[index]?.value || "",
+  }))
 }
 
 export default function ModelProductForm({
@@ -44,6 +83,13 @@ export default function ModelProductForm({
     type: modelProduct?.type ?? types[0] ?? "polos",
     status: modelProduct?.status ?? "draft",
     sort_order: modelProduct?.sort_order ?? 0,
+    content: {
+      description: modelProduct?.content?.description ?? "",
+      hero_caption: modelProduct?.content?.hero_caption ?? "",
+      hero_image_url: modelProduct?.content?.hero_image_url ?? "",
+      benefits: normalizeBenefits(modelProduct?.content),
+      specs: normalizeSpecs(modelProduct?.content),
+    },
   })
 
   return (
@@ -107,7 +153,7 @@ export default function ModelProductForm({
                 ))}
               </Select>
             </Field>
-            <Field id="model-image" label="URL gambar" error={form.errors.image_url} className="sm:col-span-2">
+            <Field id="model-image" label="URL gambar kartu" error={form.errors.image_url} className="sm:col-span-2">
               <Input
                 type="url"
                 value={form.data.image_url}
@@ -131,6 +177,104 @@ export default function ModelProductForm({
             </Field>
           </div>
         </section>
+
+        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+          <h2 className="text-base font-semibold text-foreground">Konten halaman penjelasan model</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Kosongkan untuk memakai teks default storefront. Halaman publik:{" "}
+            <code className="text-xs">/model/&#123;kategori&#125;/&#123;model&#125;</code>
+          </p>
+          <div className="mt-5 grid gap-5">
+            <Field id="content-description" label="Deskripsi (Detail Pemasangan)" error={form.errors["content.description" as keyof typeof form.errors]}>
+              <Textarea
+                rows={4}
+                value={form.data.content.description}
+                onChange={(event) =>
+                  form.setData("content", { ...form.data.content, description: event.target.value })
+                }
+              />
+            </Field>
+            <Field id="content-caption" label="Caption hero" error={form.errors["content.hero_caption" as keyof typeof form.errors]}>
+              <Input
+                value={form.data.content.hero_caption}
+                onChange={(event) =>
+                  form.setData("content", { ...form.data.content, hero_caption: event.target.value })
+                }
+                placeholder="Mis. Modern Living Residence - Jakarta Selatan"
+              />
+            </Field>
+            <Field id="content-hero-image" label="URL gambar hero (opsional)" error={form.errors["content.hero_image_url" as keyof typeof form.errors]}>
+              <Input
+                type="url"
+                value={form.data.content.hero_image_url}
+                onChange={(event) =>
+                  form.setData("content", { ...form.data.content, hero_image_url: event.target.value })
+                }
+              />
+            </Field>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">Manfaat (3 kartu)</p>
+              {form.data.content.benefits.map((benefit, index) => (
+                <Field
+                  key={`benefit-${index}`}
+                  id={`benefit-title-${index}`}
+                  label={`Kartu ${index + 1}`}
+                  error={form.errors[`content.benefits.${index}.title` as keyof typeof form.errors]}
+                >
+                  <Input
+                    value={benefit.title}
+                    onChange={(event) => {
+                      const benefits = form.data.content.benefits.map((row, rowIndex) =>
+                        rowIndex === index ? { ...row, title: event.target.value } : row,
+                      )
+                      form.setData("content", { ...form.data.content, benefits })
+                    }}
+                  />
+                </Field>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">Spesifikasi unit</p>
+              {form.data.content.specs.map((spec, index) => (
+                <div key={`spec-${index}`} className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    id={`spec-label-${index}`}
+                    label={`Label ${index + 1}`}
+                    error={form.errors[`content.specs.${index}.label` as keyof typeof form.errors]}
+                  >
+                    <Input
+                      value={spec.label}
+                      onChange={(event) => {
+                        const specs = form.data.content.specs.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, label: event.target.value } : row,
+                        )
+                        form.setData("content", { ...form.data.content, specs })
+                      }}
+                    />
+                  </Field>
+                  <Field
+                    id={`spec-value-${index}`}
+                    label={`Nilai ${index + 1}`}
+                    error={form.errors[`content.specs.${index}.value` as keyof typeof form.errors]}
+                  >
+                    <Input
+                      value={spec.value}
+                      onChange={(event) => {
+                        const specs = form.data.content.specs.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, value: event.target.value } : row,
+                        )
+                        form.setData("content", { ...form.data.content, specs })
+                      }}
+                    />
+                  </Field>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <div className="flex justify-end gap-2">
           <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
           <Button type="submit" disabled={form.processing}>
