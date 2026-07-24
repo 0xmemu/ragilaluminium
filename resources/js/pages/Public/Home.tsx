@@ -473,7 +473,7 @@ function HeroPromoCard({
               </>
             ) : null}
           </p>
-          <p className={cn("mt-1 whitespace-pre-line font-display text-2xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-4xl md:text-5xl", v.headline)}>
+          <p className={cn("mt-1 whitespace-pre-line font-display text-[clamp(2.25rem,4.5vw,3.5rem)] font-extrabold leading-[1.02] tracking-tight", v.headline)}>
             {headlineLines.length ? headlineLines.join("\n") : slide.headline}
           </p>
           {accent ? (
@@ -489,7 +489,7 @@ function HeroPromoCard({
           <Link
             href={slide.href}
             className={cn(
-              "mt-auto inline-flex h-10 items-center justify-center self-start rounded-full px-6 text-sm font-bold transition",
+              "mt-auto inline-flex min-h-11 items-center justify-center self-start rounded-full px-6 text-sm font-bold shadow-float transition",
               v.cta,
             )}
           >
@@ -699,8 +699,10 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
                         key={item.id}
                         onClick={() => goTo(index)}
                         className={cn(
-                          "h-2 rounded-full transition-all",
-                          index === visibleIndex ? "w-5 bg-white" : "w-2 bg-white/40",
+                          "rounded-full transition-all duration-300 ease-standard",
+                          index === visibleIndex
+                            ? "h-1.5 w-6 bg-foreground"
+                            : "h-1.5 w-1.5 bg-foreground/25",
                         )}
                         aria-label={`Slide ${index + 1}`}
                         aria-current={index === visibleIndex ? "true" : undefined}
@@ -757,7 +759,7 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
   const seeMoreHref = `${routeUrl("catalog.index")}?sort=popular`
 
   return (
-    <section id="paling-banyak-dipesan" className="scroll-mt-20 border-t border-border section-space">
+    <section id="paling-banyak-dipesan" className="scroll-mt-20 border-t border-border bg-surface-muted section-space">
       <div className="container-page">
         <SectionTitle
           title="Paling banyak dipesan"
@@ -882,7 +884,7 @@ function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
   const seeMoreHref = routeUrl("reviews")
 
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section className="border-t border-border bg-surface-muted section-space">
       <div className="container-page">
         <SectionTitle
           title="Apa kata pelanggan kami"
