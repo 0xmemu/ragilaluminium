@@ -64,19 +64,17 @@ function AnnouncementLink({
 function MobileAnnouncementCarousel({ items }: { items: Announcement[] }) {
   const [active, setActive] = React.useState(0)
   const [paused, setPaused] = React.useState(false)
-  const [reduceMotion, setReduceMotion] = React.useState(false)
+  const reduceMotion = React.useSyncExternalStore(
+    (onStoreChange) => {
+      const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+      media.addEventListener("change", onStoreChange)
+      return () => media.removeEventListener("change", onStoreChange)
+    },
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  )
 
-  React.useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
-    const sync = () => setReduceMotion(media.matches)
-    sync()
-    media.addEventListener("change", sync)
-    return () => media.removeEventListener("change", sync)
-  }, [])
-
-  React.useEffect(() => {
-    setActive((current) => (items.length ? Math.min(current, items.length - 1) : 0))
-  }, [items.length])
+  const safeActive = items.length ? Math.min(active, items.length - 1) : 0
 
   React.useEffect(() => {
     if (reduceMotion || paused || items.length <= 1) return
@@ -105,10 +103,10 @@ function MobileAnnouncementCarousel({ items }: { items: Announcement[] }) {
             key={`${announcement.text}-${index}`}
             className={cn(
               "flex w-full items-center justify-center px-4 text-center",
-              index === active ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0",
+              index === safeActive ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0",
               !reduceMotion && "transition-opacity duration-[260ms] ease-standard",
             )}
-            aria-hidden={index !== active}
+            aria-hidden={index !== safeActive}
           >
             <AnnouncementLink
               announcement={announcement}

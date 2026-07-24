@@ -43,17 +43,17 @@ export default function BannerForm({
     image: null,
   })
 
-  const [objectUrl, setObjectUrl] = React.useState<string | null>(null)
+  const previewFile = form.data.image
+  const objectUrl = React.useMemo(
+    () => (previewFile ? URL.createObjectURL(previewFile) : null),
+    [previewFile],
+  )
 
   React.useEffect(() => {
-    if (!form.data.image) {
-      setObjectUrl(null)
-      return
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-    const url = URL.createObjectURL(form.data.image)
-    setObjectUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [form.data.image])
+  }, [objectUrl])
 
   const previewUrl = objectUrl ?? banner?.image_url ?? null
 

@@ -8,22 +8,20 @@ const AUTO_DISMISS_MS = 4000
 
 type FlashKey = "success" | "status" | "error"
 
-export function FlashMessages() {
-  const { flash } = usePage<SharedPageProps>().props
+function FlashMessagesInner({
+  success,
+  status,
+  error,
+}: {
+  success: string | null
+  status: string | null
+  error: string | null
+}) {
   const [dismissed, setDismissed] = React.useState<Record<FlashKey, boolean>>({
     success: false,
     status: false,
     error: false,
   })
-
-  const success = flash?.success ?? null
-  const status = flash?.status ?? null
-  const error = flash?.error ?? null
-  const signature = [success, status, error].join("|")
-
-  React.useEffect(() => {
-    setDismissed({ success: false, status: false, error: false })
-  }, [signature])
 
   React.useEffect(() => {
     if (!success && !status && !error) return
@@ -33,7 +31,7 @@ export function FlashMessages() {
     }, AUTO_DISMISS_MS)
 
     return () => window.clearTimeout(timer)
-  }, [signature, success, status, error])
+  }, [success, status, error])
 
   const visibleSuccess = Boolean(success) && !dismissed.success
   const visibleStatus = Boolean(status) && !dismissed.status
@@ -72,5 +70,23 @@ export function FlashMessages() {
         />
       ) : null}
     </div>
+  )
+}
+
+export function FlashMessages() {
+  const { flash } = usePage<SharedPageProps>().props
+  const success = flash?.success ?? null
+  const status = flash?.status ?? null
+  const error = flash?.error ?? null
+  const signature = [success, status, error].join("|")
+
+  // Remount on new flash payload instead of resetting dismiss state in an effect.
+  return (
+    <FlashMessagesInner
+      key={signature}
+      success={success}
+      status={status}
+      error={error}
+    />
   )
 }
