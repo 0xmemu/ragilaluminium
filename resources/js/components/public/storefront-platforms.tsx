@@ -164,7 +164,7 @@ export function StorefrontPlatforms({
           <p
             className={cn(
               "text-[11px] font-semibold uppercase tracking-tight",
-              dark ? "text-[#c8cdc9]" : "text-muted-foreground",
+              dark ? "text-background/75" : "text-muted-foreground",
             )}
           >
             Marketplace
@@ -184,7 +184,7 @@ export function StorefrontPlatforms({
           <p
             className={cn(
               "text-[11px] font-semibold uppercase tracking-tight",
-              dark ? "text-[#c8cdc9]" : "text-muted-foreground",
+              dark ? "text-background/75" : "text-muted-foreground",
             )}
           >
             Media Sosial

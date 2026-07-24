@@ -136,7 +136,7 @@ export function CartLineItem({ item }: { item: CartItem }) {
                   {formatCurrency(comparePrice)}
                 </span>
                 {discountPercent ? (
-                  <span className="rounded bg-[#fdf2f2] px-1.5 text-xs font-semibold leading-5 text-[#c81e1e]">
+                  <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground">
                     −{discountPercent}%
                   </span>
                 ) : null}

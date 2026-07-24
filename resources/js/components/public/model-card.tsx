@@ -32,24 +32,24 @@ export function ModelCard({
         href={model.href}
         className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <div className="aspect-square w-full shrink-0 overflow-hidden bg-[#fafafa]">
+        <div className="aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
           <ResponsiveImage
             src={model.image}
             alt={model.title}
-            wrapperClassName="aspect-square size-full bg-[#fafafa]"
+            wrapperClassName="aspect-square size-full bg-surface-muted"
             className="transition duration-300 group-hover:scale-[1.03]"
           />
         </div>
 
         <div className="flex h-[5.75rem] shrink-0 flex-col gap-1 overflow-hidden bg-white px-2.5 py-2 @[16rem]:h-[6.5rem] @[16rem]:px-3 @[16rem]:py-2.5 @[20rem]:h-[7rem] @[20rem]:gap-1.5 @[20rem]:px-3.5 @[20rem]:py-2.5">
-          <h3 className="line-clamp-2 text-xs font-medium leading-4 text-[#0a0a0a] @[16rem]:text-[13px] @[16rem]:leading-4 @[22rem]:text-sm @[22rem]:leading-5">
+          <h3 className="line-clamp-2 text-xs font-medium leading-4 text-foreground @[16rem]:text-[13px] @[16rem]:leading-4 @[22rem]:text-sm @[22rem]:leading-5">
             {model.title}
           </h3>
 
           <p className="truncate text-[11px] font-light leading-snug @[16rem]:text-xs @[22rem]:text-[13px]">
             <span className="text-primary">{countLabel}</span>
             {model.meta ? (
-              <span className="text-[#0a0a0a]">
+              <span className="text-foreground">
                 {" | "}
                 {model.meta}
               </span>
@@ -57,7 +57,7 @@ export function ModelCard({
           </p>
 
           {model.desc ? (
-            <p className="line-clamp-2 text-[11px] font-normal leading-snug text-[#0a0a0a] @[16rem]:text-xs @[22rem]:text-[13px]">
+            <p className="line-clamp-2 text-[11px] font-normal leading-snug text-foreground @[16rem]:text-xs @[22rem]:text-[13px]">
               {model.desc}
             </p>
           ) : null}

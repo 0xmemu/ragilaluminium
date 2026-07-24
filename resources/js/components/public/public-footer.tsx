@@ -28,7 +28,7 @@ function FooterLinks({ column }: { column?: FooterColumn }) {
           <li key={link.label}>
             <Link
               href={footerHref(link)}
-              className="inline-flex min-h-8 items-center text-sm text-[#c8cdc9] transition hover:text-background"
+              className="inline-flex min-h-8 items-center text-sm text-background/75 transition hover:text-background"
             >
               {link.label}
             </Link>
@@ -41,7 +41,7 @@ function FooterLinks({ column }: { column?: FooterColumn }) {
 
 function SocialIcon({ social }: { social: SocialLink }) {
   const className =
-    "inline-flex size-8 items-center justify-center text-[10px] font-semibold tracking-tight text-[#c8cdc9] transition hover:text-background"
+    "inline-flex size-8 items-center justify-center text-[10px] font-semibold tracking-tight text-background/75 transition hover:text-background"
 
   if (social.icon) {
     return (
@@ -78,8 +78,8 @@ export function PublicFooter({ className }: { className?: string }) {
         <div className="grid gap-10 border-b border-white/10 pb-10 sm:grid-cols-2 lg:grid-cols-12 lg:items-start lg:gap-8 lg:pb-12">
           <div className="sm:col-span-2 lg:col-span-3">
             <BrandWordmark compact variant="dark" />
-            <p className="mt-4 max-w-sm text-sm leading-6 text-[#c8cdc9]">{brand.tagline}</p>
-            <address className="mt-5 max-w-sm space-y-3 not-italic text-sm leading-6 text-[#c8cdc9]">
+            <p className="mt-4 max-w-sm text-sm leading-6 text-background/75">{brand.tagline}</p>
+            <address className="mt-5 max-w-sm space-y-3 not-italic text-sm leading-6 text-background/75">
               {brand.address ? (
                 <p className="flex gap-2.5">
                   <Icon name="map-pin" className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -137,7 +137,7 @@ export function PublicFooter({ className }: { className?: string }) {
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-4 py-6 text-xs text-[#c8cdc9] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 py-6 text-xs text-background/75 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} {brand.short_name}. Hak cipta dilindungi.</p>
           {footer?.legal?.length ? (
             <ul className="flex flex-wrap gap-x-5 gap-y-2">
