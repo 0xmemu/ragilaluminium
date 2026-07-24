@@ -155,14 +155,14 @@
     }
   }
 
-  /* Ritme vertikal antar section ala IKEA: 30px mobile, 60px desktop. */
+  /* Ritme vertikal antar section: 40px mobile, 80px desktop (napas lebih lega). */
   .section-space {
-    padding-block: 1.875rem;
+    padding-block: 2.5rem;
   }
 
   @media (min-width: 56.25em) {
     .section-space {
-      padding-block: 3.75rem;
+      padding-block: 5rem;
     }
   }
 

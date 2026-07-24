@@ -56,7 +56,8 @@ function SectionTitle({
   return (
     <SectionHeading
       align="left"
-      className="mb-6 gap-4 md:mb-8"
+      size="display"
+      className="mb-8 gap-4 md:mb-10"
       title={title}
       description={subtitle}
       action={
@@ -756,7 +757,10 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
   const seeMoreHref = `${routeUrl("catalog.index")}?sort=popular`
 
   return (
-    <section id="paling-banyak-dipesan" className="scroll-mt-20 border-t border-border section-space">
+    <section
+      id="paling-banyak-dipesan"
+      className="scroll-mt-20 border-t border-border bg-surface-muted section-space"
+    >
       <div className="container-page">
         <SectionTitle
           title="Paling banyak dipesan"
@@ -816,8 +820,9 @@ function CaraPesan({
   return (
     <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
-        <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
+        <div className="mx-auto mb-10 max-w-xl text-center md:mb-12">
           <SectionHeading
+            size="display"
             title={title}
             description={subtitle}
             action={
@@ -834,7 +839,7 @@ function CaraPesan({
           {steps.map((item) => (
             <article
               key={`${item.step}-${item.title}`}
-              className="border border-border bg-surface p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              className="border border-border bg-background p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <p className="font-mono text-xs font-bold text-primary">{item.step}</p>
               <h3 className="mt-3 text-sm font-bold tracking-tight">{item.title}</h3>
@@ -857,7 +862,7 @@ function HasilPemasangan({
   const seeMoreHref = routeUrl("installation.index")
 
   return (
-    <section className="border-t border-border section-space">
+    <section className="border-t border-border bg-surface-muted section-space">
       <div className="container-page">
         <SectionTitle
           title={meta?.heading?.trim() || "Hasil pemasangan kami"}
@@ -934,10 +939,11 @@ const HELP_STEPS = [
 
 function KamiBantu() {
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section className="border-t border-border bg-surface-muted section-space">
       <div className="container-page">
-        <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
+        <div className="mx-auto mb-10 max-w-xl text-center md:mb-12">
           <SectionHeading
+            size="display"
             title={
               <>
                 Kami bantu dari <span className="text-primary">awal sampai jadi</span>
@@ -950,7 +956,7 @@ function KamiBantu() {
           {HELP_STEPS.map((item, index) => (
             <article
               key={item.title}
-              className="flex items-center gap-4 border border-border bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-6 sm:p-6"
+              className="flex items-center gap-4 border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-6 sm:p-6"
             >
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
                 <Icon name={item.icon} className="size-6 sm:size-7" aria-hidden="true" />
@@ -982,11 +988,12 @@ function ClosingCta() {
     <section className="section-space border-t border-border bg-foreground text-background">
       <div className="container-page flex flex-col items-center text-center">
         <SectionHeading
+          size="display"
           className="text-background [&_h2]:text-background [&_p]:text-white"
           title="Tingkatkan kualitas bangunan bersama kami"
           description="Pilih model aluminium yang tepat untuk rumah yang lebih rapi, terang, dan tahan lama."
         />
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Button asChild className="bg-background text-primary hover:bg-background/90">
             <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
           </Button>
