@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LookupOrderStatusApiRequest;
+use App\Http\Requests\LookupOrderStatusRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
@@ -100,13 +102,9 @@ class OrderController extends Controller
         return response()->json(['count' => $count]);
     }
 
-    public function statusLookup(Request $request): Response
+    public function statusLookup(LookupOrderStatusRequest $request): Response
     {
-        $validated = $request->validate([
-            'order_number' => ['required', 'string'],
-            'customer_phone' => ['required_without:customer_email', 'nullable', 'string'],
-            'customer_email' => ['required_without:customer_phone', 'nullable', 'email'],
-        ]);
+        $validated = $request->validated();
 
         $order = $this->findGuestOrder($validated);
 
@@ -129,12 +127,9 @@ class OrderController extends Controller
         ]);
     }
 
-    public function statusApi(Request $request, string $order_number): JsonResponse
+    public function statusApi(LookupOrderStatusApiRequest $request, string $order_number): JsonResponse
     {
-        $validated = $request->validate([
-            'customer_phone' => ['required_without:customer_email', 'nullable', 'string'],
-            'customer_email' => ['required_without:customer_phone', 'nullable', 'email'],
-        ]);
+        $validated = $request->validated();
 
         $order = $this->findGuestOrder([
             'order_number' => $order_number,

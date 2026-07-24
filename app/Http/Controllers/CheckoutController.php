@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ApplyCheckoutVoucherRequest;
+use App\Http\Requests\PlaceOrderRequest;
+use App\Http\Requests\StoreCheckoutDetailsRequest;
 use App\Services\CartService;
 use App\Services\OrderService;
 use App\Services\ShippingService;
@@ -106,11 +109,9 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function applyVoucher(Request $request): RedirectResponse
+    public function applyVoucher(ApplyCheckoutVoucherRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'code' => ['required', 'string', 'max:40'],
-        ]);
+        $validated = $request->validated();
 
         $priced = $this->cart->pricedLines();
 
@@ -132,36 +133,18 @@ class CheckoutController extends Controller
         return redirect()->route('checkout.index')->with('success', 'Voucher dihapus.');
     }
 
-    public function validateDetails(Request $request): RedirectResponse
+    public function validateDetails(StoreCheckoutDetailsRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
-            'email' => ['nullable', 'email'],
-            'province' => ['required', 'string', 'max:100'],
-            'city' => ['required', 'string', 'max:100'],
-            'district' => ['required', 'string', 'max:100'],
-            'village' => ['required', 'string', 'max:100'],
-            'province_id' => ['required', 'string', 'max:20'],
-            'city_id' => ['required', 'string', 'max:20'],
-            'district_id' => ['required', 'string', 'max:20'],
-            'village_id' => ['required', 'string', 'max:20'],
-            'address_line1' => ['required', 'string', 'max:255'],
-            'address_line2' => ['nullable', 'string', 'max:255'],
-            'postal_code' => ['required', 'string', 'max:20'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        $validated = $request->validated();
 
         $request->session()->put('checkout_details', $validated);
 
         return redirect()->route('checkout.index')->with('success', 'Detail pesanan tervalidasi.');
     }
 
-    public function placeOrder(Request $request): RedirectResponse
+    public function placeOrder(PlaceOrderRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'payment_method' => ['required', 'in:cod,transfer'],
-        ]);
+        $validated = $request->validated();
 
         $details = $request->session()->get('checkout_details');
 
