@@ -32,7 +32,7 @@ export default function Cart({
       <section className="border-b border-border bg-surface">
         <div className="container-page py-12 lg:py-16">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Periksa produk pilihan Anda.
+            Periksa produk pilihan Anda
           </h1>
         </div>
       </section>

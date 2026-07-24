@@ -974,7 +974,7 @@ function ClosingCta() {
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
 
   return (
-    <section className="section-space border-t border-border bg-primary text-background">
+    <section className="section-space border-t border-border bg-foreground text-background">
       <div className="container-page flex flex-col items-center text-center">
         <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">
           Tingkatkan kualitas bangunan bersama kami

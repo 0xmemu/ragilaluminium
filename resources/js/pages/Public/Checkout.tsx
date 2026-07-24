@@ -364,7 +364,7 @@ export default function Checkout({
       <section className="border-b border-border bg-surface">
         <div className="container-page py-12 lg:py-16">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Proses pesanan.
+            Proses pesanan
           </h1>
           <ol className="mt-8 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border">
             <li className="bg-surface p-4">
@@ -481,8 +481,8 @@ export default function Checkout({
                       valueName={detailForm.data.province}
                       loading={loadingProvinces}
                       error={detailForm.errors.province ?? detailForm.errors.province_id}
-                      placeholder="Pilih Provinsi..."
-                      searchPlaceholder="Cari Provinsi..."
+                      placeholder="Pilih provinsi"
+                      searchPlaceholder="Cari provinsi"
                       onSelect={selectProvince}
                     />
                     <WilayahSearchSelect
@@ -561,7 +561,7 @@ export default function Checkout({
                       onChange={(event) => detailForm.setData("postal_code", event.target.value)}
                       autoComplete="postal-code"
                       inputMode="numeric"
-                      className="max-w-48"
+                      className="max-w-48 rounded-md"
                     />
                   </Field>
                   <Field id="checkout-notes" label="Catatan pesanan" error={detailForm.errors.notes}>
@@ -578,7 +578,7 @@ export default function Checkout({
                       </Button>
                     ) : null}
                     <Button type="submit" disabled={detailForm.processing}>
-                      {detailForm.processing ? "Memvalidasi..." : "Simpan detail pengiriman"}
+                      {detailForm.processing ? "Memvalidasi..." : "Lanjut ke pembayaran"}
                     </Button>
                   </div>
                 </form>
