@@ -136,7 +136,7 @@ export default function UsersIndex({
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                 <tr>
                   <th className="px-3 py-3 font-semibold">No</th>
                   <th className="px-3 py-3 font-semibold">Nama</th>

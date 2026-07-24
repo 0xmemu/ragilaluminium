@@ -224,7 +224,7 @@ function OrderCardRow({
             </div>
 
             <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
                 Total tagihan
               </p>
               <p className="tabular-nums mt-1 text-xl font-bold">{formatCurrency(order.total_amount)}</p>
@@ -239,7 +239,7 @@ function OrderCardRow({
           </div>
 
           <div className="rounded-md border border-border bg-surface-muted/40">
-            <div className="border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
               Produk ({Math.min(visibleItems.length, order.items_total)} dari {order.items_total})
             </div>
             <ul className="divide-y divide-border">

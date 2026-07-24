@@ -15,8 +15,8 @@ import type { Pagination as PaginationData, Testimonial } from "@/types"
 const REVIEW_SORT_OPTIONS = [
   { value: "newest", label: "Terbaru" },
   { value: "oldest", label: "Terlama" },
-  { value: "rating_desc", label: "Rating Tertinggi" },
-  { value: "rating_asc", label: "Rating Terendah" },
+  { value: "rating_desc", label: "Rating tertinggi" },
+  { value: "rating_asc", label: "Rating terendah" },
 ]
 
 const SOURCE_FILTERS = [

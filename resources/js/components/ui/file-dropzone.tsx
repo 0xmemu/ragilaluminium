@@ -54,7 +54,7 @@ export function FileDropzone({
           dragging ? "border-primary bg-accent" : "border-border hover:border-primary/45 hover:bg-accent",
         )}
       >
-        <span className="flex h-12 w-12 items-center justify-center rounded-md bg-surface text-primary shadow-sm">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface text-primary shadow-sm">
           <Icon name="upload" className="h-6 w-6" aria-hidden="true" />
         </span>
         <span className="mt-5 text-base font-semibold">

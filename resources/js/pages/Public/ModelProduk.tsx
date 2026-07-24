@@ -105,7 +105,7 @@ export default function ModelProduk({
                   onClick={clearDesign}
                   className="min-h-11 px-2 text-xs font-semibold text-primary"
                 >
-                  Hapus Filter
+                  Hapus filter
                 </button>
               ) : null}
             </div>
@@ -136,7 +136,7 @@ export default function ModelProduk({
             ) : (
               <EmptyState
                 icon="funnel"
-                title="Belum Ada Model Yang Cocok"
+                title="Belum ada model yang cocok"
                 description={
                   design
                     ? "Desain ini belum tersedia pada model aktif. Hapus filter untuk melihat pilihan lain."
@@ -144,10 +144,10 @@ export default function ModelProduk({
                 }
                 action={
                   design ? (
-                    <Button onClick={clearDesign}>Hapus Filter</Button>
+                    <Button onClick={clearDesign}>Hapus filter</Button>
                   ) : (
                     <Button asChild>
-                      <Link href={routeUrl("contact")}>Hubungi Kami</Link>
+                      <Link href={routeUrl("contact")}>Hubungi kami</Link>
                     </Button>
                   )
                 }

@@ -3,14 +3,12 @@ import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 export function SectionHeading({
-  eyebrow,
   title,
   description,
   action,
   align = "center",
   className,
 }: {
-  eyebrow?: string
   title: string
   description?: string
   action?: ReactNode
@@ -28,10 +26,7 @@ export function SectionHeading({
       )}
     >
       <div className={cn(align === "center" && "mx-auto w-full")}>
-        {eyebrow ? (
-          <p className="text-[11px] font-bold tracking-tight text-sale">{eyebrow}</p>
-        ) : null}
-        <h2 className={cn("text-lg font-bold tracking-tight sm:text-xl md:text-2xl", eyebrow && "mt-2")}>
+        <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">
           {title}
         </h2>
         {description ? (

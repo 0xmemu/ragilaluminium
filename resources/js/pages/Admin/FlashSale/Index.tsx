@@ -82,13 +82,12 @@ function PeriodForm({
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form
-      .transform((data) => ({
+    form.transform((data) => ({
         enabled: data.enabled,
         starts_at: data.starts_at || null,
         ends_at: data.ends_at || null,
       }))
-      .put(updateUrl, { preserveScroll: true })
+    form.put(updateUrl, { preserveScroll: true })
   }
 
   return (
@@ -274,18 +273,18 @@ export default function FlashSaleIndex({
 
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Periode</p>
+          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Periode</p>
           <p className="mt-1 text-lg font-bold">{periodStatusLabel(summary.period_status)}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {summary.period_live ? "Live di storefront" : "Tidak tampil di storefront"}
           </p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Produk aktif</p>
+          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Produk aktif</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">{summary.active_count}</p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Banner otomatis</p>
+          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Banner otomatis</p>
           <p className="mt-1 text-sm font-semibold">
             {summary.auto_promotions_enabled ? "On" : "Off"} · {summary.auto_candidate_count} kandidat
           </p>
@@ -404,7 +403,7 @@ export default function FlashSaleIndex({
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
               <tr>
                 <th className="px-3 py-3 font-semibold">Produk</th>
                 <th className="px-3 py-3 font-semibold">Harga</th>

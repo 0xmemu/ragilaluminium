@@ -29,7 +29,7 @@ export function FilterOptionChip({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "min-h-10 rounded-lg border px-3.5 text-xs font-semibold transition",
+        "min-h-10 rounded-md border px-3.5 text-xs font-semibold transition",
         selected
           ? "border-primary bg-primary text-primary-foreground shadow-sm"
           : "border-[#DEDEDE] bg-surface text-foreground hover:border-foreground/25 hover:bg-muted/40",
@@ -94,7 +94,7 @@ export function FilterSidebarCard({
   return (
     <div
       className={cn(
-        "rounded-2xl bg-surface p-4 shadow-[0_2px_4px_rgba(10,0,0,0.06),0_12px_28px_rgba(10,0,0,0.16)]",
+        "rounded-lg bg-surface p-4 shadow-[0_2px_4px_rgba(10,0,0,0.06),0_12px_28px_rgba(10,0,0,0.16)]",
         className,
       )}
     >
@@ -170,13 +170,13 @@ export function AppliedFiltersCard({
           onClick={onClearAll}
           className="text-sm font-semibold text-primary hover:underline"
         >
-          Hapus Semua
+          Hapus semua
         </button>
       </div>
       <ul className="mt-4 flex flex-wrap gap-2">
         {chips.map((chip) => (
           <li key={chip.id}>
-            <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface-muted px-3 text-sm text-foreground">
+            <span className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface-muted px-3 text-sm text-foreground">
               {chip.label}
               <button
                 type="button"

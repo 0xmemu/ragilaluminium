@@ -197,7 +197,7 @@ export default function WhatsAppConnection({
           <h2 className="text-base font-bold">Perangkat & trafik</h2>
           <dl className="space-y-4 text-sm">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
                 Status koneksi
               </dt>
               <dd className="mt-1 text-lg font-bold">
@@ -205,19 +205,19 @@ export default function WhatsAppConnection({
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
                 Total pesan terkirim
               </dt>
               <dd className="mt-1 text-lg font-bold tabular-nums">{stats.sent_count}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
                 Gagal
               </dt>
               <dd className="mt-1 text-lg font-bold tabular-nums">{stats.failed_count}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
                 Pengiriman terakhir
               </dt>
               <dd className="mt-1 font-semibold">

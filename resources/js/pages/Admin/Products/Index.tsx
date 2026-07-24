@@ -337,7 +337,7 @@ export default function ProductsIndex({
               visit({ q })
             }}
           >
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
               Cari produk
             </label>
             <div className="mt-1.5 flex gap-2">
@@ -354,7 +354,7 @@ export default function ProductsIndex({
 
           <div className="grid gap-3 sm:grid-cols-3 lg:w-[28rem]">
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
                 Kategori
               </label>
               <Select
@@ -370,7 +370,7 @@ export default function ProductsIndex({
               </Select>
             </div>
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
                 Model
               </label>
               <Select
@@ -386,7 +386,7 @@ export default function ProductsIndex({
               </Select>
             </div>
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
                 Status
               </label>
               <Select
@@ -460,7 +460,7 @@ export default function ProductsIndex({
       ) : (
         <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
           <table className="w-full min-w-[56rem] text-left">
-            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
               <tr>
                 <th className="px-3 py-3">Produk</th>
                 <th className="px-3 py-3">Kategori</th>

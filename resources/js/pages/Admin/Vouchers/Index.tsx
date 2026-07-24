@@ -261,7 +261,7 @@ export default function VouchersIndex({
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
               <tr>
                 <th className="px-3 py-3 font-semibold">Nama Voucher</th>
                 <th className="px-3 py-3 font-semibold">Waktu</th>

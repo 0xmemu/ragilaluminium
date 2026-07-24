@@ -284,7 +284,7 @@ export default function OrderShow({
 
       <section className="mt-4 grid gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
             Nomor order
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -302,19 +302,19 @@ export default function OrderShow({
           </div>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
             Metode pembayaran
           </p>
           <p className="mt-2 text-sm font-bold">{order.payment_method_label}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusBadge status={order.payment_status} />
-            <span className="rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-tight text-muted-foreground">
               {isCod ? "Alur COD" : "Alur Transfer"}
             </span>
           </div>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
             Penerima
           </p>
           <p className="mt-2 text-sm font-bold">{order.customer_name}</p>
@@ -324,7 +324,7 @@ export default function OrderShow({
           </p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
             Ringkasan
           </p>
           <p className="mt-2 text-sm font-semibold">
@@ -419,7 +419,7 @@ export default function OrderShow({
           variant="secondary"
           onClick={() => copyText(fullAddress(order))}
         >
-          Salin Alamat
+          Salin alamat
         </Button>
         {workflowLinks.map((link) => (
           <Button key={link.href} asChild variant="secondary">
@@ -645,7 +645,7 @@ export default function OrderShow({
 
             {needsResi || order.order_status === "processing" ? (
               <form onSubmit={storeShipping} className="mt-4 space-y-3 border-t border-border pt-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
                   Input resi
                 </p>
                 <FormErrorSummary errors={shippingForm.errors} />

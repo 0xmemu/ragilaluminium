@@ -77,7 +77,7 @@ function FilterSheetFooter({
         Reset
       </Button>
       <Button className="min-h-12 font-bold" onClick={onApply}>
-        Terapkan Filter
+        Terapkan filter
       </Button>
     </div>
   )

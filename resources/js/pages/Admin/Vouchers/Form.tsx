@@ -58,10 +58,12 @@ export default function VoucherForm({
       ends_at: form.data.ends_at || null,
     }
     if (method === "post") {
-      form.transform(() => payload).post(submitUrl)
+      form.transform(() => payload)
+      form.post(submitUrl)
       return
     }
-    form.transform(() => payload).put(submitUrl)
+    form.transform(() => payload)
+    form.put(submitUrl)
   }
 
   return (

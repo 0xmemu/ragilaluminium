@@ -214,7 +214,7 @@ export default function BannersIndex({
               visit({ q })
             }}
           >
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
               Cari promo
             </label>
             <div className="mt-1.5 flex gap-2">
@@ -229,7 +229,7 @@ export default function BannersIndex({
             </div>
           </form>
           <div className="w-full sm:w-48">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
               Status
             </label>
             <Select
@@ -287,7 +287,7 @@ export default function BannersIndex({
       ) : viewMode === "list" ? (
         <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
           <table className="min-w-full text-left">
-            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
               <tr>
                 <th className="px-3 py-3">Promo</th>
                 <th className="px-3 py-3">Urutan</th>

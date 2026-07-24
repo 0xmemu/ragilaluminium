@@ -4,7 +4,7 @@ import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex min-h-7 items-center border px-2.5 py-1 text-xs font-semibold leading-none",
+  "inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-semibold leading-none",
   {
     variants: {
       tone: {

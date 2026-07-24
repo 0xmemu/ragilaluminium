@@ -172,7 +172,7 @@ export default function StorePerformance({
       <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tinjauan bisnis</p>
+            <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Tinjauan bisnis</p>
             <h2 className="mt-1 text-xl font-bold">{report.range.label}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {report.range.from_date} – {report.range.to_date} · {report.range.compare_label}
@@ -273,7 +273,7 @@ export default function StorePerformance({
                     index >= 2 && "xl:border-l",
                   )}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{kpi.label}</p>
+                  <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">{kpi.label}</p>
                   <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{formatKpiValue(kpi)}</p>
                   <p
                     className={cn(
@@ -329,7 +329,7 @@ export default function StorePerformance({
           {report.top_products.length ? (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-4 py-2 font-semibold">Produk</th>
                     <th className="px-4 py-2 font-semibold">Unit</th>
@@ -369,7 +369,7 @@ export default function StorePerformance({
           {report.customers.length ? (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-4 py-2 font-semibold">Customer</th>
                     <th className="px-4 py-2 font-semibold">Order</th>
