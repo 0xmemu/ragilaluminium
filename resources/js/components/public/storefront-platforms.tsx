@@ -30,7 +30,7 @@ function PlatformChip({
     "group inline-flex items-center justify-center transition",
     iconsOnly
       ? cn(
-          "size-10 rounded-full",
+          "size-12 rounded-full",
           dark ? "hover:bg-white/10" : "hover:bg-muted",
         )
       : cn(
@@ -46,10 +46,10 @@ function PlatformChip({
         <span
           className={cn(
             "flex shrink-0 items-center justify-center overflow-hidden",
-            iconsOnly ? "size-7" : "size-8",
+            iconsOnly ? "size-12" : "size-8",
           )}
         >
-          <img src={item.icon} alt="" className="size-full object-contain" width={28} height={28} />
+          <img src={item.icon} alt="" className="size-full object-contain" width={iconsOnly ? 48 : 28} height={iconsOnly ? 48 : 28} />
         </span>
       ) : null}
       {!iconsOnly ? (
@@ -169,7 +169,7 @@ export function StorefrontPlatforms({
           >
             Marketplace
           </p>
-          <ul className={cn("mt-3 flex flex-wrap gap-1 sm:gap-1.5", centered && "justify-center")}>
+          <ul className={cn("mt-3 flex flex-wrap", iconsOnly ? "gap-4" : "gap-1 sm:gap-1.5", centered && "justify-center")}>
             {marketplaces.map((item) => (
               <li key={item.key}>
                 <PlatformChip item={item} dark={dark} iconsOnly={iconsOnly} />
@@ -189,7 +189,7 @@ export function StorefrontPlatforms({
           >
             Media Sosial
           </p>
-          <ul className={cn("mt-3 flex flex-wrap gap-1 sm:gap-1.5", centered && "justify-center")}>
+          <ul className={cn("mt-3 flex flex-wrap", iconsOnly ? "gap-4" : "gap-1 sm:gap-1.5", centered && "justify-center")}>
             {socials.map((item) => (
               <li key={item.key}>
                 <PlatformChip item={item} dark={dark} iconsOnly={iconsOnly} />

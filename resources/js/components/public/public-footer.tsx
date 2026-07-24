@@ -41,7 +41,7 @@ function FooterLinks({ column }: { column?: FooterColumn }) {
 
 function SocialIcon({ social }: { social: SocialLink }) {
   const className =
-    "inline-flex size-8 items-center justify-center text-[10px] font-semibold tracking-tight text-background/75 transition hover:text-background"
+    "inline-flex size-12 items-center justify-center text-[10px] font-semibold tracking-tight text-background/75 transition hover:text-background"
 
   if (social.icon) {
     return (
@@ -52,7 +52,7 @@ function SocialIcon({ social }: { social: SocialLink }) {
         className={className}
         aria-label={social.label}
       >
-        <img src={social.icon} alt="" className="size-5 object-contain" width={20} height={20} />
+        <img src={social.icon} alt="" className="size-8 object-contain" width={32} height={32} />
       </a>
     )
   }
@@ -64,6 +64,17 @@ function SocialIcon({ social }: { social: SocialLink }) {
   )
 }
 
+function trustStat(label: string): { figure: string; caption: string } {
+  const match = label.match(/^([\d.+\u00a0\s]+)\s*(.*)$/u)
+  if (!match) {
+    return { figure: label, caption: "" }
+  }
+  return {
+    figure: match[1].replace(/\u00a0/g, " ").trim(),
+    caption: match[2].trim(),
+  }
+}
+
 export function PublicFooter({ className }: { className?: string }) {
   const { footer, brand, platforms = [] } = usePage<SharedPageProps>().props
   const socials = footer?.social?.filter((social) => social.href && social.href !== "#") ?? []
@@ -71,11 +82,43 @@ export function PublicFooter({ className }: { className?: string }) {
   const emailHref = brand.email ? `mailto:${brand.email}` : null
   const showPlatformStrip = platforms.length > 0
   const showLegacySocial = !showPlatformStrip && socials.length > 0
+  const unitsLabel = brand.units_installed_label?.trim() || ""
+  const yearsLabel = brand.years_experience_label?.trim() || ""
+  const units = unitsLabel ? trustStat(unitsLabel) : null
+  const years = yearsLabel ? trustStat(yearsLabel) : null
+  const showTrustBand = Boolean(units || years)
 
   return (
     <footer className={cn("border-t border-white/10 bg-foreground text-background pt-12 lg:pt-14", className)}>
       <div className="container-page">
-        <div className="grid gap-10 border-b border-white/10 pb-10 sm:grid-cols-2 lg:grid-cols-12 lg:items-start lg:gap-8 lg:pb-12">
+        {showTrustBand ? (
+          <div className="border-b border-background/10 py-8">
+            <div className="grid gap-6 sm:grid-cols-2">
+              {units ? (
+                <div>
+                  <p className="text-2xl font-extrabold tracking-tight text-background lg:text-3xl">
+                    {units.figure}
+                  </p>
+                  {units.caption ? (
+                    <p className="mt-1 text-sm text-background/75">{units.caption}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {years ? (
+                <div>
+                  <p className="text-2xl font-extrabold tracking-tight text-background lg:text-3xl">
+                    {years.figure}
+                  </p>
+                  {years.caption ? (
+                    <p className="mt-1 text-sm text-background/75">{years.caption}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-10 border-b border-white/10 pb-10 pt-10 sm:grid-cols-2 lg:grid-cols-12 lg:items-start lg:gap-8 lg:pb-12">
           <div className="sm:col-span-2 lg:col-span-3">
             <BrandWordmark compact variant="dark" />
             <p className="mt-4 max-w-sm text-sm leading-6 text-background/75">{brand.tagline}</p>
@@ -128,7 +171,7 @@ export function PublicFooter({ className }: { className?: string }) {
           {showLegacySocial ? (
             <div className="sm:col-span-2 lg:col-span-3">
               <p className="text-sm font-bold tracking-tight text-background">Ikuti Kami</p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-4">
                 {socials.map((social) => (
                   <SocialIcon key={social.key} social={social} />
                 ))}
