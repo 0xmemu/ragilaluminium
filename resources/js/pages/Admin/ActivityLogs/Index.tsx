@@ -196,7 +196,7 @@ export default function ActivityLogsIndex({
                     </td>
                     <td className="px-3 py-3">
                       <StatusBadge
-                        status={row.status.key === "failed" ? "cancelled" : "completed"}
+                        status={row.status.key}
                         label={row.status.label}
                       />
                     </td>

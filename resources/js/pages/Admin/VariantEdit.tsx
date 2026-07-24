@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { ConfirmAction } from "@/components/ui/confirm-action"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
+import { StatusSelect } from "@/components/ui/status-select"
 import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
+
+const VARIANT_STATUSES = ["active", "inactive", "archived"] as const
 
 interface VariantEditData {
   variation_1_name: string
@@ -162,11 +164,7 @@ export default function VariantEdit({
               </Field>
             ))}
             <Field id="edit-variant-status" label="Status" required error={form.errors.status} className="sm:col-span-2">
-              <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="archived">Archived</option>
-              </Select>
+              <StatusSelect statuses={VARIANT_STATUSES} value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} />
             </Field>
           </div>
         </section>
@@ -272,14 +270,11 @@ export default function VariantEdit({
               />
             </Field>
             <Field id="variant-media-visibility" label="Visibilitas" required error={mediaForm.errors.visibility}>
-              <Select
+              <StatusSelect
+                statuses={["visible", "hidden", "archived"] as const}
                 value={mediaForm.data.visibility}
                 onChange={(event) => mediaForm.setData("visibility", event.target.value)}
-              >
-                <option value="visible">Visible</option>
-                <option value="hidden">Hidden</option>
-                <option value="archived">Archived</option>
-              </Select>
+              />
             </Field>
           </div>
           <Button

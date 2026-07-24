@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
+import { StatusSelect } from "@/components/ui/status-select"
 import { routeUrl } from "@/lib/routes"
 import type { ResourceRow } from "@/types"
+
+const PAYMENT_STATUSES = ["pending", "completed", "failed", "refunded"] as const
 
 function PaymentRowControl({ row }: { row: ResourceRow }) {
   const form = useForm({ status: String(row.status ?? "pending") })
@@ -19,12 +22,7 @@ function PaymentRowControl({ row }: { row: ResourceRow }) {
         </p>
       </div>
       <Field id={`payment-row-status-${String(row.id)}`} label="Status" error={form.errors.status}>
-        <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
-          <option value="pending">Pending</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-          <option value="refunded">Refunded</option>
-        </Select>
+        <StatusSelect statuses={PAYMENT_STATUSES} value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} />
       </Field>
       <Button
         variant="secondary"
@@ -87,12 +85,7 @@ function PaymentManager({ orderId, rows }: { orderId: string; rows: ResourceRow[
           <Input type="number" min="0" value={form.data.amount} onChange={(event) => form.setData("amount", event.target.value)} />
         </Field>
         <Field id="index-payment-status" label="Status" required error={form.errors.status}>
-          <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="refunded">Refunded</option>
-          </Select>
+          <StatusSelect statuses={PAYMENT_STATUSES} value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} />
         </Field>
         <Field id="index-payment-reference" label="Referensi" error={form.errors.transaction_reference}>
           <Input value={form.data.transaction_reference} onChange={(event) => form.setData("transaction_reference", event.target.value)} />

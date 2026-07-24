@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
+import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -123,12 +124,6 @@ function variationLabel(item: OrderItemPreview): string {
     .join(" · ")
 }
 
-function statusMetaPayment(status: string): string {
-  if (status === "paid") return "Lunas"
-  if (status === "refunded") return "Refund"
-  return "Belum lunas"
-}
-
 function OrderCardRow({
   order,
   queryState,
@@ -212,7 +207,7 @@ function OrderCardRow({
                     (order.payment_method ? humanize(order.payment_method) : "Metode -")}
                 </span>
                 <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
-                  {statusMetaPayment(order.payment_status)}
+                  {statusMeta(order.payment_status).label}
                 </span>
                 <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
                   {formatNumber(order.product_count)} Produk

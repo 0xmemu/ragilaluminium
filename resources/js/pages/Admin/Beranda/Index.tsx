@@ -156,7 +156,7 @@ export default function BerandaIndex({
               <span
                 className={cn(
                   "size-2 rounded-full",
-                  section.enabled ? "bg-destructive" : "bg-muted-foreground/40",
+                  section.enabled ? "bg-success" : "bg-muted-foreground/40",
                 )}
               />
               <StatusBadge
