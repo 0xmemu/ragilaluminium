@@ -72,30 +72,54 @@ Setelah punya ID + token baru: minta agent isi `.env` lokal + `php artisan confi
 
 Nama Meta harus exact dengan `provider_template_name` di admin. Bahasa disarankan `id`.
 
-Ragil mengirim parameter body **berurutan** (`{{1}}`, `{{2}}`, …) sesuai kode `WhatsAppService` (bukan semua token di copy katalog UI).
+Ragil mengirim parameter body **berurutan** (`{{1}}`, `{{2}}`, …) sesuai `WhatsAppService` + `WhatsAppAutomationCatalog`. Di Meta pilih jenis variabel **Nomor** (bukan Nama). Naskah + emoji mengikuti katalog admin.
+
+Setiap indeks `{{n}}` **hanya sekali** di body Meta (tidak boleh `{{1}}` dua kali). Nama di sapaan = `{{1}}`; nama di blok DATA PENERIMA = `{{3}}` (nilai sama, slot beda).
 
 | Admin `internal_key` | Kapan | Nama Meta (disarankan) | Variabel body |
 |----------------------|--------|-------------------------|---------------|
-| `order_created` | Order COD | `order_created_cod` | `{{1}}` nomor, `{{2}}` item, `{{3}}` total |
-| `payment_instructions` | Order transfer | `payment_instructions` | sama |
-| `payment_confirmed` | Pembayaran / diproses | `payment_confirmed` | `{{1}}` nomor order |
-| `order_shipped` | Resi | `order_shipped` | (lihat listener Stage 8 / service) |
-| `order_delivered` | Sampai | `order_delivered` | (lihat listener Stage 8 / service) |
+| `order_created` | Order COD | `order_created_cod` | `{{1}}` nama · `{{2}}` nomor · `{{3}}` nama lagi · `{{4}}` alamat · `{{5}}` detail · `{{6}}` produk · `{{7}}` ETA · `{{8}}` total |
+| `payment_instructions` | Order transfer | `payment_instructions` | sama + `{{9}}` bank · `{{10}}` no.rek · `{{11}}` atas nama |
+| `payment_confirmed` | Admin Proses Pesanan | `payment_confirmed` | `{{1}}` nama · `{{2}}` nomor · `{{3}}` ETA |
+| `order_shipped` | Resi diinput / in_transit | `order_shipped` | `{{1}}` nama · `{{2}}` nomor · `{{3}}` ekspedisi · `{{4}}` resi · `{{5}}` link · `{{6}}` ETA |
+| `order_delivered` | Tracking delivered | `order_delivered` | `{{1}}` nama · `{{2}}` nomor |
 
-Contoh body Meta (3 variabel):
+Gaya naskah final (semua template): sapaan `Halo Kak *{{1}}*,` di baris sendiri, judul blok kapital + bold (`*DATA PENERIMA*`), nilai penting di-bold, `Estimasi sampai Tujuan`, total `*Rp {{8}}*` (angka tanpa `Rp`), penutup `Terima kasih … 🙏`.
+
+Contoh body Meta COD (`order_created_cod`) — salin dari katalog admin:
 
 ```text
-Terima kasih telah berbelanja di Ragil Aluminium.
+Halo Kak *{{1}}*,
+terima kasih sudah order di Ragil Aluminium 😊
 
-Pesanan {{1}} sedang kami proses.
-Rincian: {{2}}
-Total: {{3}}
+Berikut rincian pesanan Kakak dengan nomor order : *{{2}}*
+Mohon bantu dicek kembali, apakah rincian produk dan alamat pengiriman di bawah ini sudah sesuai ya Kak 🙏
 
-Salam,
-Ragil Aluminium
+*DATA PENERIMA*
+Nama: {{3}}
+Alamat: {{4}}
+Detail tambahan: {{5}}
+
+*RINCIAN PRODUK*
+{{6}}
+
+Estimasi sampai Tujuan : *{{7}}*
+Metode Pembayaran : *COD*
+Total Tagihan : *Rp {{8}}*
+
+Mohon menyiapkan pembayaran *COD* saat barang diterima ya Kak.
+
+Untuk konfirmasi pesanan, tolong tekan tombol dibawah ya kak,
+agar pesanan kakak segera diproses
+
+Terima kasih Kak 🙏
 ```
 
-Minimal produksi: dua template pertama (COD + transfer).
+**Tombol konfirmasi COD:** tambahkan **Quick reply** (mis. label `Konfirmasi Pesanan`) di template Meta. Quick reply statis tidak perlu parameter dari backend; balasan pelanggan masuk sebagai inbound `whatsapp_messages` lewat webhook. Jangan pakai URL button dengan variabel sampai backend mengirim komponen `button`.
+
+Minimal produksi: dua template pertama (COD + transfer). Rekening transfer diisi dari `BankTransferInstructions` / `sitemap.brand.bank` (bukan hardcode di Meta kecuali Anda sengaja menyamakan teks statis).
+
+Catatan: perkiraan sampai (`{{6}}` / ETA) saat ini mengirim teks `menyusul` sampai kolom ETA/SLA tersedia di order.
 
 ### 4.1 WhatsApp Flow “konfirmasi pesanan” (opsional)
 
@@ -112,15 +136,15 @@ Screenshot draft Meta yang masih Hello World diganti dengan JSON di repo:
 
 Langkah di Meta: **Flows → konfirmasi pesanan → Editor** → ganti JSON → **Simpan** → uji **Jalankan** → **Terbitkan** setelah lolos validasi.
 
-Mapping data dinamis (v3.1) ke variabel template Ragil:
+Mapping data dinamis (Flow) ke variabel template Ragil (setelah naskah 2026-07):
 
-| Flow `data` | Sumber Ragil (`WhatsAppService`) |
+| Flow `data` | Template Meta / `WhatsAppService` |
 |-------------|-----------------------------------|
-| `order_number` | `{{1}}` / `$order->order_number` |
-| `items_summary` | `{{2}}` ringkasan item |
-| `total_formatted` | `{{3}}` total |
-| `payment_note` | COD vs transfer |
-| `status_url` | route publik `order.status` |
+| `customer_name` | `{{1}}` sapaan + `{{3}}` data penerima (nilai sama) |
+| `order_number` | `{{2}}` nomor order |
+| `address` / `items_summary` / `total` | `{{4}}`–`{{8}}` (lihat §4) |
+| `payment_note` | teks statis COD vs transfer di body template |
+| `status_url` | `{{5}}` pada `order_shipped` (atau route `order.status`) |
 
 Backend belum mengirim Flow message (hanya template). Endpoint Flow / tombol template Flow = follow-up setelah template Approved + `WHATSAPP_BUSINESS_NUMBER_ID` terisi.
 

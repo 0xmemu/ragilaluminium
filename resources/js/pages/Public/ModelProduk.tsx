@@ -90,7 +90,7 @@ export default function ModelProduk({
                 </SheetTrigger>
                 <FilterSheetContent
                   title="Filter Model"
-                  description="Saring model berdasarkan desain atau pilih kategori produk."
+                  description="Pilih desain atau kategori yang paling cocok untuk rumah Anda."
                 >
                   <ModelProdukListingSidebar
                     filterDesigns={filterDesigns}

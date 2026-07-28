@@ -182,7 +182,7 @@ class WhatsAppTemplateController extends Controller
     protected function ensureAutomationTemplates(): void
     {
         foreach (WhatsAppAutomationCatalog::all() as $trigger) {
-            WhatsAppTemplate::query()->firstOrCreate(
+            $template = WhatsAppTemplate::query()->firstOrCreate(
                 ['internal_key' => $trigger['internal_key']],
                 [
                     'provider_template_name' => $trigger['default_provider_name'],
@@ -193,6 +193,12 @@ class WhatsAppTemplateController extends Controller
                     'body_preview' => $trigger['default_body'],
                 ]
             );
+
+            // Katalog = sumber naskah resmi; refresh preview/deskripsi tanpa menimpa nama Meta / status.
+            $template->forceFill([
+                'description' => $trigger['description'],
+                'body_preview' => $trigger['default_body'],
+            ])->save();
         }
     }
 }

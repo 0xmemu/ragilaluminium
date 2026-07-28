@@ -8,8 +8,9 @@ use App\Models\CmsTestimonial;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
+use Tests\TestCase;
 
-class ProductReviewsTest extends \Tests\TestCase
+class ProductReviewsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -199,12 +200,23 @@ class ProductReviewsTest extends \Tests\TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Installations')
+                ->where('level', 'model')
                 ->has('installations', 1)
-                ->where('installations.0.label', 'Rumah Kudus')
+                ->where('installations.0.label', 'Dokumentasi lainnya')
+                ->where('installations.0.product_count', 1)
                 ->where('installations.0.photo_count', 1)
                 ->where('installations.0.video_count', 0)
                 ->where('pageMeta.heading', 'Galeri pemasangan custom.')
                 ->where('pageMeta.subtitle', 'Subtitle gallery.')
+            );
+
+        $this->get(route('installation.model', ['category' => 'lainnya', 'model' => 'manual']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Installations')
+                ->where('level', 'product')
+                ->has('installations', 1)
+                ->where('installations.0.label', 'Rumah Kudus')
             );
     }
 

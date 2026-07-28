@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EventLog;
 use App\Models\Order;
+use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
 use App\Support\InertiaAdmin;
+use App\Support\JntReadiness;
 use App\Support\OrderEventLabels;
+use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,8 +38,9 @@ class OrderController extends Controller
     public function __construct(
         private readonly PaymentService $payments,
         private readonly ShippingService $shipping,
-    ) {
-    }
+        private readonly OrderService $orders,
+    ) {}
+
     public function index(Request $request): Response
     {
         $status = (string) $request->input('order_status', 'all');
@@ -65,7 +69,10 @@ class OrderController extends Controller
             ->pluck('total', 'order_status');
 
         $orders = Order::query()
-            ->with(['items.product.mainImage'])
+            ->with([
+                'items.product.mainImage',
+                'shippingRecords' => fn ($q) => $q->latest('id'),
+            ])
             ->withCount('items')
             ->withSum('items as units_count', 'quantity')
             ->when(
@@ -353,12 +360,13 @@ class OrderController extends Controller
                 ])->values()->all(),
             ],
             'events' => $events,
+            'tracking' => OrderTrackingPresenter::forOrder($order, $activeShipping),
             'primaryAction' => $primaryAction,
             'updateStatusUrl' => route('admin.orders.status', $order),
             'shippingActions' => [
                 'createUrl' => route('admin.orders.shipping.store', $order),
                 'refreshUrl' => route('admin.orders.shipping.refresh', $order),
-                'jntEnabled' => (bool) config('jnt.enabled'),
+                'jntEnabled' => JntReadiness::report()['client_ready'],
             ],
             'workflowLinks' => [
                 ['label' => 'Kelola pembayaran', 'href' => route('admin.orders.payments', $order)],
@@ -461,6 +469,14 @@ class OrderController extends Controller
             }
         }
 
+        // COD: tombol Proses → processing + WA "pesanan diproses" (tanpa menandai lunas).
+        if ($from === 'pending_payment' && $to === 'processing' && $isCod) {
+            $this->orders->beginProcessing($order, $userId, 'admin');
+
+            return $this->statusRedirect($request, $order)
+                ->with('success', 'Pesanan COD diproses. Pelanggan mendapat notifikasi WhatsApp.');
+        }
+
         // COD: lunas saat sampai / selesai.
         if ($isCod && $order->payment_status !== 'paid' && in_array($to, ['delivered', 'completed'], true)) {
             $this->payments->completePendingForOrder($order, $userId, 'cod');
@@ -515,12 +531,19 @@ class OrderController extends Controller
         $phone = PhoneNumber::normalize($order->customer_phone) ?? $order->customer_phone;
         $items = $order->items ?? collect();
         $isCod = $this->isCod($order);
+        $shipping = null;
+        if ($order->relationLoaded('shippingRecords')) {
+            $shipping = $order->shippingRecords->first(
+                fn ($record) => $record->status !== 'cancelled'
+            ) ?? $order->shippingRecords->first();
+        }
 
         return [
             'id' => $order->id,
             'order_number' => $order->order_number,
             'order_status' => $order->order_status,
             'payment_status' => $order->payment_status,
+            'shipping_status' => $order->shipping_status,
             'payment_method' => $order->payment_method,
             'payment_method_label' => $isCod ? 'COD' : 'Transfer Bank',
             'cod_flag' => $isCod,
@@ -538,6 +561,7 @@ class OrderController extends Controller
             'href' => route('admin.orders.show', $order),
             'whatsapp_url' => $phone ? 'https://wa.me/'.$phone : null,
             'primary_action' => $this->primaryActionFor($order),
+            'shipping_track' => OrderTrackingPresenter::forOrder($order, $shipping, withTimeline: false),
             'items' => $items->map(fn ($item) => $this->orderItemRow($item))->values()->all(),
             'items_total' => (int) $order->items_count,
         ];

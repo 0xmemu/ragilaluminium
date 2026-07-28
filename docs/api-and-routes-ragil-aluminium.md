@@ -40,6 +40,7 @@ All agents must use these routes and endpoints as the primary integration surfac
 ### 1.2 Catalog Browsing
 
 - `GET /products`
+- `GET /products/{category}/{model}` → `catalog.model` → `Public/ModelDetail` (halaman detail model; klik kartu model, bukan popup; CTA ke listing SKU)
   - Controller: `CatalogController@index`
   - Purpose (Inertia):
     - **Default (no listing query):** hub **Semua Model Produk** — `Public/ModelProduk`, kartu `card-model-produk` (bukan daftar SKU).
@@ -110,6 +111,11 @@ Example:
 Optional alternative:
 
 - `GET /product/{id}` if you prefer numeric IDs, but `parent_sku` is recommended for consistency with Shopee.
+
+- `POST /product/{product}/engage`
+  - Controller: `ProductEngagementController@store`
+  - Body: `{ "action": "click" }` — catat klik kartu produk storefront (`performance_metrics.product_clicks`).
+  - View PDP dicatat server-side di `ProductController@show` (`product_views`). Ranking hanya di admin dashboard.
 
 ---
 
@@ -630,7 +636,7 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
 - `GET /admin/hasil-pemasangan` — `Admin\TestimonialController@hasilPemasangan` → `Admin/Testimonials/Index` (foto list + meta form)
 - `PUT /admin/hasil-pemasangan/meta` — meta `cms_pages.slug = hasil-pemasangan` via `InstallationPageSettings`
 - Item CRUD tetap `admin.gallery-items.*` (Monitoring → Ulasan tab foto)
-- Public: `GET /reviews` → ulasan saja; `GET /hasil-pemasangan` → listing hasil pemasangan; `GET /hasil-pemasangan/{parent_sku}` → galeri per produk. Kartu produk terkait dapat memuat `installation_href` bila ada media instalasi.
+- Public: `GET /reviews` → ulasan saja; `GET /hasil-pemasangan` → listing **per model** (produk/foto/video); `GET /hasil-pemasangan/{category}/{model}` → produk dalam model; `GET /hasil-pemasangan/{parent_sku}` → galeri per produk. Kartu produk terkait dapat memuat `installation_href` bila ada media instalasi.
 
 - `GET /admin/banners`
   - Controller: `Admin\BannerController@index`

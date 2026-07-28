@@ -11,6 +11,9 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
 
     public function test_consultation_send_creates_outbound_whatsapp_message(): void
     {
+        // Isolasi: tanpa token → mark sent (jangan hit Meta live di PHPUnit).
+        config(['services.whatsapp.token' => null]);
+
         WhatsAppTemplate::create([
             'internal_key' => 'consultation_request',
             'provider_template_name' => 'consultation_request',

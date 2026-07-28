@@ -41,6 +41,7 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 |-------------|------|-------|------|--------|
 | Halaman Beranda | `/` | `home` | `Public/Home` | implemented |
 | Halaman Semua Model Produk | `/products` | `catalog.index` | `Public/ModelProduk` | implemented — **kartu model** (`card-model-produk`), bukan daftar SKU |
+| Halaman Detail Model Produk | `/products/{category}/{model}` | `catalog.model` | `Public/ModelDetail` | implemented — deskripsi + highlight model; CTA ke listing SKU; klik kartu model (bukan popup) |
 | Halaman Semua Produk | `/products?sort=newest` | `catalog.index` | `Public/Catalog` | implemented — **kartu produk/SKU** (`card-produk`); berbeda dari hub model |
 | Halaman Tampilan Model Produk | `/windows` (+ doors/bouven) | `catalog.windows` dll. | `Public/Catalog` | implemented — daftar produk (`card-produk`) |
 | Halaman Promo | `/promo` | `catalog.promo` | `Public/Catalog` | implemented — tanpa sidebar; toggle model di atas galeri; strip Flash Sale di atas listing |
@@ -64,8 +65,9 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 | Halaman Ketentuan Layanan | `/policy/terms` | `terms` | `Public/CmsPage` | implemented |
 | Informasi Toko | `/about` | `about` | `Public/CmsPage` | implemented |
 | Halaman Apa Kata Pelanggan / Ulasan | `/reviews` | `reviews` | `Public/Reviews` | implemented — hero dari `cms_pages.testimoni` + `cms_testimonials`; PDP menampilkan subset testimoni tertaut `product_id` |
-| Halaman Hasil Pemasangan (listing) | `/hasil-pemasangan` | `installation.index` | `Public/Installations` | implemented — kartu per produk dari `product_media.is_installation` ∪ `cms_gallery_items` |
-| Halaman Isi Hasil Pemasangan (detail galeri) | `/hasil-pemasangan/{parent_sku}` | `installation.show` | `Public/InstallationDetail` | implemented — galeri foto instalasi per produk; kartu listing + link di kartu produk terkait |
+| Halaman Hasil Pemasangan (listing model) | `/hasil-pemasangan` | `installation.index` | `Public/Installations` | implemented — kartu **per model** (total produk / foto / video) dari `product_media.is_installation` |
+| Halaman Hasil Pemasangan (produk dalam model) | `/hasil-pemasangan/{category}/{model}` | `installation.model` | `Public/Installations` | implemented — kartu produk dalam model yang sama (`window|door|bouven` + kode model) |
+| Halaman Isi Hasil Pemasangan (detail galeri) | `/hasil-pemasangan/{parent_sku}` | `installation.show` | `Public/InstallationDetail` | implemented — galeri foto instalasi per produk; breadcrumb model → produk |
 | Pencarian | `/products?q=` (redirect dari `/search`) | `catalog.index` | `Public/Catalog` | implemented — hasil di listing katalog; tidak ada halaman `/search` terpisah |
 | Hubungi Kami | `/contact` | `contact` | `Public/CmsPage` | implemented |
 | Halaman Retur Diproses / Retur Selesai | — | — | — | **planned** |

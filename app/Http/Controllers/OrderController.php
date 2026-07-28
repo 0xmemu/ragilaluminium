@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
+use App\Support\BankTransferInstructions;
+use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +36,7 @@ class OrderController extends Controller
             ->firstOrFail();
 
         $whatsappUrl = null;
-        $phone = \App\Support\PhoneNumber::normalize(
+        $phone = PhoneNumber::normalize(
             config('services.whatsapp.business_phone') ?: config('sitemap.brand.phone')
         );
         if ($phone) {
@@ -65,7 +67,7 @@ class OrderController extends Controller
                 ])->all(),
             ],
             'payment_instructions' => $isTransfer
-                ? \App\Support\BankTransferInstructions::forStorefront()
+                ? BankTransferInstructions::forStorefront()
                 : null,
             'whatsapp_url' => $whatsappUrl,
         ]);
@@ -249,12 +251,19 @@ class OrderController extends Controller
         $shipping = $order->shippingRecords
             ->filter(fn (ShippingRecord $row) => filled($row->waybill_number))
             ->sortByDesc(fn (ShippingRecord $row) => $row->last_status_at?->getTimestamp() ?? $row->id)
-            ->first();
+            ->first()
+            ?? $order->shippingRecords->first(
+                fn (ShippingRecord $row) => $row->status !== 'cancelled'
+            )
+            ?? $order->shippingRecords->first();
+
+        $tracking = OrderTrackingPresenter::forOrder($order, $shipping);
 
         return [
             'order_number' => $order->order_number,
             'order_status' => $order->order_status,
             'payment_status' => $order->payment_status,
+            'payment_method' => $order->payment_method,
             'shipping_status' => $order->shipping_status,
             'total_amount' => (float) $order->total_amount,
             'customer_name' => $order->customer_name,
@@ -271,6 +280,7 @@ class OrderController extends Controller
                 'tracking_url' => $shipping->tracking_url,
                 'last_status_at' => $shipping->last_status_at?->toIso8601String(),
             ] : null,
+            'tracking' => $tracking,
         ];
     }
 }

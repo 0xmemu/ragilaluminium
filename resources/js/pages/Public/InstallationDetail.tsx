@@ -20,11 +20,22 @@ export default function InstallationDetail({
   product,
   media = [],
   indexHref,
+  modelHref = null,
+  modelLabel = null,
 }: {
   pageMeta?: { title?: string; heading?: string } | null
-  product: { id: number; parent_sku: string; name: string; href: string }
+  product: {
+    id: number
+    parent_sku: string
+    name: string
+    href: string
+    category?: string | null
+    model?: string | null
+  }
   media: GalleryImage[]
   indexHref: string
+  modelHref?: string | null
+  modelLabel?: string | null
 }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const active = media[activeIndex] ?? media[0] ?? null
@@ -36,19 +47,22 @@ export default function InstallationDetail({
     setActiveIndex((current) => (current + delta + media.length) % media.length)
   }
 
+  const crumbs = [
+    { label: "Beranda", href: routeUrl("home") },
+    { label: heading, href: indexHref },
+    ...(modelHref && modelLabel
+      ? [{ label: modelLabel, href: modelHref }]
+      : []),
+    { label: product.name, href: null as string | null },
+  ]
+
   return (
     <PublicLayout>
       <Head title={docTitle} />
 
       <section className="border-b border-border bg-surface">
         <div className="container-page py-6 md:py-8">
-          <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: heading, href: indexHref },
-              { label: product.name, href: null },
-            ]}
-          />
+          <Breadcrumbs items={crumbs} />
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
@@ -59,8 +73,13 @@ export default function InstallationDetail({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              {modelHref ? (
+                <Button asChild variant="secondary">
+                  <Link href={modelHref}>Produk model ini</Link>
+                </Button>
+              ) : null}
               <Button asChild variant="secondary">
-                <Link href={indexHref}>Semua hasil pemasangan</Link>
+                <Link href={indexHref}>Semua model</Link>
               </Button>
               <Button asChild>
                 <Link href={product.href}>Lihat produk</Link>

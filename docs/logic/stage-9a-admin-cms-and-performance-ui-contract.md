@@ -104,6 +104,7 @@ Data contract:
   - `product_category` (nullable: `WINDOW`|`DOOR`|`BOUVEN`) — tautan katalog
   - `product_model` (nullable: e.g. `JUNGKIT`) — tautan katalog
   - `image_url` (stored via Media Module / URL)
+  - `description` (nullable text) — deskripsi halaman detail model storefront
   - `type` (`polos`, `ornamen`, `lainnya`)
   - `status` (`active`, `draft`)
   - `sort_order`

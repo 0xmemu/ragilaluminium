@@ -5,8 +5,9 @@ namespace Tests\Feature;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
+use Tests\TestCase;
 
-class ModelProdukPageTest extends \Tests\TestCase
+class ModelProdukPageTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -106,6 +107,42 @@ class ModelProdukPageTest extends \Tests\TestCase
                 ->component('Public/Catalog')
                 ->where('categoryName', 'Paling Banyak Dipesan')
                 ->has('products')
+            );
+    }
+
+    public function test_model_detail_page_renders_from_card_click_route(): void
+    {
+        Product::create([
+            'parent_sku' => 'WIN-SWING-1',
+            'name' => 'Swing Sample',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SWING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->get('/products')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/ModelProduk')
+                ->where('models.0.detail_href', '/products/window/swing')
+            );
+
+        $this->get(route('catalog.model', ['category' => 'window', 'model' => 'swing']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/ModelDetail')
+                ->where('model.model', 'SWING')
+                ->where('model.category', 'WINDOW')
+                ->where('model.subtitle', null)
+                ->has('model.desc')
+                ->has('model.highlights', 3)
+                ->where('hubHref', '/products')
+                ->has('products', 1)
+                ->where('products.0.parent_sku', 'WIN-SWING-1')
+                ->where('products.0.product_model', 'SWING')
+                ->where('products.0.href', '/product/WIN-SWING-1')
             );
     }
 }

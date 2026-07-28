@@ -53,7 +53,7 @@ export default function Reviews({
   const heading = pageMeta?.heading?.trim() || "Apa kata pelanggan kami"
   const subtitle =
     pageMeta?.subtitle?.trim() ||
-    "Ulasan pelanggan dari Shopee, WhatsApp, dan website."
+    "Cerita pembeli yang sudah memasang jendela, pintu, dan bouven Ragil Aluminium."
   const docTitle = pageMeta?.title?.trim() || "Ulasan Pelanggan"
 
   function navigateReviews(next: { sort?: string; source?: string }) {

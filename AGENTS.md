@@ -2,7 +2,8 @@
 
 Laravel modular monolith: Inertia + React storefront and admin panel.  
 **Orchestration:** read [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md) first.  
-**Server / production migrate:** only when product is final — out of scope until then.
+**Server / production migrate:** only when product is final — out of scope until then.  
+**DATABASE SAFETY:** never wipe/reset app DB (`migrate:fresh`, `db:wipe`, truncate massal) unless the user explicitly orders it — see § Agent Rules.
 
 ## Always read before code
 
@@ -228,6 +229,23 @@ General rule:
 - Prefer updating docs/sitemap/DESIGN first when contracts change, then code.  
 - Log major architecture decisions in `docs/architecture/` as needed.  
 - Do not start production server migration until explicitly scoped as a mature release.
+
+### DATABASE SAFETY (hard rule — handoff wajib baca)
+
+**Jangan mereset / menghapus data database kecuali user memberi instruksi eksplisit di query yang sama.**
+
+Dilarang tanpa perintah eksplisit:
+
+- `php artisan migrate:fresh` / `migrate:refresh` / `db:wipe`
+- `TRUNCATE`, `DROP DATABASE`, `DROP TABLE` (kecuali migration baru yang sudah dikontrak)
+- Seeder yang menimpa / mengosongkan data nyata di MySQL `ragil` (atau DB app aktif di `.env`)
+- `Artisan::call('migrate:fresh'|…)` dari skrip debug yang bootstrap `.env` production/local (bukan sqlite testing)
+
+Uji fitur: pakai PHPUnit (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:` per `phpunit.xml`) atau DB testing terpisah. Jangan andalkan flag `--env=testing` di `Artisan::call` sebagai jaminan aman — itu **tidak** mengalihkan koneksi dari `.env` MySQL.
+
+`migrate` biasa (forward-only) boleh jika relevan ke tugas dan tidak wipe. Jika ragu: tanya user dulu.
+
+Insiden: 2026-07-27 — `migrate:fresh` keliru kena DB `ragil` saat debug; katalog/order hilang. Recovery = re-import Excel di `storage/app/imports/catalog/` (order/CMS tanpa backup tidak otomatis kembali).
 
 ---
 ---

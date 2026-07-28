@@ -2,19 +2,30 @@
 
 namespace App\Providers;
 
+use App\Events\OrderCreated;
+use App\Events\OrderProcessingStarted;
+use App\Events\PaymentConfirmed;
+use App\Events\ShippingStatusUpdated;
+use App\Listeners\SendOrderCreatedWhatsApp;
+use App\Listeners\SendOrderProcessingWhatsApp;
+use App\Listeners\SendPaymentConfirmedWhatsApp;
+use App\Listeners\SendShippingStatusWhatsApp;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
 {
     protected $listen = [
-        \App\Events\OrderCreated::class => [
-            \App\Listeners\SendOrderCreatedWhatsApp::class,
+        OrderCreated::class => [
+            SendOrderCreatedWhatsApp::class,
         ],
-        \App\Events\PaymentConfirmed::class => [
-            \App\Listeners\SendPaymentConfirmedWhatsApp::class,
+        PaymentConfirmed::class => [
+            SendPaymentConfirmedWhatsApp::class,
         ],
-        \App\Events\ShippingStatusUpdated::class => [
-            \App\Listeners\SendShippingStatusWhatsApp::class,
+        OrderProcessingStarted::class => [
+            SendOrderProcessingWhatsApp::class,
+        ],
+        ShippingStatusUpdated::class => [
+            SendShippingStatusWhatsApp::class,
         ],
     ];
 }

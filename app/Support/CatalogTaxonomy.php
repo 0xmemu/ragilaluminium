@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  */
 class CatalogTaxonomy
 {
-    private const CACHE_KEY = 'catalog.taxonomy.v3';
+    private const CACHE_KEY = 'catalog.taxonomy.v4';
 
     private const CACHE_TTL_SECONDS = 300;
 
@@ -128,6 +128,7 @@ class CatalogTaxonomy
             }
 
             $cards = [];
+            $pairs = [];
             foreach ($wanted as $w) {
                 $sample = $samples->get($w['model'].'|'.$w['category']);
                 $route = match ($w['category']) {
@@ -140,6 +141,11 @@ class CatalogTaxonomy
                     'model' => $w['model'],
                     'design' => $design,
                 ]);
+
+                $pairs[] = [
+                    'category' => $w['category'],
+                    'model' => $w['model'],
+                ];
 
                 $cards[] = [
                     'title' => CatalogLabels::modelCardTitle($w['category'], $w['model']),
@@ -154,7 +160,12 @@ class CatalogTaxonomy
                 ];
             }
 
-            return $cards;
+            $inspiration = ModelProductPresentation::inspirationByPair($pairs);
+
+            return array_map(
+                fn (array $card) => ModelProductPresentation::enrichCard($card, $inspiration),
+                $cards,
+            );
         });
     }
 

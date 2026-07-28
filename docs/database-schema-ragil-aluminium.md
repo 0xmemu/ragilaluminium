@@ -716,6 +716,7 @@ Kurasi kartu model di storefront (beranda / hub `/products` / menu model), terpi
 - `product_category` (varchar 32, nullable) — `WINDOW` | `DOOR` | `BOUVEN`
 - `product_model` (varchar 64, nullable) — e.g. `JUNGKIT`, `SLIDING`
 - `image_url` (varchar, nullable)
+- `description` (text, nullable) — deskripsi model di halaman detail storefront; diedit di admin Model Produk
 - `type` (enum: `polos`, `ornamen`, `lainnya`, default `polos`)
 - `status` (enum: `active`, `draft`, default `draft`)
 - `sort_order` (integer, default 0)
@@ -804,6 +805,7 @@ Indexes:
 Notes:
 
 - Storefront middleware increments `storefront_page_views` and (once per session/day) `storefront_unique_visitors`.
+- Product engagement (admin dashboard only): `product_views` (PDP load) and `product_clicks` (kartu produk storefront) with `context.product_id`; aggregated per `metric_date`.
 - Performa Toko conversion = orders in period ÷ unique visitors (0 if no visitor data yet).
 - Sales/omzet KPIs are computed live from `orders` / `order_items` (not only from this table).
 - **Log Aktivitas (admin):** Monitoring → `admin.activity-logs.*` reads append-only `event_logs` (filter by category derived from `event_type` / `entity_type`, search, CSV export). Critical writers include order/payment/shipping, import start/retry, WhatsApp template changes, and admin login/logout. Do not hard-delete log rows.

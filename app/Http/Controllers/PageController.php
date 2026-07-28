@@ -5,7 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
+use App\Support\CaraPemesananSettings;
+use App\Support\CatalogLabels;
+use App\Support\CmsDocumentSettings;
+use App\Support\FaqSettings;
 use App\Support\InstallationGallery;
+use App\Support\InstallationPageSettings;
+use App\Support\ProblemsSolutionsSettings;
+use App\Support\TestimonialPageSettings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,7 +34,7 @@ class PageController extends Controller
                 ? (string) ($content['html'] ?? $content['body'] ?? '')
                 : (is_string($page->content) ? $page->content : '');
             if ($raw !== '') {
-                $body = \App\Support\CmsDocumentSettings::bodyToHtml($raw);
+                $body = CmsDocumentSettings::bodyToHtml($raw);
             }
         }
 
@@ -49,14 +56,14 @@ class PageController extends Controller
     public function faq(): Response
     {
         return Inertia::render('Public/Faq', [
-            'guide' => \App\Support\FaqSettings::forStorefront(),
+            'guide' => FaqSettings::forStorefront(),
         ]);
     }
 
     public function problemsSolutions(): Response
     {
         return Inertia::render('Public/MasalahSolusi', [
-            'guide' => \App\Support\ProblemsSolutionsSettings::forStorefront(),
+            'guide' => ProblemsSolutionsSettings::forStorefront(),
         ]);
     }
 
@@ -78,7 +85,7 @@ class PageController extends Controller
     public function howToOrder(): Response
     {
         return Inertia::render('Public/HowToOrder', [
-            'guide' => \App\Support\CaraPemesananSettings::forStorefront(),
+            'guide' => CaraPemesananSettings::forStorefront(),
         ]);
     }
 
@@ -123,7 +130,7 @@ class PageController extends Controller
             ->all();
 
         return Inertia::render('Public/Reviews', [
-            'pageMeta' => \App\Support\TestimonialPageSettings::forStorefront(),
+            'pageMeta' => TestimonialPageSettings::forStorefront(),
             'testimonials' => $testimonials,
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
@@ -144,21 +151,55 @@ class PageController extends Controller
 
     public function installations(): Response
     {
-        $installations = collect(InstallationGallery::productCards(48))
-            ->map(fn (array $item) => [
-                'id' => $item['id'],
-                'image_url' => $item['image_url'],
-                'label' => $item['label'],
-                'photo_count' => $item['photo_count'],
-                'video_count' => $item['video_count'],
-                'href' => $item['href'],
-                'product_sku' => $item['product_sku'],
-            ])
+        $installations = collect(InstallationGallery::modelCards(48))
+            ->map(fn (array $item) => $this->installationCardPayload($item))
             ->all();
 
         return Inertia::render('Public/Installations', [
-            'pageMeta' => \App\Support\InstallationPageSettings::forStorefront(),
+            'pageMeta' => InstallationPageSettings::forStorefront(),
             'installations' => $installations,
+            'level' => 'model',
+            'reviewsHref' => route('reviews'),
+        ]);
+    }
+
+    public function installationModel(string $category, string $model): Response
+    {
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        $modelCode = InstallationGallery::modelFromSlug($model);
+        if ($categoryCode === null || $modelCode === '') {
+            abort(404);
+        }
+
+        if ($categoryCode === 'LAINNYA') {
+            $installations = collect(InstallationGallery::manualProductCards(48))
+                ->map(fn (array $item) => $this->installationCardPayload($item))
+                ->all();
+            $title = 'Dokumentasi lainnya';
+        } else {
+            $installations = collect(InstallationGallery::productCardsForModel($categoryCode, $modelCode, 48))
+                ->map(fn (array $item) => $this->installationCardPayload($item))
+                ->all();
+            $title = CatalogLabels::modelCardTitle($categoryCode, $modelCode);
+            if ($installations === []) {
+                abort(404);
+            }
+        }
+
+        return Inertia::render('Public/Installations', [
+            'pageMeta' => [
+                'title' => $title.' · Hasil Pemasangan',
+                'heading' => $title,
+                'subtitle' => 'Produk dalam model ini yang memiliki dokumentasi hasil pemasangan.',
+            ],
+            'installations' => $installations,
+            'level' => 'product',
+            'modelMeta' => [
+                'category' => $categoryCode,
+                'model' => $modelCode,
+                'label' => $title,
+            ],
+            'indexHref' => route('installation.index'),
             'reviewsHref' => route('reviews'),
         ]);
     }
@@ -174,11 +215,44 @@ class PageController extends Controller
             abort(404);
         }
 
+        $modelHref = InstallationGallery::modelHref(
+            $gallery['product']['category'] ?? null,
+            $gallery['product']['model'] ?? null,
+        );
+
         return Inertia::render('Public/InstallationDetail', [
-            'pageMeta' => \App\Support\InstallationPageSettings::forStorefront(),
+            'pageMeta' => InstallationPageSettings::forStorefront(),
             'product' => $gallery['product'],
             'media' => $gallery['media'],
             'indexHref' => route('installation.index'),
+            'modelHref' => $modelHref,
+            'modelLabel' => ($gallery['product']['category'] && $gallery['product']['model'])
+                ? CatalogLabels::modelCardTitle(
+                    $gallery['product']['category'],
+                    $gallery['product']['model'],
+                )
+                : null,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    protected function installationCardPayload(array $item): array
+    {
+        return [
+            'id' => $item['id'],
+            'image_url' => $item['image_url'],
+            'label' => $item['label'],
+            'product_count' => (int) ($item['product_count'] ?? 0),
+            'photo_count' => (int) ($item['photo_count'] ?? 0),
+            'video_count' => (int) ($item['video_count'] ?? 0),
+            'category' => $item['category'] ?? null,
+            'model' => $item['model'] ?? null,
+            'href' => $item['href'],
+            'product_sku' => $item['product_sku'] ?? null,
+            'product_href' => $item['product_href'] ?? null,
+        ];
     }
 }

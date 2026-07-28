@@ -190,11 +190,25 @@ export interface ProductCardData {
   installation_href?: string | null
 }
 
+export interface ModelHighlight {
+  icon: string
+  label: string
+}
+
 export interface ModelCardData {
   title: string
   count: string
   meta: string
   desc: string
+  /** Tagline singkat di dialog detail (mis. Timeless & Minimalis). */
+  subtitle?: string | null
+  highlights?: ModelHighlight[]
+  /** Jumlah foto hasil pemasangan untuk model ini. */
+  inspiration_count?: number
+  /** Deep-link galeri hasil pemasangan (atau fallback listing). */
+  inspiration_href?: string | null
+  /** Halaman detail model (bukan popup). */
+  detail_href?: string | null
   image?: string | null
   href: string
   model: string
@@ -224,10 +238,16 @@ export interface InstallationItem {
   image?: string | null
   image_url?: string | null
   label?: string | null
+  /** Jumlah produk ber-dokumentasi (kartu level model). */
+  product_count?: number
   photo_count?: number
   video_count?: number
+  category?: string | null
+  model?: string | null
   href?: string | null
   product_sku?: string | null
+  /** PDP produk terkait (hasil pemasangan level produk). */
+  product_href?: string | null
 }
 
 export interface Testimonial {
@@ -358,6 +378,24 @@ export interface PublicOrderShipping {
   last_status_at?: string | null
 }
 
+export interface PublicOrderTracking {
+  shipping_status: string
+  carrier_name?: string | null
+  waybill_number?: string | null
+  record_status?: string | null
+  status_raw?: string | null
+  last_status_at?: string | null
+  tracking_url?: string | null
+  order_status?: string
+  payment_status?: string
+  payment_method?: string | null
+  total_amount?: number
+  paid?: boolean
+  latest_message?: string | null
+  latest_at?: string | null
+  timeline?: Array<{ message: string; at?: string | null; source?: string }>
+}
+
 export interface PublicOrder {
   order_number: string
   order_status: string
@@ -369,6 +407,7 @@ export interface PublicOrder {
   customer_phone?: string | null
   items: PublicOrderItem[]
   shipping?: PublicOrderShipping | null
+  tracking?: PublicOrderTracking | null
 }
 
 export interface ResourceColumn {

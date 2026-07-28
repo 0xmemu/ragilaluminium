@@ -1,22 +1,26 @@
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 import { Lightning, SealCheck } from "@phosphor-icons/react"
 
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { formatCurrency, productName } from "@/lib/format"
+import { trackProductClick } from "@/lib/product-engage"
 import { cn } from "@/lib/utils"
-import type { ProductCardData } from "@/types"
+import type { ProductCardData, SharedPageProps } from "@/types"
 
 export function ProductCard({
   product,
   priority = false,
   className,
   emphasis = "default",
+  titleStyle = "default",
 }: {
   product: ProductCardData
   priority?: boolean
   className?: string
   /** Stronger Flash Sale chrome for /flash-sale and Promo spotlight. */
   emphasis?: "default" | "flash"
+  /** `model` = tipografi judul ModelCard (container query, lebih rapat di carousel). */
+  titleStyle?: "default" | "model"
 }) {
   const title = productName(product.name, product.short_name)
   const priceValue =
@@ -43,10 +47,14 @@ export function ProductCard({
   const soldCount = Number(product.sold_count ?? 0)
   const flashEmphasis = emphasis === "flash"
 
+  const useModelTitle = titleStyle === "model"
+  const { csrf } = usePage<SharedPageProps>().props
+
   return (
     <article
       className={cn(
-        "group flex h-full min-w-0 flex-col border border-transparent bg-white p-2 shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "group flex h-full min-w-0 flex-col overflow-hidden border border-transparent bg-white shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        useModelTitle && "@container",
         flashEmphasis && "ring-1 ring-primary/25 shadow-[0_2px_8px_rgba(192,0,0,0.12)]",
         className,
       )}
@@ -54,6 +62,7 @@ export function ProductCard({
       <Link
         href={product.href}
         className="flex min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => trackProductClick(product.id, csrf)}
       >
         <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-muted/50">
           <ResponsiveImage
@@ -72,8 +81,20 @@ export function ProductCard({
           ) : null}
         </div>
 
-        <div className="relative flex flex-1 flex-col gap-0 pt-2">
-          <h3 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-foreground group-hover:underline">
+        <div
+          className={cn(
+            "relative flex flex-1 flex-col gap-0",
+            useModelTitle ? "px-2.5 pb-2 pt-2 @[16rem]:px-3 @[20rem]:px-3.5" : "px-2 pb-2 pt-2",
+          )}
+        >
+          <h3
+            className={cn(
+              "line-clamp-2 min-w-0 font-medium text-foreground",
+              useModelTitle
+                ? "text-xs leading-4 @[16rem]:text-[13px] @[16rem]:leading-4 @[22rem]:text-sm @[22rem]:leading-5"
+                : "text-sm leading-5 group-hover:underline",
+            )}
+          >
             {title}
           </h3>
 
@@ -174,7 +195,7 @@ export function ProductCard({
       {product.installation_href ? (
         <Link
           href={product.installation_href}
-          className="mt-2 inline-flex min-h-8 items-center text-[11px] font-semibold text-primary hover:underline"
+          className="mx-2 mb-2 inline-flex min-h-8 items-center text-[11px] font-semibold text-primary hover:underline"
           onClick={(event) => event.stopPropagation()}
         >
           Hasil pemasangan

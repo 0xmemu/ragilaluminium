@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\OrderCreated;
+use App\Events\OrderProcessingStarted;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -21,8 +22,7 @@ class OrderService
         protected CartService $cart,
         protected VoucherService $vouchers,
         protected CustomerService $customers,
-    ) {
-    }
+    ) {}
 
     /**
      * Buat order dari isi cart dengan revalidasi harga & stok TERHADAP DATABASE
@@ -217,6 +217,55 @@ class OrderService
                 return $order;
             });
         });
+    }
+
+    /**
+     * Mulai fulfillment: pending_payment → processing (tanpa menandai lunas).
+     * Dipakai COD (admin "Proses" atau konfirmasi tombol WhatsApp pelanggan).
+     *
+     * @return bool true jika status berubah ke processing
+     */
+    public function beginProcessing(Order $order, ?int $actorUserId = null, string $source = 'admin'): bool
+    {
+        $order = $order->fresh() ?? $order;
+
+        if ($order->order_status !== 'pending_payment') {
+            return false;
+        }
+
+        $isCod = $order->cod_flag || $order->payment_method === 'cod';
+
+        // Konfirmasi pelanggan via WA hanya untuk COD — transfer butuh bukti bayar.
+        if ($source === 'whatsapp_customer' && ! $isCod) {
+            return false;
+        }
+
+        $from = $order->order_status;
+
+        DB::transaction(function () use ($order, $actorUserId, $source, $from, $isCod) {
+            $order->update([
+                'order_status' => 'processing',
+                'updated_by_user_id' => $actorUserId,
+            ]);
+
+            EventLog::create([
+                'event_type' => 'order_status_changed',
+                'entity_type' => 'order',
+                'entity_id' => $order->id,
+                'payload' => [
+                    'from' => $from,
+                    'order_status' => 'processing',
+                    'flow' => $isCod ? 'cod' : 'transfer',
+                    'source' => $source,
+                ],
+                'created_by_user_id' => $actorUserId,
+                'created_at' => now(),
+            ]);
+        });
+
+        OrderProcessingStarted::dispatch($order->fresh(), $source);
+
+        return true;
     }
 
     /** Hitung total berat cart (kg) untuk estimasi/booking ongkir. */

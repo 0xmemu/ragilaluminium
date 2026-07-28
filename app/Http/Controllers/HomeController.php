@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\CmsTestimonial;
 use App\Models\Product;
+use App\Services\ModelProductService;
 use App\Support\HomepageLayoutSettings;
 use App\Support\HomepagePromotions;
 use App\Support\InertiaCatalog;
 use App\Support\InstallationGallery;
+use App\Support\InstallationPageSettings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -48,7 +50,7 @@ class HomeController extends Controller
                 ->limit(8)
                 ->get();
 
-            $modelCards = app(\App\Services\ModelProductService::class)->storefrontCards(8);
+            $modelCards = app(ModelProductService::class)->storefrontCards(8);
         } catch (\Throwable) {
             $featuredProducts = collect();
             $popularProducts = collect();
@@ -88,6 +90,7 @@ class HomeController extends Controller
                         'id' => (string) $item['id'],
                         'image' => $item['image_url'],
                         'label' => $item['customer_name'] ?? 'Hasil pemasangan',
+                        'product_count' => 1,
                         'photo_count' => 1,
                         'video_count' => 0,
                         'href' => route('installation.index'),
@@ -101,7 +104,7 @@ class HomeController extends Controller
         }
 
         try {
-            $installationMeta = \App\Support\InstallationPageSettings::forStorefront();
+            $installationMeta = InstallationPageSettings::forStorefront();
         } catch (\Throwable) {
             $installationMeta = null;
         }

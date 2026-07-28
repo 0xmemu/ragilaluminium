@@ -124,11 +124,18 @@ class WhatsAppAutomationTest extends TestCase
 
         app(WhatsAppService::class)->handleOrderCreated(new OrderCreated($codOrder));
 
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'order_id' => $codOrder->id,
-            'internal_template_key' => 'order_created',
-            'direction' => 'outbound',
-        ]);
+        $codMessage = WhatsAppMessage::query()->where('order_id', $codOrder->id)->firstOrFail();
+        $this->assertSame('order_created', $codMessage->internal_template_key);
+        $this->assertSame([
+            'Budi',
+            'RA-WA-COD-1',
+            'Budi',
+            'Jl A, Semarang, Jawa Tengah, 50254',
+            '-',
+            '-',
+            'menyusul',
+            '100.000',
+        ], $codMessage->content_payload['variables']);
 
         $transferOrder = Order::create([
             'order_number' => 'RA-WA-TRF-1',
@@ -152,12 +159,32 @@ class WhatsAppAutomationTest extends TestCase
 
         app(WhatsAppService::class)->handleOrderCreated(new OrderCreated($transferOrder));
 
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'order_id' => $transferOrder->id,
-            'internal_template_key' => 'payment_instructions',
-            'direction' => 'outbound',
-        ]);
+        $transferMessage = WhatsAppMessage::query()->where('order_id', $transferOrder->id)->firstOrFail();
+        $this->assertSame('payment_instructions', $transferMessage->internal_template_key);
+        $this->assertCount(11, $transferMessage->content_payload['variables']);
+        $this->assertSame('Ani', $transferMessage->content_payload['variables'][0]);
+        $this->assertSame('RA-WA-TRF-1', $transferMessage->content_payload['variables'][1]);
+        $this->assertSame('Ani', $transferMessage->content_payload['variables'][2]);
 
         $this->assertSame(2, WhatsAppMessage::query()->count());
+    }
+
+    public function test_catalog_bodies_use_positional_meta_tokens(): void
+    {
+        foreach (WhatsAppAutomationCatalog::all() as $trigger) {
+            $this->assertStringContainsString('{{1}}', $trigger['default_body']);
+            $this->assertStringNotContainsString('{{order_number}}', $trigger['default_body']);
+            foreach ($trigger['variables'] as $variable) {
+                $this->assertMatchesRegularExpression('/^\{\{\d+\}\}$/', $variable['token']);
+            }
+
+            preg_match_all('/\{\{(\d+)\}\}/', $trigger['default_body'], $matches);
+            $indexes = $matches[1];
+            $this->assertSame(
+                $indexes,
+                array_values(array_unique($indexes)),
+                "Template {$trigger['internal_key']} mengulang indeks variabel Meta yang sama."
+            );
+        }
     }
 }

@@ -7,6 +7,7 @@ import type { ModelCardData } from "@/types"
 /**
  * Tipografi mengikuti lebar card (container query), bukan viewport.
  * Acuan "pas" = card homepage ~4 kolom (~16–22rem): judul 13px, meta/desc 12px.
+ * Klik membuka halaman detail model (`detail_href`), bukan popup.
  */
 export function ModelCard({
   model,
@@ -20,6 +21,7 @@ export function ModelCard({
   const countLabel = model.count.trim().toLowerCase().endsWith("produk")
     ? model.count
     : `${model.count} produk`
+  const href = model.detail_href?.trim() || model.href
 
   return (
     <article
@@ -29,7 +31,7 @@ export function ModelCard({
       )}
     >
       <Link
-        href={model.href}
+        href={href}
         className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">

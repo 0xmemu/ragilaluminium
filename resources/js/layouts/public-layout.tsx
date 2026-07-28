@@ -8,7 +8,7 @@ import { FlashMessages } from "@/components/shared/flash-messages"
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="public-title-case min-h-screen bg-background text-foreground">
+    <div className="public-title-case min-h-screen overflow-x-clip bg-background text-foreground">
       <a
         href="#main-content"
         className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition focus:translate-y-0"

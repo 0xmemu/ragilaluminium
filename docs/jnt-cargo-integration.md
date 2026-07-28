@@ -1,8 +1,26 @@
-# Integrasi J&T Cargo — Ragil Aluminium (`website_3.0`)
+# Integrasi J&T Cargo — Ragil Aluminium (`website.4.0`)
 
 > **Sumber:** [J&T Cargo Open Platform](https://open.jtcargo.co.id/#/apiDoc) (spesifikasi resmi console).
-> **Status:** Implementasi backend selesai (2026-07-12), siap joint-debugging sandbox.
+> **Status:** Implementasi backend selesai; aktivasi menunggu kredensial sandbox/production dari console.
 > **Lingkup:** transport, tanda tangan, buat/batal resi, cek tarif, tracking, push (webhook).
+> **Provider decision (2026-07-26):** jalur resmi **Open Platform langsung**. Aggregator Biteship **ditolak** (hanya J&T Express `jnt`/`ez`, bukan Cargo). KiriminAja / rate-only API tidak dipakai kecuali SoT diubah eksplisit.
+
+---
+
+## 0. Provider yang didukung
+
+| Provider | Status di Ragil |
+|----------|-----------------|
+| **J&T Cargo Open Platform** | **Aktif sebagai SoT shipping** — `config/jnt.php` + `JntCargoClient` |
+| Biteship | Tidak — katalog `jnt` = Express, bukan Cargo |
+| KiriminAja / AgenWebsite Rate | Tidak diintegrasikan (opsional bisnis terpisah) |
+
+Cek kesiapan env:
+
+```bash
+php artisan jnt:status
+php artisan jnt:joint-debug --times=3   # setelah kredensial + JNT_ENABLED=true
+```
 
 ---
 
@@ -17,6 +35,7 @@
 | Webhook | `app/Http/Controllers/Webhook/ShippingController.php` | verifikasi tanda tangan, parse push, ACK |
 | Event | `app/Events/ShippingStatusUpdated.php` + listener WA | notifikasi milestone ke pelanggan |
 | Joint-debug | `app/Console/Commands/JntJointDebug.php` | uji sandbox (bukti sukses ≥3×) |
+| Status / readiness | `app/Console/Commands/JntStatus.php` + `App\Support\JntReadiness` | checklist kredensial + pengirim |
 | Audit log | `config/logging.php` channel `jnt` → `storage/logs/jnt-*.log` | request/response penuh |
 
 **Prinsip:** semua nilai spesifik akun (endpoint path, field, kode status) ada di `config/jnt.php` dan bisa di-override lewat `.env` **tanpa mengubah kode**.

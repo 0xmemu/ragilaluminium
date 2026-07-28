@@ -34,7 +34,6 @@ export default function Login({ email = "" }: { email?: string }) {
         <Field id="login-email" label="Email" required error={form.errors.email}>
           <Input
             type="email"
-            placeholder="admin@ragilaluminium.com"
             value={form.data.email}
             onChange={(event) => form.setData("email", event.target.value)}
             autoComplete="username"

@@ -115,8 +115,8 @@ export function PublicHeader() {
           <SheetContent
             side="left"
             className={cn(
-              "safe-bottom !border-0 p-0 !shadow-none [&>button]:left-4 [&>button]:right-auto [&>button]:top-4",
-              modelsOpen ? "!w-[min(94vw,48rem)]" : "!w-[min(94vw,24rem)]",
+              "safe-bottom overflow-x-hidden !border-0 p-0 !shadow-none transition-[width] duration-300 ease-standard [&>button]:left-4 [&>button]:right-auto [&>button]:top-4",
+              modelsOpen ? "!w-[min(96vw,48rem)]" : "!w-[min(94vw,24rem)]",
             )}
           >
             <div className="px-16 py-4">
@@ -127,9 +127,20 @@ export function PublicHeader() {
               </SheetDescription>
             </div>
 
-            <div className="grid min-h-[calc(100dvh-4.5rem)] md:grid-cols-[minmax(17rem,20rem)_1fr]">
+            {/* Saat daftar model dibuka: nav menyusut kiri + panel model di kanan (mobile & desktop). */}
+            <div
+              className={cn(
+                "grid min-h-[calc(100dvh-4.5rem)]",
+                modelsOpen
+                  ? "grid-cols-[minmax(9.25rem,10.75rem)_minmax(0,1fr)] sm:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)] md:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]"
+                  : "grid-cols-1",
+              )}
+            >
               <nav
-                className="overflow-y-auto px-6 py-8 sm:px-10 md:px-12"
+                className={cn(
+                  "min-w-0 overflow-y-auto py-8",
+                  modelsOpen ? "px-3 sm:px-6 md:px-10" : "px-6 sm:px-10 md:px-12",
+                )}
                 aria-label="Menu utama"
               >
                 <div className="grid gap-1">
@@ -148,7 +159,10 @@ export function PublicHeader() {
                           href={navHref(item)}
                           onClick={() => setMenuOpen(false)}
                           className={cn(
-                            "flex min-h-16 min-w-0 flex-1 items-center font-display text-2xl font-bold leading-tight transition sm:text-3xl",
+                            "flex min-h-14 min-w-0 flex-1 items-center font-display font-bold leading-tight transition sm:min-h-16",
+                            modelsOpen
+                              ? "text-lg sm:text-2xl md:text-3xl"
+                              : "text-2xl sm:text-3xl",
                             active ? "text-primary" : "text-foreground hover:text-primary",
                           )}
                           aria-current={active ? "page" : undefined}
@@ -159,14 +173,17 @@ export function PublicHeader() {
                           <button
                             type="button"
                             onClick={() => setModelsOpen((open) => !open)}
-                            className="inline-flex size-11 shrink-0 items-center justify-center text-foreground transition hover:bg-muted"
+                            className={cn(
+                              "inline-flex size-11 shrink-0 items-center justify-center transition hover:bg-muted",
+                              modelsOpen ? "text-primary" : "text-foreground",
+                            )}
                             aria-label={modelsOpen ? "Tutup daftar model" : "Buka daftar model"}
                             aria-expanded={modelsOpen}
                             aria-controls="drawer-model-submenu"
                           >
                             <Icon
                               name="caret-right"
-                              className={cn("size-5 transition-transform", modelsOpen && "rotate-90")}
+                              className="size-5"
                               weight="bold"
                               aria-hidden="true"
                             />
@@ -187,7 +204,8 @@ export function PublicHeader() {
                         href={navHref(item)}
                         onClick={() => setMenuOpen(false)}
                         className={cn(
-                          "inline-flex min-h-12 items-center gap-2 text-base font-semibold transition",
+                          "inline-flex min-h-12 items-center gap-2 font-semibold transition",
+                          modelsOpen ? "text-sm sm:text-base" : "text-base",
                           isFlashSale
                             ? "text-sale hover:text-foreground"
                             : active
@@ -221,7 +239,7 @@ export function PublicHeader() {
               <div
                 id="drawer-model-submenu"
                 className={cn(
-                  "bg-surface px-6 py-7 sm:px-10 md:px-8 md:py-9",
+                  "min-w-0 overflow-y-auto border-l border-border bg-muted/40 px-4 py-7 sm:px-6 md:px-8 md:py-9",
                   modelsOpen ? "block" : "hidden",
                 )}
                 aria-hidden={!modelsOpen ? "true" : undefined}

@@ -35,13 +35,26 @@ export function formatDateTime(value: string | number | Date | null | undefined)
   return formatDate(value, true)
 }
 
+/** Singkatan yang harus tetap kapital penuh (bukan Title Case). */
+const HUMANIZE_ACRONYMS: Record<string, string> = {
+  cod: "COD",
+  jnt: "J&T",
+  sku: "SKU",
+  wa: "WA",
+  id: "ID",
+}
+
 export function humanize(value: unknown): string {
   if (value === null || value === undefined || value === "") return "Belum tersedia"
   if (typeof value === "boolean") return value ? "Ya" : "Tidak"
 
   return String(value)
     .replace(/_/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase())
+    .replace(/\b[\w&]+\b/g, (word) => {
+      const acronym = HUMANIZE_ACRONYMS[word.toLowerCase()]
+      if (acronym) return acronym
+      return word.replace(/^\w/, (character) => character.toUpperCase())
+    })
 }
 
 export function stripHtml(value: string): string {

@@ -59,7 +59,20 @@ export const ORDER_STEPS = [
   "completed",
 ] as const
 
+/** Milestone pengiriman (orders.shipping_status / shipping_records.status). */
+export const SHIPPING_STEPS = [
+  "pending_pickup",
+  "in_process",
+  "in_transit",
+  "delivered",
+] as const
+
 export function orderStepIndex(status: string): number {
   if (status === "issue" || status === "return_in_process" || status === "cancelled") return -1
   return ORDER_STEPS.indexOf(status as (typeof ORDER_STEPS)[number])
+}
+
+export function shippingStepIndex(status: string): number {
+  if (status === "cancelled" || status === "returned") return -1
+  return SHIPPING_STEPS.indexOf(status as (typeof SHIPPING_STEPS)[number])
 }

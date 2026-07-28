@@ -37,8 +37,8 @@ Layout CMS (urutan/enable + sorotan layanan + cara pesan): `HomepageLayoutSettin
 | 3 | Paling banyak dipesan | `popularProducts` / featured | Anchor `#paling-banyak-dipesan`; boleh berisi SKU flash sale tanpa carousel Flash Sale terpisah |
 | — | ~~Flash Sale home~~ | dihapus | Flash Sale hanya `/promo` + `/flash-sale` |
 | — | ~~Pembatas metal~~ | dihapus | Section memakai `border-t border-border` saja |
-| 4 | Cara pesan | `homepageLayout.how_to_order` | CMS enable/copy; **fixed** di bawah produk populer |
-| 5 | Hasil pemasangan | `CmsGalleryItem` (+ fallback foto testimoni) | Caption `N Foto` / `N Video` |
+| 4 | Cara pesan | `homepageLayout.how_to_order` | CMS enable/copy; **fixed** di bawah produk populer; UI = **4 kolom horizontal** (mobile+desktop), ikon + judul langkah, tanpa deskripsi per kartu |
+| 5 | Hasil pemasangan | model cards (`InstallationGallery`) | Judul **Hasil pemasangan**; meta produk/foto/video |
 | 6 | Apa kata pelanggan | `CmsTestimonial` published (cuplikan) | **Satu** carousel; CTA ke `/reviews` |
 | 7 | Kami bantu | `HELP_STEPS` di `Home.tsx` | Dekat frame `services` Figma |
 | 8 | Closing CTA | hardcoded + WA shared | |
@@ -74,7 +74,7 @@ Edit teks unit terpasang (Informasi Toko): `config/sitemap.php` → `brand.units
 | Query filter | `?source=all\|marketplace\|website` + `?sort=` |
 | marketplace | `source IN (shopee, whatsapp, other)` |
 | website | `source = website` |
-| Galeri hasil pemasangan | Halaman `/hasil-pemasangan` + detail `/hasil-pemasangan/{parent_sku}`; beranda memakai `InstallationCard` (layout sama ModelCard) dengan keterangan total foto/video; kartu selalu clickable |
+| Galeri hasil pemasangan | Hierarki model → produk → galeri: `/hasil-pemasangan` (kartu model: total produk/foto/video) → `/hasil-pemasangan/{category}/{model}` (kartu produk) → `/hasil-pemasangan/{parent_sku}`; beranda memakai `InstallationCard` level model |
 
 Home **tidak** menduplikasi dua strip Figma; cukup cuplikan + link “Semua ulasan”.
 

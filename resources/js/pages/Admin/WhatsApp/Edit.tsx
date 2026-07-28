@@ -118,9 +118,9 @@ export default function WhatsAppEdit({
 
           <Field
             id="body_preview"
-            label="Pratinjau isi pesan"
+            label="Pratinjau isi pesan (naskah Meta)"
             error={form.errors.body_preview}
-            hint="Salinan referensi untuk admin. Pengiriman production memakai template yang disetujui di Meta/BSP."
+            hint="Salin teks ini ke WhatsApp Manager. Variabel harus {{1}}, {{2}}, … (jenis Nomor). Pengiriman production memakai template yang sudah Approved di Meta."
           >
             <Textarea
               id="body_preview"
@@ -152,9 +152,9 @@ export default function WhatsAppEdit({
         </section>
 
         <aside className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24">
-          <h2 className="text-base font-bold">Daftar variabel</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Klik variabel untuk menambahkannya ke posisi kursor di editor. Token ini untuk referensi mapping parameter template Meta.
+          <h2 className="text-base font-bold">Urutan variabel Meta</h2>
+          <p className="mt-2 text-pretty text-sm text-muted-foreground">
+            Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend — jangan ganti jadi nama seperti {"{{order_number}}"}.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {variables.map((variable) => (
@@ -162,9 +162,10 @@ export default function WhatsAppEdit({
                 key={variable.token}
                 type="button"
                 onClick={() => insertVariable(variable.token)}
-                className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs font-semibold text-foreground hover:border-primary hover:text-primary"
+                className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-semibold text-foreground hover:border-primary hover:text-primary"
               >
-                {variable.label}
+                <span className="font-mono">{variable.token}</span>
+                <span className="mt-0.5 block font-medium text-muted-foreground">{variable.label}</span>
               </button>
             ))}
           </div>

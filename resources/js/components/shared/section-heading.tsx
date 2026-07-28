@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
  */
 export function SectionHeading({
   title,
+  eyebrow,
   description,
   action,
   align = "center",
@@ -18,6 +19,7 @@ export function SectionHeading({
   size = "default",
 }: {
   title?: ReactNode
+  eyebrow?: ReactNode
   description?: ReactNode
   action?: ReactNode
   align?: "left" | "center"
@@ -31,14 +33,24 @@ export function SectionHeading({
   return (
     <div
       className={cn(
-        "flex flex-col gap-5",
+        "flex gap-5",
         align === "center"
-          ? "mx-auto max-w-3xl items-center text-center"
-          : "md:flex-row md:items-end md:justify-between",
+          ? "mx-auto max-w-3xl flex-col items-center text-center"
+          : "flex-row items-start justify-between gap-3 sm:items-end",
         className,
       )}
     >
-      <div className={cn(align === "center" && "mx-auto w-full")}>
+      <div className={cn("min-w-0 flex-1", align === "center" && "mx-auto w-full")}>
+        {eyebrow ? (
+          <p
+            className={cn(
+              "mb-1.5 text-xs font-semibold uppercase tracking-tight text-primary sm:text-sm",
+              align === "center" ? "mx-auto text-center" : "text-left",
+            )}
+          >
+            {eyebrow}
+          </p>
+        ) : null}
         <h2
           id={id}
           className={cn(

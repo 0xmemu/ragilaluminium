@@ -218,7 +218,7 @@ return [
             'view' => null,
             'group' => 'core',
             'status' => 'planned',
-            'note' => 'Customer submit form planned; public listing is /hasil-pemasangan + /hasil-pemasangan/{parent_sku}',
+            'note' => 'Customer submit form planned; public listing is /hasil-pemasangan (model) → /hasil-pemasangan/{category}/{model} (produk) → /hasil-pemasangan/{parent_sku} (galeri)',
         ],
     ],
 
@@ -280,7 +280,7 @@ return [
             [
                 'label' => 'Hasil Pemasangan',
                 'route' => 'installation.index',
-                'active' => ['installation.index', 'installation.show'],
+                'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
                 'label' => 'Ulasan',
@@ -330,7 +330,7 @@ return [
             [
                 'label' => 'Hasil Pemasangan',
                 'route' => 'installation.index',
-                'active' => ['installation.index', 'installation.show'],
+                'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
                 'label' => 'Informasi Toko',
@@ -430,7 +430,7 @@ return [
         'short_name' => 'Ragil Aluminium',
         'tagline' => 'Pusat Belanja Jendela Aluminium',
         'email' => 'ragilaluminium29@gmail.com',
-        'phone' => '+62 81234598065',
+        'phone' => env('BRAND_PHONE', '+62 851-9966-6810'),
         'address' => env(
             'BRAND_ADDRESS',
             'Jln. Raya Mandiraja Wetan, Samping Barat Pom Bensin Mandiraja, Desa Mandiraja Wetan, Kec. Mandiraja, Kab. Banjarnegara, Jawa Tengah 53473'

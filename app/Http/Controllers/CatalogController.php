@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\ModelProductService;
 use App\Support\CatalogLabels;
 use App\Support\CatalogSearch;
 use App\Support\CatalogTaxonomy;
 use App\Support\FlashSalePeriodSettings;
 use App\Support\InertiaCatalog;
+use App\Support\InstallationGallery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -86,7 +90,7 @@ class CatalogController extends Controller
             ->when($category, fn ($q) => $q->where('product_category', $category))
             ->when($promoOnly, fn ($q) => $q->whereHas(
                 'attributes',
-                fn ($qa) => $qa->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(TRIM(attribute_name))'), $promoAttributes)
+                fn ($qa) => $qa->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $promoAttributes)
             ))
             ->when($flashOnly, function ($q) use ($flashPeriodLive) {
                 if (! $flashPeriodLive) {
@@ -168,10 +172,19 @@ class CatalogController extends Controller
             );
         }
 
+        $categoryName = $this->listingTitle(
+            category: $category,
+            model: $model,
+            design: $design,
+            sort: $sort,
+            flashOnly: $flashOnly,
+            promoOnly: $promoOnly,
+        );
+
         if ($request->is('api/*') || $request->wantsJson()) {
             return response()->json([
                 'category' => $category ?? 'ALL',
-                'category_name' => CatalogLabels::category($category),
+                'category_name' => $categoryName,
                 'products' => $products->getCollection()->map(
                     fn ($product) => $product->toApiArray()
                 )->all(),
@@ -191,14 +204,6 @@ class CatalogController extends Controller
             $category === 'DOOR' => '/doors',
             $category === 'BOUVEN' => '/bouven',
             default => '/products',
-        };
-
-        $categoryName = match (true) {
-            $flashOnly => 'Flash Sale',
-            $promoOnly => 'Promo',
-            $sort === 'popular' && ! $category => 'Paling Banyak Dipesan',
-            ! $category => 'Semua Produk',
-            default => CatalogLabels::category($category) ?: 'Semua Produk',
         };
 
         $productCards = InertiaCatalog::productCards($products->getCollection());
@@ -284,7 +289,7 @@ class CatalogController extends Controller
         );
     }
 
-    /** @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Product>  $query */
+    /** @param  Builder<Product>  $query */
     protected function scopeFlashSaleActive($query)
     {
         $flashAttributes = ['promo_flash_sale', 'flash_sale'];
@@ -306,9 +311,88 @@ class CatalogController extends Controller
         $design = CatalogLabels::normalizeDesign($request->input('design'));
 
         return Inertia::render('Public/ModelProduk', [
-            'models' => app(\App\Services\ModelProductService::class)->storefrontCards(0, $design),
+            'models' => app(ModelProductService::class)->storefrontCards(0, $design),
             'filterDesigns' => CatalogTaxonomy::availableDesignFilters(),
             'activeDesign' => $design,
         ]);
+    }
+
+    /**
+     * Halaman detail satu model (deskripsi + highlight) + daftar produk nyata model itu.
+     */
+    public function modelShow(string $category, string $model): Response
+    {
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        $modelCode = InstallationGallery::modelFromSlug($model);
+
+        if ($categoryCode === null || $categoryCode === 'LAINNYA' || $modelCode === '') {
+            abort(404);
+        }
+
+        $card = collect(app(ModelProductService::class)->storefrontCards())
+            ->first(function (array $item) use ($categoryCode, $modelCode) {
+                return strtoupper((string) ($item['category'] ?? '')) === $categoryCode
+                    && strtoupper((string) ($item['model'] ?? '')) === $modelCode;
+            });
+
+        if (! is_array($card)) {
+            abort(404);
+        }
+
+        $products = Product::visible()
+            ->where('product_category', $categoryCode)
+            ->where('product_model', $modelCode)
+            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->withCount([
+                'installationMedia as has_installation_gallery' => fn ($q) => $q->visible(),
+            ])
+            ->withSum('orderItems as sold_count', 'quantity')
+            ->latest('id')
+            ->limit(48)
+            ->get();
+
+        $listingHref = (string) ($card['href'] ?? route('catalog.index', absolute: false));
+
+        return Inertia::render('Public/ModelDetail', [
+            'model' => $card,
+            'products' => InertiaCatalog::productCards($products),
+            'hubHref' => route('catalog.index', absolute: false),
+            'listingHref' => $listingHref,
+        ]);
+    }
+
+    /**
+     * Judul listing: ikut filter model/desain bila aktif (mis. "Jendela Sliding").
+     */
+    protected function listingTitle(
+        ?string $category,
+        ?string $model,
+        ?string $design,
+        ?string $sort,
+        bool $flashOnly,
+        bool $promoOnly,
+    ): string {
+        if ($flashOnly) {
+            return 'Flash Sale';
+        }
+        if ($promoOnly) {
+            return 'Promo';
+        }
+        if ($sort === 'popular' && ! $category && ! $model && ! $design) {
+            return 'Paling Banyak Dipesan';
+        }
+
+        if ($model || $design) {
+            $line = CatalogLabels::productLine($category, $model, $design);
+            if ($line !== '') {
+                return $line;
+            }
+        }
+
+        if (! $category) {
+            return 'Semua Produk';
+        }
+
+        return CatalogLabels::category($category) ?: 'Semua Produk';
     }
 }

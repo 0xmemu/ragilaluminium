@@ -27,7 +27,7 @@ export function applyAdminTheme(theme: AdminTheme): () => void {
 
   if (theme === "dark") {
     root.classList.add("dark")
-    meta?.setAttribute("content", "#141614")
+    meta?.setAttribute("content", "#131212")
   } else {
     root.classList.remove("dark")
     meta?.setAttribute("content", "#F4F6F5")

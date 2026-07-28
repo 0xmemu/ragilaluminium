@@ -9,7 +9,9 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\WhatsAppMessage;
+use App\Services\ProductEngagementService;
 use App\Services\StorePerformanceService;
+use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use App\Support\ProductPromotionMetadata;
 use Illuminate\Http\Request;
@@ -21,8 +23,8 @@ class DashboardController extends Controller
 {
     public function __construct(
         protected StorePerformanceService $performance,
-    ) {
-    }
+        protected ProductEngagementService $productEngagement,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -54,11 +56,11 @@ class DashboardController extends Controller
         })->values()->all();
 
         $statusOrder = [
-            ['key' => 'pending_payment', 'label' => 'Perlu Konfirmasi', 'icon' => 'alert-circle'],
-            ['key' => 'processing', 'label' => 'Diproses', 'icon' => 'package'],
+            ['key' => 'pending_payment', 'label' => 'Perlu Konfirmasi', 'icon' => 'clock'],
+            ['key' => 'processing', 'label' => 'Diproses', 'icon' => 'refresh'],
             ['key' => 'shipped', 'label' => 'Dikirim', 'icon' => 'truck'],
             ['key' => 'delivered', 'label' => 'Sampai', 'icon' => 'check-circle'],
-            ['key' => 'return_in_process', 'label' => 'Retur Diproses', 'icon' => 'refresh'],
+            ['key' => 'return_in_process', 'label' => 'Retur Diproses', 'icon' => 'package'],
         ];
 
         $statusCounts = Order::select('order_status', DB::raw('count(*) as total'))
@@ -177,6 +179,7 @@ class DashboardController extends Controller
             ->values();
 
         $recentOrders = Order::query()
+            ->with(['shippingRecords' => fn ($q) => $q->latest('id')])
             ->withCount('items')
             ->withSum('items as units_count', 'quantity')
             ->latest()
@@ -184,6 +187,9 @@ class DashboardController extends Controller
             ->get()
             ->map(function (Order $order) {
                 $phone = PhoneNumber::normalize($order->customer_phone) ?? $order->customer_phone;
+                $shipping = $order->shippingRecords->first(
+                    fn ($record) => $record->status !== 'cancelled'
+                ) ?? $order->shippingRecords->first();
 
                 return [
                     'id' => $order->id,
@@ -195,6 +201,9 @@ class DashboardController extends Controller
                     'shipping_province' => $order->shipping_province,
                     'customer_phone' => $order->customer_phone,
                     'order_status' => $order->order_status,
+                    'shipping_status' => $order->shipping_status,
+                    'waybill_number' => $shipping?->waybill_number,
+                    'shipping_track' => OrderTrackingPresenter::forOrder($order, $shipping, withTimeline: false),
                     'total_amount' => (float) $order->total_amount,
                     'payment_method' => $order->payment_method,
                     'product_count' => (int) $order->items_count,
@@ -267,6 +276,7 @@ class DashboardController extends Controller
             'recentOrders' => $recentOrders,
             'promoProducts' => $promoProducts->take(6)->all(),
             'promoTotal' => $promoProducts->count(),
+            'topEngagedProducts' => $this->productEngagement->topProducts($performaPeriod, 8),
         ]);
     }
 }

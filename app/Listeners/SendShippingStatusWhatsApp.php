@@ -10,9 +10,7 @@ class SendShippingStatusWhatsApp implements ShouldQueue
 {
     public bool $afterCommit = true;
 
-    public function __construct(protected WhatsAppService $whatsapp)
-    {
-    }
+    public function __construct(protected WhatsAppService $whatsapp) {}
 
     public function handle(ShippingStatusUpdated $event): void
     {
@@ -30,11 +28,6 @@ class SendShippingStatusWhatsApp implements ShouldQueue
             return;
         }
 
-        $this->whatsapp->sendTemplateMessage(
-            $order->customer_phone,
-            $key,
-            [$order->order_number, $event->record->waybill_number],
-            $order->id,
-        );
+        $this->whatsapp->handleShippingStatus($order, $event->record, $key);
     }
 }

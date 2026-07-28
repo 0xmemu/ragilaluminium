@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 
@@ -13,6 +14,7 @@ interface ModelRecord {
   product_category?: string | null
   product_model?: string | null
   image_url?: string | null
+  description?: string | null
   type: string
   status: string
   sort_order: number
@@ -41,6 +43,7 @@ export default function ModelProductForm({
     product_category: modelProduct?.product_category ?? "",
     product_model: modelProduct?.product_model ?? "",
     image_url: modelProduct?.image_url ?? "",
+    description: modelProduct?.description ?? "",
     type: modelProduct?.type ?? types[0] ?? "polos",
     status: modelProduct?.status ?? "draft",
     sort_order: modelProduct?.sort_order ?? 0,
@@ -118,9 +121,23 @@ export default function ModelProductForm({
               <img
                 src={form.data.image_url}
                 alt=""
-                className="max-h-48 w-full rounded-lg border border-border object-cover sm:col-span-2"
+                className="max-h-48 w-full border border-border object-cover sm:col-span-2"
               />
             ) : null}
+            <Field
+              id="model-description"
+              label="Deskripsi model"
+              hint="Tampil di halaman detail model storefront. Kosongkan untuk memakai teks default sistem."
+              error={form.errors.description}
+              className="sm:col-span-2"
+            >
+              <Textarea
+                rows={5}
+                value={form.data.description}
+                onChange={(event) => form.setData("description", event.target.value)}
+                placeholder="Contoh: Jendela sliding cocok untuk ruangan dengan bukaan lebar…"
+              />
+            </Field>
             <Field id="model-sort" label="Urutan" error={form.errors.sort_order}>
               <Input
                 type="number"

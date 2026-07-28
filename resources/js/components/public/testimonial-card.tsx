@@ -32,7 +32,7 @@ export function TestimonialCard({
           wrapperClassName="aspect-square bg-[#fafafa]"
         />
       ) : null}
-      <div className={cn("flex flex-1 flex-col", compact ? "p-4" : "p-5 sm:p-6")}>
+      <div className={cn("flex flex-1 flex-col", compact ? "p-3" : "p-5 sm:p-6")}>
         {rating > 0 ? (
           <div
             className="flex gap-0.5 text-warning"
@@ -43,7 +43,7 @@ export function TestimonialCard({
                 name="star"
                 key={index}
                 weight={index < rating ? "fill" : "regular"}
-                className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+                className={compact ? "h-3 w-3" : "h-4 w-4"}
                 aria-hidden="true"
               />
             ))}
@@ -53,7 +53,7 @@ export function TestimonialCard({
           className={cn(
             "text-foreground",
             compact
-              ? "mt-3 line-clamp-4 text-sm leading-6"
+              ? "mt-2 line-clamp-4 text-xs leading-5"
               : "mt-5 text-base leading-7",
           )}
         >
@@ -61,20 +61,41 @@ export function TestimonialCard({
         </blockquote>
         <div
           className={cn(
-            "flex items-end justify-between gap-4 border-t border-border",
-            compact ? "mt-auto pt-3" : "mt-6 pt-4",
+            "border-t border-border",
+            compact
+              ? "mt-auto flex flex-col gap-1.5 pt-2.5"
+              : "mt-6 flex items-end justify-between gap-4 pt-4",
           )}
         >
-          <div>
-            <p className="text-sm font-semibold text-foreground">{testimonial.customer_name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <p
+              className={cn(
+                "font-semibold text-foreground",
+                compact ? "truncate text-xs leading-4" : "text-sm",
+              )}
+            >
+              {testimonial.customer_name}
+            </p>
+            <p
+              className={cn(
+                "text-muted-foreground",
+                compact ? "mt-0.5 truncate text-[11px] leading-4" : "mt-1 text-xs",
+              )}
+            >
               {[testimonial.location, testimonial.source ? humanize(testimonial.source) : null]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
           </div>
           {testimonial.product ? (
-            <span className="shrink-0 text-xs font-semibold text-primary">Lihat produk</span>
+            <span
+              className={cn(
+                "font-semibold text-primary",
+                compact ? "text-[11px] leading-4" : "shrink-0 text-xs",
+              )}
+            >
+              Lihat produk
+            </span>
           ) : null}
         </div>
       </div>

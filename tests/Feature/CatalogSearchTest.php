@@ -41,4 +41,46 @@ class CatalogSearchTest extends TestCase
                 ->where('products.0.parent_sku', 'WIN-SL-1')
             );
     }
+
+    public function test_category_listing_title_includes_active_model_and_design_filters(): void
+    {
+        Product::create([
+            'parent_sku' => 'WIN-SL-TITLE-1',
+            'name' => 'Sliding Title',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'ORNAMEN',
+            'status' => 'active',
+        ]);
+
+        $this->get('/windows')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/Catalog')
+                ->where('categoryName', 'Jendela')
+            );
+
+        $this->get('/windows?model=SLIDING')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/Catalog')
+                ->where('categoryName', 'Jendela Sliding')
+                ->where('activeModel', 'SLIDING')
+            );
+
+        $this->get('/windows?model=SLIDING&design=ORNAMEN')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/Catalog')
+                ->where('categoryName', 'Jendela Sliding Ornamen')
+            );
+
+        $this->get('/doors?model=SWING')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/Catalog')
+                ->where('categoryName', 'Pintu Swing')
+            );
+    }
 }

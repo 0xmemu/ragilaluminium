@@ -1,0 +1,19 @@
+[Unit]
+Description=Ragil Aluminium Laravel queue worker
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/website.4.0
+ExecStart=/usr/bin/php /var/www/website.4.0/artisan queue:work database --sleep=1 --tries=3 --timeout=90 --max-time=3600
+Restart=always
+RestartSec=3
+
+# Soft stop between jobs
+KillMode=process
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

@@ -248,7 +248,7 @@ export default function Catalog({
           </SheetTrigger>
           <FilterSheetContent
             title="Sort & Filter"
-            description="Atur urutan dan saring produk sesuai kebutuhan."
+            description="Urutkan dan pilih produk yang paling sesuai kebutuhan rumah Anda."
             footer={
               <FilterSheetFooter
                 onReset={reset}
@@ -471,8 +471,8 @@ export default function Catalog({
               : isPromo
                 ? "Promo Ragil Aluminium. Produk dengan diskon dan harga spesial."
                 : listingAllProducts
-                  ? "Jelajahi semua produk aluminium Ragil. Filter model, desain, dan harga."
-                  : `Lihat produk ${categoryName.toLowerCase()} dan filter berdasarkan model, desain, harga, atau popularitas.`
+                  ? "Jelajahi jendela, pintu, dan bouven aluminium Ragil Aluminium untuk rumah Anda."
+                  : `Pilihan ${categoryName.toLowerCase()} aluminium Ragil Aluminium — siap custom ukuran.`
           }
         />
       </Head>
