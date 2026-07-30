@@ -80,25 +80,29 @@ class WhatsAppTemplateController extends Controller
 
     public function connection(): Response
     {
-        $configured = filled(config('services.whatsapp.token'))
-            && filled(config('services.whatsapp.number_id'));
+        $status = app(\App\Services\WhatsAppService::class)->connectionStatus();
 
         $outbound = WhatsAppMessage::query()->where('direction', 'outbound');
         $sentCount = (clone $outbound)->whereIn('status', ['sent', 'delivered', 'read'])->count();
-        $failedCount = (clone $outbound)->where('status', 'failed')->count();
+        $failedCount = (clone $outbound)->whereIn('status', ['failed', 'deferred'])->count();
         $lastSentAt = (clone $outbound)->whereNotNull('sent_at')->latest('sent_at')->value('sent_at');
 
         return Inertia::render('Admin/WhatsApp/Connection', [
             'title' => 'Hubungkan WhatsApp',
-            'description' => 'Status integrasi WhatsApp Business Cloud API untuk pesan otomatis toko.',
+            'description' => 'Status driver WhatsApp (Meta Cloud API atau WAHA self-hosted) untuk pesan otomatis toko.',
             'backUrl' => route('admin.whatsapp.templates.index'),
             'connection' => [
-                'configured' => $configured,
-                'base_url' => config('services.whatsapp.base_url'),
-                'number_id_set' => filled(config('services.whatsapp.number_id')),
-                'token_set' => filled(config('services.whatsapp.token')),
-                'verify_token_set' => filled(config('services.whatsapp.verify_token')),
+                'configured' => $status['configured'],
+                'driver' => $status['driver'],
+                'base_url' => $status['providers']['meta']['base_url'] ?? null,
+                'number_id_set' => (bool) ($status['providers']['meta']['number_id_set'] ?? false),
+                'token_set' => (bool) ($status['providers']['meta']['token_set'] ?? false),
+                'verify_token_set' => (bool) ($status['providers']['meta']['verify_token_set'] ?? false),
                 'webhook_path' => '/webhook/whatsapp',
+                'waha_webhook_path' => '/api/webhooks/waha',
+                'providers' => $status['providers'],
+                'waha_session_status' => $status['waha_session_status'],
+                'waha_timelock' => $status['waha_timelock'],
             ],
             'stats' => [
                 'sent_count' => $sentCount,

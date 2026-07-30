@@ -346,6 +346,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 Route::middleware('throttle:120,1')->group(function () {
     Route::get('/webhook/whatsapp', [WhatsAppController::class, 'verify'])->name('webhook.whatsapp.verify');
     Route::post('/webhook/whatsapp', [WhatsAppController::class, 'handle'])->name('webhook.whatsapp.handle');
+    Route::post('/webhook/whatsapp/waha', [\App\Http\Controllers\Webhook\WahaWebhookController::class, '__invoke'])->name('webhook.whatsapp.waha');
     Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])->name('webhook.shipping.jnt');
 });
 
