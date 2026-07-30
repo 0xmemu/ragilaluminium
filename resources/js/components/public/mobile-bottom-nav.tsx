@@ -1,21 +1,52 @@
 import { Link, usePage } from "@inertiajs/react"
+import { ClipboardText, House, Package, UserCircle, type IconProps } from "@phosphor-icons/react"
+import type { ComponentType } from "react"
 
-import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
+
+type NavGlyph = ComponentType<IconProps>
+
+/** Static map — avoids shared Icon registry miss / remount flicker. */
+const NAV_ICONS: Record<string, NavGlyph> = {
+  house: House,
+  home: House,
+  package: Package,
+  "clipboard-list": ClipboardText,
+  "user-round": UserCircle,
+  user: UserCircle,
+}
+
+function NavIcon({ name, active }: { name: string; active: boolean }) {
+  const Glyph = NAV_ICONS[name] ?? Package
+  return (
+    <Glyph
+      weight={active ? "fill" : "regular"}
+      width={22}
+      height={22}
+      className="size-[22px] shrink-0"
+      aria-hidden
+    />
+  )
+}
 
 export function MobileBottomNav() {
   const { nav } = usePage<SharedPageProps>().props
   const items = nav?.public?.mobile_bottom ?? []
   if (!items.length) return null
 
+  const columns = Math.min(Math.max(items.length, 1), 5)
+
   return (
     <nav
-      className="safe-bottom fixed inset-x-0 bottom-0 z-header border-t border-border bg-surface shadow-[0_-6px_20px_hsl(var(--foreground)/0.05)] lg:hidden"
+      className="fixed bottom-0 left-0 z-[60] w-full max-w-[100vw] border-t border-border bg-surface pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-6px_20px_hsl(var(--foreground)/0.05)] lg:hidden"
       aria-label="Navigasi cepat"
     >
-      <div className="mx-auto flex h-14 max-w-lg items-stretch px-1">
+      <div
+        className="mx-auto grid h-14 w-full max-w-lg items-stretch px-1"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
         {items.map((item) => {
           const active = isRouteActive(item.active ?? [item.route])
           return (
@@ -23,7 +54,7 @@ export function MobileBottomNav() {
               key={`${item.label}-${item.route}`}
               href={routeUrl(item.route, item.params)}
               className={cn(
-                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 pt-1.5 pb-1 text-center transition",
+                "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition",
                 active ? "text-foreground" : "text-muted-foreground active:text-foreground",
               )}
               aria-current={active ? "page" : undefined}
@@ -34,12 +65,7 @@ export function MobileBottomNav() {
                   aria-hidden="true"
                 />
               ) : null}
-              <Icon
-                name={item.icon ?? "package"}
-                className="size-[22px] shrink-0"
-                weight={active ? "fill" : "regular"}
-                aria-hidden="true"
-              />
+              <NavIcon name={item.icon ?? "package"} active={active} />
               <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-tight">
                 {item.label}
               </span>

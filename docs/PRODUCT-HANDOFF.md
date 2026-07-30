@@ -412,6 +412,7 @@ WhatsAppService::sendTemplateMessage
   → no WHATSAPP_API_TOKEN → mark sent (dev degrade); else POST Meta Graph API → update status
 
 Inbound: POST /webhook/whatsapp → handleWebhook → log inbound + delivery status (idempotent by provider_message_id)
+  → bila tombol/teks konfirmasi COD (Oke / Proses Pesanan / confirm_*) → OrderService::beginProcessing → OrderProcessingStarted → WA `payment_confirmed`
 ```
 
 ### E. Shipping (J&T Cargo)

@@ -28,9 +28,10 @@ interface WebsiteRow {
   id: number
   no: number
   customer_name: string
-  message: string
+  message?: string | null
   rating?: number | null
   source: string
+  source_label?: string
   location?: string | null
   product?: string | null
   image_url?: string | null
@@ -149,6 +150,7 @@ export default function TestimonialsIndex({
   tab,
   tabs,
   filters,
+  channelOptions = [],
   sortOptions,
   publishedOptions,
   createHref,
@@ -166,7 +168,8 @@ export default function TestimonialsIndex({
   description: string
   tab: "website" | "foto"
   tabs: TabItem[]
-  filters: { q: string; sort: string; published: string }
+  filters: { q: string; sort: string; published: string; channel?: string }
+  channelOptions?: Array<{ value: string; label: string }>
   sortOptions: Array<{ value: string; label: string }>
   publishedOptions: Array<{ value: string; label: string }>
   createHref: string
@@ -183,6 +186,7 @@ export default function TestimonialsIndex({
   const [q, setQ] = React.useState(filters.q)
   const [sort, setSort] = React.useState(filters.sort)
   const [published, setPublished] = React.useState(filters.published)
+  const [channel, setChannel] = React.useState(filters.channel ?? "all")
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
   const isPengaturanSurface =
     indexRoute === "admin.apa-kata-pelanggan.index" || indexRoute === "admin.hasil-pemasangan.index"
@@ -203,11 +207,14 @@ export default function TestimonialsIndex({
     })
   }, [pageMeta])
 
-  function apply(next?: Partial<{ q: string; sort: string; published: string }>) {
+  function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string }>) {
     const params: Record<string, string> = {
       q: next?.q ?? q,
       sort: next?.sort ?? sort,
       published: next?.published ?? published,
+    }
+    if (tab === "website") {
+      params.channel = next?.channel ?? channel
     }
     if (!isPengaturanSurface) {
       params.tab = tab
@@ -327,6 +334,23 @@ export default function TestimonialsIndex({
             </option>
           ))}
         </Select>
+        {tab === "website" && channelOptions.length > 0 ? (
+          <Select
+            value={channel}
+            onChange={(event) => {
+              const value = event.target.value
+              setChannel(value)
+              apply({ channel: value })
+            }}
+            className="w-56"
+          >
+            {channelOptions.map((option) => (
+              <option key={option.value || "all"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
         <Select
           value={sort}
           onChange={(event) => {
@@ -371,7 +395,7 @@ export default function TestimonialsIndex({
                           {row.customer_name}
                         </Link>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {humanize(row.source)}
+                          {row.source_label ?? humanize(row.source)}
                           {row.location ? ` · ${row.location}` : ""}
                         </p>
                         {row.product ? (
@@ -384,7 +408,7 @@ export default function TestimonialsIndex({
                         <RatingStars rating={row.rating} />
                       </td>
                       <td className="max-w-[18rem] px-3 py-3 text-muted-foreground">
-                        <p className="line-clamp-3">{row.message}</p>
+                        <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "—")}</p>
                       </td>
                       <td className="px-3 py-3">
                         {row.image_url ? (

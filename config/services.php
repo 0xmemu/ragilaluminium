@@ -42,6 +42,13 @@ return [
     */
 
     'whatsapp' => [
+        'default_provider' => env('WHATSAPP_PROVIDER', 'meta'),
+        'compare_provider' => env('WHATSAPP_COMPARE_PROVIDER'),
+        'compare_allowlist' => array_values(array_filter(array_map(
+            static fn (?string $phone) => $phone !== null ? trim($phone) : null,
+            explode(',', (string) env('WHATSAPP_COMPARE_ALLOWLIST', ''))
+        ))),
+        // Legacy Stage 8 aliases keep existing callers stable and map to Meta.
         'base_url' => env('WHATSAPP_API_BASE_URL', 'https://graph.facebook.com/v20.0'),
         'token' => env('WHATSAPP_API_TOKEN'),
         'number_id' => env('WHATSAPP_BUSINESS_NUMBER_ID'),
@@ -50,6 +57,23 @@ return [
         'business_phone' => env('WHATSAPP_BUSINESS_PHONE'),
         'language' => env('WHATSAPP_LANGUAGE', 'id'),
         'timeout' => (int) env('WHATSAPP_TIMEOUT', 15),
+        'meta' => [
+            'base_url' => env('WHATSAPP_API_BASE_URL', 'https://graph.facebook.com/v20.0'),
+            'token' => env('WHATSAPP_API_TOKEN'),
+            'number_id' => env('WHATSAPP_BUSINESS_NUMBER_ID'),
+            'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+            'app_secret' => env('WHATSAPP_APP_SECRET'),
+            'business_phone' => env('WHATSAPP_BUSINESS_PHONE'),
+            'language' => env('WHATSAPP_LANGUAGE', 'id'),
+            'timeout' => (int) env('WHATSAPP_TIMEOUT', 15),
+        ],
+        'waha' => [
+            'base_url' => env('WHATSAPP_WAHA_BASE_URL'),
+            'api_key' => env('WHATSAPP_WAHA_API_KEY'),
+            'session' => env('WHATSAPP_WAHA_SESSION', 'default'),
+            'webhook_secret' => env('WHATSAPP_WAHA_WEBHOOK_SECRET'),
+            'timeout' => (int) env('WHATSAPP_WAHA_TIMEOUT', env('WHATSAPP_TIMEOUT', 15)),
+        ],
     ],
 
     /*

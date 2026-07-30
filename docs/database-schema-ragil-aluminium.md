@@ -394,14 +394,18 @@ Indexes:
 
 ### 5.2 `whatsapp_messages`
 
-Represents individual messages sent or received via WhatsApp Business API.
+Represents individual messages sent or received via WhatsApp providers (`meta` resmi atau `waha`).
 
 - `id` (PK, bigint, auto increment)  
 - `direction` (enum: outbound, inbound)  
 - `order_id` (FK → `orders.id`, nullable)  
 - `phone_number` (varchar)  
+- `provider` (varchar, default `meta`)
+  - e.g. `meta`, `waha`
 - `internal_template_key` (varchar, nullable)  
 - `provider_message_id` (varchar, nullable)  
+- `provider_session` (varchar, nullable)
+  - WAHA session name when applicable, e.g. `default`
 - `content_text` (text, nullable)  
 - `content_payload` (json, nullable)  
 - `status` (enum: pending, sent, delivered, read, failed, received)  
@@ -418,6 +422,7 @@ Indexes:
 - `idx_whatsapp_messages_phone` (`phone_number`)  
 - `idx_whatsapp_messages_direction_status` (`direction`, `status`)  
 - `idx_whatsapp_messages_provider_message_id` (`provider_message_id`)
+- `idx_whatsapp_messages_provider_status` (`provider`, `status`)
 
 ---
 
@@ -716,6 +721,7 @@ Kurasi kartu model di storefront (beranda / hub `/products` / menu model), terpi
 - `product_category` (varchar 32, nullable) — `WINDOW` | `DOOR` | `BOUVEN`
 - `product_model` (varchar 64, nullable) — e.g. `JUNGKIT`, `SLIDING`
 - `image_url` (varchar, nullable)
+- `description` (text, nullable) — deskripsi model di halaman detail storefront; diedit di admin Model Produk
 - `type` (enum: `polos`, `ornamen`, `lainnya`, default `polos`)
 - `status` (enum: `active`, `draft`, default `draft`)
 - `sort_order` (integer, default 0)
@@ -745,9 +751,11 @@ Manual customer reviews (often copied from Shopee/WhatsApp) for the public store
   - Set → shown on that product’s PDP **Ulasan** tab (Stage 10 filter by product ID)
   - Null → general testimonial on `/reviews` only
 - `customer_name` (varchar)
-- `message` (text)
+- `message` (text, **nullable**) — boleh kosong jika `image_url` terisi (screenshot murni / admin-added WA SS)
 - `rating` (tinyint 1–5, nullable)
 - `source` (varchar: `shopee`, `whatsapp`, `website`, `other`)
+  - `shopee` / `whatsapp` / `other` → section **Apa kata pelanggan kami**
+  - `website` → section **Ulasan pelanggan di website** (+ PDP tab ulasan bila `product_id` set)
 - `location` (varchar, nullable)
 - `image_url` (varchar, nullable)
 - `published` (boolean)
@@ -804,6 +812,7 @@ Indexes:
 Notes:
 
 - Storefront middleware increments `storefront_page_views` and (once per session/day) `storefront_unique_visitors`.
+- Product engagement (admin dashboard only): `product_views` (PDP load) and `product_clicks` (kartu produk storefront) with `context.product_id`; aggregated per `metric_date`.
 - Performa Toko conversion = orders in period ÷ unique visitors (0 if no visitor data yet).
 - Sales/omzet KPIs are computed live from `orders` / `order_items` (not only from this table).
 - **Log Aktivitas (admin):** Monitoring → `admin.activity-logs.*` reads append-only `event_logs` (filter by category derived from `event_type` / `entity_type`, search, CSV export). Critical writers include order/payment/shipping, import start/retry, WhatsApp template changes, and admin login/logout. Do not hard-delete log rows.

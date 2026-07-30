@@ -4,7 +4,8 @@ Cara berpikir agent (adaptasi LOOPKIT, **bukan** harness Claude):
 **kontrak → SoT → skill track → code → report → (opsional) memory.**
 
 Baca file ini + [`AGENTS.md`](../AGENTS.md) sebelum implementasi.  
-**Pindah server / deploy production** hanya setelah produk final & matang — jangan mulai sekarang.
+**Pindah server / deploy production** hanya setelah produk final & matang — jangan mulai sekarang.  
+**DATABASE SAFETY:** jangan `migrate:fresh` / `db:wipe` / truncate / drop data pada DB app (MySQL `ragil` / `.env` aktif) kecuali user **eksplisit** meminta di query yang sama. Detail: [`AGENTS.md`](../AGENTS.md) § Agent Rules → DATABASE SAFETY.
 
 Tidak ada `.claude/`, hooks, atau `run.sh`. Loop agent = baca dokumen ini → skill relevan → ubah code → laporkan format AGENTS.
 
@@ -149,6 +150,7 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 - Rewrite penuh ke Next.js storefront
 - Skill React/shadcn sebagai SoT UI publik
 - Hard-delete data (pakai archive per schema)
+- **Reset DB / wipe data** (`migrate:fresh`, `migrate:refresh`, `db:wipe`, truncate massal) tanpa instruksi eksplisit user — lihat `AGENTS.md` DATABASE SAFETY
 - Menambah URL tanpa update `docs/sitemap/` + config sitemap + API routes doc
 
 **Dev remote OK:** VPS sebagai workstation Cursor Remote SSH (bukan toko live) — lihat [`docs/dev-vps-remote.md`](dev-vps-remote.md) + `scripts/dev-vps/`.

@@ -2,15 +2,14 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { OrderStatusTimeline } from "@/components/public/order-status-timeline"
+import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/ui/status-badge"
 import PublicLayout from "@/layouts/public-layout"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
@@ -39,74 +38,25 @@ function OrderDetail({
         </p>
       </div>
 
-      <OrderStatusTimeline
-        className="mt-8"
-        orderStatus={order.order_status}
-        paymentStatus={order.payment_status}
-        shippingStatus={order.shipping_status}
-      />
-
-      <section className="mt-8 border border-border bg-surface p-5">
-        <div className="flex items-start gap-3">
-          <Icon name="truck" className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold">Status pengiriman</h3>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Diperbarui otomatis dari J&amp;T Cargo saat halaman ini dibuka.
-            </p>
-            {order.shipping ? (
-              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs text-muted-foreground">Kurir</dt>
-                  <dd className="mt-1 font-semibold">
-                    {order.shipping.carrier_name ?? "J&T Cargo"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Status kirim</dt>
-                  <dd className="mt-1">
-                    <StatusBadge status={order.shipping.status ?? order.shipping_status} />
-                  </dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-xs text-muted-foreground">Nomor resi</dt>
-                  <dd className="tabular-nums mt-1 break-all font-mono text-sm font-semibold">
-                    {order.shipping.waybill_number}
-                  </dd>
-                </div>
-                {order.shipping.last_status_at ? (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs text-muted-foreground">Pembaruan terakhir</dt>
-                    <dd className="mt-1 text-sm">
-                      {formatDate(order.shipping.last_status_at, true)}
-                    </dd>
-                  </div>
-                ) : null}
-                {order.shipping.status_raw ? (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs text-muted-foreground">Keterangan kurir</dt>
-                    <dd className="mt-1 text-sm text-muted-foreground">
-                      {order.shipping.status_raw}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
-            ) : (
-              <p className="mt-4 text-sm text-muted-foreground">
-                Resi belum tersedia. Pelacakan aktif setelah gudang membuat pengiriman J&amp;T.
-              </p>
-            )}
-            {order.shipping?.tracking_url ? (
-              <Button asChild variant="secondary" size="sm" className="mt-4">
-                <a href={order.shipping.tracking_url} target="_blank" rel="noreferrer">
-                  Buka lacak di J&amp;T
-                  <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
-                </a>
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </section>
+      <div className="mt-8">
+        <ShippingTrackPanel
+          track={
+            order.tracking ?? {
+              shipping_status: order.shipping_status,
+              carrier_name: order.shipping?.carrier_name,
+              waybill_number: order.shipping?.waybill_number,
+              record_status: order.shipping?.status,
+              status_raw: order.shipping?.status_raw,
+              last_status_at: order.shipping?.last_status_at,
+              tracking_url: order.shipping?.tracking_url,
+              order_status: order.order_status,
+              payment_status: order.payment_status,
+              payment_method: order.payment_method,
+              total_amount: order.total_amount,
+            }
+          }
+        />
+      </div>
 
       <section className="mt-8">
         <h3 className="text-lg font-semibold">Item pesanan</h3>
@@ -355,7 +305,18 @@ export default function OrderStatus({
                         <span className="break-all font-mono text-xs font-semibold">
                           {row.order_number}
                         </span>
-                        <StatusBadge status={row.order_status} />
+                        <ShippingTrackPanel
+                          compact
+                          className="w-full"
+                          track={
+                            row.tracking ?? {
+                              shipping_status: row.shipping_status,
+                              order_status: row.order_status,
+                              payment_status: row.payment_status,
+                              total_amount: row.total_amount,
+                            }
+                          }
+                        />
                       </button>
                     </li>
                   ))}

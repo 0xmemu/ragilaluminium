@@ -18,6 +18,17 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 
 ## Log
 
+### 2026-07-28 — DATABASE SAFETY (no wipe without explicit user order)
+
+- Hard rule di `AGENTS.md` + `docs/ORCHESTRATION.md`: dilarang `migrate:fresh` / `db:wipe` / truncate massal ke DB app tanpa instruksi eksplisit.
+- Insiden 2026-07-27: wipe MySQL `ragil` saat debug; recovery katalog = re-import `storage/app/imports/catalog/`.
+
+### 2026-07-26 — Shipping provider = J&T Cargo Open Platform
+
+- Biteship ditolak (Express only). SoT shipping tetap Open Platform (`jnt:*`).
+- `jnt:status` + `JntReadiness`; admin Settings menampilkan status Open Platform; sender Mandiraja diisi di `.env`.
+- Live API masih menunggu `JNT_API_ACCOUNT` / `PRIVATE_KEY` / `CUSTOMER_*` + `JNT_ENABLED=true`.
+
 ### 2026-07-22 — Workflow audit P2 admin + docs
 
 - Nav: Pembayaran, Pengiriman, Log Pesan WA, Performa Import.

@@ -22,11 +22,11 @@ const SheetContent = React.forwardRef<
 
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-overlay bg-foreground/45 backdrop-blur-[2px]" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-[65] bg-foreground/45 backdrop-blur-[2px]" />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "fixed z-modal overflow-y-auto border-border bg-surface p-6 shadow-float focus:outline-none",
+          "fixed z-[70] overflow-y-auto border-border bg-surface p-6 shadow-float focus:outline-none",
           sides[side],
           className,
         )}

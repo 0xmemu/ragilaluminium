@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\CatalogLabels;
 use App\Support\CatalogTaxonomy;
+use App\Support\ModelProductPresentation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -47,6 +48,7 @@ class ModelProductService
                 'id' => $item->id,
                 'no' => $index + 1,
                 'name' => $item->name,
+                'description' => $item->description,
                 'image_url' => $item->image_url,
                 'type' => $item->type,
                 'status' => $item->status,
@@ -165,7 +167,7 @@ class ModelProductService
     /**
      * Storefront cards from active CMS rows; fallback to taxonomy when empty.
      *
-     * @return list<array{title: string, count: string, meta: string, desc: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
+     * @return list<array{title: string, count: string, meta: string, desc: string, subtitle: string, highlights: list<array{icon: string, label: string}>, inspiration_count: int, inspiration_href: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
      */
     public function storefrontCards(int $limit = 0, ?string $design = null): array
     {
@@ -177,6 +179,7 @@ class ModelProductService
         $design = CatalogLabels::normalizeDesign($design);
         $stats = $this->statsByCategoryModel($rows);
         $cards = [];
+        $pairs = [];
 
         foreach ($rows as $row) {
             if (! $row->product_category || ! $row->product_model) {
@@ -216,11 +219,18 @@ class ModelProductService
                 $image = '/'.ltrim((string) config('media.placeholder', 'images/home/product-flash.png'), '/');
             }
 
+            $pairs[] = [
+                'category' => $row->product_category,
+                'model' => $row->product_model,
+            ];
+
+            $cmsDescription = trim((string) ($row->description ?? ''));
+
             $cards[] = [
                 'title' => $row->name,
                 'count' => (string) $count,
                 'meta' => $this->metaFromDesigns($designs),
-                'desc' => $this->descriptionFor($row->product_model),
+                'desc' => $cmsDescription !== '' ? $cmsDescription : $this->descriptionFor($row->product_model),
                 'image' => $image,
                 'href' => route($route, $params, absolute: false),
                 'model' => $row->product_model,
@@ -233,7 +243,16 @@ class ModelProductService
             }
         }
 
-        return $cards !== [] ? $cards : CatalogTaxonomy::modelCards($limit, $design);
+        if ($cards === []) {
+            return CatalogTaxonomy::modelCards($limit, $design);
+        }
+
+        $inspiration = ModelProductPresentation::inspirationByPair($pairs);
+
+        return array_map(
+            fn (array $card) => ModelProductPresentation::enrichCard($card, $inspiration),
+            $cards,
+        );
     }
 
     /**

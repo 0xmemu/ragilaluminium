@@ -15,7 +15,7 @@ class TestimonialPageSettings
 
     public const DEFAULT_HEADING = 'Apa kata pelanggan kami.';
 
-    public const DEFAULT_SUBTITLE = 'Ulasan pelanggan dan dokumentasi pemasangan dari data publikasi toko.';
+    public const DEFAULT_SUBTITLE = 'Cerita pembeli yang sudah memasang jendela, pintu, dan bouven Ragil Aluminium.';
 
     public static function ensurePage(): CmsPage
     {

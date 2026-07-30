@@ -21,8 +21,8 @@ const REVIEW_SORT_OPTIONS = [
 
 const SOURCE_FILTERS = [
   { value: "all", label: "Semua" },
-  { value: "marketplace", label: "Shopee & WhatsApp" },
-  { value: "website", label: "Website" },
+  { value: "marketplace", label: "Apa kata pelanggan" },
+  { value: "website", label: "Ulasan website" },
 ] as const
 
 interface ReviewStats {
@@ -30,9 +30,47 @@ interface ReviewStats {
   average_rating: number | null
 }
 
+function ReviewGrid({
+  items,
+  variant,
+  emptyTitle,
+  emptyDescription,
+}: {
+  items: Testimonial[]
+  variant: "screenshot" | "review"
+  emptyTitle: string
+  emptyDescription: string
+}) {
+  if (!items.length) {
+    return (
+      <EmptyState
+        className="mt-6"
+        icon={variant === "screenshot" ? "message-circle" : "star"}
+        title={emptyTitle}
+        description={emptyDescription}
+      />
+    )
+  }
+
+  return (
+    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((testimonial) => (
+        <TestimonialCard
+          key={testimonial.id}
+          testimonial={testimonial}
+          compact
+          variant={variant}
+        />
+      ))}
+    </div>
+  )
+}
+
 export default function Reviews({
   pageMeta,
   testimonials = [],
+  marketplaceTestimonials = [],
+  websiteTestimonials = [],
   pagination,
   stats,
   activeSort = "newest",
@@ -40,7 +78,9 @@ export default function Reviews({
   installationsHref,
 }: {
   pageMeta?: { title: string; heading: string; subtitle: string } | null
-  testimonials: Testimonial[]
+  testimonials?: Testimonial[]
+  marketplaceTestimonials?: Testimonial[]
+  websiteTestimonials?: Testimonial[]
   pagination?: PaginationData | null
   stats?: ReviewStats
   activeSort?: string
@@ -48,13 +88,28 @@ export default function Reviews({
   installationsHref?: string
 }) {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
-  const totalCount = stats?.total ?? testimonials.length
+  const totalCount = stats?.total ?? 0
   const averageRating = stats?.average_rating ?? null
   const heading = pageMeta?.heading?.trim() || "Apa kata pelanggan kami"
   const subtitle =
     pageMeta?.subtitle?.trim() ||
-    "Ulasan pelanggan dari Shopee, WhatsApp, dan website."
+    "Screenshot marketplace/WhatsApp dan ulasan pembeli yang order lewat website."
   const docTitle = pageMeta?.title?.trim() || "Ulasan Pelanggan"
+  const showSplit = (activeSource || "all") === "all"
+  const marketplaceItems = showSplit
+    ? marketplaceTestimonials
+    : activeSource === "marketplace"
+      ? marketplaceTestimonials.length
+        ? marketplaceTestimonials
+        : testimonials
+      : []
+  const websiteItems = showSplit
+    ? websiteTestimonials
+    : activeSource === "website"
+      ? websiteTestimonials.length
+        ? websiteTestimonials
+        : testimonials
+      : []
 
   function navigateReviews(next: { sort?: string; source?: string }) {
     const sort = next.sort ?? activeSort
@@ -116,31 +171,10 @@ export default function Reviews({
         </div>
       </section>
 
-      <section className="section-space border-b border-border">
-        <div className="container-page">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <h2 className="text-sm font-bold tracking-tight sm:text-base">Semua ulasan</h2>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                Ulasan Shopee, WhatsApp, dan website. Pisahkan lewat filter sumber.
-              </p>
-            </div>
-            {testimonials.length || activeSource !== "all" ? (
-              <div className="flex shrink-0 items-center gap-2 sm:justify-end">
-                <span className="text-sm text-muted-foreground">Urutkan</span>
-                <FilterBerdasarkanControl
-                  id="reviews-sort"
-                  value={activeSort || "newest"}
-                  options={REVIEW_SORT_OPTIONS}
-                  onChange={(sort) => navigateReviews({ sort })}
-                  ariaLabel="Urutkan ulasan"
-                />
-              </div>
-            ) : null}
-          </div>
-
+      <section className="border-b border-border bg-surface py-6">
+        <div className="container-page flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div
-            className="mt-6 flex flex-wrap gap-2"
+            className="flex flex-wrap gap-2"
             role="tablist"
             aria-label="Filter sumber ulasan"
           >
@@ -157,7 +191,7 @@ export default function Reviews({
                     "inline-flex min-h-10 items-center rounded-full border px-4 text-sm font-semibold transition",
                     active
                       ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-surface text-foreground hover:border-foreground/40",
+                      : "border-border bg-background text-foreground hover:border-foreground/40",
                   )}
                 >
                   {filter.label}
@@ -165,46 +199,80 @@ export default function Reviews({
               )
             })}
           </div>
-
-          {testimonials.length ? (
-            <>
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {testimonials.map((testimonial) => (
-                  <TestimonialCard key={testimonial.id} testimonial={testimonial} compact />
-                ))}
-              </div>
-              <Pagination pagination={pagination} />
-            </>
-          ) : (
-            <EmptyState
-              className="mt-8"
-              icon="star"
-              title="Belum ada testimoni"
-              description={
-                activeSource === "all"
-                  ? "Belum ada ulasan yang tampil. Lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
-                  : "Tidak ada ulasan untuk filter sumber ini."
-              }
-              action={
-                activeSource === "all" ? (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button asChild variant="secondary">
-                      <Link href={routeUrl("installation.index")}>Hasil pemasangan</Link>
-                    </Button>
-                    {consultationWhatsApp?.directUrl ? (
-                      <Button asChild>
-                        <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
-                          WhatsApp
-                        </a>
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : undefined
-              }
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="text-sm text-muted-foreground">Urutkan</span>
+            <FilterBerdasarkanControl
+              id="reviews-sort"
+              value={activeSort || "newest"}
+              options={REVIEW_SORT_OPTIONS}
+              onChange={(sort) => navigateReviews({ sort })}
+              ariaLabel="Urutkan ulasan"
             />
-          )}
+          </div>
         </div>
       </section>
+
+      {(showSplit || activeSource === "marketplace") && (
+        <section id="apa-kata-pelanggan" className="scroll-mt-24 section-space border-b border-border">
+          <div className="container-page">
+            <h2 className="text-sm font-bold tracking-tight sm:text-base">Apa kata pelanggan kami</h2>
+            <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+              Screenshot ulasan marketplace dan interaksi WhatsApp dengan pelanggan.
+            </p>
+            <ReviewGrid
+              items={marketplaceItems}
+              variant="screenshot"
+              emptyTitle="Belum ada screenshot"
+              emptyDescription="Tambahkan dari admin dengan sumber Shopee, WhatsApp, atau Lainnya."
+            />
+            {!showSplit && pagination ? <Pagination pagination={pagination} /> : null}
+          </div>
+        </section>
+      )}
+
+      {(showSplit || activeSource === "website") && (
+        <section id="ulasan-website" className="scroll-mt-24 section-space border-b border-border bg-surface-muted">
+          <div className="container-page">
+            <h2 className="text-sm font-bold tracking-tight sm:text-base">Ulasan pelanggan di website</h2>
+            <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+              Ulasan dari pembeli lewat website. Admin boleh menambahkan foto/screenshot bila pelanggan tidak menulis ulasan.
+            </p>
+            <ReviewGrid
+              items={websiteItems}
+              variant="review"
+              emptyTitle="Belum ada ulasan website"
+              emptyDescription="Tambahkan ulasan dengan sumber Website di admin."
+            />
+            {!showSplit && pagination ? <Pagination pagination={pagination} /> : null}
+          </div>
+        </section>
+      )}
+
+      {!marketplaceItems.length && !websiteItems.length ? (
+        <section className="section-space">
+          <div className="container-page">
+            <EmptyState
+              icon="star"
+              title="Belum ada testimoni"
+              description="Belum ada ulasan yang tampil. Lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button asChild variant="secondary">
+                    <Link href={routeUrl("installation.index")}>Hasil pemasangan</Link>
+                  </Button>
+                  {consultationWhatsApp?.directUrl ? (
+                    <Button asChild>
+                      <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
+                        WhatsApp
+                      </a>
+                    </Button>
+                  ) : null}
+                </div>
+              }
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="border-t border-border bg-surface py-12">
         <div className="container-page flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -215,10 +283,7 @@ export default function Reviews({
             </p>
           </div>
           <Button asChild size="lg">
-            <Link href={routeUrl("catalog.index")}>
-              Pilih model
-              <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-            </Link>
+            <Link href={routeUrl("catalog.index")}>Pilih model</Link>
           </Button>
         </div>
       </section>

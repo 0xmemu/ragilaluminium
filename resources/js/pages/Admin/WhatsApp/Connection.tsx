@@ -9,11 +9,28 @@ import { formatDate } from "@/lib/format"
 
 interface ConnectionInfo {
   configured: boolean
-  base_url?: string | null
-  number_id_set: boolean
-  token_set: boolean
-  verify_token_set: boolean
+  default_provider: string
+  compare_provider: string | null
+  compare_allowlist: string[]
   webhook_path: string
+  waha_webhook_path: string
+  providers: {
+    meta: {
+      configured: boolean
+      base_url?: string | null
+      token_set: boolean
+      number_id_set?: boolean
+      verify_token_set?: boolean
+    }
+    waha: {
+      configured: boolean
+      base_url?: string | null
+      token_set: boolean
+      session?: string | null
+      api_key_set?: boolean
+      webhook_secret_set?: boolean
+    }
+  }
 }
 
 interface ConnectionStats {
@@ -60,43 +77,99 @@ export default function WhatsAppConnection({
             </span>
             <div>
               <h2 className="text-lg font-bold">
-                {connection.configured ? "Cloud API terhubung" : "Cloud API belum dikonfigurasi"}
+                {connection.configured ? "Provider aktif siap dipakai" : "Provider aktif belum dikonfigurasi"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Integrasi memakai WhatsApp Business Cloud API / BSP resmi (Stage 8) — bukan tautan WhatsApp Web via QR.
+                Meta resmi dan WAHA bisa hidup berdampingan. Compare mode dibatasi ke nomor allowlist supaya order nyata tidak menerima pesan ganda.
               </p>
             </div>
           </div>
 
           <Alert tone={connection.configured ? "info" : "warning"}>
             {connection.configured
-              ? "Token dan Phone Number ID terdeteksi di konfigurasi server. Pesan outbound akan dikirim ke provider."
-              : "Set WHATSAPP_API_TOKEN (permanen) dan WHATSAPP_BUSINESS_NUMBER_ID di .env. Tanpa itu, pesan tetap dicatat sebagai sent di mode degradasi (dev)."}
+              ? `Provider aktif: ${connection.default_provider.toUpperCase()}${connection.compare_provider ? ` · Compare: ${connection.compare_provider.toUpperCase()}` : ""}`
+              : "Set provider aktif di .env. Jika provider aktif belum siap, aplikasi tetap degradasi dengan pencatatan pesan untuk dev/test."}
           </Alert>
 
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">API token</dt>
-              <dd className="font-semibold">{connection.token_set ? "Terisi" : "Kosong"}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Phone number ID</dt>
-              <dd className="font-semibold">{connection.number_id_set ? "Terisi" : "Kosong"}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Verify token webhook</dt>
-              <dd className="font-semibold">{connection.verify_token_set ? "Terisi" : "Kosong"}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Webhook</dt>
-              <dd className="font-mono text-xs font-semibold">{connection.webhook_path}</dd>
-            </div>
-            {connection.base_url ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Base URL</dt>
-                <dd className="max-w-[60%] truncate font-mono text-xs">{connection.base_url}</dd>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-md border border-border p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold">Meta resmi</h3>
+                <StatusBadge status={connection.providers.meta.configured ? "active" : "inactive"} />
               </div>
-            ) : null}
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">API token</dt>
+                  <dd className="font-semibold">{connection.providers.meta.token_set ? "Terisi" : "Kosong"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Phone number ID</dt>
+                  <dd className="font-semibold">{connection.providers.meta.number_id_set ? "Terisi" : "Kosong"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Verify token</dt>
+                  <dd className="font-semibold">{connection.providers.meta.verify_token_set ? "Terisi" : "Kosong"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Webhook</dt>
+                  <dd className="font-mono text-xs font-semibold">{connection.webhook_path}</dd>
+                </div>
+                {connection.providers.meta.base_url ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Base URL</dt>
+                    <dd className="max-w-[60%] truncate font-mono text-xs">{connection.providers.meta.base_url}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+
+            <div className="rounded-md border border-border p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold">WAHA</h3>
+                <StatusBadge status={connection.providers.waha.configured ? "active" : "inactive"} />
+              </div>
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">API key</dt>
+                  <dd className="font-semibold">{connection.providers.waha.api_key_set ? "Terisi" : "Kosong"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Session</dt>
+                  <dd className="font-mono text-xs font-semibold">{connection.providers.waha.session ?? "default"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Webhook secret</dt>
+                  <dd className="font-semibold">{connection.providers.waha.webhook_secret_set ? "Terisi" : "Kosong"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Webhook</dt>
+                  <dd className="font-mono text-xs font-semibold">{connection.waha_webhook_path}</dd>
+                </div>
+                {connection.providers.waha.base_url ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Base URL</dt>
+                    <dd className="max-w-[60%] truncate font-mono text-xs">{connection.providers.waha.base_url}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+          </div>
+
+          <dl className="space-y-3 text-sm border-t border-border pt-4">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Provider aktif</dt>
+              <dd className="font-semibold uppercase">{connection.default_provider}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Compare provider</dt>
+              <dd className="font-semibold uppercase">{connection.compare_provider ?? "-"}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Allowlist compare</dt>
+              <dd className="max-w-[60%] text-right font-mono text-xs">
+                {connection.compare_allowlist.length > 0 ? connection.compare_allowlist.join(", ") : "Belum ada"}
+              </dd>
+            </div>
           </dl>
 
           <div className="space-y-3 border-t border-border pt-4">
@@ -190,6 +263,16 @@ export default function WhatsAppConnection({
               </li>
               <li>Uji checkout toko → chat dari nomor bisnis (bukan +1 555).</li>
             </ol>
+          </div>
+
+          <div className="space-y-3 border-t border-border pt-4">
+            <h3 className="text-sm font-bold text-foreground">Mode banding langsung</h3>
+            <p className="text-sm text-muted-foreground">
+              Gunakan <code className="text-xs">WHATSAPP_PROVIDER</code> untuk provider aktif dan{" "}
+              <code className="text-xs">WHATSAPP_COMPARE_PROVIDER</code> untuk provider pembanding.
+              Batasi pengiriman ganda ke nomor uji melalui{" "}
+              <code className="text-xs">WHATSAPP_COMPARE_ALLOWLIST</code>.
+            </p>
           </div>
         </section>
 

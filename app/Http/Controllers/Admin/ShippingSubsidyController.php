@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\JntReadiness;
 use App\Support\ShippingSubsidySettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class ShippingSubsidyController extends Controller
                 'subsidy_value' => $settings['subsidy_value'],
                 'jnt_enabled' => $settings['carriers']['jnt'],
             ],
-            'submitUrl' => route('admin.shipping-subsidy.update'),
+            'jntConfigured' => JntReadiness::report()['client_ready'],
             'jntConfigured' => filled(config('jnt.api.customer_code')) || filled(config('services.shipping.jnt.api_key')),
         ]);
     }

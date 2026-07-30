@@ -218,7 +218,7 @@ return [
             'view' => null,
             'group' => 'core',
             'status' => 'planned',
-            'note' => 'Customer submit form planned; public listing is /hasil-pemasangan + /hasil-pemasangan/{parent_sku}',
+            'note' => 'Customer submit form planned; public listing is /hasil-pemasangan (model) → /hasil-pemasangan/{category}/{model} (produk) → /hasil-pemasangan/{parent_sku} (galeri)',
         ],
     ],
 
@@ -256,19 +256,22 @@ return [
         ],
 
         /*
-        | Drawer utama (mobile + desktop). Hanya route implemented.
+        | Drawer mobile — dipisah per grup IA (produk vs informasi/bantuan).
         | Model submenu berasal dari CatalogTaxonomy::modelCards() di Inertia share.
+        | `hamburger` digabung di HandleInertiaRequests untuk kompatibilitas.
         */
-        'hamburger' => [
+        'hamburger_product' => [
             [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
+                'icon' => 'package',
                 'active' => ['catalog.index', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Semua Produk',
                 'route' => 'catalog.index',
                 'params' => ['sort' => 'newest'],
+                'icon' => 'grid-2x2',
                 'active' => ['catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
@@ -280,29 +283,67 @@ return [
             [
                 'label' => 'Hasil Pemasangan',
                 'route' => 'installation.index',
-                'active' => ['installation.index', 'installation.show'],
+                'icon' => 'image',
+                'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
                 'label' => 'Ulasan',
                 'route' => 'reviews',
+                'icon' => 'star',
                 'active' => ['reviews'],
             ],
-            [
-                'label' => 'Informasi Toko',
-                'route' => 'about',
-                'active' => ['about'],
-            ],
+        ],
+
+        'hamburger_info' => [
             [
                 'label' => 'Lacak Pengiriman',
                 'route' => 'order.status',
+                'icon' => 'truck',
                 'active' => ['order.status', 'order.status.lookup'],
             ],
             [
                 'label' => 'Konsultasi Gratis',
                 'route' => 'contact',
+                'icon' => 'headset',
                 'active' => ['contact'],
             ],
+            [
+                'label' => 'Cara Pemesanan',
+                'route' => 'cara-pemesanan',
+                'icon' => 'info',
+                'active' => ['cara-pemesanan'],
+            ],
+            [
+                'label' => 'Sering Ditanyakan',
+                'route' => 'faq',
+                'icon' => 'circle-help',
+                'active' => ['faq'],
+            ],
+            [
+                'label' => 'Masalah & Solusi',
+                'route' => 'masalah-dan-solusi',
+                'icon' => 'warning',
+                'active' => ['masalah-dan-solusi'],
+            ],
+            [
+                'label' => 'Informasi Toko',
+                'route' => 'about',
+                'icon' => 'storefront',
+                'active' => ['about'],
+            ],
         ],
+
+        'hamburger_footer' => [
+            [
+                'label' => 'Ketentuan Layanan',
+                'route' => 'terms',
+            ],
+            [
+                'label' => 'Kebijakan Privasi',
+                'route' => 'privacy',
+            ],
+        ],
+        'hamburger_copyright' => 'Copyright @2026',
 
         'desktop_main' => [
             [
@@ -330,7 +371,7 @@ return [
             [
                 'label' => 'Hasil Pemasangan',
                 'route' => 'installation.index',
-                'active' => ['installation.index', 'installation.show'],
+                'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
                 'label' => 'Informasi Toko',
@@ -430,7 +471,7 @@ return [
         'short_name' => 'Ragil Aluminium',
         'tagline' => 'Pusat Belanja Jendela Aluminium',
         'email' => 'ragilaluminium29@gmail.com',
-        'phone' => '+62 81234598065',
+        'phone' => env('BRAND_PHONE', '+62 851-9966-6810'),
         'address' => env(
             'BRAND_ADDRESS',
             'Jln. Raya Mandiraja Wetan, Samping Barat Pom Bensin Mandiraja, Desa Mandiraja Wetan, Kec. Mandiraja, Kab. Banjarnegara, Jawa Tengah 53473'

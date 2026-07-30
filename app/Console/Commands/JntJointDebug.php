@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Shipping\JntCargoClient;
+use App\Support\JntReadiness;
 use Illuminate\Console\Command;
 
 /**
@@ -32,7 +33,10 @@ class JntJointDebug extends Command
     public function handle(JntCargoClient $jnt): int
     {
         if (! $jnt->isEnabled()) {
-            $this->error('J&T belum aktif. Set JNT_ENABLED=true + kredensial di .env.');
+            $report = JntReadiness::report($jnt);
+            $this->error('J&T belum aktif untuk API call.');
+            $this->comment('Missing: '.($report['missing'] !== [] ? implode(', ', $report['missing']) : 'unknown'));
+            $this->comment('Jalankan: php artisan jnt:status');
 
             return self::FAILURE;
         }

@@ -5,7 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
+use App\Support\CaraPemesananSettings;
+use App\Support\CatalogLabels;
+use App\Support\CmsDocumentSettings;
+use App\Support\FaqSettings;
 use App\Support\InstallationGallery;
+use App\Support\InstallationPageSettings;
+use App\Support\ProblemsSolutionsSettings;
+use App\Support\TestimonialPageSettings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,6 +27,7 @@ class PageController extends Controller
         $heading = '';
         $body = '<p>Konten belum tersedia.</p>';
 
+        $updatedAt = null;
         if ($page) {
             $content = is_array($page->content) ? $page->content : [];
             $heading = trim((string) ($content['heading'] ?? ''));
@@ -27,8 +35,9 @@ class PageController extends Controller
                 ? (string) ($content['html'] ?? $content['body'] ?? '')
                 : (is_string($page->content) ? $page->content : '');
             if ($raw !== '') {
-                $body = \App\Support\CmsDocumentSettings::bodyToHtml($raw);
+                $body = CmsDocumentSettings::bodyToHtml($raw);
             }
+            $updatedAt = optional($page->updated_at)?->timezone(config('app.timezone'))->translatedFormat('d F Y');
         }
 
         return Inertia::render('Public/CmsPage', [
@@ -37,26 +46,50 @@ class PageController extends Controller
                 'heading' => $heading,
                 'body' => $body,
                 'slug' => $slug,
+                'updated_at_label' => $updatedAt,
             ],
         ]);
     }
 
     public function about(): Response
     {
-        return $this->showPage('tentang-kami');
+        $page = CmsPage::where('slug', 'tentang-kami')->published()->first();
+
+        $title = $page?->title ?? 'Informasi Toko';
+        $heading = '';
+        $body = '';
+
+        if ($page) {
+            $content = is_array($page->content) ? $page->content : [];
+            $heading = trim((string) ($content['heading'] ?? ''));
+            $raw = is_array($page->content)
+                ? (string) ($content['html'] ?? $content['body'] ?? '')
+                : (is_string($page->content) ? $page->content : '');
+            if ($raw !== '') {
+                $body = CmsDocumentSettings::bodyToHtml($raw);
+            }
+        }
+
+        return Inertia::render('Public/InformasiToko', [
+            'page' => [
+                'title' => $title,
+                'heading' => $heading,
+                'body' => $body,
+            ],
+        ]);
     }
 
     public function faq(): Response
     {
         return Inertia::render('Public/Faq', [
-            'guide' => \App\Support\FaqSettings::forStorefront(),
+            'guide' => FaqSettings::forStorefront(),
         ]);
     }
 
     public function problemsSolutions(): Response
     {
         return Inertia::render('Public/MasalahSolusi', [
-            'guide' => \App\Support\ProblemsSolutionsSettings::forStorefront(),
+            'guide' => ProblemsSolutionsSettings::forStorefront(),
         ]);
     }
 
@@ -78,7 +111,7 @@ class PageController extends Controller
     public function howToOrder(): Response
     {
         return Inertia::render('Public/HowToOrder', [
-            'guide' => \App\Support\CaraPemesananSettings::forStorefront(),
+            'guide' => CaraPemesananSettings::forStorefront(),
         ]);
     }
 
@@ -95,43 +128,69 @@ class PageController extends Controller
         $totalCount = (clone $published)->count();
         $avgRating = (clone $published)->whereNotNull('rating')->avg('rating');
 
-        $filtered = (clone $published)
-            ->when(
-                $sourceFilter === 'marketplace',
-                fn ($q) => $q->whereIn('source', ['shopee', 'whatsapp', 'other'])
-            )
-            ->when(
-                $sourceFilter === 'website',
-                fn ($q) => $q->where('source', 'website')
-            );
+        $applySort = function ($query) use ($sort) {
+            return $query
+                ->when($sort === 'rating_desc', fn ($q) => $q->orderByDesc('rating')->orderByDesc('id'))
+                ->when($sort === 'rating_asc', fn ($q) => $q->orderByRaw('rating is null')->orderBy('rating')->orderByDesc('id'))
+                ->when($sort === 'oldest', fn ($q) => $q->orderBy('sort_order')->orderBy('id'))
+                ->when(
+                    ! in_array($sort, ['rating_desc', 'rating_asc', 'oldest'], true),
+                    fn ($q) => $q->orderBy('sort_order')->orderByDesc('id')
+                );
+        };
 
-        $paginator = $filtered
-            ->with('product:id,parent_sku,name,short_name')
-            ->when($sort === 'rating_desc', fn ($q) => $q->orderByDesc('rating')->orderByDesc('id'))
-            ->when($sort === 'rating_asc', fn ($q) => $q->orderByRaw('rating is null')->orderBy('rating')->orderByDesc('id'))
-            ->when($sort === 'oldest', fn ($q) => $q->orderBy('sort_order')->orderBy('id'))
-            ->when(
-                ! in_array($sort, ['rating_desc', 'rating_asc', 'oldest'], true),
-                fn ($q) => $q->orderBy('sort_order')->orderByDesc('id')
-            )
-            ->paginate(12)
-            ->withQueryString();
-
-        $testimonials = $paginator->getCollection()
+        $mapRows = fn ($collection) => $collection
             ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
             ->values()
             ->all();
 
-        return Inertia::render('Public/Reviews', [
-            'pageMeta' => \App\Support\TestimonialPageSettings::forStorefront(),
-            'testimonials' => $testimonials,
-            'pagination' => [
+        $marketplaceTestimonials = [];
+        $websiteTestimonials = [];
+        $testimonials = [];
+        $pagination = null;
+
+        if ($sourceFilter === 'all') {
+            $marketplaceTestimonials = $mapRows(
+                $applySort((clone $published)->marketplace()->with('product:id,parent_sku,name,short_name'))
+                    ->limit(24)
+                    ->get()
+            );
+            $websiteTestimonials = $mapRows(
+                $applySort((clone $published)->website()->with('product:id,parent_sku,name,short_name'))
+                    ->limit(24)
+                    ->get()
+            );
+        } else {
+            $filtered = (clone $published)
+                ->when($sourceFilter === 'marketplace', fn ($q) => $q->marketplace())
+                ->when($sourceFilter === 'website', fn ($q) => $q->website());
+
+            $paginator = $applySort($filtered->with('product:id,parent_sku,name,short_name'))
+                ->paginate(12)
+                ->withQueryString();
+
+            $testimonials = $mapRows($paginator->getCollection());
+            $pagination = [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'links' => $paginator->linkCollection()->toArray(),
-            ],
+            ];
+
+            if ($sourceFilter === 'marketplace') {
+                $marketplaceTestimonials = $testimonials;
+            } else {
+                $websiteTestimonials = $testimonials;
+            }
+        }
+
+        return Inertia::render('Public/Reviews', [
+            'pageMeta' => TestimonialPageSettings::forStorefront(),
+            'marketplaceTestimonials' => $marketplaceTestimonials,
+            'websiteTestimonials' => $websiteTestimonials,
+            'testimonials' => $testimonials,
+            'pagination' => $pagination,
             'stats' => [
                 'total' => $totalCount,
                 'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
@@ -144,21 +203,55 @@ class PageController extends Controller
 
     public function installations(): Response
     {
-        $installations = collect(InstallationGallery::productCards(48))
-            ->map(fn (array $item) => [
-                'id' => $item['id'],
-                'image_url' => $item['image_url'],
-                'label' => $item['label'],
-                'photo_count' => $item['photo_count'],
-                'video_count' => $item['video_count'],
-                'href' => $item['href'],
-                'product_sku' => $item['product_sku'],
-            ])
+        $installations = collect(InstallationGallery::modelCards(48))
+            ->map(fn (array $item) => $this->installationCardPayload($item))
             ->all();
 
         return Inertia::render('Public/Installations', [
-            'pageMeta' => \App\Support\InstallationPageSettings::forStorefront(),
+            'pageMeta' => InstallationPageSettings::forStorefront(),
             'installations' => $installations,
+            'level' => 'model',
+            'reviewsHref' => route('reviews'),
+        ]);
+    }
+
+    public function installationModel(string $category, string $model): Response
+    {
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        $modelCode = InstallationGallery::modelFromSlug($model);
+        if ($categoryCode === null || $modelCode === '') {
+            abort(404);
+        }
+
+        if ($categoryCode === 'LAINNYA') {
+            $installations = collect(InstallationGallery::manualProductCards(48))
+                ->map(fn (array $item) => $this->installationCardPayload($item))
+                ->all();
+            $title = 'Dokumentasi lainnya';
+        } else {
+            $installations = collect(InstallationGallery::productCardsForModel($categoryCode, $modelCode, 48))
+                ->map(fn (array $item) => $this->installationCardPayload($item))
+                ->all();
+            $title = CatalogLabels::modelCardTitle($categoryCode, $modelCode);
+            if ($installations === []) {
+                abort(404);
+            }
+        }
+
+        return Inertia::render('Public/Installations', [
+            'pageMeta' => [
+                'title' => $title.' · Hasil Pemasangan',
+                'heading' => $title,
+                'subtitle' => 'Produk dalam model ini yang memiliki dokumentasi hasil pemasangan.',
+            ],
+            'installations' => $installations,
+            'level' => 'product',
+            'modelMeta' => [
+                'category' => $categoryCode,
+                'model' => $modelCode,
+                'label' => $title,
+            ],
+            'indexHref' => route('installation.index'),
             'reviewsHref' => route('reviews'),
         ]);
     }
@@ -174,11 +267,44 @@ class PageController extends Controller
             abort(404);
         }
 
+        $modelHref = InstallationGallery::modelHref(
+            $gallery['product']['category'] ?? null,
+            $gallery['product']['model'] ?? null,
+        );
+
         return Inertia::render('Public/InstallationDetail', [
-            'pageMeta' => \App\Support\InstallationPageSettings::forStorefront(),
+            'pageMeta' => InstallationPageSettings::forStorefront(),
             'product' => $gallery['product'],
             'media' => $gallery['media'],
             'indexHref' => route('installation.index'),
+            'modelHref' => $modelHref,
+            'modelLabel' => ($gallery['product']['category'] && $gallery['product']['model'])
+                ? CatalogLabels::modelCardTitle(
+                    $gallery['product']['category'],
+                    $gallery['product']['model'],
+                )
+                : null,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    protected function installationCardPayload(array $item): array
+    {
+        return [
+            'id' => $item['id'],
+            'image_url' => $item['image_url'],
+            'label' => $item['label'],
+            'product_count' => (int) ($item['product_count'] ?? 0),
+            'photo_count' => (int) ($item['photo_count'] ?? 0),
+            'video_count' => (int) ($item['video_count'] ?? 0),
+            'category' => $item['category'] ?? null,
+            'model' => $item['model'] ?? null,
+            'href' => $item['href'],
+            'product_sku' => $item['product_sku'] ?? null,
+            'product_href' => $item['product_href'] ?? null,
+        ];
     }
 }

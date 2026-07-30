@@ -25,12 +25,30 @@ class ConsultationWhatsApp
         ];
     }
 
+    /**
+     * Nomor WhatsApp otomasi (WHATSAPP_BUSINESS_PHONE), fallback brand phone.
+     * Dipakai untuk wa.me + tampilan storefront agar selalu sinkron.
+     */
+    public static function businessPhone(): ?string
+    {
+        $phone = trim((string) (
+            config('services.whatsapp.business_phone')
+            ?: config('sitemap.brand.phone')
+            ?: ''
+        ));
+
+        return $phone !== '' ? $phone : null;
+    }
+
+    /** Nomor untuk ditampilkan di storefront (format +62 …). */
+    public static function displayPhone(): string
+    {
+        return PhoneNumber::formatDisplay(self::businessPhone()) ?? '';
+    }
+
     public static function directUrl(): ?string
     {
-        $phone = config('services.whatsapp.business_phone')
-            ?: config('sitemap.brand.phone');
-
-        $normalized = PhoneNumber::normalize($phone);
+        $normalized = PhoneNumber::normalize(self::businessPhone());
         if (! $normalized) {
             return null;
         }
@@ -44,7 +62,16 @@ class ConsultationWhatsApp
         return $url;
     }
 
-    /** @return array{directUrl: string|null, directLabel: string, phoneLabel: string, phoneHint: string, submitLabel: string} */
+    /**
+     * @return array{
+     *   directUrl: string|null,
+     *   directLabel: string,
+     *   phoneLabel: string,
+     *   phoneHint: string,
+     *   submitLabel: string,
+     *   phone: string
+     * }
+     */
     public static function sharedProps(): array
     {
         return [
@@ -53,6 +80,7 @@ class ConsultationWhatsApp
             'phoneLabel' => 'Nomor HP/WhatsApp',
             'phoneHint' => '*Kami akan langsung menghubungi Anda',
             'submitLabel' => 'Konsultasi',
+            'phone' => self::displayPhone(),
         ];
     }
 }

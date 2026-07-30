@@ -1,6 +1,7 @@
 import { Link, router, usePage } from "@inertiajs/react"
 import * as React from "react"
 
+import { FlashSaleNavCountdown } from "@/components/public/flash-sale-stage"
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -14,6 +15,66 @@ import type { RouteNavItem, SharedPageProps } from "@/types"
 function navHref(item: RouteNavItem): string {
   const base = routeUrl(item.route, item.params)
   return item.hash ? `${base}#${item.hash}` : base
+}
+
+function DrawerSectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-3 text-[0.6875rem] font-bold uppercase tracking-tight text-muted-foreground">
+      {children}
+    </p>
+  )
+}
+
+function DrawerNavLink({
+  item,
+  active,
+  compact,
+  onNavigate,
+}: {
+  item: RouteNavItem
+  active: boolean
+  compact?: boolean
+  onNavigate: () => void
+}) {
+  const isFlashSale = item.route === "catalog.flash-sale"
+
+  return (
+    <Link
+      href={navHref(item)}
+      onClick={onNavigate}
+      className={cn(
+        "inline-flex min-h-11 items-center font-semibold transition",
+        compact ? "gap-2 text-sm" : "gap-2.5 text-base",
+        isFlashSale
+          ? "text-sale hover:text-foreground"
+          : active
+            ? "text-primary"
+            : "text-foreground hover:text-primary",
+      )}
+      aria-current={active ? "page" : undefined}
+    >
+      {item.icon ? (
+        <Icon
+          name={item.icon}
+          className={cn(
+            "shrink-0",
+            compact ? "size-4" : "size-[1.125rem]",
+            item.icon === "lightning" && "text-sale",
+          )}
+          weight={item.icon === "lightning" ? "fill" : "bold"}
+          aria-hidden="true"
+        />
+      ) : null}
+      {isFlashSale ? (
+        <span className="inline-flex min-w-0 items-baseline gap-2">
+          <span className="shrink-0 font-extrabold italic">{item.label}</span>
+          <FlashSaleNavCountdown />
+        </span>
+      ) : (
+        <span>{item.label}</span>
+      )}
+    </Link>
+  )
 }
 
 function HeaderSearchForm({
@@ -64,17 +125,20 @@ function HeaderSearchForm({
 
 export function PublicHeader() {
   const page = usePage<SharedPageProps>()
-  const { cartCount, cartPreview, nav, flashSalePeriod } = page.props
+  const { cartCount, cartPreview, nav } = page.props
   const previewItems = cartPreview ?? []
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [modelsOpen, setModelsOpen] = React.useState(false)
   const [cartPreviewOpen, setCartPreviewOpen] = React.useState(false)
-  const menuItems = nav?.public?.hamburger ?? []
+  const productItems = nav?.public?.hamburger_product ?? nav?.public?.hamburger?.slice(0, 5) ?? []
+  const infoItems = nav?.public?.hamburger_info ?? nav?.public?.hamburger?.slice(5) ?? []
   const modelItems = nav?.public?.model_menu ?? []
   const desktopItems = nav?.public?.desktop_main ?? []
-  const primaryItems = menuItems.slice(0, 2)
-  const secondaryItems = menuItems.slice(2)
-  const flashLive = flashSalePeriod?.live === true
+  const hamburgerFooter = nav?.public?.hamburger_footer ?? []
+  const hamburgerCopyright = nav?.public?.hamburger_copyright ?? ''
+  const primaryProductItems = productItems.slice(0, 2)
+  const secondaryProductItems = productItems.slice(2)
+  const closeMenu = React.useCallback(() => setMenuOpen(false), [])
   const isAllProductsListing =
     isRouteActive(["catalog.windows", "catalog.doors", "catalog.bouven", "product.show", "search"]) ||
     (isRouteActive(["catalog.index"]) && /[?&](sort|q|model|price_min|price_max)=/.test(page.url))
@@ -115,113 +179,142 @@ export function PublicHeader() {
           <SheetContent
             side="left"
             className={cn(
-              "safe-bottom !border-0 p-0 !shadow-none [&>button]:left-4 [&>button]:right-auto [&>button]:top-4",
-              modelsOpen ? "!w-[min(94vw,48rem)]" : "!w-[min(94vw,24rem)]",
+              "flex !h-dvh !max-h-dvh flex-col !overflow-hidden !border-0 p-0 !shadow-none transition-[width] duration-300 ease-standard [&>button]:right-3 [&>button]:top-3 [&>button]:z-20",
+              modelsOpen ? "!w-[min(88vw,48rem)]" : "!w-[min(82vw,22rem)]",
             )}
           >
-            <div className="px-16 py-4">
-              <BrandWordmark className="mx-auto w-fit" />
+            {/* 1. Brand header — fixed */}
+            <header className="shrink-0 border-b border-border/60 px-6 pb-3 pr-14 pt-3 sm:px-10 sm:pr-16">
+              <BrandWordmark
+                onClick={closeMenu}
+                className="mx-auto w-fit [&_img]:h-12 [&_img]:w-auto [&_img]:max-w-none [&_img]:sm:h-14"
+              />
               <SheetTitle className="sr-only">Menu utama</SheetTitle>
               <SheetDescription className="sr-only">
                 Jelajahi model, produk, promo, dan layanan Ragil Aluminium.
               </SheetDescription>
-            </div>
+            </header>
 
-            <div className="grid min-h-[calc(100dvh-4.5rem)] md:grid-cols-[minmax(17rem,20rem)_1fr]">
-              <nav
-                className="overflow-y-auto px-6 py-8 sm:px-10 md:px-12"
-                aria-label="Menu utama"
+            {/* 2–3. Navigasi produk + informasi — scrollable */}
+            <div
+              className={cn(
+                "min-h-0 flex-1 overflow-hidden",
+                "grid",
+                modelsOpen
+                  ? "grid-cols-[minmax(9.25rem,10.75rem)_minmax(0,1fr)] sm:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)] md:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]"
+                  : "grid-cols-1",
+              )}
+            >
+              <div
+                className={cn(
+                  "h-full min-h-0 min-w-0 overflow-y-auto overscroll-contain",
+                  modelsOpen ? "px-3 sm:px-6 md:px-10" : "px-6 sm:px-10 md:px-12",
+                )}
               >
-                <div className="grid gap-1">
-                  {primaryItems.map((item, index) => {
-                    const isModels = index === 0
-                    const active = isModels
-                      ? isRouteActive(["catalog.index"]) && !isAllProductsListing
-                      : isAllProductsListing
+                {/* 2. Navigasi produk utama */}
+                {productItems.length ? (
+                  <section className="pb-5 pt-3">
+                    <nav className="grid gap-0.5" aria-label="Navigasi produk">
+                      {primaryProductItems.map((item, index) => {
+                        const isModels = index === 0
+                        const active = isModels
+                          ? isRouteActive(["catalog.index"]) && !isAllProductsListing
+                          : isAllProductsListing
 
-                    return (
-                      <div
-                        key={`${item.label}-${item.route}`}
-                        className="group flex items-center"
-                      >
-                        <Link
-                          href={navHref(item)}
-                          onClick={() => setMenuOpen(false)}
-                          className={cn(
-                            "flex min-h-16 min-w-0 flex-1 items-center font-display text-2xl font-bold leading-tight transition sm:text-3xl",
-                            active ? "text-primary" : "text-foreground hover:text-primary",
-                          )}
-                          aria-current={active ? "page" : undefined}
-                        >
-                          {item.label}
-                        </Link>
-                        {isModels && modelItems.length ? (
-                          <button
-                            type="button"
-                            onClick={() => setModelsOpen((open) => !open)}
-                            className="inline-flex size-11 shrink-0 items-center justify-center text-foreground transition hover:bg-muted"
-                            aria-label={modelsOpen ? "Tutup daftar model" : "Buka daftar model"}
-                            aria-expanded={modelsOpen}
-                            aria-controls="drawer-model-submenu"
+                        return (
+                          <div
+                            key={`${item.label}-${item.route}`}
+                            className="group flex items-center"
                           >
-                            <Icon
-                              name="caret-right"
-                              className={cn("size-5 transition-transform", modelsOpen && "rotate-90")}
-                              weight="bold"
-                              aria-hidden="true"
-                            />
-                          </button>
-                        ) : null}
-                      </div>
-                    )
-                  })}
-                </div>
+                            <Link
+                              href={navHref(item)}
+                              onClick={closeMenu}
+                              className={cn(
+                                "flex min-h-14 min-w-0 flex-1 items-center font-display font-bold leading-tight transition sm:min-h-16",
+                                modelsOpen
+                                  ? "text-lg sm:text-2xl md:text-3xl"
+                                  : "text-2xl sm:text-3xl",
+                                active ? "text-primary" : "text-foreground hover:text-primary",
+                              )}
+                              aria-current={active ? "page" : undefined}
+                            >
+                              {item.label}
+                            </Link>
+                            {isModels && modelItems.length ? (
+                              <button
+                                type="button"
+                                onClick={() => setModelsOpen((open) => !open)}
+                                className={cn(
+                                  "inline-flex size-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted",
+                                  modelsOpen ? "text-primary" : "text-foreground",
+                                )}
+                                aria-label={modelsOpen ? "Tutup daftar model" : "Buka daftar model"}
+                                aria-expanded={modelsOpen}
+                                aria-controls="drawer-model-submenu"
+                              >
+                                <Icon
+                                  name="caret-right"
+                                  className="size-5"
+                                  weight="bold"
+                                  aria-hidden="true"
+                                />
+                              </button>
+                            ) : null}
+                          </div>
+                        )
+                      })}
+                    </nav>
 
-                <div className="mt-8 grid gap-0.5">
-                  {secondaryItems.map((item) => {
-                    const active = !item.hash && isRouteActive(item.active ?? [item.route])
-                    const isFlashSale = item.route === "catalog.flash-sale"
-                    return (
-                      <Link
-                        key={`${item.label}-${item.route}-${item.hash ?? ""}`}
-                        href={navHref(item)}
-                        onClick={() => setMenuOpen(false)}
-                        className={cn(
-                          "inline-flex min-h-12 items-center gap-2 text-base font-semibold transition",
-                          isFlashSale
-                            ? "text-sale hover:text-foreground"
-                            : active
-                              ? "text-primary"
-                              : "text-foreground hover:text-primary",
-                        )}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        {item.icon ? (
-                          <Icon
-                            name={item.icon}
-                            className={cn("size-4", item.icon === "lightning" && "text-sale")}
-                            weight={item.icon === "lightning" ? "fill" : "bold"}
-                            aria-hidden="true"
+                    {secondaryProductItems.length ? (
+                      <div className="mt-3 grid gap-0.5">
+                        {secondaryProductItems.map((item) => (
+                          <DrawerNavLink
+                            key={`${item.label}-${item.route}-${item.hash ?? ""}`}
+                            item={item}
+                            active={!item.hash && isRouteActive(item.active ?? [item.route])}
+                            onNavigate={closeMenu}
                           />
-                        ) : null}
-                        <span className={cn(isFlashSale && "font-extrabold italic")}>
-                          {item.label}
-                        </span>
-                        {isFlashSale && flashLive ? (
-                          <span className="rounded bg-sale px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-white">
-                            Live
-                          </span>
-                        ) : null}
-                      </Link>
-                    )
-                  })}
-                </div>
-              </nav>
+                        ))}
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
+
+                {/* Divider antar grup besar saja */}
+                {productItems.length && infoItems.length ? (
+                  <div
+                    className="mx-0 h-px bg-border/30"
+                    role="separator"
+                    aria-hidden="true"
+                  />
+                ) : null}
+
+                {/* 3. Menu informasi & bantuan */}
+                {infoItems.length ? (
+                  <section className="pb-5 pt-4" aria-labelledby="drawer-nav-info">
+                    <DrawerSectionLabel>
+                      <span id="drawer-nav-info">Informasi & Bantuan</span>
+                    </DrawerSectionLabel>
+
+                    <nav className="grid gap-0.5" aria-label="Informasi dan bantuan">
+                      {infoItems.map((item) => (
+                        <DrawerNavLink
+                          key={`${item.label}-${item.route}-${item.hash ?? ""}`}
+                          item={item}
+                          active={!item.hash && isRouteActive(item.active ?? [item.route])}
+                          compact
+                          onNavigate={closeMenu}
+                        />
+                      ))}
+                    </nav>
+                  </section>
+                ) : null}
+              </div>
 
               <div
                 id="drawer-model-submenu"
                 className={cn(
-                  "bg-surface px-6 py-7 sm:px-10 md:px-8 md:py-9",
+                  "h-full min-h-0 min-w-0 overflow-y-auto overscroll-contain border-l border-border bg-muted/40 px-4 py-7 sm:px-6 md:px-8 md:py-9",
                   modelsOpen ? "block" : "hidden",
                 )}
                 aria-hidden={!modelsOpen ? "true" : undefined}
@@ -239,7 +332,7 @@ export function PublicHeader() {
                             <Link
                               key={`${model.category}-${model.label}`}
                               href={model.href}
-                              onClick={() => setMenuOpen(false)}
+                              onClick={closeMenu}
                               className="inline-flex min-h-9 items-center text-sm font-medium text-muted-foreground transition hover:translate-x-1 hover:text-primary focus-visible:text-primary"
                             >
                               {model.label}
@@ -256,6 +349,37 @@ export function PublicHeader() {
                 )}
               </div>
             </div>
+
+            {/* 4. Footer legal — fixed, elemen sekunder */}
+            {(hamburgerFooter.length > 0 || hamburgerCopyright) && (
+              <footer className="shrink-0 border-t border-border/30 bg-surface px-6 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-10 md:px-12">
+                {hamburgerFooter.length > 0 ? (
+                  <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                    {hamburgerFooter.map((item, index) => (
+                      <React.Fragment key={`footer-${item.label}-${item.route}`}>
+                        {index > 0 ? (
+                          <span className="px-1.5 text-[0.625rem] text-muted-foreground/35" aria-hidden="true">
+                            ·
+                          </span>
+                        ) : null}
+                        <Link
+                          href={navHref(item)}
+                          onClick={closeMenu}
+                          className="inline-flex items-center py-0.5 text-xs text-muted-foreground transition hover:text-foreground"
+                        >
+                          {item.label}
+                        </Link>
+                      </React.Fragment>
+                    ))}
+                  </nav>
+                ) : null}
+                {hamburgerCopyright ? (
+                  <p className="mt-1 text-[0.6875rem] leading-snug text-muted-foreground/50">
+                    {hamburgerCopyright}
+                  </p>
+                ) : null}
+              </footer>
+            )}
           </SheetContent>
         </Sheet>
 
@@ -294,15 +418,15 @@ export function PublicHeader() {
           >
             <Link
               href={routeUrl("cart.index")}
-              className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:h-11 md:w-11 lg:h-11 lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
+              className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11 lg:h-11 lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
               aria-label={`Keranjang, ${cartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
             >
               <span className="relative inline-flex shrink-0">
-                <Icon name="shopping-cart" className="size-5 md:size-6 lg:size-7" aria-hidden="true" />
+                <Icon name="shopping-cart" className="size-8 md:size-6 lg:size-7" aria-hidden="true" />
                 {cartCount > 0 ? (
-                  <span className="tabular-nums absolute -right-1 -top-1 flex min-h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sale px-0.5 text-[8px] font-bold leading-none text-white md:-right-0.5 md:-top-0.5 md:min-h-4 md:min-w-4 md:px-1 md:text-[9px]">
+                  <span className="tabular-nums absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white md:min-h-4 md:min-w-4 md:px-1">
                     {Math.min(cartCount, 99)}
                   </span>
                 ) : null}

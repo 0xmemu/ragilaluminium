@@ -33,7 +33,7 @@ class FrontendPageContractTest extends TestCase
             ['cara-pemesanan', 'Public/HowToOrder'],
             ['faq', 'Public/Faq'],
             ['masalah-dan-solusi', 'Public/MasalahSolusi'],
-            ['about', 'Public/CmsPage'],
+            ['about', 'Public/InformasiToko'],
             ['terms', 'Public/CmsPage'],
             ['privacy', 'Public/CmsPage'],
             ['login', 'Auth/Login'],

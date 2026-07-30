@@ -60,4 +60,34 @@ class InertiaCatalog
     {
         return collect($products)->map(fn (Product $p) => self::productCard($p))->values()->all();
     }
+
+    /**
+     * Strip “Paling Banyak Dipesan”: kurasi admin (max $limit), fallback penjualan website.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function popularProductCards(int $limit = 10): array
+    {
+        $with = ['mainImage', 'media', 'activeVariants', 'attributes'];
+
+        $products = Product::visible()
+            ->homepagePopular()
+            ->with($with)
+            ->withSum('orderItems as sold_count', 'quantity')
+            ->orderBy('homepage_popular_sort')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+
+        if ($products->isEmpty()) {
+            $products = Product::visible()
+                ->with($with)
+                ->withSum('orderItems as sold_count', 'quantity')
+                ->orderByWebsiteSales()
+                ->limit($limit)
+                ->get();
+        }
+
+        return self::productCards($products);
+    }
 }

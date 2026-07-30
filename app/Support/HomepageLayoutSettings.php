@@ -50,12 +50,11 @@ class HomepageLayoutSettings
 
     public const DEFAULT_HOW_TO_ORDER = [
         'title' => 'Cara pesan jendela Anda',
-        'subtitle' => 'Alur singkat dari memilih model hingga pesanan terkirim.',
+        'subtitle' => 'Tiga langkah mudah dari memilih model sampai konfirmasi WhatsApp.',
         'steps' => [
             ['title' => 'Pilih model', 'description' => 'Tentukan model jendela, pintu, atau bouven yang sesuai kebutuhan.'],
             ['title' => 'Pilih ukuran & varian', 'description' => 'Atur ukuran, desain, dan opsi di halaman produk.'],
-            ['title' => 'Checkout', 'description' => 'Isi data pengiriman, pilih pembayaran, lalu buat pesanan.'],
-            ['title' => 'Lacak pesanan', 'description' => 'Pantau status tanpa login lewat menu Pesanan.'],
+            ['title' => 'Proses pesanan & konfirmasi WhatsApp', 'description' => 'Checkout, lalu tim kami proses pesanan dan konfirmasi lewat WhatsApp.'],
         ],
     ];
 
@@ -224,7 +223,6 @@ class HomepageLayoutSettings
     }
 
     /**
-     * @param  mixed  $raw
      * @return list<array{key:string,enabled:bool,sort_order:int}>
      */
     public static function normalizeSections(mixed $raw): array
@@ -262,7 +260,6 @@ class HomepageLayoutSettings
     }
 
     /**
-     * @param  mixed  $raw
      * @return array{title:string,subtitle:string,items:list<array{icon:string,title:string,description:string}>}
      */
     public static function normalizeServiceHighlights(mixed $raw): array
@@ -296,7 +293,6 @@ class HomepageLayoutSettings
     }
 
     /**
-     * @param  mixed  $raw
      * @return array{title:string,subtitle:string,steps:list<array{title:string,description:string}>}
      */
     public static function normalizeHowToOrder(mixed $raw): array

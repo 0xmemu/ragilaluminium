@@ -13,7 +13,9 @@ use App\Support\TestimonialPageSettings;
 use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,12 +27,13 @@ class TestimonialController extends Controller
         $q = trim((string) $request->query('q', ''));
         $sort = (string) $request->query('sort', 'newest');
         $published = $request->query('published');
+        $channel = (string) $request->query('channel', 'all');
 
         if ($tab === 'foto') {
             return $this->fotoIndex($q, $sort, $published, false);
         }
 
-        return $this->websiteIndex($q, $sort, $published, false);
+        return $this->websiteIndex($q, $sort, $published, false, $channel);
     }
 
     /** Pengaturan Website → Apa Kata Pelanggan Kami (website tab + page meta). */
@@ -39,8 +42,9 @@ class TestimonialController extends Controller
         $q = trim((string) $request->query('q', ''));
         $sort = (string) $request->query('sort', 'newest');
         $published = $request->query('published');
+        $channel = (string) $request->query('channel', 'all');
 
-        return $this->websiteIndex($q, $sort, $published, true);
+        return $this->websiteIndex($q, $sort, $published, true, $channel);
     }
 
     public function updateApaKataMeta(Request $request): RedirectResponse
@@ -109,6 +113,7 @@ class TestimonialController extends Controller
             'testimonial' => null,
             'products' => $this->productOptions(),
             'sources' => CmsTestimonial::SOURCES,
+            'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'submitUrl' => route('admin.testimonials.store'),
             'indexUrl' => route('admin.testimonials.index', ['tab' => 'website']),
         ]);
@@ -121,8 +126,12 @@ class TestimonialController extends Controller
 
         CmsTestimonial::create($validated);
 
+        $tabChannel = in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)
+            ? 'marketplace'
+            : 'website';
+
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'website'])
+            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => $tabChannel])
             ->with('success', 'Ulasan ditambahkan.');
     }
 
@@ -143,6 +152,7 @@ class TestimonialController extends Controller
             ],
             'products' => $this->productOptions(),
             'sources' => CmsTestimonial::SOURCES,
+            'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'submitUrl' => route('admin.testimonials.update', $testimonial),
             'indexUrl' => route('admin.testimonials.index', ['tab' => 'website']),
         ]);
@@ -150,10 +160,15 @@ class TestimonialController extends Controller
 
     public function update(Request $request, CmsTestimonial $testimonial): RedirectResponse
     {
-        $testimonial->update($this->validated($request));
+        $validated = $this->validated($request, $testimonial);
+        $testimonial->update($validated);
+
+        $tabChannel = in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)
+            ? 'marketplace'
+            : 'website';
 
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'website'])
+            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => $tabChannel])
             ->with('success', 'Ulasan diperbarui.');
     }
 
@@ -171,9 +186,19 @@ class TestimonialController extends Controller
         return back()->with('success', 'Ulasan disembunyikan.');
     }
 
-    protected function websiteIndex(string $q, string $sort, mixed $published, bool $pengaturanSurface = false): Response
+    protected function websiteIndex(string $q, string $sort, mixed $published, bool $pengaturanSurface = false, string $channel = 'all'): Response
     {
+        if (! in_array($channel, ['all', 'marketplace', 'website'], true)) {
+            $channel = 'all';
+        }
+
         $query = CmsTestimonial::query()->with('product:id,parent_sku,name,short_name');
+
+        if ($channel === 'marketplace') {
+            $query->marketplace();
+        } elseif ($channel === 'website') {
+            $query->website();
+        }
 
         if ($q !== '') {
             $query->where(function ($builder) use ($q) {
@@ -202,14 +227,20 @@ class TestimonialController extends Controller
         return Inertia::render('Admin/Testimonials/Index', [
             'title' => $pengaturanSurface ? 'Apa Kata Pelanggan Kami' : 'Daftar Ulasan',
             'description' => $pengaturanSurface
-                ? 'Kelola testimoni website yang tampil di /reviews dan beranda.'
-                : 'Tinjau dan kelola umpan balik pelanggan dari Shopee, WhatsApp, atau website.',
+                ? 'Kelola screenshot marketplace/WhatsApp dan ulasan website untuk beranda serta /reviews.'
+                : 'Pisahkan umpan balik: Apa kata pelanggan (marketplace/WA) vs ulasan pelanggan di website.',
             'tab' => 'website',
             'tabs' => $this->tabs(),
             'filters' => [
                 'q' => $q,
                 'sort' => in_array($sort, ['newest', 'oldest', 'rating_desc', 'rating_asc', 'sort_order'], true) ? $sort : 'newest',
                 'published' => in_array($published, ['1', '0'], true) ? $published : '',
+                'channel' => $channel,
+            ],
+            'channelOptions' => [
+                ['value' => 'all', 'label' => 'Semua kanal'],
+                ['value' => 'marketplace', 'label' => 'Apa kata (marketplace/WA)'],
+                ['value' => 'website', 'label' => 'Ulasan website'],
             ],
             'sortOptions' => [
                 ['value' => 'newest', 'label' => 'Terbaru'],
@@ -224,12 +255,13 @@ class TestimonialController extends Controller
                 ['value' => '0', 'label' => 'Draft'],
             ],
             'createHref' => route('admin.testimonials.create'),
-            'createLabel' => 'Tambah Ulasan Website',
+            'createLabel' => 'Tambah Ulasan',
             'indexRoute' => $indexRoute,
             'pageMeta' => $pengaturanSurface ? TestimonialPageSettings::pageMeta() : null,
             'metaUrl' => $pengaturanSurface ? route('admin.apa-kata-pelanggan.meta.update') : null,
             'metaHint' => $pengaturanSurface ? 'Meta halaman /reviews' : null,
             'previewUrl' => route('reviews'),
+            'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'rows' => $rows->getCollection()->values()->map(function (CmsTestimonial $t, int $index) use ($rows) {
                 $no = (($rows->currentPage() - 1) * $rows->perPage()) + $index + 1;
 
@@ -240,6 +272,7 @@ class TestimonialController extends Controller
                     'message' => $t->message,
                     'rating' => $t->rating,
                     'source' => $t->source,
+                    'source_label' => CmsTestimonial::sourceLabel((string) $t->source),
                     'location' => $t->location,
                     'product' => $t->product
                         ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
@@ -401,25 +434,47 @@ class TestimonialController extends Controller
         ];
     }
 
-    /** @return array<string, mixed> */
-    protected function validated(Request $request): array
+    /**
+     * @return array<string, mixed>
+     */
+    protected function validated(Request $request, ?CmsTestimonial $existing = null): array
     {
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
-            'message' => ['required', 'string'],
+            'message' => ['nullable', 'string'],
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
             'source' => ['required', Rule::in(CmsTestimonial::SOURCES)],
             'location' => ['nullable', 'string', 'max:255'],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'image_url' => ['nullable', 'string', 'max:2048'],
+            'image' => ['nullable', 'image', 'max:5120'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'published' => ['boolean'],
         ]);
 
         $validated['published'] = $request->boolean('published');
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
-        $validated['product_id'] = $validated['product_id'] ?: null;
+        $validated['product_id'] = ! empty($validated['product_id'] ?? null) ? (int) $validated['product_id'] : null;
         $validated['rating'] = $validated['rating'] ?? null;
+        $validated['message'] = filled($validated['message'] ?? null) ? trim((string) $validated['message']) : null;
+
+        $imageUrl = filled($validated['image_url'] ?? null) ? trim((string) $validated['image_url']) : null;
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('testimonials', 'media');
+            $imageUrl = Storage::disk('media')->url($path);
+        } elseif ($imageUrl === null && $existing !== null && ! $request->exists('image_url')) {
+            $imageUrl = $existing->image_url;
+        }
+
+        $validated['image_url'] = $imageUrl;
+        unset($validated['image']);
+
+        if ($validated['message'] === null && blank($imageUrl)) {
+            throw ValidationException::withMessages([
+                'message' => 'Isi teks ulasan atau unggah/isi URL gambar (minimal salah satu).',
+                'image_url' => 'Isi teks ulasan atau unggah/isi URL gambar (minimal salah satu).',
+            ]);
+        }
 
         return $validated;
     }

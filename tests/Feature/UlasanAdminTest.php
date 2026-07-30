@@ -66,7 +66,7 @@ class UlasanAdminTest extends TestCase
                 'sort_order' => 1,
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website']));
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'marketplace']));
 
         $this->assertDatabaseHas('cms_testimonials', [
             'customer_name' => 'Ani',
@@ -74,6 +74,36 @@ class UlasanAdminTest extends TestCase
             'published' => 1,
             'product_id' => null,
         ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Screenshot Only',
+                'message' => '',
+                'rating' => '',
+                'source' => 'shopee',
+                'location' => '',
+                'product_id' => '',
+                'image_url' => 'https://cdn.example.com/ss-shopee.jpg',
+                'sort_order' => 2,
+                'published' => true,
+            ])
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'marketplace']));
+
+        $this->assertDatabaseHas('cms_testimonials', [
+            'customer_name' => 'Screenshot Only',
+            'source' => 'shopee',
+            'image_url' => 'https://cdn.example.com/ss-shopee.jpg',
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Empty',
+                'message' => '',
+                'source' => 'website',
+                'image_url' => '',
+                'published' => true,
+            ])
+            ->assertSessionHasErrors(['message', 'image_url']);
     }
 
     public function test_admin_ulasan_foto_tab_lists_and_creates_gallery_item(): void

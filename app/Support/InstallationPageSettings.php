@@ -15,7 +15,7 @@ class InstallationPageSettings
 
     public const DEFAULT_HEADING = 'Hasil pemasangan';
 
-    public const DEFAULT_SUBTITLE = 'Dokumentasi visual pemasangan dari pelanggan.';
+    public const DEFAULT_SUBTITLE = 'Lihat contoh pemasangan nyata di rumah dan proyek di berbagai kota.';
 
     public static function ensurePage(): CmsPage
     {

@@ -20,7 +20,7 @@ interface PaymentInstructions {
 function paymentMethodLabel(method: string | undefined): string {
   if (method === "transfer") return "Transfer bank"
   if (method === "cod") return "COD (bayar di tempat)"
-  return method ? method : "—"
+  return method ? method : "-"
 }
 
 export default function OrderConfirmation({

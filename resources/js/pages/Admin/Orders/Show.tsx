@@ -2,6 +2,7 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import { Button } from "@/components/ui/button"
 import { ConfirmAction } from "@/components/ui/confirm-action"
 import { Field, FormErrorSummary } from "@/components/ui/field"
@@ -105,6 +106,24 @@ interface ShippingActions {
   jntEnabled: boolean
 }
 
+interface TrackingProps {
+  shipping_status: string
+  carrier_name?: string | null
+  waybill_number?: string | null
+  record_status?: string | null
+  status_raw?: string | null
+  last_status_at?: string | null
+  tracking_url?: string | null
+  order_status?: string
+  payment_status?: string
+  payment_method?: string | null
+  total_amount?: number
+  paid?: boolean
+  latest_message?: string | null
+  latest_at?: string | null
+  timeline?: Array<{ message: string; at?: string | null; source?: string }>
+}
+
 interface OrderEvent {
   event_type: string
   label?: string
@@ -167,6 +186,7 @@ function fullAddress(order: OrderDetail): string {
 export default function OrderShow({
   order,
   events = [],
+  tracking,
   primaryAction,
   updateStatusUrl,
   shippingActions,
@@ -174,6 +194,7 @@ export default function OrderShow({
 }: {
   order: OrderDetail
   events?: OrderEvent[]
+  tracking?: TrackingProps
   primaryAction: PrimaryAction | null
   updateStatusUrl: string
   shippingActions: ShippingActions
@@ -589,73 +610,39 @@ export default function OrderShow({
             </p>
           </section>
 
-          <section
-            ref={lacakRef}
-            id="lacak-pesanan"
-            className="rounded-lg border border-border bg-surface p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="text-sm font-bold">Lacak pesanan</h2>
-              {latestShipping?.waybill_number ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  disabled={refreshBusy}
-                  onClick={refreshShipping}
-                >
-                  {refreshBusy ? "Memuat..." : "Refresh J&T"}
-                </Button>
-              ) : null}
-            </div>
-
-            {latestShipping?.waybill_number ? (
-              <div className="mt-3 space-y-2 text-sm">
-                <p className="font-semibold">{latestShipping.carrier_name || "J&T Cargo"}</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-mono text-xs">{latestShipping.waybill_number}</p>
-                  <button
-                    type="button"
-                    className="text-[11px] font-semibold text-primary hover:underline"
-                    onClick={() => copyText(latestShipping.waybill_number || "")}
-                  >
-                    Salin resi
-                  </button>
-                </div>
-                <StatusBadge status={latestShipping.status} />
-                {latestShipping.status_raw ? (
-                  <p className="text-xs text-muted-foreground">{latestShipping.status_raw}</p>
-                ) : null}
-                <p className="text-xs text-muted-foreground">
-                  Update: {formatDateTime(latestShipping.last_status_at)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Status order shipping: {humanize(order.shipping_status)}
-                </p>
-                {latestShipping.tracking_url ? (
-                  <a
-                    href={latestShipping.tracking_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex text-xs font-semibold text-primary hover:underline"
-                  >
-                    Buka tracking kurir
-                  </a>
-                ) : null}
-                {isCod && order.order_status === "delivered" ? (
-                  <p className="text-xs font-semibold text-foreground">
-                    Paket diterima — pastikan pembayaran COD sudah dikonfirmasi.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Belum ada resi. Status shipping: {humanize(order.shipping_status)}
+          <section ref={lacakRef} id="lacak-pesanan" className="space-y-4">
+            <ShippingTrackPanel
+              track={
+                tracking ?? {
+                  shipping_status: order.shipping_status,
+                  carrier_name: latestShipping?.carrier_name,
+                  waybill_number: latestShipping?.waybill_number,
+                  record_status: latestShipping?.status,
+                  status_raw: latestShipping?.status_raw,
+                  last_status_at: latestShipping?.last_status_at,
+                  tracking_url: latestShipping?.tracking_url,
+                  order_status: order.order_status,
+                  payment_status: order.payment_status,
+                  payment_method: order.payment_method,
+                  total_amount: order.total_amount,
+                }
+              }
+              jntEnabled={shippingActions.jntEnabled}
+              refreshBusy={refreshBusy}
+              onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
+              onCopyWaybill={copyText}
+            />
+            {isCod && order.order_status === "delivered" ? (
+              <p className="text-xs font-semibold text-foreground">
+                Paket diterima — pastikan pembayaran COD sudah dikonfirmasi.
               </p>
-            )}
+            ) : null}
 
             {needsResi || order.order_status === "processing" ? (
-              <form onSubmit={storeShipping} className="mt-4 space-y-3 border-t border-border pt-4">
+              <form
+                onSubmit={storeShipping}
+                className="space-y-3 rounded-lg border border-border bg-surface p-4 shadow-sm"
+              >
                 <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
                   Input resi
                 </p>

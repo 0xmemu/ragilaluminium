@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
  */
 export function SectionHeading({
   title,
+  eyebrow,
   description,
   action,
   align = "center",
@@ -18,6 +19,7 @@ export function SectionHeading({
   size = "default",
 }: {
   title?: ReactNode
+  eyebrow?: ReactNode
   description?: ReactNode
   action?: ReactNode
   align?: "left" | "center"
@@ -31,14 +33,32 @@ export function SectionHeading({
   return (
     <div
       className={cn(
-        "flex flex-col gap-5",
-        align === "center"
-          ? "mx-auto max-w-3xl items-center text-center"
-          : "md:flex-row md:items-end md:justify-between",
+        "flex flex-col gap-1",
+        align === "center" && "mx-auto max-w-3xl items-center text-center",
         className,
       )}
     >
-      <div className={cn(align === "center" && "mx-auto w-full")}>
+      {eyebrow ? (
+        <p
+          className={cn(
+            "text-xs font-semibold tracking-tight text-primary sm:text-sm",
+            align === "center" ? "mx-auto text-center" : "text-left",
+          )}
+        >
+          {eyebrow}
+        </p>
+      ) : null}
+
+      <div
+        className={cn(
+          "w-full",
+          align === "left" && action
+            ? "flex items-baseline justify-between gap-3"
+            : align === "center"
+              ? "text-center"
+              : "",
+        )}
+      >
         <h2
           id={id}
           className={cn(
@@ -50,21 +70,22 @@ export function SectionHeading({
         >
           {heading}
         </h2>
-        {description ? (
-          <p
-            className={cn(
-              "mt-3 text-sm leading-6 text-muted-foreground",
-              align === "center" ? "mx-auto max-w-2xl" : "max-w-2xl",
-            )}
-          >
-            {description}
-          </p>
-        ) : null}
+        {align === "left" && action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      {action ? (
-        <div className={cn("shrink-0", align === "center" && "mt-2 flex justify-center")}>
-          {action}
-        </div>
+
+      {description ? (
+        <p
+          className={cn(
+            "mt-1 text-sm leading-6 text-muted-foreground",
+            align === "center" ? "mx-auto max-w-2xl" : "max-w-2xl",
+          )}
+        >
+          {description}
+        </p>
+      ) : null}
+
+      {align === "center" && action ? (
+        <div className="mt-2.5 flex shrink-0 justify-center">{action}</div>
       ) : null}
     </div>
   )

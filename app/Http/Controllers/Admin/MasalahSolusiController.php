@@ -61,12 +61,13 @@ class MasalahSolusiController extends Controller
             'item' => null,
             'submitUrl' => route('admin.masalah-solusi.store'),
             'indexUrl' => route('admin.masalah-solusi.index'),
+            'method' => 'post',
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $this->validated($request);
+        $validated = $this->validated($request, null);
         $validated['cms_page_id'] = ProblemsSolutionsSettings::pageId();
         $validated['sort_order'] = $validated['sort_order']
             ?? ((int) CmsProblemSolution::query()->where('cms_page_id', $validated['cms_page_id'])->max('sort_order') + 1);
@@ -89,20 +90,23 @@ class MasalahSolusiController extends Controller
     public function edit(CmsProblemSolution $masalahSolusi): Response
     {
         return Inertia::render('Admin/MasalahSolusi/Form', [
-            'item' => [
-                'id' => $masalahSolusi->id,
-                'problem' => $masalahSolusi->problem,
-                'solution' => $masalahSolusi->solution,
-                'sort_order' => $masalahSolusi->sort_order,
-            ],
+            'item' => array_merge(
+                [
+                    'id' => $masalahSolusi->id,
+                    'problem' => $masalahSolusi->problem,
+                    'sort_order' => $masalahSolusi->sort_order,
+                ],
+                ProblemsSolutionsSettings::parseForAdmin($masalahSolusi->solution),
+            ),
             'submitUrl' => route('admin.masalah-solusi.update', $masalahSolusi),
             'indexUrl' => route('admin.masalah-solusi.index'),
+            'method' => 'put',
         ]);
     }
 
     public function update(Request $request, CmsProblemSolution $masalahSolusi): RedirectResponse
     {
-        $masalahSolusi->update($this->validated($request));
+        $masalahSolusi->update($this->validated($request, $masalahSolusi->solution));
 
         ActivityLogService::record(
             'cms.masalah_solusi_updated',
@@ -160,16 +164,34 @@ class MasalahSolusiController extends Controller
     }
 
     /** @return array<string, mixed> */
-    protected function validated(Request $request): array
+    protected function validated(Request $request, ?string $existingSolution = null): array
     {
-        $validated = $request->validate([
+        $request->validate([
             'problem' => ['required', 'string', 'max:2000'],
-            'solution' => ['required', 'string', 'max:5000'],
+            'solution_body' => ['nullable', 'string', 'max:10000'],
+            'examples_label' => ['nullable', 'string', 'max:120'],
+            'examples_hint' => ['nullable', 'string', 'max:500'],
+            'existing_photos' => ['nullable', 'string'],
+            'photo_files' => ['nullable', 'array'],
+            'photo_files.*' => ['image', 'max:5120'],
+            'photo_alts' => ['nullable', 'array'],
+            'photo_alts.*' => ['nullable', 'string', 'max:200'],
+            'video_url' => ['nullable', 'string', 'max:2048'],
+            'video_duration' => ['nullable', 'string', 'max:20'],
+            'video_poster' => ['nullable', 'image', 'max:5120'],
+            'remove_video_poster' => ['boolean'],
+            'solutions_label' => ['nullable', 'string', 'max:120'],
+            'solution_lead' => ['nullable', 'string', 'max:500'],
+            'use_options' => ['boolean'],
+            'solution_options' => ['nullable', 'string'],
+            'whatsapp_note' => ['nullable', 'string', 'max:500'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
-
-        return $validated;
+        return [
+            'problem' => trim((string) $request->input('problem')),
+            'solution' => ProblemsSolutionsSettings::buildSolutionFromRequest($request, $existingSolution),
+            'sort_order' => $request->filled('sort_order') ? (int) $request->input('sort_order') : null,
+        ];
     }
 }

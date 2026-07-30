@@ -89,17 +89,32 @@ class ModelProductAdminTest extends TestCase
                 'product_category' => 'WINDOW',
                 'product_model' => 'JUNGKIT',
                 'image_url' => 'https://cdn.example.com/jungkit.jpg',
+                'description' => 'Deskripsi jungkit dari admin untuk halaman detail model.',
                 'type' => 'polos',
                 'status' => 'active',
                 'sort_order' => 0,
             ])
             ->assertRedirect(route('admin.model-products.index'));
 
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_model' => 'JUNGKIT',
+            'description' => 'Deskripsi jungkit dari admin untuk halaman detail model.',
+        ]);
+
         $this->get(route('home'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Home')
                 ->where('modelCards.0.title', 'Jendela Jungkit Unggulan')
-                ->where('modelCards.0.model', 'JUNGKIT'));
+                ->where('modelCards.0.model', 'JUNGKIT')
+                ->where('modelCards.0.desc', 'Deskripsi jungkit dari admin untuk halaman detail model.')
+                ->where('modelCards.0.subtitle', null));
+
+        $this->get(route('catalog.model', ['category' => 'window', 'model' => 'jungkit']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/ModelDetail')
+                ->where('model.desc', 'Deskripsi jungkit dari admin untuk halaman detail model.')
+                ->where('model.subtitle', null));
     }
 }

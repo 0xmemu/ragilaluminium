@@ -11,8 +11,8 @@ Dokumen ini **satu file** menggantikan catatan gap yang terpisah-pisah soal bera
 
 | Topik | Keputusan |
 |-------|-----------|
-| Dual strip ulasan di Figma (home) | **Tidak dipakai.** Satu strip cuplikan di home → detail di `/reviews`. |
-| Ulasan Shopee / WA / website | **Satu halaman** `/reviews` dengan filter sumber: Semua · Shopee & WhatsApp · Website. |
+| Dual strip ulasan di home | **Dipakai.** **Apa kata pelanggan kami** selalu (marketplace/WA). **Ulasan pelanggan di website** hanya jika ≥ **10** ulasan `source=website` terbit. |
+| Ulasan Shopee / WA / website | Halaman `/reviews` menampilkan **dua section** + filter shortcut `?source=all\|marketplace\|website`. |
 | Logo toko di platform lain | Tampil di **Informasi Toko** (`/about`) + **footer**, dipisah **Marketplace** (Shopee/Tokopedia/Lazada/TikTok Shop — jual-beli) vs **Media Sosial** (Instagram/TikTok/YouTube/Facebook — konten). |
 | Social proof unit di home | **Dihapus.** Label unit tetap bisa dipakai di Informasi Toko (`brand.units_installed_label`). |
 | Informasi Toko outline | Esensi Figma Tentang: intro + stats + Kenapa Memilih + Dipercaya + Cara Kerja + kontak (alamat/WA/email/jam + **Google Maps embed**) + Ikuti Kami. Maps: `brand.maps_query` / `BRAND_MAPS_*`. |
@@ -37,9 +37,10 @@ Layout CMS (urutan/enable + sorotan layanan + cara pesan): `HomepageLayoutSettin
 | 3 | Paling banyak dipesan | `popularProducts` / featured | Anchor `#paling-banyak-dipesan`; boleh berisi SKU flash sale tanpa carousel Flash Sale terpisah |
 | — | ~~Flash Sale home~~ | dihapus | Flash Sale hanya `/promo` + `/flash-sale` |
 | — | ~~Pembatas metal~~ | dihapus | Section memakai `border-t border-border` saja |
-| 4 | Cara pesan | `homepageLayout.how_to_order` | CMS enable/copy; **fixed** di bawah produk populer |
-| 5 | Hasil pemasangan | `CmsGalleryItem` (+ fallback foto testimoni) | Caption `N Foto` / `N Video` |
-| 6 | Apa kata pelanggan | `CmsTestimonial` published (cuplikan) | **Satu** carousel; CTA ke `/reviews` |
+| 4 | Cara pesan | `homepageLayout.how_to_order` | CMS enable/copy; **fixed** di bawah produk populer; UI = **4 kolom horizontal** (mobile+desktop), ikon + judul langkah, tanpa deskripsi per kartu |
+| 5 | Hasil pemasangan | model cards (`InstallationGallery`) | Judul **Hasil pemasangan**; meta produk/foto/video |
+| 6 | Apa kata pelanggan kami | `CmsTestimonial` marketplace sources | Screenshot Shopee/WA/`other`; CTA `/reviews#apa-kata-pelanggan` |
+| 6b | Ulasan pelanggan di website | `CmsTestimonial` `source=website` | Hanya jika count published ≥ 10; CTA `/reviews#ulasan-website` |
 | 7 | Kami bantu | `HELP_STEPS` di `Home.tsx` | Dekat frame `services` Figma |
 | 8 | Closing CTA | hardcoded + WA shared | |
 
@@ -70,13 +71,14 @@ Edit teks unit terpasang (Informasi Toko): `config/sitemap.php` → `brand.units
 | Item | Lokasi |
 |------|--------|
 | Route | `GET /reviews` → `PageController@reviews` → `Public/Reviews` |
-| Model | `CmsTestimonial` (`source`: `shopee` \| `whatsapp` \| `website` \| `other`) |
-| Query filter | `?source=all\|marketplace\|website` + `?sort=` |
+| Model | `CmsTestimonial` (`source`: `shopee` \| `whatsapp` \| `website` \| `other`; `message` nullable jika ada `image_url`) |
+| Default | Dua section: `#apa-kata-pelanggan` (marketplace) + `#ulasan-website` |
+| Query filter | `?source=all\|marketplace\|website` + `?sort=` (filter = satu section + pagination) |
 | marketplace | `source IN (shopee, whatsapp, other)` |
 | website | `source = website` |
-| Galeri hasil pemasangan | Halaman `/hasil-pemasangan` + detail `/hasil-pemasangan/{parent_sku}`; beranda memakai `InstallationCard` (layout sama ModelCard) dengan keterangan total foto/video; kartu selalu clickable |
+| Galeri hasil pemasangan | Hierarki model → produk → galeri: `/hasil-pemasangan` …; beranda memakai `InstallationCard` level model |
 
-Home **tidak** menduplikasi dua strip Figma; cukup cuplikan + link “Semua ulasan”.
+Home menampilkan **dua carousel** social proof (marketplace/WA lalu website).
 
 ---
 

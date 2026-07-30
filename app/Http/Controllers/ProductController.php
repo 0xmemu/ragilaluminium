@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CmsTestimonial;
 use App\Models\Product;
+use App\Services\ProductEngagementService;
 use App\Support\CatalogLabels;
 use App\Support\InertiaCatalog;
 use App\Support\ProductPromotionMetadata;
@@ -32,6 +33,12 @@ class ProductController extends Controller
             $product->loadMissing(['media' => fn ($q) => $q->visible()->orderBy('position')]);
 
             return response()->json($product->toApiArray());
+        }
+
+        try {
+            app(ProductEngagementService::class)->trackView($product->id);
+        } catch (\Throwable) {
+            // Metrics must not break PDP.
         }
 
         $categoryRoute = match ($product->product_category) {
@@ -144,6 +151,7 @@ class ProductController extends Controller
             ])->values()->all(),
             'reviews' => CmsTestimonial::query()
                 ->published()
+                ->website()
                 ->forProduct($product->id)
                 ->with('product:id,parent_sku,name,short_name')
                 ->orderBy('sort_order')

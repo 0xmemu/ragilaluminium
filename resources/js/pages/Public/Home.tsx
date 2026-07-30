@@ -10,6 +10,7 @@ import { SectionHeading } from "@/components/shared/section-heading"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
+import { useDragScroll } from "@/hooks/use-drag-scroll"
 import PublicLayout from "@/layouts/public-layout"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
@@ -37,6 +38,8 @@ interface HomeProps {
   featuredProducts: ProductCardData[]
   popularProducts: ProductCardData[]
   testimonials?: Testimonial[]
+  marketplaceTestimonials?: Testimonial[]
+  websiteTestimonials?: Testimonial[]
   installations?: InstallationItem[]
   installationMeta?: { title?: string; heading?: string; subtitle?: string } | null
   homepageLayout?: HomepageLayoutProps
@@ -44,29 +47,30 @@ interface HomeProps {
 
 function SectionTitle({
   title,
-  subtitle,
+  eyebrow,
   actionHref,
-  actionLabel = "Lihat semua",
+  actionLabel = "Lihat selengkapnya",
 }: {
   title: string
-  subtitle?: string
+  eyebrow?: string
   actionHref?: string
   actionLabel?: string
 }) {
   return (
     <SectionHeading
       align="left"
-      size="display"
-      className="mb-8 gap-4 md:mb-10"
+      size="default"
+      className="mb-4 gap-1 sm:mb-5 md:mb-6"
+      eyebrow={eyebrow}
       title={title}
-      description={subtitle}
       action={
         actionHref ? (
           <Link
             href={actionHref}
-            className="hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5 md:inline-flex"
+            className="inline-flex min-h-8 shrink-0 items-center gap-1 self-end text-xs font-semibold text-foreground transition hover:text-primary sm:min-h-9 sm:text-sm"
           >
             {actionLabel}
+            <Icon name="caret-right" className="size-3.5 sm:size-4" weight="bold" aria-hidden="true" />
           </Link>
         ) : undefined
       }
@@ -74,18 +78,25 @@ function SectionTitle({
   )
 }
 
-/** Desktop next/back — disembunyikan di mobile (swipe-only). */
+/** Desktop next/back — visible from md; mobile memakai slider horizontal. */
 const carouselNavBtnClass =
-  "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
+  "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
-const mobileSeeMoreLinkClass =
-  "inline-flex min-h-11 items-center justify-center rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground active:bg-foreground/5"
+/** Touch: pan-x + pan-y agar swipe kartu & scroll halaman sama-sama jalan. Mouse = useDragScroll. */
+const carouselTrackClass =
+  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+
+/** Mobile ≈ 2⅙ kartu di viewport; gap-2 (0.5rem) antar kartu. */
+const carouselCardClass =
+  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
 
 function useHorizontalCarousel(itemCount: number) {
   const trackRef = React.useRef<HTMLDivElement>(null)
   const trackId = React.useId()
   const [canGoBack, setCanGoBack] = React.useState(false)
   const [canGoNext, setCanGoNext] = React.useState(itemCount > 4)
+
+  useDragScroll(trackRef)
 
   const updateControls = React.useCallback(() => {
     const track = trackRef.current
@@ -153,9 +164,7 @@ function CarouselNavButton({
       aria-controls={trackId}
       className={cn(
         carouselNavBtnClass,
-        side === "left"
-          ? "md:left-0 md:-translate-x-1/2"
-          : "md:right-0 md:translate-x-1/2",
+        side === "left" ? "md:left-0 md:-translate-x-1/2" : "md:right-0 md:translate-x-1/2",
       )}
     >
       <Icon
@@ -168,28 +177,29 @@ function CarouselNavButton({
   )
 }
 
-/** Slot swipe terakhir di mobile — setelah maks. 10 kartu. */
+/** Trailing mobile CTA — ikon chevron + label "selengkapnya" di bawahnya. */
 function MobileSeeMoreSlide({
   href,
   label = "Lihat selengkapnya",
-  wide = false,
 }: {
   href: string
   label?: string
+  /** @deprecated slot selalu sempit; prop diabaikan agar call site lama aman */
   wide?: boolean
 }) {
   return (
-    <div
-      className={cn(
-        "flex shrink-0 snap-start flex-col items-center justify-center border border-dashed border-border bg-muted/40 px-4 md:hidden",
-        wide
-          ? "w-[88%] sm:w-[calc((100%_-_1.25rem)/2)]"
-          : "w-[calc((100%_-_1.25rem)/2)] sm:w-[calc((100%_-_2.5rem)/3)]",
-      )}
-    >
-      <Link href={href} className={mobileSeeMoreLinkClass}>
-        {label}
-        <Icon name="caret-right" className="ml-1.5 size-4" weight="bold" aria-hidden="true" />
+    <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
+      <Link
+        href={href}
+        className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
+        aria-label={label}
+      >
+        <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
+          <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+        </span>
+        <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
+          selengkapnya
+        </span>
       </Link>
     </div>
   )
@@ -206,17 +216,10 @@ function ModelCardCarousel({
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
   return (
-    <div className="relative -mx-1 overflow-visible px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
-      >
+    <div className="relative min-w-0 overflow-x-clip px-1">
+      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
         {items.map((model) => (
-          <div
-            key={`${model.category}-${model.model}`}
-            className="w-[calc((100%_-_1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%_-_2.5rem)/3)] md:w-[calc((100%_-_3.75rem)/4)] xl:w-[calc((100%_-_5rem)/5)]"
-          >
+          <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
             <ModelCard model={model} />
           </div>
         ))}
@@ -251,18 +254,11 @@ function ProductCardCarousel({
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
   return (
-    <div className="relative -mx-1 overflow-visible px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
-      >
+    <div className="relative min-w-0 overflow-x-clip px-1">
+      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
         {items.map((product, index) => (
-          <div
-            key={product.id}
-            className="w-[calc((100%_-_1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%_-_2.5rem)/3)] md:w-[calc((100%_-_3.75rem)/4)] xl:w-[calc((100%_-_5rem)/5)]"
-          >
-            <ProductCard product={product} priority={index < 4} />
+          <div key={product.id} className={carouselCardClass}>
+            <ProductCard product={product} priority={index < 4} titleStyle="model" />
           </div>
         ))}
         {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
@@ -296,23 +292,14 @@ function InstallationCarousel({
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(slides.length)
 
   return (
-    <div className="relative -mx-1 overflow-visible px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
-      >
+    <div className="relative min-w-0 overflow-x-clip px-1">
+      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-start")}>
         {slides.map((item) => (
-          <div
-            key={item.id}
-            className="w-[calc((100%_-_1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%_-_2.5rem)/3)] md:w-[calc((100%_-_3.75rem)/4)] xl:w-[calc((100%_-_5rem)/5)]"
-          >
-            <InstallationCard item={item} />
+          <div key={item.id} className={carouselCardClass}>
+            <InstallationCard item={item} level="model" />
           </div>
         ))}
-        {slides.length > 0 ? (
-          <MobileSeeMoreSlide href={seeMoreHref} label="Lihat selengkapnya" />
-        ) : null}
+        {slides.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -335,45 +322,44 @@ function InstallationCarousel({
 function TestimonialCarousel({
   testimonials,
   seeMoreHref,
+  variant = "review",
+  navLabel = "ulasan",
 }: {
   testimonials: Testimonial[]
   seeMoreHref: string
+  variant?: "review" | "screenshot"
+  navLabel?: string
 }) {
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const anchor = variant === "screenshot" ? "apa-kata-pelanggan" : "ulasan-website"
 
   return (
-    <div className="relative -mx-1 overflow-visible px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className="scrollbar-none flex touch-pan-x snap-x snap-mandatory items-stretch gap-5 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
-      >
+    <div className="relative min-w-0 overflow-x-clip px-1">
+      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-stretch")}>
         {items.map((testimonial) => (
-          <div
-            key={testimonial.id}
-            className="w-[88%] shrink-0 snap-start sm:w-[calc((100%_-_1.25rem)/2)] lg:w-[calc((100%_-_2.5rem)/3)]"
-          >
+          <div key={testimonial.id} className={carouselCardClass}>
             <TestimonialCard
               testimonial={testimonial}
               compact
-              href={testimonial.product?.href ?? `${routeUrl("reviews")}#testimoni`}
+              variant={variant}
+              href={testimonial.product?.href ?? `${routeUrl("reviews")}#${anchor}`}
             />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} wide /> : null}
+        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
         side="left"
-        label="Lihat ulasan sebelumnya"
+        label={`Lihat ${navLabel} sebelumnya`}
         enabled={canGoBack}
         onClick={() => move(-1)}
       />
       <CarouselNavButton
         trackId={trackId}
         side="right"
-        label="Lihat ulasan berikutnya"
+        label={`Lihat ${navLabel} berikutnya`}
         enabled={canGoNext}
         onClick={() => move(1)}
       />
@@ -460,11 +446,14 @@ function HeroPromoCard({
       <div className="absolute inset-0 flex items-center">
         <div
           className={cn(
-            "ml-4 flex aspect-[3/4] h-[72%] w-auto flex-col justify-start rounded-[14px] shadow-[0_10px_30px_rgba(10,0,0,0.25)] px-5 py-6 sm:ml-8 sm:px-7 sm:py-8 md:ml-10 md:px-9 lg:ml-14",
+            // Mobile: padding dalam lebar (jarak teks↔tepi kartu); sm+: tinggi 72% (DESIGN-SYSTEM).
+            "ml-4 flex aspect-[3/4] h-auto w-[min(58%,15rem)] max-h-[85%] flex-col justify-start overflow-hidden rounded-[14px] px-5 py-5 shadow-[0_10px_30px_rgba(10,0,0,0.25)]",
+            "sm:ml-8 sm:h-[72%] sm:w-auto sm:max-h-none sm:max-w-none sm:overflow-visible sm:px-8 sm:py-9",
+            "md:ml-10 md:px-10 lg:ml-14 lg:px-11",
             v.card,
           )}
         >
-          <p className={cn("mt-3 font-display text-base font-medium tracking-[-0.04em] sm:mt-5 sm:text-lg md:text-xl", v.eyebrow)}>
+          <p className={cn("font-display text-xs font-medium tracking-[-0.04em] sm:mt-4 sm:text-lg md:text-xl", v.eyebrow)}>
             {eyebrow.lead}
             {eyebrow.accentWord ? (
               <>
@@ -473,29 +462,29 @@ function HeroPromoCard({
               </>
             ) : null}
           </p>
-          <p className={cn("mt-1 whitespace-pre-line font-display text-2xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-4xl md:text-5xl", v.headline)}>
+          <p className={cn("mt-1 whitespace-pre-line font-display text-lg font-extrabold leading-[1.05] tracking-[-0.03em] sm:mt-1.5 sm:text-4xl md:text-5xl", v.headline)}>
             {headlineLines.length ? headlineLines.join("\n") : slide.headline}
           </p>
           {accent ? (
-            <p className={cn("mt-2 inline-flex self-start rounded-full px-3 py-0.5 font-display text-2xl font-extrabold tracking-tight sm:text-3xl", v.chip)}>
+            <p className={cn("mt-2 inline-flex self-start rounded-full px-2.5 py-0.5 font-display text-base font-extrabold tracking-tight sm:mt-2.5 sm:px-3 sm:text-3xl", v.chip)}>
               {accent}
             </p>
           ) : null}
           {slide.subheadline ? (
-            <p className={cn("mt-3 text-sm font-normal leading-snug sm:text-base md:text-lg", v.subheadline)}>
+            <p className={cn("mt-2 text-[11px] font-normal leading-snug sm:mt-3 sm:text-base md:text-lg", v.subheadline)}>
               {slide.subheadline}
             </p>
           ) : null}
           <Link
             href={slide.href}
             className={cn(
-              "mt-auto inline-flex h-10 items-center justify-center self-start rounded-full px-6 text-sm font-bold transition",
+              "mt-auto inline-flex h-8 max-w-full shrink-0 items-center justify-center self-start whitespace-nowrap rounded-full px-3.5 text-[11px] font-bold transition sm:h-10 sm:px-6 sm:text-sm",
               v.cta,
             )}
           >
             Belanja sekarang
           </Link>
-          <p className={cn("mt-3 text-[10px] font-light sm:text-xs", v.disclaimer)}>
+          <p className={cn("mt-2 truncate text-[9px] font-light sm:mt-3 sm:text-xs", v.disclaimer)}>
             {slide.disclaimer ?? "*Untuk berbagai produk pilihan"}
           </p>
         </div>
@@ -607,7 +596,12 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const total = slides.length
   const visibleIndex = total ? Math.min(activeIndex, total - 1) : 0
-  const touchStartX = React.useRef<number | null>(null)
+  const surfaceRef = React.useRef<HTMLDivElement>(null)
+  const dragRef = React.useRef<{
+    pointerId: number | null
+    startX: number
+    dragged: boolean
+  }>({ pointerId: null, startX: 0, dragged: false })
 
   React.useEffect(() => {
     if (total < 2) return
@@ -623,18 +617,118 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
     setActiveIndex((index + total) % total)
   }
 
-  function onTouchStart(event: React.TouchEvent<HTMLDivElement>) {
-    touchStartX.current = event.touches[0]?.clientX ?? null
-  }
+  // Swipe from middle of promo card / CTA (pointer when available, else touch).
+  React.useEffect(() => {
+    const el = surfaceRef.current
+    if (!el || total < 2) return
 
-  function onTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
-    if (touchStartX.current === null || total < 2) return
-    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current
-    const delta = endX - touchStartX.current
-    touchStartX.current = null
-    if (Math.abs(delta) < 40) return
-    goTo(visibleIndex + (delta < 0 ? 1 : -1))
-  }
+    const state = dragRef.current
+    let suppressClick = false
+    let startX = 0
+    let active = false
+    let dragged = false
+    const usePointer = typeof window.PointerEvent === "function"
+
+    const begin = (clientX: number, pointerId: number | null = null) => {
+      active = true
+      dragged = false
+      startX = clientX
+      state.pointerId = pointerId
+      state.startX = clientX
+      state.dragged = false
+    }
+
+    const markDrag = (clientX: number, event?: Event) => {
+      if (!active) return
+      if (Math.abs(clientX - startX) < 28) return
+      if (!dragged) {
+        dragged = true
+        state.dragged = true
+        suppressClick = true
+        if (state.pointerId !== null && event instanceof PointerEvent) {
+          try {
+            el.setPointerCapture(state.pointerId)
+          } catch {
+            // ignore
+          }
+        }
+      }
+      event?.preventDefault()
+    }
+
+    const finish = (clientX: number) => {
+      if (!active) return
+      const dx = clientX - startX
+      const wasDragged = dragged
+      active = false
+      dragged = false
+      state.pointerId = null
+      state.dragged = false
+      if (!wasDragged || Math.abs(dx) < 40) return
+      setActiveIndex((current) => {
+        const next = current + (dx < 0 ? 1 : -1)
+        return ((next % total) + total) % total
+      })
+    }
+
+    const onClickCapture = (event: MouseEvent) => {
+      if (!suppressClick) return
+      event.preventDefault()
+      event.stopPropagation()
+      suppressClick = false
+    }
+
+    el.addEventListener("click", onClickCapture, true)
+
+    if (usePointer) {
+      const onPointerDown = (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return
+        begin(event.clientX, event.pointerId)
+      }
+      const onPointerMove = (event: PointerEvent) => {
+        if (state.pointerId !== event.pointerId) return
+        markDrag(event.clientX, event)
+      }
+      const onPointerUp = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        finish(event.clientX)
+      }
+      el.addEventListener("pointerdown", onPointerDown)
+      el.addEventListener("pointermove", onPointerMove, { passive: false })
+      el.addEventListener("pointerup", onPointerUp)
+      el.addEventListener("pointercancel", onPointerUp)
+      return () => {
+        el.removeEventListener("pointerdown", onPointerDown)
+        el.removeEventListener("pointermove", onPointerMove)
+        el.removeEventListener("pointerup", onPointerUp)
+        el.removeEventListener("pointercancel", onPointerUp)
+        el.removeEventListener("click", onClickCapture, true)
+      }
+    }
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      begin(event.touches[0].clientX)
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (!active || event.touches.length !== 1) return
+      markDrag(event.touches[0].clientX, event)
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      finish(event.changedTouches[0]?.clientX ?? startX)
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true })
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    el.addEventListener("touchend", onTouchEnd)
+    el.addEventListener("touchcancel", onTouchEnd)
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart)
+      el.removeEventListener("touchmove", onTouchMove)
+      el.removeEventListener("touchend", onTouchEnd)
+      el.removeEventListener("touchcancel", onTouchEnd)
+      el.removeEventListener("click", onClickCapture, true)
+    }
+  }, [total])
 
   const reduceMotion =
     typeof window !== "undefined" &&
@@ -643,15 +737,14 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
       <div
-        className="relative w-full overflow-hidden bg-foreground/5 touch-pan-y"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+        ref={surfaceRef}
+        className="relative w-full overflow-hidden bg-foreground/5 [touch-action:pan-x_pan-y]"
       >
           {total ? (
             <>
               <div
                 className={cn(
-                  "flex aspect-[1024/426] min-h-[320px] w-full",
+                  "flex aspect-[1024/426] min-h-[260px] w-full sm:min-h-[320px]",
                   !reduceMotion && "transition-transform duration-500 ease-emphasized",
                 )}
                 style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
@@ -711,7 +804,7 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
               ) : null}
             </>
           ) : (
-            <div className="flex aspect-[1024/426] min-h-[320px] w-full items-center justify-center bg-muted">
+            <div className="flex aspect-[1024/426] min-h-[260px] w-full items-center justify-center bg-muted sm:min-h-[320px]">
               <EmptyState
                 className="min-h-28 border-0 bg-transparent p-4"
                 title="Promo segera hadir"
@@ -728,11 +821,11 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
   const seeMoreHref = routeUrl("catalog.index")
 
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section id="pilih-model-produk" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
         <SectionTitle
+          eyebrow="Temukan model Anda"
           title="Pilih model produk"
-          subtitle="Bandingkan model produk sebelum memilih ukuran."
           actionHref={seeMoreHref}
         />
         {models.length ? (
@@ -740,7 +833,7 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
         ) : (
           <EmptyState
             title="Model belum tersedia"
-            description="Model produk akan tampil setelah katalog aktif."
+            description="Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih."
             action={
               <Button asChild>
                 <Link href={seeMoreHref}>Buka katalog</Link>
@@ -759,12 +852,12 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
   return (
     <section
       id="paling-banyak-dipesan"
-      className="scroll-mt-20 border-t border-border bg-surface-muted section-space"
+      className="scroll-mt-20 bg-surface-muted section-space"
     >
       <div className="container-page">
         <SectionTitle
+          eyebrow="Untuk inspirasi Anda"
           title="Paling banyak dipesan"
-          subtitle="Untuk inspirasi Anda."
           actionHref={seeMoreHref}
         />
         {products.length ? (
@@ -772,7 +865,7 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
         ) : (
           <EmptyState
             title="Belum ada produk populer"
-            description="Produk paling banyak dipesan akan muncul di sini."
+            description="Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
             action={
               <Button asChild>
                 <Link href={routeUrl("catalog.windows")}>Jelajahi produk</Link>
@@ -786,27 +879,22 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
 }
 
 const DEFAULT_ORDER_STEPS = [
-  {
-    step: "01",
-    title: "Pilih model",
-    description: "Tentukan model jendela, pintu, atau bouven yang sesuai kebutuhan.",
-  },
-  {
-    step: "02",
-    title: "Pilih ukuran & varian",
-    description: "Atur ukuran, desain, dan opsi di halaman produk.",
-  },
-  {
-    step: "03",
-    title: "Checkout",
-    description: "Isi data pengiriman, pilih pembayaran, lalu buat pesanan.",
-  },
-  {
-    step: "04",
-    title: "Lacak pesanan",
-    description: "Pantau status tanpa login lewat menu Pesanan.",
-  },
+  { step: "01", title: "Pilih model", icon: "package" as const },
+  { step: "02", title: "Pilih ukuran & varian", icon: "ruler" as const },
+  { step: "03", title: "Proses pesanan & konfirmasi WhatsApp", icon: "whatsapp" as const },
 ]
+
+const ORDER_STEP_ICONS = ["package", "ruler", "whatsapp"] as const
+
+function orderStepIcon(title: string, index: number): string {
+  const t = title.toLowerCase()
+  if (t.includes("model")) return "package"
+  if (t.includes("ukuran") || t.includes("varian")) return "ruler"
+  if (t.includes("whatsapp") || t.includes("konfirmasi") || t.includes("proses")) return "whatsapp"
+  if (t.includes("checkout") || t.includes("bayar")) return "credit-card"
+  if (t.includes("lacak") || t.includes("pesanan")) return "clipboard-list"
+  return ORDER_STEP_ICONS[index % ORDER_STEP_ICONS.length] ?? "package"
+}
 
 function CaraPesan({
   data,
@@ -814,17 +902,16 @@ function CaraPesan({
   data?: HomepageLayoutProps["how_to_order"]
 }) {
   const title = data?.title || "Cara pesan jendela Anda"
-  const subtitle = data?.subtitle || "Alur singkat dari memilih model hingga pesanan terkirim."
-  const steps = data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS
+  const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
 
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
-        <div className="mx-auto mb-10 max-w-xl text-center md:mb-12">
+        <div className="mx-auto mb-5 max-w-xl text-center md:mb-6">
           <SectionHeading
             size="display"
+            eyebrow="Cara memesan jendela Anda"
             title={title}
-            description={subtitle}
             action={
               <Link
                 href={routeUrl("cara-pemesanan")}
@@ -835,18 +922,25 @@ function CaraPesan({
             }
           />
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((item) => (
-            <article
-              key={`${item.step}-${item.title}`}
-              className="border border-border bg-background p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-            >
-              <p className="font-mono text-xs font-bold text-primary">{item.step}</p>
-              <h3 className="mt-3 text-sm font-bold tracking-tight">{item.title}</h3>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.description}</p>
-            </article>
-          ))}
-        </div>
+        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
+          {steps.map((item, index) => {
+            const step = item.step || String(index + 1).padStart(2, "0")
+            const icon = orderStepIcon(item.title, index)
+            return (
+              <li key={`${step}-${item.title}`}>
+                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-1.5 py-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-5">
+                  <span className="font-mono text-[0.625rem] font-bold text-primary sm:text-xs">{step}</span>
+                  <span className="mt-2 flex size-14 items-center justify-center rounded-xl bg-muted text-foreground sm:mt-3 sm:size-16">
+                    <Icon name={icon} className="size-6 sm:size-7" aria-hidden="true" />
+                  </span>
+                  <h3 className="mt-2 text-[0.6875rem] font-bold leading-snug tracking-tight text-foreground sm:mt-3 sm:text-sm">
+                    {item.title}
+                  </h3>
+                </article>
+              </li>
+            )
+          })}
+        </ol>
       </div>
     </section>
   )
@@ -862,13 +956,13 @@ function HasilPemasangan({
   const seeMoreHref = routeUrl("installation.index")
 
   return (
-    <section className="border-t border-border bg-surface-muted section-space">
+    <section id="hasil-pemasangan" className="scroll-mt-20 bg-surface-muted section-space">
       <div className="container-page">
         <SectionTitle
-          title={meta?.heading?.trim() || "Hasil pemasangan kami"}
-          subtitle={meta?.subtitle?.trim() || "Dokumentasi pemasangan dari pelanggan dan galeri toko."}
+          eyebrow="Inspirasi pemasangan nyata"
+          title={meta?.heading?.trim() || "Hasil pemasangan"}
           actionHref={seeMoreHref}
-          actionLabel="Semua hasil pemasangan"
+          actionLabel="Lihat selengkapnya"
         />
         {items.length ? (
           <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
@@ -876,7 +970,7 @@ function HasilPemasangan({
           <EmptyState
             icon="image"
             title="Dokumentasi segera hadir"
-            description="Dokumentasi pemasangan akan segera hadir."
+            description="Foto pemasangan sedang dikumpulkan. Sementara itu, chat kami untuk melihat contoh di kota Anda."
           />
         )}
       </div>
@@ -885,24 +979,60 @@ function HasilPemasangan({
 }
 
 function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = routeUrl("reviews")
+  const seeMoreHref = `${routeUrl("reviews")}#apa-kata-pelanggan`
 
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
         <SectionTitle
+          eyebrow="Bukti dari marketplace & WhatsApp"
           title="Apa kata pelanggan kami"
-          subtitle="Cuplikan ulasan terbit. Semua sumber (Shopee, WhatsApp, website) digabung di halaman Ulasan dengan filter."
           actionHref={seeMoreHref}
-          actionLabel="Semua ulasan"
+          actionLabel="Lihat selengkapnya"
         />
         {testimonials.length ? (
-          <TestimonialCarousel testimonials={testimonials} seeMoreHref={seeMoreHref} />
+          <TestimonialCarousel
+            testimonials={testimonials}
+            seeMoreHref={seeMoreHref}
+            variant="screenshot"
+            navLabel="testimoni"
+          />
+        ) : (
+          <EmptyState
+            icon="message-circle"
+            title="Belum ada screenshot"
+            description="Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan."
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+function UlasanPelangganWebsite({ testimonials }: { testimonials: Testimonial[] }) {
+  const seeMoreHref = `${routeUrl("reviews")}#ulasan-website`
+
+  return (
+    <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted section-space">
+      <div className="container-page">
+        <SectionTitle
+          eyebrow="Pembeli lewat website"
+          title="Ulasan pelanggan di website"
+          actionHref={seeMoreHref}
+          actionLabel="Lihat selengkapnya"
+        />
+        {testimonials.length ? (
+          <TestimonialCarousel
+            testimonials={testimonials}
+            seeMoreHref={seeMoreHref}
+            variant="review"
+            navLabel="ulasan"
+          />
         ) : (
           <EmptyState
             icon="star"
-            title="Belum ada ulasan"
-            description="Belum ada ulasan yang tampil. Lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
+            title="Belum ada ulasan website"
+            description="Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini."
           />
         )}
       </div>
@@ -915,41 +1045,41 @@ const HELP_STEPS = [
     icon: "headset",
     title: "Konsultasi sebelum produksi",
     description:
-      "Tim ahli kami membantu memilih model yang paling sesuai dengan fungsionalitas dan estetika bangunan Anda.",
+      "Tim kami bantu memilih model yang pas untuk kebutuhan dan tampilan rumah Anda.",
   },
   {
     icon: "ruler",
     title: "Kami bantu cek & konfirmasi ukuran sebelum produksi",
     description:
-      "Cek ulang spesifikasi teknis dan ukuran sebelum proses produksi dimulai untuk akurasi mutlak.",
+      "Ukuran dan opsi dicek ulang bersama Anda sebelum produksi, agar hasilnya pas di lokasi.",
   },
   {
     icon: "package",
     title: "Packing aman & pengiriman ke seluruh Indonesia",
     description:
-      "Pengemasan standar industri untuk menjamin keamanan produk selama perjalanan menuju lokasi Anda.",
+      "Produk dikemas rapi agar aman sampai di rumah Anda, ke seluruh Indonesia.",
   },
   {
     icon: "whatsapp",
     title: "Masih ragu? Chat WhatsApp, kami bantu sampai jelas",
     description:
-      "Layanan purna jual yang menyediakan bantuan panduan instalasi agar hasil akhir maksimal.",
+      "Tanya apa saja lewat WhatsApp, dari pilihan model sampai panduan pemasangan.",
   },
 ]
 
 function KamiBantu() {
   return (
-    <section className="border-t border-border bg-surface-muted section-space">
+    <section id="kami-bantu" className="scroll-mt-20 bg-surface-muted section-space">
       <div className="container-page">
-        <div className="mx-auto mb-10 max-w-xl text-center md:mb-12">
+        <div className="mx-auto mb-5 max-w-xl text-center md:mb-6">
           <SectionHeading
             size="display"
+            eyebrow="Didukung tim kami"
             title={
               <>
                 Kami bantu dari <span className="text-primary">awal sampai jadi</span>
               </>
             }
-            description="Proses mudah, aman, dan nyaman untuk hasil yang sesuai harapan Anda."
           />
         </div>
         <div className="mx-auto grid max-w-3xl gap-4">
@@ -961,16 +1091,16 @@ function KamiBantu() {
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
                 <Icon name={item.icon} className="size-6 sm:size-7" aria-hidden="true" />
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-2">
-                  <span className="tabular-nums mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
-                    {index + 1}
-                  </span>
+              <div className="flex min-w-0 flex-1 items-start gap-2">
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold tabular-nums text-background">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
                     {item.title}
                   </h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
               </div>
             </article>
           ))}
@@ -985,13 +1115,13 @@ function ClosingCta() {
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
 
   return (
-    <section className="section-space border-t border-border bg-foreground text-background">
+    <section id="closing-cta" className="scroll-mt-20 section-space bg-foreground text-background">
       <div className="container-page flex flex-col items-center text-center">
         <SectionHeading
           size="display"
+          eyebrow="Mulai sekarang"
           className="text-background [&_h2]:text-background [&_p]:text-white"
           title="Tingkatkan kualitas bangunan bersama kami"
-          description="Pilih model aluminium yang tepat untuk rumah yang lebih rapi, terang, dan tahan lama."
         />
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Button asChild className="bg-background text-primary hover:bg-background/90">
@@ -1022,10 +1152,16 @@ export default function Home({
   featuredProducts = [],
   popularProducts = [],
   testimonials = [],
+  marketplaceTestimonials,
+  websiteTestimonials,
   installations = [],
   installationMeta = null,
   homepageLayout,
 }: HomeProps) {
+  const marketplaceItems = marketplaceTestimonials?.length
+    ? marketplaceTestimonials
+    : testimonials
+  const websiteItems = websiteTestimonials ?? []
   const popular = popularProducts.length ? popularProducts : featuredProducts
   const sections = homepageLayout?.sections?.length
     ? homepageLayout.sections
@@ -1066,7 +1202,10 @@ export default function Home({
       <PalingBanyakDipesan products={popular} />
       {showCaraPesan ? <CaraPesan data={homepageLayout?.how_to_order} /> : null}
       <HasilPemasangan items={installations} meta={installationMeta} />
-      <ApaKataPelanggan testimonials={testimonials} />
+      <ApaKataPelanggan testimonials={marketplaceItems} />
+      {websiteItems.length >= 10 ? (
+        <UlasanPelangganWebsite testimonials={websiteItems} />
+      ) : null}
       <KamiBantu />
       <ClosingCta />
     </PublicLayout>

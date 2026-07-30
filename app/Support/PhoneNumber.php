@@ -31,4 +31,27 @@ class PhoneNumber
 
         return $digits;
     }
+
+    /**
+     * Format tampilan publik, contoh: +62 817-7637-0707.
+     */
+    public static function formatDisplay(?string $raw): ?string
+    {
+        $normalized = self::normalize($raw);
+        if (! $normalized || ! str_starts_with($normalized, '62') || strlen($normalized) < 10) {
+            $trimmed = trim((string) $raw);
+
+            return $trimmed !== '' ? $trimmed : null;
+        }
+
+        $local = substr($normalized, 2);
+        $parts = [substr($local, 0, 3)];
+        $rest = substr($local, 3);
+        while ($rest !== '') {
+            $parts[] = substr($rest, 0, 4);
+            $rest = substr($rest, 4);
+        }
+
+        return '+62 '.implode('-', array_filter($parts));
+    }
 }

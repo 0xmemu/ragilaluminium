@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AnalyticsController;
-use App\Http\Controllers\Admin\BerandaController;
 use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Admin\BerandaController;
 use App\Http\Controllers\Admin\CaraPemesananController;
 use App\Http\Controllers\Admin\CodSettingsController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -11,11 +11,9 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\FlashSaleController;
 use App\Http\Controllers\Admin\GalleryItemController;
-use App\Http\Controllers\Admin\ShippingSubsidyController;
-use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Admin\ImportJobController;
-use App\Http\Controllers\Admin\KetentuanLayananController;
 use App\Http\Controllers\Admin\KebijakanPrivasiController;
+use App\Http\Controllers\Admin\KetentuanLayananController;
 use App\Http\Controllers\Admin\MasalahSolusiController;
 use App\Http\Controllers\Admin\ModelProductController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
@@ -27,11 +25,13 @@ use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SettingsController;
-use App\Http\Controllers\Admin\StorefrontPlatformController;
 use App\Http\Controllers\Admin\ShippingRecordController;
+use App\Http\Controllers\Admin\ShippingSubsidyController;
+use App\Http\Controllers\Admin\StorefrontPlatformController;
 use App\Http\Controllers\Admin\TentangKamiController;
 use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Admin\WhatsAppMessageController;
 use App\Http\Controllers\Admin\WhatsAppTemplateController;
 use App\Http\Controllers\Auth\LoginController;
@@ -43,8 +43,10 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductEngagementController;
 use App\Http\Controllers\Webhook\ShippingController;
 use App\Http\Controllers\Webhook\WhatsAppController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -64,17 +66,26 @@ Route::get('/policy/privacy', [PageController::class, 'privacy'])->name('privacy
 Route::get('/policy/terms', [PageController::class, 'terms'])->name('terms');
 
 Route::get('/products', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('/products/{category}/{model}', [CatalogController::class, 'modelShow'])
+    ->where([
+        'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu',
+        'model' => '[A-Za-z0-9_-]+',
+    ])
+    ->name('catalog.model');
 Route::get('/promo', [CatalogController::class, 'promo'])->name('catalog.promo');
 Route::get('/flash-sale', [CatalogController::class, 'flashSale'])->name('catalog.flash-sale');
 Route::get('/windows', [CatalogController::class, 'windows'])->name('catalog.windows');
 Route::get('/doors', [CatalogController::class, 'doors'])->name('catalog.doors');
 Route::get('/bouven', [CatalogController::class, 'bouven'])->name('catalog.bouven');
 
-Route::get('/search', function (\Illuminate\Http\Request $request) {
+Route::get('/search', function (Request $request) {
     return redirect()->route('catalog.index', $request->query());
 })->name('search');
 
 Route::get('/product/{parent_sku}', [ProductController::class, 'show'])->name('product.show');
+Route::post('/product/{product}/engage', [ProductEngagementController::class, 'store'])
+    ->middleware('throttle:120,1')
+    ->name('product.engage');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
@@ -84,6 +95,12 @@ Route::post('/cart/remove', [CartController::class, 'remove'])->name('cart.remov
 
 Route::get('/reviews', [PageController::class, 'reviews'])->name('reviews');
 Route::get('/hasil-pemasangan', [PageController::class, 'installations'])->name('installation.index');
+Route::get('/hasil-pemasangan/{category}/{model}', [PageController::class, 'installationModel'])
+    ->where([
+        'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu|lainnya|manual|other',
+        'model' => '[A-Za-z0-9_-]+',
+    ])
+    ->name('installation.model');
 Route::get('/hasil-pemasangan/{parent_sku}', [PageController::class, 'installationShow'])
     ->name('installation.show');
 
@@ -347,7 +364,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 Route::middleware('throttle:120,1')->group(function () {
     Route::get('/webhook/whatsapp', [WhatsAppController::class, 'verify'])->name('webhook.whatsapp.verify');
     Route::post('/webhook/whatsapp', [WhatsAppController::class, 'handle'])->name('webhook.whatsapp.handle');
+Route::post('/webhook/whatsapp/waha', [WhatsAppController::class, 'handleWaha'])->name('webhook.whatsapp.waha');
     Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])->name('webhook.shipping.jnt');
 });
-
-

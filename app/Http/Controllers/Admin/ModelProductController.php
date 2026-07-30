@@ -16,9 +16,7 @@ use Inertia\Response;
 
 class ModelProductController extends Controller
 {
-    public function __construct(protected ModelProductService $models)
-    {
-    }
+    public function __construct(protected ModelProductService $models) {}
 
     public function index(Request $request): Response
     {
@@ -91,6 +89,7 @@ class ModelProductController extends Controller
                 'product_category' => $modelProduct->product_category,
                 'product_model' => $modelProduct->product_model,
                 'image_url' => $modelProduct->image_url,
+                'description' => $modelProduct->description,
                 'type' => $modelProduct->type,
                 'status' => $modelProduct->status,
                 'sort_order' => $modelProduct->sort_order,
@@ -172,6 +171,7 @@ class ModelProductController extends Controller
             'product_category' => ['nullable', 'string', Rule::in(['WINDOW', 'DOOR', 'BOUVEN'])],
             'product_model' => ['nullable', 'string', 'max:64'],
             'image_url' => ['nullable', 'string', 'max:2048'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'type' => ['required', Rule::in(CmsModelProduct::TYPES)],
             'status' => ['required', Rule::in(CmsModelProduct::STATUSES)],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -180,6 +180,9 @@ class ModelProductController extends Controller
         $validated['product_category'] = $validated['product_category'] ?: null;
         $validated['product_model'] = CatalogLabels::normalizeModel($validated['product_model'] ?? null);
         $validated['image_url'] = $validated['image_url'] ?: null;
+        $validated['description'] = filled($validated['description'] ?? null)
+            ? trim((string) $validated['description'])
+            : null;
         $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
 
         return $validated;

@@ -136,7 +136,7 @@ return [
     'brand' => [
         'name' => 'Ragil Aluminium',
         'panel_version' => 'v2.0',
-        'sidebar_width' => '208px',
+        'sidebar_width' => '192px',
         'logo_bg' => '#131212',
         'canvas_bg' => '#f9f9f9',
     ],

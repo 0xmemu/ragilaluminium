@@ -19,6 +19,7 @@ export function BrandWordmark({
   variant = "light",
   className,
   href,
+  onClick,
 }: {
   compact?: boolean
   /** Emblem only — mobile header beside search. */
@@ -27,10 +28,12 @@ export function BrandWordmark({
   variant?: keyof typeof LOGO
   className?: string
   href?: string
+  onClick?: () => void
 }) {
   return (
     <Link
       href={href ?? routeUrl("home")}
+      onClick={onClick}
       className={cn(
         "group relative z-20 inline-flex items-center",
         mark ? "size-9 shrink-0" : compact ? "min-h-9" : "min-h-10",

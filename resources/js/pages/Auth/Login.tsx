@@ -26,19 +26,18 @@ export default function Login({ email = "" }: { email?: string }) {
   }
 
   return (
-    <AuthLayout description="Masukkan email dan password akun admin untuk melanjutkan.">
-
+    <AuthLayout description="Gunakan kredensial administrator Anda untuk melanjutkan ke ruang kerja operasional.">
       <Head title="Login Admin" />
-      <form onSubmit={submit} className="flex flex-col gap-6">
+      <form onSubmit={submit} className="flex flex-col gap-5">
         <FormErrorSummary errors={form.errors} />
         <Field id="login-email" label="Email" required error={form.errors.email}>
           <Input
             type="email"
-            placeholder="admin@ragilaluminium.com"
             value={form.data.email}
             onChange={(event) => form.setData("email", event.target.value)}
             autoComplete="username"
             autoFocus
+            placeholder="nama@ragilaluminium.com"
           />
         </Field>
         <div className="grid gap-2">
@@ -52,6 +51,7 @@ export default function Login({ email = "" }: { email?: string }) {
               value={form.data.password}
               onChange={(event) => form.setData("password", event.target.value)}
               autoComplete="current-password"
+              placeholder="Masukkan password"
               className="pr-12"
               aria-describedby={form.errors.password ? "login-password-error" : undefined}
               aria-invalid={Boolean(form.errors.password)}
@@ -78,10 +78,13 @@ export default function Login({ email = "" }: { email?: string }) {
           round
           compact
         />
-        <Button type="submit" size="lg" className="w-full" disabled={form.processing}>
+        <Button type="submit" size="lg" className="mt-1 w-full" disabled={form.processing}>
           {form.processing ? "Memeriksa akun..." : "Masuk"}
           <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
         </Button>
+        <p className="text-center text-xs leading-5 text-muted-foreground">
+          Sesi dan aktivitas admin dilindungi oleh sistem autentikasi.
+        </p>
       </form>
     </AuthLayout>
   )

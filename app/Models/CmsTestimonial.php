@@ -10,6 +10,16 @@ class CmsTestimonial extends Model
 {
     public const SOURCES = ['shopee', 'whatsapp', 'website', 'other'];
 
+    /** Marketplace / WhatsApp / other — section “Apa kata pelanggan kami”. */
+    public const MARKETPLACE_SOURCES = ['shopee', 'whatsapp', 'other'];
+
+    public const SOURCE_LABELS = [
+        'shopee' => 'Marketplace / Shopee',
+        'whatsapp' => 'WhatsApp',
+        'website' => 'Website',
+        'other' => 'Lainnya',
+    ];
+
     protected $fillable = [
         'cms_page_id',
         'product_id',
@@ -51,7 +61,22 @@ class CmsTestimonial extends Model
         return $query->where('product_id', $productId);
     }
 
-    /** Public storefront payload (PDP + /reviews). */
+    public function scopeMarketplace(Builder $query): Builder
+    {
+        return $query->whereIn('source', self::MARKETPLACE_SOURCES);
+    }
+
+    public function scopeWebsite(Builder $query): Builder
+    {
+        return $query->where('source', 'website');
+    }
+
+    public static function sourceLabel(string $source): string
+    {
+        return self::SOURCE_LABELS[$source] ?? $source;
+    }
+
+    /** Public storefront payload (PDP + /reviews + home). */
     public function toPublicArray(): array
     {
         $product = $this->relationLoaded('product') ? $this->product : null;

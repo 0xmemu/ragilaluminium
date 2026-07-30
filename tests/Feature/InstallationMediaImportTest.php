@@ -11,9 +11,12 @@ use App\Models\ProductMedia;
 use App\Support\InstallationGallery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
+use Tests\TestCase;
 
-class InstallationMediaImportTest extends \Tests\TestCase
+class InstallationMediaImportTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -34,7 +37,8 @@ class InstallationMediaImportTest extends \Tests\TestCase
                 'installation_image_1' => 'https://example.com/install-extra.jpg',
             ],
         ]);
-        $export = new class($rows) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        $export = new class($rows) implements FromCollection, WithHeadings
+        {
             public function __construct(public $rows) {}
 
             public function collection()
@@ -112,19 +116,36 @@ class InstallationMediaImportTest extends \Tests\TestCase
             ['title' => 'Testimoni', 'published' => true, 'content' => []]
         );
 
-        $items = InstallationGallery::items(10);
-        $this->assertNotEmpty($items);
-        $this->assertSame('https://example.com/hasil.jpg', $items[0]['image_url']);
-        $this->assertSame('import', $items[0]['source']);
-        $this->assertSame('WIN-REV-1', $items[0]['product_sku']);
-        $this->assertNotEmpty($items[0]['href']);
+        $models = InstallationGallery::modelCards(10);
+        $this->assertNotEmpty($models);
+        $this->assertSame('https://example.com/hasil.jpg', $models[0]['image_url']);
+        $this->assertSame('import', $models[0]['source']);
+        $this->assertSame(1, $models[0]['product_count']);
+        $this->assertSame('WINDOW', $models[0]['category']);
+        $this->assertSame('SLIDING', $models[0]['model']);
+        $this->assertSame(
+            route('installation.model', ['category' => 'window', 'model' => 'sliding'], absolute: false),
+            $models[0]['href']
+        );
 
         $response = $this->get(route('installation.index'));
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Public/Installations')
+            ->where('level', 'model')
             ->has('installations', 1)
             ->where('installations.0.image_url', 'https://example.com/hasil.jpg')
+            ->where('installations.0.product_count', 1)
+            ->where('installations.0.href', route('installation.model', ['category' => 'window', 'model' => 'sliding'], absolute: false))
+        );
+
+        $modelPage = $this->get(route('installation.model', ['category' => 'window', 'model' => 'sliding']));
+        $modelPage->assertOk();
+        $modelPage->assertInertia(fn (Assert $page) => $page
+            ->component('Public/Installations')
+            ->where('level', 'product')
+            ->has('installations', 1)
+            ->where('installations.0.product_sku', 'WIN-REV-1')
             ->where('installations.0.href', route('installation.show', ['parent_sku' => 'WIN-REV-1'], absolute: false))
         );
 
@@ -134,6 +155,7 @@ class InstallationMediaImportTest extends \Tests\TestCase
             ->component('Public/InstallationDetail')
             ->where('product.parent_sku', 'WIN-REV-1')
             ->has('media', 1)
+            ->where('modelHref', route('installation.model', ['category' => 'window', 'model' => 'sliding'], absolute: false))
         );
     }
 

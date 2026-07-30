@@ -37,6 +37,11 @@ export function AdminLayout({
   }, [theme])
 
   React.useEffect(() => {
+    document.documentElement.classList.add("admin-shell")
+    return () => document.documentElement.classList.remove("admin-shell")
+  }, [])
+
+  React.useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement
       if (event.key !== "/" || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return
@@ -70,12 +75,12 @@ export function AdminLayout({
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-header flex min-h-[4.5rem] items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-xl md:px-6">
+        <header className="sticky top-0 z-header flex min-h-[3.25rem] items-center gap-2 border-b border-border bg-surface px-4 md:px-5 lg:min-h-[3.75rem] lg:px-6">
           <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md text-foreground transition hover:bg-accent lg:hidden"
+                className="inline-flex h-8 w-8 items-center justify-center rounded text-foreground transition hover:bg-accent lg:hidden"
                 aria-label="Buka navigasi admin"
               >
                 <Icon name="menu" className="h-5 w-5" aria-hidden="true" />
@@ -99,12 +104,12 @@ export function AdminLayout({
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="mr-auto hidden min-h-11 w-[min(28vw,22rem)] items-center gap-3 rounded-md border border-border bg-surface px-3.5 text-left text-sm text-muted-foreground transition hover:border-foreground/25 lg:flex"
+            className="mr-auto hidden h-9 max-w-xl flex-1 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-left text-xs text-muted-foreground transition hover:border-foreground/25 lg:flex xl:max-w-lg"
             aria-label="Cari menu admin"
           >
             <Icon name="search" className="h-4 w-4" aria-hidden="true" />
             <span className="flex-1">Cari menu admin</span>
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none">
               /
             </kbd>
           </button>
@@ -113,7 +118,7 @@ export function AdminLayout({
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground lg:hidden"
               aria-label="Cari menu admin"
             >
               <Icon name="search" className="h-5 w-5" aria-hidden="true" />
@@ -121,7 +126,7 @@ export function AdminLayout({
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
               aria-label={theme === "dark" ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
               title={theme === "dark" ? "Mode terang" : "Mode gelap"}
             >
@@ -131,14 +136,15 @@ export function AdminLayout({
               href={routeUrl("admin.profile.edit")}
               className="hidden text-right transition hover:opacity-80 sm:block"
             >
-              <p className="text-xs font-semibold text-foreground">{auth.user?.name ?? "Administrator"}</p>
-              <p className="text-[10px] text-muted-foreground">{auth.user?.email}</p>
+              <p className="max-w-[10rem] truncate text-xs font-semibold text-foreground">
+                {auth.user?.name ?? "Administrator"}
+              </p>
             </Link>
             <Link
               href={routeUrl("logout")}
               method="post"
               as="button"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
               aria-label="Keluar dari admin"
             >
               <Icon name="sign-out" className="h-5 w-5" aria-hidden="true" />
@@ -149,21 +155,21 @@ export function AdminLayout({
         <AdminCommandSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
         <FlashMessages />
-        <main id="admin-content" tabIndex={-1} className="outline-none">
+        <main id="admin-content" tabIndex={-1} className="admin-main outline-none">
           {(title || actions) && (
-            <div className="border-b border-border bg-surface/65 px-4 py-6 md:px-6 lg:px-8">
-              <div className="mx-auto flex max-w-page flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="border-b border-border bg-surface px-5 py-3.5 md:px-6 lg:px-7">
+              <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  {title ? <h1 className="text-3xl font-semibold tracking-tight">{title}</h1> : null}
+                  {title ? <h1 className="text-lg font-semibold tracking-tight">{title}</h1> : null}
                   {description ? (
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+                    <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">{description}</p>
                   ) : null}
                 </div>
                 {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
               </div>
             </div>
           )}
-          <div className="mx-auto max-w-page p-4 md:p-6 lg:p-8">{children}</div>
+          <div className="w-full p-4 md:p-5 lg:p-6">{children}</div>
         </main>
       </div>
     </div>

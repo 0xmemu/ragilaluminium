@@ -3,26 +3,38 @@ import { Head, Link } from "@inertiajs/react"
 import { InstallationCard } from "@/components/public/installation-card"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
+import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { InstallationItem } from "@/types"
 
 export default function Installations({
   pageMeta,
   installations = [],
+  level = "model",
+  modelMeta = null,
+  indexHref,
   reviewsHref,
 }: {
   pageMeta?: { title: string; heading: string; subtitle: string } | null
   installations?: InstallationItem[]
+  level?: "model" | "product"
+  modelMeta?: { category: string; model: string; label: string } | null
+  indexHref?: string
   reviewsHref?: string
 }) {
-  const heading = pageMeta?.heading?.trim() || "Hasil pemasangan kami"
+  const isModelLevel = level !== "product"
+  const heading = pageMeta?.heading?.trim() || (isModelLevel ? "Hasil pemasangan" : "Produk hasil pemasangan")
   const subtitle =
     pageMeta?.subtitle?.trim() ||
-    "Dokumentasi visual pemasangan dari pelanggan, dikelompokkan per produk."
+    (isModelLevel
+      ? "Pilih model untuk melihat contoh pemasangan di rumah dan proyek nyata."
+      : "Contoh pemasangan untuk produk dalam model ini.")
   const docTitle = pageMeta?.title?.trim() || "Hasil Pemasangan"
+  const listingHref = indexHref || routeUrl("installation.index")
 
   return (
     <PublicLayout>
@@ -33,14 +45,39 @@ export default function Installations({
       <section className="border-b border-border bg-foreground text-background">
         <div className="container-page grid gap-8 py-12 lg:grid-cols-[1fr_auto] lg:items-end lg:py-16">
           <div>
+            {!isModelLevel ? (
+              <div className="mb-4">
+                <Breadcrumbs
+                  tone="onDark"
+                  items={[
+                    { label: "Beranda", href: routeUrl("home") },
+                    { label: "Hasil pemasangan", href: listingHref },
+                    { label: modelMeta?.label || heading, href: null },
+                  ]}
+                />
+              </div>
+            ) : null}
             <h1 className="max-w-3xl text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">
               {heading}
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-background/70 sm:text-base">{subtitle}</p>
+            {installations.length ? (
+              <p className="mt-3 text-sm text-background/60">
+                {formatNumber(installations.length)}{" "}
+                {isModelLevel ? "model" : "produk"} dengan dokumentasi
+              </p>
+            ) : null}
           </div>
-          <Button asChild variant="secondary" className="border-white/30 bg-white/10 text-background hover:bg-white/20">
-            <Link href={reviewsHref ?? routeUrl("reviews")}>Lihat ulasan pelanggan</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {!isModelLevel ? (
+              <Button asChild variant="secondary" className="border-white/30 bg-white/10 text-background hover:bg-white/20">
+                <Link href={listingHref}>Semua model</Link>
+              </Button>
+            ) : null}
+            <Button asChild variant="secondary" className="border-white/30 bg-white/10 text-background hover:bg-white/20">
+              <Link href={reviewsHref ?? routeUrl("reviews")}>Lihat ulasan pelanggan</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -51,6 +88,7 @@ export default function Installations({
               {installations.map((item) => (
                 <InstallationCard
                   key={`install-${item.id}`}
+                  level={isModelLevel ? "model" : "product"}
                   item={{
                     ...item,
                     image: item.image ?? item.image_url,

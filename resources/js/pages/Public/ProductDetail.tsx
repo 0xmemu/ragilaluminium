@@ -302,7 +302,7 @@ export default function ProductDetail({
 
                 {variantMedia.length > 1 ? (
                   <div
-                    className="scrollbar-none mt-3 flex snap-x gap-3 overflow-x-auto px-1 pb-1 sm:mt-4 sm:justify-center"
+                    className="scrollbar-x mt-3 flex snap-x gap-3 overflow-x-auto px-1 pb-3 sm:mt-4 sm:justify-center"
                     aria-label="Pilih foto produk"
                   >
                     {variantMedia.map((item, index) => (

@@ -23,6 +23,8 @@ describe("format helpers", () => {
 
   it("humanizes status keys and booleans", () => {
     expect(humanize("pending_payment")).toBe("Pending Payment")
+    expect(humanize("cod")).toBe("COD")
+    expect(humanize("COD")).toBe("COD")
     expect(humanize(true)).toBe("Ya")
     expect(humanize("")).toBe("Belum tersedia")
   })

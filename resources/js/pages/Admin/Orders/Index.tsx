@@ -42,6 +42,7 @@ interface OrderCard {
   payment_status: string
   payment_method?: string | null
   payment_method_label?: string
+  shipping_status?: string
   cod_flag?: boolean
   flow?: "cod" | "transfer"
   customer_name: string
@@ -57,6 +58,22 @@ interface OrderCard {
   href: string
   whatsapp_url?: string | null
   primary_action: PrimaryAction | null
+  shipping_track?: {
+    shipping_status: string
+    carrier_name?: string | null
+    waybill_number?: string | null
+    record_status?: string | null
+    status_raw?: string | null
+    last_status_at?: string | null
+    tracking_url?: string | null
+    order_status?: string
+    payment_status?: string
+    payment_method?: string | null
+    total_amount?: number
+    paid?: boolean
+    latest_message?: string | null
+    latest_at?: string | null
+  }
   items: OrderItemPreview[]
   items_total: number
 }
@@ -121,7 +138,30 @@ function variationLabel(item: OrderItemPreview): string {
       : null,
   ]
     .filter(Boolean)
-    .join(" · ")
+    .join(", ")
+}
+
+/** Grid kolom ala marketplace: produk | bayar | status | waktu | kirim | aksi */
+const orderRowGridClass =
+  "lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(6.5rem,0.95fr)_minmax(7.5rem,1fr)_minmax(6.5rem,0.9fr)_minmax(7.5rem,1.05fr)_minmax(6rem,0.85fr)] lg:items-start lg:gap-x-3"
+
+function OrderListColumnHeader() {
+  return (
+    <div
+      className={cn(
+        orderRowGridClass,
+        "hidden rounded-t-md border border-b-0 border-border bg-surface-muted/70 px-3 py-2 text-[11px] font-semibold text-muted-foreground lg:grid",
+      )}
+      aria-hidden="true"
+    >
+      <span>Produk</span>
+      <span>Dibayar Pembeli</span>
+      <span>Status</span>
+      <span>Batas Waktu</span>
+      <span>Jasa Kirim</span>
+      <span className="text-right">Aksi</span>
+    </div>
+  )
 }
 
 function OrderCardRow({
@@ -166,140 +206,185 @@ function OrderCardRow({
   }
 
   return (
-    <article className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_13rem]">
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Link href={order.href} className="font-mono text-base font-bold hover:text-primary">
-                  {order.order_number}
-                </Link>
-                <StatusBadge status={order.order_status} />
-              </div>
-              <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <p className="flex items-center gap-2 text-foreground">
-                  <Icon name="user" className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="font-semibold">{order.customer_name}</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <Icon name="home" className="size-3.5 shrink-0" aria-hidden="true" />
-                  {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
-                </p>
-                <p className="flex items-center gap-2">
-                  <Icon name="whatsapp" className="size-3.5 shrink-0" aria-hidden="true" />
-                  {order.customer_phone || "-"}
-                </p>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
-                <span
-                  className={cn(
-                    "rounded-full border px-2.5 py-1",
-                    order.flow === "cod" || order.cod_flag
-                      ? "border-amber-300 bg-amber-50 text-amber-900"
-                      : "border-border bg-surface-muted text-foreground",
+    <article className="overflow-hidden rounded-md border border-border bg-surface shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-muted/50 px-3 py-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Icon name="user" className="size-3.5" aria-hidden="true" />
+          </span>
+          <span className="truncate font-semibold text-foreground">{order.customer_name}</span>
+          {order.whatsapp_url ? (
+            <a
+              href={order.whatsapp_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex size-6 items-center justify-center rounded-full text-primary transition hover:bg-accent"
+              aria-label={`WhatsApp ${order.customer_name}`}
+            >
+              <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
+            </a>
+          ) : null}
+          <span className="hidden text-muted-foreground sm:inline">
+            · {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
+          </span>
+          {order.customer_phone ? (
+            <span className="hidden text-muted-foreground md:inline">· {order.customer_phone}</span>
+          ) : null}
+        </div>
+        <Link
+          href={order.href}
+          className="shrink-0 font-mono text-[11px] font-semibold text-foreground hover:text-primary"
+        >
+          No. Pesanan {order.order_number}
+        </Link>
+      </div>
+
+      <div className={cn(orderRowGridClass, "gap-y-3 p-3")}>
+        {/* Produk */}
+        <div className="min-w-0 space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+            Produk
+          </p>
+          <ul className="space-y-2">
+            {visibleItems.map((item) => (
+              <li key={item.id} className="flex gap-2.5">
+                <div className="size-11 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                  {item.image ? (
+                    <img src={item.image} alt="" className="size-full object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-muted-foreground">
+                      <Icon name="image" className="size-3.5" aria-hidden="true" />
+                    </div>
                   )}
-                >
-                  {order.payment_method_label ||
-                    (order.payment_method ? humanize(order.payment_method) : "Metode -")}
-                </span>
-                <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
-                  {statusMeta(order.payment_status).label}
-                </span>
-                <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
-                  {formatNumber(order.product_count)} Produk
-                </span>
-                <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
-                  {formatNumber(order.unit_count)} Unit
-                </span>
-              </div>
-            </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 text-xs font-medium leading-4 text-foreground">{item.name}</p>
+                  <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                    {variationLabel(item) || item.variant_sku || "-"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
+                    x{formatNumber(item.quantity)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {order.items_total > 2 ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              className="text-left text-[11px] font-semibold text-primary hover:underline"
+            >
+              {expanded
+                ? "Sembunyikan produk"
+                : hiddenCount > 0
+                  ? `+${hiddenCount} produk lainnya`
+                  : "Tampilkan semua produk"}
+            </button>
+          ) : null}
+          {order.notes ? (
+            <p className="rounded border border-info/20 bg-info/5 px-2.5 py-2 text-[11px] leading-4 text-foreground">
+              <span className="font-semibold">Catatan: </span>
+              {order.notes}
+            </p>
+          ) : null}
+        </div>
 
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-                Total tagihan
-              </p>
-              <p className="tabular-nums mt-1 text-xl font-bold">{formatCurrency(order.total_amount)}</p>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Terakhir: {formatDateTime(order.updated_at)}
-              </p>
-              <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-                <Icon name="history" className="size-3.5" aria-hidden="true" />
-                {formatRelativeAge(order.updated_at)}
-              </p>
-            </div>
-          </div>
+        {/* Dibayar Pembeli */}
+        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+            Dibayar Pembeli
+          </p>
+          <p className="tabular-nums text-sm font-bold text-foreground">{formatCurrency(order.total_amount)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {order.payment_method_label ||
+              (order.payment_method ? humanize(order.payment_method) : "Metode -")}
+          </p>
+          <p className="mt-1 text-[10px] text-muted-foreground">{statusMeta(order.payment_status).label}</p>
+        </div>
 
-          <div className="rounded-md border border-border bg-surface-muted/40">
-            <div className="border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Produk ({Math.min(visibleItems.length, order.items_total)} dari {order.items_total})
-            </div>
-            <ul className="divide-y divide-border">
-              {visibleItems.map((item) => (
-                <li key={item.id} className="flex gap-3 px-3 py-3">
-                  <div className="size-12 shrink-0 overflow-hidden rounded bg-muted">
-                    {item.image ? (
-                      <img src={item.image} alt="" className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-muted-foreground">
-                        <Icon name="image" className="size-4" aria-hidden="true" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-sm font-semibold">{item.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {variationLabel(item) || item.variant_sku || "-"}
-                    </p>
-                  </div>
-                  <p className="shrink-0 text-xs font-semibold">{formatNumber(item.quantity)} Unit</p>
-                </li>
-              ))}
-            </ul>
-            {order.notes ? (
-              <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">Catatan: </span>
-                {order.notes}
-              </p>
-            ) : null}
-            {order.items_total > 2 ? (
-              <button
-                type="button"
-                onClick={() => setExpanded((value) => !value)}
-                className="w-full border-t border-border px-3 py-2 text-left text-xs font-semibold text-primary hover:underline"
-              >
-                {expanded
-                  ? "Sembunyikan produk"
-                  : hiddenCount > 0
-                    ? `Tampilkan semua produk (+${hiddenCount})`
-                    : "Tampilkan semua produk"}
-              </button>
-            ) : null}
+        {/* Status */}
+        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+            Status
+          </p>
+          <StatusBadge status={order.order_status} />
+          <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+            {order.primary_action?.hint || statusMeta(order.order_status).label}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {(order.flow === "cod" || order.cod_flag) && (
+              <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                COD
+              </span>
+            )}
+            <span className="rounded border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {formatNumber(order.product_count)} Produk
+            </span>
           </div>
         </div>
 
-        <aside className="flex flex-col gap-2 border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+        {/* Batas Waktu */}
+        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+            Batas Waktu
+          </p>
+          <p className="text-xs font-semibold text-foreground">{formatRelativeAge(order.updated_at)}</p>
+          <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+            Dipesan {formatDateTime(order.created_at)}
+          </p>
+        </div>
+
+        {/* Jasa Kirim */}
+        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+            Jasa Kirim
+          </p>
+          <p className="text-xs font-semibold text-foreground">
+            {order.shipping_track?.carrier_name || "Pengiriman"}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {statusMeta(order.shipping_track?.shipping_status || order.shipping_status || "pending_pickup").label}
+          </p>
+          {order.shipping_track?.waybill_number ? (
+            <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+              {order.shipping_track.waybill_number}
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-muted-foreground">Belum ada resi</p>
+          )}
+          {order.shipping_track?.tracking_url ? (
+            <a
+              href={order.shipping_track.tracking_url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-block text-[11px] font-semibold text-primary hover:underline"
+            >
+              Lacak
+            </a>
+          ) : null}
+        </div>
+
+        {/* Aksi */}
+        <div className="flex min-w-0 flex-col items-stretch gap-1.5 border-t border-border pt-2 lg:border-t-0 lg:items-end lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+            Aksi
+          </p>
           {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
-            <div className="space-y-1">
-              <Button className="w-full" disabled={busy} onClick={applyPrimary}>
-                {busy ? "Memproses..." : order.primary_action.label}
-              </Button>
-              {order.primary_action.hint ? (
-                <p className="text-[10px] leading-4 text-muted-foreground">{order.primary_action.hint}</p>
-              ) : null}
-            </div>
+            <Button size="xs" className="w-full lg:w-auto" disabled={busy} onClick={applyPrimary}>
+              {busy ? "Memproses..." : order.primary_action.label}
+            </Button>
           ) : null}
 
           {order.whatsapp_url ? (
-            <Button asChild variant="secondary" className="w-full">
+            <Button asChild variant="secondary" size="xs" className="w-full lg:w-auto">
               <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-                <Icon name="whatsapp" className="size-4" aria-hidden="true" />
                 Chat WA
               </a>
             </Button>
           ) : null}
 
-          <Button asChild variant="secondary" className="w-full">
+          <Button asChild variant="secondary" size="xs" className="w-full lg:w-auto">
             <Link href={order.href}>Detail</Link>
           </Button>
 
@@ -308,9 +393,9 @@ function OrderCardRow({
               trigger={
                 <button
                   type="button"
-                  className="mt-1 min-h-10 text-left text-xs font-semibold text-destructive hover:underline"
+                  className="text-left text-[11px] font-semibold text-destructive hover:underline lg:text-right"
                 >
-                  Batalkan Pesanan
+                  Batalkan
                 </button>
               }
               title="Batalkan pesanan?"
@@ -322,7 +407,7 @@ function OrderCardRow({
               onConfirm={(reason) => applyStatus("cancelled", reason)}
             />
           ) : null}
-        </aside>
+        </div>
       </div>
     </article>
   )
@@ -537,11 +622,25 @@ export default function OrdersIndex({
         ) : null}
       </div>
 
-      <div className="mt-5 space-y-4">
+      <div className="mt-4">
         {orders.length ? (
-          orders.map((order) => (
-            <OrderCardRow key={order.id} order={order} queryState={queryState} />
-          ))
+          <>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-foreground">
+                {formatNumber(pagination?.total ?? orders.length)} Pesanan
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <div className="min-w-[56rem]">
+                <OrderListColumnHeader />
+                <div className="space-y-3">
+                  {orders.map((order) => (
+                    <OrderCardRow key={order.id} order={order} queryState={queryState} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
         ) : (
           <EmptyState
             icon="clipboard-list"
