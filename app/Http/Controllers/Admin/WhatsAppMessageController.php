@@ -27,6 +27,7 @@ class WhatsAppMessageController extends Controller
             'createHref' => null,
             'columns' => [
                 ['key' => 'id', 'label' => 'ID', 'hrefKey' => 'href'],
+                ['key' => 'provider', 'label' => 'Provider'],
                 ['key' => 'direction', 'label' => 'Arah'],
                 ['key' => 'phone_number', 'label' => 'Nomor'],
                 ['key' => 'status', 'label' => 'Status'],
@@ -35,6 +36,7 @@ class WhatsAppMessageController extends Controller
             ],
             'rows' => $messages->getCollection()->map(fn (WhatsAppMessage $m) => [
                 'id' => $m->id,
+                'provider' => strtoupper((string) $m->provider),
                 'direction' => $m->direction,
                 'phone_number' => $m->phone_number,
                 'status' => $m->status,
@@ -55,6 +57,7 @@ class WhatsAppMessageController extends Controller
             'createHref' => null,
             'columns' => [
                 ['key' => 'id', 'label' => 'ID', 'hrefKey' => 'href'],
+                ['key' => 'provider', 'label' => 'Provider'],
                 ['key' => 'direction', 'label' => 'Arah'],
                 ['key' => 'phone_number', 'label' => 'Nomor'],
                 ['key' => 'status', 'label' => 'Status'],
@@ -62,6 +65,7 @@ class WhatsAppMessageController extends Controller
             ],
             'rows' => $order->whatsappMessages->map(fn (WhatsAppMessage $m) => [
                 'id' => $m->id,
+                'provider' => strtoupper((string) $m->provider),
                 'direction' => $m->direction,
                 'phone_number' => $m->phone_number,
                 'status' => $m->status,
@@ -78,12 +82,14 @@ class WhatsAppMessageController extends Controller
             'title' => 'Pesan #'.$message->id,
             'subtitle' => $message->phone_number,
             'fields' => [
+                ['label' => 'Provider', 'value' => strtoupper((string) $message->provider)],
                 ['label' => 'Arah', 'value' => $message->direction],
                 ['label' => 'Status', 'value' => $message->status],
                 ['label' => 'Nomor', 'value' => $message->phone_number],
                 ['label' => 'Order ID', 'value' => $message->order_id],
                 ['label' => 'Template Key', 'value' => $message->internal_template_key],
                 ['label' => 'Provider ID', 'value' => $message->provider_message_id],
+                ['label' => 'Session', 'value' => $message->provider_session],
                 ['label' => 'Konten', 'value' => $message->content_text],
                 ['label' => 'Waktu', 'value' => optional($message->created_at)?->toDateTimeString()],
             ],

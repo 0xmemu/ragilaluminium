@@ -80,8 +80,7 @@ class WhatsAppTemplateController extends Controller
 
     public function connection(): Response
     {
-        $configured = filled(config('services.whatsapp.token'))
-            && filled(config('services.whatsapp.number_id'));
+        $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
 
         $outbound = WhatsAppMessage::query()->where('direction', 'outbound');
         $sentCount = (clone $outbound)->whereIn('status', ['sent', 'delivered', 'read'])->count();
@@ -90,16 +89,12 @@ class WhatsAppTemplateController extends Controller
 
         return Inertia::render('Admin/WhatsApp/Connection', [
             'title' => 'Hubungkan WhatsApp',
-            'description' => 'Status integrasi WhatsApp Business Cloud API untuk pesan otomatis toko.',
+            'description' => 'Status integrasi Meta resmi dan WAHA untuk pesan otomatis toko, termasuk compare mode yang aman untuk nomor uji.',
             'backUrl' => route('admin.whatsapp.templates.index'),
-            'connection' => [
-                'configured' => $configured,
-                'base_url' => config('services.whatsapp.base_url'),
-                'number_id_set' => filled(config('services.whatsapp.number_id')),
-                'token_set' => filled(config('services.whatsapp.token')),
-                'verify_token_set' => filled(config('services.whatsapp.verify_token')),
+            'connection' => array_merge($connection, [
                 'webhook_path' => '/webhook/whatsapp',
-            ],
+                'waha_webhook_path' => '/webhook/whatsapp/waha',
+            ]),
             'stats' => [
                 'sent_count' => $sentCount,
                 'failed_count' => $failedCount,

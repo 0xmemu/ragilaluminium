@@ -79,6 +79,8 @@ class FlashSalePeriodSettings
      *     ends_at_label: string|null,
      *     range_label: string|null,
      *     seconds_remaining: int|null,
+     *     daily_seconds_remaining: int|null,
+     *     daily_ends_at: string|null,
      *     update_url?: string
      * }
      */
@@ -107,6 +109,11 @@ class FlashSalePeriodSettings
             $secondsRemaining = max(0, $starts->getTimestamp() - $now->getTimestamp());
         }
 
+        $dailyDeadline = $status === 'live' ? self::dailyDeadline($now, $ends) : null;
+        $dailySecondsRemaining = $dailyDeadline !== null
+            ? max(0, $dailyDeadline->getTimestamp() - $now->getTimestamp())
+            : null;
+
         return [
             'enabled' => $period['enabled'],
             'live' => $status === 'live',
@@ -117,6 +124,8 @@ class FlashSalePeriodSettings
             'ends_at_label' => self::formatLabel($ends),
             'range_label' => self::rangeLabel($starts, $ends),
             'seconds_remaining' => $secondsRemaining,
+            'daily_seconds_remaining' => $dailySecondsRemaining,
+            'daily_ends_at' => $dailyDeadline?->toIso8601String(),
         ];
     }
 
@@ -200,6 +209,18 @@ class FlashSalePeriodSettings
         }
 
         return $dt->timezone(config('app.timezone'))->translatedFormat('d M Y, H.i').' WIB';
+    }
+
+    /** End of current app day, or campaign end when sooner. */
+    private static function dailyDeadline(Carbon $now, ?Carbon $ends): Carbon
+    {
+        $endOfDay = $now->copy()->timezone(config('app.timezone'))->endOfDay();
+
+        if ($ends !== null && $ends->lt($endOfDay)) {
+            return $ends;
+        }
+
+        return $endOfDay;
     }
 
     private static function rangeLabel(?Carbon $starts, ?Carbon $ends): ?string

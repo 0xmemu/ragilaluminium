@@ -65,7 +65,7 @@ function SectionTitle({
         actionHref ? (
           <Link
             href={actionHref}
-            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 self-start rounded-full border border-foreground bg-background px-3.5 text-xs font-semibold text-foreground transition hover:bg-foreground/5 sm:min-h-10 sm:px-5 sm:text-sm"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1 self-end text-xs font-semibold text-foreground transition hover:text-primary sm:min-h-10 sm:text-sm"
           >
             {actionLabel}
             <Icon name="caret-right" className="size-3.5 sm:size-4" weight="bold" aria-hidden="true" />
@@ -828,12 +828,11 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
   const seeMoreHref = routeUrl("catalog.index")
 
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section id="pilih-model-produk" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Temukan Model Anda"
+          eyebrow="Temukan model Anda"
           title="Pilih model produk"
-          subtitle="Temukan model jendela, pintu, atau bouven yang cocok untuk rumah Anda."
           actionHref={seeMoreHref}
         />
         {models.length ? (
@@ -860,13 +859,12 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
   return (
     <section
       id="paling-banyak-dipesan"
-      className="scroll-mt-20 border-t border-border bg-surface-muted section-space"
+      className="scroll-mt-20 bg-surface-muted section-space"
     >
       <div className="container-page">
         <SectionTitle
-          eyebrow="Untuk Inspirasi Anda"
+          eyebrow="Untuk inspirasi Anda"
           title="Paling banyak dipesan"
-          subtitle="Pilihan yang paling sering dipesan pembeli di seluruh Indonesia."
           actionHref={seeMoreHref}
         />
         {products.length ? (
@@ -911,18 +909,16 @@ function CaraPesan({
   data?: HomepageLayoutProps["how_to_order"]
 }) {
   const title = data?.title || "Cara pesan jendela Anda"
-  const subtitle =
-    data?.subtitle || "Tiga langkah mudah dari memilih model sampai konfirmasi WhatsApp."
   const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
 
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
         <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
           <SectionHeading
             size="display"
+            eyebrow="Cara memesan jendela Anda"
             title={title}
-            description={subtitle}
             action={
               <Link
                 href={routeUrl("cara-pemesanan")}
@@ -933,18 +929,18 @@ function CaraPesan({
             }
           />
         </div>
-        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
+        <ol className="mx-auto grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:gap-5">
           {steps.map((item, index) => {
             const step = item.step || String(index + 1).padStart(2, "0")
             const icon = orderStepIcon(item.title, index)
             return (
               <li key={`${step}-${item.title}`}>
-                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-1.5 py-3 text-center sm:px-3 sm:py-5">
-                  <span className="font-mono text-[10px] font-bold text-primary sm:text-xs">{step}</span>
-                  <span className="mt-2 flex size-10 items-center justify-center rounded-full bg-muted text-foreground sm:mt-3 sm:size-12">
-                    <Icon name={icon} className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-3 py-5 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-5">
+                  <span className="font-mono text-xs font-bold text-primary">{step}</span>
+                  <span className="mt-3 flex size-12 items-center justify-center rounded-full bg-muted text-foreground sm:size-12">
+                    <Icon name={icon} className="size-6" weight="bold" aria-hidden="true" />
                   </span>
-                  <h3 className="mt-2 text-[10px] font-bold leading-snug tracking-tight text-foreground sm:mt-3 sm:text-sm">
+                  <h3 className="mt-3 text-sm font-bold leading-snug tracking-tight text-foreground">
                     {item.title}
                   </h3>
                 </article>
@@ -967,14 +963,11 @@ function HasilPemasangan({
   const seeMoreHref = routeUrl("installation.index")
 
   return (
-    <section className="border-t border-border bg-surface-muted section-space">
+    <section id="hasil-pemasangan" className="scroll-mt-20 bg-surface-muted section-space">
       <div className="container-page">
         <SectionTitle
+          eyebrow="Inspirasi pemasangan nyata"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
-          subtitle={
-            meta?.subtitle?.trim() ||
-            "Lihat contoh pemasangan nyata di rumah dan proyek di berbagai kota."
-          }
           actionHref={seeMoreHref}
           actionLabel="Semua hasil pemasangan"
         />
@@ -996,11 +989,11 @@ function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
   const seeMoreHref = routeUrl("reviews")
 
   return (
-    <section className="border-t border-border bg-surface section-space">
+    <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
         <SectionTitle
+          eyebrow="Apa kata mereka"
           title="Apa kata pelanggan kami"
-          subtitle="Cerita pembeli yang sudah memasang jendela, pintu, dan bouven Ragil Aluminium."
           actionHref={seeMoreHref}
           actionLabel="Semua ulasan"
         />
@@ -1047,17 +1040,17 @@ const HELP_STEPS = [
 
 function KamiBantu() {
   return (
-    <section className="border-t border-border bg-surface-muted section-space">
+    <section id="kami-bantu" className="scroll-mt-20 bg-surface-muted section-space">
       <div className="container-page">
         <div className="mx-auto mb-10 max-w-xl text-center md:mb-12">
           <SectionHeading
             size="display"
+            eyebrow="Didukung tim kami"
             title={
               <>
                 Kami bantu dari <span className="text-primary">awal sampai jadi</span>
               </>
             }
-            description="Dari konsultasi sampai packing, kami dampingi agar hasilnya sesuai harapan Anda."
           />
         </div>
         <div className="mx-auto grid max-w-3xl gap-4">
@@ -1093,13 +1086,13 @@ function ClosingCta() {
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
 
   return (
-    <section className="section-space border-t border-border bg-foreground text-background">
+    <section id="closing-cta" className="scroll-mt-20 section-space bg-foreground text-background">
       <div className="container-page flex flex-col items-center text-center">
         <SectionHeading
           size="display"
+          eyebrow="Mulai sekarang"
           className="text-background [&_h2]:text-background [&_p]:text-white"
           title="Tingkatkan kualitas bangunan bersama kami"
-          description="Pilih model aluminium yang tepat untuk rumah yang lebih rapi, terang, dan tahan lama."
         />
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Button asChild className="bg-background text-primary hover:bg-background/90">

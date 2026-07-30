@@ -63,7 +63,7 @@ export function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       <a
         href="#admin-content"
         className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition focus:translate-y-0"
@@ -75,7 +75,7 @@ export function AdminLayout({
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-header flex min-h-[2.75rem] items-center gap-2 border-b border-border bg-surface px-3 md:px-4 lg:px-5">
+        <header className="sticky top-0 z-header flex min-h-[3.25rem] items-center gap-2 border-b border-border bg-surface px-4 md:px-5 lg:min-h-[3.75rem] lg:px-6">
           <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
             <SheetTrigger asChild>
               <button
@@ -104,12 +104,12 @@ export function AdminLayout({
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="mr-auto hidden h-8 max-w-xl flex-1 items-center gap-2 rounded border border-border bg-muted/40 px-2.5 text-left text-[11px] text-muted-foreground transition hover:border-foreground/25 lg:flex xl:max-w-lg"
+            className="mr-auto hidden h-9 max-w-xl flex-1 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-left text-xs text-muted-foreground transition hover:border-foreground/25 lg:flex xl:max-w-lg"
             aria-label="Cari menu admin"
           >
             <Icon name="search" className="h-4 w-4" aria-hidden="true" />
             <span className="flex-1">Cari menu admin</span>
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none">
               /
             </kbd>
           </button>
@@ -118,7 +118,7 @@ export function AdminLayout({
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground lg:hidden"
               aria-label="Cari menu admin"
             >
               <Icon name="search" className="h-5 w-5" aria-hidden="true" />
@@ -126,7 +126,7 @@ export function AdminLayout({
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex h-8 w-8 items-center justify-center rounded border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
               aria-label={theme === "dark" ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
               title={theme === "dark" ? "Mode terang" : "Mode gelap"}
             >
@@ -136,7 +136,7 @@ export function AdminLayout({
               href={routeUrl("admin.profile.edit")}
               className="hidden text-right transition hover:opacity-80 sm:block"
             >
-              <p className="max-w-[9rem] truncate text-[11px] font-semibold text-foreground">
+              <p className="max-w-[10rem] truncate text-xs font-semibold text-foreground">
                 {auth.user?.name ?? "Administrator"}
               </p>
             </Link>
@@ -144,7 +144,7 @@ export function AdminLayout({
               href={routeUrl("logout")}
               method="post"
               as="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition hover:bg-accent hover:text-foreground"
               aria-label="Keluar dari admin"
             >
               <Icon name="sign-out" className="h-5 w-5" aria-hidden="true" />
@@ -157,19 +157,19 @@ export function AdminLayout({
         <FlashMessages />
         <main id="admin-content" tabIndex={-1} className="admin-main outline-none">
           {(title || actions) && (
-            <div className="border-b border-border bg-surface px-3 py-2.5 md:px-4 lg:px-5">
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="border-b border-border bg-surface px-5 py-3.5 md:px-6 lg:px-7">
+              <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  {title ? <h1 className="text-base font-semibold tracking-tight">{title}</h1> : null}
+                  {title ? <h1 className="text-lg font-semibold tracking-tight">{title}</h1> : null}
                   {description ? (
-                    <p className="mt-1 max-w-3xl text-[11px] leading-4 text-muted-foreground">{description}</p>
+                    <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">{description}</p>
                   ) : null}
                 </div>
-                {actions ? <div className="flex flex-wrap gap-1.5">{actions}</div> : null}
+                {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
               </div>
             </div>
           )}
-          <div className="w-full p-2.5 md:p-3 lg:p-4">{children}</div>
+          <div className="w-full p-4 md:p-5 lg:p-6">{children}</div>
         </main>
       </div>
     </div>

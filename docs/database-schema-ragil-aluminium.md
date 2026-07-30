@@ -394,14 +394,18 @@ Indexes:
 
 ### 5.2 `whatsapp_messages`
 
-Represents individual messages sent or received via WhatsApp Business API.
+Represents individual messages sent or received via WhatsApp providers (`meta` resmi atau `waha`).
 
 - `id` (PK, bigint, auto increment)  
 - `direction` (enum: outbound, inbound)  
 - `order_id` (FK → `orders.id`, nullable)  
 - `phone_number` (varchar)  
+- `provider` (varchar, default `meta`)
+  - e.g. `meta`, `waha`
 - `internal_template_key` (varchar, nullable)  
 - `provider_message_id` (varchar, nullable)  
+- `provider_session` (varchar, nullable)
+  - WAHA session name when applicable, e.g. `default`
 - `content_text` (text, nullable)  
 - `content_payload` (json, nullable)  
 - `status` (enum: pending, sent, delivered, read, failed, received)  
@@ -418,6 +422,7 @@ Indexes:
 - `idx_whatsapp_messages_phone` (`phone_number`)  
 - `idx_whatsapp_messages_direction_status` (`direction`, `status`)  
 - `idx_whatsapp_messages_provider_message_id` (`provider_message_id`)
+- `idx_whatsapp_messages_provider_status` (`provider`, `status`)
 
 ---
 

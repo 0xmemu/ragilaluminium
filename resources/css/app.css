@@ -97,9 +97,14 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* Admin shell: density ala Shopee Seller (~12px root, spacing/rem ikut mengecil). */
+  /* Admin shell: density ala Shopee Seller (root 14px, ~+17% dari 12px).
+     Layout naik sedikit, tapi text-xs dikunci 12px literal via override. */
   html.admin-shell {
-    font-size: 12px;
+    font-size: 14px;
+  }
+
+  html.admin-shell .text-xs {
+    font-size: 0.857rem; /* 12px literal di root 14px */
   }
 
   html.admin-shell .admin-main {

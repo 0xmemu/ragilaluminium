@@ -462,7 +462,7 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 
 - `GET /admin/whatsapp/connection`
   - Controller: `Admin\WhatsAppTemplateController@connection`
-  - Inertia: `Admin/WhatsApp/Connection` — Cloud API config status + outbound stats (not unofficial QR Web link)
+  - Inertia: `Admin/WhatsApp/Connection` — status Meta + WAHA, provider aktif, compare provider, allowlist nomor uji, dan outbound stats
 
 - `POST /admin/whatsapp/templates`
   - Controller: `Admin\WhatsAppTemplateController@store`
@@ -779,16 +779,24 @@ This includes:
 - `GET /webhook/whatsapp`
   - Controller: `Webhook\WhatsAppController@verify`
   - Purpose:
-    - Handle verification handshake (e.g. `hub.challenge`).
+    - Handle verification handshake Meta (e.g. `hub.challenge`).
 
 - `POST /webhook/whatsapp`
   - Controller: `Webhook\WhatsAppController@handle`
   - Purpose:
-    - Receive inbound messages and status updates.
+    - Receive inbound messages and status updates from Meta/BSP resmi.
   - Behavior:
     - Parse payload.  
-    - Store `whatsapp_messages`.  
+    - Store `whatsapp_messages` with `provider=meta`.
     - Link messages to `orders` where applicable.
+
+- `POST /webhook/whatsapp/waha`
+  - Controller: `Webhook\WhatsAppController@handleWaha`
+  - Purpose:
+    - Receive inbound WAHA events when WAHA is active or used as compare provider.
+  - Behavior:
+    - Parse `message` / `message.ack` events.
+    - Store `whatsapp_messages` with `provider=waha`.
 
 ### 10.2 Shipping Provider Webhook (optional)
 

@@ -10,6 +10,7 @@ use App\Models\WhatsAppTemplate;
 use App\Services\WhatsAppService;
 use App\Support\WhatsAppAutomationCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -81,8 +82,54 @@ class WhatsAppAutomationTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/WhatsApp/Connection')
-                ->has('connection')
+                ->where('connection.default_provider', 'meta')
+                ->has('connection.providers.meta')
+                ->has('connection.providers.waha')
                 ->has('stats'));
+    }
+
+    public function test_compare_mode_sends_copy_to_waha_allowlist_only(): void
+    {
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'meta-1']]], 200),
+            'https://waha.test/*' => Http::response(['id' => 'waha-1'], 200),
+        ]);
+
+        config([
+            'services.whatsapp.default_provider' => 'meta',
+            'services.whatsapp.compare_provider' => 'waha',
+            'services.whatsapp.compare_allowlist' => ['6281234567890'],
+            'services.whatsapp.meta.token' => 'meta-token',
+            'services.whatsapp.meta.number_id' => '12345',
+            'services.whatsapp.meta.base_url' => 'https://graph.facebook.com/v20.0',
+            'services.whatsapp.waha.base_url' => 'https://waha.test',
+            'services.whatsapp.waha.api_key' => 'waha-key',
+            'services.whatsapp.waha.session' => 'ragil-test',
+        ]);
+
+        $template = WhatsAppTemplate::create([
+            'internal_key' => 'consultation_request',
+            'provider_template_name' => 'consultation_request',
+            'language_code' => 'id',
+            'category' => 'transactional',
+            'status' => 'active',
+            'body_preview' => "Halo {{1}}\nTes compare",
+        ]);
+
+        app(WhatsAppService::class)->sendTemplateMessage('081234567890', $template->internal_key, ['Ragil']);
+
+        $this->assertDatabaseCount('whatsapp_messages', 2);
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'provider' => 'meta',
+            'provider_message_id' => 'meta-1',
+            'status' => 'sent',
+        ]);
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'provider' => 'waha',
+            'provider_message_id' => 'waha-1',
+            'provider_session' => 'ragil-test',
+            'status' => 'sent',
+        ]);
     }
 
     public function test_order_created_uses_cod_or_transfer_template_key(): void

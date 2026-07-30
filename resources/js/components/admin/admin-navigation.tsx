@@ -18,18 +18,18 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className={sidebarShell}>
-      <div className={cn("flex min-h-[3.75rem] items-center border-b px-4", sidebarRule)}>
+      <div className={cn("flex min-h-[3.25rem] items-center border-b px-5 lg:min-h-[3.75rem]", sidebarRule)}>
         <BrandWordmark href={routeUrl("admin.dashboard")} variant="dark" />
       </div>
-      <nav className="scrollbar-none flex-1 overflow-y-auto px-2.5 py-4" aria-label="Navigasi admin">
+      <nav className="scrollbar-none flex-1 overflow-y-auto px-3 py-4" aria-label="Navigasi admin">
         {groups.map(([key, group], groupIndex) => (
-          <div key={key} className={cn(groupIndex > 0 && "mt-5")}>
+          <div key={key} className={cn(groupIndex > 0 && "mt-6")}>
             {group.title ? (
-              <p className={cn("px-2.5 text-[10px] font-bold tracking-tight", sidebarMuted)}>
+              <p className={cn("px-2.5 text-[10px] font-bold uppercase tracking-wider", sidebarMuted)}>
                 {group.title}
               </p>
             ) : null}
-            <ul className={cn("space-y-0.5", group.title && "mt-1.5")}>
+            <ul className={cn("space-y-1", group.title && "mt-2")}>
               {group.items.map((item) => {
                 const active = isRouteActive(item.active ?? [item.route])
                 return (
@@ -38,7 +38,7 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
                       href={routeUrl(item.route, item.params)}
                       onClick={onNavigate}
                       className={cn(
-                        "flex min-h-9 items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-semibold leading-5 transition",
+                        "flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-semibold leading-5 transition",
                         active
                           ? "bg-primary text-primary-foreground"
                           : cn(sidebarMuted, sidebarHover),
@@ -60,13 +60,13 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ))}
       </nav>
-      <div className={cn("border-t p-2.5", sidebarRule)}>
+      <div className={cn("border-t p-3", sidebarRule)}>
         <Link
           href={routeUrl("home")}
           target="_blank"
           rel="noreferrer"
           className={cn(
-            "flex min-h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-semibold transition",
+            "flex min-h-10 items-center gap-2.5 rounded-md px-3 text-[13px] font-semibold transition",
             sidebarMuted,
             sidebarHover,
           )}

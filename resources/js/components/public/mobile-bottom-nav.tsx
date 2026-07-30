@@ -1,18 +1,12 @@
 import { Link, usePage } from "@inertiajs/react"
-import { ClipboardText, House, Package, UserCircle } from "@phosphor-icons/react"
+import { ClipboardText, House, Package, UserCircle, type IconProps } from "@phosphor-icons/react"
 import type { ComponentType } from "react"
 
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
-type NavGlyph = ComponentType<{
-  className?: string
-  weight?: "regular" | "fill"
-  width?: number | string
-  height?: number | string
-  "aria-hidden"?: boolean | "true" | "false"
-}>
+type NavGlyph = ComponentType<IconProps>
 
 /** Static map — avoids shared Icon registry miss / remount flicker. */
 const NAV_ICONS: Record<string, NavGlyph> = {

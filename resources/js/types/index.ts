@@ -62,6 +62,8 @@ export interface ModelMenuItem {
 export interface PublicNavigation {
   mobile_bottom?: RouteNavItem[]
   hamburger?: RouteNavItem[]
+  hamburger_footer?: RouteNavItem[]
+  hamburger_copyright?: string
   desktop_main?: RouteNavItem[]
   desktop_categories?: RouteNavItem[]
   mega_menu?: MegaMenuColumn[]
@@ -130,6 +132,8 @@ export interface FlashSalePeriod {
   ends_at_label: string | null
   range_label: string | null
   seconds_remaining: number | null
+  daily_seconds_remaining: number | null
+  daily_ends_at: string | null
 }
 
 export interface SharedPageProps extends Record<string, unknown> {

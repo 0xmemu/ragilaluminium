@@ -263,12 +263,14 @@ return [
             [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
+                'icon' => 'package',
                 'active' => ['catalog.index', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Semua Produk',
                 'route' => 'catalog.index',
                 'params' => ['sort' => 'newest'],
+                'icon' => 'grid-2x2',
                 'active' => ['catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
@@ -280,29 +282,64 @@ return [
             [
                 'label' => 'Hasil Pemasangan',
                 'route' => 'installation.index',
+                'icon' => 'image',
                 'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
                 'label' => 'Ulasan',
                 'route' => 'reviews',
+                'icon' => 'star',
                 'active' => ['reviews'],
+            ],
+            [
+                'label' => 'Cara Pemesanan',
+                'route' => 'cara-pemesanan',
+                'icon' => 'info',
+                'active' => ['cara-pemesanan'],
+            ],
+            [
+                'label' => 'Sering Ditanyakan',
+                'route' => 'faq',
+                'icon' => 'circle-help',
+                'active' => ['faq'],
+            ],
+            [
+                'label' => 'Masalah & Solusi',
+                'route' => 'masalah-dan-solusi',
+                'icon' => 'warning',
+                'active' => ['masalah-dan-solusi'],
             ],
             [
                 'label' => 'Informasi Toko',
                 'route' => 'about',
+                'icon' => 'storefront',
                 'active' => ['about'],
             ],
             [
                 'label' => 'Lacak Pengiriman',
                 'route' => 'order.status',
+                'icon' => 'truck',
                 'active' => ['order.status', 'order.status.lookup'],
             ],
             [
                 'label' => 'Konsultasi Gratis',
                 'route' => 'contact',
+                'icon' => 'headset',
                 'active' => ['contact'],
             ],
         ],
+
+        'hamburger_footer' => [
+            [
+                'label' => 'Ketentuan Layanan',
+                'route' => 'terms',
+            ],
+            [
+                'label' => 'Kebijakan Privasi',
+                'route' => 'privacy',
+            ],
+        ],
+        'hamburger_copyright' => 'Copyright @2026',
 
         'desktop_main' => [
             [

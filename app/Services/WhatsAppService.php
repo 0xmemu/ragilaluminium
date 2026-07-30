@@ -30,23 +30,223 @@ class WhatsAppService
 
         $phone = PhoneNumber::normalize($phone) ?? $phone;
 
+        $primaryProvider = $this->defaultProvider();
+        $message = $this->dispatchTemplateMessage(
+            $primaryProvider,
+            $template,
+            $phone,
+            $internalKey,
+            $variables,
+            $orderId,
+            true,
+        );
+
+        $compareProvider = $this->compareProvider();
+        if (
+            $compareProvider
+            && $compareProvider !== $primaryProvider
+            && $this->providerConfigured($compareProvider)
+            && $this->shouldSendCompareCopy($phone)
+        ) {
+            $this->dispatchTemplateMessage(
+                $compareProvider,
+                $template,
+                $phone,
+                $internalKey,
+                $variables,
+                $orderId,
+                false,
+            );
+        }
+
+        return $message;
+    }
+
+    public function sendTextMessage(string $phone, string $text, ?int $orderId = null): ?WhatsAppMessage
+    {
+        $phone = PhoneNumber::normalize($phone) ?? $phone;
+        $provider = $this->defaultProvider();
+
         $message = WhatsAppMessage::create([
             'direction' => 'outbound',
             'order_id' => $orderId,
             'phone_number' => $phone,
-            'internal_template_key' => $internalKey,
+            'provider' => $provider,
+            'internal_template_key' => 'free_form',
             'status' => 'pending',
-            'content_payload' => ['variables' => $variables],
+            'content_text' => $text,
+            'content_payload' => ['variables' => [$text]],
         ]);
 
-        if (! config('services.whatsapp.token')) {
-            // No provider configured (dev/test): mark as sent without calling the API.
+        if (! $this->providerConfigured($provider)) {
             $message->update(['status' => 'sent', 'sent_at' => now()]);
 
             return $message;
         }
 
-        // Meta (#132018): parameter teks tidak boleh newline/tab / spasi beruntun > 4.
+        $result = $provider === 'waha'
+            ? $this->sendViaWaha($phone, $text)
+            : $this->sendViaMetaText($phone, $text);
+
+        $this->applyProviderResult($message, $result);
+
+        return $message;
+    }
+
+    /**
+     * @return array{
+     *   configured: bool,
+     *   default_provider: string,
+     *   compare_provider: string|null,
+     *   compare_allowlist: list<string>,
+     *   providers: array<string, array{
+     *     configured: bool,
+     *     base_url: string|null,
+     *     token_set: bool,
+     *     number_id_set?: bool,
+     *     verify_token_set?: bool,
+     *     session?: string|null,
+     *     api_key_set?: bool,
+     *     webhook_secret_set?: bool
+     *   }>
+     * }
+     */
+    public function connectionStatus(): array
+    {
+        $defaultProvider = $this->defaultProvider();
+
+        return [
+            'configured' => $this->providerConfigured($defaultProvider),
+            'default_provider' => $defaultProvider,
+            'compare_provider' => $this->compareProvider(),
+            'compare_allowlist' => $this->compareAllowlist(),
+            'providers' => [
+                'meta' => [
+                    'configured' => $this->providerConfigured('meta'),
+                    'base_url' => config('services.whatsapp.meta.base_url'),
+                    'token_set' => filled(config('services.whatsapp.meta.token')),
+                    'number_id_set' => filled(config('services.whatsapp.meta.number_id')),
+                    'verify_token_set' => filled(config('services.whatsapp.meta.verify_token')),
+                ],
+                'waha' => [
+                    'configured' => $this->providerConfigured('waha'),
+                    'base_url' => config('services.whatsapp.waha.base_url'),
+                    'token_set' => filled(config('services.whatsapp.waha.api_key')),
+                    'session' => config('services.whatsapp.waha.session'),
+                    'api_key_set' => filled(config('services.whatsapp.waha.api_key')),
+                    'webhook_secret_set' => filled(config('services.whatsapp.waha.webhook_secret')),
+                ],
+            ],
+        ];
+    }
+
+    public function handleMetaWebhook(array $payload): void
+    {
+        $entry = $payload['entry'][0]['changes'][0]['value'] ?? null;
+        if (! $entry) {
+            return;
+        }
+
+        $messages = $entry['messages'] ?? [];
+        $statuses = $entry['statuses'] ?? [];
+
+        $this->handleCanonicalWebhook(
+            'meta',
+            collect($messages)->map(fn (array $msg) => [
+                'provider_message_id' => $msg['id'] ?? null,
+                'phone' => PhoneNumber::normalize($msg['from'] ?? null) ?? ($msg['from'] ?? null),
+                'text' => $this->extractInboundText($msg),
+                'raw' => $msg,
+                'provider_session' => null,
+            ])->all(),
+            collect($statuses)->map(fn (array $status) => [
+                'provider_message_id' => $status['id'] ?? null,
+                'status' => $status['status'] ?? null,
+            ])->all(),
+        );
+    }
+
+    public function handleWahaWebhook(array $payload): void
+    {
+        $event = (string) ($payload['event'] ?? '');
+        $body = $payload['payload'] ?? [];
+        $session = $payload['session'] ?? config('services.whatsapp.waha.session');
+
+        if ($event === 'message' && ! ($body['fromMe'] ?? false)) {
+            $this->handleCanonicalWebhook('waha', [[
+                'provider_message_id' => $body['id'] ?? null,
+                'phone' => $this->normalizeWahaPhone($body['from'] ?? ($body['chatId'] ?? null)),
+                'text' => $body['body'] ?? null,
+                'raw' => $payload,
+                'provider_session' => $session,
+            ]], []);
+
+            return;
+        }
+
+        if ($event === 'message.ack') {
+            $this->handleCanonicalWebhook('waha', [], [[
+                'provider_message_id' => $body['id'] ?? null,
+                'status' => $this->mapWahaAckStatus($body['ack'] ?? null),
+            ]]);
+        }
+    }
+
+    protected function dispatchTemplateMessage(
+        string $provider,
+        WhatsAppTemplate $template,
+        string $phone,
+        string $internalKey,
+        array $variables,
+        ?int $orderId,
+        bool $degradeWhenUnconfigured,
+    ): ?WhatsAppMessage {
+        $message = WhatsAppMessage::create([
+            'direction' => 'outbound',
+            'order_id' => $orderId,
+            'phone_number' => $phone,
+            'provider' => $provider,
+            'internal_template_key' => $internalKey,
+            'status' => 'pending',
+            'content_text' => $provider === 'waha' ? $this->renderTemplateBody($template, $variables) : null,
+            'content_payload' => ['variables' => $variables],
+        ]);
+
+        if (! $this->providerConfigured($provider)) {
+            if ($degradeWhenUnconfigured) {
+                $message->update(['status' => 'sent', 'sent_at' => now()]);
+
+                return $message;
+            }
+
+            $message->update(['status' => 'failed', 'error_reason' => "Provider {$provider} belum dikonfigurasi."]);
+
+            return $message;
+        }
+
+        $result = $provider === 'waha'
+            ? $this->sendViaWaha($phone, $this->renderTemplateBody($template, $variables))
+            : $this->sendViaMetaTemplate($template, $phone, $variables);
+
+        $this->applyProviderResult($message, $result);
+
+        return $message;
+    }
+
+    protected function applyProviderResult(WhatsAppMessage $message, array $result): void
+    {
+        $message->update([
+            'provider_message_id' => $result['provider_message_id'] ?? null,
+            'provider_session' => $result['provider_session'] ?? null,
+            'status' => $result['status'] ?? ($result['successful'] ? 'sent' : 'failed'),
+            'sent_at' => ($result['successful'] ?? false) ? now() : null,
+            'error_reason' => $result['error_reason'] ?? null,
+            'raw_payload' => $result['raw_payload'] ?? null,
+        ]);
+    }
+
+    protected function sendViaMetaTemplate(WhatsAppTemplate $template, string $phone, array $variables): array
+    {
         $parameters = collect($variables)
             ->map(fn ($v) => ['type' => 'text', 'text' => $this->sanitizeTemplateParam((string) $v)])
             ->values()
@@ -59,90 +259,213 @@ class WhatsAppService
             'template' => [
                 'name' => $template->provider_template_name,
                 'language' => ['code' => $template->language_code],
-                'components' => [
-                    [
-                        'type' => 'body',
-                        'parameters' => $parameters,
-                    ],
-                ],
+                'components' => [[
+                    'type' => 'body',
+                    'parameters' => $parameters,
+                ]],
             ],
         ];
 
+        return $this->sendMetaPayload($payload);
+    }
+
+    protected function sendViaMetaText(string $phone, string $text): array
+    {
+        return $this->sendMetaPayload([
+            'messaging_product' => 'whatsapp',
+            'to' => $phone,
+            'type' => 'text',
+            'text' => ['body' => $this->sanitizeTemplateParam($text)],
+        ]);
+    }
+
+    protected function sendMetaPayload(array $payload): array
+    {
         try {
-            $response = Http::withToken(config('services.whatsapp.token'))
-                ->timeout((int) config('services.whatsapp.timeout', 15))
+            $response = Http::withToken(config('services.whatsapp.meta.token'))
+                ->timeout((int) config('services.whatsapp.meta.timeout', 15))
                 ->retry(2, 500, throw: false)
-                ->post($this->endpoint(), $payload);
+                ->post($this->metaEndpoint(), $payload);
 
-            if ($response->successful()) {
-                $providerId = $response->json('messages.0.id');
-                $message->update([
-                    'provider_message_id' => $providerId,
-                    'status' => 'sent',
-                    'sent_at' => now(),
-                    'raw_payload' => $response->json(),
-                ]);
-            } else {
-                $message->update([
-                    'status' => 'failed',
-                    'error_reason' => $response->body(),
-                    'raw_payload' => $response->json(),
-                ]);
-            }
+            return [
+                'successful' => $response->successful(),
+                'provider_message_id' => $response->json('messages.0.id'),
+                'provider_session' => null,
+                'status' => $response->successful() ? 'sent' : 'failed',
+                'error_reason' => $response->successful() ? null : $response->body(),
+                'raw_payload' => $response->json() ?: ['body' => $response->body()],
+            ];
         } catch (\Throwable $e) {
-            $message->update(['status' => 'failed', 'error_reason' => $e->getMessage()]);
+            return [
+                'successful' => false,
+                'provider_message_id' => null,
+                'provider_session' => null,
+                'status' => 'failed',
+                'error_reason' => $e->getMessage(),
+                'raw_payload' => null,
+            ];
         }
-
-        return $message;
     }
 
-    public function sendTextMessage(string $phone, string $text, ?int $orderId = null): ?WhatsAppMessage
+    protected function sendViaWaha(string $phone, string $text): array
     {
-        return $this->sendTemplateMessage($phone, 'free_form', [$text], $orderId);
+        $payload = [
+            'session' => config('services.whatsapp.waha.session', 'default'),
+            'chatId' => $this->toWahaChatId($phone),
+            'text' => $text,
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'X-Api-Key' => (string) config('services.whatsapp.waha.api_key'),
+            ])
+                ->timeout((int) config('services.whatsapp.waha.timeout', 15))
+                ->retry(2, 500, throw: false)
+                ->post(rtrim((string) config('services.whatsapp.waha.base_url'), '/').'/api/sendText', $payload);
+
+            return [
+                'successful' => $response->successful(),
+                'provider_message_id' => $response->json('id')
+                    ?? $response->json('message.id')
+                    ?? $response->json('messageId'),
+                'provider_session' => (string) ($payload['session'] ?? 'default'),
+                'status' => $response->successful() ? 'sent' : 'failed',
+                'error_reason' => $response->successful() ? null : $response->body(),
+                'raw_payload' => $response->json() ?: ['body' => $response->body()],
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'successful' => false,
+                'provider_message_id' => null,
+                'provider_session' => (string) ($payload['session'] ?? 'default'),
+                'status' => 'failed',
+                'error_reason' => $e->getMessage(),
+                'raw_payload' => null,
+            ];
+        }
     }
 
-    public function handleWebhook(array $payload): void
+    protected function handleCanonicalWebhook(string $provider, array $messages, array $statuses): void
     {
-        $entry = $payload['entry'][0]['changes'][0]['value'] ?? null;
-        if (! $entry) {
-            return;
-        }
-
-        $messages = $entry['messages'] ?? [];
-        $statuses = $entry['statuses'] ?? [];
-
         foreach ($messages as $msg) {
-            $phone = PhoneNumber::normalize($msg['from'] ?? null) ?? ($msg['from'] ?? null);
-            $text = $this->extractInboundText($msg);
-            $providerId = $msg['id'] ?? null;
+            $providerId = $msg['provider_message_id'] ?? null;
+            $attributes = [
+                'direction' => 'inbound',
+                'phone_number' => $msg['phone'] ?? '-',
+                'provider' => $provider,
+                'provider_session' => $msg['provider_session'] ?? null,
+                'content_text' => $msg['text'] ?? null,
+                'status' => 'received',
+                'received_at' => now(),
+                'raw_payload' => $msg['raw'] ?? null,
+            ];
 
-            // Idempoten: webhook Meta bisa dikirim ulang, hindari duplikasi.
-            $message = WhatsAppMessage::firstOrCreate(
-                ['provider_message_id' => $providerId],
-                [
-                    'direction' => 'inbound',
-                    'phone_number' => $phone,
-                    'content_text' => $text,
-                    'status' => 'received',
-                    'received_at' => now(),
-                    'raw_payload' => $msg,
-                ]
-            );
+            $message = $providerId
+                ? WhatsAppMessage::firstOrCreate(
+                    ['provider' => $provider, 'provider_message_id' => $providerId],
+                    $attributes,
+                )
+                : WhatsAppMessage::create($attributes);
 
-            // Hanya proses aksi saat baris baru (bukan replay webhook).
             if ($message->wasRecentlyCreated) {
-                $this->handleInboundCustomerAction($message, $msg, $phone);
+                $this->handleInboundCustomerAction($message, (array) ($msg['raw'] ?? []), $msg['phone'] ?? null);
             }
         }
 
         foreach ($statuses as $status) {
-            $providerId = $status['id'] ?? null;
-            $state = $status['status'] ?? null;
-            $message = WhatsAppMessage::where('provider_message_id', $providerId)->first();
+            $providerId = $status['provider_message_id'] ?? null;
+            if (! $providerId) {
+                continue;
+            }
+
+            $message = WhatsAppMessage::query()
+                ->where('provider', $provider)
+                ->where('provider_message_id', $providerId)
+                ->first();
+
             if ($message) {
-                $message->update(['status' => $state ?? $message->status]);
+                $message->update(['status' => $status['status'] ?? $message->status]);
             }
         }
+    }
+
+    protected function defaultProvider(): string
+    {
+        return $this->normalizeProvider((string) config('services.whatsapp.default_provider', 'meta'));
+    }
+
+    protected function compareProvider(): ?string
+    {
+        $provider = trim((string) config('services.whatsapp.compare_provider', ''));
+
+        return $provider === '' ? null : $this->normalizeProvider($provider);
+    }
+
+    protected function normalizeProvider(string $provider): string
+    {
+        return strtolower($provider) === 'waha' ? 'waha' : 'meta';
+    }
+
+    protected function providerConfigured(string $provider): bool
+    {
+        return match ($provider) {
+            'waha' => filled(config('services.whatsapp.waha.base_url')) && filled(config('services.whatsapp.waha.api_key')),
+            default => filled(config('services.whatsapp.meta.token')) && filled(config('services.whatsapp.meta.number_id')),
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function compareAllowlist(): array
+    {
+        return collect(config('services.whatsapp.compare_allowlist', []))
+            ->map(fn ($phone) => PhoneNumber::normalize((string) $phone))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    protected function shouldSendCompareCopy(string $phone): bool
+    {
+        return in_array($phone, $this->compareAllowlist(), true);
+    }
+
+    protected function renderTemplateBody(WhatsAppTemplate $template, array $variables): string
+    {
+        $body = (string) ($template->body_preview ?: '');
+
+        foreach (array_values($variables) as $index => $value) {
+            $body = str_replace('{{'.($index + 1).'}}', (string) $value, $body);
+        }
+
+        return trim($body) !== '' ? trim($body) : implode("\n", $variables);
+    }
+
+    protected function toWahaChatId(string $phone): string
+    {
+        return $phone.'@c.us';
+    }
+
+    protected function normalizeWahaPhone(?string $chatId): ?string
+    {
+        if (! $chatId) {
+            return null;
+        }
+
+        $chatId = preg_replace('/@.+$/', '', $chatId) ?? $chatId;
+
+        return PhoneNumber::normalize($chatId) ?? $chatId;
+    }
+
+    protected function mapWahaAckStatus(mixed $ack): string
+    {
+        return match ((int) $ack) {
+            3 => 'read',
+            2 => 'delivered',
+            1 => 'sent',
+            default => 'pending',
+        };
     }
 
     /**
@@ -556,9 +879,9 @@ class WhatsAppService
         return number_format((float) $order->total_amount, 0, ',', '.');
     }
 
-    protected function endpoint(): string
+    protected function metaEndpoint(): string
     {
-        return rtrim(config('services.whatsapp.base_url'), '/')
-            .'/'.config('services.whatsapp.number_id').'/messages';
+        return rtrim((string) config('services.whatsapp.meta.base_url'), '/')
+            .'/'.config('services.whatsapp.meta.number_id').'/messages';
     }
 }

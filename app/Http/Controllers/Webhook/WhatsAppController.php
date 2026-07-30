@@ -19,7 +19,7 @@ class WhatsAppController extends Controller
         $token = $request->query('hub_verify_token');
         $challenge = $request->query('hub_challenge');
 
-        if ($mode === 'subscribe' && $token === config('services.whatsapp.verify_token')) {
+        if ($mode === 'subscribe' && $token === config('services.whatsapp.meta.verify_token')) {
             return response($challenge, 200);
         }
 
@@ -32,7 +32,18 @@ class WhatsAppController extends Controller
             return response('Invalid signature', 403);
         }
 
-        $this->whatsapp->handleWebhook($request->all());
+        $this->whatsapp->handleMetaWebhook($request->all());
+
+        return response('OK', 200);
+    }
+
+    public function handleWaha(Request $request): Response
+    {
+        if (! $this->wahaSecretValid($request)) {
+            return response('Invalid WAHA secret', 403);
+        }
+
+        $this->whatsapp->handleWahaWebhook($request->all());
 
         return response('OK', 200);
     }
@@ -52,5 +63,19 @@ class WhatsAppController extends Controller
         $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
 
         return is_string($header) && hash_equals($expected, $header);
+    }
+
+    protected function wahaSecretValid(Request $request): bool
+    {
+        $secret = config('services.whatsapp.waha.webhook_secret');
+        if (! $secret) {
+            return true;
+        }
+
+        $provided = $request->header('X-Webhook-Secret')
+            ?? $request->header('X-WAHA-Secret')
+            ?? $request->query('secret');
+
+        return is_string($provided) && hash_equals($secret, $provided);
     }
 }

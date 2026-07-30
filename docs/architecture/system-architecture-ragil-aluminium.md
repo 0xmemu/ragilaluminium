@@ -104,9 +104,10 @@ The website is the **transaction engine** at the center of an ecosystem:
 ### 2.7 WhatsApp Module
 **Source of truth for messaging logs; notification & communication channel.**
 - Tables: `whatsapp_templates`, `whatsapp_messages`.
-- Uses WhatsApp Business API. Templates map internal keys
-  (`order_created`, `payment_confirmed`, `order_shipped`, `order_delivered`,
-  `order_issue_followup`) to provider templates.
+- Uses dual-provider gateway: `meta` resmi and optional `waha`.
+  Templates map internal keys (`order_created`, `payment_confirmed`,
+  `order_shipped`, `order_delivered`, `order_issue_followup`) to Meta templates;
+  WAHA sends rendered `body_preview` text for compare/switch mode.
 - Reflects order/payment/shipping state; does **not** own business state or perform
   verification. Logs outbound and inbound messages, linked to `orders` where applicable.
 
@@ -188,7 +189,9 @@ Admin: POST /admin/orders/{id}/payments (manual transfer confirmation)
 ### 3.5 WhatsApp Inbound (customer)
 ```
 POST /webhook/whatsapp → WhatsAppController@handle
-  → parses payload → whatsapp_messages (inbound)
+  → parses payload Meta → whatsapp_messages (inbound, provider=meta)
+POST /webhook/whatsapp/waha → WhatsAppController@handleWaha
+  → parses WAHA events → whatsapp_messages (inbound, provider=waha)
   → linked to orders where applicable (manual comms: proof, confirmations)
 GET /webhook/whatsapp  → verification handshake (hub.challenge)
 ```
@@ -205,12 +208,15 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
 - **Contract:** `products.parent_sku` / `product_variants.variant_sku` are the
   official SKU references; no parallel SKU system is created.
 
-### 4.2 WhatsApp Business API (bidirectional)
+### 4.2 WhatsApp Gateway (bidirectional)
 - **Outbound:** transactional/notification messages triggered by domain events
   (OrderCreated, PaymentConfirmed, shipping updates). Templates owned in
   `whatsapp_templates`; sends/receipts logged in `whatsapp_messages`.
-- **Inbound:** webhook (`/webhook/whatsapp`) logs customer messages and links them
-  to orders. Manual channel for payment proof, confirmations, complaints.
+- **Provider switch:** `WHATSAPP_PROVIDER` selects active provider; optional
+  `WHATSAPP_COMPARE_PROVIDER` + `WHATSAPP_COMPARE_ALLOWLIST` duplicate sends only
+  to nomor uji for direct comparison.
+- **Inbound:** webhook Meta (`/webhook/whatsapp`) and webhook WAHA
+  (`/webhook/whatsapp/waha`) log customer messages and link them to orders.
 - **Boundaries:** WhatsApp Module reflects state; it never decides order/payment/
   shipping actions.
 
@@ -293,7 +299,7 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
   category, product detail (`Product::toApiArray()` / `ProductVariant::toApiArray()`),
   search.
 - **Webhooks (CSRF-exempt):** `GET/POST /webhook/whatsapp`,
-  `POST /webhook/shipping/jnt`.
+  `POST /webhook/whatsapp/waha`, `POST /webhook/shipping/jnt`.
 
 ---
 

@@ -16,6 +16,90 @@ function useFlashSalePeriod(override?: FlashSalePeriod | null): FlashSalePeriod 
   return override ?? shared ?? null
 }
 
+const DAY_MS = 86_400_000
+
+/** Daily Flash Sale deadline; rolls to next midnight while campaign is still live. */
+function useDailyFlashSaleCountdown(period: FlashSalePeriod | null | undefined): number | null {
+  const [remaining, setRemaining] = React.useState<number | null>(null)
+
+  React.useEffect(() => {
+    if (period?.live !== true || !period.daily_ends_at) {
+      setRemaining(null)
+      return
+    }
+
+    const tick = () => {
+      const now = Date.now()
+      const campaignEndMs = period.ends_at ? new Date(period.ends_at).getTime() : null
+
+      if (campaignEndMs !== null && now >= campaignEndMs) {
+        setRemaining(null)
+        return
+      }
+
+      let deadlineMs = new Date(period.daily_ends_at).getTime()
+
+      while (deadlineMs <= now) {
+        if (campaignEndMs !== null && deadlineMs >= campaignEndMs) {
+          setRemaining(null)
+          return
+        }
+        deadlineMs += DAY_MS
+      }
+
+      const effectiveEndMs =
+        campaignEndMs !== null ? Math.min(deadlineMs, campaignEndMs) : deadlineMs
+      setRemaining(Math.max(0, Math.floor((effectiveEndMs - now) / 1000)))
+    }
+
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [period?.live, period?.daily_ends_at, period?.ends_at])
+
+  return remaining
+}
+
+function formatHms(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":")
+}
+
+/** Timer nav Flash Sale — hh:mm:ss, kuning 50%, italic; hidden bila tidak live. */
+export function FlashSaleNavCountdown({
+  period,
+  className,
+}: {
+  period?: FlashSalePeriod | null
+  className?: string
+}) {
+  const resolved = useFlashSalePeriod(period)
+  const remaining = useDailyFlashSaleCountdown(resolved)
+
+  if (resolved?.live !== true || remaining === null || remaining <= 0) {
+    return null
+  }
+
+  const display = formatHms(remaining)
+  const [hours, minutes, seconds] = display.split(":")
+
+  return (
+    <span
+      className={cn(
+        "shrink-0 font-semibold italic tabular-nums tracking-tight text-[#FFB020]/50",
+        className,
+      )}
+      aria-live="polite"
+      aria-label={`Berakhir dalam ${hours} jam ${minutes} menit ${seconds} detik`}
+    >
+      {display}
+    </span>
+  )
+}
+
 function useCountdown(secondsRemaining: number | null | undefined): number | null {
   const [remaining, setRemaining] = React.useState<number | null>(
     typeof secondsRemaining === "number" ? secondsRemaining : null,

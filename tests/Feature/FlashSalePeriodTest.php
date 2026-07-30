@@ -7,6 +7,7 @@ use App\Models\ProductAttribute;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Support\FlashSalePeriodSettings;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -14,6 +15,12 @@ use Tests\TestCase;
 class FlashSalePeriodTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
 
     private function seedFlashProduct(): Product
     {
@@ -129,5 +136,55 @@ class FlashSalePeriodTest extends TestCase
                 ->component('Admin/FlashSale/Index')
                 ->where('period.live', true)
                 ->where('period.status', 'live'));
+    }
+
+    public function test_live_period_exposes_daily_countdown_until_end_of_day(): void
+    {
+        $now = Carbon::parse('2026-07-30 15:00:00', config('app.timezone'));
+        Carbon::setTestNow($now);
+
+        FlashSalePeriodSettings::update([
+            'enabled' => true,
+            'starts_at' => $now->copy()->subHour()->toIso8601String(),
+            'ends_at' => $now->copy()->addWeek()->toIso8601String(),
+        ]);
+
+        $state = FlashSalePeriodSettings::publicState($now);
+
+        $this->assertTrue($state['live']);
+        $this->assertSame(
+            $now->copy()->endOfDay()->getTimestamp() - $now->getTimestamp(),
+            $state['daily_seconds_remaining'],
+        );
+        $this->assertSame(
+            $now->copy()->endOfDay()->toIso8601String(),
+            $state['daily_ends_at'],
+        );
+    }
+
+    public function test_daily_countdown_caps_at_campaign_end_when_sooner_than_midnight(): void
+    {
+        $now = Carbon::parse('2026-07-30 15:00:00', config('app.timezone'));
+        Carbon::setTestNow($now);
+        $ends = $now->copy()->addHours(2);
+
+        FlashSalePeriodSettings::update([
+            'enabled' => true,
+            'starts_at' => $now->copy()->subHour()->toIso8601String(),
+            'ends_at' => $ends->toIso8601String(),
+        ]);
+
+        $state = FlashSalePeriodSettings::publicState($now);
+
+        $this->assertSame(7200, $state['daily_seconds_remaining']);
+        $this->assertSame($ends->toIso8601String(), $state['daily_ends_at']);
+    }
+
+    public function test_non_live_period_hides_daily_countdown(): void
+    {
+        $state = FlashSalePeriodSettings::publicState();
+
+        $this->assertNull($state['daily_seconds_remaining']);
+        $this->assertNull($state['daily_ends_at']);
     }
 }

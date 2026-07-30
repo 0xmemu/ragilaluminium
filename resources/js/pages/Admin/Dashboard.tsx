@@ -288,10 +288,11 @@ export default function Dashboard({
     <AdminLayout>
       <Head title="Dashboard | Admin" />
 
-      <div className="space-y-2.5">
+      <div className="space-y-4">
         {/* Row 1 — Greeting + Omzet | Performa Toko */}
-        <section className="grid items-stretch gap-3 xl:grid-cols-2">
-          <article className="flex h-full flex-col rounded-lg border border-border bg-surface p-4">
+        <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
+          <article className="relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface p-5">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-primary" aria-hidden="true" />
             <div>
               <p className="text-balance text-xl font-bold tracking-tight text-foreground">
                 {greetingPrefix()}, {name}
@@ -299,10 +300,10 @@ export default function Dashboard({
               <p className="mt-0.5 text-pretty text-xs text-muted-foreground">{todayLabel}</p>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+            <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground">Omzet Hari Ini</p>
-                <p className="tabular-nums mt-1.5 text-2xl font-bold tracking-tight text-foreground">
+                <p className="tabular-nums mt-1.5 text-3xl font-bold tracking-tight text-foreground">
                   {formatCurrency(omzet.revenue)}
                 </p>
                 <p
@@ -323,8 +324,8 @@ export default function Dashboard({
               <Sparkline values={omzet.sparkline} />
             </div>
 
-            <div className="mt-auto grid grid-cols-2 gap-2.5 pt-4">
-              <div className="rounded-md border border-border bg-surface p-2.5">
+            <div className="mt-auto grid grid-cols-2 gap-3 pt-5">
+              <div className="rounded-lg bg-surface-muted p-3.5">
                 <p className="text-[11px] text-muted-foreground">Jumlah Order</p>
                 <p className="tabular-nums mt-0.5 text-base font-bold">
                   {formatNumber(omzet.orders)} Order
@@ -333,7 +334,7 @@ export default function Dashboard({
                   <DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="Order" />
                 </div>
               </div>
-              <div className="rounded-md border border-border bg-surface p-2.5">
+              <div className="rounded-lg bg-surface-muted p-3.5">
                 <p className="text-[11px] text-muted-foreground">Jumlah Unit</p>
                 <p className="tabular-nums mt-0.5 text-base font-bold">
                   {formatNumber(omzet.units)} Unit
@@ -345,7 +346,7 @@ export default function Dashboard({
             </div>
           </article>
 
-          <article className="flex h-full flex-col rounded-lg border border-border bg-surface p-4">
+          <article className="flex h-full flex-col rounded-xl border border-border bg-surface p-5">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
                 <span className="flex size-7 items-center justify-center rounded-md bg-surface-muted text-foreground">
@@ -373,11 +374,11 @@ export default function Dashboard({
               </div>
             </div>
 
-            <div className="mt-4 grid flex-1 grid-cols-2 gap-2.5">
+            <div className="mt-5 grid flex-1 grid-cols-2 gap-3">
               {performa.metrics.map((metric) => (
                 <div
                   key={metric.key}
-                  className="rounded-md border border-border bg-surface p-2.5"
+                  className="rounded-lg bg-surface-muted p-3.5"
                 >
                   <p className="text-[10px] font-medium text-muted-foreground">{metric.label}</p>
                   <p className="tabular-nums mt-0.5 text-lg font-bold">
@@ -393,18 +394,25 @@ export default function Dashboard({
         </section>
 
         {/* Row 2 — Status Order */}
-        <section>
-          <h2 className="text-balance text-xs font-bold tracking-tight text-foreground">
-            Status Order
-          </h2>
-          <div className="mt-2 grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <section className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-balance text-sm font-bold tracking-tight text-foreground">Status Order</h2>
+              <p className="mt-1 text-[11px] text-muted-foreground">Ringkasan antrean pesanan berdasarkan tahap operasional.</p>
+            </div>
+            <Link href={routeUrl("admin.orders.index")} className="inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition hover:bg-accent">
+              Semua pesanan
+              <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+          <div className="mt-4 grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {statusOrder.map((item) => (
               <Link
                 key={item.key}
                 href={item.href}
-                className="flex h-full min-h-[3.25rem] items-center gap-2 rounded border border-border bg-surface px-2.5 py-2 transition hover:border-foreground/20"
+                className="group flex h-full min-h-[4.25rem] items-center gap-3 rounded-lg bg-surface-muted px-3.5 py-3 transition hover:bg-accent"
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded bg-surface-muted text-foreground">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface text-foreground transition group-hover:text-primary">
                   <Icon name={item.icon} className="size-3.5" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
@@ -420,21 +428,22 @@ export default function Dashboard({
         </section>
 
         {/* Row 3 — Perlu Perhatian | Produk paling dilihat | Aksi Cepat */}
-        <section className="grid items-stretch gap-2.5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_13rem]">
-          <div className="min-w-0">
-            <h2 className="text-balance text-xs font-bold tracking-tight text-primary">
+        <section className="grid items-stretch gap-4 lg:grid-cols-12">
+          <div className="min-w-0 rounded-xl border border-border bg-surface p-4 lg:col-span-5">
+            <h2 className="text-balance text-sm font-bold tracking-tight text-primary">
               Perlu Perhatian
             </h2>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <p className="mt-1 text-[11px] text-muted-foreground">Item yang membutuhkan tindak lanjut.</p>
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
               {attention.map((item) => (
                 <Link
                   key={item.key}
                   href={item.href}
                   className={cn(
-                    "flex items-center justify-between gap-2 rounded border bg-surface px-2.5 py-2 transition",
+                    "flex min-h-14 items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2.5 transition",
                     item.count > 0
-                      ? "border-destructive/35 hover:border-destructive"
-                      : "border-border hover:bg-muted",
+                      ? "ring-1 ring-inset ring-destructive/25 hover:bg-accent"
+                      : "hover:bg-muted",
                   )}
                 >
                   <span className="flex min-w-0 items-start gap-2">
@@ -463,9 +472,9 @@ export default function Dashboard({
             </div>
           </div>
 
-          <div className="min-w-0 rounded border border-border bg-surface">
-            <div className="border-b border-border px-2.5 py-2">
-              <h2 className="text-balance text-xs font-bold tracking-tight">
+          <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-surface lg:col-span-4">
+            <div className="border-b border-border px-4 py-3.5">
+              <h2 className="text-balance text-sm font-bold tracking-tight">
                 Produk Paling Dilihat
               </h2>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
@@ -478,7 +487,7 @@ export default function Dashboard({
                   <li key={product.id}>
                     <Link
                       href={product.href}
-                      className="flex items-center gap-2 px-2.5 py-1.5 transition hover:bg-accent/40"
+                      className="flex min-h-12 items-center gap-2.5 px-4 py-2 transition hover:bg-accent/40"
                     >
                       <span className="tabular-nums w-3.5 shrink-0 text-[10px] font-bold text-muted-foreground">
                         {index + 1}
@@ -495,7 +504,7 @@ export default function Dashboard({
                       <div className="min-w-0 flex-1">
                         <p className="line-clamp-1 text-[11px] font-semibold leading-4">{product.name}</p>
                         <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          {formatNumber(product.views)} lihat · {formatNumber(product.clicks)} klik
+                          {formatNumber(product.views)} lihat
                         </p>
                       </div>
                     </Link>
@@ -509,17 +518,18 @@ export default function Dashboard({
             )}
           </div>
 
-          <div className="min-w-0">
-            <h2 className="text-balance text-xs font-bold tracking-tight text-foreground">
+          <div className="min-w-0 rounded-xl border border-border bg-surface p-4 lg:col-span-3">
+            <h2 className="text-balance text-sm font-bold tracking-tight text-foreground">
               Aksi Cepat
             </h2>
-            <nav className="mt-2 overflow-hidden rounded border border-border bg-surface" aria-label="Aksi cepat">
+            <p className="mt-1 text-[11px] text-muted-foreground">Jalan pintas ke pekerjaan rutin.</p>
+            <nav className="mt-3 overflow-hidden rounded-lg bg-surface-muted" aria-label="Aksi cepat">
               <ul className="divide-y divide-border">
                 {quickActions.map((action) => (
                   <li key={action.label}>
                     <Link
                       href={action.href}
-                      className="flex items-center gap-2 px-2 py-1.5 transition hover:bg-muted"
+                      className="flex min-h-11 items-center gap-2.5 px-3 py-2 transition hover:bg-accent"
                     >
                       <span className="flex size-6 shrink-0 items-center justify-center rounded bg-surface-muted text-foreground">
                         <Icon name={action.icon} className="size-3.5" aria-hidden="true" />
@@ -541,7 +551,7 @@ export default function Dashboard({
         </section>
 
         {/* Row 4 — Pesanan Terbaru */}
-        <section className="rounded-lg border border-border bg-surface">
+        <section className="overflow-hidden rounded-xl border border-border bg-surface">
           <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border px-3 py-2">
             <h2 className="text-balance text-sm font-bold tracking-tight">Pesanan Terbaru</h2>
             <Link
@@ -557,7 +567,7 @@ export default function Dashboard({
             <>
               <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full min-w-[56rem] text-left text-xs">
-                  <thead className="border-b border-border bg-surface-muted/40 text-[11px] text-muted-foreground">
+                  <thead className="border-b border-border bg-surface-muted/40 text-[11px] tracking-tight text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 font-semibold">No. Order</th>
                       <th className="px-3 py-2 font-semibold">Penerima</th>
@@ -734,7 +744,7 @@ export default function Dashboard({
         </section>
 
         {/* Opsional — di luar frame Figma, tetap fungsional */}
-        <section className="rounded-lg border border-border bg-surface">
+        <section className="overflow-hidden rounded-xl border border-border bg-surface">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <h2 className="text-balance text-sm font-bold tracking-tight">

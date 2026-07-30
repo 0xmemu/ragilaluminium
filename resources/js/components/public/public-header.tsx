@@ -1,6 +1,7 @@
 import { Link, router, usePage } from "@inertiajs/react"
 import * as React from "react"
 
+import { FlashSaleNavCountdown } from "@/components/public/flash-sale-stage"
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -64,7 +65,7 @@ function HeaderSearchForm({
 
 export function PublicHeader() {
   const page = usePage<SharedPageProps>()
-  const { cartCount, cartPreview, nav, flashSalePeriod } = page.props
+  const { cartCount, cartPreview, nav } = page.props
   const previewItems = cartPreview ?? []
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [modelsOpen, setModelsOpen] = React.useState(false)
@@ -72,9 +73,10 @@ export function PublicHeader() {
   const menuItems = nav?.public?.hamburger ?? []
   const modelItems = nav?.public?.model_menu ?? []
   const desktopItems = nav?.public?.desktop_main ?? []
+  const hamburgerFooter = nav?.public?.hamburger_footer ?? []
+  const hamburgerCopyright = nav?.public?.hamburger_copyright ?? ''
   const primaryItems = menuItems.slice(0, 2)
   const secondaryItems = menuItems.slice(2)
-  const flashLive = flashSalePeriod?.live === true
   const isAllProductsListing =
     isRouteActive(["catalog.windows", "catalog.doors", "catalog.bouven", "product.show", "search"]) ||
     (isRouteActive(["catalog.index"]) && /[?&](sort|q|model|price_min|price_max)=/.test(page.url))
@@ -115,11 +117,12 @@ export function PublicHeader() {
           <SheetContent
             side="left"
             className={cn(
-              "safe-bottom overflow-x-hidden !border-0 p-0 !shadow-none transition-[width] duration-300 ease-standard [&>button]:left-4 [&>button]:right-auto [&>button]:top-4",
+              "flex !h-dvh !max-h-dvh flex-col !overflow-hidden !border-0 p-0 !shadow-none transition-[width] duration-300 ease-standard [&>button]:left-4 [&>button]:right-auto [&>button]:top-4",
               modelsOpen ? "!w-[min(96vw,48rem)]" : "!w-[min(94vw,24rem)]",
             )}
           >
-            <div className="px-16 py-4">
+            {/* Header — fixed */}
+            <div className="shrink-0 px-16 py-4">
               <BrandWordmark className="mx-auto w-fit" />
               <SheetTitle className="sr-only">Menu utama</SheetTitle>
               <SheetDescription className="sr-only">
@@ -127,10 +130,11 @@ export function PublicHeader() {
               </SheetDescription>
             </div>
 
-            {/* Saat daftar model dibuka: nav menyusut kiri + panel model di kanan (mobile & desktop). */}
+            {/* Konten menu — scrollable terbatas; footer tidak ikut scroll */}
             <div
               className={cn(
-                "grid min-h-[calc(100dvh-4.5rem)]",
+                "min-h-0 flex-1 overflow-hidden",
+                "grid",
                 modelsOpen
                   ? "grid-cols-[minmax(9.25rem,10.75rem)_minmax(0,1fr)] sm:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)] md:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]"
                   : "grid-cols-1",
@@ -138,7 +142,7 @@ export function PublicHeader() {
             >
               <nav
                 className={cn(
-                  "min-w-0 overflow-y-auto py-8",
+                  "h-full min-h-0 min-w-0 overflow-y-auto overscroll-contain py-8",
                   modelsOpen ? "px-3 sm:px-6 md:px-10" : "px-6 sm:px-10 md:px-12",
                 )}
                 aria-label="Menu utama"
@@ -204,8 +208,9 @@ export function PublicHeader() {
                         href={navHref(item)}
                         onClick={() => setMenuOpen(false)}
                         className={cn(
-                          "inline-flex min-h-12 items-center gap-2 font-semibold transition",
+                          "inline-flex min-h-12 items-center font-semibold transition",
                           modelsOpen ? "text-sm sm:text-base" : "text-base",
+                          isFlashSale ? "gap-2.5" : "gap-2",
                           isFlashSale
                             ? "text-sale hover:text-foreground"
                             : active
@@ -217,19 +222,23 @@ export function PublicHeader() {
                         {item.icon ? (
                           <Icon
                             name={item.icon}
-                            className={cn("size-4", item.icon === "lightning" && "text-sale")}
+                            className={cn(
+                              "shrink-0",
+                              isFlashSale ? "size-[1.125rem]" : "size-4",
+                              item.icon === "lightning" && "text-sale",
+                            )}
                             weight={item.icon === "lightning" ? "fill" : "bold"}
                             aria-hidden="true"
                           />
                         ) : null}
-                        <span className={cn(isFlashSale && "font-extrabold italic")}>
-                          {item.label}
-                        </span>
-                        {isFlashSale && flashLive ? (
-                          <span className="rounded bg-sale px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-white">
-                            Live
+                        {isFlashSale ? (
+                          <span className="inline-flex min-w-0 items-baseline gap-2">
+                            <span className="shrink-0 font-extrabold italic">{item.label}</span>
+                            <FlashSaleNavCountdown />
                           </span>
-                        ) : null}
+                        ) : (
+                          <span>{item.label}</span>
+                        )}
                       </Link>
                     )
                   })}
@@ -239,7 +248,7 @@ export function PublicHeader() {
               <div
                 id="drawer-model-submenu"
                 className={cn(
-                  "min-w-0 overflow-y-auto border-l border-border bg-muted/40 px-4 py-7 sm:px-6 md:px-8 md:py-9",
+                  "h-full min-h-0 min-w-0 overflow-y-auto overscroll-contain border-l border-border bg-muted/40 px-4 py-7 sm:px-6 md:px-8 md:py-9",
                   modelsOpen ? "block" : "hidden",
                 )}
                 aria-hidden={!modelsOpen ? "true" : undefined}
@@ -274,6 +283,31 @@ export function PublicHeader() {
                 )}
               </div>
             </div>
+
+            {/* Footer — fixed di bawah drawer, selalu terlihat */}
+            {(hamburgerFooter.length > 0 || hamburgerCopyright) && (
+              <footer className="shrink-0 border-t border-border bg-surface px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-10 md:px-12">
+                {hamburgerFooter.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                    {hamburgerFooter.map((item) => (
+                      <Link
+                        key={`footer-${item.label}-${item.route}`}
+                        href={navHref(item)}
+                        onClick={() => setMenuOpen(false)}
+                        className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition hover:text-foreground"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+                {hamburgerCopyright ? (
+                  <p className="mt-3 text-left text-xs text-muted-foreground/60">
+                    {hamburgerCopyright}
+                  </p>
+                ) : null}
+              </footer>
+            )}
           </SheetContent>
         </Sheet>
 

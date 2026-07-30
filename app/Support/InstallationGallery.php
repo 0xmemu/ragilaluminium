@@ -74,12 +74,6 @@ class InstallationGallery
             }
         }
 
-        $remaining = max(0, $limit - count($cards));
-        if ($remaining > 0) {
-            $manual = self::manualModelFallback($remaining);
-            $cards = array_merge($cards, $manual);
-        }
-
         return array_values($cards);
     }
 
