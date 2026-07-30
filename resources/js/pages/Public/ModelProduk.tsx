@@ -4,6 +4,7 @@ import * as React from "react"
 import { ModelProdukListingSidebar } from "@/components/public/catalog-listing-sidebar"
 import { ModelCard } from "@/components/public/model-card"
 import { FilterSheetContent } from "@/components/public/filter-sidebar"
+import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -13,16 +14,18 @@ import { Sheet, SheetTrigger } from "@/components/ui/sheet"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import type { ModelCardData, SelectOption } from "@/types"
+import type { ModelCardData, ProductCardData, SelectOption } from "@/types"
 
 interface ModelProdukProps {
   models: ModelCardData[]
+  popularProducts?: ProductCardData[]
   filterDesigns: SelectOption[]
   activeDesign?: string | null
 }
 
 export default function ModelProduk({
   models = [],
+  popularProducts = [],
   filterDesigns = [],
   activeDesign = null,
 }: ModelProdukProps) {
@@ -157,6 +160,8 @@ export default function ModelProduk({
           </div>
         </div>
       </section>
+
+      <PalingBanyakDipesanSection products={popularProducts} />
     </PublicLayout>
   )
 }

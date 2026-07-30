@@ -25,23 +25,7 @@ class HomeController extends Controller
 
         try {
             // Home “Paling Banyak Dipesan”: kurasi admin (max 10), fallback penjualan website.
-            $popularProducts = Product::visible()
-                ->homepagePopular()
-                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
-                ->orderBy('homepage_popular_sort')
-                ->orderByDesc('id')
-                ->limit(10)
-                ->get();
-
-            if ($popularProducts->isEmpty()) {
-                $popularProducts = Product::visible()
-                    ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                    ->withSum('orderItems as sold_count', 'quantity')
-                    ->orderByWebsiteSales()
-                    ->limit(10)
-                    ->get();
-            }
+            $popularProductCards = InertiaCatalog::popularProductCards(10);
 
             $featuredProducts = Product::visible()
                 ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
@@ -53,7 +37,7 @@ class HomeController extends Controller
             $modelCards = app(ModelProductService::class)->storefrontCards(8);
         } catch (\Throwable) {
             $featuredProducts = collect();
-            $popularProducts = collect();
+            $popularProductCards = [];
             $modelCards = [];
         }
 
@@ -64,26 +48,41 @@ class HomeController extends Controller
         }
 
         try {
-            // Gabungan ulasan Shopee (admin) + website/produk dalam satu daftar.
-            $testimonials = CmsTestimonial::query()
+            $base = CmsTestimonial::query()
                 ->published()
                 ->with('product:id,parent_sku,name,short_name')
                 ->orderBy('sort_order')
-                ->orderByDesc('id')
+                ->orderByDesc('id');
+
+            $marketplaceTestimonials = (clone $base)
+                ->marketplace()
                 ->limit(12)
                 ->get()
                 ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
                 ->values()
                 ->all();
+
+            // Home: section ulasan website baru muncul jika ≥ 10 ulasan terbit.
+            $websiteCount = (clone $base)->website()->count();
+            $websiteTestimonials = $websiteCount >= 10
+                ? (clone $base)
+                    ->website()
+                    ->limit(12)
+                    ->get()
+                    ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+                    ->values()
+                    ->all()
+                : [];
         } catch (\Throwable) {
-            $testimonials = [];
+            $marketplaceTestimonials = [];
+            $websiteTestimonials = [];
         }
 
         try {
             $installations = InstallationGallery::forHome(8);
 
             if ($installations === []) {
-                $installations = collect($testimonials)
+                $installations = collect(array_merge($marketplaceTestimonials, $websiteTestimonials))
                     ->filter(fn (array $item) => filled($item['image_url'] ?? null))
                     ->take(8)
                     ->map(fn (array $item) => [
@@ -135,10 +134,13 @@ class HomeController extends Controller
 
         return Inertia::render('Public/Home', [
             'featuredProducts' => InertiaCatalog::productCards($featuredProducts),
-            'popularProducts' => InertiaCatalog::productCards($popularProducts),
+            'popularProducts' => $popularProductCards,
             'modelCards' => $modelCards,
             'promoSlides' => $promoSlides,
-            'testimonials' => $testimonials,
+            'marketplaceTestimonials' => $marketplaceTestimonials,
+            'websiteTestimonials' => $websiteTestimonials,
+            // Legacy alias (cuplikan marketplace) — hindari blank jika FE lama masih baca `testimonials`.
+            'testimonials' => $marketplaceTestimonials,
             'installations' => $installations,
             'installationMeta' => $installationMeta,
             'homepageLayout' => $homepageLayout,

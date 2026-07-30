@@ -29,14 +29,14 @@ php artisan jnt:joint-debug --times=3   # setelah kredensial + JNT_ENABLED=true
 | Komponen | File | Fungsi |
 |----------|------|--------|
 | Config terpusat | `config/jnt.php` | endpoint, kredensial, default field, pemetaan status, ACK |
-| Client transport | `app/Services/Shipping/JntCargoClient.php` | signing (2 digest), POST form, retry, logging penuh |
+| Client transport | `app/Services/Shipping/JntCargoClient.php` | signing (2 digest), POST form, retry aman, log metadata |
 | Response wrapper | `app/Services/Shipping/JntResponse.php` | sukses transport vs bisnis, ambil `billCode` (list) |
 | Orkestrasi domain | `app/Services/ShippingService.php` | estimasi ongkir, buat/batal resi, refresh, cascade status |
 | Webhook | `app/Http/Controllers/Webhook/ShippingController.php` | verifikasi tanda tangan, parse push, ACK |
 | Event | `app/Events/ShippingStatusUpdated.php` + listener WA | notifikasi milestone ke pelanggan |
 | Joint-debug | `app/Console/Commands/JntJointDebug.php` | uji sandbox (bukti sukses ≥3×) |
 | Status / readiness | `app/Console/Commands/JntStatus.php` + `App\Support\JntReadiness` | checklist kredensial + pengirim |
-| Audit log | `config/logging.php` channel `jnt` → `storage/logs/jnt-*.log` | request/response penuh |
+| Audit log | `config/logging.php` channel `jnt` → `storage/logs/jnt-*.log` | metadata request/response tanpa credential/PII |
 
 **Prinsip:** semua nilai spesifik akun (endpoint path, field, kode status) ada di `config/jnt.php` dan bisa di-override lewat `.env` **tanpa mengubah kode**.
 
@@ -112,7 +112,7 @@ Route: `POST /webhook/shipping/jnt` (CSRF dikecualikan, throttle 120/mnt).
 
 Alur `ShippingController::handleJnt`:
 1. Ambil `bizContent` (JSON) + header `digest`.
-2. Jika `JNT_ENABLED` & kunci webhook ada → verifikasi `verifyWebhookSignature()` (Base64 & hex, `hash_equals`). Gagal → tolak.
+2. Kunci webhook wajib tersedia dan signature diverifikasi secara aman. Kunci kosong atau signature gagal akan ditolak.
 3. Parse: `details[]` (push trajektori) ambil scan terbaru, atau field root (push status order). Ambil `scanType`, `scanTypeCode`, `desc`, `scanTime`.
 4. Cari `ShippingRecord` via `billCode` atau `txlogisticId`.
 5. `applyCarrierUpdate()` (idempoten, transaksional, cascade + event).
@@ -135,7 +135,7 @@ php artisan jnt:joint-debug --interface=track --times=3
 
 - Berjalan hanya saat `JNT_ENV=sandbox` (kecuali `--force`).
 - Menembak `tariff, address, create, track, cancel` masing-masing N kali.
-- Semua request/response tercatat di `storage/logs/jnt-*.log` (bukti untuk pengajuan).
+- Metadata request/response tercatat di channel log J&T tanpa digest, credential, alamat, nomor telepon, atau payload pelanggan.
 - Mencetak ringkasan rasio sukses per interface.
 
 ---

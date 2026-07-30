@@ -43,12 +43,12 @@ export function ModelCard({
           />
         </div>
 
-        <div className="flex h-[5.75rem] shrink-0 flex-col gap-1 overflow-hidden bg-white px-2.5 py-2 @[16rem]:h-[6.5rem] @[16rem]:px-3 @[16rem]:py-2.5 @[20rem]:h-[7rem] @[20rem]:gap-1.5 @[20rem]:px-3.5 @[20rem]:py-2.5">
-          <h3 className="line-clamp-2 text-xs font-medium leading-4 text-foreground @[16rem]:text-[13px] @[16rem]:leading-4 @[22rem]:text-sm @[22rem]:leading-5">
+        <div className="flex min-h-[5.75rem] shrink-0 flex-col gap-1 bg-white px-2.5 py-2 @[16rem]:min-h-[6.5rem] @[16rem]:px-3 @[16rem]:py-2.5 @[20rem]:min-h-[7rem] @[20rem]:gap-1.5 @[20rem]:px-3.5 @[20rem]:py-2.5">
+          <h3 className="line-clamp-2 shrink-0 text-xs font-medium leading-snug text-foreground @[16rem]:text-[13px] @[16rem]:leading-snug @[22rem]:text-sm @[22rem]:leading-5">
             {model.title}
           </h3>
 
-          <p className="truncate text-[11px] font-light leading-snug @[16rem]:text-xs @[22rem]:text-[13px]">
+          <p className="shrink-0 truncate text-[11px] font-light leading-snug @[16rem]:text-xs @[22rem]:text-[13px]">
             <span className="text-primary">{countLabel}</span>
             {model.meta ? (
               <span className="text-foreground">

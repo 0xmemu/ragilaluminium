@@ -18,6 +18,7 @@ interface Row {
   no: number
   problem: string
   solution: string
+  media_count: number
   sort_order: number
   edit_href: string
   destroy_url: string
@@ -227,6 +228,12 @@ export default function MasalahSolusiIndex({
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">Solusi</p>
                       <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{row.solution}</p>
+                      {row.media_count > 0 ? (
+                        <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                          <Icon name="image" className="size-3.5" aria-hidden="true" />
+                          {row.media_count} media
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap gap-1.5 lg:col-span-2">
                       <RowActions>

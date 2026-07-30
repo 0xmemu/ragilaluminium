@@ -33,7 +33,7 @@ export function SectionHeading({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1.5",
+        "flex flex-col gap-1",
         align === "center" && "mx-auto max-w-3xl items-center text-center",
         className,
       )}
@@ -53,7 +53,7 @@ export function SectionHeading({
         className={cn(
           "w-full",
           align === "left" && action
-            ? "flex items-baseline justify-between gap-4"
+            ? "flex items-baseline justify-between gap-3"
             : align === "center"
               ? "text-center"
               : "",
@@ -76,7 +76,7 @@ export function SectionHeading({
       {description ? (
         <p
           className={cn(
-            "mt-1.5 text-sm leading-6 text-muted-foreground",
+            "mt-1 text-sm leading-6 text-muted-foreground",
             align === "center" ? "mx-auto max-w-2xl" : "max-w-2xl",
           )}
         >
@@ -85,7 +85,7 @@ export function SectionHeading({
       ) : null}
 
       {align === "center" && action ? (
-        <div className="mt-2 flex shrink-0 justify-center">{action}</div>
+        <div className="mt-2.5 flex shrink-0 justify-center">{action}</div>
       ) : null}
     </div>
   )

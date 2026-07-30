@@ -11,6 +11,7 @@ import {
   FlashModelToggles,
   PromoFlashSaleSection,
 } from "@/components/public/flash-sale-stage"
+import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import {
@@ -45,6 +46,7 @@ interface CatalogProps {
   listingMode?: ListingMode
   isAllProductsListing?: boolean
   products: ProductCardData[]
+  popularProducts?: ProductCardData[]
   youMightLike?: ProductCardData[]
   flashSaleSpotlight?: ProductCardData[]
   flashSalePeriod?: FlashSalePeriod | null
@@ -93,6 +95,7 @@ export default function Catalog({
   listingMode = "catalog",
   isAllProductsListing = false,
   products = [],
+  popularProducts = [],
   youMightLike = [],
   flashSaleSpotlight = [],
   flashSalePeriod = null,
@@ -472,7 +475,7 @@ export default function Catalog({
                 ? "Promo Ragil Aluminium. Produk dengan diskon dan harga spesial."
                 : listingAllProducts
                   ? "Jelajahi jendela, pintu, dan bouven aluminium Ragil Aluminium untuk rumah Anda."
-                  : `Pilihan ${categoryName.toLowerCase()} aluminium Ragil Aluminium — siap custom ukuran.`
+                  : `Pilihan ${categoryName.toLowerCase()} aluminium Ragil Aluminium, siap custom ukuran.`
           }
         />
       </Head>
@@ -522,6 +525,10 @@ export default function Catalog({
       ) : null}
 
       {isFlash ? <FlashSaleListingShell>{listingBody}</FlashSaleListingShell> : listingBody}
+
+      {listingAllProducts && !isFlash && !isPromo ? (
+        <PalingBanyakDipesanSection products={popularProducts} />
+      ) : null}
     </PublicLayout>
   )
 }

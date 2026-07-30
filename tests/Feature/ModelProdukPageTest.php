@@ -28,6 +28,7 @@ class ModelProdukPageTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ModelProduk')
                 ->has('models', 1)
+                ->has('popularProducts', 1)
                 ->where('models.0.model', 'JUNGKIT')
                 ->where('models.0.category', 'WINDOW')
             );
@@ -86,6 +87,7 @@ class ModelProdukPageTest extends TestCase
                 ->where('categoryName', 'Semua Produk')
                 ->where('isAllProductsListing', true)
                 ->has('products', 1)
+                ->has('popularProducts', 1)
             );
     }
 

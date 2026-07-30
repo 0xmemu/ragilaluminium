@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Log;
  *   - POST x-www-form-urlencoded, field bizContent = JSON string
  *   - Header apiAccount, timestamp (epoch ms), digest = base64(md5(bizContent+privateKey))
  *
- * Semua request/response penuh dilog (channel jnt) sebagai bukti joint-debugging
- * sandbox yang diminta J&T (sukses >= 3x sebelum ajukan environment formal).
+ * Log hanya menyimpan metadata operasional agar kredensial dan data pelanggan
+ * tidak masuk ke file log.
  */
 class JntCargoClient
 {
@@ -150,12 +150,13 @@ class JntCargoClient
             'env' => $this->environment(),
             'endpoint' => $endpointKey,
             'url' => $url,
-            'headers' => ['apiAccount' => $headers[config('jnt.headers.api_account')], 'timestamp' => $timestamp, 'digest' => $digest],
-            'bizContent' => $bizContent,
+            'timestamp' => $timestamp,
+            'customer_order_id' => $bizContent['txlogisticId'] ?? null,
+            'waybill' => $bizContent['billCode'] ?? $bizContent['billCodes'] ?? null,
         ]);
 
         try {
-            $response = $this->httpClient()
+            $response = $this->httpClient($endpointKey)
                 ->asForm()
                 ->withHeaders($headers)
                 ->post($url, [config('jnt.content_field') => $json]);
@@ -168,7 +169,9 @@ class JntCargoClient
                 'endpoint' => $endpointKey,
                 'http_status' => $response->status(),
                 'elapsed_ms' => $elapsedMs,
-                'body' => $body,
+                'business_code' => $body['code'] ?? null,
+                'business_success' => $this->isBusinessSuccess($body),
+                'message' => $body['msg'] ?? $body['message'] ?? null,
             ]);
 
             return new JntResponse(
@@ -198,13 +201,17 @@ class JntCargoClient
         }
     }
 
-    protected function httpClient(): PendingRequest
+    protected function httpClient(string $endpointKey): PendingRequest
     {
         $http = config('jnt.http');
+        $readOnlyEndpoints = ['order_get', 'tariff', 'track', 'dispatch_code', 'address'];
+        $retries = in_array($endpointKey, $readOnlyEndpoints, true)
+            ? max(0, (int) $http['retries'])
+            : 0;
 
         return Http::timeout($http['timeout'])
             ->connectTimeout($http['connect_timeout'])
-            ->retry($http['retries'], $http['retry_sleep_ms'], throw: false);
+            ->retry($retries, $http['retry_sleep_ms'], throw: false);
     }
 
     /** HEADER digest = Base64(MD5(bizContent + privateKey)). */

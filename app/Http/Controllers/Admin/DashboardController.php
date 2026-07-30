@@ -11,6 +11,7 @@ use App\Models\ProductMedia;
 use App\Models\WhatsAppMessage;
 use App\Services\ProductEngagementService;
 use App\Services\StorePerformanceService;
+use App\Support\JntReadiness;
 use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use App\Support\ProductPromotionMetadata;
@@ -219,6 +220,7 @@ class DashboardController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'greetingName' => auth()->user()?->name ?? 'Admin',
             'todayLabel' => now()->locale('id')->translatedFormat('l, d F Y'),
+            'jntReadiness' => JntReadiness::report(),
             'omzet' => [
                 'revenue' => $todaysRevenue,
                 'orders' => $todaysOrders,

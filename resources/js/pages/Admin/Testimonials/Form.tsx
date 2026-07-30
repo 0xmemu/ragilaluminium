@@ -6,12 +6,11 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
-import { humanize } from "@/lib/format"
 
 interface TestimonialRecord {
   id: number
   customer_name: string
-  message: string
+  message?: string | null
   rating?: number | null
   source: string
   location?: string | null
@@ -21,21 +20,42 @@ interface TestimonialRecord {
   published: boolean
 }
 
+const DEFAULT_SOURCE_LABELS: Record<string, string> = {
+  shopee: "Marketplace / Shopee",
+  whatsapp: "WhatsApp",
+  website: "Website",
+  other: "Lainnya",
+}
+
 export default function TestimonialForm({
   testimonial,
   products,
   sources,
+  sourceLabels,
   submitUrl,
   indexUrl,
 }: {
   testimonial: TestimonialRecord | null
   products: Array<{ id: number; label: string }>
   sources: string[]
+  sourceLabels?: Record<string, string>
   submitUrl: string
   indexUrl: string
 }) {
   const editing = Boolean(testimonial)
-  const form = useForm({
+  const labels = sourceLabels ?? DEFAULT_SOURCE_LABELS
+  const form = useForm<{
+    customer_name: string
+    message: string
+    rating: string
+    source: string
+    location: string
+    product_id: string
+    image_url: string
+    image: File | null
+    sort_order: number
+    published: boolean
+  }>({
     customer_name: testimonial?.customer_name ?? "",
     message: testimonial?.message ?? "",
     rating: testimonial?.rating?.toString() ?? "",
@@ -43,14 +63,17 @@ export default function TestimonialForm({
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
     image_url: testimonial?.image_url ?? "",
+    image: null,
     sort_order: testimonial?.sort_order ?? 0,
     published: testimonial?.published ?? false,
   })
 
+  const isMarketplace = ["shopee", "whatsapp", "other"].includes(form.data.source)
+
   return (
     <AdminLayout
-      title={editing ? "Edit ulasan website" : "Tambah ulasan website"}
-      description="Ulasan hanya tampil di storefront jika published. Opsional tautkan ke produk untuk tab Ulasan di PDP."
+      title={editing ? "Edit ulasan" : "Tambah ulasan"}
+      description="Marketplace/WhatsApp: utamakan screenshot. Website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
       actions={
         <Button asChild variant="secondary">
           <Link href={indexUrl}>Batal</Link>
@@ -61,10 +84,15 @@ export default function TestimonialForm({
       <form
         onSubmit={(event) => {
           event.preventDefault()
-          if (editing) form.put(submitUrl)
-          else form.post(submitUrl)
+          if (editing) {
+            form.transform((data) => ({ ...data, _method: "put" }))
+            form.post(submitUrl, { forceFormData: true })
+          } else {
+            form.post(submitUrl, { forceFormData: true })
+          }
         }}
         className="mx-auto max-w-3xl space-y-6"
+        encType="multipart/form-data"
       >
         <FormErrorSummary errors={form.errors} />
         <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
@@ -75,7 +103,13 @@ export default function TestimonialForm({
             <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
               <Input value={form.data.location} onChange={(event) => form.setData("location", event.target.value)} />
             </Field>
-            <Field id="testimonial-message" label="Isi ulasan" required error={form.errors.message} className="sm:col-span-2">
+            <Field
+              id="testimonial-message"
+              label="Isi ulasan"
+              error={form.errors.message}
+              className="sm:col-span-2"
+              hint="Opsional jika ada gambar. Wajib salah satu: teks atau gambar."
+            >
               <Textarea rows={7} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
             </Field>
             <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
@@ -86,10 +120,20 @@ export default function TestimonialForm({
                 ))}
               </Select>
             </Field>
-            <Field id="testimonial-source" label="Sumber" required error={form.errors.source}>
+            <Field
+              id="testimonial-source"
+              label="Sumber / kanal"
+              required
+              error={form.errors.source}
+              hint={
+                isMarketplace
+                  ? "Tampil di section Apa kata pelanggan kami (screenshot)."
+                  : "Tampil di section Ulasan pelanggan di website."
+              }
+            >
               <Select value={form.data.source} onChange={(event) => form.setData("source", event.target.value)}>
                 {sources.map((source) => (
-                  <option key={source} value={source}>{humanize(source)}</option>
+                  <option key={source} value={source}>{labels[source] ?? source}</option>
                 ))}
               </Select>
             </Field>
@@ -101,9 +145,32 @@ export default function TestimonialForm({
                 ))}
               </Select>
             </Field>
+            <Field
+              id="testimonial-image-file"
+              label="Unggah gambar"
+              error={form.errors.image}
+              className="sm:col-span-2"
+              hint="Screenshot marketplace/WhatsApp (max 5MB). Mengunggah akan mengganti URL di bawah."
+            >
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
+              />
+            </Field>
             <Field id="testimonial-image" label="URL gambar" error={form.errors.image_url} className="sm:col-span-2">
               <Input type="url" value={form.data.image_url} onChange={(event) => form.setData("image_url", event.target.value)} />
             </Field>
+            {form.data.image_url || form.data.image ? (
+              <div className="sm:col-span-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.data.image ? URL.createObjectURL(form.data.image) : form.data.image_url}
+                  alt="Pratinjau"
+                  className="max-h-64 rounded-md border border-border object-contain"
+                />
+              </div>
+            ) : null}
             <Field id="testimonial-sort" label="Urutan" error={form.errors.sort_order}>
               <Input
                 type="number"

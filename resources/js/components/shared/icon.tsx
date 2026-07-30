@@ -72,6 +72,7 @@ import {
   VideoCamera,
   WarningCircle,
   WhatsappLogo,
+  Wrench,
   X,
   type IconProps,
 } from "@phosphor-icons/react"
@@ -170,6 +171,7 @@ const iconRegistry: Record<string, ComponentType<IconProps>> = {
   "video-camera": VideoCamera,
   warning: WarningCircle,
   whatsapp: WhatsappLogo,
+  wrench: Wrench,
   "shopping-basket": ShoppingCartSimple,
   box: Cube,
   x: X,

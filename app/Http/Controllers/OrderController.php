@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
 use App\Support\BankTransferInstructions;
+use App\Support\ConsultationWhatsApp;
 use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -36,9 +37,7 @@ class OrderController extends Controller
             ->firstOrFail();
 
         $whatsappUrl = null;
-        $phone = PhoneNumber::normalize(
-            config('services.whatsapp.business_phone') ?: config('sitemap.brand.phone')
-        );
+        $phone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
         if ($phone) {
             $message = sprintf(
                 'Halo Ragil Aluminium, saya sudah order %s. Mohon bantuannya.',

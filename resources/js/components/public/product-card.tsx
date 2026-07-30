@@ -111,7 +111,7 @@ export function ProductCard({
                       {formatCurrency(compareValue)}
                     </span>
                     {discountPercent !== null && discountPercent > 0 ? (
-                      <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground lg:text-sm lg:leading-6">
+                      <span className="bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground lg:text-sm lg:leading-6">
                         -{discountPercent}%
                       </span>
                     ) : null}
@@ -168,9 +168,9 @@ export function ProductCard({
               </span>
             ) : null}
             {showFlash ? (
-              <span className="inline-flex min-w-0 max-w-full items-center">
+              <span className="inline-flex shrink-0 items-center">
                 <Lightning weight="fill" className="-mr-px size-3.5 shrink-0 text-sale lg:size-4" aria-hidden />
-                <span className="truncate text-[11px] font-extrabold italic leading-4 tracking-tight text-sale sm:text-sm lg:text-base lg:leading-5">
+                <span className="whitespace-nowrap text-[11px] font-extrabold italic leading-4 tracking-tight text-sale sm:text-sm lg:text-base lg:leading-5">
                   FLASH SALE
                 </span>
               </span>

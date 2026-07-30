@@ -63,7 +63,7 @@ class HandleInertiaRequests extends Middleware
                 'short_name' => config('sitemap.brand.short_name', 'Ragil Aluminium'),
                 'tagline' => config('sitemap.brand.tagline', ''),
                 'email' => config('sitemap.brand.email', ''),
-                'phone' => config('sitemap.brand.phone', ''),
+                'phone' => \App\Support\ConsultationWhatsApp::displayPhone(),
                 'address' => config('sitemap.brand.address', ''),
                 'hours' => config('sitemap.brand.hours', 'Senin – Sabtu, 08.00 – 17.00 WIB'),
                 'maps_url' => (static function (): ?string {
@@ -105,15 +105,31 @@ class HandleInertiaRequests extends Middleware
             'flashSalePeriod' => fn () => \App\Support\FlashSalePeriodSettings::publicState(),
             'footer' => config('sitemap.footer', []),
             'platforms' => \App\Support\StorefrontPlatformSettings::forStorefront(),
-            'nav' => [
-                'public' => [
-                    ...config('sitemap.navigation', []),
-                    'model_menu' => $modelMenu,
-                ],
-                'admin' => config('admin-sitemap.navigation', []),
-            ],
+            'nav' => fn () => $this->sharedNavigation($modelMenu),
             'csrf' => csrf_token(),
             'consultationWhatsApp' => fn () => \App\Support\ConsultationWhatsApp::sharedProps(),
+        ];
+    }
+
+    /**
+     * Nav publik + merge hamburger untuk kompatibilitas props lama.
+     *
+     * @param  array<int, array<string, mixed>>  $modelMenu
+     * @return array{public: array<string, mixed>, admin: mixed}
+     */
+    protected function sharedNavigation(array $modelMenu): array
+    {
+        $navigation = config('sitemap.navigation', []);
+        $product = $navigation['hamburger_product'] ?? [];
+        $info = $navigation['hamburger_info'] ?? [];
+
+        return [
+            'public' => [
+                ...$navigation,
+                'hamburger' => array_values(array_merge($product, $info)),
+                'model_menu' => $modelMenu,
+            ],
+            'admin' => config('admin-sitemap.navigation', []),
         ];
     }
 

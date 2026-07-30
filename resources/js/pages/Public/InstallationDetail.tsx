@@ -126,7 +126,7 @@ export default function InstallationDetail({
               </p>
 
               {media.length > 1 ? (
-                <ul className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                <ul className="scrollbar-x mt-4 flex gap-2 overflow-x-auto pb-3">
                   {media.map((item, index) => (
                     <li key={item.id} className="shrink-0">
                       <button

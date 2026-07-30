@@ -15,6 +15,7 @@ use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -387,9 +388,12 @@ class OrderController extends Controller
 
         try {
             if ($validated['mode'] === 'jnt') {
-                $record = $this->shipping->createShipment(
-                    $order,
-                    (float) ($validated['weight_kg'] ?? 1.0),
+                $record = Cache::lock("shipping:jnt:create:{$order->id}", 60)->block(
+                    10,
+                    fn () => $this->shipping->createShipment(
+                        $order,
+                        (float) ($validated['weight_kg'] ?? 1.0),
+                    ),
                 );
             } else {
                 if (! filled($validated['waybill_number'] ?? null)) {

@@ -49,7 +49,7 @@ class ProductReviewsTest extends TestCase
             'customer_name' => 'Budi',
             'message' => 'Bagus, packing rapi.',
             'rating' => 5,
-            'source' => 'shopee',
+            'source' => 'website',
             'published' => true,
             'sort_order' => 0,
         ]);
@@ -59,9 +59,19 @@ class ProductReviewsTest extends TestCase
             'product_id' => $product->id,
             'customer_name' => 'Draft',
             'message' => 'Should not show',
-            'source' => 'whatsapp',
+            'source' => 'website',
             'published' => false,
             'sort_order' => 1,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'product_id' => $product->id,
+            'customer_name' => 'Shopee Only',
+            'message' => 'PDP ignores marketplace source',
+            'source' => 'shopee',
+            'published' => true,
+            'sort_order' => 2,
         ]);
 
         CmsTestimonial::create([
@@ -69,7 +79,7 @@ class ProductReviewsTest extends TestCase
             'product_id' => $other->id,
             'customer_name' => 'Ani',
             'message' => 'For other SKU',
-            'source' => 'other',
+            'source' => 'website',
             'published' => true,
             'sort_order' => 0,
         ]);
@@ -80,7 +90,7 @@ class ProductReviewsTest extends TestCase
                 ->component('Public/ProductDetail')
                 ->has('reviews', 1)
                 ->where('reviews.0.customer_name', 'Budi')
-                ->where('reviews.0.source', 'shopee')
+                ->where('reviews.0.source', 'website')
             );
     }
 
@@ -127,7 +137,8 @@ class ProductReviewsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 2)
+                ->has('marketplaceTestimonials', 2)
+                ->has('websiteTestimonials', 0)
                 ->has('pageMeta')
                 ->where('pageMeta.heading', 'Apa kata pelanggan kami.')
                 ->missing('installationMeta')
@@ -261,6 +272,7 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('testimonials', 2)
+                ->has('marketplaceTestimonials', 2)
                 ->where('activeSource', 'marketplace')
                 ->where('stats.total', 3)
             );
@@ -270,8 +282,76 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('testimonials', 1)
+                ->has('websiteTestimonials', 1)
                 ->where('testimonials.0.customer_name', 'Web User')
                 ->where('activeSource', 'website')
             );
+
+        $this->get(route('reviews'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Reviews')
+                ->has('marketplaceTestimonials', 2)
+                ->has('websiteTestimonials', 1)
+                ->where('activeSource', 'all')
+            );
+    }
+
+    public function test_home_splits_marketplace_and_website_testimonials(): void
+    {
+        $page = CmsPage::create([
+            'slug' => 'testimoni',
+            'title' => 'Testimoni',
+            'content' => [],
+            'published' => true,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'SS Shopee',
+            'message' => null,
+            'image_url' => 'https://cdn.example.com/ss.jpg',
+            'source' => 'shopee',
+            'published' => true,
+            'sort_order' => 0,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Web Buyer',
+            'message' => 'Order via website bagus',
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 1,
+        ]);
+
+        // Di bawah 10 ulasan website → section belum ikut di props beranda.
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Home')
+                ->has('marketplaceTestimonials', 1)
+                ->has('websiteTestimonials', 0)
+                ->where('marketplaceTestimonials.0.customer_name', 'SS Shopee')
+            );
+
+        for ($i = 2; $i <= 10; $i++) {
+            CmsTestimonial::create([
+                'cms_page_id' => $page->id,
+                'customer_name' => "Web Buyer {$i}",
+                'message' => "Ulasan website {$i}",
+                'source' => 'website',
+                'published' => true,
+                'sort_order' => $i,
+            ]);
+        }
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Home')
+                ->has('websiteTestimonials', 10)
+            );
     }
 }
+

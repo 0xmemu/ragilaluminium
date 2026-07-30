@@ -31,6 +31,7 @@ class JntReadiness
             'JNT_ENABLED' => (bool) config('jnt.enabled'),
             'JNT_API_ACCOUNT' => filled(config('jnt.credentials.api_account')),
             'JNT_PRIVATE_KEY' => filled(config('jnt.credentials.private_key')),
+            'JNT_WEBHOOK_PRIVATE_KEY' => filled(config('jnt.webhook.private_key')),
             'JNT_CUSTOMER_CODE' => filled(config('jnt.credentials.customer_code')),
             'JNT_CUSTOMER_PASSWORD' => filled(config('jnt.credentials.customer_password')),
             'JNT_SENDER_MOBILE' => filled(config('jnt.sender.mobile')),

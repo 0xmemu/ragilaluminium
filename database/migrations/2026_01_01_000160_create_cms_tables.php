@@ -78,7 +78,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('cms_page_id')->constrained('cms_pages')->cascadeOnDelete();
             $table->string('customer_name');
-            $table->text('message');
+            $table->text('message')->nullable();
             $table->string('image_url')->nullable();
             $table->boolean('published')->default(true);
             $table->integer('sort_order')->default(0);

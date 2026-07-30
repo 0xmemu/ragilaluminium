@@ -38,6 +38,8 @@ interface HomeProps {
   featuredProducts: ProductCardData[]
   popularProducts: ProductCardData[]
   testimonials?: Testimonial[]
+  marketplaceTestimonials?: Testimonial[]
+  websiteTestimonials?: Testimonial[]
   installations?: InstallationItem[]
   installationMeta?: { title?: string; heading?: string; subtitle?: string } | null
   homepageLayout?: HomepageLayoutProps
@@ -58,14 +60,14 @@ function SectionTitle({
     <SectionHeading
       align="left"
       size="default"
-      className="mb-6 gap-3 sm:mb-8 sm:gap-4 md:mb-10"
+      className="mb-4 gap-1 sm:mb-5 md:mb-6"
       eyebrow={eyebrow}
       title={title}
       action={
         actionHref ? (
           <Link
             href={actionHref}
-            className="inline-flex min-h-9 shrink-0 items-center gap-1 self-end text-xs font-semibold text-foreground transition hover:text-primary sm:min-h-10 sm:text-sm"
+            className="inline-flex min-h-8 shrink-0 items-center gap-1 self-end text-xs font-semibold text-foreground transition hover:text-primary sm:min-h-9 sm:text-sm"
           >
             {actionLabel}
             <Icon name="caret-right" className="size-3.5 sm:size-4" weight="bold" aria-hidden="true" />
@@ -76,13 +78,13 @@ function SectionTitle({
   )
 }
 
-/** Desktop next/back — disembunyikan di mobile (swipe-only). */
+/** Desktop next/back — visible from md; mobile memakai slider horizontal. */
 const carouselNavBtnClass =
-  "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
+  "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
 /** Touch: pan-x + pan-y agar swipe kartu & scroll halaman sama-sama jalan. Mouse = useDragScroll. */
 const carouselTrackClass =
-  "scrollbar-none flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 /** Mobile ≈ 2⅙ kartu di viewport; gap-2 (0.5rem) antar kartu. */
 const carouselCardClass =
@@ -162,9 +164,7 @@ function CarouselNavButton({
       aria-controls={trackId}
       className={cn(
         carouselNavBtnClass,
-        side === "left"
-          ? "md:left-0 md:-translate-x-1/2"
-          : "md:right-0 md:translate-x-1/2",
+        side === "left" ? "md:left-0 md:-translate-x-1/2" : "md:right-0 md:translate-x-1/2",
       )}
     >
       <Icon
@@ -177,10 +177,10 @@ function CarouselNavButton({
   )
 }
 
-/** Trailing mobile CTA — lingkaran chevron sempit di ujung swipe (bukan lebar 1 kartu). */
+/** Trailing mobile CTA — ikon chevron + label "selengkapnya" di bawahnya. */
 function MobileSeeMoreSlide({
   href,
-  label = "Lihat Semua",
+  label = "Lihat selengkapnya",
 }: {
   href: string
   label?: string
@@ -188,13 +188,18 @@ function MobileSeeMoreSlide({
   wide?: boolean
 }) {
   return (
-    <div className="flex w-14 shrink-0 snap-end items-center justify-center self-stretch md:hidden sm:w-16">
+    <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
       <Link
         href={href}
-        className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 hover:bg-white active:scale-95 sm:size-12"
+        className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
         aria-label={label}
       >
-        <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+        <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
+          <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+        </span>
+        <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
+          selengkapnya
+        </span>
       </Link>
     </div>
   )
@@ -212,11 +217,7 @@ function ModelCardCarousel({
 
   return (
     <div className="relative min-w-0 overflow-x-clip px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className={carouselTrackClass}
-      >
+      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
         {items.map((model) => (
           <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
             <ModelCard model={model} />
@@ -254,11 +255,7 @@ function ProductCardCarousel({
 
   return (
     <div className="relative min-w-0 overflow-x-clip px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className={carouselTrackClass}
-      >
+      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
         {items.map((product, index) => (
           <div key={product.id} className={carouselCardClass}>
             <ProductCard product={product} priority={index < 4} titleStyle="model" />
@@ -296,19 +293,13 @@ function InstallationCarousel({
 
   return (
     <div className="relative min-w-0 overflow-x-clip px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className={cn(carouselTrackClass, "items-start")}
-      >
+      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-start")}>
         {slides.map((item) => (
           <div key={item.id} className={carouselCardClass}>
             <InstallationCard item={item} level="model" />
           </div>
         ))}
-        {slides.length > 0 ? (
-          <MobileSeeMoreSlide href={seeMoreHref} />
-        ) : null}
+        {slides.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -331,26 +322,28 @@ function InstallationCarousel({
 function TestimonialCarousel({
   testimonials,
   seeMoreHref,
+  variant = "review",
+  navLabel = "ulasan",
 }: {
   testimonials: Testimonial[]
   seeMoreHref: string
+  variant?: "review" | "screenshot"
+  navLabel?: string
 }) {
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const anchor = variant === "screenshot" ? "apa-kata-pelanggan" : "ulasan-website"
 
   return (
     <div className="relative min-w-0 overflow-x-clip px-1">
-      <div
-        ref={trackRef}
-        id={trackId}
-        className={cn(carouselTrackClass, "items-stretch")}
-      >
+      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-stretch")}>
         {items.map((testimonial) => (
           <div key={testimonial.id} className={carouselCardClass}>
             <TestimonialCard
               testimonial={testimonial}
               compact
-              href={testimonial.product?.href ?? `${routeUrl("reviews")}#testimoni`}
+              variant={variant}
+              href={testimonial.product?.href ?? `${routeUrl("reviews")}#${anchor}`}
             />
           </div>
         ))}
@@ -359,14 +352,14 @@ function TestimonialCarousel({
       <CarouselNavButton
         trackId={trackId}
         side="left"
-        label="Lihat ulasan sebelumnya"
+        label={`Lihat ${navLabel} sebelumnya`}
         enabled={canGoBack}
         onClick={() => move(-1)}
       />
       <CarouselNavButton
         trackId={trackId}
         side="right"
-        label="Lihat ulasan berikutnya"
+        label={`Lihat ${navLabel} berikutnya`}
         enabled={canGoNext}
         onClick={() => move(1)}
       />
@@ -914,7 +907,7 @@ function CaraPesan({
   return (
     <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
-        <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
+        <div className="mx-auto mb-5 max-w-xl text-center md:mb-6">
           <SectionHeading
             size="display"
             eyebrow="Cara memesan jendela Anda"
@@ -929,18 +922,18 @@ function CaraPesan({
             }
           />
         </div>
-        <ol className="mx-auto grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:gap-5">
+        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
           {steps.map((item, index) => {
             const step = item.step || String(index + 1).padStart(2, "0")
             const icon = orderStepIcon(item.title, index)
             return (
               <li key={`${step}-${item.title}`}>
-                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-3 py-5 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-5">
-                  <span className="font-mono text-xs font-bold text-primary">{step}</span>
-                  <span className="mt-3 flex size-12 items-center justify-center rounded-full bg-muted text-foreground sm:size-12">
-                    <Icon name={icon} className="size-6" weight="bold" aria-hidden="true" />
+                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-1.5 py-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-5">
+                  <span className="font-mono text-[0.625rem] font-bold text-primary sm:text-xs">{step}</span>
+                  <span className="mt-2 flex size-14 items-center justify-center rounded-xl bg-muted text-foreground sm:mt-3 sm:size-16">
+                    <Icon name={icon} className="size-6 sm:size-7" aria-hidden="true" />
                   </span>
-                  <h3 className="mt-3 text-sm font-bold leading-snug tracking-tight text-foreground">
+                  <h3 className="mt-2 text-[0.6875rem] font-bold leading-snug tracking-tight text-foreground sm:mt-3 sm:text-sm">
                     {item.title}
                   </h3>
                 </article>
@@ -969,7 +962,7 @@ function HasilPemasangan({
           eyebrow="Inspirasi pemasangan nyata"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           actionHref={seeMoreHref}
-          actionLabel="Semua hasil pemasangan"
+          actionLabel="Lihat selengkapnya"
         />
         {items.length ? (
           <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
@@ -986,24 +979,60 @@ function HasilPemasangan({
 }
 
 function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = routeUrl("reviews")
+  const seeMoreHref = `${routeUrl("reviews")}#apa-kata-pelanggan`
 
   return (
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Apa kata mereka"
+          eyebrow="Bukti dari marketplace & WhatsApp"
           title="Apa kata pelanggan kami"
           actionHref={seeMoreHref}
-          actionLabel="Semua ulasan"
+          actionLabel="Lihat selengkapnya"
         />
         {testimonials.length ? (
-          <TestimonialCarousel testimonials={testimonials} seeMoreHref={seeMoreHref} />
+          <TestimonialCarousel
+            testimonials={testimonials}
+            seeMoreHref={seeMoreHref}
+            variant="screenshot"
+            navLabel="testimoni"
+          />
+        ) : (
+          <EmptyState
+            icon="message-circle"
+            title="Belum ada screenshot"
+            description="Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan."
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+function UlasanPelangganWebsite({ testimonials }: { testimonials: Testimonial[] }) {
+  const seeMoreHref = `${routeUrl("reviews")}#ulasan-website`
+
+  return (
+    <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted section-space">
+      <div className="container-page">
+        <SectionTitle
+          eyebrow="Pembeli lewat website"
+          title="Ulasan pelanggan di website"
+          actionHref={seeMoreHref}
+          actionLabel="Lihat selengkapnya"
+        />
+        {testimonials.length ? (
+          <TestimonialCarousel
+            testimonials={testimonials}
+            seeMoreHref={seeMoreHref}
+            variant="review"
+            navLabel="ulasan"
+          />
         ) : (
           <EmptyState
             icon="star"
-            title="Belum ada ulasan"
-            description="Lihat hasil pemasangan atau chat WhatsApp untuk bertanya langsung ke tim kami."
+            title="Belum ada ulasan website"
+            description="Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini."
           />
         )}
       </div>
@@ -1034,7 +1063,7 @@ const HELP_STEPS = [
     icon: "whatsapp",
     title: "Masih ragu? Chat WhatsApp, kami bantu sampai jelas",
     description:
-      "Tanya apa saja lewat WhatsApp — dari pilihan model sampai panduan pemasangan.",
+      "Tanya apa saja lewat WhatsApp, dari pilihan model sampai panduan pemasangan.",
   },
 ]
 
@@ -1042,7 +1071,7 @@ function KamiBantu() {
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-surface-muted section-space">
       <div className="container-page">
-        <div className="mx-auto mb-10 max-w-xl text-center md:mb-12">
+        <div className="mx-auto mb-5 max-w-xl text-center md:mb-6">
           <SectionHeading
             size="display"
             eyebrow="Didukung tim kami"
@@ -1062,16 +1091,16 @@ function KamiBantu() {
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
                 <Icon name={item.icon} className="size-6 sm:size-7" aria-hidden="true" />
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-2">
-                  <span className="tabular-nums mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
-                    {index + 1}
-                  </span>
+              <div className="flex min-w-0 flex-1 items-start gap-2">
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold tabular-nums text-background">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
                     {item.title}
                   </h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
               </div>
             </article>
           ))}
@@ -1123,10 +1152,16 @@ export default function Home({
   featuredProducts = [],
   popularProducts = [],
   testimonials = [],
+  marketplaceTestimonials,
+  websiteTestimonials,
   installations = [],
   installationMeta = null,
   homepageLayout,
 }: HomeProps) {
+  const marketplaceItems = marketplaceTestimonials?.length
+    ? marketplaceTestimonials
+    : testimonials
+  const websiteItems = websiteTestimonials ?? []
   const popular = popularProducts.length ? popularProducts : featuredProducts
   const sections = homepageLayout?.sections?.length
     ? homepageLayout.sections
@@ -1167,7 +1202,10 @@ export default function Home({
       <PalingBanyakDipesan products={popular} />
       {showCaraPesan ? <CaraPesan data={homepageLayout?.how_to_order} /> : null}
       <HasilPemasangan items={installations} meta={installationMeta} />
-      <ApaKataPelanggan testimonials={testimonials} />
+      <ApaKataPelanggan testimonials={marketplaceItems} />
+      {websiteItems.length >= 10 ? (
+        <UlasanPelangganWebsite testimonials={websiteItems} />
+      ) : null}
       <KamiBantu />
       <ClosingCta />
     </PublicLayout>

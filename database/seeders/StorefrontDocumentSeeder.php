@@ -38,61 +38,41 @@ class StorefrontDocumentSeeder extends Seeder
             'heading' => 'Kebijakan Privasi',
             'published' => true,
             'body' => <<<'HTML'
-<p>Kebijakan ini menjelaskan bagaimana Ragil Aluminium mengumpulkan, memakai, menyimpan, dan melindungi data pribadi pembeli yang berbelanja melalui website, WhatsApp, maupun marketplace resmi kami.</p>
+<p>Kami berkomitmen untuk melindungi privasi dan menjaga keamanan data pribadi Anda.</p>
 
-<h2>Data yang kami kumpulkan</h2>
+<p><strong>1. Data yang Kami Kumpulkan</strong></p>
+<p>Kami hanya mengumpulkan data yang diperlukan untuk keperluan transaksi, yaitu:</p>
 <ul>
-<li>Identitas dan kontak: nama penerima, nomor WhatsApp atau telepon, dan alamat email bila diisi.</li>
-<li>Data pengiriman: provinsi, kota atau kabupaten, kecamatan, desa atau kelurahan, kode pos, alamat lengkap, serta catatan patokan lokasi.</li>
-<li>Data pesanan: nomor pesanan, produk dan varian yang dibeli, ukuran custom, jumlah unit, metode pembayaran, dan total tagihan.</li>
-<li>Data pembayaran terbatas: bukti transfer yang Anda kirimkan. Kami tidak menyimpan data kartu, PIN, OTP, atau kredensial perbankan apa pun.</li>
-<li>Data teknis dasar: alamat IP, jenis perangkat, dan halaman yang diakses untuk menjaga keamanan serta memperbaiki layanan.</li>
+<li>Nama</li>
+<li>Nomor WhatsApp</li>
+<li>Alamat pengiriman</li>
 </ul>
 
-<h2>Tujuan penggunaan data</h2>
+<p><strong>2. Penggunaan Data</strong></p>
+<p>Data yang kami terima digunakan untuk:</p>
 <ul>
-<li>Memproses pesanan, konfirmasi ukuran, produksi, pengemasan, dan pengiriman.</li>
-<li>Mengirim notifikasi WhatsApp resmi berisi konfirmasi pesanan, instruksi pembayaran, status proses, nomor resi, dan konfirmasi barang diterima.</li>
-<li>Melayani pertanyaan, keluhan, klaim kerusakan pengiriman, serta permintaan garansi.</li>
-<li>Menyusun statistik penjualan internal dalam bentuk agregat tanpa mengidentifikasi pembeli.</li>
-<li>Memenuhi kewajiban hukum, pembukuan, dan penyelesaian sengketa bila diperlukan.</li>
+<li>Memproses pesanan Anda</li>
+<li>Mengonfirmasi detail pesanan melalui WhatsApp</li>
+<li>Mengatur pengiriman produk ke alamat tujuan</li>
 </ul>
+<p>Kami tidak menggunakan data Anda untuk keperluan lain di luar proses transaksi.</p>
 
-<h2>Pembagian data kepada pihak ketiga</h2>
-<p>Kami hanya membagikan data seminimal mungkin dan sebatas kebutuhan operasional:</p>
+<p><strong>3. Keamanan Data</strong></p>
+<p>Kami menjaga data pelanggan dengan baik dan tidak membagikannya kepada pihak lain tanpa izin, kecuali jika diperlukan untuk proses pengiriman (misalnya jasa ekspedisi).</p>
+
+<p><strong>4. Penyimpanan Data</strong></p>
+<p>Data pelanggan disimpan hanya selama diperlukan untuk keperluan transaksi dan pelayanan, serta tidak digunakan untuk aktivitas yang merugikan pelanggan.</p>
+
+<p><strong>5. Hak Pelanggan</strong></p>
+<p>Pelanggan berhak untuk:</p>
 <ul>
-<li><strong>Jasa pengiriman (J&amp;T Cargo dan mitra ekspedisi lain):</strong> nama penerima, alamat lengkap, nomor telepon, dan detail paket agar barang dapat dikirim serta dilacak.</li>
-<li><strong>Layanan pesan WhatsApp Business resmi (Meta):</strong> nomor WhatsApp dan isi variabel notifikasi pesanan.</li>
-<li><strong>Marketplace resmi:</strong> apabila Anda memesan melalui Shopee, Tokopedia, Lazada, atau TikTok Shop, data pesanan tunduk pada kebijakan platform terkait.</li>
-<li><strong>Penegak hukum atau instansi berwenang:</strong> hanya bila diwajibkan oleh peraturan yang berlaku.</li>
+<li>Menanyakan data yang kami simpan</li>
+<li>Meminta penghapusan data setelah transaksi selesai</li>
 </ul>
-<p>Kami tidak menjual, menyewakan, atau menukarkan data pribadi Anda untuk kepentingan pemasaran pihak lain.</p>
+<p>Permintaan dapat diajukan melalui WhatsApp resmi Ragil Aluminium.</p>
 
-<h2>Penyimpanan dan keamanan</h2>
-<p>Data pesanan disimpan pada sistem kami selama masa layanan purna jual, penanganan garansi, dan kebutuhan pembukuan. Akses ke data dibatasi hanya untuk admin toko yang berkepentingan, dengan akun terpisah dan pencatatan aktivitas. Riwayat percakapan WhatsApp yang berkaitan dengan pesanan disimpan sebagai bukti konfirmasi ukuran dan pengiriman.</p>
-
-<h2>Ulasan dan foto hasil pemasangan</h2>
-<p>Ulasan yang Anda tulis di website atau marketplace dapat kami tampilkan di halaman Ulasan dan pada halaman produk, dengan nama tampil singkat serta kota. Foto hasil pemasangan hanya dipublikasikan setelah Anda mengizinkan. Bila Anda ingin ulasan atau foto dicabut, sampaikan melalui WhatsApp resmi kami dan akan kami turunkan.</p>
-
-<h2>Hak Anda</h2>
-<ul>
-<li>Meminta salinan data pesanan Anda.</li>
-<li>Meminta perbaikan data penerima atau alamat sebelum pesanan dikirim.</li>
-<li>Meminta penghapusan data yang tidak lagi diperlukan, sepanjang tidak bertentangan dengan kewajiban pembukuan dan penyelesaian sengketa.</li>
-<li>Menolak menerima pesan promosi tanpa memengaruhi notifikasi transaksi pesanan Anda.</li>
-</ul>
-
-<h2>Cookie dan pelacakan</h2>
-<p>Website memakai cookie fungsional untuk menjaga sesi keranjang, preferensi tampilan, dan keamanan formulir. Kami tidak memakai cookie untuk membangun profil iklan lintas situs.</p>
-
-<h2>Data anak</h2>
-<p>Layanan ini ditujukan untuk pembeli dewasa. Kami tidak dengan sengaja mengumpulkan data anak di bawah umur tanpa pendampingan orang tua atau wali.</p>
-
-<h2>Perubahan kebijakan</h2>
-<p>Kebijakan dapat diperbarui bila ada perubahan proses layanan, mitra pengiriman, atau ketentuan hukum. Versi terbaru selalu ditampilkan pada halaman ini.</p>
-
-<h2>Kontak</h2>
-<p>Pertanyaan mengenai data pribadi dapat disampaikan melalui WhatsApp resmi Ragil Aluminium yang tercantum pada halaman Kontak.</p>
+<p><strong>6. Kontak</strong></p>
+<p>Jika Anda memiliki pertanyaan terkait kebijakan privasi ini, silakan hubungi kami melalui WhatsApp resmi di bawah ini.</p>
 HTML,
         ]);
 
@@ -106,71 +86,119 @@ HTML,
             'heading' => 'Ketentuan Layanan',
             'published' => true,
             'body' => <<<'HTML'
-<p>Ketentuan berikut berlaku untuk seluruh pembelian jendela, pintu, dan bouven aluminium Ragil Aluminium melalui website ini. Dengan melanjutkan pemesanan, Anda dianggap telah membaca dan menyetujui ketentuan ini.</p>
+<p>Harap baca Ketentuan Layanan ini dengan saksama sebelum melakukan pemesanan melalui website Ragil Aluminium. Dengan membuat pesanan, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan yang berlaku.</p>
 
-<h2>1. Pemesanan</h2>
+<p><strong>1. Definisi</strong></p>
 <ul>
-<li>Pesanan dibuat melalui checkout website dengan data penerima yang benar dan dapat dihubungi.</li>
-<li>Setelah checkout, Anda menerima notifikasi WhatsApp berisi rincian produk, alamat, estimasi, dan total tagihan.</li>
-<li>Pesanan diproses setelah Anda mengonfirmasi rincian tersebut. Konfirmasi dilakukan dengan menekan tombol konfirmasi pada pesan WhatsApp atau membalas persetujuan.</li>
-<li>Kami berhak menunda pesanan bila data penerima tidak lengkap, nomor tidak aktif, atau alamat tidak dapat dijangkau ekspedisi.</li>
+<li><strong>Kami / Toko</strong> merujuk pada Ragil Aluminium sebagai penyedia produk dan layanan.</li>
+<li><strong>Anda / Pelanggan</strong> merujuk pada individu atau pihak yang melakukan pemesanan.</li>
+<li><strong>Produk</strong> mencakup jendela, pintu, bouven, serta kelengkapan terkait yang ditawarkan di website.</li>
+<li><strong>Website</strong> merujuk pada situs resmi Ragil Aluminium yang digunakan untuk pemesanan.</li>
 </ul>
 
-<h2>2. Ukuran custom</h2>
+<p><strong>2. Pemesanan</strong></p>
 <ul>
-<li>Ukuran ditulis dalam format Tinggi x Panjang dalam sentimeter.</li>
-<li>Permintaan ukuran custom wajib dicantumkan pada catatan pesanan atau disampaikan saat konfirmasi WhatsApp.</li>
-<li>Toleransi produksi wajar sebesar lebih kurang satu sentimeter dapat terjadi karena proses pemotongan dan perakitan aluminium.</li>
-<li>Produk custom dibuat khusus sesuai permintaan Anda sehingga tidak dapat dibatalkan setelah produksi berjalan.</li>
+<li>Pesanan dilakukan melalui website dengan mengisi data penerima secara lengkap, benar, dan dapat dihubungi.</li>
+<li>Setelah pesanan dibuat, detail pesanan akan dikonfirmasi melalui WhatsApp resmi sebelum diproses.</li>
+<li>Pesanan diproses setelah kedua pihak menyetujui rincian produk, ukuran, alamat, dan total pembayaran.</li>
+<li>Kami berhak menunda atau membatalkan pesanan apabila data tidak lengkap, nomor tidak aktif, alamat tidak dapat dijangkau, atau terdapat indikasi penyalahgunaan.</li>
 </ul>
 
-<h2>3. Harga dan pembayaran</h2>
+<p><strong>3. Produk dan Kesesuaian</strong></p>
 <ul>
-<li>Harga yang berlaku adalah harga yang tertera saat pesanan dibuat, sudah termasuk pengemasan standar.</li>
-<li>Metode pembayaran yang tersedia adalah COD atau bayar di tempat, dan transfer bank ke rekening resmi toko.</li>
-<li>Pada metode COD, pembeli menyiapkan pembayaran sesuai total tagihan saat barang diterima. Biaya penanganan COD, bila berlaku, ditampilkan di checkout.</li>
-<li>Pada metode transfer, pesanan diproses setelah bukti pembayaran diterima dan diverifikasi.</li>
-<li>Voucher atau subsidi ongkir berlaku sesuai syarat yang ditampilkan pada saat checkout dan tidak dapat diuangkan.</li>
+<li>Produk tersedia dalam berbagai ukuran, model, warna, dan jenis kaca sesuai ketersediaan.</li>
+<li>Ukuran yang tercantum pada katalog adalah ukuran total luar kusen, kecuali dinyatakan lain.</li>
+<li>Pelanggan bertanggung jawab memastikan ukuran dan spesifikasi yang dipesan sesuai kebutuhan lokasi pemasangan.</li>
+<li>Untuk ukuran atau model custom, konsultasi terlebih dahulu melalui WhatsApp resmi.</li>
+<li>Perbedaan tampilan warna akibat pencahayaan foto atau layar tidak dianggap sebagai cacat produk.</li>
 </ul>
 
-<h2>4. Produksi dan pengiriman</h2>
+<p><strong>4. Ukuran Custom</strong></p>
 <ul>
-<li>Waktu produksi dihitung setelah konfirmasi pesanan dan pembayaran, tergantung jumlah unit dan tingkat kesulitan model.</li>
-<li>Pengiriman dilakukan melalui J&amp;T Cargo atau mitra ekspedisi lain ke seluruh Indonesia.</li>
-<li>Estimasi tiba yang kami sampaikan bersifat perkiraan dari ekspedisi dan dapat berubah karena kondisi jalur, cuaca, atau kebijakan kurir.</li>
-<li>Nomor resi dikirim melalui WhatsApp dan dapat dipantau melalui menu Pesanan tanpa perlu masuk akun.</li>
-<li>Biaya bongkar, kuli angkut, atau akses khusus di lokasi penerima bukan bagian dari layanan pengiriman.</li>
+<li>Ukuran custom ditulis dalam format Tinggi x Panjang (cm) pada catatan pesanan atau saat konfirmasi WhatsApp.</li>
+<li>Produk custom diproduksi sesuai spesifikasi yang telah disepakati bersama.</li>
+<li>Toleransi produksi wajar dapat terjadi karena proses pemotongan dan perakitan.</li>
+<li>Setelah produksi custom dimulai, pesanan tidak dapat dibatalkan atau diubah kecuali atas kesepakatan tertulis kedua pihak.</li>
 </ul>
 
-<h2>5. Pemeriksaan barang saat diterima</h2>
+<p><strong>5. Harga dan Pembayaran</strong></p>
 <ul>
-<li>Periksa jumlah paket, kondisi kemasan, kaca, dan kelengkapan aksesoris saat barang diterima.</li>
-<li>Jika terdapat kerusakan akibat pengiriman, dokumentasikan dengan foto atau video kemasan dan produk, lalu laporkan melalui WhatsApp maksimal 2x24 jam sejak barang diterima.</li>
-<li>Laporan tanpa dokumentasi kondisi kemasan menyulitkan proses klaim ke ekspedisi dan dapat memperlambat penyelesaian.</li>
+<li>Harga yang berlaku adalah harga yang tertera pada saat pesanan dibuat, termasuk pengemasan standar kecuali dinyatakan lain.</li>
+<li>Metode pembayaran mengikuti opsi yang tersedia di website, termasuk transfer bank dan COD (bayar di tempat) bila diaktifkan.</li>
+<li>Untuk COD, pelanggan menyiapkan pembayaran sesuai total tagihan saat barang diterima. Biaya penanganan COD, bila ada, ditampilkan pada checkout.</li>
+<li>Untuk transfer bank, pesanan diproses setelah pembayaran diverifikasi.</li>
+<li>Voucher, promo, atau subsidi ongkir berlaku sesuai syarat yang ditampilkan pada saat checkout dan tidak dapat diuangkan.</li>
 </ul>
 
-<h2>6. Retur, penggantian, dan garansi</h2>
+<p><strong>6. Produksi dan Pengiriman</strong></p>
 <ul>
-<li>Penggantian atau perbaikan diberikan untuk kerusakan pengiriman dan kesalahan produksi dari pihak kami, misalnya ukuran tidak sesuai spesifikasi yang telah dikonfirmasi.</li>
-<li>Tidak termasuk garansi: kerusakan akibat pemasangan tidak sesuai panduan, benturan setelah diterima, modifikasi produk, atau keausan wajar pada karet dan aksesoris.</li>
-<li>Perbedaan tampilan warna karena pencahayaan foto tidak termasuk cacat produk.</li>
-<li>Proses klaim dimulai setelah dokumentasi lengkap diterima dan diverifikasi oleh tim kami.</li>
+<li>Pesanan diproses dan dikirim maksimal 1 (satu) hari kerja setelah konfirmasi, sesuai antrian produksi dan ketersediaan material.</li>
+<li>Hari Minggu dan hari libur nasional tidak dihitung sebagai hari kerja.</li>
+<li>Pengiriman dilakukan melalui mitra ekspedisi (termasuk J&amp;T Cargo) ke seluruh Indonesia.</li>
+<li>Estimasi waktu tiba bersifat perkiraan dari pihak ekspedisi dan dapat berubah karena kondisi jalur, cuaca, atau kebijakan kurir.</li>
+<li>Nomor resi dikirim melalui WhatsApp dan dapat dipantau melalui menu Pesanan di website.</li>
+<li>Biaya bongkar, kuli angkut, atau akses khusus di lokasi penerima bukan bagian dari layanan pengiriman standar.</li>
 </ul>
 
-<h2>7. Pemasangan</h2>
-<p>Produk dikirim siap pasang beserta aksesoris dan baut fisher. Kami menyediakan panduan pemasangan melalui WhatsApp. Pekerjaan pemasangan di lokasi dilakukan oleh tukang atau aplikator pembeli, kecuali disepakati lain secara tertulis.</p>
+<p><strong>7. Pemeriksaan Barang saat Diterima</strong></p>
+<ul>
+<li>Pelanggan wajib memeriksa jumlah paket, kondisi kemasan, kondisi produk, dan kelengkapan aksesoris saat barang diterima.</li>
+<li>Apabila terdapat kerusakan atau ketidaksesuaian, dokumentasikan dengan foto atau video kemasan dan produk, lalu laporkan melalui WhatsApp resmi.</li>
+<li>Laporan tanpa dokumentasi yang memadai dapat memperlambat proses verifikasi dan penyelesaian klaim.</li>
+</ul>
 
-<h2>8. Ketersediaan dan perubahan produk</h2>
-<p>Spesifikasi, varian, dan harga dapat berubah tanpa pemberitahuan terlebih dahulu. Perubahan tidak berlaku untuk pesanan yang sudah dikonfirmasi.</p>
+<p><strong>8. Garansi</strong></p>
+<ul>
+<li>Garansi berlaku apabila barang rusak saat diterima atau tidak sesuai dengan pesanan yang telah dikonfirmasi.</li>
+<li>Komplain wajib disertai foto atau video saat barang diterima.</li>
+<li>Garansi tidak mencakup kerusakan akibat pemasangan yang tidak sesuai panduan, benturan setelah diterima, modifikasi produk, atau keausan wajar pada aksesoris.</li>
+</ul>
 
-<h2>9. Hak kekayaan intelektual</h2>
-<p>Seluruh foto produk, deskripsi, dan materi pada website ini merupakan milik Ragil Aluminium dan tidak boleh digunakan untuk kepentingan komersial pihak lain tanpa izin.</p>
+<p><strong>9. Komplain, Penggantian, dan Pengembalian</strong></p>
+<ul>
+<li>Komplain diajukan maksimal 1 x 24 jam setelah barang diterima.</li>
+<li>Produk yang dikomplain tidak boleh dalam kondisi sudah dipasang atau digunakan, kecuali kerusakan sudah tampak sebelum pemasangan dan terdokumentasi.</li>
+<li>Apabila klaim dinyatakan valid, kami akan mengganti produk atau mengembalikan dana sesuai kesepakatan.</li>
+<li>Biaya pengiriman ulang atau penjemputan ditentukan berdasarkan hasil verifikasi dan kesepakatan bersama.</li>
+</ul>
 
-<h2>10. Komunikasi resmi</h2>
-<p>Komunikasi resmi hanya melalui nomor WhatsApp dan akun marketplace yang tercantum pada website ini. Kami tidak pernah meminta OTP, PIN, atau data perbankan Anda.</p>
+<p><strong>10. Pembatalan Pesanan</strong></p>
+<ul>
+<li>Pesanan yang telah dikonfirmasi dan masuk proses produksi tidak dapat dibatalkan secara sepihak.</li>
+<li>Untuk pesanan custom, pembatalan tidak dapat dilakukan setelah produksi dimulai.</li>
+<li>Pembatalan sebelum konfirmasi dapat diajukan melalui WhatsApp resmi dan akan ditinjau sesuai status pesanan.</li>
+</ul>
 
-<h2>11. Penyelesaian sengketa</h2>
-<p>Setiap perselisihan diselesaikan secara musyawarah terlebih dahulu. Bila tidak tercapai kesepakatan, penyelesaian dilakukan sesuai hukum yang berlaku di Indonesia.</p>
+<p><strong>11. Batasan Tanggung Jawab</strong></p>
+<ul>
+<li>Kami bertanggung jawab atas produk sesuai spesifikasi yang dikonfirmasi dan atas kerusakan yang terbukti terjadi sebelum atau selama pengiriman sesuai ketentuan klaim.</li>
+<li>Kami tidak bertanggung jawab atas kerugian tidak langsung, termasuk keterlambatan pemasangan di lokasi, biaya tukang, atau kerugian bisnis, sepanjang diizinkan oleh hukum yang berlaku.</li>
+<li>Tanggung jawab maksimal Kami terbatas pada nilai produk yang dipesan terkait klaim tersebut.</li>
+</ul>
+
+<p><strong>12. Kekayaan Intelektual</strong></p>
+<p>Seluruh konten pada website, termasuk foto produk, deskripsi, merek, dan materi visual, merupakan milik Ragil Aluminium atau pihak yang berwenang. Konten tersebut tidak boleh digunakan untuk kepentingan komersial pihak lain tanpa izin tertulis.</p>
+
+<p><strong>13. Komunikasi Resmi</strong></p>
+<ul>
+<li>Komunikasi resmi hanya dilakukan melalui website, nomor WhatsApp resmi, dan akun marketplace resmi yang tercantum di website.</li>
+<li>Kami tidak pernah meminta OTP, PIN, kata sandi, atau data perbankan pelanggan.</li>
+</ul>
+
+<p><strong>14. Perubahan Ketentuan</strong></p>
+<ul>
+<li>Ketentuan Layanan ini dapat diperbarui sewaktu-waktu untuk menyesuaikan proses layanan, mitra pengiriman, atau ketentuan hukum.</li>
+<li>Versi terbaru selalu tersedia pada halaman ini. Perubahan tidak mengurangi hak pelanggan atas pesanan yang telah dikonfirmasi, kecuali diwajibkan oleh hukum.</li>
+</ul>
+
+<p><strong>15. Hukum yang Berlaku dan Penyelesaian Sengketa</strong></p>
+<ul>
+<li>Ketentuan ini tunduk pada hukum Republik Indonesia.</li>
+<li>Setiap perselisihan diselesaikan terlebih dahulu secara musyawarah. Apabila tidak tercapai kesepakatan, penyelesaian dilakukan sesuai ketentuan hukum yang berlaku.</li>
+</ul>
+
+<p><strong>16. Kontak</strong></p>
+<p>Pertanyaan terkait Ketentuan Layanan ini dapat disampaikan melalui WhatsApp resmi Ragil Aluminium atau halaman Informasi Toko pada website ini.</p>
 HTML,
         ]);
 

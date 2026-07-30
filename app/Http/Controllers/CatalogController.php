@@ -215,12 +215,22 @@ class CatalogController extends Controller
             ));
         }
 
+        $isAllProductsListing = $category === null && ! $promoOnly && ! $flashOnly;
+        $popularProducts = [];
+        if (
+            $isAllProductsListing
+            && ! ($request->is('api/*') || $request->wantsJson())
+        ) {
+            $popularProducts = InertiaCatalog::popularProductCards(10);
+        }
+
         return Inertia::render('Public/Catalog', [
             'category' => $category ?? 'ALL',
             'categoryName' => $categoryName,
             'listingMode' => $flashOnly ? 'flash' : ($promoOnly ? 'promo' : 'catalog'),
-            'isAllProductsListing' => $category === null && ! $promoOnly && ! $flashOnly,
+            'isAllProductsListing' => $isAllProductsListing,
             'products' => $productCards,
+            'popularProducts' => $popularProducts,
             'youMightLike' => $youMightLike,
             'flashSaleSpotlight' => $flashSaleSpotlight,
             'flashSalePeriod' => FlashSalePeriodSettings::publicState(),
@@ -312,6 +322,7 @@ class CatalogController extends Controller
 
         return Inertia::render('Public/ModelProduk', [
             'models' => app(ModelProductService::class)->storefrontCards(0, $design),
+            'popularProducts' => InertiaCatalog::popularProductCards(10),
             'filterDesigns' => CatalogTaxonomy::availableDesignFilters(),
             'activeDesign' => $design,
         ]);

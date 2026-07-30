@@ -151,6 +151,7 @@ class ProductController extends Controller
             ])->values()->all(),
             'reviews' => CmsTestimonial::query()
                 ->published()
+                ->website()
                 ->forProduct($product->id)
                 ->with('product:id,parent_sku,name,short_name')
                 ->orderBy('sort_order')

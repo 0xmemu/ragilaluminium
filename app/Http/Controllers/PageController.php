@@ -27,6 +27,38 @@ class PageController extends Controller
         $heading = '';
         $body = '<p>Konten belum tersedia.</p>';
 
+        $updatedAt = null;
+        if ($page) {
+            $content = is_array($page->content) ? $page->content : [];
+            $heading = trim((string) ($content['heading'] ?? ''));
+            $raw = is_array($page->content)
+                ? (string) ($content['html'] ?? $content['body'] ?? '')
+                : (is_string($page->content) ? $page->content : '');
+            if ($raw !== '') {
+                $body = CmsDocumentSettings::bodyToHtml($raw);
+            }
+            $updatedAt = optional($page->updated_at)?->timezone(config('app.timezone'))->translatedFormat('d F Y');
+        }
+
+        return Inertia::render('Public/CmsPage', [
+            'page' => [
+                'title' => $title,
+                'heading' => $heading,
+                'body' => $body,
+                'slug' => $slug,
+                'updated_at_label' => $updatedAt,
+            ],
+        ]);
+    }
+
+    public function about(): Response
+    {
+        $page = CmsPage::where('slug', 'tentang-kami')->published()->first();
+
+        $title = $page?->title ?? 'Informasi Toko';
+        $heading = '';
+        $body = '';
+
         if ($page) {
             $content = is_array($page->content) ? $page->content : [];
             $heading = trim((string) ($content['heading'] ?? ''));
@@ -38,19 +70,13 @@ class PageController extends Controller
             }
         }
 
-        return Inertia::render('Public/CmsPage', [
+        return Inertia::render('Public/InformasiToko', [
             'page' => [
                 'title' => $title,
                 'heading' => $heading,
                 'body' => $body,
-                'slug' => $slug,
             ],
         ]);
-    }
-
-    public function about(): Response
-    {
-        return $this->showPage('tentang-kami');
     }
 
     public function faq(): Response
@@ -102,43 +128,69 @@ class PageController extends Controller
         $totalCount = (clone $published)->count();
         $avgRating = (clone $published)->whereNotNull('rating')->avg('rating');
 
-        $filtered = (clone $published)
-            ->when(
-                $sourceFilter === 'marketplace',
-                fn ($q) => $q->whereIn('source', ['shopee', 'whatsapp', 'other'])
-            )
-            ->when(
-                $sourceFilter === 'website',
-                fn ($q) => $q->where('source', 'website')
-            );
+        $applySort = function ($query) use ($sort) {
+            return $query
+                ->when($sort === 'rating_desc', fn ($q) => $q->orderByDesc('rating')->orderByDesc('id'))
+                ->when($sort === 'rating_asc', fn ($q) => $q->orderByRaw('rating is null')->orderBy('rating')->orderByDesc('id'))
+                ->when($sort === 'oldest', fn ($q) => $q->orderBy('sort_order')->orderBy('id'))
+                ->when(
+                    ! in_array($sort, ['rating_desc', 'rating_asc', 'oldest'], true),
+                    fn ($q) => $q->orderBy('sort_order')->orderByDesc('id')
+                );
+        };
 
-        $paginator = $filtered
-            ->with('product:id,parent_sku,name,short_name')
-            ->when($sort === 'rating_desc', fn ($q) => $q->orderByDesc('rating')->orderByDesc('id'))
-            ->when($sort === 'rating_asc', fn ($q) => $q->orderByRaw('rating is null')->orderBy('rating')->orderByDesc('id'))
-            ->when($sort === 'oldest', fn ($q) => $q->orderBy('sort_order')->orderBy('id'))
-            ->when(
-                ! in_array($sort, ['rating_desc', 'rating_asc', 'oldest'], true),
-                fn ($q) => $q->orderBy('sort_order')->orderByDesc('id')
-            )
-            ->paginate(12)
-            ->withQueryString();
-
-        $testimonials = $paginator->getCollection()
+        $mapRows = fn ($collection) => $collection
             ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
             ->values()
             ->all();
 
-        return Inertia::render('Public/Reviews', [
-            'pageMeta' => TestimonialPageSettings::forStorefront(),
-            'testimonials' => $testimonials,
-            'pagination' => [
+        $marketplaceTestimonials = [];
+        $websiteTestimonials = [];
+        $testimonials = [];
+        $pagination = null;
+
+        if ($sourceFilter === 'all') {
+            $marketplaceTestimonials = $mapRows(
+                $applySort((clone $published)->marketplace()->with('product:id,parent_sku,name,short_name'))
+                    ->limit(24)
+                    ->get()
+            );
+            $websiteTestimonials = $mapRows(
+                $applySort((clone $published)->website()->with('product:id,parent_sku,name,short_name'))
+                    ->limit(24)
+                    ->get()
+            );
+        } else {
+            $filtered = (clone $published)
+                ->when($sourceFilter === 'marketplace', fn ($q) => $q->marketplace())
+                ->when($sourceFilter === 'website', fn ($q) => $q->website());
+
+            $paginator = $applySort($filtered->with('product:id,parent_sku,name,short_name'))
+                ->paginate(12)
+                ->withQueryString();
+
+            $testimonials = $mapRows($paginator->getCollection());
+            $pagination = [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'links' => $paginator->linkCollection()->toArray(),
-            ],
+            ];
+
+            if ($sourceFilter === 'marketplace') {
+                $marketplaceTestimonials = $testimonials;
+            } else {
+                $websiteTestimonials = $testimonials;
+            }
+        }
+
+        return Inertia::render('Public/Reviews', [
+            'pageMeta' => TestimonialPageSettings::forStorefront(),
+            'marketplaceTestimonials' => $marketplaceTestimonials,
+            'websiteTestimonials' => $websiteTestimonials,
+            'testimonials' => $testimonials,
+            'pagination' => $pagination,
             'stats' => [
                 'total' => $totalCount,
                 'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,

@@ -71,24 +71,40 @@ class ShippingStatusTest extends \Tests\TestCase
         $this->assertEquals('raw', $record->fresh()->status_raw);
     }
 
-    public function test_webhook_applies_update_when_jnt_disabled(): void
+    public function test_webhook_applies_signed_update_when_jnt_disabled(): void
     {
-        config(['jnt.enabled' => false]);
+        config([
+            'jnt.enabled' => false,
+            'jnt.webhook.private_key' => 'webhook-secret',
+        ]);
         $order = $this->makeOrder();
         ShippingRecord::create([
             'order_id' => $order->id, 'carrier_name' => 'J&T Cargo', 'waybill_number' => 'JT200',
             'shipping_cost' => 0, 'status' => 'pending_pickup',
         ]);
 
-        $this->postJson('/webhook/shipping/jnt', [
-            'bizContent' => json_encode([
-                'billCode' => 'JT200',
-                'details' => [
-                    ['scanType' => '10', 'scanTypeCode' => '100', 'desc' => 'Paket diterima', 'scanTime' => '2026-01-01 10:00:00'],
-                ],
-            ]),
-        ])->assertOk();
+        $bizContent = json_encode([
+            'billCode' => 'JT200',
+            'details' => [
+                ['scanType' => '10', 'scanTypeCode' => '100', 'desc' => 'Paket diterima', 'scanTime' => '2026-01-01 10:00:00'],
+            ],
+        ]);
+        $digest = base64_encode(md5($bizContent.'webhook-secret', true));
+
+        $this->withHeader('digest', $digest)
+            ->post('/webhook/shipping/jnt', ['bizContent' => $bizContent])
+            ->assertOk()
+            ->assertJsonPath('code', config('jnt.ack.code'));
 
         $this->assertEquals('delivered', $order->fresh()->order_status);
+    }
+
+    public function test_webhook_rejects_request_when_signing_key_is_missing(): void
+    {
+        config(['jnt.webhook.private_key' => null]);
+
+        $this->post('/webhook/shipping/jnt', ['bizContent' => '{}'])
+            ->assertOk()
+            ->assertJsonPath('code', '0');
     }
 }

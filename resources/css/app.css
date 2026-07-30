@@ -202,28 +202,26 @@
   }
 
   .cms-content {
-    @apply text-base leading-8 text-foreground;
+    @apply text-base font-normal leading-7 text-foreground;
   }
 
   .cms-content > * + * {
-    margin-top: 1.25rem;
+    margin-top: 1rem;
   }
 
-  .cms-content h2 {
-    margin-top: 2.75rem;
-    font-size: clamp(1.75rem, 3vw, 2.35rem);
-    line-height: 1.15;
+  .cms-content p strong {
+    @apply font-bold text-foreground;
   }
 
+  .cms-content h2,
   .cms-content h3 {
-    margin-top: 2rem;
-    font-size: 1.35rem;
-    line-height: 1.25;
+    @apply text-base font-bold leading-7 tracking-tight text-foreground;
+    margin-top: 1.75rem;
   }
 
   .cms-content ul,
   .cms-content ol {
-    padding-left: 1.35rem;
+    padding-left: 1.25rem;
   }
 
   .cms-content ul {
@@ -232,6 +230,15 @@
 
   .cms-content ol {
     list-style: decimal;
+  }
+
+  .cms-content li + li {
+    margin-top: 0.35rem;
+  }
+
+  .cms-content ul ul,
+  .cms-content ol ul {
+    margin-top: 0.5rem;
   }
 
   .cms-content a {
@@ -266,6 +273,53 @@
 
   .scrollbar-none::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Thin horizontal slider for public carousels (always visible when overflowing). */
+  .scrollbar-x {
+    scrollbar-width: auto;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted));
+  }
+
+  .scrollbar-x::-webkit-scrollbar {
+    height: 10px;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-track {
+    margin-inline: 0.25rem;
+    background: hsl(var(--muted));
+    border-radius: 999px;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.4);
+    border-radius: 999px;
+    border: 2px solid hsl(var(--muted));
+    background-clip: padding-box;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.6);
+    border: 2px solid hsl(var(--muted));
+    background-clip: padding-box;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--foreground) / 0.5);
+    border: 2px solid hsl(var(--muted));
+    background-clip: padding-box;
+  }
+
+  /* Desktop carousel: hide slider, use next/back arrows instead. */
+  @media (min-width: 768px) {
+    .scrollbar-x {
+      scrollbar-width: none;
+    }
+
+    .scrollbar-x::-webkit-scrollbar {
+      display: none;
+      height: 0;
+    }
   }
 
   .safe-bottom {

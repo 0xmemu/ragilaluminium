@@ -256,10 +256,11 @@ return [
         ],
 
         /*
-        | Drawer utama (mobile + desktop). Hanya route implemented.
+        | Drawer mobile — dipisah per grup IA (produk vs informasi/bantuan).
         | Model submenu berasal dari CatalogTaxonomy::modelCards() di Inertia share.
+        | `hamburger` digabung di HandleInertiaRequests untuk kompatibilitas.
         */
-        'hamburger' => [
+        'hamburger_product' => [
             [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
@@ -291,6 +292,21 @@ return [
                 'icon' => 'star',
                 'active' => ['reviews'],
             ],
+        ],
+
+        'hamburger_info' => [
+            [
+                'label' => 'Lacak Pengiriman',
+                'route' => 'order.status',
+                'icon' => 'truck',
+                'active' => ['order.status', 'order.status.lookup'],
+            ],
+            [
+                'label' => 'Konsultasi Gratis',
+                'route' => 'contact',
+                'icon' => 'headset',
+                'active' => ['contact'],
+            ],
             [
                 'label' => 'Cara Pemesanan',
                 'route' => 'cara-pemesanan',
@@ -314,18 +330,6 @@ return [
                 'route' => 'about',
                 'icon' => 'storefront',
                 'active' => ['about'],
-            ],
-            [
-                'label' => 'Lacak Pengiriman',
-                'route' => 'order.status',
-                'icon' => 'truck',
-                'active' => ['order.status', 'order.status.lookup'],
-            ],
-            [
-                'label' => 'Konsultasi Gratis',
-                'route' => 'contact',
-                'icon' => 'headset',
-                'active' => ['contact'],
             ],
         ],
 

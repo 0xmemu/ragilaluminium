@@ -751,9 +751,11 @@ Manual customer reviews (often copied from Shopee/WhatsApp) for the public store
   - Set → shown on that product’s PDP **Ulasan** tab (Stage 10 filter by product ID)
   - Null → general testimonial on `/reviews` only
 - `customer_name` (varchar)
-- `message` (text)
+- `message` (text, **nullable**) — boleh kosong jika `image_url` terisi (screenshot murni / admin-added WA SS)
 - `rating` (tinyint 1–5, nullable)
 - `source` (varchar: `shopee`, `whatsapp`, `website`, `other`)
+  - `shopee` / `whatsapp` / `other` → section **Apa kata pelanggan kami**
+  - `website` → section **Ulasan pelanggan di website** (+ PDP tab ulasan bila `product_id` set)
 - `location` (varchar, nullable)
 - `image_url` (varchar, nullable)
 - `published` (boolean)

@@ -43,6 +43,7 @@ class KetentuanLayananAdminTest extends TestCase
                 ->component('Public/CmsPage')
                 ->where('page.heading', 'Syarat & Ketentuan')
                 ->where('page.slug', 'ketentuan-layanan')
-                ->where('page.body', '<p>Pesanan diproses setelah konfirmasi.</p>'));
+                ->where('page.body', '<p>Pesanan diproses setelah konfirmasi.</p>')
+                ->has('page.updated_at_label'));
     }
 }

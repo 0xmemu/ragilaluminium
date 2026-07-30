@@ -118,9 +118,18 @@ interface TopEngagedProductsData {
   items: TopEngagedProduct[]
 }
 
+interface JntReadiness {
+  provider_label: string
+  environment: string
+  enabled_flag: boolean
+  client_ready: boolean
+  missing: string[]
+}
+
 interface DashboardProps {
   greetingName: string
   todayLabel: string
+  jntReadiness: JntReadiness
   omzet: OmzetData
   performa: PerformaData
   statusOrder: StatusOrderItem[]
@@ -262,6 +271,7 @@ function Sparkline({ values }: { values: number[] }) {
 export default function Dashboard({
   greetingName,
   todayLabel,
+  jntReadiness,
   omzet,
   performa,
   statusOrder = [],
@@ -425,6 +435,26 @@ export default function Dashboard({
               </Link>
             ))}
           </div>
+        </section>
+
+        <section className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", jntReadiness.client_ready ? "bg-success/10 text-success" : "bg-warning/10 text-warning")}>
+                <Icon name="truck" className="size-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold">{jntReadiness.provider_label}</h2>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {jntReadiness.client_ready ? "Terhubung · " + jntReadiness.environment : "Belum siap · " + jntReadiness.missing.length + " konfigurasi perlu dilengkapi"}
+                </p>
+              </div>
+            </div>
+            <Link href={routeUrl("admin.settings.index")} className="text-xs font-semibold text-primary hover:underline">Periksa konfigurasi</Link>
+          </div>
+          {!jntReadiness.client_ready && jntReadiness.missing.length ? (
+            <p className="mt-3 rounded-lg bg-surface-muted px-3 py-2 text-[10px] leading-4 text-muted-foreground">Belum lengkap: {jntReadiness.missing.join(", ")}</p>
+          ) : null}
         </section>
 
         {/* Row 3 — Perlu Perhatian | Produk paling dilihat | Aksi Cepat */}

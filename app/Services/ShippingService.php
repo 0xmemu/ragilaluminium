@@ -120,7 +120,7 @@ class ShippingService
             $this->logEvent('shipping.create_failed', $order, [
                 'request_id' => $resp->requestId,
                 'message' => $resp->message(),
-                'body' => $resp->data,
+                'http_status' => $resp->httpStatus,
             ]);
 
             throw new \RuntimeException('Gagal membuat resi J&T: '.($resp->message() ?? 'unknown error'));

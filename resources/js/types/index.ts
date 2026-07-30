@@ -62,6 +62,8 @@ export interface ModelMenuItem {
 export interface PublicNavigation {
   mobile_bottom?: RouteNavItem[]
   hamburger?: RouteNavItem[]
+  hamburger_product?: RouteNavItem[]
+  hamburger_info?: RouteNavItem[]
   hamburger_footer?: RouteNavItem[]
   hamburger_copyright?: string
   desktop_main?: RouteNavItem[]
@@ -120,6 +122,8 @@ export interface ConsultationWhatsAppConfig {
   phoneLabel: string
   phoneHint: string
   submitLabel: string
+  /** Nomor WA otomasi (sama dengan brand.phone di storefront). */
+  phone: string
 }
 
 export interface FlashSalePeriod {
@@ -257,7 +261,7 @@ export interface InstallationItem {
 export interface Testimonial {
   id: number
   customer_name: string
-  message: string
+  message?: string | null
   rating?: number | null
   source?: string | null
   location?: string | null

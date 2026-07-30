@@ -81,4 +81,33 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
                 ->has('consultationWhatsApp.directUrl')
                 ->where('consultationWhatsApp.submitLabel', 'Konsultasi'));
     }
+
+    public function test_storefront_brand_phone_follows_whatsapp_business_phone(): void
+    {
+        config([
+            'services.whatsapp.business_phone' => '6281776370707',
+            'sitemap.brand.phone' => '+62 851-9966-6810',
+        ]);
+
+        $this->get(route('about'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Public/InformasiToko')
+                ->where('brand.phone', '+62 817-7637-0707')
+                ->where('consultationWhatsApp.phone', '+62 817-7637-0707')
+                ->where('consultationWhatsApp.directUrl', fn ($url) => is_string($url) && str_starts_with($url, 'https://wa.me/6281776370707')));
+    }
+
+    public function test_storefront_brand_phone_falls_back_to_sitemap_when_whatsapp_unset(): void
+    {
+        config([
+            'services.whatsapp.business_phone' => null,
+            'sitemap.brand.phone' => '+62 851-9966-6810',
+        ]);
+
+        $this->get(route('about'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('brand.phone', '+62 851-9966-6810'));
+    }
 }
