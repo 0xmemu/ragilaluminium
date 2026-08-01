@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +24,16 @@ class RetryDeferredWhatsAppMessage implements ShouldQueue
     /** @var list<int> */
     public array $backoff = [60, 300, 900, 3600, 7200];
 
-    public function __construct(public int $messageId) {}
+    public function __construct(public int $messageId)
+    {
+        $this->onQueue('default');
+    }
+
+    /** @return list<object> */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping("whatsapp-message:{$this->messageId}"))->expireAfter(600)];
+    }
 
     public function handle(WhatsAppManager $manager): void
     {
@@ -54,6 +64,10 @@ class RetryDeferredWhatsAppMessage implements ShouldQueue
 
         $driver = $manager->waha();
         if (! $driver->configured()) {
+            $message->update([
+                'status' => 'failed',
+                'error_reason' => 'WAHA belum dikonfigurasi saat retry.',
+            ]);
             Log::warning('RetryDeferredWhatsAppMessage: WAHA not configured', ['id' => $message->id]);
 
             return;
@@ -77,7 +91,11 @@ class RetryDeferredWhatsAppMessage implements ShouldQueue
         ]);
 
         if (($result['status'] ?? '') === 'deferred') {
-            $this->release($this->backoff[min($this->attempts() - 1, count($this->backoff) - 1)]);
+            $reason = strtolower((string) ($result['error_reason'] ?? ''));
+            $delay = str_contains($reason, '463') || str_contains($reason, 'timelock')
+                ? 3600
+                : $this->backoff[min($this->attempts() - 1, count($this->backoff) - 1)];
+            $this->release($delay);
         }
     }
 }

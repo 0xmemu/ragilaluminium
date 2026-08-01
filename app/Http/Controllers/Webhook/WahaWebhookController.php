@@ -31,17 +31,7 @@ class WahaWebhookController extends Controller
     {
         $secret = (string) config('services.whatsapp.waha.hmac_secret', '');
         if ($secret === '') {
-            // Dev fallback: optional shared secret query/header (not for production).
-            $legacy = (string) config('services.whatsapp.waha.webhook_secret', '');
-            if ($legacy === '') {
-                return true;
-            }
-
-            $provided = $request->header('X-Webhook-Secret')
-                ?? $request->header('X-WAHA-Secret')
-                ?? $request->query('secret');
-
-            return is_string($provided) && hash_equals($legacy, $provided);
+            return false;
         }
 
         $header = $request->header('X-Webhook-Hmac', '');
@@ -49,9 +39,12 @@ class WahaWebhookController extends Controller
             return false;
         }
 
-        $algorithm = strtolower((string) $request->header('X-Webhook-Hmac-Algorithm', 'sha512'));
-        $algo = $algorithm === 'sha256' ? 'sha256' : 'sha512';
-        $expected = hash_hmac($algo, $request->getContent(), $secret);
+        $algorithm = strtolower((string) $request->header('X-Webhook-Hmac-Algorithm', ''));
+        if ($algorithm !== 'sha512') {
+            return false;
+        }
+
+        $expected = hash_hmac('sha512', $request->getContent(), $secret);
 
         return hash_equals($expected, $header);
     }

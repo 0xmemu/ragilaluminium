@@ -9,6 +9,7 @@ use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
 use App\Services\WhatsApp\WhatsAppManager;
 use App\Support\PhoneNumber;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
@@ -28,17 +29,7 @@ class WhatsAppService
         $phone = PhoneNumber::normalize($phone) ?? $phone;
         $driverName = $this->manager->defaultDriver();
 
-        if ($orderId !== null && $this->alreadySent($orderId, $internalKey, $driverName)) {
-            return WhatsAppMessage::query()
-                ->where('order_id', $orderId)
-                ->where('internal_template_key', $internalKey)
-                ->where('provider', $driverName)
-                ->whereIn('status', ['pending', 'sent', 'delivered', 'read', 'deferred'])
-                ->latest('id')
-                ->first();
-        }
-
-        return $this->dispatchTemplateMessage(
+        $dispatch = fn () => $this->dispatchTemplateMessage(
             $driverName,
             $template,
             $phone,
@@ -47,6 +38,31 @@ class WhatsAppService
             $orderId,
             true,
         );
+
+        if ($orderId === null) {
+            return $dispatch();
+        }
+
+        $lockKey = "whatsapp:send:{$driverName}:{$orderId}:{$internalKey}";
+
+        return Cache::lock($lockKey, 60)->block(10, function () use (
+            $orderId,
+            $internalKey,
+            $driverName,
+            $dispatch,
+        ) {
+            if (! $this->alreadySent($orderId, $internalKey, $driverName)) {
+                return $dispatch();
+            }
+
+            return WhatsAppMessage::query()
+                ->where('order_id', $orderId)
+                ->where('internal_template_key', $internalKey)
+                ->where('provider', $driverName)
+                ->whereIn('status', ['pending', 'sent', 'delivered', 'read', 'deferred', 'failed'])
+                ->latest('id')
+                ->first();
+        });
     }
 
     public function sendTextMessage(string $phone, string $text, ?int $orderId = null): ?WhatsAppMessage
@@ -67,7 +83,10 @@ class WhatsAppService
         ]);
 
         if (! $driver->configured()) {
-            $message->update(['status' => 'sent', 'sent_at' => now()]);
+            $message->update([
+                'status' => 'failed',
+                'error_reason' => "Driver {$driverName} belum dikonfigurasi.",
+            ]);
 
             return $message;
         }
@@ -215,7 +234,10 @@ class WhatsAppService
 
         if (! $driver->configured()) {
             if ($degradeWhenUnconfigured) {
-                $message->update(['status' => 'sent', 'sent_at' => now()]);
+                $message->update([
+                    'status' => 'failed',
+                    'error_reason' => "Driver {$provider} belum dikonfigurasi.",
+                ]);
 
                 return $message;
             }
@@ -326,7 +348,7 @@ class WhatsAppService
             ->where('order_id', $orderId)
             ->where('internal_template_key', $internalKey)
             ->where('provider', $provider)
-            ->whereIn('status', ['pending', 'sent', 'delivered', 'read', 'deferred'])
+            ->whereIn('status', ['pending', 'sent', 'delivered', 'read', 'deferred', 'failed'])
             ->exists();
     }
 

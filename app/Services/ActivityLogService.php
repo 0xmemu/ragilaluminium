@@ -223,6 +223,12 @@ class ActivityLogService
                 'Otomasi WhatsApp dinonaktifkan%s',
                 isset($payload['internal_key']) ? ': '.$payload['internal_key'] : ''
             ),
+            'whatsapp.session_attention_required' => sprintf(
+                'Sesi WAHA memerlukan perhatian: %s',
+                $payload['status'] ?? 'UNKNOWN'
+            ),
+            'whatsapp.session_working' => 'Sesi WAHA kembali siap digunakan',
+            'whatsapp.timelock_detected' => 'WAHA Reachout Timelock aktif; pengiriman ditunda otomatis',
             'cms.model_product_created' => sprintf(
                 'Model produk ditambahkan%s',
                 isset($payload['name']) ? ': '.$payload['name'] : ''
@@ -303,6 +309,9 @@ class ActivityLogService
         }
         if ($log->entity_type === 'whatsapp_template' && $log->entity_id) {
             return route('admin.whatsapp.templates.edit', $log->entity_id);
+        }
+        if ($log->entity_type === 'whatsapp_session') {
+            return route('admin.whatsapp.connection');
         }
         if ($log->entity_type === 'cms_model_product' && $log->entity_id) {
             return route('admin.model-products.edit', $log->entity_id);

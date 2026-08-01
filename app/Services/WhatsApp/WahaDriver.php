@@ -2,10 +2,15 @@
 
 namespace App\Services\WhatsApp;
 
+use App\Services\ActivityLogService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Throwable;
 
 /**
  * WAHA REST client (GOWS/NOWEB). Anti-ban flow per waha.devlike.pro "How to Avoid Blocking".
@@ -24,7 +29,8 @@ class WahaDriver implements WhatsAppDriver
     public function configured(): bool
     {
         return filled(config('services.whatsapp.waha.base_url'))
-            && filled(config('services.whatsapp.waha.api_key'));
+            && filled(config('services.whatsapp.waha.api_key'))
+            && filled(config('services.whatsapp.waha.hmac_secret'));
     }
 
     public function sendText(string $phone, string $text): array
@@ -48,10 +54,13 @@ class WahaDriver implements WhatsAppDriver
             return $this->deferredResult('Reachout timelock aktif; tunda kirim gambar.');
         }
 
-        $chatId = $this->checkExists($phone);
-        if ($chatId === null) {
-            return $this->failResult('Nomor tidak terdaftar WhatsApp.', ['phone' => $phone]);
+        $recipient = $this->resolveRecipient($phone);
+        if ($recipient['chat_id'] === null) {
+            return $recipient['retryable']
+                ? $this->deferredResult($recipient['reason'], $recipient['raw'])
+                : $this->failResult($recipient['reason'], $recipient['raw']);
         }
+        $chatId = $recipient['chat_id'];
 
         if (! $this->acquireRateSlot()) {
             return $this->deferredResult('Rate limit WAHA (~8 pesan/menit).');
@@ -72,46 +81,66 @@ class WahaDriver implements WhatsAppDriver
 
     public function checkExists(string $phone): ?string
     {
+        return $this->resolveRecipient($phone)['chat_id'];
+    }
+
+    /**
+     * @return array{chat_id: ?string, retryable: bool, reason: string, raw: mixed}
+     */
+    protected function resolveRecipient(string $phone): array
+    {
         $phone = preg_replace('/\D+/', '', $phone) ?? $phone;
         $cacheKey = 'waha.chat_id.'.$phone;
         $cached = Cache::get($cacheKey);
         if (is_string($cached) && $cached !== '') {
-            return $cached;
+            return ['chat_id' => $cached, 'retryable' => false, 'reason' => '', 'raw' => null];
         }
 
         try {
-            $response = $this->client()
-                ->get('/api/contacts/check-exists', [
-                    'phone' => $phone,
-                    'session' => $this->session(),
-                ]);
+            $response = $this->client()->get('/api/contacts/check-exists', [
+                'phone' => $phone,
+                'session' => $this->session(),
+            ]);
 
             if (! $response->successful()) {
                 Log::warning('WAHA check-exists failed', [
                     'phone' => $phone,
                     'status' => $response->status(),
-                    'body' => $response->body(),
                 ]);
 
-                return null;
+                return [
+                    'chat_id' => null,
+                    'retryable' => true,
+                    'reason' => 'WAHA belum dapat memvalidasi nomor; coba lagi nanti.',
+                    'raw' => $response->json() ?: ['status' => $response->status()],
+                ];
             }
 
-            $exists = (bool) ($response->json('numberExists') ?? false);
-            if (! $exists) {
-                return null;
+            if (! (bool) ($response->json('numberExists') ?? false)) {
+                return [
+                    'chat_id' => null,
+                    'retryable' => false,
+                    'reason' => 'Nomor tidak terdaftar WhatsApp.',
+                    'raw' => ['phone' => $phone, 'numberExists' => false],
+                ];
             }
 
-            $chatId = $this->normalizeChatId(
-                (string) ($response->json('chatId') ?? ($phone.'@c.us'))
-            );
-
+            $chatId = $this->normalizeChatId((string) ($response->json('chatId') ?? ($phone.'@c.us')));
             Cache::put($cacheKey, $chatId, now()->addDays(7));
 
-            return $chatId;
-        } catch (\Throwable $e) {
-            Log::warning('WAHA check-exists exception', ['phone' => $phone, 'error' => $e->getMessage()]);
+            return ['chat_id' => $chatId, 'retryable' => false, 'reason' => '', 'raw' => null];
+        } catch (Throwable $e) {
+            Log::warning('WAHA check-exists exception', [
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]);
 
-            return null;
+            return [
+                'chat_id' => null,
+                'retryable' => true,
+                'reason' => 'WAHA tidak dapat dihubungi saat memvalidasi nomor.',
+                'raw' => ['exception' => $e::class],
+            ];
         }
     }
 
@@ -158,10 +187,13 @@ class WahaDriver implements WhatsAppDriver
             return $this->deferredResult('Reachout timelock aktif; jangan logout/restart sesi.');
         }
 
-        $chatId = $this->checkExists($phone);
-        if ($chatId === null) {
-            return $this->failResult('Nomor tidak terdaftar WhatsApp.', ['phone' => $phone]);
+        $recipient = $this->resolveRecipient($phone);
+        if ($recipient['chat_id'] === null) {
+            return $recipient['retryable']
+                ? $this->deferredResult($recipient['reason'], $recipient['raw'])
+                : $this->failResult($recipient['reason'], $recipient['raw']);
         }
+        $chatId = $recipient['chat_id'];
 
         if (! $this->acquireRateSlot()) {
             return $this->deferredResult('Rate limit WAHA (~8 pesan/menit).');
@@ -171,9 +203,7 @@ class WahaDriver implements WhatsAppDriver
             $this->sendSeen($chatId);
         }
 
-        $this->startTyping($chatId);
-        $this->humanDelay(strlen($text));
-        $this->stopTyping($chatId);
+        $this->withTyping($chatId, strlen($text));
 
         $result = $this->postJson('/api/sendText', [
             'session' => $this->session(),
@@ -222,6 +252,7 @@ class WahaDriver implements WhatsAppDriver
 
     public function rememberSessionStatus(string $status, mixed $data = null): void
     {
+        $previous = $this->sessionStatus();
         Cache::put(self::CACHE_SESSION_STATUS, $status, now()->addDays(7));
         Cache::put(self::CACHE_SESSION_STATUS.'.data', $data, now()->addDays(7));
 
@@ -231,6 +262,9 @@ class WahaDriver implements WhatsAppDriver
                 'session' => $this->session(),
                 'data' => $data,
             ]);
+            if ($previous !== $status) {
+                $this->recordSessionEvent('whatsapp.session_attention_required', $status);
+            }
         }
 
         if ($status === 'WORKING' && is_array($data) && $this->dataLooksLikeTimelock($data)) {
@@ -238,6 +272,29 @@ class WahaDriver implements WhatsAppDriver
             Log::warning('WAHA reachout timelock detected via session.status', [
                 'session' => $this->session(),
                 'data' => $data,
+            ]);
+            $this->recordSessionEvent('whatsapp.timelock_detected', $status);
+        } elseif ($status === 'WORKING') {
+            Cache::forget(self::CACHE_TIMELOCK);
+            if ($previous !== 'WORKING') {
+                $this->recordSessionEvent('whatsapp.session_working', $status);
+            }
+        }
+    }
+
+    protected function recordSessionEvent(string $eventType, string $status): void
+    {
+        try {
+            ActivityLogService::record(
+                $eventType,
+                'whatsapp_session',
+                0,
+                ['status' => $status, 'session' => $this->session()],
+            );
+        } catch (Throwable $e) {
+            Log::warning('WAHA session activity log failed', [
+                'event' => $eventType,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -272,6 +329,17 @@ class WahaDriver implements WhatsAppDriver
         usleep((int) round($total * 1_000_000));
     }
 
+    protected function withTyping(string $chatId, int $contentLength): void
+    {
+        $this->startTyping($chatId);
+
+        try {
+            $this->humanDelay(max(1, $contentLength));
+        } finally {
+            $this->stopTyping($chatId);
+        }
+    }
+
     protected function acquireRateSlot(): bool
     {
         $key = 'waha-send:'.$this->session();
@@ -297,13 +365,16 @@ class WahaDriver implements WhatsAppDriver
             $response = $this->client()
                 ->post($path, $payload);
 
+            $retryable = $response->status() === 408
+                || $response->status() === 429
+                || $response->serverError();
             $result = [
                 'successful' => $response->successful(),
                 'provider_message_id' => $response->json('id')
                     ?? $response->json('message.id')
                     ?? $response->json('messageId'),
                 'provider_session' => $this->session(),
-                'status' => $response->successful() ? 'sent' : 'failed',
+                'status' => $response->successful() ? 'sent' : ($retryable ? 'deferred' : 'failed'),
                 'error_reason' => $response->successful() ? null : $response->body(),
                 'raw_payload' => $response->json() ?: ['body' => $response->body()],
                 'chat_id' => $chatId,
@@ -314,12 +385,12 @@ class WahaDriver implements WhatsAppDriver
             }
 
             return $result;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $result = [
                 'successful' => false,
                 'provider_message_id' => null,
                 'provider_session' => $this->session(),
-                'status' => 'failed',
+                'status' => 'deferred',
                 'error_reason' => $e->getMessage(),
                 'raw_payload' => null,
                 'chat_id' => $chatId,
@@ -333,14 +404,26 @@ class WahaDriver implements WhatsAppDriver
         }
     }
 
-    protected function client(): \Illuminate\Http\Client\PendingRequest
+    protected function client(): PendingRequest
     {
         return Http::withHeaders([
             'X-Api-Key' => (string) config('services.whatsapp.waha.api_key'),
         ])
             ->baseUrl(rtrim((string) config('services.whatsapp.waha.base_url'), '/'))
             ->timeout((int) config('services.whatsapp.waha.timeout', 10))
-            ->retry(2, 500, throw: false)
+            ->retry(2, 500, function (Throwable $exception): bool {
+                if ($exception instanceof ConnectionException) {
+                    return true;
+                }
+
+                if (! $exception instanceof RequestException) {
+                    return false;
+                }
+
+                $status = $exception->response->status();
+
+                return $status === 408 || $status === 429 || $status >= 500;
+            }, throw: false)
             ->acceptJson();
     }
 

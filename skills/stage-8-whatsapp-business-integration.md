@@ -1,7 +1,9 @@
 # Skill: Stage 8 – WhatsApp Business Integration for Ragil Aluminium
 
-This document defines how the Ragil Aluminium backend integrates with **WhatsApp Business** via an official API provider (Cloud API or BSP).  
-All agents must treat this as the **canonical messaging contract**: do not implement ad‑hoc WhatsApp hacks (web scraping, unofficial clients) for production.
+This document defines how the Ragil Aluminium backend integrates with WhatsApp through a provider driver.
+The supported production drivers are **Meta Cloud API** (`meta`) and **WAHA self-hosted** (`waha`, GOWS by default). Meta remains the rollback path; callers must use `WhatsAppService`/`WhatsAppManager` and may not talk to either provider ad hoc.
+
+For WAHA, outbound order notifications are best-effort queued jobs, `check-exists` and humanized typing are mandatory, webhook HMAC-SHA512 is mandatory, reachout timelock 463 is deferred without restarting the session, and sending is idempotent per order/template/provider.
 
 ---
 
@@ -11,22 +13,22 @@ All agents must treat this as the **canonical messaging contract**: do not imple
 
 Ragil Aluminium uses the **WhatsApp Business Platform** via:
 
-- Meta’s **Cloud API** directly, or  
+- Meta’s **Cloud API** directly, or
 - a Business Solution Provider (BSP) that exposes compatible HTTP APIs.
 
 Core concepts:
 
-- A **WhatsApp Business Account (WABA)** with verified phone number.  
-- **Permanent access token** or API key for authenticating outbound requests.  
+- A **WhatsApp Business Account (WABA)** with verified phone number.
+- **Permanent access token** or API key for authenticating outbound requests.
 - **Webhook URL** on Ragil’s backend to receive inbound messages and status updates.[web:557][web:566][web:569]
 
 ### 1.2 Backend WhatsApp Module
 
 The Laravel backend includes a **WhatsApp Module** that:
 
-- Sends outbound messages (templates and free‑form permitted messages).  
-- Receives inbound messages and events via a webhook route.  
-- Logs all messages in `whatsapp_messages`.  
+- Sends outbound messages (templates and free‑form permitted messages).
+- Receives inbound messages and events via a webhook route.
+- Logs all messages in `whatsapp_messages`.
 - Manages `whatsapp_templates` metadata.
 
 This module is the **only** layer allowed to talk to WhatsApp APIs.
@@ -201,7 +203,7 @@ Template content itself is configured in Meta/BSP dashboard; system stores just 
 
 Inbound customer messages and certain outbound replies within a context window may be free‑form text. The backend:
 
-- Logs all inbound message content in `whatsapp_messages`.  
+- Logs all inbound message content in `whatsapp_messages`.
 - Uses free‑form outbound messages **only** when allowed (e.g., responding in an open session), otherwise uses templates.
 
 ---
@@ -212,14 +214,14 @@ Inbound customer messages and certain outbound replies within a context window m
 
 The WhatsApp Module exposes a service class, e.g. `App\Services\WhatsAppService`, with methods:
 
-- `sendTemplateMessage(string $phone, string $templateName, array $variables, ?int $orderId = null)`  
-- `sendTextMessage(string $phone, string $text, ?int $orderId = null)`  
+- `sendTemplateMessage(string $phone, string $templateName, array $variables, ?int $orderId = null)`
+- `sendTextMessage(string $phone, string $text, ?int $orderId = null)`
 
 These methods:
 
-1. Build the request payload according to Cloud API/BSP spec.[web:557][web:569]  
-2. Send HTTP request to `WHATSAPP_API_BASE_URL` with `Authorization: Bearer <token>`.  
-3. Log outbound message in `whatsapp_messages`.  
+1. Build the request payload according to Cloud API/BSP spec.[web:557][web:569]
+2. Send HTTP request to `WHATSAPP_API_BASE_URL` with `Authorization: Bearer <token>`.
+3. Log outbound message in `whatsapp_messages`.
 4. Handle API response and store status (`queued`, `sent`, `delivered`, `failed`).
 
 ### 4.2 Example Template Payload (Conceptual)
@@ -287,8 +289,8 @@ On initial setup, WhatsApp sends a GET request to verify the webhook:
 
 The backend:
 
-- Checks that `hub.verify_token` matches `config('services.whatsapp.verify_token')`.  
-- If valid, responds with `hub.challenge` (plain text).  
+- Checks that `hub.verify_token` matches `config('services.whatsapp.verify_token')`.
+- If valid, responds with `hub.challenge` (plain text).
 - If not valid, responds with 403.
 
 This completes webhook verification.[web:556][web:563][web:566]
@@ -297,12 +299,12 @@ This completes webhook verification.[web:556][web:563][web:566]
 
 Inbound POSTs contain JSON payloads for:
 
-- inbound messages (customer messages),  
+- inbound messages (customer messages),
 - message status updates (sent, delivered, read).
 
 Backend flow in `WhatsAppWebhookController@handle`:
 
-1. Validate signature and/or token per provider spec.  
+1. Validate signature and/or token per provider spec.
 2. Parse events:
    - For inbound messages:
      - Extract sender phone number.
@@ -334,7 +336,7 @@ Backend flow in `WhatsAppWebhookController@handle`:
 
 Used by:
 
-- Admin UI to manage which templates are available.  
+- Admin UI to manage which templates are available.
 - WhatsAppService to build outbound payloads.
 
 ### 6.2 `whatsapp_messages`
@@ -398,7 +400,7 @@ Stage 4 defines key events; Stage 8 maps them to templates.
 
 Each event is implemented via:
 
-- Domain modules (Order, Payment, Shipping) emitting events.  
+- Domain modules (Order, Payment, Shipping) emitting events.
 - WhatsApp Module subscribing to these events and calling `sendTemplateMessage`.
 
 ---
@@ -409,26 +411,26 @@ Each event is implemented via:
 
 WhatsApp API requests:
 
-- Must use `Authorization: Bearer <WHATSAPP_API_TOKEN>`.  
+- Must use `Authorization: Bearer <WHATSAPP_API_TOKEN>`.
 - Token must be kept in `.env` and config, never logged or exposed.
 
 Webhook endpoint:
 
 - Must validate:
-  - verification token (`WHATSAPP_VERIFY_TOKEN`) on setup.  
+  - verification token (`WHATSAPP_VERIFY_TOKEN`) on setup.
   - optional signature headers if provider uses them.
 
 ### 8.2 Data Protection
 
-- Store only necessary message content and phone numbers.  
-- Ensure logs (`raw_payload`) do not leak sensitive tokens.  
+- Store only necessary message content and phone numbers.
+- Ensure logs (`raw_payload`) do not leak sensitive tokens.
 - Comply with WhatsApp policies:
-  - use templates for business‑initiated messages,  
+  - use templates for business‑initiated messages,
   - respect customer opt‑in/opt‑out.
 
 Opt‑in handling:
 
-- At checkout or first contact, ask if customer wants WhatsApp notifications.  
+- At checkout or first contact, ask if customer wants WhatsApp notifications.
 - Store opt‑in flag per order/customer and only send messages if allowed.
 
 ---
@@ -439,8 +441,8 @@ Opt‑in handling:
 
 Admin UI should allow:
 
-- Viewing list of `whatsapp_templates`.  
-- Matching internal template keys to WABA template names.  
+- Viewing list of `whatsapp_templates`.
+- Matching internal template keys to WABA template names.
 - Marking templates as active/inactive.
 
 Template creation/approval itself is done in Meta/BSP dashboard; backend only references them.
@@ -450,15 +452,15 @@ Template creation/approval itself is done in Meta/BSP dashboard; backend only re
 For outbound messages:
 
 - If API response indicates transient failure:
-  - message record `status = failed` with reason.  
+  - message record `status = failed` with reason.
   - optional retry job can be queued (with limits).
 - If webhook payload is malformed:
   - log error; do not crash worker.
 
 Monitoring:
 
-- Metrics of outbound send success rate.  
-- Number of inbound messages per day.  
+- Metrics of outbound send success rate.
+- Number of inbound messages per day.
 - Correlation with order events.
 
 ---
@@ -467,15 +469,15 @@ Monitoring:
 
 Before implementing or modifying anything related to WhatsApp integration, agents must:
 
-- [ ] Use the official WhatsApp Business API (Cloud API or BSP), authenticated via tokens stored in `.env` and `config/services.php`.  
-- [ ] Implement all outbound messaging through the WhatsApp Module (service class + templates), not via ad‑hoc HTTP calls.  
-- [ ] Configure a single webhook endpoint (`/webhook/whatsapp`) that handles verification and POST events securely.  
-- [ ] Store message logs in `whatsapp_messages` with clear `direction`, `status`, `order_id` (when known), and `provider_message_id`.  
-- [ ] Use approved templates for business‑initiated messages like order creation, payment confirmation, shipping, and delivery status.  
-- [ ] Map Stage 4 workflow events (order, payment, shipping) to specific WhatsApp templates and trigger them via the WhatsApp Module.  
-- [ ] Validate and secure webhook requests (verify token, optional signatures) and ensure inbound messages are linked to orders only through safe logic.  
-- [ ] Respect customer opt‑in/opt‑out and WhatsApp messaging policies; do not spam or send unauthorized messages.  
-- [ ] Avoid any unofficial integrations (web scraping, device automation) for production; only the Business API‑based integration is allowed.  
+- [ ] Use the configured `meta` or `waha` driver through `WhatsAppManager`, with credentials stored in `.env` and `config/services.php`.
+- [ ] Implement all outbound messaging through the WhatsApp Module (service class + templates), not via ad‑hoc HTTP calls.
+- [ ] Configure a single webhook endpoint (`/webhook/whatsapp`) that handles verification and POST events securely.
+- [ ] Store message logs in `whatsapp_messages` with clear `direction`, `status`, `order_id` (when known), and `provider_message_id`.
+- [ ] Use approved templates for business‑initiated messages like order creation, payment confirmation, shipping, and delivery status.
+- [ ] Map Stage 4 workflow events (order, payment, shipping) to specific WhatsApp templates and trigger them via the WhatsApp Module.
+- [ ] Validate and secure webhook requests (verify token, optional signatures) and ensure inbound messages are linked to orders only through safe logic.
+- [ ] Respect customer opt‑in/opt‑out and WhatsApp messaging policies; do not spam or send unauthorized messages.
+- [ ] For WAHA use GOWS (NOWEB fallback), a dedicated secondary number, persistent session storage, localhost-only API binding, and no WEBJS/buttons/blast messaging.
 - [ ] Ensure logging and monitoring exist for WhatsApp traffic so issues (failed sends, webhook errors) can be detected and resolved quickly.
 
 Any WhatsApp‑related implementation that bypasses this Stage 8 skill or uses unofficial/unsafe methods must be refactored before being accepted into the Ragil Aluminium system.

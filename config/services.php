@@ -69,8 +69,6 @@ return [
             'api_key' => env('WAHA_API_KEY', env('WHATSAPP_WAHA_API_KEY')),
             'session' => env('WAHA_SESSION', env('WHATSAPP_WAHA_SESSION', 'default')),
             'hmac_secret' => env('WAHA_HMAC_SECRET', env('WHATSAPP_HOOK_HMAC_KEY')),
-            // Legacy query/header secret if HMAC not set (dev only).
-            'webhook_secret' => env('WHATSAPP_WAHA_WEBHOOK_SECRET'),
             'notif_number' => env('WAHA_NOTIF_NUMBER'),
             'timeout' => (int) env('WAHA_TIMEOUT', env('WHATSAPP_WAHA_TIMEOUT', env('WHATSAPP_TIMEOUT', 10))),
         ],
