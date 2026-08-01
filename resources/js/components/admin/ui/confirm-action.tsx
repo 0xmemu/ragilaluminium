@@ -70,7 +70,7 @@ export function ConfirmAction({
             Batal
           </Button>
           <Button
-            variant={variant}
+            variant={variant === "destructive" ? "destructive-solid" : variant}
             onClick={() => {
               if (reasonMissing) return
               onConfirm(showReason ? reason.trim() || undefined : undefined)
