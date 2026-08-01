@@ -199,20 +199,26 @@ class ModelProductService
             $key = $this->pairKey($row->product_category, $row->product_model);
             $designs = $stats[$key]['designs'] ?? [];
 
-            $route = match ($row->product_category) {
-                'DOOR' => 'catalog.doors',
-                'BOUVEN' => 'catalog.bouven',
-                default => 'catalog.windows',
+            $categorySlug = match ($row->product_category) {
+                'DOOR' => 'doors',
+                'BOUVEN' => 'bouven',
+                default => 'windows',
             };
-
+            $route = $design ? 'catalog.design' : 'catalog.model';
             $params = array_filter([
-                'model' => $row->product_model,
-                'design' => $design,
+                'category' => $categorySlug,
+                'model' => strtolower(str_replace('_', '-', $row->product_model)),
+                'design' => $design ? strtolower(str_replace('_', '-', $design)) : null,
             ]);
 
             $image = $row->image_url;
             if (! $image) {
-                $sample = (clone $productQuery)->with('mainImage')->latest('id')->first();
+                $sample = (clone $productQuery)
+                    ->with('mainImage')
+                    ->withCount('activeVariants')
+                    ->orderByDesc('active_variants_count')
+                    ->orderByDesc('id')
+                    ->first();
                 $image = $sample?->mainImage?->urlFor('card');
             }
             if (! $image) {

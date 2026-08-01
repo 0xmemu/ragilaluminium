@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CmsModelProduct;
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
+use App\Services\ModelProductService;
 use App\Support\CaraPemesananSettings;
 use App\Support\CatalogLabels;
 use App\Support\CmsDocumentSettings;
 use App\Support\FaqSettings;
 use App\Support\InstallationGallery;
 use App\Support\InstallationPageSettings;
+use App\Support\ModelProductPresentation;
 use App\Support\ProblemsSolutionsSettings;
 use App\Support\TestimonialPageSettings;
 use Illuminate\Http\Request;
@@ -118,14 +121,12 @@ class PageController extends Controller
     public function reviews(Request $request): Response
     {
         $sort = (string) $request->input('sort', 'newest');
-        $sourceFilter = (string) $request->input('source', 'all');
-        if (! in_array($sourceFilter, ['all', 'marketplace', 'website'], true)) {
-            $sourceFilter = 'all';
-        }
 
         $published = CmsTestimonial::query()->published();
 
         $totalCount = (clone $published)->count();
+        $marketplaceTotal = (clone $published)->marketplace()->withScreenshot()->count();
+        $websiteTotal = (clone $published)->website()->count();
         $avgRating = (clone $published)->whereNotNull('rating')->avg('rating');
 
         $applySort = function ($query) use ($sort) {
@@ -144,78 +145,66 @@ class PageController extends Controller
             ->values()
             ->all();
 
-        $marketplaceTestimonials = [];
-        $websiteTestimonials = [];
-        $testimonials = [];
-        $pagination = null;
-
-        if ($sourceFilter === 'all') {
-            $marketplaceTestimonials = $mapRows(
-                $applySort((clone $published)->marketplace()->with('product:id,parent_sku,name,short_name'))
-                    ->limit(24)
-                    ->get()
-            );
-            $websiteTestimonials = $mapRows(
-                $applySort((clone $published)->website()->with('product:id,parent_sku,name,short_name'))
-                    ->limit(24)
-                    ->get()
-            );
-        } else {
-            $filtered = (clone $published)
-                ->when($sourceFilter === 'marketplace', fn ($q) => $q->marketplace())
-                ->when($sourceFilter === 'website', fn ($q) => $q->website());
-
-            $paginator = $applySort($filtered->with('product:id,parent_sku,name,short_name'))
-                ->paginate(12)
-                ->withQueryString();
-
-            $testimonials = $mapRows($paginator->getCollection());
-            $pagination = [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'links' => $paginator->linkCollection()->toArray(),
-            ];
-
-            if ($sourceFilter === 'marketplace') {
-                $marketplaceTestimonials = $testimonials;
-            } else {
-                $websiteTestimonials = $testimonials;
-            }
-        }
+        // Marketplace selalu urutan admin (sort_order); sort query hanya untuk ulasan website.
+        $marketplaceTestimonials = $mapRows(
+            (clone $published)->marketplace()->withScreenshot()
+                ->with('product:id,parent_sku,name,short_name')
+                ->orderBy('sort_order')
+                ->orderByDesc('id')
+                ->limit(48)
+                ->get()
+        );
+        $websiteTestimonials = $mapRows(
+            $applySort((clone $published)->website()->with('product:id,parent_sku,name,short_name'))
+                ->limit(48)
+                ->get()
+        );
 
         return Inertia::render('Public/Reviews', [
             'pageMeta' => TestimonialPageSettings::forStorefront(),
             'marketplaceTestimonials' => $marketplaceTestimonials,
             'websiteTestimonials' => $websiteTestimonials,
-            'testimonials' => $testimonials,
-            'pagination' => $pagination,
+            'testimonials' => array_values(array_merge($marketplaceTestimonials, $websiteTestimonials)),
+            'pagination' => null,
             'stats' => [
                 'total' => $totalCount,
+                'marketplace_total' => $marketplaceTotal,
+                'website_total' => $websiteTotal,
                 'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
             ],
             'activeSort' => $sort,
-            'activeSource' => $sourceFilter,
+            'activeSource' => 'all',
             'installationsHref' => route('installation.index'),
         ]);
     }
 
-    public function installations(): Response
+    public function installations(Request $request): Response
     {
+        $sort = (string) $request->input('sort', 'newest');
+        if (! in_array($sort, ['newest', 'photos'], true)) {
+            $sort = 'newest';
+        }
+
         $installations = collect(InstallationGallery::modelCards(48))
             ->map(fn (array $item) => $this->installationCardPayload($item))
             ->all();
+        $installations = $sort === "newest" ? array_values($installations) : $this->sortInstallationProducts($installations, $sort);
+
+        $pageMeta = InstallationPageSettings::forStorefront();
+        if (($pageMeta['heading'] ?? '') === InstallationPageSettings::DEFAULT_HEADING) {
+            $pageMeta['heading'] = 'Hasil Pemasangan Kami';
+        }
 
         return Inertia::render('Public/Installations', [
-            'pageMeta' => InstallationPageSettings::forStorefront(),
+            'pageMeta' => $pageMeta,
             'installations' => $installations,
             'level' => 'model',
+            'activeSort' => $sort,
             'reviewsHref' => route('reviews'),
         ]);
     }
 
-    public function installationModel(string $category, string $model): Response
+    public function installationModel(string $category, string $model, Request $request): Response
     {
         $categoryCode = InstallationGallery::categoryFromSlug($category);
         $modelCode = InstallationGallery::modelFromSlug($model);
@@ -223,20 +212,56 @@ class PageController extends Controller
             abort(404);
         }
 
+        $sort = (string) $request->input('sort', 'newest');
+        if (! in_array($sort, ['newest', 'photos'], true)) {
+            $sort = 'newest';
+        }
+
         if ($categoryCode === 'LAINNYA') {
             $installations = collect(InstallationGallery::manualProductCards(48))
                 ->map(fn (array $item) => $this->installationCardPayload($item))
                 ->all();
             $title = 'Dokumentasi lainnya';
+            $cover = $installations[0]['image_url'] ?? null;
+            $photoCount = array_sum(array_map(fn (array $i) => (int) ($i['photo_count'] ?? 0), $installations));
+            $videoCount = array_sum(array_map(fn (array $i) => (int) ($i['video_count'] ?? 0), $installations));
+            $productCount = count($installations);
         } else {
+            $modelCard = collect(app(ModelProductService::class)->storefrontCards())
+                ->first(fn (array $item) => strtoupper((string) ($item['category'] ?? '')) === $categoryCode
+                    && strtoupper((string) ($item['model'] ?? '')) === $modelCode);
+            if (! is_array($modelCard)) {
+                abort(404);
+            }
+
             $installations = collect(InstallationGallery::productCardsForModel($categoryCode, $modelCode, 48))
                 ->map(fn (array $item) => $this->installationCardPayload($item))
                 ->all();
-            $title = CatalogLabels::modelCardTitle($categoryCode, $modelCode);
-            if ($installations === []) {
-                abort(404);
-            }
+            $title = (string) ($modelCard['title'] ?? CatalogLabels::modelCardTitle($categoryCode, $modelCode));
+            $cover = $installations[0]['image_url'] ?? null;
+            $photoCount = array_sum(array_map(fn (array $i) => (int) ($i['photo_count'] ?? 0), $installations));
+            $videoCount = array_sum(array_map(fn (array $i) => (int) ($i['video_count'] ?? 0), $installations));
+            $productCount = max(0, (int) ($modelCard['count'] ?? 0));
         }
+
+        $installations = $this->sortInstallationProducts($installations, $sort);
+        $gallery = $categoryCode === 'LAINNYA' ? [] : InstallationGallery::mediaForModel($categoryCode, $modelCode);
+
+        $featured = ($photoCount + $videoCount) > 0
+            ? $this->installationCardPayload([
+                'id' => 'featured-'.$categoryCode.'-'.$modelCode,
+                'image_url' => $cover,
+                'label' => $title,
+                'product_count' => $productCount,
+                'photo_count' => $photoCount,
+                'video_count' => $videoCount,
+                'category' => $categoryCode,
+                'model' => $modelCode,
+                'href' => '#inspirasi-pemasangan',
+                'product_sku' => null,
+                'product_href' => null,
+            ], enrichPresentation: true)
+            : null;
 
         return Inertia::render('Public/Installations', [
             'pageMeta' => [
@@ -245,7 +270,10 @@ class PageController extends Controller
                 'subtitle' => 'Produk dalam model ini yang memiliki dokumentasi hasil pemasangan.',
             ],
             'installations' => $installations,
+            'gallery' => $gallery,
+            'featured' => $featured,
             'level' => 'product',
+            'activeSort' => $sort,
             'modelMeta' => [
                 'category' => $categoryCode,
                 'model' => $modelCode,
@@ -291,11 +319,11 @@ class PageController extends Controller
      * @param  array<string, mixed>  $item
      * @return array<string, mixed>
      */
-    protected function installationCardPayload(array $item): array
+    protected function installationCardPayload(array $item, bool $enrichPresentation = false): array
     {
-        return [
+        $payload = [
             'id' => $item['id'],
-            'image_url' => $item['image_url'],
+            'image_url' => $item['image_url'] ?? null,
             'label' => $item['label'],
             'product_count' => (int) ($item['product_count'] ?? 0),
             'photo_count' => (int) ($item['photo_count'] ?? 0),
@@ -306,5 +334,46 @@ class PageController extends Controller
             'product_sku' => $item['product_sku'] ?? null,
             'product_href' => $item['product_href'] ?? null,
         ];
+
+        if (! $enrichPresentation) {
+            return $payload;
+        }
+
+        $category = strtoupper((string) ($payload['category'] ?? ''));
+        $model = strtoupper((string) ($payload['model'] ?? ''));
+        $presentation = ModelProductPresentation::forModel($model !== '' ? $model : 'MANUAL');
+
+        $cmsDescription = null;
+        if ($category !== '' && $model !== '' && $category !== 'LAINNYA') {
+            $cmsDescription = CmsModelProduct::query()
+                ->active()
+                ->where('product_category', $category)
+                ->where('product_model', $model)
+                ->value('description');
+            $cmsDescription = filled($cmsDescription) ? trim((string) $cmsDescription) : null;
+        }
+
+        $payload['subtitle'] = $presentation['subtitle'];
+        $payload['desc'] = $cmsDescription ?: $presentation['desc'];
+        $payload['highlights'] = $presentation['highlights'];
+
+        return $payload;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function sortInstallationProducts(array $items, string $sort): array
+    {
+        usort($items, function (array $a, array $b) use ($sort) {
+            return match ($sort) {
+                'photos' => ((int) ($b['photo_count'] ?? 0) + (int) ($b['video_count'] ?? 0))
+                    <=> ((int) ($a['photo_count'] ?? 0) + (int) ($a['video_count'] ?? 0)),
+                default => strcmp((string) ($b['id'] ?? ''), (string) ($a['id'] ?? '')),
+            };
+        });
+
+        return array_values($items);
     }
 }

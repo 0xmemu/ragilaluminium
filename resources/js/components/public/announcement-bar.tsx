@@ -23,7 +23,7 @@ function AnnouncementText({ text }: { text: string }) {
   const parts = text.split(/(-?\d{1,3}%)/g)
 
   return (
-    <span className="text-[11px] font-semibold leading-none tracking-tight sm:text-xs">
+    <span className="block min-w-0 max-w-full truncate text-[11px] font-semibold leading-none tracking-tight sm:text-xs">
       {parts.map((part, index) =>
         /^-?\d{1,3}%$/.test(part) ? (
           <span
@@ -43,15 +43,18 @@ function AnnouncementText({ text }: { text: string }) {
 function AnnouncementLink({
   announcement,
   className,
+  tabIndex,
 }: {
   announcement: Announcement
   className?: string
+  tabIndex?: number
 }) {
   return (
     <Link
       href={announcement.href}
+      tabIndex={tabIndex}
       className={cn(
-        "inline-flex min-w-0 items-center gap-1.5 text-white transition hover:text-white/90 sm:gap-2",
+        "inline-flex min-w-0 max-w-full items-center gap-1.5 text-white transition hover:text-white/90 sm:gap-2",
         className,
       )}
     >
@@ -110,7 +113,8 @@ function MobileAnnouncementCarousel({ items }: { items: Announcement[] }) {
           >
             <AnnouncementLink
               announcement={announcement}
-              className="max-w-full justify-center [&_span]:max-w-full [&_span]:whitespace-normal [&_span]:text-center"
+              tabIndex={index === safeActive ? 0 : -1}
+              className="min-w-0 max-w-full justify-center [&_span]:max-w-full [&_span]:whitespace-nowrap [&_span]:text-center"
             />
           </div>
         ))}

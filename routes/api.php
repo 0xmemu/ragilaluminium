@@ -18,9 +18,9 @@ Route::middleware('throttle:60,1')->group(function () {
         $controller = app(CatalogController::class);
 
         return match (strtoupper($category)) {
-            'WINDOWS', 'WINDOW' => $controller->windows($request),
-            'DOORS', 'DOOR' => $controller->doors($request),
-            'BOUVEN' => $controller->bouven($request),
+            'WINDOWS', 'WINDOW' => $controller->categoryShow('windows', $request),
+            'DOORS', 'DOOR' => $controller->categoryShow('doors', $request),
+            'BOUVEN', 'BOVEN' => $controller->categoryShow('bouven', $request),
             default => abort(404),
         };
     });

@@ -297,6 +297,7 @@ export default function Dashboard({
   return (
     <AdminLayout>
       <Head title="Dashboard | Admin" />
+      <h1 className="sr-only">Dashboard</h1>
 
       <div className="space-y-4">
         {/* Row 1 — Greeting + Omzet | Performa Toko */}

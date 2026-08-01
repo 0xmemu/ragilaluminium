@@ -8,6 +8,7 @@ import {
 import {
   FlashSaleHero,
   FlashSaleListingShell,
+  FlashSaleListingToolbar,
   FlashModelToggles,
   PromoFlashSaleSection,
 } from "@/components/public/flash-sale-stage"
@@ -17,7 +18,6 @@ import { ProductCardGrid } from "@/components/public/product-card-grid"
 import {
   CATALOG_SORT_OPTIONS,
   FilterBerdasarkanControl,
-  SortOptionRows,
 } from "@/components/public/filter-berdasarkan-control"
 import { FilterSheetContent } from "@/components/public/filter-sidebar"
 import { Icon } from "@/components/shared/icon"
@@ -60,6 +60,8 @@ interface CatalogProps {
   priceMin?: number | null
   priceMax?: number | null
   basePath: string
+  canonicalUrl: string
+  robotsDirective: string
 }
 
 interface FilterState extends CatalogListingFilters {
@@ -86,7 +88,7 @@ function FilterSheetFooter({
 }
 
 function resolveSortValue(sort: string | null | undefined): string {
-  return sort && sort !== "" ? sort : "newest"
+  return sort && sort !== "" ? sort : "popular"
 }
 
 export default function Catalog({
@@ -109,6 +111,8 @@ export default function Catalog({
   priceMin = null,
   priceMax = null,
   basePath,
+  canonicalUrl,
+  robotsDirective,
 }: CatalogProps) {
   const sharedPeriod = usePage<SharedPageProps>().props.flashSalePeriod
   const period = flashSalePeriod ?? sharedPeriod ?? null
@@ -141,22 +145,31 @@ export default function Catalog({
     })
   }, [activeModel, activeDesign, priceMin, priceMax, activeSort])
 
-  function visit(next: Partial<FilterState> = {}, options?: { clearSearch?: boolean }) {
+  function visit(
+    next: Partial<FilterState> = {},
+    options?: { clearSearch?: boolean; q?: string | null },
+  ) {
     const merged = { ...filtersRef.current, ...next }
     const sort = resolveSortValue(merged.sort)
+    const nextQuery =
+      options?.clearSearch
+        ? undefined
+        : options && "q" in options
+          ? options.q?.trim() || undefined
+          : searchQuery || undefined
 
     setFilters(merged)
     setLoading(true)
     router.get(
       basePath,
       {
-        q: options?.clearSearch ? undefined : searchQuery || undefined,
+        q: nextQuery,
         model: merged.model || undefined,
         design: merged.design || undefined,
         price_min: merged.priceMin || undefined,
         price_max: merged.priceMax || undefined,
-        // /products tanpa sort = hub model; listing Semua Produk wajib bawa sort
-        sort: listingAllProducts ? sort : sort === "newest" ? undefined : sort,
+        // Populer adalah urutan kanonis/default; query hanya diperlukan untuk pilihan lain.
+        sort: sort === "popular" ? undefined : sort,
       },
       {
         preserveScroll: true,
@@ -168,7 +181,7 @@ export default function Catalog({
   }
 
   function reset() {
-    const pageSort = activeSort === "popular" ? "popular" : "newest"
+    const pageSort = "popular"
     const empty = {
       model: "",
       design: "",
@@ -215,92 +228,81 @@ export default function Catalog({
     priceMin: filters.priceMin ? Number(filters.priceMin) : null,
     priceMax: filters.priceMax ? Number(filters.priceMax) : null,
     currentHref: listingAllProducts
-      ? withQuery(routeUrl("catalog.index"), {
-          sort: resolvedSort === "popular" ? "popular" : "newest",
-        })
+      ? routeUrl("catalog.all")
       : basePath,
     consultationSource: "catalog",
     onClearAll: reset,
   }
 
   const filterToolbar = isPromo ? (
-    <div className="flex items-center gap-2">
-      <span className="hidden text-sm text-muted-foreground sm:inline">Urutkan</span>
+    <div className="flex items-end gap-2">
       <FilterBerdasarkanControl
         id="promo-sort"
-        value={filters.sort || "newest"}
+        variant="plain"
+        value={filters.sort || "popular"}
         options={CATALOG_SORT_OPTIONS}
         onChange={(sort) => visit({ sort, design: "", priceMin: "", priceMax: "" })}
         ariaLabel="Urutkan produk promo"
       />
     </div>
   ) : isFlash ? null : (
-    <>
-      <div className="flex items-center gap-2 lg:hidden">
-        <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-          <SheetTrigger asChild>
-            <Button variant="secondary" className="min-h-11 px-4">
-              <Icon name="sliders" className="h-4 w-4" aria-hidden="true" />
-              Sort & Filter
-              {activeFilterCount > 0 ? (
-                <span className="tabular-nums flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
-                  {activeFilterCount}
-                </span>
-              ) : null}
-            </Button>
-          </SheetTrigger>
-          <FilterSheetContent
-            title="Sort & Filter"
-            description="Urutkan dan pilih produk yang paling sesuai kebutuhan rumah Anda."
-            footer={
-              <FilterSheetFooter
-                onReset={reset}
-                onApply={() => {
-                  setMobileFiltersOpen(false)
-                  visit()
-                }}
-              />
-            }
-          >
-            <div className="flex flex-col gap-4">
-              <SortOptionRows
-                value={filters.sort || "newest"}
-                options={CATALOG_SORT_OPTIONS}
-                onChange={(sort) => setFilters((current) => ({ ...current, sort }))}
-              />
-              <CatalogProductListingSidebar
-                {...sidebarProps}
-                variant="draft"
-                fieldSuffix="sheet"
-                onFiltersChange={(next) =>
-                  setFilters((current) => ({ ...current, ...next }))
-                }
-              />
-            </div>
-          </FilterSheetContent>
-        </Sheet>
-        {activeFilterCount > 0 ? (
+    <div className="flex items-end gap-2">
+      <FilterBerdasarkanControl
+        id="catalog-sort"
+        variant="plain"
+        value={filters.sort || "popular"}
+        options={CATALOG_SORT_OPTIONS}
+        onChange={(sort) => visit({ sort })}
+        ariaLabel="Urutkan produk"
+      />
+      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <SheetTrigger asChild>
           <button
             type="button"
-            onClick={reset}
-            className="min-h-11 px-2 text-xs font-semibold text-primary"
+            className="inline-flex h-8 items-center gap-1 px-0.5 text-xs font-semibold text-foreground sm:text-sm transition hover:text-primary lg:hidden"
           >
-            Hapus Filter
+            <Icon name="sliders" className="h-3.5 w-3.5" aria-hidden="true" />
+            Filter
+            {activeFilterCount > 0 ? (
+              <span className="tabular-nums flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            ) : null}
           </button>
-        ) : null}
-      </div>
-
-      <div className="hidden items-center gap-2 sm:flex">
-        <span className="text-sm text-muted-foreground">Filter Berdasarkan</span>
-        <FilterBerdasarkanControl
-          id="catalog-sort"
-          value={filters.sort || "newest"}
-          options={CATALOG_SORT_OPTIONS}
-          onChange={(sort) => visit({ sort })}
-          ariaLabel="Urutkan produk"
-        />
-      </div>
-    </>
+        </SheetTrigger>
+        <FilterSheetContent
+          title="Filter"
+          description="Pilih produk yang paling sesuai kebutuhan rumah Anda."
+          footer={
+            <FilterSheetFooter
+              onReset={reset}
+              onApply={() => {
+                setMobileFiltersOpen(false)
+                visit()
+              }}
+            />
+          }
+        >
+          <CatalogProductListingSidebar
+            {...sidebarProps}
+            variant="draft"
+            fieldSuffix="sheet"
+            onFiltersChange={(next) =>
+              setFilters((current) => ({ ...current, ...next }))
+            }
+          />
+        </FilterSheetContent>
+      </Sheet>
+      {activeFilterCount > 0 ? (
+        <button
+          type="button"
+          onClick={reset}
+          className="inline-flex h-8 items-center px-0.5 text-xs font-semibold text-primary lg:hidden"
+        >
+          Hapus
+        </button>
+      ) : null}
+    </div>
   )
 
   const showYouMightLike = Boolean(searchQuery?.trim()) && youMightLike.length > 0
@@ -425,13 +427,25 @@ export default function Catalog({
   )
 
   const listingBody = useModelToggles ? (
-    <section className="container-page py-8 lg:py-10">
-      {flashLive || isPromo ? (
+    <section className="container-page py-4 lg:py-5">
+      {isFlash ? (
+        <FlashSaleListingToolbar
+          sort={filters.sort || "popular"}
+          priceMin={filters.priceMin}
+          priceMax={filters.priceMax}
+          searchQuery={searchQuery}
+          onSortChange={(sort) => visit({ sort })}
+          onPriceApply={({ priceMin: nextMin, priceMax: nextMax }) =>
+            visit({ priceMin: nextMin, priceMax: nextMax })
+          }
+          onSearch={(q) => visit({}, { q })}
+        />
+      ) : isPromo ? (
         <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <FlashModelToggles
             models={filterModels}
             activeModel={activeModel}
-            ariaLabel={isFlash ? "Pilih model Flash Sale" : "Pilih model promo"}
+            ariaLabel="Pilih model promo"
             onSelect={(model) =>
               visit({
                 model,
@@ -446,7 +460,7 @@ export default function Catalog({
       {productGallery}
     </section>
   ) : (
-    <section className="container-page py-8 lg:py-10">
+    <section className="container-page py-4 lg:py-5">
       <div className="grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
         <aside className="hidden lg:block">
           <div className="sticky top-28">
@@ -466,6 +480,8 @@ export default function Catalog({
   return (
     <PublicLayout>
       <Head title={categoryName}>
+        <link rel="canonical" href={canonicalUrl} />
+        <meta name="robots" content={robotsDirective} />
         <meta
           name="description"
           content={
@@ -481,14 +497,10 @@ export default function Catalog({
       </Head>
 
       {isFlash ? (
-        <FlashSaleHero
-          productCount={pagination?.total ?? products.length}
-          searchQuery={searchQuery}
-          period={period}
-        />
+        <FlashSaleHero period={period} />
       ) : (
         <section className="border-b border-border bg-surface">
-          <div className="container-page py-8 lg:py-10">
+          <div className="container-page py-4 lg:py-5">
             <Breadcrumbs
               items={[
                 { label: "Home", href: routeUrl("home") },
@@ -501,19 +513,18 @@ export default function Catalog({
               ]}
             />
 
-            <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  {categoryName}
-                </h1>
-                <p className="mt-2 text-sm text-muted-foreground">
+            <div className="mt-5">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                {categoryName}
+              </h1>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <p className="min-w-0 text-sm leading-8 text-muted-foreground">
                   {formatNumber(pagination?.total ?? products.length)} produk ditemukan
                   {searchQuery ? ` untuk “${searchQuery}”` : ""}.
                 </p>
-              </div>
-
-              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-                {filterToolbar}
+                {filterToolbar ? (
+                  <div className="flex shrink-0 items-end justify-end">{filterToolbar}</div>
+                ) : null}
               </div>
             </div>
           </div>

@@ -131,15 +131,16 @@ class CatalogTaxonomy
             $pairs = [];
             foreach ($wanted as $w) {
                 $sample = $samples->get($w['model'].'|'.$w['category']);
-                $route = match ($w['category']) {
-                    'DOOR' => 'catalog.doors',
-                    'BOUVEN' => 'catalog.bouven',
-                    default => 'catalog.windows',
+                $categorySlug = match ($w['category']) {
+                    'DOOR' => 'doors',
+                    'BOUVEN' => 'bouven',
+                    default => 'windows',
                 };
-
+                $route = $design ? 'catalog.design' : 'catalog.model';
                 $params = array_filter([
-                    'model' => $w['model'],
-                    'design' => $design,
+                    'category' => $categorySlug,
+                    'model' => strtolower(str_replace('_', '-', $w['model'])),
+                    'design' => $design ? strtolower(str_replace('_', '-', $design)) : null,
                 ]);
 
                 $pairs[] = [
@@ -294,7 +295,7 @@ class CatalogTaxonomy
                         'label' => $item['label'],
                         'model' => $params['model'] ?? null,
                         'design' => $params['design'] ?? null,
-                        'href' => route($meta['route'], $params, absolute: false),
+                        'href' => PublicNavigation::canonicalHref($meta['route'], $params, false),
                     ];
                 })->all();
             } else {
@@ -320,7 +321,7 @@ class CatalogTaxonomy
                             'label' => CatalogLabels::productLine($category, $model, $design),
                             'model' => $model,
                             'design' => $design === 'POLOS' ? null : $design,
-                            'href' => route($meta['route'], $params, absolute: false),
+                            'href' => PublicNavigation::canonicalHref($meta['route'], $params, false),
                         ];
                     }
                 }
@@ -339,7 +340,7 @@ class CatalogTaxonomy
             $panels[$category] = [
                 'title' => $meta['title'],
                 'route' => $meta['route'],
-                'shop_all' => route($meta['route'], absolute: false),
+                'shop_all' => PublicNavigation::canonicalHref($meta['route'], [], false),
                 'items' => $items,
                 'samples' => $samplesByCategory[$category] ?? [],
             ];
@@ -423,7 +424,7 @@ class CatalogTaxonomy
                     'label' => $item['label'],
                     'model' => $params['model'] ?? null,
                     'design' => $params['design'] ?? null,
-                    'href' => route($column['route'], $params, absolute: false),
+                    'href' => PublicNavigation::canonicalHref($column['route'], $params, false),
                 ];
             })->all();
 
@@ -440,7 +441,7 @@ class CatalogTaxonomy
             $panels[$key] = [
                 'title' => $column['title'],
                 'route' => $column['route'],
-                'shop_all' => route($column['route'], absolute: false),
+                'shop_all' => PublicNavigation::canonicalHref($column['route'], [], false),
                 'items' => $items,
                 'samples' => [],
             ];

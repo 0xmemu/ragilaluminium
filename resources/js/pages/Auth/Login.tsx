@@ -8,10 +8,10 @@ import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import AuthLayout from "@/layouts/auth-layout"
 
-export default function Login({ email = "" }: { email?: string }) {
+export default function Login({ login = "" }: { login?: string }) {
   const [showPassword, setShowPassword] = React.useState(false)
   const form = useForm({
-    email,
+    login,
     password: "",
     remember: false,
   })
@@ -19,27 +19,33 @@ export default function Login({ email = "" }: { email?: string }) {
   function submit(event: React.FormEvent) {
     event.preventDefault()
     if (form.processing) return
-    // Relative path avoids Ziggy absolute-URL host mismatches in local/WSL e2e.
     form.post("/login", {
       onFinish: () => form.reset("password"),
     })
   }
 
   return (
-    <AuthLayout description="Gunakan kredensial administrator Anda untuk melanjutkan ke ruang kerja operasional.">
+    <AuthLayout description="Gunakan username akun Anda. Email lama tetap dapat dipakai selama tidak digunakan oleh beberapa akun.">
       <Head title="Login Admin" />
       <form onSubmit={submit} className="flex flex-col gap-5">
         <FormErrorSummary errors={form.errors} />
-        <Field id="login-email" label="Email" required error={form.errors.email}>
+
+        <Field
+          id="login-identifier"
+          label="Username atau email"
+          required
+          error={form.errors.login}
+        >
           <Input
-            type="email"
-            value={form.data.email}
-            onChange={(event) => form.setData("email", event.target.value)}
+            type="text"
+            value={form.data.login}
+            onChange={(event) => form.setData("login", event.target.value)}
             autoComplete="username"
             autoFocus
-            placeholder="nama@ragilaluminium.com"
+            placeholder="contoh: admin.ragil"
           />
         </Field>
+
         <div className="grid gap-2">
           <label htmlFor="login-password" className="text-sm font-semibold text-foreground">
             Password <span className="ml-1 text-accent-foreground" aria-hidden="true">*</span>
@@ -62,7 +68,7 @@ export default function Login({ email = "" }: { email?: string }) {
               className="absolute right-1 top-1 inline-flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
               aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
             >
-              <Icon name="eye" className="h-4 w-4" aria-hidden="true" />
+              <Icon name="eye" className="size-4" aria-hidden="true" />
             </button>
           </div>
           {form.errors.password ? (
@@ -71,6 +77,7 @@ export default function Login({ email = "" }: { email?: string }) {
             </p>
           ) : null}
         </div>
+
         <Checkbox
           checked={form.data.remember}
           onChange={(event) => form.setData("remember", event.target.checked)}
@@ -78,12 +85,14 @@ export default function Login({ email = "" }: { email?: string }) {
           round
           compact
         />
-        <Button type="submit" size="lg" className="mt-1 w-full" disabled={form.processing}>
+
+        <Button type="submit" size="lg" className="w-full" disabled={form.processing}>
           {form.processing ? "Memeriksa akun..." : "Masuk"}
-          <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
+          <Icon name="arrow-right" className="size-5" aria-hidden="true" />
         </Button>
+
         <p className="text-center text-xs leading-5 text-muted-foreground">
-          Sesi dan aktivitas admin dilindungi oleh sistem autentikasi.
+          Akses terbatas untuk administrator Ragil Aluminium.
         </p>
       </form>
     </AuthLayout>

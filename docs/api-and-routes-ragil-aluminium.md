@@ -1,6 +1,6 @@
 # API & Routes – Ragil Aluminium Website
 
-This document defines the **core routes and API endpoints** for the Ragil Aluminium website.  
+This document defines the **core routes and API endpoints** for the Ragil Aluminium website.
 It connects the System Architecture, database schema, and UI flows (admin + public store) into a concrete map of URLs and controllers.
 
 All agents must use these routes and endpoints as the primary integration surface; do not add ad‑hoc endpoints that bypass the documented modules.
@@ -45,7 +45,7 @@ All agents must use these routes and endpoints as the primary integration surfac
   - Purpose (Inertia):
     - **Default (no listing query):** hub **Semua Model Produk** — `Public/ModelProduk`, kartu `card-model-produk` (bukan daftar SKU).
     - Optional `?design=POLOS|ORNAMEN|KOMBINASI` filters model cards.
-    - **With listing query** (`sort`, `q`, `model`, `price_*`): daftar produk SKU — `Public/Catalog`, kartu `card-produk` (mis. `/products?sort=popular` = Paling Banyak Dipesan).
+    - **With listing query** (`sort`, `q`, `model`, `price_*`): daftar produk SKU — `Public/Catalog`, kartu `card-produk` (mis. `/products/all?sort=popular` = Paling Banyak Dipesan).
   - API (`Accept: application/json` / `/api/*`): selalu payload daftar produk.
 
 - `GET /promo`
@@ -56,33 +56,25 @@ All agents must use these routes and endpoints as the primary integration surfac
 - `GET /flash-sale`
   - Controller: `CatalogController@flashSale`
   - Purpose (Inertia):
-    - Listing produk SKU (`Public/Catalog`, `listingMode: flash`, `basePath /flash-sale`, `categoryName "Flash Sale"`) hanya yang bertanda `promo_flash_sale` / `flash_sale` **dan** periode kampanye `live` (`cms_pages.flash-sale.content.period`). Props: `flashSalePeriod`. UI: banner Signal Red marketplace (petir kuning, countdown Jam/Menit/Detik), tanpa sidebar, tanpa Urutkan; filter model via toggle pill (`?model=`). Tidak ada carousel Flash Sale di homepage.
+    - Listing produk SKU (`Public/Catalog`, `listingMode: flash`, `basePath /flash-sale`, `categoryName "Flash Sale"`) hanya yang bertanda `promo_flash_sale` / `flash_sale` **dan** periode kampanye `live` (`cms_pages.flash-sale.content.period`). Props: `flashSalePeriod`. UI: banner Signal Red marketplace (petir + countdown harian), toolbar chip **Populer** / **Terbaru** / **Terlaris** (`?sort=`), **Filter harga** (`price_min` / `price_max`), ikon cari ukuran (`?q=` scoped ke `/flash-sale`). Tanpa sidebar. Tidak ada carousel Flash Sale di homepage.
 
-- `GET /windows`
-  - Controller: `CatalogController@windows`
-  - Purpose:
-    - List WINDOW products, with filters for model & design variant.
+- `GET /products/{category}` (`catalog.category`): listing SKU per kategori.
+- `GET /products/{category}/{model}` (`catalog.model`): landing detail model.
+- `GET /products/{category}/{model}/{design}` (`catalog.design`): listing SKU per desain.
+- Kategori kanonis: `windows`, `doors`, `bouven`.
+- URL lama `/windows`, `/doors`, dan `/bouven` dipertahankan sebagai redirect 301; parameter `model` dan `design` dipindahkan ke path.
 
-- `GET /doors`
-  - Controller: `CatalogController@doors`
-
-- `GET /bouven`
-  - Controller: `CatalogController@bouven`
-
-Common query parameters for category pages:
-
-- `model` (e.g. `JUNGKIT`, `SLIDING`, `SWING`, `KACA_MATI`, `ZIGZAG`)  
-- `design` (e.g. `POLOS`, `ORNAMEN`, `KOMBINASI`, `SERIES_A`)  
-- `price_min`, `price_max`  
-- `sort` (`newest` / `baru`, `name_asc` / `abjad`, `price_asc`, `price_desc`, `popular`)  
-  - `newest` / default = baru ditambahkan (`created_at` desc).  
-  - `name_asc` / `abjad` = urut nama A–Z (`short_name` lalu `name`).  
-  - `popular` = ranking by website `SUM(order_items.quantity)` (bukan Shopee).  
+Common query parameters for listing pages:
+- `price_min`, `price_max`
+- sort: newest / baru, price_asc, price_desc, size_asc, size_desc, popular, terlaris / bestseller
+  - `popular` adalah default = jumlah terjual website terbanyak; `newest` / `baru` = baru ditambahkan (`created_at` desc).
+  - `popular` / `terlaris` / `bestseller` = ranking by website `SUM(order_items.quantity)` (bukan Shopee). Alias `terlaris` dipakai label chip Flash Sale.
+  - size_asc / size_desc = ukuran tinggi lalu lebar; SKU menjadi tie-breaker saat ukuran sama.
   - Home **Paling Banyak Dipesan** = maksimal 10 produk aktif bertanda `homepage_popular` (admin), diurutkan oleh `homepage_popular_sort`; tidak memakai item dummy atau filler otomatis.
 
 Example:
 
-- `/windows?model=SLIDING&design=POLOS&sort=popular`
+- `/products/windows/sliding/polos?sort=popular`
 
 - `GET /search`
   - Redirect ke `catalog.index` (`/products`) dengan query string yang sama (`q`, dll.).
@@ -626,8 +618,9 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
 
 ### 7.0j Apa Kata Pelanggan Kami (Testimoni)
 
-- `GET /admin/apa-kata-pelanggan` — `Admin\TestimonialController@apaKata` → `Admin/Testimonials/Index` (website list + meta form)
+- `GET /admin/apa-kata-pelanggan` — `Admin\TestimonialController@apaKata` → `Admin/Testimonials/Index` (screenshot Shopee/WA saja + meta form + mode atur urutan)
 - `PUT /admin/apa-kata-pelanggan/meta` — meta `cms_pages.slug = testimoni` (`title`, `heading`, `subtitle`, `published`) via `TestimonialPageSettings`
+- `PUT /admin/apa-kata-pelanggan/reorder` — body `{ rows: [{ id, sort_order }] }` untuk prioritas tampilan storefront
 - Item CRUD tetap `admin.testimonials.*` (Monitoring → Ulasan memakai index yang sama tanpa meta surface)
 - Public: `GET /reviews` → `Public/Reviews` props `pageMeta` dari `TestimonialPageSettings::forStorefront()` + published `cms_testimonials` / gallery
 
@@ -636,7 +629,7 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
 - `GET /admin/hasil-pemasangan` — `Admin\TestimonialController@hasilPemasangan` → `Admin/Testimonials/Index` (foto list + meta form)
 - `PUT /admin/hasil-pemasangan/meta` — meta `cms_pages.slug = hasil-pemasangan` via `InstallationPageSettings`
 - Item CRUD tetap `admin.gallery-items.*` (Monitoring → Ulasan tab foto)
-- Public: `GET /reviews` → ulasan saja; `GET /hasil-pemasangan` → listing **per model** (produk/foto/video); `GET /hasil-pemasangan/{category}/{model}` → produk dalam model; `GET /hasil-pemasangan/{parent_sku}` → galeri per produk. Kartu produk terkait dapat memuat `installation_href` bila ada media instalasi.
+- Public: `GET /reviews` → ulasan saja; `GET /hasil-pemasangan` → listing **per model** (grid kartu + `?sort=newest|photos|name`); `GET /hasil-pemasangan/{category}/{model}` → featured model (subtitle/desc/highlights dari `ModelProductPresentation`) + grid produk (`?sort=newest|photos|name`); `GET /hasil-pemasangan/{parent_sku}` → galeri foto/video per produk (props `media[].is_video`; UI lightbox + slide). Kartu produk terkait dapat memuat `installation_href` bila ada media instalasi.
 
 - `GET /admin/banners`
   - Controller: `Admin\BannerController@index`
@@ -766,8 +759,8 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
 
 This includes:
 
-- WhatsApp API keys and configuration.  
-- Shopee import settings (template references).  
+- WhatsApp API keys and configuration.
+- Shopee import settings (template references).
 - Shipping provider settings.
 
 ---
@@ -786,7 +779,7 @@ This includes:
   - Purpose:
     - Receive inbound messages and status updates from Meta/BSP resmi.
   - Behavior:
-    - Parse payload.  
+    - Parse payload.
     - Store `whatsapp_messages` with `provider=meta`.
     - Link messages to `orders` where applicable.
 
@@ -813,11 +806,11 @@ This includes:
 
 When adding or modifying routes/APIs, agents must:
 
-- Keep public store routes focused on catalog, cart, and checkout; avoid exposing internal data unnecessarily.  
-- Map admin routes to the functional sections defined in the Admin UI flows (Dashboard, Catalog, Imports, Orders, Shipping, WhatsApp, Analytics, CMS, Settings).  
-- Ensure API endpoints for imports, orders, payments, shipping, and WhatsApp go through domain modules, not ad‑hoc logic.  
-- Secure admin and webhook routes with appropriate middleware and validation.  
-- Update this routes document whenever new major endpoints or route groups are introduced.  
+- Keep public store routes focused on catalog, cart, and checkout; avoid exposing internal data unnecessarily.
+- Map admin routes to the functional sections defined in the Admin UI flows (Dashboard, Catalog, Imports, Orders, Shipping, WhatsApp, Analytics, CMS, Settings).
+- Ensure API endpoints for imports, orders, payments, shipping, and WhatsApp go through domain modules, not ad‑hoc logic.
+- Secure admin and webhook routes with appropriate middleware and validation.
+- Update this routes document whenever new major endpoints or route groups are introduced.
 - Avoid introducing overlapping or duplicate endpoints that bypass logging and domain contracts.
 
 ---

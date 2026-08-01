@@ -50,27 +50,37 @@ function SectionTitle({
   eyebrow,
   actionHref,
   actionLabel = "Lihat selengkapnya",
+  tone = "default",
 }: {
   title: string
   eyebrow?: string
   actionHref?: string
   actionLabel?: string
+  tone?: "default" | "on-primary"
 }) {
+  const onPrimary = tone === "on-primary"
+
   return (
     <SectionHeading
       align="left"
       size="default"
-      className="mb-4 gap-1 sm:mb-5 md:mb-6"
+      tone={tone}
+      className="mb-3 gap-1 sm:mb-4"
       eyebrow={eyebrow}
       title={title}
       action={
         actionHref ? (
           <Link
             href={actionHref}
-            className="inline-flex min-h-8 shrink-0 items-center gap-1 self-end text-xs font-semibold text-foreground transition hover:text-primary sm:min-h-9 sm:text-sm"
+            className={cn(
+              "inline-flex h-7 shrink-0 items-center gap-1 self-end text-[11px] font-light transition sm:text-xs",
+              onPrimary
+                ? "text-white/90 hover:text-white"
+                : "text-foreground/80 hover:text-primary",
+            )}
           >
             {actionLabel}
-            <Icon name="caret-right" className="size-3.5 sm:size-4" weight="bold" aria-hidden="true" />
+            <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
           </Link>
         ) : undefined
       }
@@ -80,7 +90,7 @@ function SectionTitle({
 
 /** Desktop next/back — visible from md; mobile memakai slider horizontal. */
 const carouselNavBtnClass =
-  "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
+  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
 /** Touch: pan-x + pan-y agar swipe kartu & scroll halaman sama-sama jalan. Mouse = useDragScroll. */
 const carouselTrackClass =
@@ -164,7 +174,8 @@ function CarouselNavButton({
       aria-controls={trackId}
       className={cn(
         carouselNavBtnClass,
-        side === "left" ? "md:left-0 md:-translate-x-1/2" : "md:right-0 md:translate-x-1/2",
+        // Inset di dalam track — jangan half-outside (overflow parent memotong tombol).
+        side === "left" ? "md:-left-5" : "md:-right-5",
       )}
     >
       <Icon
@@ -181,20 +192,34 @@ function CarouselNavButton({
 function MobileSeeMoreSlide({
   href,
   label = "Lihat selengkapnya",
+  tone = "default",
 }: {
   href: string
   label?: string
+  tone?: "default" | "on-primary"
   /** @deprecated slot selalu sempit; prop diabaikan agar call site lama aman */
   wide?: boolean
 }) {
+  const onPrimary = tone === "on-primary"
+
   return (
     <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
       <Link
         href={href}
-        className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
+        className={cn(
+          "inline-flex flex-col items-center justify-center gap-1 transition active:scale-95",
+          onPrimary ? "text-white hover:text-white/90" : "text-foreground hover:text-primary",
+        )}
         aria-label={label}
       >
-        <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
+        <span
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-full border bg-white shadow-sm transition sm:size-12",
+            onPrimary
+              ? "border-white/40 text-primary hover:border-white"
+              : "border-foreground/25 text-foreground hover:border-foreground/40",
+          )}
+        >
           <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
         <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
@@ -216,7 +241,7 @@ function ModelCardCarousel({
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
   return (
-    <div className="relative min-w-0 overflow-x-clip px-1">
+    <div className="relative min-w-0 px-1">
       <div ref={trackRef} id={trackId} className={carouselTrackClass}>
         {items.map((model) => (
           <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
@@ -246,22 +271,37 @@ function ModelCardCarousel({
 function ProductCardCarousel({
   products,
   seeMoreHref,
+  tone = "default",
 }: {
   products: ProductCardData[]
   seeMoreHref: string
+  tone?: "default" | "on-primary"
 }) {
   const items = products.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const onPrimary = tone === "on-primary"
 
   return (
-    <div className="relative min-w-0 overflow-x-clip px-1">
-      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
+    <div className={cn("relative min-w-0", onPrimary ? "" : "px-1")}>
+      <div
+        ref={trackRef}
+        id={trackId}
+        className={cn(
+          carouselTrackClass,
+          onPrimary && "items-stretch pb-1 md:pb-1",
+        )}
+      >
         {items.map((product, index) => (
-          <div key={product.id} className={carouselCardClass}>
-            <ProductCard product={product} priority={index < 4} titleStyle="model" />
+          <div key={product.id} className={cn(carouselCardClass, onPrimary && "flex")}>
+            <ProductCard
+              product={product}
+              priority={index < 4}
+              titleStyle="model"
+              className={onPrimary ? "w-full" : undefined}
+            />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
+        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} tone={tone} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -292,7 +332,7 @@ function InstallationCarousel({
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(slides.length)
 
   return (
-    <div className="relative min-w-0 overflow-x-clip px-1">
+    <div className="relative min-w-0 px-1">
       <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-start")}>
         {slides.map((item) => (
           <div key={item.id} className={carouselCardClass}>
@@ -335,7 +375,7 @@ function TestimonialCarousel({
   const anchor = variant === "screenshot" ? "apa-kata-pelanggan" : "ulasan-website"
 
   return (
-    <div className="relative min-w-0 overflow-x-clip px-1">
+    <div className="relative min-w-0 px-1">
       <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-stretch")}>
         {items.map((testimonial) => (
           <div key={testimonial.id} className={carouselCardClass}>
@@ -390,7 +430,7 @@ const PROMO_CARD_VARIANTS = [
     headline: "text-white drop-shadow-[0_1px_2px_rgba(10,0,0,0.25)]",
     chip: "bg-white text-primary",
     subheadline: "text-white/90",
-    cta: "bg-background text-foreground hover:bg-background/90",
+    cta: "bg-black/60 text-white hover:bg-black/70",
     disclaimer: "text-white/70",
   },
   {
@@ -400,7 +440,7 @@ const PROMO_CARD_VARIANTS = [
     headline: "text-white",
     chip: "bg-primary text-white",
     subheadline: "text-white/85",
-    cta: "bg-background text-foreground hover:bg-background/90",
+    cta: "bg-black/60 text-white hover:bg-black/70",
     disclaimer: "text-white/60",
   },
   {
@@ -410,7 +450,7 @@ const PROMO_CARD_VARIANTS = [
     headline: "text-foreground",
     chip: "bg-primary text-white",
     subheadline: "text-foreground/80",
-    cta: "bg-foreground text-background hover:bg-foreground/85",
+    cta: "bg-black/60 text-white hover:bg-black/70",
     disclaimer: "text-foreground/60",
   },
 ] as const
@@ -447,13 +487,13 @@ function HeroPromoCard({
         <div
           className={cn(
             // Mobile: padding dalam lebar (jarak teks↔tepi kartu); sm+: tinggi 72% (DESIGN-SYSTEM).
-            "ml-4 flex aspect-[3/4] h-auto w-[min(58%,15rem)] max-h-[85%] flex-col justify-start overflow-hidden rounded-[14px] px-5 py-5 shadow-[0_10px_30px_rgba(10,0,0,0.25)]",
-            "sm:ml-8 sm:h-[72%] sm:w-auto sm:max-h-none sm:max-w-none sm:overflow-visible sm:px-8 sm:py-9",
+            "ml-4 flex aspect-[3/4] h-auto w-[clamp(12.5rem,58%,20rem)] max-h-[85%] flex-col justify-start overflow-hidden rounded-[clamp(0.625rem,1.2vw,0.875rem)] px-[clamp(0.875rem,2.5vw,2.75rem)] py-[clamp(1rem,3.5vw,2.25rem)] shadow-[0_10px_30px_rgba(10,0,0,0.25)]",
+            "sm:ml-8 sm:h-[clamp(60%,72%,78%)] sm:w-auto sm:max-h-none sm:max-w-none sm:overflow-visible sm:px-[clamp(1.25rem,3vw,2.75rem)] sm:py-[clamp(1.5rem,4vw,2.25rem)]",
             "md:ml-10 md:px-10 lg:ml-14 lg:px-11",
             v.card,
           )}
         >
-          <p className={cn("font-display text-xs font-medium tracking-[-0.04em] sm:mt-4 sm:text-lg md:text-xl", v.eyebrow)}>
+          <p className={cn("font-display text-[clamp(0.72rem,1.8vw,1.25rem)] font-medium tracking-[-0.04em] sm:mt-4 sm:text-[clamp(1rem,1.4vw,1.25rem)]", v.eyebrow)}>
             {eyebrow.lead}
             {eyebrow.accentWord ? (
               <>
@@ -462,29 +502,29 @@ function HeroPromoCard({
               </>
             ) : null}
           </p>
-          <p className={cn("mt-1 whitespace-pre-line font-display text-lg font-extrabold leading-[1.05] tracking-[-0.03em] sm:mt-1.5 sm:text-4xl md:text-5xl", v.headline)}>
+          <p className={cn("mt-1 whitespace-pre-line font-display text-[clamp(1.2rem,4.2vw,3rem)] font-extrabold leading-[1.05] tracking-[-0.03em] sm:mt-1.5 sm:text-[clamp(1.75rem,4vw,3rem)] md:text-[clamp(2.25rem,3.4vw,3.75rem)]", v.headline)}>
             {headlineLines.length ? headlineLines.join("\n") : slide.headline}
           </p>
           {accent ? (
-            <p className={cn("mt-2 inline-flex self-start rounded-full px-2.5 py-0.5 font-display text-base font-extrabold tracking-tight sm:mt-2.5 sm:px-3 sm:text-3xl", v.chip)}>
+            <p className={cn("mt-2 inline-flex self-start rounded-full px-2.5 py-0.5 font-display text-[clamp(1rem,3vw,1.875rem)] font-extrabold tracking-tight sm:mt-2.5 sm:px-3 sm:text-[clamp(1.5rem,2.8vw,1.875rem)]", v.chip)}>
               {accent}
             </p>
           ) : null}
           {slide.subheadline ? (
-            <p className={cn("mt-2 text-[11px] font-normal leading-snug sm:mt-3 sm:text-base md:text-lg", v.subheadline)}>
+            <p className={cn("mt-2 text-[clamp(0.68rem,1.4vw,1.125rem)] font-normal leading-snug sm:mt-3", v.subheadline)}>
               {slide.subheadline}
             </p>
           ) : null}
           <Link
             href={slide.href}
             className={cn(
-              "mt-auto inline-flex h-8 max-w-full shrink-0 items-center justify-center self-start whitespace-nowrap rounded-full px-3.5 text-[11px] font-bold transition sm:h-10 sm:px-6 sm:text-sm",
+              "mt-auto inline-flex h-[clamp(2rem,4vw,2.5rem)] max-w-full shrink-0 items-center justify-center self-start whitespace-nowrap rounded-full px-[clamp(0.75rem,1.8vw,1.5rem)] text-[clamp(0.68rem,1.2vw,0.875rem)] font-bold transition",
               v.cta,
             )}
           >
             Belanja sekarang
           </Link>
-          <p className={cn("mt-2 truncate text-[9px] font-light sm:mt-3 sm:text-xs", v.disclaimer)}>
+          <p className={cn("mt-2 truncate text-[clamp(0.55rem,0.9vw,0.75rem)] font-light sm:mt-3", v.disclaimer)}>
             {slide.disclaimer ?? "*Untuk berbagai produk pilihan"}
           </p>
         </div>
@@ -847,13 +887,10 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
 }
 
 function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
-  const seeMoreHref = `${routeUrl("catalog.index")}?sort=popular`
+  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular`
 
   return (
-    <section
-      id="paling-banyak-dipesan"
-      className="scroll-mt-20 bg-surface-muted section-space"
-    >
+    <section id="paling-banyak-dipesan" className="scroll-mt-20 section-space">
       <div className="container-page">
         <SectionTitle
           eyebrow="Untuk inspirasi Anda"
@@ -868,7 +905,7 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
             description="Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
             action={
               <Button asChild>
-                <Link href={routeUrl("catalog.windows")}>Jelajahi produk</Link>
+                <Link href={routeUrl("catalog.category", { category: "windows" })}>Jelajahi produk</Link>
               </Button>
             }
           />
@@ -886,6 +923,7 @@ const DEFAULT_ORDER_STEPS = [
 
 const ORDER_STEP_ICONS = ["package", "ruler", "whatsapp"] as const
 
+/** Shared step index chip — filled hitam (Kami bantu); dipakai juga di Cara pesan. */
 function orderStepIcon(title: string, index: number): string {
   const t = title.toLowerCase()
   if (t.includes("model")) return "package"
@@ -907,10 +945,10 @@ function CaraPesan({
   return (
     <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
-        <div className="mx-auto mb-5 max-w-xl text-center md:mb-6">
+        <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
           <SectionHeading
             size="display"
-            eyebrow="Cara memesan jendela Anda"
+            eyebrow="Panduan"
             title={title}
             action={
               <Link
@@ -924,12 +962,10 @@ function CaraPesan({
         </div>
         <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
           {steps.map((item, index) => {
-            const step = item.step || String(index + 1).padStart(2, "0")
             const icon = orderStepIcon(item.title, index)
             return (
-              <li key={`${step}-${item.title}`}>
-                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-1.5 py-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-5">
-                  <span className="font-mono text-[0.625rem] font-bold text-primary sm:text-xs">{step}</span>
+              <li key={`${index}-${item.title}`}>
+                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-1.5 py-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-4">
                   <span className="mt-2 flex size-14 items-center justify-center rounded-xl bg-muted text-foreground sm:mt-3 sm:size-16">
                     <Icon name={icon} className="size-6 sm:size-7" aria-hidden="true" />
                   </span>
@@ -956,10 +992,10 @@ function HasilPemasangan({
   const seeMoreHref = routeUrl("installation.index")
 
   return (
-    <section id="hasil-pemasangan" className="scroll-mt-20 bg-surface-muted section-space">
+    <section id="hasil-pemasangan" className="scroll-mt-20 section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Inspirasi pemasangan nyata"
+          eyebrow="Inspirasi penerapan"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           actionHref={seeMoreHref}
           actionLabel="Lihat selengkapnya"
@@ -985,7 +1021,7 @@ function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Bukti dari marketplace & WhatsApp"
+          eyebrow="Ulasan dari marketplace dan WhatsApp"
           title="Apa kata pelanggan kami"
           actionHref={seeMoreHref}
           actionLabel="Lihat selengkapnya"
@@ -1071,7 +1107,7 @@ function KamiBantu() {
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-surface-muted section-space">
       <div className="container-page">
-        <div className="mx-auto mb-5 max-w-xl text-center md:mb-6">
+        <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
           <SectionHeading
             size="display"
             eyebrow="Didukung tim kami"
@@ -1083,7 +1119,7 @@ function KamiBantu() {
           />
         </div>
         <div className="mx-auto grid max-w-3xl gap-4">
-          {HELP_STEPS.map((item, index) => (
+          {HELP_STEPS.map((item) => (
             <article
               key={item.title}
               className="flex items-center gap-4 border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-6 sm:p-6"
@@ -1091,16 +1127,11 @@ function KamiBantu() {
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
                 <Icon name={item.icon} className="size-6 sm:size-7" aria-hidden="true" />
               </span>
-              <div className="flex min-w-0 flex-1 items-start gap-2">
-                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold tabular-nums text-background">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
               </div>
             </article>
           ))}
@@ -1119,24 +1150,24 @@ function ClosingCta() {
       <div className="container-page flex flex-col items-center text-center">
         <SectionHeading
           size="display"
-          eyebrow="Mulai sekarang"
+          eyebrow="Produk berkualitas"
           className="text-background [&_h2]:text-background [&_p]:text-white"
           title="Tingkatkan kualitas bangunan bersama kami"
         />
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Button asChild className="bg-background text-primary hover:bg-background/90">
+        <div className="mt-10 flex w-full max-w-xl flex-nowrap items-center justify-center gap-2 sm:gap-3">
+          <Button asChild className="min-w-0 flex-1 whitespace-nowrap bg-background px-3 text-xs text-primary hover:bg-background/90 sm:px-6 sm:text-sm">
             <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
           </Button>
-          <Button asChild variant="secondary" className="border-white/40 bg-transparent text-white hover:bg-white/10">
+          <Button asChild variant="secondary" className="min-w-0 flex-1 whitespace-nowrap border-white/40 bg-transparent px-3 text-xs text-white hover:bg-white/10 sm:px-6 sm:text-sm">
             {whatsappUrl ? (
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
                 <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                Konsultasi via WhatsApp
+                Konsultasi ukuran
               </a>
             ) : (
               <Link href={routeUrl("contact")}>
                 <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                Konsultasi via WhatsApp
+                Konsultasi ukuran
               </Link>
             )}
           </Button>

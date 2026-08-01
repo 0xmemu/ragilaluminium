@@ -25,7 +25,7 @@ class FrontendPageContractTest extends TestCase
         $routes = [
             ['home', 'Public/Home'],
             ['catalog.index', 'Public/ModelProduk'],
-            ['catalog.windows', 'Public/Catalog'],
+            ['catalog.category', 'Public/Catalog', ['category' => 'windows']],
             ['reviews', 'Public/Reviews'],
             ['cart.index', 'Public/Cart'],
             ['checkout.index', 'Public/Checkout'],
@@ -39,8 +39,10 @@ class FrontendPageContractTest extends TestCase
             ['login', 'Auth/Login'],
         ];
 
-        foreach ($routes as [$routeName, $component]) {
-            $this->get(route($routeName))
+        foreach ($routes as $entry) {
+            [$routeName, $component, $parameters] = array_pad($entry, 3, []);
+
+            $this->get(route($routeName, $parameters))
                 ->assertOk()
                 ->assertInertia(fn (Assert $page) => $page->component($component));
         }
@@ -99,8 +101,10 @@ class FrontendPageContractTest extends TestCase
             ['admin.users.create', 'Admin/Users/Form'],
         ];
 
-        foreach ($routes as [$routeName, $component]) {
-            $this->get(route($routeName))
+        foreach ($routes as $entry) {
+            [$routeName, $component, $parameters] = array_pad($entry, 3, []);
+
+            $this->get(route($routeName, $parameters))
                 ->assertOk()
                 ->assertInertia(fn (Assert $page) => $page->component($component));
         }

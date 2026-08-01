@@ -92,11 +92,17 @@ export default function BannerForm({
         <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
           <h2 className="text-base font-bold">Informasi promo</h2>
           <div className="mt-4 space-y-4">
-            <Field id="title" label="Nama / judul promo" error={form.errors.title}>
+            <Field
+              id="title"
+              label="Nama / judul promo"
+              error={form.errors.title}
+              hint="Maksimal 64 karakter agar pengumuman promo tetap ringkas di mobile."
+            >
               <Input
                 value={form.data.title}
                 onChange={(event) => form.setData("title", event.target.value)}
                 placeholder="Mis. Diskon sampai 30%"
+                maxLength={64}
               />
             </Field>
             <Field

@@ -232,7 +232,7 @@ class HomepagePromotions
             'accent' => null,
             'image' => '/images/home/model-casement.png',
             'image_alt' => 'Jendela aluminium berbagai ukuran',
-            'href' => route('catalog.windows', absolute: false),
+            'href' => PublicNavigation::canonicalHref('catalog.windows', [], false),
         ];
     }
 
@@ -358,11 +358,11 @@ class HomepagePromotions
         };
 
         if ($route && $model) {
-            return route($route, ['model' => $model], absolute: false);
+            return PublicNavigation::canonicalHref($route, ['model' => $model], false);
         }
 
         if ($route) {
-            return route($route, absolute: false);
+            return PublicNavigation::canonicalHref($route, [], false);
         }
 
         return route('product.show', $product->parent_sku, absolute: false);

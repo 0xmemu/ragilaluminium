@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Product;
-use App\Models\ProductMedia;
 use App\Models\StoreVoucher;
 use App\Models\User;
 use App\Services\ModelProductService;
@@ -47,7 +46,6 @@ class StorefrontQaSeeder extends Seeder
         $this->seedFlashSalePeriod();
         $this->seedPlatformLinks();
         $this->seedPopularProducts();
-        $this->seedInstallationMedia();
         $this->seedModelProducts();
         $this->seedQaVoucher();
 
@@ -157,36 +155,6 @@ class StorefrontQaSeeder extends Seeder
         $this->command?->info('Home popular: '.$picked->count().' produk ditandai homepage_popular.');
     }
 
-    protected function seedInstallationMedia(): void
-    {
-        if (! Schema::hasTable('product_media')) {
-            return;
-        }
-
-        $media = ProductMedia::query()
-            ->where('status', 'downloaded')
-            ->whereNotNull('stored_url')
-            ->orderBy('id')
-            ->limit(12)
-            ->get();
-
-        if ($media->isEmpty()) {
-            $media = ProductMedia::query()
-                ->whereNotNull('source_url')
-                ->orderBy('id')
-                ->limit(12)
-                ->get();
-        }
-
-        foreach ($media as $row) {
-            $row->update([
-                'is_installation' => true,
-                'visibility' => $row->visibility ?: 'visible',
-            ]);
-        }
-
-        $this->command?->info('Hasil pemasangan: '.$media->count().' product_media.is_installation.');
-    }
 
     protected function seedModelProducts(): void
     {

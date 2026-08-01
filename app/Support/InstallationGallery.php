@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CmsGalleryItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Services\ModelProductService;
 use Illuminate\Support\Collection;
 
 /**
@@ -20,48 +21,52 @@ class InstallationGallery
      *
      * @return list<array{id: string, image_url: string, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
      */
+    /**
+     * One card per catalog model that has installation media.
+     * The order follows the same active CMS model list as /products.
+     *
+     * @return list<array{id: string, image_url: string, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
+     */
     public static function modelCards(int $limit = 24): array
     {
         $media = self::installationMediaWithProduct();
-        if ($media->isEmpty()) {
-            return self::manualModelFallback($limit);
-        }
-
         $grouped = $media->groupBy(
             fn (ProductMedia $item) => strtoupper((string) $item->product->product_category)
                 .'|'.strtoupper((string) $item->product->product_model)
         );
 
+        // Model Produk adalah source of truth untuk urutan dan kelengkapan daftar.
+        // Model tanpa dokumentasi tetap tampil tanpa meminjam gambar model lain.
+        $catalogModels = app(ModelProductService::class)->storefrontCards();
         $cards = [];
-        foreach (self::orderedPairKeys($grouped->keys()->all()) as $pairKey) {
-            /** @var Collection<int, ProductMedia> $group */
+
+        foreach ($catalogModels as $catalogModel) {
+            $category = strtoupper((string) ($catalogModel['category'] ?? ''));
+            $model = strtoupper((string) ($catalogModel['model'] ?? ''));
+            if ($category === '' || $model === '') {
+                continue;
+            }
+
+            $pairKey = $category.'|'.$model;
             $group = $grouped->get($pairKey);
-            if (! $group instanceof Collection || $group->isEmpty()) {
-                continue;
+            if (! $group instanceof Collection) {
+                $group = collect();
             }
 
-            $product = $group->first()?->product;
-            if (! $product instanceof Product) {
-                continue;
-            }
-
-            $category = strtoupper((string) $product->product_category);
-            $model = strtoupper((string) $product->product_model);
-            $stats = self::countMedia($group);
-            if ($stats['cover'] === null) {
-                continue;
-            }
+            $stats = $group->isNotEmpty()
+                ? self::countMedia($group)
+                : ['photo_count' => 0, 'video_count' => 0, 'cover' => null];
 
             $cards[] = [
                 'id' => 'model-'.$category.'-'.$model,
                 'image_url' => $stats['cover'],
-                'label' => CatalogLabels::modelCardTitle($category, $model),
-                'product_count' => $group->pluck('product_id')->unique()->count(),
+                'label' => (string) ($catalogModel['title'] ?? CatalogLabels::modelCardTitle($category, $model)),
+                'product_count' => max(0, (int) ($catalogModel['count'] ?? 0)),
                 'photo_count' => $stats['photo_count'],
                 'video_count' => $stats['video_count'],
                 'category' => $category,
                 'model' => $model,
-                'source' => 'import',
+                'source' => $group->isNotEmpty() ? 'import' : 'empty',
                 'product_sku' => null,
                 'href' => route('installation.model', [
                     'category' => self::categoryToSlug($category),
@@ -69,7 +74,7 @@ class InstallationGallery
                 ], absolute: false),
             ];
 
-            if (count($cards) >= $limit) {
+            if ($limit > 0 && count($cards) >= $limit) {
                 break;
             }
         }
@@ -170,7 +175,7 @@ class InstallationGallery
     /**
      * Full installation gallery for one product (detail page).
      *
-     * @return array{product: array{id: int, parent_sku: string, name: string, href: string, category: string|null, model: string|null}, media: list<array{id: int, url: string, thumb: string|null}>}|null
+     * @return array{product: array{id: int, parent_sku: string, name: string, href: string, category: string|null, model: string|null}, media: list<array{id: int, url: string, thumb: string|null, is_video: bool}>}|null
      */
     public static function forProduct(Product $product): ?array
     {
@@ -182,18 +187,23 @@ class InstallationGallery
             ->orderBy('id')
             ->get()
             ->map(function (ProductMedia $item) {
+                $isVideo = self::isVideoMedia($item);
                 $url = $item->urlFor('pdp')
                     ?? $item->urlFor('card')
-                    ?? $item->urlFor('thumb')
-                    ?? (config('media.allow_source_url_fallback') ? $item->source_url : null);
+                    ?? $item->urlFor('thumb');
                 if (! filled($url)) {
                     return null;
                 }
 
+                $thumb = $isVideo
+                    ? ($item->urlFor('thumb') ?? $item->urlFor('card'))
+                    : ($item->urlFor('thumb') ?? $item->urlFor('card') ?? $url);
+
                 return [
                     'id' => $item->id,
                     'url' => $url,
-                    'thumb' => $item->urlFor('thumb') ?? $item->urlFor('card') ?? $url,
+                    'thumb' => $thumb,
+                    'is_video' => $isVideo,
                 ];
             })
             ->filter()
@@ -217,6 +227,50 @@ class InstallationGallery
             ],
             'media' => $media,
         ];
+    }
+
+    /**
+     * Media-first gallery for one installation model. Product identity is intentionally
+     * not exposed as a card; the model page is an installation inspiration gallery.
+     *
+     * @return list<array{id: int, url: string, thumb: string|null, is_video: bool, caption: string|null}>
+     */
+    public static function mediaForModel(string $category, string $model, int $limit = 96): array
+    {
+        $category = strtoupper(trim($category));
+        $model = strtoupper(trim($model));
+
+        return self::installationMediaWithProduct()
+            ->filter(fn (ProductMedia $item) => strtoupper((string) $item->product->product_category) === $category
+                && strtoupper((string) $item->product->product_model) === $model)
+            ->sortBy([
+                ['position', 'asc'],
+                ['id', 'desc'],
+            ])
+            ->map(function (ProductMedia $item) {
+                $isVideo = self::isVideoMedia($item);
+                $url = $item->urlFor('pdp')
+                    ?? $item->urlFor('card')
+                    ?? $item->urlFor('thumb');
+
+                if (! filled($url)) {
+                    return null;
+                }
+
+                return [
+                    'id' => $item->id,
+                    'url' => $url,
+                    'thumb' => $isVideo
+                        ? ($item->urlFor('thumb') ?? $item->urlFor('card'))
+                        : ($item->urlFor('thumb') ?? $item->urlFor('card') ?? $url),
+                    'is_video' => $isVideo,
+                    'caption' => filled($item->installation_caption) ? trim((string) $item->installation_caption) : null,
+                ];
+            })
+            ->filter()
+            ->take(max(1, $limit))
+            ->values()
+            ->all();
     }
 
     public static function categoryToSlug(string $category): string
@@ -298,7 +352,8 @@ class InstallationGallery
 
                 return filled($product->parent_sku)
                     && filled($product->product_category)
-                    && filled($product->product_model);
+                    && filled($product->product_model)
+                    && ($item->urlFor('card') !== null || $item->urlFor('thumb') !== null);
             })
             ->values();
     }
@@ -365,8 +420,7 @@ class InstallationGallery
             }
 
             $url = $item->urlFor('card')
-                ?? $item->urlFor('thumb')
-                ?? (config('media.allow_source_url_fallback') ? $item->source_url : null);
+                ?? $item->urlFor('thumb');
 
             if (filled($url) && $coverUrl === null && ! $isVideo) {
                 $coverUrl = $url;
@@ -377,8 +431,7 @@ class InstallationGallery
             foreach ($group as $item) {
                 /** @var ProductMedia $item */
                 $url = $item->urlFor('card')
-                    ?? $item->urlFor('thumb')
-                    ?? (config('media.allow_source_url_fallback') ? $item->source_url : null);
+                    ?? $item->urlFor('thumb');
                 if (filled($url)) {
                     $coverUrl = $url;
                     break;
@@ -491,7 +544,7 @@ class InstallationGallery
             ->all();
     }
 
-    private static function isVideoMedia(ProductMedia $item): bool
+    public static function isVideoMedia(ProductMedia $item): bool
     {
         $mime = strtolower(trim((string) ($item->mime_type ?? '')));
         if ($mime !== '' && str_starts_with($mime, 'video/')) {

@@ -12,6 +12,7 @@ import { routeUrl } from "@/lib/routes"
 interface UserRecord {
   id: number
   name: string
+  username: string
   email: string
   status: string
 }
@@ -28,6 +29,7 @@ export default function UserForm({
   const editing = Boolean(user)
   const form = useForm({
     name: user?.name ?? "",
+    username: user?.username ?? "",
     email: user?.email ?? "",
     password: "",
     password_confirmation: "",
@@ -43,7 +45,7 @@ export default function UserForm({
           ? isSelf
             ? "Anda mengedit akun sendiri. Ganti password pribadi juga bisa lewat Profil Saya."
             : user?.email
-          : "Buat akun admin setara. Akses dibedakan hanya lewat status aktif/nonaktif."
+          : "Buat username unik dan kirim kredensial awal ke email penerima."
       }
       actions={
         <Button asChild variant="secondary">
@@ -82,7 +84,29 @@ export default function UserForm({
                 autoComplete="name"
               />
             </Field>
-            <Field id="user-email" label="Email" required error={form.errors.email}>
+
+            <Field
+              id="user-username"
+              label="Username"
+              required
+              error={form.errors.username}
+              hint="Unik untuk setiap akun. Gunakan huruf, angka, titik, garis bawah, atau tanda hubung."
+            >
+              <Input
+                value={form.data.username}
+                onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
+                autoComplete="username"
+                placeholder="contoh: admin.ragil"
+              />
+            </Field>
+
+            <Field
+              id="user-email"
+              label="Email penerima kredensial"
+              required
+              error={form.errors.email}
+              hint="Satu email boleh digunakan untuk beberapa username."
+            >
               <Input
                 type="email"
                 value={form.data.email}
@@ -90,12 +114,17 @@ export default function UserForm({
                 autoComplete="email"
               />
             </Field>
+
             <Field
               id="user-password"
-              label={editing ? "Password baru" : "Password"}
+              label={editing ? "Password baru" : "Password awal"}
               required={!editing}
               error={form.errors.password}
-              hint={editing ? "Kosongkan jika password tidak diubah." : "Minimal 8 karakter."}
+              hint={
+                editing
+                  ? "Kosongkan jika password tidak diubah."
+                  : "Minimal 8 karakter dan dikirim sekali ke email penerima."
+              }
             >
               <Input
                 type="password"
@@ -104,9 +133,10 @@ export default function UserForm({
                 autoComplete="new-password"
               />
             </Field>
+
             <Field
               id="user-password-confirmation"
-              label={editing ? "Ulangi password baru" : "Ulangi password"}
+              label={editing ? "Ulangi password baru" : "Ulangi password awal"}
               required={!editing}
               error={form.errors.password_confirmation}
             >
@@ -117,6 +147,7 @@ export default function UserForm({
                 autoComplete="new-password"
               />
             </Field>
+
             <Field
               id="user-status"
               label="Status"

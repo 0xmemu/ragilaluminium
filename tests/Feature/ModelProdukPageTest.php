@@ -80,14 +80,46 @@ class ModelProdukPageTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->get('/products?sort=newest')
+        $this->get('/products/all?sort=newest')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Catalog')
                 ->where('categoryName', 'Semua Produk')
                 ->where('isAllProductsListing', true)
+                ->where('canonicalUrl', url('/products/all'))
+                ->where('robotsDirective', 'noindex,follow')
                 ->has('products', 1)
                 ->has('popularProducts', 1)
+            );
+    }
+
+    public function test_products_without_sort_defaults_to_popular(): void
+    {
+        Product::create([
+            'parent_sku' => 'WIN-DEFAULT-POPULAR-1',
+            'name' => 'Default Popular Sample',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->get('/products/all')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Catalog')
+                ->where('categoryName', 'Semua Produk')
+                ->where('activeSort', 'popular')
+                ->where('canonicalUrl', url('/products/all'))
+                ->where('robotsDirective', 'index,follow')
+            );
+
+        $this->get('/products/windows')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('categoryName', 'Jendela')
+                ->where('activeSort', 'popular')
             );
     }
 
@@ -103,13 +135,21 @@ class ModelProdukPageTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->get('/products?sort=popular')
+        $this->get('/products/all?sort=popular')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Catalog')
                 ->where('categoryName', 'Paling Banyak Dipesan')
+                ->where('canonicalUrl', url('/products/all'))
+                ->where('robotsDirective', 'noindex,follow')
                 ->has('products')
             );
+    }
+
+    public function test_legacy_products_query_redirects_to_unambiguous_listing_url(): void
+    {
+        $this->get('/products?sort=newest')
+            ->assertRedirect('/products/all?sort=newest');
     }
 
     public function test_model_detail_page_renders_from_card_click_route(): void
@@ -145,6 +185,30 @@ class ModelProdukPageTest extends TestCase
                 ->where('products.0.parent_sku', 'WIN-SWING-1')
                 ->where('products.0.product_model', 'SWING')
                 ->where('products.0.href', '/product/WIN-SWING-1')
+                ->has('designRails')
+                ->where('designRails.0.value', 'POLOS')
+            );
+    }
+
+    public function test_model_detail_omits_design_rails_without_products(): void
+    {
+        Product::create([
+            'parent_sku' => 'WIN-JUNG-ORN-1',
+            'name' => 'Jungkit Ornamen Sample',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'ORNAMEN',
+            'status' => 'active',
+        ]);
+
+        $this->get(route('catalog.model', ['category' => 'window', 'model' => 'jungkit']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/ModelDetail')
+                ->has('designRails', 1)
+                ->where('designRails.0.value', 'ORNAMEN')
+                ->where('designRails.0.count', 1)
             );
     }
 }

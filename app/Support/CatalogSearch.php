@@ -34,9 +34,13 @@ class CatalogSearch
                 ->orWhere('product_model', 'like', '%'.strtoupper(str_replace([' ', '-'], '_', $term)).'%')
                 ->orWhereHas('attributes', fn ($qa) => $qa->where('attribute_value', 'like', "%{$term}%"))
                 ->orWhereHas('activeVariants', function ($vq) use ($term) {
-                    $vq->where('variant_sku', 'like', "%{$term}%")
-                        ->orWhere('variation_1_option', 'like', "%{$term}%")
-                        ->orWhere('variation_2_option', 'like', "%{$term}%");
+                    $vq->where(function ($variant) use ($term) {
+                        foreach (self::sizeLikePatterns($term) as $pattern) {
+                            $variant->orWhere('variant_sku', 'like', $pattern)
+                                ->orWhere('variation_1_option', 'like', $pattern)
+                                ->orWhere('variation_2_option', 'like', $pattern);
+                        }
+                    });
                 });
 
             if ($hasTaxonomyCombo) {
@@ -54,6 +58,27 @@ class CatalogSearch
                 }
             }
         });
+    }
+
+    /**
+     * Size queries like "60x120" / "60 x 120" / "60×120" share one match set.
+     *
+     * @return list<string>
+     */
+    protected static function sizeLikePatterns(string $term): array
+    {
+        $patterns = ['%'.$term.'%'];
+
+        if (preg_match('/^(\d+)\s*[x×]\s*(\d+)/iu', trim($term), $matches)) {
+            $width = $matches[1];
+            $height = $matches[2];
+            $patterns[] = '%'.$width.'x'.$height.'%';
+            $patterns[] = '%'.$width.' x '.$height.'%';
+            $patterns[] = '%'.$width.'×'.$height.'%';
+            $patterns[] = '%'.$width.' × '.$height.'%';
+        }
+
+        return array_values(array_unique($patterns));
     }
 
     /**

@@ -35,4 +35,11 @@ describe("format helpers", () => {
     expect(productName(" ", " Nama pendek ")).toBe("Nama pendek")
     expect(productName("Nama panjang", " ")).toBe("Nama panjang")
   })
+
+  it("compacts size units so cm does not orphan onto the next line", () => {
+    expect(productName("Tinggi 100 Cm X Panjang 80 Cm Jendela Jungkit")).toBe(
+      "Tinggi 100Cm × Panjang 80Cm Jendela Jungkit",
+    )
+    expect(productName("Tinggi 50 cm x Panjang 80 cm")).toBe("Tinggi 50cm × Panjang 80cm")
+  })
 })

@@ -34,6 +34,7 @@ class ProfileAdminTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.profile.update'), [
                 'name' => 'Admin Baru',
+                'username' => 'admin.baru',
                 'email' => 'baru@example.com',
             ])
             ->assertRedirect(route('admin.profile.edit'));
@@ -41,6 +42,7 @@ class ProfileAdminTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $admin->id,
             'name' => 'Admin Baru',
+            'username' => 'admin.baru',
             'email' => 'baru@example.com',
         ]);
     }
@@ -57,6 +59,7 @@ class ProfileAdminTest extends TestCase
             ->from(route('admin.profile.edit'))
             ->put(route('admin.profile.update'), [
                 'name' => $admin->name,
+                'username' => $admin->username,
                 'email' => $admin->email,
                 'password' => 'newpass123',
                 'password_confirmation' => 'newpass123',
@@ -66,6 +69,7 @@ class ProfileAdminTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.profile.update'), [
                 'name' => $admin->name,
+                'username' => $admin->username,
                 'email' => $admin->email,
                 'current_password' => 'password123',
                 'password' => 'newpass123',

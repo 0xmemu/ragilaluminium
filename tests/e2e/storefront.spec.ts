@@ -52,7 +52,7 @@ test("storefront shell is useful with an empty catalog", async ({ page }, testIn
 })
 
 test("catalog discovery keeps filters and empty states usable", async ({ page }) => {
-  await page.goto("/windows")
+  await page.goto("/products/windows")
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
   await expectNoHorizontalOverflow(page)
@@ -71,7 +71,7 @@ test("order lookup exposes its privacy fields", async ({ page }) => {
   test.setTimeout(60_000)
   await page.goto("/order/status")
 
-  await expect(page.getByRole("heading", { level: 1, name: "Lacak pesanan Anda." })).toBeVisible()
+  await expect(page.getByRole("heading", { level: 1, name: "Cek pesanan" })).toBeVisible()
   await expect(page.getByLabel("Nomor pesanan")).toBeVisible()
   await expect(page.getByLabel("Nomor HP/WhatsApp")).toBeVisible()
 
@@ -89,7 +89,7 @@ test("admin login remains keyboard-accessible", async ({ page }) => {
   await expect(page).toHaveURL(/\/login/)
 
   await expect(page).toHaveTitle(/Login Admin/)
-  await expect(page.getByLabel("Email")).toBeVisible()
+  await expect(page.getByLabel("Username atau email")).toBeVisible()
   await expect(page.locator("#login-password")).toBeVisible()
   await expect(page.locator("#login-password")).toHaveAccessibleName(/Password/)
   await expect(page.getByRole("button", { name: "Masuk" })).toBeEnabled()
@@ -110,7 +110,7 @@ test("admin dashboard adapts after authenticated login", async ({ page }, testIn
   await expect(page).toHaveURL(/\/login/)
   await expect(page.getByRole("button", { name: "Masuk" })).toBeVisible()
 
-  await page.getByLabel("Email").fill("test@example.com")
+  await page.getByLabel("Username atau email").fill("test@example.com")
   await page.locator("#login-password").fill("password")
   await page.getByRole("button", { name: "Masuk" }).click()
 

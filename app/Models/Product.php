@@ -60,6 +60,18 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    /** Order items that represent valid website demand for commercial ranking. */
+    public function validOrderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class)
+            ->whereHas('order', fn ($query) => $query->whereIn('order_status', [
+                'processing',
+                'shipped',
+                'delivered',
+                'completed',
+            ]));
+    }
+
     /** Manual ulasan (Shopee/WA/dll) linked to this product for PDP. */
     public function testimonials(): HasMany
     {
@@ -105,7 +117,7 @@ class Product extends Model
     public function scopeOrderByWebsiteSales(Builder $query): Builder
     {
         return $query
-            ->withSum('orderItems as sold_count', 'quantity')
+            ->withSum('validOrderItems as sold_count', 'quantity')
             ->orderByDesc('sold_count')
             ->orderByDesc('id');
     }

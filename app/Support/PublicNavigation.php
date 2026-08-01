@@ -13,6 +13,15 @@ class PublicNavigation
             if (request()->routeIs($pattern)) {
                 return true;
             }
+
+            [$canonical, $params] = self::canonicalRoute($pattern);
+            if (
+                $canonical === 'catalog.category'
+                && request()->routeIs('catalog.category', 'catalog.model', 'catalog.design')
+                && request()->route('category') === ($params['category'] ?? null)
+            ) {
+                return true;
+            }
         }
 
         return false;
@@ -39,8 +48,56 @@ class PublicNavigation
 
         $route = $item['route'] ?? 'home';
         $params = is_array($item['params'] ?? null) ? $item['params'] : [];
+        [$route, $params] = self::canonicalRoute($route, $params);
 
         return route($route, $params);
+    }
+
+    /**
+     * Convert legacy category route names and query taxonomy into canonical path routes.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    public static function canonicalRoute(string $route, array $params = []): array
+    {
+        $category = match ($route) {
+            'catalog.windows' => 'windows',
+            'catalog.doors' => 'doors',
+            'catalog.bouven' => 'bouven',
+            default => null,
+        };
+
+        if ($category === null) {
+            return [$route, $params];
+        }
+
+        $model = CatalogLabels::normalizeModel($params['model'] ?? null);
+        $design = CatalogLabels::normalizeDesign($params['design'] ?? null);
+        unset($params['model'], $params['design']);
+
+        $path = ['category' => $category];
+        $target = 'catalog.category';
+
+        if (filled($model)) {
+            $path['model'] = strtolower(str_replace('_', '-', $model));
+            $target = 'catalog.model';
+        }
+
+        if (filled($model) && filled($design)) {
+            $path['design'] = strtolower(str_replace('_', '-', $design));
+            $target = 'catalog.design';
+        }
+
+        return [$target, array_merge($path, $params)];
+    }
+
+    /** @param array<string, mixed> $params */
+    public static function canonicalHref(string $route, array $params = [], bool $absolute = true): string
+    {
+        [$route, $params] = self::canonicalRoute($route, $params);
+
+        return route($route, $params, $absolute);
     }
 
     /**

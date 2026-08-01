@@ -13,7 +13,9 @@ import { isRouteActive, routeUrl } from "@/lib/routes"
 import type { RouteNavItem, SharedPageProps } from "@/types"
 
 function navHref(item: RouteNavItem): string {
-  const base = routeUrl(item.route, item.params)
+  const base = item.route === "catalog.index" && item.params?.sort
+    ? routeUrl("catalog.all", item.params)
+    : routeUrl(item.route, item.params)
   return item.hash ? `${base}#${item.hash}` : base
 }
 
@@ -95,7 +97,7 @@ function HeaderSearchForm({
         event.preventDefault()
         const value = query.trim()
         if (value.length < 2) return
-        router.get(routeUrl("catalog.index"), { q: value })
+        router.get(routeUrl("catalog.all"), { q: value })
       }}
     >
       <div className="relative w-full">
@@ -140,7 +142,7 @@ export function PublicHeader() {
   const secondaryProductItems = productItems.slice(2)
   const closeMenu = React.useCallback(() => setMenuOpen(false), [])
   const isAllProductsListing =
-    isRouteActive(["catalog.windows", "catalog.doors", "catalog.bouven", "product.show", "search"]) ||
+    isRouteActive(["catalog.all", "catalog.category", "catalog.design", "catalog.windows", "catalog.doors", "catalog.bouven", "product.show", "search"]) ||
     (isRouteActive(["catalog.index"]) && /[?&](sort|q|model|price_min|price_max)=/.test(page.url))
   const modelGroups = React.useMemo(
     () =>
@@ -418,15 +420,15 @@ export function PublicHeader() {
           >
             <Link
               href={routeUrl("cart.index")}
-              className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11 lg:h-11 lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
+              className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11 lg:h-11 lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
               aria-label={`Keranjang, ${cartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
             >
-              <span className="relative inline-flex shrink-0">
-                <Icon name="shopping-cart" className="size-8 md:size-6 lg:size-7" aria-hidden="true" />
+              <span className="relative inline-flex size-6 shrink-0 items-center justify-center lg:size-7">
+                <Icon name="shopping-cart" className="size-7 shrink-0 lg:size-7" aria-hidden="true" />
                 {cartCount > 0 ? (
-                  <span className="tabular-nums absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white md:min-h-4 md:min-w-4 md:px-1">
+                  <span className="tabular-nums absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white">
                     {Math.min(cartCount, 99)}
                   </span>
                 ) : null}
@@ -539,7 +541,7 @@ export function PublicHeader() {
         <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10">
           {desktopItems.map((item) => {
             const listingActive =
-              isRouteActive(["catalog.windows", "catalog.doors", "catalog.bouven", "product.show"]) ||
+              isRouteActive(["catalog.all", "catalog.category", "catalog.design", "catalog.windows", "catalog.doors", "catalog.bouven", "product.show"]) ||
               (isRouteActive(["catalog.index"]) &&
                 /[?&](sort|q|model|price_min|price_max)=/.test(page.url))
             const modelHubActive =
@@ -562,8 +564,8 @@ export function PublicHeader() {
                   "inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold transition",
                   isFlashSale
                     ? cn(
-                        "font-extrabold italic text-sale hover:text-white",
-                        active && "text-sale",
+                        "font-extrabold italic text-red-400 hover:text-white",
+                        active && "text-red-300",
                       )
                     : cn(
                         "hover:text-background",

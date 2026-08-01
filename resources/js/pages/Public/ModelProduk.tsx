@@ -2,15 +2,13 @@ import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { ModelProdukListingSidebar } from "@/components/public/catalog-listing-sidebar"
+import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
 import { ModelCard } from "@/components/public/model-card"
-import { FilterSheetContent } from "@/components/public/filter-sidebar"
 import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
-import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Sheet, SheetTrigger } from "@/components/ui/sheet"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -29,7 +27,6 @@ export default function ModelProduk({
   filterDesigns = [],
   activeDesign = null,
 }: ModelProdukProps) {
-  const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false)
   const [design, setDesign] = React.useState<string | null>(activeDesign ?? null)
 
   React.useEffect(() => {
@@ -38,7 +35,6 @@ export default function ModelProduk({
 
   function selectDesign(value: string | null) {
     setDesign(value)
-    setMobileFiltersOpen(false)
     router.get(
       routeUrl("catalog.index"),
       value ? { design: value } : {},
@@ -50,7 +46,13 @@ export default function ModelProduk({
     selectDesign(null)
   }
 
-  const hasActiveFilter = Boolean(design)
+  const designOptions = React.useMemo(
+    () => [
+      { value: "", label: "Semua Desain" },
+      ...filterDesigns.map((item) => ({ value: item.value, label: item.label })),
+    ],
+    [filterDesigns],
+  )
 
   return (
     <PublicLayout>
@@ -62,7 +64,7 @@ export default function ModelProduk({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-8 lg:py-10">
+        <div className="container-page py-4 lg:py-5">
           <Breadcrumbs
             items={[
               { label: "Home", href: routeUrl("home") },
@@ -70,54 +72,30 @@ export default function ModelProduk({
             ]}
           />
 
-          <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Semua Model Produk</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
+          <div className="mt-5">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Semua Model Produk</h1>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <p className="min-w-0 text-sm leading-8 text-muted-foreground">
                 {formatNumber(models.length)} model ditemukan
               </p>
-            </div>
 
-            <div className="flex items-center gap-2 lg:hidden">
-              <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="secondary" className="min-h-11 px-4">
-                    <Icon name="sliders" className="h-4 w-4" aria-hidden="true" />
-                    Filter
-                    {hasActiveFilter ? (
-                      <span className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
-                        1
-                      </span>
-                    ) : null}
-                  </Button>
-                </SheetTrigger>
-                <FilterSheetContent
-                  title="Filter Model"
-                  description="Pilih desain atau kategori yang paling cocok untuk rumah Anda."
-                >
-                  <ModelProdukListingSidebar
-                    filterDesigns={filterDesigns}
-                    activeDesign={design}
-                    onSelectDesign={selectDesign}
-                    onClearDesign={clearDesign}
-                  />
-                </FilterSheetContent>
-              </Sheet>
-              {hasActiveFilter ? (
-                <button
-                  type="button"
-                  onClick={clearDesign}
-                  className="min-h-11 px-2 text-xs font-semibold text-primary"
-                >
-                  Hapus filter
-                </button>
-              ) : null}
+              <div className="flex shrink-0 items-end gap-2 lg:hidden">
+                <FilterBerdasarkanControl
+                  id="model-produk-design"
+                  variant="plain"
+                  value={design ?? ""}
+                  options={designOptions}
+                  onChange={(value) => selectDesign(value || null)}
+                  ariaLabel="Filter desain model"
+                  menuLabel="Desain"
+                />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="container-page py-8 lg:py-10">
+      <section className="container-page py-4 lg:py-5">
         <div className="grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
           <aside className="hidden lg:block">
             <div className="sticky top-28">

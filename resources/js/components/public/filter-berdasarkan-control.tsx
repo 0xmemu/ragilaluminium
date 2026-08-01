@@ -17,9 +17,10 @@ export interface FilterBerdasarkanOption {
 export const CATALOG_SORT_OPTIONS: FilterBerdasarkanOption[] = [
   { value: "newest", label: "Terbaru" },
   { value: "popular", label: "Populer" },
+  { value: "size_asc", label: "Ukuran Terkecil" },
+  { value: "size_desc", label: "Ukuran Terbesar" },
   { value: "price_asc", label: "Harga Terendah" },
   { value: "price_desc", label: "Harga Tertinggi" },
-  { value: "name_asc", label: "Abjad" },
 ]
 
 function SortArrowsIcon({ className }: { className?: string }) {
@@ -96,6 +97,8 @@ export function FilterBerdasarkanControl({
   options,
   onChange,
   ariaLabel,
+  menuLabel = "Urutkan",
+  variant = "default",
   className,
 }: {
   id: string
@@ -103,10 +106,14 @@ export function FilterBerdasarkanControl({
   options: FilterBerdasarkanOption[]
   onChange: (value: string) => void
   ariaLabel: string
+  menuLabel?: string
+  /** `plain` = teks + ikon, tanpa chrome tombol bordered. */
+  variant?: "default" | "plain"
   className?: string
 }) {
   const [open, setOpen] = React.useState(false)
   const selected = options.find((option) => option.value === value) ?? options[0]
+  const plain = variant === "plain"
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -118,16 +125,28 @@ export function FilterBerdasarkanControl({
           aria-haspopup="listbox"
           aria-expanded={open}
           className={cn(
-            "inline-flex h-8 max-w-full items-stretch rounded-lg border border-[#DEDEDE] bg-surface transition hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            open && "border-foreground/25 shadow-soft",
+            plain
+              ? "inline-flex h-8 max-w-full items-center gap-1 rounded-md px-0.5 text-xs font-semibold text-foreground sm:text-sm transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              : "inline-flex h-8 max-w-full items-stretch rounded-lg border border-[#DEDEDE] bg-surface transition hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            !plain && open && "border-foreground/25 shadow-soft",
             className,
           )}
         >
-          <span className="flex min-w-0 items-center truncate pl-3 pr-0.5 text-sm text-[#262626]">
+          <span
+            className={cn(
+              "flex min-w-0 items-center truncate",
+              plain ? "pr-0.5" : "pl-3 pr-0.5 text-[#262626]",
+            )}
+          >
             {selected?.label}
           </span>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#262626]">
-            <SortArrowsIcon className="h-6 w-6" />
+          <span
+            className={cn(
+              "flex shrink-0 items-center justify-center",
+              plain ? "size-5 text-current" : "h-8 w-8 text-[#262626]",
+            )}
+          >
+            <SortArrowsIcon className={plain ? "h-5 w-5" : "h-6 w-6"} />
           </span>
         </button>
       </DropdownMenuTrigger>
@@ -137,7 +156,7 @@ export function FilterBerdasarkanControl({
         className="w-[13.75rem] rounded-xl border border-[#DEDEDE] bg-surface p-2 shadow-[0_8px_28px_rgba(10,0,0,0.12)]"
       >
         <p className="px-2 pb-1.5 pt-0.5 text-xs font-bold tracking-tight text-muted-foreground">
-          Urutkan
+          {menuLabel}
         </p>
         {options.map((option) => {
           const isSelected = option.value === value

@@ -33,18 +33,48 @@ class TestimonialController extends Controller
             return $this->fotoIndex($q, $sort, $published, false);
         }
 
-        return $this->websiteIndex($q, $sort, $published, false, $channel);
+        return $this->websiteIndex($q, $sort, $published, $channel);
     }
 
-    /** Pengaturan Website → Apa Kata Pelanggan Kami (website tab + page meta). */
+    /** Pengaturan Website → Apa Kata Pelanggan Kami (screenshot Shopee/WA + meta + urutan). */
     public function apaKata(Request $request): Response
     {
         $q = trim((string) $request->query('q', ''));
-        $sort = (string) $request->query('sort', 'newest');
         $published = $request->query('published');
-        $channel = (string) $request->query('channel', 'all');
 
-        return $this->websiteIndex($q, $sort, $published, true, $channel);
+        return $this->marketplaceScreenshotIndex($q, $published);
+    }
+
+    public function reorderApaKata(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rows' => ['required', 'array', 'min:1'],
+            'rows.*.id' => ['required', 'integer', 'exists:cms_testimonials,id'],
+            'rows.*.sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        foreach ($validated['rows'] as $index => $row) {
+            CmsTestimonial::query()
+                ->whereKey((int) $row['id'])
+                ->marketplace()
+                ->update([
+                    'sort_order' => array_key_exists('sort_order', $row) && $row['sort_order'] !== null
+                        ? (int) $row['sort_order']
+                        : $index,
+                ]);
+        }
+
+        ActivityLogService::record(
+            'cms.apa_kata_pelanggan_reordered',
+            'cms_page',
+            TestimonialPageSettings::pageId(),
+            ['count' => count($validated['rows'])],
+            $request->user()?->id,
+        );
+
+        return redirect()
+            ->route('admin.apa-kata-pelanggan.index')
+            ->with('success', 'Urutan screenshot Apa Kata Pelanggan disimpan.');
     }
 
     public function updateApaKataMeta(Request $request): RedirectResponse
@@ -107,15 +137,24 @@ class TestimonialController extends Controller
             ->with('success', 'Meta halaman Hasil Pemasangan disimpan.');
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        $intent = $request->query('intent') === 'marketplace' ? 'marketplace' : 'website';
+        $sources = $intent === 'marketplace'
+            ? CmsTestimonial::MARKETPLACE_SOURCES
+            : CmsTestimonial::SOURCES;
+        $indexUrl = $intent === 'marketplace'
+            ? route('admin.apa-kata-pelanggan.index')
+            : route('admin.testimonials.index', ['tab' => 'website']);
+
         return Inertia::render('Admin/Testimonials/Form', [
             'testimonial' => null,
             'products' => $this->productOptions(),
-            'sources' => CmsTestimonial::SOURCES,
+            'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
+            'intent' => $intent,
             'submitUrl' => route('admin.testimonials.store'),
-            'indexUrl' => route('admin.testimonials.index', ['tab' => 'website']),
+            'indexUrl' => $indexUrl,
         ]);
     }
 
@@ -124,19 +163,36 @@ class TestimonialController extends Controller
         $validated = $this->validated($request);
         $validated['cms_page_id'] = $this->testimonialsPageId();
 
+        if (! isset($validated['sort_order']) || (int) $validated['sort_order'] === 0) {
+            if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
+                $validated['sort_order'] = (int) CmsTestimonial::query()->marketplace()->max('sort_order') + 1;
+            }
+        }
+
         CmsTestimonial::create($validated);
 
-        $tabChannel = in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)
-            ? 'marketplace'
-            : 'website';
+        if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
+            return redirect()
+                ->route('admin.apa-kata-pelanggan.index')
+                ->with('success', 'Screenshot Apa Kata Pelanggan ditambahkan.');
+        }
 
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => $tabChannel])
-            ->with('success', 'Ulasan ditambahkan.');
+            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website'])
+            ->with('success', 'Ulasan website ditambahkan.');
     }
 
-    public function edit(CmsTestimonial $testimonial): Response
+    public function edit(Request $request, CmsTestimonial $testimonial): Response
     {
+        $isMarketplace = in_array((string) $testimonial->source, CmsTestimonial::MARKETPLACE_SOURCES, true);
+        $intent = $request->query('intent') === 'marketplace' || $isMarketplace ? 'marketplace' : 'website';
+        $sources = $intent === 'marketplace'
+            ? CmsTestimonial::MARKETPLACE_SOURCES
+            : CmsTestimonial::SOURCES;
+        $indexUrl = $intent === 'marketplace'
+            ? route('admin.apa-kata-pelanggan.index')
+            : route('admin.testimonials.index', ['tab' => 'website']);
+
         return Inertia::render('Admin/Testimonials/Form', [
             'testimonial' => [
                 'id' => $testimonial->id,
@@ -151,10 +207,11 @@ class TestimonialController extends Controller
                 'published' => $testimonial->published,
             ],
             'products' => $this->productOptions(),
-            'sources' => CmsTestimonial::SOURCES,
+            'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
+            'intent' => $intent,
             'submitUrl' => route('admin.testimonials.update', $testimonial),
-            'indexUrl' => route('admin.testimonials.index', ['tab' => 'website']),
+            'indexUrl' => $indexUrl,
         ]);
     }
 
@@ -163,13 +220,15 @@ class TestimonialController extends Controller
         $validated = $this->validated($request, $testimonial);
         $testimonial->update($validated);
 
-        $tabChannel = in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)
-            ? 'marketplace'
-            : 'website';
+        if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
+            return redirect()
+                ->route('admin.apa-kata-pelanggan.index')
+                ->with('success', 'Screenshot Apa Kata Pelanggan diperbarui.');
+        }
 
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => $tabChannel])
-            ->with('success', 'Ulasan diperbarui.');
+            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website'])
+            ->with('success', 'Ulasan website diperbarui.');
     }
 
     public function publish(CmsTestimonial $testimonial): RedirectResponse
@@ -186,7 +245,84 @@ class TestimonialController extends Controller
         return back()->with('success', 'Ulasan disembunyikan.');
     }
 
-    protected function websiteIndex(string $q, string $sort, mixed $published, bool $pengaturanSurface = false, string $channel = 'all'): Response
+    protected function marketplaceScreenshotIndex(string $q, mixed $published): Response
+    {
+        $query = CmsTestimonial::query()
+            ->marketplace()
+            ->with('product:id,parent_sku,name,short_name')
+            ->orderBy('sort_order')
+            ->orderByDesc('id');
+
+        if ($q !== '') {
+            $query->where(function ($builder) use ($q) {
+                $builder->where('customer_name', 'like', '%'.$q.'%')
+                    ->orWhere('message', 'like', '%'.$q.'%')
+                    ->orWhere('location', 'like', '%'.$q.'%')
+                    ->orWhere('source', 'like', '%'.$q.'%');
+            });
+        }
+
+        if ($published === '1' || $published === '0') {
+            $query->where('published', $published === '1');
+        }
+
+        $items = $query->limit(200)->get();
+
+        return Inertia::render('Admin/Testimonials/Index', [
+            'title' => 'Apa Kata Pelanggan Kami',
+            'description' => 'Hanya screenshot percakapan/ulasan Shopee atau WhatsApp di luar transaksi website. Geser urutan untuk prioritas tampilan di beranda dan /reviews.',
+            'tab' => 'website',
+            'tabs' => [],
+            'filters' => [
+                'q' => $q,
+                'sort' => 'sort_order',
+                'published' => in_array($published, ['1', '0'], true) ? $published : '',
+                'channel' => 'marketplace',
+            ],
+            'channelOptions' => [],
+            'sortOptions' => [],
+            'publishedOptions' => [
+                ['value' => '', 'label' => 'Semua status'],
+                ['value' => '1', 'label' => 'Published'],
+                ['value' => '0', 'label' => 'Draft'],
+            ],
+            'createHref' => route('admin.testimonials.create', ['intent' => 'marketplace']),
+            'createLabel' => 'Tambah Screenshot',
+            'indexRoute' => 'admin.apa-kata-pelanggan.index',
+            'pageMeta' => TestimonialPageSettings::pageMeta(),
+            'metaUrl' => route('admin.apa-kata-pelanggan.meta.update'),
+            'metaHint' => 'Judul section Apa kata pelanggan kami di /reviews',
+            'previewUrl' => route('reviews').'#apa-kata-pelanggan',
+            'reorderUrl' => route('admin.apa-kata-pelanggan.reorder'),
+            'canReorder' => true,
+            'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
+            'rows' => $items->values()->map(function (CmsTestimonial $t, int $index) {
+                return [
+                    'id' => $t->id,
+                    'no' => $index + 1,
+                    'customer_name' => $t->customer_name,
+                    'message' => $t->message,
+                    'rating' => $t->rating,
+                    'source' => $t->source,
+                    'source_label' => CmsTestimonial::sourceLabel((string) $t->source),
+                    'location' => $t->location,
+                    'product' => $t->product
+                        ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
+                        : null,
+                    'image_url' => $t->image_url,
+                    'sort_order' => $t->sort_order,
+                    'published' => $t->published,
+                    'created_at' => optional($t->created_at)?->toIso8601String(),
+                    'edit_href' => route('admin.testimonials.edit', ['testimonial' => $t, 'intent' => 'marketplace']),
+                    'publish_url' => route('admin.testimonials.publish', $t),
+                    'unpublish_url' => route('admin.testimonials.unpublish', $t),
+                ];
+            })->all(),
+            'pagination' => null,
+        ]);
+    }
+
+    protected function websiteIndex(string $q, string $sort, mixed $published, string $channel = 'all'): Response
     {
         if (! in_array($channel, ['all', 'marketplace', 'website'], true)) {
             $channel = 'all';
@@ -222,13 +358,11 @@ class TestimonialController extends Controller
         };
 
         $rows = $query->paginate(20)->withQueryString();
-        $indexRoute = $pengaturanSurface ? 'admin.apa-kata-pelanggan.index' : 'admin.testimonials.index';
+        $indexRoute = 'admin.testimonials.index';
 
         return Inertia::render('Admin/Testimonials/Index', [
-            'title' => $pengaturanSurface ? 'Apa Kata Pelanggan Kami' : 'Daftar Ulasan',
-            'description' => $pengaturanSurface
-                ? 'Kelola screenshot marketplace/WhatsApp dan ulasan website untuk beranda serta /reviews.'
-                : 'Pisahkan umpan balik: Apa kata pelanggan (marketplace/WA) vs ulasan pelanggan di website.',
+            'title' => 'Daftar Ulasan',
+            'description' => 'Pisahkan umpan balik: Apa kata pelanggan (screenshot Shopee/WA) vs ulasan pelanggan di website.',
             'tab' => 'website',
             'tabs' => $this->tabs(),
             'filters' => [
@@ -239,7 +373,7 @@ class TestimonialController extends Controller
             ],
             'channelOptions' => [
                 ['value' => 'all', 'label' => 'Semua kanal'],
-                ['value' => 'marketplace', 'label' => 'Apa kata (marketplace/WA)'],
+                ['value' => 'marketplace', 'label' => 'Apa kata (Shopee/WA)'],
                 ['value' => 'website', 'label' => 'Ulasan website'],
             ],
             'sortOptions' => [
@@ -257,10 +391,12 @@ class TestimonialController extends Controller
             'createHref' => route('admin.testimonials.create'),
             'createLabel' => 'Tambah Ulasan',
             'indexRoute' => $indexRoute,
-            'pageMeta' => $pengaturanSurface ? TestimonialPageSettings::pageMeta() : null,
-            'metaUrl' => $pengaturanSurface ? route('admin.apa-kata-pelanggan.meta.update') : null,
-            'metaHint' => $pengaturanSurface ? 'Meta halaman /reviews' : null,
+            'pageMeta' => null,
+            'metaUrl' => null,
+            'metaHint' => null,
             'previewUrl' => route('reviews'),
+            'reorderUrl' => null,
+            'canReorder' => false,
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'rows' => $rows->getCollection()->values()->map(function (CmsTestimonial $t, int $index) use ($rows) {
                 $no = (($rows->currentPage() - 1) * $rows->perPage()) + $index + 1;
@@ -278,6 +414,7 @@ class TestimonialController extends Controller
                         ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
                         : null,
                     'image_url' => $t->image_url,
+                    'sort_order' => $t->sort_order,
                     'published' => $t->published,
                     'created_at' => optional($t->created_at)?->toIso8601String(),
                     'edit_href' => route('admin.testimonials.edit', $t),
@@ -469,7 +606,16 @@ class TestimonialController extends Controller
         $validated['image_url'] = $imageUrl;
         unset($validated['image']);
 
-        if ($validated['message'] === null && blank($imageUrl)) {
+        $isMarketplace = in_array((string) $validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true);
+
+        if ($isMarketplace && blank($imageUrl)) {
+            throw ValidationException::withMessages([
+                'image' => 'Screenshot Shopee/WhatsApp wajib untuk Apa kata pelanggan kami.',
+                'image_url' => 'Unggah gambar atau isi URL screenshot.',
+            ]);
+        }
+
+        if (! $isMarketplace && $validated['message'] === null && blank($imageUrl)) {
             throw ValidationException::withMessages([
                 'message' => 'Isi teks ulasan atau unggah/isi URL gambar (minimal salah satu).',
                 'image_url' => 'Isi teks ulasan atau unggah/isi URL gambar (minimal salah satu).',

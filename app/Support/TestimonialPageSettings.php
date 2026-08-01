@@ -11,11 +11,11 @@ class TestimonialPageSettings
 {
     public const PAGE_SLUG = 'testimoni';
 
-    public const DEFAULT_TITLE = 'Testimoni & Ulasan';
+    public const DEFAULT_TITLE = 'Ulasan Pelanggan';
 
-    public const DEFAULT_HEADING = 'Apa kata pelanggan kami.';
+    public const DEFAULT_HEADING = 'Apa kata pelanggan kami';
 
-    public const DEFAULT_SUBTITLE = 'Cerita pembeli yang sudah memasang jendela, pintu, dan bouven Ragil Aluminium.';
+    public const DEFAULT_SUBTITLE = 'Screenshot percakapan Shopee atau WhatsApp di luar transaksi website.';
 
     public static function ensurePage(): CmsPage
     {

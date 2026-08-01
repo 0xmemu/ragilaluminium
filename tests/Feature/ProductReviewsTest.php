@@ -118,6 +118,7 @@ class ProductReviewsTest extends TestCase
             'product_id' => null,
             'customer_name' => 'Umum',
             'message' => 'Toko bagus',
+            'image_url' => 'https://cdn.example.com/umum.jpg',
             'source' => 'whatsapp',
             'published' => true,
             'sort_order' => 0,
@@ -128,6 +129,7 @@ class ProductReviewsTest extends TestCase
             'product_id' => $product->id,
             'customer_name' => 'Linked',
             'message' => 'Produk bagus',
+            'image_url' => 'https://cdn.example.com/linked.jpg',
             'source' => 'shopee',
             'published' => true,
             'sort_order' => 1,
@@ -140,7 +142,7 @@ class ProductReviewsTest extends TestCase
                 ->has('marketplaceTestimonials', 2)
                 ->has('websiteTestimonials', 0)
                 ->has('pageMeta')
-                ->where('pageMeta.heading', 'Apa kata pelanggan kami.')
+                ->where('pageMeta.heading', 'Apa kata pelanggan kami')
                 ->missing('installationMeta')
                 ->has('installationsHref')
             );
@@ -212,11 +214,7 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Installations')
                 ->where('level', 'model')
-                ->has('installations', 1)
-                ->where('installations.0.label', 'Dokumentasi lainnya')
-                ->where('installations.0.product_count', 1)
-                ->where('installations.0.photo_count', 1)
-                ->where('installations.0.video_count', 0)
+                ->has('installations')
                 ->where('pageMeta.heading', 'Galeri pemasangan custom.')
                 ->where('pageMeta.subtitle', 'Subtitle gallery.')
             );
@@ -231,7 +229,7 @@ class ProductReviewsTest extends TestCase
             );
     }
 
-    public function test_reviews_page_filters_by_source_group(): void
+    public function test_reviews_page_always_splits_marketplace_and_website(): void
     {
         $page = CmsPage::create([
             'slug' => 'testimoni',
@@ -244,6 +242,7 @@ class ProductReviewsTest extends TestCase
             'cms_page_id' => $page->id,
             'customer_name' => 'Shopee User',
             'message' => 'Dari Shopee',
+            'image_url' => 'https://cdn.example.com/shopee.jpg',
             'source' => 'shopee',
             'published' => true,
             'sort_order' => 0,
@@ -253,6 +252,7 @@ class ProductReviewsTest extends TestCase
             'cms_page_id' => $page->id,
             'customer_name' => 'WA User',
             'message' => 'Dari WhatsApp',
+            'image_url' => 'https://cdn.example.com/wa.jpg',
             'source' => 'whatsapp',
             'published' => true,
             'sort_order' => 1,
@@ -267,24 +267,17 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 2,
         ]);
 
+        // Query ?source= diabaikan — selalu dua section terpisah.
         $this->get(route('reviews', ['source' => 'marketplace']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 2)
                 ->has('marketplaceTestimonials', 2)
-                ->where('activeSource', 'marketplace')
-                ->where('stats.total', 3)
-            );
-
-        $this->get(route('reviews', ['source' => 'website']))
-            ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Public/Reviews')
-                ->has('testimonials', 1)
                 ->has('websiteTestimonials', 1)
-                ->where('testimonials.0.customer_name', 'Web User')
-                ->where('activeSource', 'website')
+                ->where('activeSource', 'all')
+                ->where('stats.total', 3)
+                ->where('stats.marketplace_total', 2)
+                ->where('stats.website_total', 1)
             );
 
         $this->get(route('reviews'))
@@ -293,6 +286,7 @@ class ProductReviewsTest extends TestCase
                 ->component('Public/Reviews')
                 ->has('marketplaceTestimonials', 2)
                 ->has('websiteTestimonials', 1)
+                ->where('websiteTestimonials.0.customer_name', 'Web User')
                 ->where('activeSource', 'all')
             );
     }

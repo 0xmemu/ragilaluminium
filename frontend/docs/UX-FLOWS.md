@@ -14,11 +14,12 @@ Urutan section:
 3. Paling banyak dipesan
 4. Cara pesan jendela Anda
 5. Hasil pemasangan
-6. Apa kata pelanggan kami — ulasan Shopee (admin) + ulasan produk website digabung satu daftar
+6. Apa kata pelanggan kami — screenshot marketplace/WhatsApp (terpisah dari ulasan website)
+6b. Ulasan pelanggan di website — ulasan pembeli lewat website (terpisah; tampil di home jika ≥10)
 7. Kami bantu dari awal sampai jadi
 8. Tingkatkan kualitas bangunan bersama kami
 
-Props Inertia: `promoSlides`, `modelCards`, `popularProducts`, `featuredProducts`, `testimonials`, `installations`.
+Props Inertia: `promoSlides`, `modelCards`, `popularProducts`, `featuredProducts`, `marketplaceTestimonials`, `websiteTestimonials`, `installations`.
 
 1. Beranda menjelaskan pilihan model dan menampilkan media produk nyata.
 2. Pengguna masuk ke hub model atau kategori.

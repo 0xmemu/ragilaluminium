@@ -252,7 +252,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-6">
+        <div className="container-page py-4 lg:py-5">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },

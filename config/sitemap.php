@@ -34,14 +34,13 @@ return [
             'notes' => 'Hub model (card-model-produk). Bukan daftar SKU.',
         ],
         'Halaman Semua Produk' => [
-            'route' => 'catalog.index',
-            'path' => '/products',
+            'route' => 'catalog.all',
+            'path' => '/products/all',
             'view' => 'Public/Catalog',
-            'query' => ['sort' => 'newest'],
             'controller' => 'CatalogController@index',
             'group' => 'catalog',
             'status' => 'implemented',
-            'notes' => 'Listing seluruh SKU (card-produk). Wajib ?sort= (default newest).',
+            'notes' => 'Listing seluruh SKU (card-produk). Default popular tanpa query sort.',
         ],
         'Halaman Promo' => [
             'route' => 'catalog.promo',
@@ -239,19 +238,19 @@ return [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'icon' => 'package',
-                'active' => ['catalog.*', 'product.show'],
+                'active' => ['catalog.index', 'catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+            ],
+            [
+                'label' => 'Promo',
+                'route' => 'catalog.promo',
+                'icon' => 'tag',
+                'active' => ['catalog.promo', 'catalog.flash-sale'],
             ],
             [
                 'label' => 'Pesanan',
                 'route' => 'order.status',
                 'icon' => 'clipboard-list',
                 'active' => ['order.status', 'order.status.lookup'],
-            ],
-            [
-                'label' => 'Tentang',
-                'route' => 'about',
-                'icon' => 'user-round',
-                'active' => ['about', 'contact'],
             ],
         ],
 
@@ -265,20 +264,13 @@ return [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'icon' => 'package',
-                'active' => ['catalog.index', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'active' => ['catalog.index', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Semua Produk',
-                'route' => 'catalog.index',
-                'params' => ['sort' => 'newest'],
+                'route' => 'catalog.all',
                 'icon' => 'grid-2x2',
-                'active' => ['catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
-            ],
-            [
-                'label' => 'Flash Sale',
-                'route' => 'catalog.flash-sale',
-                'icon' => 'lightning',
-                'active' => ['catalog.flash-sale'],
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Hasil Pemasangan',
@@ -347,24 +339,17 @@ return [
 
         'desktop_main' => [
             [
-                'label' => 'Flash Sale',
-                'route' => 'catalog.flash-sale',
-                'icon' => 'lightning',
-                'active' => ['catalog.flash-sale'],
-            ],
-            [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'active' => ['catalog.index'],
             ],
             [
                 'label' => 'Produk',
-                'route' => 'catalog.index',
-                'params' => ['sort' => 'newest'],
-                'active' => ['catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'route' => 'catalog.all',
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
-                'label' => 'Testimoni',
+                'label' => 'Ulasan',
                 'route' => 'reviews',
                 'active' => ['reviews'],
             ],

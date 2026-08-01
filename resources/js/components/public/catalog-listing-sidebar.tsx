@@ -17,14 +17,14 @@ import type { SelectOption } from "@/types"
 export const CATALOG_CATEGORY_LINKS = [
   {
     label: "Semua Produk",
-    href: withQuery(routeUrl("catalog.index"), { sort: "newest" }),
+    href: routeUrl("catalog.all"),
   },
-  { label: "Jendela", href: routeUrl("catalog.windows") },
-  { label: "Pintu", href: routeUrl("catalog.doors") },
-  { label: "Boven", href: routeUrl("catalog.bouven") },
+  { label: "Jendela", href: routeUrl("catalog.category", { category: "windows" }) },
+  { label: "Pintu", href: routeUrl("catalog.category", { category: "doors" }) },
+  { label: "Boven", href: routeUrl("catalog.category", { category: "bouven" }) },
   {
     label: "Paling Banyak Dipesan",
-    href: withQuery(routeUrl("catalog.index"), { sort: "popular" }),
+    href: withQuery(routeUrl("catalog.all"), { sort: "popular" }),
   },
 ] as const
 

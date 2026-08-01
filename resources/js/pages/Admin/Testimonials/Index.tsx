@@ -35,6 +35,7 @@ interface WebsiteRow {
   location?: string | null
   product?: string | null
   image_url?: string | null
+  sort_order?: number
   published: boolean
   created_at?: string | null
   edit_href: string
@@ -163,6 +164,8 @@ export default function TestimonialsIndex({
   metaUrl = null,
   metaHint = null,
   previewUrl = null,
+  reorderUrl = null,
+  canReorder = false,
 }: {
   title: string
   description: string
@@ -182,19 +185,32 @@ export default function TestimonialsIndex({
   metaUrl?: string | null
   metaHint?: string | null
   previewUrl?: string | null
+  reorderUrl?: string | null
+  canReorder?: boolean
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [sort, setSort] = React.useState(filters.sort)
   const [published, setPublished] = React.useState(filters.published)
   const [channel, setChannel] = React.useState(filters.channel ?? "all")
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
+  const [reorderMode, setReorderMode] = React.useState(false)
+  const [orderedRows, setOrderedRows] = React.useState<WebsiteRow[]>(
+    tab === "website" ? (rows as WebsiteRow[]) : [],
+  )
   const isPengaturanSurface =
     indexRoute === "admin.apa-kata-pelanggan.index" || indexRoute === "admin.hasil-pemasangan.index"
+  const isApaKata = indexRoute === "admin.apa-kata-pelanggan.index"
   const metaForm = useForm({
     title: pageMeta?.title ?? "",
     heading: pageMeta?.heading ?? "",
     subtitle: pageMeta?.subtitle ?? "",
     published: pageMeta?.published ?? true,
+  })
+  const reorderForm = useForm({
+    rows: (rows as WebsiteRow[]).map((row, index) => ({
+      id: row.id,
+      sort_order: row.sort_order ?? index,
+    })),
   })
 
   React.useEffect(() => {
@@ -207,13 +223,25 @@ export default function TestimonialsIndex({
     })
   }, [pageMeta])
 
+  React.useEffect(() => {
+    if (tab !== "website") return
+    const next = rows as WebsiteRow[]
+    setOrderedRows(next)
+    setReorderMode(false)
+    reorderForm.setData({
+      rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
+    })
+  }, [rows, tab])
+
   function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string }>) {
     const params: Record<string, string> = {
       q: next?.q ?? q,
-      sort: next?.sort ?? sort,
       published: next?.published ?? published,
     }
-    if (tab === "website") {
+    if (sortOptions.length > 0) {
+      params.sort = next?.sort ?? sort
+    }
+    if (tab === "website" && (channelOptions?.length ?? 0) > 0) {
       params.channel = next?.channel ?? channel
     }
     if (!isPengaturanSurface) {
@@ -221,6 +249,24 @@ export default function TestimonialsIndex({
     }
     router.get(routeUrl(indexRoute), params, { preserveState: true, preserveScroll: true })
   }
+
+  function moveRow(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= orderedRows.length) return
+    const next = [...orderedRows]
+    const [item] = next.splice(index, 1)
+    next.splice(target, 0, item)
+    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
+    setOrderedRows(numbered)
+    reorderForm.setData(
+      "rows",
+      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
+    )
+  }
+
+  const websiteRows = reorderMode || canReorder ? orderedRows : (rows as WebsiteRow[])
+  const channelOptionsList = channelOptions ?? []
+  const showTabs = tabs.length > 0
 
   return (
     <AdminLayout
@@ -234,6 +280,28 @@ export default function TestimonialsIndex({
                 Lihat halaman publik
               </a>
             </Button>
+          ) : null}
+          {canReorder && reorderUrl ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setReorderMode((value) => !value)
+                }}
+              >
+                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
+              </Button>
+              {reorderMode ? (
+                <Button
+                  type="button"
+                  disabled={reorderForm.processing}
+                  onClick={() => reorderForm.put(reorderUrl)}
+                >
+                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+                </Button>
+              ) : null}
+            </>
           ) : null}
           <Button asChild>
             <Link href={createHref}>
@@ -289,22 +357,24 @@ export default function TestimonialsIndex({
         </section>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
-          {tabs.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
-                tab === item.key ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+      {showTabs ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+            {tabs.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
+                  tab === item.key ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <form
         className="mb-4 flex flex-wrap gap-2"
@@ -316,8 +386,15 @@ export default function TestimonialsIndex({
         <Input
           value={q}
           onChange={(event) => setQ(event.target.value)}
-          placeholder={tab === "website" ? "Cari nama, komentar, atau sumber" : "Cari label atau URL foto"}
+          placeholder={
+            isApaKata
+              ? "Cari nama atau sumber Shopee/WhatsApp"
+              : tab === "website"
+                ? "Cari nama, komentar, atau sumber"
+                : "Cari label atau URL foto"
+          }
           className="min-w-[16rem] flex-1"
+          disabled={reorderMode}
         />
         <Select
           value={published}
@@ -327,6 +404,7 @@ export default function TestimonialsIndex({
             apply({ published: value })
           }}
           className="w-40"
+          disabled={reorderMode}
         >
           {publishedOptions.map((option) => (
             <option key={option.value || "all"} value={option.value}>
@@ -334,7 +412,7 @@ export default function TestimonialsIndex({
             </option>
           ))}
         </Select>
-        {tab === "website" && channelOptions.length > 0 ? (
+        {tab === "website" && channelOptionsList.length > 0 ? (
           <Select
             value={channel}
             onChange={(event) => {
@@ -343,53 +421,86 @@ export default function TestimonialsIndex({
               apply({ channel: value })
             }}
             className="w-56"
+            disabled={reorderMode}
           >
-            {channelOptions.map((option) => (
+            {channelOptionsList.map((option) => (
               <option key={option.value || "all"} value={option.value}>
                 {option.label}
               </option>
             ))}
           </Select>
         ) : null}
-        <Select
-          value={sort}
-          onChange={(event) => {
-            const value = event.target.value
-            setSort(value)
-            apply({ sort: value })
-          }}
-          className="w-44"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit">Cari</Button>
+        {sortOptions.length > 0 ? (
+          <Select
+            value={sort}
+            onChange={(event) => {
+              const value = event.target.value
+              setSort(value)
+              apply({ sort: value })
+            }}
+            className="w-44"
+            disabled={reorderMode}
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+        <Button type="submit" disabled={reorderMode}>
+          Cari
+        </Button>
       </form>
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        {(tab === "website" ? rows.length > 0 : rows.length + importedRows.length > 0) ? (
+        {(tab === "website" ? websiteRows.length > 0 : rows.length + importedRows.length > 0) ? (
           <div className="overflow-x-auto">
             {tab === "website" ? (
               <table className="min-w-full text-sm">
                 <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3 font-semibold">No</th>
+                    {reorderMode ? <th className="px-3 py-3 font-semibold">Urutan</th> : null}
                     <th className="px-3 py-3 font-semibold">Pelanggan</th>
-                    <th className="px-3 py-3 font-semibold">Rating</th>
-                    <th className="px-3 py-3 font-semibold">Komentar</th>
-                    <th className="px-3 py-3 font-semibold">Foto</th>
+                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Kanal" : "Rating"}</th>
+                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Screenshot" : "Komentar"}</th>
+                    {!isApaKata ? <th className="px-3 py-3 font-semibold">Foto</th> : null}
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold">Tanggal</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(rows as WebsiteRow[]).map((row) => (
+                  {websiteRows.map((row, index) => (
                     <tr key={row.id} className="border-t border-border align-top">
                       <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
+                      {reorderMode ? (
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="secondary"
+                              disabled={index === 0}
+                              onClick={() => moveRow(index, -1)}
+                              aria-label="Naikkan prioritas"
+                            >
+                              <Icon name="caret-up" className="size-3.5" aria-hidden="true" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="secondary"
+                              disabled={index === websiteRows.length - 1}
+                              onClick={() => moveRow(index, 1)}
+                              aria-label="Turunkan prioritas"
+                            >
+                              <Icon name="caret-down" className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          </div>
+                        </td>
+                      ) : null}
                       <td className="px-3 py-3">
                         <Link href={row.edit_href} className="font-semibold hover:text-primary hover:underline">
                           {row.customer_name}
@@ -400,27 +511,46 @@ export default function TestimonialsIndex({
                         </p>
                         {row.product ? (
                           <p className="mt-0.5 text-[11px] text-muted-foreground">{row.product}</p>
-                        ) : (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">Ulasan umum</p>
-                        )}
+                        ) : null}
+                        {!row.image_url && isApaKata ? (
+                          <p className="mt-0.5 text-[11px] font-semibold text-destructive">Belum ada screenshot</p>
+                        ) : null}
                       </td>
                       <td className="px-3 py-3">
-                        <RatingStars rating={row.rating} />
-                      </td>
-                      <td className="max-w-[18rem] px-3 py-3 text-muted-foreground">
-                        <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "—")}</p>
-                      </td>
-                      <td className="px-3 py-3">
-                        {row.image_url ? (
-                          <img
-                            src={row.image_url}
-                            alt=""
-                            className="size-12 rounded-md border border-border object-cover"
-                          />
+                        {isApaKata ? (
+                          <span className="text-muted-foreground">{row.source_label ?? humanize(row.source)}</span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <RatingStars rating={row.rating} />
                         )}
                       </td>
+                      <td className={cn("px-3 py-3", isApaKata ? "" : "max-w-[18rem] text-muted-foreground")}>
+                        {isApaKata ? (
+                          row.image_url ? (
+                            <img
+                              src={row.image_url}
+                              alt={`Screenshot ${row.customer_name}`}
+                              className="h-20 w-16 rounded-md border border-border object-cover"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )
+                        ) : (
+                          <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "—")}</p>
+                        )}
+                      </td>
+                      {!isApaKata ? (
+                        <td className="px-3 py-3">
+                          {row.image_url ? (
+                            <img
+                              src={row.image_url}
+                              alt=""
+                              className="size-12 rounded-md border border-border object-cover"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      ) : null}
                       <td className="px-3 py-3">
                         <StatusBadge
                           status={row.published ? "active" : "inactive"}
@@ -429,15 +559,19 @@ export default function TestimonialsIndex({
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.created_at)}</td>
                       <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
-                        <PublishActions
-                          published={row.published}
-                          editHref={row.edit_href}
-                          publishUrl={row.publish_url}
-                          unpublishUrl={row.unpublish_url}
-                          busy={busyId === row.id}
-                          onBusy={(value) => setBusyId(value ? row.id : null)}
-                          kind="ulasan"
-                        />
+                        {reorderMode ? (
+                          <span className="text-xs text-muted-foreground">Mode urutan</span>
+                        ) : (
+                          <PublishActions
+                            published={row.published}
+                            editHref={row.edit_href}
+                            publishUrl={row.publish_url}
+                            unpublishUrl={row.unpublish_url}
+                            busy={busyId === row.id}
+                            onBusy={(value) => setBusyId(value ? row.id : null)}
+                            kind={isApaKata ? "screenshot" : "ulasan"}
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -508,11 +642,19 @@ export default function TestimonialsIndex({
           </div>
         ) : (
           <EmptyState
-            title={tab === "website" ? "Belum ada ulasan website" : "Belum ada ulasan foto"}
+            title={
+              isApaKata
+                ? "Belum ada screenshot"
+                : tab === "website"
+                  ? "Belum ada ulasan website"
+                  : "Belum ada ulasan foto"
+            }
             description={
-              tab === "website"
-                ? "Tambahkan ulasan manual dari Shopee, WhatsApp, atau website."
-                : "Tambahkan foto hasil pemasangan untuk halaman /reviews."
+              isApaKata
+                ? "Tambahkan screenshot percakapan Shopee atau WhatsApp (bukan ulasan transaksi website)."
+                : tab === "website"
+                  ? "Tambahkan ulasan manual dari Shopee, WhatsApp, atau website."
+                  : "Tambahkan foto hasil pemasangan untuk halaman /hasil-pemasangan."
             }
             className="border-0"
           />

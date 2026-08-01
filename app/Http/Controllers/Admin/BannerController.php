@@ -141,7 +141,7 @@ class BannerController extends Controller
     private function validateBanner(Request $request, bool $requireImage, ?CmsBanner $existing = null): array
     {
         $validated = $request->validate([
-            'title' => ['nullable', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:64'],
             'link_url' => [
                 'nullable',
                 'string',

@@ -170,14 +170,14 @@
     }
   }
 
-  /* Ritme vertikal antar section: 40px mobile, 80px desktop (napas lebih lega). */
+  /* Ritme vertikal antar section — rapat untuk strip carousel berurutan. */
   .section-space {
-    padding-block: 2.5rem;
+    padding-block: 1.75rem;
   }
 
   @media (min-width: 56.25em) {
     .section-space {
-      padding-block: 5rem;
+      padding-block: 2.75rem;
     }
   }
 
@@ -369,6 +369,12 @@
     background-size: 240% 100%;
     animation: skeleton-shimmer 1.4s var(--ease-standard) infinite;
   }
+}
+
+@keyframes installation-swipe-hint {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-0.45rem); }
+  70% { transform: translateX(0.2rem); }
 }
 
 @keyframes reveal-up {

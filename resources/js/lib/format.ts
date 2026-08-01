@@ -63,7 +63,14 @@ export function stripHtml(value: string): string {
 
 /** Prefer full catalog `name` (Shopee import title); short_name is secondary. */
 export function productName(name: string, shortName?: string | null): string {
-  return name?.trim() || shortName?.trim() || ""
+  const raw = (name?.trim() || shortName?.trim() || "").replace(/\s+/g, " ")
+  if (!raw) return ""
+
+  // Padatkan angka+satuan agar tidak orphan di baris baru ("80\nCm").
+  return raw
+    .replace(/(\d)\s*([cC][mM]|[mM][mM])\b/g, "$1$2")
+    .replace(/\s*[x×X]\s*/g, " × ")
+    .trim()
 }
 
 /** Build wa.me link from configured brand phone (no hardcoded number). */

@@ -16,6 +16,7 @@ class ProductMedia extends Model
         'is_main_image',
         'show_in_catalog',
         'is_installation',
+        'installation_caption',
         'visibility',
         'source_url',
         'stored_path',

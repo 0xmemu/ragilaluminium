@@ -18,6 +18,9 @@ export default defineConfig({
             host: '127.0.0.1',
             protocol: 'ws',
         },
+        watch: {
+            ignored: ['**/vendor/**', '**/storage/**', '**/public/**', '**/.venv/**', '**/.git/**', '**/.agents/**', '**/docs/**', '**/node_modules/**'],
+        },
     },
     plugins: [
         laravel({

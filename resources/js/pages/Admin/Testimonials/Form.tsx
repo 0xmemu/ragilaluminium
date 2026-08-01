@@ -21,7 +21,7 @@ interface TestimonialRecord {
 }
 
 const DEFAULT_SOURCE_LABELS: Record<string, string> = {
-  shopee: "Marketplace / Shopee",
+  shopee: "Shopee",
   whatsapp: "WhatsApp",
   website: "Website",
   other: "Lainnya",
@@ -32,6 +32,7 @@ export default function TestimonialForm({
   products,
   sources,
   sourceLabels,
+  intent = "website",
   submitUrl,
   indexUrl,
 }: {
@@ -39,11 +40,13 @@ export default function TestimonialForm({
   products: Array<{ id: number; label: string }>
   sources: string[]
   sourceLabels?: Record<string, string>
+  intent?: "marketplace" | "website"
   submitUrl: string
   indexUrl: string
 }) {
   const editing = Boolean(testimonial)
   const labels = sourceLabels ?? DEFAULT_SOURCE_LABELS
+  const isMarketplaceIntent = intent === "marketplace"
   const form = useForm<{
     customer_name: string
     message: string
@@ -59,7 +62,7 @@ export default function TestimonialForm({
     customer_name: testimonial?.customer_name ?? "",
     message: testimonial?.message ?? "",
     rating: testimonial?.rating?.toString() ?? "",
-    source: testimonial?.source ?? sources[0] ?? "website",
+    source: testimonial?.source ?? sources[0] ?? (isMarketplaceIntent ? "shopee" : "website"),
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
     image_url: testimonial?.image_url ?? "",
@@ -68,19 +71,31 @@ export default function TestimonialForm({
     published: testimonial?.published ?? false,
   })
 
-  const isMarketplace = ["shopee", "whatsapp", "other"].includes(form.data.source)
+  const isMarketplace = ["shopee", "whatsapp"].includes(form.data.source) || isMarketplaceIntent
 
   return (
     <AdminLayout
-      title={editing ? "Edit ulasan" : "Tambah ulasan"}
-      description="Marketplace/WhatsApp: utamakan screenshot. Website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
+      title={
+        editing
+          ? isMarketplaceIntent
+            ? "Edit screenshot"
+            : "Edit ulasan"
+          : isMarketplaceIntent
+            ? "Tambah screenshot"
+            : "Tambah ulasan"
+      }
+      description={
+        isMarketplaceIntent
+          ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
+          : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
+      }
       actions={
         <Button asChild variant="secondary">
           <Link href={indexUrl}>Batal</Link>
         </Button>
       }
     >
-      <Head title={`${editing ? "Edit" : "Tambah"} Ulasan | Admin`} />
+      <Head title={`${editing ? "Edit" : "Tambah"} ${isMarketplaceIntent ? "Screenshot" : "Ulasan"} | Admin`} />
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -103,23 +118,37 @@ export default function TestimonialForm({
             <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
               <Input value={form.data.location} onChange={(event) => form.setData("location", event.target.value)} />
             </Field>
-            <Field
-              id="testimonial-message"
-              label="Isi ulasan"
-              error={form.errors.message}
-              className="sm:col-span-2"
-              hint="Opsional jika ada gambar. Wajib salah satu: teks atau gambar."
-            >
-              <Textarea rows={7} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
-            </Field>
-            <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
-              <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
-                <option value="">Tanpa rating</option>
-                {[1, 2, 3, 4, 5].map((rating) => (
-                  <option key={rating} value={rating}>{rating} bintang</option>
-                ))}
-              </Select>
-            </Field>
+            {!isMarketplaceIntent ? (
+              <Field
+                id="testimonial-message"
+                label="Isi ulasan"
+                error={form.errors.message}
+                className="sm:col-span-2"
+                hint="Opsional jika ada gambar. Wajib salah satu: teks atau gambar."
+              >
+                <Textarea rows={7} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
+              </Field>
+            ) : (
+              <Field
+                id="testimonial-message"
+                label="Catatan internal (opsional)"
+                error={form.errors.message}
+                className="sm:col-span-2"
+                hint="Tidak wajib. Storefront menampilkan screenshot, bukan teks panjang."
+              >
+                <Textarea rows={3} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
+              </Field>
+            )}
+            {!isMarketplaceIntent ? (
+              <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
+                <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
+                  <option value="">Tanpa rating</option>
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <option key={rating} value={rating}>{rating} bintang</option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
             <Field
               id="testimonial-source"
               label="Sumber / kanal"
@@ -137,20 +166,27 @@ export default function TestimonialForm({
                 ))}
               </Select>
             </Field>
-            <Field id="testimonial-product" label="Produk terkait" error={form.errors.product_id} className="sm:col-span-2">
-              <Select value={form.data.product_id} onChange={(event) => form.setData("product_id", event.target.value)}>
-                <option value="">Ulasan umum (/reviews saja)</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>{product.label}</option>
-                ))}
-              </Select>
-            </Field>
+            {!isMarketplaceIntent ? (
+              <Field id="testimonial-product" label="Produk terkait" error={form.errors.product_id} className="sm:col-span-2">
+                <Select value={form.data.product_id} onChange={(event) => form.setData("product_id", event.target.value)}>
+                  <option value="">Ulasan umum (/reviews saja)</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>{product.label}</option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
             <Field
               id="testimonial-image-file"
-              label="Unggah gambar"
+              label="Unggah screenshot"
               error={form.errors.image}
               className="sm:col-span-2"
-              hint="Screenshot marketplace/WhatsApp (max 5MB). Mengunggah akan mengganti URL di bawah."
+              hint={
+                isMarketplace
+                  ? "Wajib. Screenshot Shopee/WhatsApp (max 5MB)."
+                  : "Opsional. Max 5MB. Mengunggah akan mengganti URL di bawah."
+              }
+              required={isMarketplace}
             >
               <Input
                 type="file"
@@ -158,27 +194,38 @@ export default function TestimonialForm({
                 onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
               />
             </Field>
-            <Field id="testimonial-image" label="URL gambar" error={form.errors.image_url} className="sm:col-span-2">
+            <Field
+              id="testimonial-image"
+              label="URL gambar"
+              error={form.errors.image_url}
+              className="sm:col-span-2"
+              required={isMarketplace}
+            >
               <Input type="url" value={form.data.image_url} onChange={(event) => form.setData("image_url", event.target.value)} />
             </Field>
             {form.data.image_url || form.data.image ? (
               <div className="sm:col-span-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                 <img
                   src={form.data.image ? URL.createObjectURL(form.data.image) : form.data.image_url}
                   alt="Pratinjau"
                   className="max-h-64 rounded-md border border-border object-contain"
                 />
               </div>
             ) : null}
-            <Field id="testimonial-sort" label="Urutan" error={form.errors.sort_order}>
-              <Input
-                type="number"
-                min="0"
-                value={form.data.sort_order}
-                onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-              />
-            </Field>
+            {!isMarketplaceIntent ? (
+              <Field id="testimonial-sort" label="Urutan" error={form.errors.sort_order}>
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.data.sort_order}
+                  onChange={(event) => form.setData("sort_order", Number(event.target.value))}
+                />
+              </Field>
+            ) : (
+              <p className="sm:col-span-2 text-sm text-muted-foreground">
+                Urutan tampilan diatur di daftar Apa Kata Pelanggan lewat tombol <strong>Atur urutan</strong>.
+              </p>
+            )}
             <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:self-end">
               <input
                 type="checkbox"
@@ -193,7 +240,7 @@ export default function TestimonialForm({
         <div className="flex justify-end gap-2">
           <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
           <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan ulasan"}
+            {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
           </Button>
         </div>
       </form>

@@ -120,7 +120,7 @@ The website is the **transaction engine** at the center of an ecosystem:
 
 ### 2.9 Public UI Module
 **Customer-facing frontend** (catalog, cart, checkout, basic order status).
-- Routes under `/` (home, `/windows`, `/doors`, `/bouven`, `/search`,
+- Routes under `/` (home, `/products/{category}`, canonical model/design paths, legacy category redirects, `/search`,
   `/product/{parent_sku}`, `/cart`, `/checkout`, `/order/...`).
 - Reads catalog via Catalog Module; creates orders via Order Module. Does not touch
   imports, media processing internals, or WhatsApp logs.
@@ -289,7 +289,7 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
 ## 7. Route Surface Summary (per `api-and-routes-ragil-aluminium.md`)
 
 - **Public web:** `/`, `/about`, `/faq`, `/contact`, `/cara-pemesanan`,
-  `/policy/privacy`, `/policy/terms`, `/windows`, `/doors`, `/bouven`, `/search`,
+  `/policy/privacy`, `/policy/terms`, `/products/{category}`, legacy category redirects, `/search`,
   `/product/{parent_sku}`, `/cart*`, `/checkout*`, `/order/*`.
 - **Auth:** `/login`, `/logout` (admin only).
 - **Admin (`/admin`, auth+role):** dashboard, products/variants/attributes/media,

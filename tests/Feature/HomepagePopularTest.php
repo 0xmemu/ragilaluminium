@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\CatalogTaxonomy;
 use App\Support\FlashSalePeriodSettings;
 use App\Support\HomepagePromotionSettings;
+use App\Support\InertiaCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 
@@ -116,17 +117,17 @@ class HomepagePopularTest extends \Tests\TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Home')
                 ->has('popularProducts', 2)
-                ->has('nav.public.hamburger_product', 5)
+                ->has('nav.public.hamburger_product', 4)
                 ->where('nav.public.hamburger_product.0.label', 'Model Produk')
                 ->where('nav.public.hamburger_product.1.label', 'Semua Produk')
-                ->where('nav.public.hamburger_product.2.label', 'Flash Sale')
+                ->where('nav.public.hamburger_product.2.label', 'Hasil Pemasangan')
                 ->has('nav.public.hamburger_info', 6)
                 ->where('nav.public.hamburger_info.0.label', 'Lacak Pengiriman')
                 ->where('nav.public.hamburger_info.5.label', 'Informasi Toko')
-                ->has('nav.public.hamburger', 11)
-                ->has('nav.public.desktop_main', 6)
-                ->where('nav.public.desktop_main.0.label', 'Flash Sale')
-                ->where('nav.public.desktop_main.5.label', 'Informasi Toko')
+                ->has('nav.public.hamburger', 10)
+                ->has('nav.public.desktop_main', 5)
+                ->where('nav.public.desktop_main.0.label', 'Model Produk')
+                ->where('nav.public.desktop_main.4.label', 'Informasi Toko')
                 ->has('nav.public.model_menu', 3)
                 ->where('nav.public.model_menu.0.label', 'Jendela Aluminium Jungkit')
                 ->where('modelCards.0.meta', '3 Model Kaca | 4 Model Warna')
@@ -308,7 +309,7 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('promoSlides.0.subheadline', '1.000.000+ Unit Terpasang di Seluruh Indonesia')
                 ->where('promoSlides.0.accent', null)
                 ->where('promoSlides.0.image', '/images/home/model-casement.png')
-                ->where('promoSlides.0.href', route('catalog.windows', absolute: false)));
+                ->where('promoSlides.0.href', route('catalog.category', ['category' => 'windows'], absolute: false)));
     }
 
     public function test_fallback_promo_uses_newest_bouven_product_photo_not_dummy(): void
@@ -376,7 +377,7 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('promoSlides.0.layout', 'landing')
                 ->where('promoSlides.1.source', 'fallback')
                 ->where('promoSlides.1.layout', 'promo_card')
-                ->where('promoSlides.1.href', '/bouven?model=JUNGKIT')
+                ->where('promoSlides.1.href', '/products/bouven/jungkit')
                 ->where('promoSlides.1.image', 'https://cdn.example/bou-new.jpg')
                 ->where('promoSlides.1.accent', null)
                 ->where('promoSlides.1.eyebrow', 'Boven')
@@ -402,11 +403,11 @@ class HomepagePopularTest extends \Tests\TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('promoSlides.1.source', 'automatic')
-                ->where('promoSlides.1.href', '/bouven?model=JUNGKIT')
+                ->where('promoSlides.1.href', '/products/bouven/jungkit')
                 ->where('promoSlides.1.image', 'https://cdn.example/BOU-AUTO-NEW.jpg')
                 ->where('promoSlides.1.headline', "Boven\nJungkit")
                 ->where('promoSlides.1.subheadline', 'Harga miring, kualitas terjamin')
-                ->where('promoSlides.2.href', '/windows?model=SLIDING'));
+                ->where('promoSlides.2.href', '/products/windows/sliding'));
     }
 
     public function test_home_builds_automatic_promo_slides_from_eligible_products(): void
@@ -444,13 +445,13 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('promoSlides.0.layout', 'landing')
                 ->where('promoSlides.1.source', 'automatic')
                 ->where('promoSlides.1.layout', 'promo_card')
-                ->where('promoSlides.1.href', '/windows?model=SLIDING')
+                ->where('promoSlides.1.href', '/products/windows/sliding')
                 ->where('promoSlides.1.headline', "Jendela\nSliding")
                 ->where('promoSlides.1.subheadline', 'Harga miring, kualitas terjamin')
                 ->where('promoSlides.1.accent', '-20%')
                 ->where('promoSlides.1.image', 'https://cdn.example/WIN-AUTO-A.jpg')
-                ->where('promoSlides.2.href', '/windows?model=SLIDING')
-                ->where('promoSlides.3.href', '/windows?model=SLIDING'));
+                ->where('promoSlides.2.href', '/products/windows/sliding')
+                ->where('promoSlides.3.href', '/products/windows/sliding'));
     }
 
     public function test_automatic_promos_follow_manual_first_dedupe_and_limit(): void
@@ -486,8 +487,8 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('promoSlides.1.source', 'manual')
                 ->where('promoSlides.1.href', '/product/WIN-DEDUP')
                 ->where('promoSlides.2.source', 'automatic')
-                ->where('promoSlides.2.href', '/windows?model=SLIDING')
-                ->where('promoSlides.3.href', '/windows?model=SLIDING'));
+                ->where('promoSlides.2.href', '/products/windows/sliding')
+                ->where('promoSlides.3.href', '/products/windows/sliding'));
     }
 
     public function test_automatic_promos_can_be_disabled_from_admin_settings(): void
@@ -546,10 +547,64 @@ class HomepagePopularTest extends \Tests\TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('promoSlides.1.source', 'automatic')
-                ->where('promoSlides.1.href', '/windows?model=SLIDING')
+                ->where('promoSlides.1.href', '/products/windows/sliding')
                 ->where('promoSlides.1.headline', "Jendela\nSliding")
                 ->where('announcements', fn ($items) => collect($items)->every(
                     fn ($item) => ! str_contains(strtoupper((string) ($item['href'] ?? '')), 'WIN-TICKER')
                 )));
+    }
+    public function test_flash_sale_discount_rate_is_preserved_for_higher_price_size_cards(): void
+    {
+        FlashSalePeriodSettings::update([
+            'enabled' => true,
+            'starts_at' => now()->subHour()->toIso8601String(),
+            'ends_at' => now()->addDay()->toIso8601String(),
+        ]);
+
+        $product = Product::create([
+            'parent_sku' => 'WIN-SIZE-PROMO',
+            'name' => 'Jendela Jungkit Ornamen',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'ORNAMEN',
+            'status' => 'active',
+        ]);
+
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'WIN-SIZE-PROMO-60',
+            'price' => 835000,
+            'stock' => 5,
+            'height_cm' => 60,
+            'width_cm' => 60,
+            'status' => 'active',
+        ]);
+        $large = ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'WIN-SIZE-PROMO-130',
+            'price' => 1675000,
+            'stock' => 5,
+            'height_cm' => 130,
+            'width_cm' => 60,
+            'status' => 'active',
+        ]);
+
+        foreach (['promo_compare_price' => '982353', 'promo_flash_sale' => 'true'] as $name => $value) {
+            ProductAttribute::create([
+                'product_id' => $product->id,
+                'attribute_name' => $name,
+                'attribute_value' => $value,
+                'source' => 'internal',
+            ]);
+        }
+
+        $product->load(['mainImage', 'media', 'activeVariants', 'attributes']);
+        $card = InertiaCatalog::sizeCard($product, $large);
+
+        $this->assertSame(1675000.0, $card['min_price']);
+        $this->assertSame(15, $card['discount_percent']);
+        $this->assertSame(1970588.0, (float) $card['compare_price']);
+        $this->assertTrue($card['flash_sale']);
     }
 }

@@ -33,7 +33,7 @@ class CatalogSearchTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->get('/products?q='.urlencode('jendela sliding'))
+        $this->get('/products/all?q='.urlencode('jendela sliding'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Catalog')
@@ -55,6 +55,10 @@ class CatalogSearchTest extends TestCase
         ]);
 
         $this->get('/windows')
+            ->assertRedirect('/products/windows')
+            ->assertStatus(301);
+
+        $this->get('/products/windows')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Catalog')
@@ -62,25 +66,25 @@ class CatalogSearchTest extends TestCase
             );
 
         $this->get('/windows?model=SLIDING')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Public/Catalog')
-                ->where('categoryName', 'Jendela Sliding')
-                ->where('activeModel', 'SLIDING')
-            );
+            ->assertRedirect('/products/windows/sliding')
+            ->assertStatus(301);
 
-        $this->get('/windows?model=SLIDING&design=ORNAMEN')
+        $this->get('/products/windows/sliding/ornamen')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Catalog')
                 ->where('categoryName', 'Jendela Sliding Ornamen')
+                ->where('activeModel', 'SLIDING')
+                ->where('activeDesign', 'ORNAMEN')
+                ->where('robotsDirective', 'index,follow')
             );
 
+        $this->get('/windows?model=SLIDING&design=ORNAMEN')
+            ->assertRedirect('/products/windows/sliding/ornamen')
+            ->assertStatus(301);
+
         $this->get('/doors?model=SWING')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Public/Catalog')
-                ->where('categoryName', 'Pintu Swing')
-            );
+            ->assertRedirect('/products/doors/swing')
+            ->assertStatus(301);
     }
 }

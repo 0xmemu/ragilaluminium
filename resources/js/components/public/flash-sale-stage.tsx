@@ -6,10 +6,25 @@ import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { FlashSalePeriod, ProductCardData, SelectOption, SharedPageProps } from "@/types"
+
+/** Sort chips for `/flash-sale` — maps to existing `?sort=` contract (+ `terlaris` alias). */
+export const FLASH_SALE_SORT_OPTIONS = [
+  { value: "popular", label: "Populer" },
+  { value: "newest", label: "Terbaru" },
+  { value: "terlaris", label: "Terlaris" },
+] as const
 
 function useFlashSalePeriod(override?: FlashSalePeriod | null): FlashSalePeriod | null {
   const shared = usePage<SharedPageProps>().props.flashSalePeriod
@@ -21,9 +36,10 @@ const DAY_MS = 86_400_000
 /** Daily Flash Sale deadline; rolls to next midnight while campaign is still live. */
 function useDailyFlashSaleCountdown(period: FlashSalePeriod | null | undefined): number | null {
   const [remaining, setRemaining] = React.useState<number | null>(null)
+  const dailyEndsAt = period?.daily_ends_at ?? null
 
   React.useEffect(() => {
-    if (period?.live !== true || !period.daily_ends_at) {
+    if (period?.live !== true || !dailyEndsAt) {
       setRemaining(null)
       return
     }
@@ -37,7 +53,7 @@ function useDailyFlashSaleCountdown(period: FlashSalePeriod | null | undefined):
         return
       }
 
-      let deadlineMs = new Date(period.daily_ends_at).getTime()
+      let deadlineMs = new Date(dailyEndsAt).getTime()
 
       while (deadlineMs <= now) {
         if (campaignEndMs !== null && deadlineMs >= campaignEndMs) {
@@ -55,7 +71,7 @@ function useDailyFlashSaleCountdown(period: FlashSalePeriod | null | undefined):
     tick()
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
-  }, [period?.live, period?.daily_ends_at, period?.ends_at])
+  }, [dailyEndsAt, period?.ends_at, period?.live])
 
   return remaining
 }
@@ -89,13 +105,21 @@ export function FlashSaleNavCountdown({
   return (
     <span
       className={cn(
-        "shrink-0 font-semibold italic tabular-nums tracking-tight text-[#FFB020]/50",
+        "inline-flex shrink-0 items-baseline gap-1.5 font-semibold italic tabular-nums tracking-tight text-[#FFB020]/50",
         className,
       )}
       aria-live="polite"
       aria-label={`Berakhir dalam ${hours} jam ${minutes} menit ${seconds} detik`}
     >
-      {display}
+      <span>{hours}</span>
+      <span className="opacity-70" aria-hidden>
+        :
+      </span>
+      <span>{minutes}</span>
+      <span className="opacity-70" aria-hidden>
+        :
+      </span>
+      <span>{seconds}</span>
     </span>
   )
 }
@@ -141,20 +165,24 @@ function FlashSaleBolt({ className }: { className?: string }) {
     <span className={cn("relative inline-flex shrink-0", className)} aria-hidden>
       <Lightning
         weight="fill"
-        className="size-full text-[#FFB020] drop-shadow-[2px_3px_0_rgba(120,40,0,0.35)]"
+        className="size-full text-[#FFB020] drop-shadow-[1px_2px_0_rgba(80,20,0,0.35)]"
       />
     </span>
   )
 }
 
-/** Marketplace countdown: "22 Jam : 19 Menit : 30 Detik" */
+/** Marketplace countdown: HH : MM : SS dalam digibox (harian 0–23 jam, atau total periode). */
 export function FlashSaleCountdownClock({
   secondsRemaining,
-  label = "Berakhir dalam:",
+  label = "Berakhir dalam",
+  daily = false,
   className,
 }: {
   secondsRemaining: number | null
+  /** Hanya untuk aria-label aksesibel; tidak ditampilkan. */
   label?: string
+  /** true = jam 0–23 (countdown harian); false = akumulasi jam sisa periode/jadwal */
+  daily?: boolean
   className?: string
 }) {
   const remaining = useCountdown(secondsRemaining)
@@ -164,31 +192,34 @@ export function FlashSaleCountdownClock({
   }
 
   const parts = splitCountdown(remaining)
-  const displayHours = parts.days * 24 + parts.hours
+  const displayHours = daily ? parts.hours : parts.days * 24 + parts.hours
   const units = [
-    { value: displayHours, unit: "Jam" },
-    { value: parts.minutes, unit: "Menit" },
-    { value: parts.seconds, unit: "Detik" },
+    { value: displayHours, key: "hours" },
+    { value: parts.minutes, key: "minutes" },
+    { value: parts.seconds, key: "seconds" },
   ]
 
   return (
-    <div className={cn("text-right text-white", className)}>
-      <p className="text-xs font-semibold sm:text-sm">{label}</p>
-      <p className="mt-1 flex flex-wrap items-baseline justify-end gap-x-1 font-display text-lg font-extrabold tabular-nums tracking-tight sm:text-2xl lg:text-3xl">
-        {units.map((item, index) => (
-          <React.Fragment key={item.unit}>
-            {index > 0 ? (
-              <span className="px-0.5 font-bold opacity-90" aria-hidden>
-                :
-              </span>
-            ) : null}
-            <span>
-              <span className="tabular-nums">{String(item.value).padStart(2, "0")}</span>{" "}
-              <span className="text-[0.65em] font-bold">{item.unit}</span>
+    <div
+      className={cn("flex shrink-0 items-center gap-1 sm:gap-1.5", className)}
+      aria-live="polite"
+      aria-label={`${label}: ${displayHours} jam ${parts.minutes} menit ${parts.seconds} detik`}
+    >
+      {units.map((item, index) => (
+        <React.Fragment key={item.key}>
+          {index > 0 ? (
+            <span
+              className="px-0.5 font-display text-base font-extrabold leading-none text-[#FFB020] sm:text-xl"
+              aria-hidden
+            >
+              :
             </span>
-          </React.Fragment>
-        ))}
-      </p>
+          ) : null}
+          <span className="inline-flex min-w-[2.25rem] items-center justify-center rounded-md bg-white/15 px-1.5 py-1 font-display text-base font-extrabold leading-none tabular-nums tracking-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] ring-1 ring-inset ring-white/20 sm:min-w-[2.75rem] sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xl lg:min-w-[3.25rem] lg:text-2xl">
+            {String(item.value).padStart(2, "0")}
+          </span>
+        </React.Fragment>
+      ))}
     </div>
   )
 }
@@ -197,69 +228,70 @@ export function FlashSaleCountdownClock({
 export function FlashSaleRedBanner({
   period,
   compact = false,
-  subtitle = "PENAWARAN TERBATAS",
 }: {
   period?: FlashSalePeriod | null
   compact?: boolean
+  /** @deprecated subtitle banner dihapus; prop diabaikan agar call site lama aman */
   subtitle?: string
 }) {
   const resolved = useFlashSalePeriod(period)
   const isLive = resolved?.live === true
   const isScheduled = resolved?.status === "scheduled"
-  const countdownSeconds =
-    isLive || isScheduled ? (resolved?.seconds_remaining ?? null) : null
-
-  let statusLine = subtitle
-  if (!resolved || resolved.status === "disabled") {
-    statusLine = "PERIODE BELUM AKTIF"
-  } else if (resolved.status === "ended") {
-    statusLine = "PERIODE BERAKHIR"
-  } else if (isScheduled) {
-    statusLine = "SEGERA DIMULAI"
-  }
+  // Saat live: countdown harian (reset tiap hari), bukan total sisa periode kampanye.
+  const dailyRemaining = useDailyFlashSaleCountdown(resolved)
+  const countdownSeconds = isLive
+    ? dailyRemaining
+    : isScheduled
+      ? (resolved?.seconds_remaining ?? null)
+      : null
 
   return (
     <div className="relative overflow-hidden bg-primary text-white">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_80%_40%,rgba(255,255,255,0.18),transparent_62%)]"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-black/15 via-transparent to-black/25"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-10 -top-16 size-56 rounded-full bg-[#FFB020]/20 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-20 left-1/4 size-48 rounded-full bg-white/10 blur-3xl"
       />
       <div
         className={cn(
-          "container-page relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
-          compact ? "py-4 sm:py-5" : "py-5 sm:py-6 lg:py-7",
+          "container-page relative flex items-center justify-between gap-3 sm:gap-6",
+          compact ? "py-3.5 sm:py-4" : "py-4 sm:py-5",
         )}
       >
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
-          <FlashSaleBolt className={compact ? "size-9 sm:size-14" : "size-10 sm:size-16 lg:size-20"} />
-          <div className="min-w-0">
-            <h1
-              className={cn(
-                "font-display font-extrabold italic tracking-tight",
-                compact ? "text-2xl sm:text-4xl" : "text-2xl sm:text-5xl lg:text-6xl",
-              )}
-            >
-              FLASH SALE
-            </h1>
-            <p
-              className={cn(
-                "mt-0.5 font-semibold uppercase tracking-tight text-white/95",
-                compact ? "text-[11px] sm:text-sm" : "text-xs sm:text-base",
-              )}
-            >
-              {statusLine}
-            </p>
-          </div>
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-inset ring-white/25",
+              compact ? "size-9 sm:size-10" : "size-10 sm:size-11 lg:size-12",
+            )}
+          >
+            <FlashSaleBolt className={compact ? "size-5" : "size-5 sm:size-6"} />
+          </span>
+          <h1
+            className={cn(
+              "min-w-0 truncate font-display font-extrabold italic leading-none tracking-tight",
+              compact ? "text-xl sm:text-3xl" : "text-[1.65rem] sm:text-3xl lg:text-4xl",
+            )}
+          >
+            FLASH SALE
+          </h1>
         </div>
 
         {countdownSeconds !== null ? (
           <FlashSaleCountdownClock
             secondsRemaining={countdownSeconds}
-            label={isScheduled ? "Dimulai dalam:" : "Berakhir dalam:"}
-            className="sm:min-w-[16rem]"
+            daily={isLive}
+            label={isScheduled ? "Dimulai dalam" : "Berakhir dalam"}
           />
         ) : resolved?.ends_at_label || resolved?.starts_at_label ? (
-          <p className="max-w-xs text-right text-sm font-semibold text-white/95 sm:text-base">
+          <p className="max-w-[11rem] text-right text-xs font-medium leading-snug text-white/90 sm:max-w-xs sm:text-sm">
             {resolved.status === "ended"
               ? `Berakhir ${resolved.ends_at_label}`
               : resolved.range_label}
@@ -282,9 +314,7 @@ function FlashSaleSectionIntro({
   showSeeAll?: boolean
 }) {
   const resolved = useFlashSalePeriod(period)
-  const remaining = useCountdown(
-    resolved?.live ? resolved.seconds_remaining : null,
-  )
+  const remaining = useDailyFlashSaleCountdown(resolved)
   const endsToday = remaining !== null && remaining > 0 && remaining < 86400
 
   const accent = endsToday ? "khusus hari ini!" : "selagi periode berlangsung!"
@@ -327,13 +357,11 @@ function FlashSaleSectionIntro({
   )
 }
 
-/** Flash Sale page hero: breadcrumbs + Signal Red marketplace banner + intro. */
+/** Flash Sale page hero: breadcrumbs + Signal Red marketplace banner. */
 export function FlashSaleHero({
-  productCount,
-  searchQuery,
   period,
 }: {
-  productCount: number
+  productCount?: number
   searchQuery?: string
   actions?: React.ReactNode
   period?: FlashSalePeriod | null
@@ -346,21 +374,13 @@ export function FlashSaleHero({
         <Breadcrumbs
           items={[
             { label: "Home", href: routeUrl("home") },
-            { label: "Semua Model Produk", href: routeUrl("catalog.index") },
+            { label: "Promo", href: routeUrl("catalog.promo") },
             { label: "Flash Sale" },
           ]}
         />
       </div>
 
       <FlashSaleRedBanner period={resolved} />
-
-      <div className="container-page py-5 lg:py-6">
-        <FlashSaleSectionIntro
-          period={resolved}
-          productCount={productCount}
-          searchQuery={searchQuery}
-        />
-      </div>
     </section>
   )
 }
@@ -474,6 +494,242 @@ export function FlashModelToggles({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+function flashChipClass(active: boolean): string {
+  return cn(
+    "inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold transition",
+    active
+      ? "border-primary bg-primary text-primary-foreground"
+      : "border-border bg-white text-foreground hover:border-foreground/35",
+  )
+}
+
+/**
+ * Flash Sale listing controls: Populer / Terbaru / Terlaris, filter harga, cari ukuran (`?q=`).
+ * Wired to `/flash-sale` query params — not decorative.
+ */
+export function FlashSaleListingToolbar({
+  sort,
+  priceMin,
+  priceMax,
+  searchQuery,
+  onSortChange,
+  onPriceApply,
+  onSearch,
+}: {
+  sort: string
+  priceMin: string
+  priceMax: string
+  searchQuery: string
+  onSortChange: (sort: string) => void
+  onPriceApply: (next: { priceMin: string; priceMax: string }) => void
+  onSearch: (q: string) => void
+}) {
+  const resolvedSort = sort && sort !== "" ? sort : "popular"
+  const priceActive = Boolean(priceMin || priceMax)
+  const [priceOpen, setPriceOpen] = React.useState(false)
+  const [draftMin, setDraftMin] = React.useState(priceMin)
+  const [draftMax, setDraftMax] = React.useState(priceMax)
+  const [searchOpen, setSearchOpen] = React.useState(Boolean(searchQuery.trim()))
+  const [draftQuery, setDraftQuery] = React.useState(searchQuery)
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    setDraftMin(priceMin)
+    setDraftMax(priceMax)
+  }, [priceMin, priceMax])
+
+  React.useEffect(() => {
+    setDraftQuery(searchQuery)
+    if (searchQuery.trim()) {
+      setSearchOpen(true)
+    }
+  }, [searchQuery])
+
+  React.useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus()
+    }
+  }, [searchOpen])
+
+  function submitSearch(event?: React.FormEvent) {
+    event?.preventDefault()
+    onSearch(draftQuery.trim())
+  }
+
+  return (
+    <div className="mb-6 flex flex-col gap-3 sm:mb-8">
+      <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Urutkan dan filter Flash Sale">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Urutkan">
+          {FLASH_SALE_SORT_OPTIONS.map((option) => {
+            const active = resolvedSort === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onSortChange(option.value)}
+                className={flashChipClass(active)}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <DropdownMenu
+          open={priceOpen}
+          onOpenChange={(open) => {
+            setPriceOpen(open)
+            if (open) {
+              setDraftMin(priceMin)
+              setDraftMax(priceMax)
+            }
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-pressed={priceActive} className={flashChipClass(priceActive)}>
+              <Icon name="sliders" className="size-3.5" aria-hidden />
+              Filter harga
+              {priceActive ? (
+                <span className="rounded-full bg-white/20 px-1.5 text-[10px] font-bold tabular-nums">•</span>
+              ) : null}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            sideOffset={10}
+            className="w-[min(100vw-2rem,18rem)] rounded-xl border border-border bg-surface p-3 shadow-float"
+            onCloseAutoFocus={(event) => event.preventDefault()}
+          >
+            <p className="px-0.5 pb-2 text-xs font-bold tracking-tight text-muted-foreground">
+              Rentang harga
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Field id="flash-price-min" label="Minimum">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  value={draftMin}
+                  onChange={(event) => setDraftMin(event.target.value)}
+                  placeholder="Rp0"
+                  className="rounded-lg"
+                />
+              </Field>
+              <Field id="flash-price-max" label="Maksimum">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  value={draftMax}
+                  onChange={(event) => setDraftMax(event.target.value)}
+                  placeholder="Tanpa batas"
+                  className="rounded-lg"
+                />
+              </Field>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setDraftMin("")
+                  setDraftMax("")
+                  onPriceApply({ priceMin: "", priceMax: "" })
+                  setPriceOpen(false)
+                }}
+              >
+                Reset
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  onPriceApply({ priceMin: draftMin, priceMax: draftMax })
+                  setPriceOpen(false)
+                }}
+              >
+                Terapkan
+              </Button>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {!searchOpen ? (
+          <button
+            type="button"
+            aria-label="Cari ukuran spesifik"
+            title="Cari ukuran"
+            onClick={() => setSearchOpen(true)}
+            className={flashChipClass(Boolean(searchQuery.trim()))}
+          >
+            <Icon name="search" className="size-4" aria-hidden />
+            <span className="sr-only sm:not-sr-only sm:inline">Ukuran</span>
+          </button>
+        ) : null}
+      </div>
+
+      {searchOpen ? (
+        <form
+          onSubmit={submitSearch}
+          className="flex w-full max-w-md items-center gap-2"
+          role="search"
+          aria-label="Cari ukuran Flash Sale"
+        >
+          <div className="relative min-w-0 flex-1">
+            <Icon
+              name="search"
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              ref={searchInputRef}
+              type="search"
+              value={draftQuery}
+              onChange={(event) => setDraftQuery(event.target.value)}
+              placeholder="Cari ukuran, mis. 60x120"
+              className="rounded-full pl-10 pr-10"
+              aria-label="Ukuran spesifik"
+            />
+            {draftQuery || searchQuery ? (
+              <button
+                type="button"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground"
+                aria-label="Hapus pencarian ukuran"
+                onClick={() => {
+                  setDraftQuery("")
+                  onSearch("")
+                  setSearchOpen(false)
+                }}
+              >
+                <Icon name="x" className="size-4" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <Button type="submit" size="sm" className="shrink-0 px-4">
+            Cari
+          </Button>
+          {!searchQuery.trim() ? (
+            <button
+              type="button"
+              className="shrink-0 text-sm font-semibold text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setDraftQuery("")
+                setSearchOpen(false)
+              }}
+            >
+              Batal
+            </button>
+          ) : null}
+        </form>
+      ) : null}
     </div>
   )
 }

@@ -18,6 +18,7 @@ interface UserRow {
   id: number
   no: number
   name: string
+  username: string
   email: string
   status: string
   is_self: boolean
@@ -96,7 +97,7 @@ export default function UsersIndex({
         <Input
           value={q}
           onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari nama atau email"
+          placeholder="Cari nama, username, atau email"
           className="min-w-[16rem] flex-1"
         />
         <Select
@@ -141,7 +142,8 @@ export default function UsersIndex({
                   <tr>
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Nama</th>
-                    <th className="px-3 py-3 font-semibold">Email</th>
+                    <th className="px-3 py-3 font-semibold">Username</th>
+                    <th className="px-3 py-3 font-semibold">Email penerima</th>
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
                   </tr>
@@ -158,6 +160,7 @@ export default function UsersIndex({
                           <p className="mt-0.5 text-[11px] font-semibold text-primary">Anda</p>
                         ) : null}
                       </td>
+                      <td className="px-3 py-3 font-mono text-xs font-semibold text-foreground">{row.username}</td>
                       <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{row.email}</td>
                       <td className="px-3 py-3">
                         <StatusBadge status={row.status} />
@@ -240,9 +243,13 @@ export default function UsersIndex({
                         <StatusBadge status={row.status} />
                       </dd>
                     </div>
-                    <div className="col-span-2">
-                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Email</dt>
-                      <dd className="mt-1 font-mono text-xs text-muted-foreground">{row.email}</dd>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Username</dt>
+                      <dd className="mt-1 font-mono text-xs font-semibold text-foreground">{row.username}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Email penerima</dt>
+                      <dd className="mt-1 truncate font-mono text-xs text-muted-foreground">{row.email}</dd>
                     </div>
                   </dl>
                   <div className="mt-4">

@@ -754,23 +754,19 @@ Manual customer reviews (often copied from Shopee/WhatsApp) for the public store
 - `message` (text, **nullable**) — boleh kosong jika `image_url` terisi (screenshot murni / admin-added WA SS)
 - `rating` (tinyint 1–5, nullable)
 - `source` (varchar: `shopee`, `whatsapp`, `website`, `other`)
-  - `shopee` / `whatsapp` / `other` → section **Apa kata pelanggan kami**
+  - `shopee` / `whatsapp` → section **Apa kata pelanggan kami** (wajib `image_url` screenshot; di luar transaksi website)
   - `website` → section **Ulasan pelanggan di website** (+ PDP tab ulasan bila `product_id` set)
+  - `other` → legacy; tidak masuk section Apa kata pelanggan
 - `location` (varchar, nullable)
-- `image_url` (varchar, nullable)
+- `image_url` (varchar, nullable) — **wajib** untuk `shopee`/`whatsapp` di storefront
 - `published` (boolean)
-- `sort_order` (int)
-- `created_at` / `updated_at`
-
-Indexes:
-
-- `cms_testimonials_product_published_idx` (`product_id`, `published`)
+- `sort_order` (int) — prioritas tampilan Apa kata pelanggan; diubah admin via `PUT /admin/apa-kata-pelanggan/reorder`
 
 Notes:
 
 - **Hasil pemasangan** = union of (1) `product_media` with `is_installation=true` (from catalog import / admin media flags) and (2) manual `cms_gallery_items` (no SKU). Do not treat gallery as product reviews / ratings.
 - Admin CRUD: `/admin/testimonials` (Monitoring → Ulasan) with tabs **Ulasan Website** (`cms_testimonials`) and **Ulasan Foto** (`cms_gallery_items` via `/admin/gallery-items/*` + imported installation media listed read-only).
-- Pengaturan Website → **Apa Kata Pelanggan Kami** (`/admin/apa-kata-pelanggan`): same website list + meta on `cms_pages.slug = testimoni` (`content.heading`, `content.subtitle`, `title`, `published`) for `/reviews` hero via `TestimonialPageSettings`.
+- Pengaturan Website → **Apa Kata Pelanggan Kami** (`/admin/apa-kata-pelanggan`): list **hanya** screenshot Shopee/WA + meta `cms_pages.slug = testimoni` + **atur urutan** (`reorder`).
 - Pengaturan Website → **Hasil Pemasangan Kami** (`/admin/hasil-pemasangan`): meta on `cms_pages.slug = hasil-pemasangan` via `InstallationPageSettings` for `/hasil-pemasangan` + beranda section; photos come from import + manual gallery.
 
 ---

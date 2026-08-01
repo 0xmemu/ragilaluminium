@@ -10,10 +10,10 @@ import { routeUrl } from "@/lib/routes"
 import type { ProductCardData } from "@/types"
 
 const carouselNavBtnClass =
-  "absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
+  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
 const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "scrollbar-x flex min-w-0 items-stretch snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 const carouselCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
@@ -92,7 +92,8 @@ function CarouselNavButton({
       aria-controls={trackId}
       className={cn(
         carouselNavBtnClass,
-        side === "left" ? "md:left-0 md:-translate-x-1/2" : "md:right-0 md:translate-x-1/2",
+        // Inset di dalam track — jangan half-outside (overflow parent memotong tombol).
+        side === "left" ? "md:left-2" : "md:right-2",
       )}
     >
       <Icon
@@ -135,7 +136,7 @@ function ProductCardCarousel({
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
   return (
-    <div className="relative min-w-0 overflow-x-clip px-1">
+    <div className="relative min-w-0 px-1">
       <div ref={trackRef} id={trackId} className={carouselTrackClass}>
         {items.map((product, index) => (
           <div key={product.id} className={carouselCardClass}>
@@ -172,27 +173,27 @@ export function PalingBanyakDipesanSection({
 }) {
   if (!products.length) return null
 
-  const seeMoreHref = `${routeUrl("catalog.index")}?sort=popular`
+  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular`
 
   return (
     <section
       id="paling-banyak-dipesan"
-      className={cn("scroll-mt-20 bg-surface-muted section-space", className)}
+      className={cn("scroll-mt-20 section-space", className)}
     >
       <div className="container-page">
         <SectionHeading
           align="left"
           size="default"
-          className="mb-4 gap-1 sm:mb-5 md:mb-6"
+          className="mb-3 gap-1 sm:mb-4"
           eyebrow="Untuk inspirasi Anda"
           title="Paling banyak dipesan"
           action={
             <Link
               href={seeMoreHref}
-              className="inline-flex min-h-8 shrink-0 items-center gap-1 self-end text-xs font-semibold text-foreground transition hover:text-primary sm:min-h-9 sm:text-sm"
+              className="inline-flex h-7 shrink-0 items-center gap-1 self-end text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
             >
               Lihat selengkapnya
-              <Icon name="caret-right" className="size-3.5 sm:size-4" weight="bold" aria-hidden="true" />
+              <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
             </Link>
           }
         />

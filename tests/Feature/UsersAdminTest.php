@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\AdminAccountCredentials;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -14,6 +16,9 @@ class UsersAdminTest extends TestCase
 
     public function test_manajemen_admin_lists_filters_and_creates_equal_admin(): void
     {
+        Notification::fake();
+        config(['mail.default' => 'array']);
+
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
@@ -45,7 +50,8 @@ class UsersAdminTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.users.store'), [
                 'name' => 'Admin Baru',
-                'email' => 'baru@example.com',
+                'username' => 'admin.baru',
+                'email' => 'boss@example.com',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'role' => 'viewer', // ignored — Stage 2 equal-admin
@@ -54,10 +60,18 @@ class UsersAdminTest extends TestCase
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertDatabaseHas('users', [
-            'email' => 'baru@example.com',
+            'username' => 'admin.baru',
+            'email' => 'boss@example.com',
             'role' => 'admin',
             'status' => 'active',
         ]);
+
+        $created = User::query()->where('username', 'admin.baru')->firstOrFail();
+        Notification::assertSentTo(
+            $created,
+            AdminAccountCredentials::class,
+            fn (AdminAccountCredentials $notification) => $notification->username === 'admin.baru'
+        );
     }
 
     public function test_cannot_deactivate_self_or_last_active_admin(): void
@@ -81,6 +95,7 @@ class UsersAdminTest extends TestCase
             ->from(route('admin.users.edit', $only))
             ->put(route('admin.users.update', $only), [
                 'name' => $only->name,
+                'username' => $only->username,
                 'email' => $only->email,
                 'status' => 'inactive',
             ])

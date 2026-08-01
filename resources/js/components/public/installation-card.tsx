@@ -20,11 +20,12 @@ function metaStats(item: InstallationItem, level: "model" | "product"): MetaStat
   const videos = Math.max(0, Number(item.video_count ?? 0))
 
   if (level === "model") {
-    return [
+    const modelStats: MetaStat[] = [
       { key: "products", icon: "package", value: products, label: "produk" },
       { key: "photos", icon: "images", value: photos, label: "foto" },
       { key: "videos", icon: "video", value: videos, label: "video" },
     ]
+    return modelStats
   }
 
   const stats: MetaStat[] = []
@@ -51,42 +52,82 @@ export function InstallationCard({
   const href = item.href?.trim() || routeUrl("installation.index")
   const image = item.image ?? item.image_url ?? null
   const stats = metaStats(item, level)
+  const hasVideo = Math.max(0, Number(item.video_count ?? 0)) > 0
   const external = href.startsWith("http://") || href.startsWith("https://")
 
   const body = (
     <>
-      <div className="aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
         <ResponsiveImage
           src={image}
           alt={title}
           wrapperClassName="aspect-square size-full bg-surface-muted"
           className="object-cover transition duration-300 group-hover:scale-[1.03]"
         />
+        {hasVideo ? (
+          <span
+            className="absolute bottom-2.5 right-2.5 inline-flex size-9 items-center justify-center rounded-full border border-white/40 bg-foreground/80 text-background shadow-sm backdrop-blur-[1px]"
+            aria-hidden="true"
+          >
+            <Icon name="play" className="size-4 translate-x-px" weight="fill" />
+          </span>
+        ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2.5 bg-white px-3 py-3 @[16rem]:gap-3 @[16rem]:px-3.5 @[16rem]:py-3.5">
-        <h3 className="line-clamp-2 text-xs font-semibold leading-4 text-foreground @[16rem]:text-[13px] @[16rem]:leading-4 @[22rem]:text-sm @[22rem]:leading-5">
+      <div className="flex min-w-0 shrink-0 flex-col gap-1.5 bg-white px-2.5 py-2.5 @[16rem]:gap-2 @[16rem]:px-3 @[16rem]:py-3">
+        <h3 className="w-full min-w-0 break-words text-[11px] font-normal leading-4 text-foreground line-clamp-2 @[16rem]:text-xs @[16rem]:leading-4 @[22rem]:text-xs @[22rem]:leading-4">
           {title}
         </h3>
 
         {stats.length ? (
           <ul
-            className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm font-semibold leading-none text-primary @[16rem]:gap-x-3.5 @[16rem]:text-[15px] @[22rem]:text-base"
+            className={cn(
+              "w-full min-w-0",
+              level === "model"
+                ? "grid grid-cols-3 gap-1 border-t border-border/70 pt-1.5"
+                : "flex flex-wrap items-center justify-start gap-x-2 gap-y-0.5 text-left",
+            )}
             aria-label="Ringkasan dokumentasi"
           >
             {stats.map((stat) => (
-              <li key={stat.key} className="inline-flex items-center gap-1.5">
+              <li
+                key={stat.key}
+                className={cn(
+                  "min-w-0 max-w-full",
+                  level === "model"
+                    ? "flex flex-col items-center justify-center gap-0.5 text-center"
+                    : "inline-flex items-center justify-start gap-1",
+                )}
+                title={`${formatNumber(stat.value)} ${stat.label}`}
+              >
                 {stat.icon ? (
-                  <Icon
-                    name={stat.icon}
-                    weight="bold"
-                    className="size-5 shrink-0 @[22rem]:size-6"
-                    aria-hidden="true"
-                  />
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center justify-center text-primary/80",
+                      level === "model"
+                        ? "size-3.5"
+                        : "size-4 rounded-full bg-white ring-1 ring-border/60",
+                    )}
+                  >
+                    <Icon
+                      name={stat.icon}
+                      weight="bold"
+                      className="size-2.5 @[16rem]:size-3"
+                      aria-hidden="true"
+                    />
+                  </span>
                 ) : null}
-                <span className="tabular-nums">
-                  {formatNumber(stat.value)}
-                  <span className="sr-only"> {stat.label}</span>
+                <span
+                  className={cn(
+                    "min-w-0 font-light leading-none",
+                    level === "model"
+                      ? "whitespace-nowrap text-center text-[8px] @[16rem]:text-[9px]"
+                      : "truncate text-left text-[10px] @[16rem]:text-[11px]",
+                  )}
+                >
+                  <span className="tabular-nums font-normal text-primary">{formatNumber(stat.value)}</span>
+                  {" "}
+                  <span className="font-light text-muted-foreground">{stat.label}</span>
                 </span>
               </li>
             ))}

@@ -187,4 +187,83 @@ class FlashSalePeriodTest extends TestCase
         $this->assertNull($state['daily_seconds_remaining']);
         $this->assertNull($state['daily_ends_at']);
     }
+
+    public function test_flash_sale_accepts_sort_price_and_size_query(): void
+    {
+        $match = $this->seedFlashProduct();
+        ProductVariant::where('product_id', $match->id)->update([
+            'variation_1_option' => '60 x 120',
+            'height_cm' => 60,
+            'width_cm' => 120,
+            'price' => 400000,
+        ]);
+
+        $other = Product::create([
+            'parent_sku' => 'WIN-FLASH-P2',
+            'name' => 'Jendela Flash Lain',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        ProductVariant::create([
+            'product_id' => $other->id,
+            'variant_sku' => 'WIN-FLASH-P2-V1',
+            'variation_1_option' => '80 x 100',
+            'height_cm' => 80,
+            'width_cm' => 100,
+            'price' => 900000,
+            'stock' => 2,
+            'status' => 'active',
+        ]);
+        ProductAttribute::create([
+            'product_id' => $other->id,
+            'attribute_name' => 'promo_flash_sale',
+            'attribute_value' => 'true',
+        ]);
+
+        FlashSalePeriodSettings::update([
+            'enabled' => true,
+            'starts_at' => now()->subHour()->toIso8601String(),
+            'ends_at' => now()->addDay()->toIso8601String(),
+        ]);
+
+        $this->get(route('catalog.flash-sale', ['sort' => 'terlaris']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('listingMode', 'flash')
+                ->where('activeSort', 'terlaris')
+                ->has('products', 2));
+
+        $this->get(route('catalog.flash-sale', ['sort' => 'size_asc']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('products.0.parent_sku', 'WIN-FLASH-P1')
+                ->where('products.1.parent_sku', 'WIN-FLASH-P2'));
+
+        $this->get(route('catalog.flash-sale', ['sort' => 'size_desc']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('products.0.parent_sku', 'WIN-FLASH-P2')
+                ->where('products.1.parent_sku', 'WIN-FLASH-P1'));
+
+        $this->get(route('catalog.flash-sale', [
+            'price_min' => 300000,
+            'price_max' => 500000,
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('products', 1)
+                ->where('products.0.parent_sku', 'WIN-FLASH-P1')
+                ->where('priceMin', 300000)
+                ->where('priceMax', 500000));
+
+        $this->get(route('catalog.flash-sale', ['q' => '60x120']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('searchQuery', '60x120')
+                ->has('products', 1)
+                ->where('products.0.parent_sku', 'WIN-FLASH-P1'));
+    }
 }

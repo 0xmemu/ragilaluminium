@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useLayoutEffect, useRef, type ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -17,6 +17,7 @@ export function SectionHeading({
   id,
   children,
   size = "default",
+  tone = "default",
 }: {
   title?: ReactNode
   eyebrow?: ReactNode
@@ -27,8 +28,34 @@ export function SectionHeading({
   id?: string
   children?: ReactNode
   size?: "default" | "display"
+  /** `on-primary` = teks putih di atas Signal Red / primary band. */
+  tone?: "default" | "on-primary"
 }) {
   const heading = children ?? title
+  const onPrimary = tone === "on-primary"
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  useLayoutEffect(() => {
+    const element = headingRef.current
+    if (!element) return
+
+    const fit = () => {
+      element.style.fontSize = ""
+      const baseSize = Number.parseFloat(window.getComputedStyle(element).fontSize)
+      const available = element.clientWidth
+      const contentWidth = element.scrollWidth
+      if (!baseSize || !available || contentWidth <= available) return
+
+      const fittedSize = Math.max(14, baseSize * (available / contentWidth))
+      element.style.fontSize = `${fittedSize}px`
+    }
+
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(element)
+    if (element.parentElement) observer.observe(element.parentElement)
+    return () => observer.disconnect()
+  }, [heading])
 
   return (
     <div
@@ -41,7 +68,8 @@ export function SectionHeading({
       {eyebrow ? (
         <p
           className={cn(
-            "text-xs font-semibold tracking-tight text-primary sm:text-sm",
+            "text-xs font-semibold tracking-tight sm:text-sm",
+            onPrimary ? "text-white/85" : "text-primary",
             align === "center" ? "mx-auto text-center" : "text-left",
           )}
         >
@@ -53,18 +81,21 @@ export function SectionHeading({
         className={cn(
           "w-full",
           align === "left" && action
-            ? "flex items-baseline justify-between gap-3"
+            ? "flex items-end justify-between gap-3"
             : align === "center"
               ? "text-center"
               : "",
         )}
       >
         <h2
+          ref={headingRef}
           id={id}
           className={cn(
+            "min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis",
             size === "display"
-              ? "text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-              : "text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl",
+              ? "text-balance text-[clamp(1rem,5vw,1.875rem)] font-bold tracking-tight"
+              : "text-[clamp(0.95rem,4.5vw,1.5rem)] font-bold tracking-tight",
+            onPrimary ? "text-white" : "text-foreground",
             align === "center" && size === "display" && "text-center",
           )}
         >
@@ -76,7 +107,8 @@ export function SectionHeading({
       {description ? (
         <p
           className={cn(
-            "mt-1 text-sm leading-6 text-muted-foreground",
+            "mt-1 text-sm leading-6",
+            onPrimary ? "text-white/80" : "text-muted-foreground",
             align === "center" ? "mx-auto max-w-2xl" : "max-w-2xl",
           )}
         >

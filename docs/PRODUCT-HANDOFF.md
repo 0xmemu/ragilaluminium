@@ -80,6 +80,11 @@ flowchart TD
 | Model | `product_model` | `JUNGKIT` (awning/tilt), `SLIDING`, `SWING`, `KACA_MATI` (fixed glass), `ZIGZAG` (folding) |
 | Design | `design_variant` | `POLOS`, `ORNAMEN`, `KOMBINASI`, `SERIES_A`, `SERIES_B`, `SERIES_C` |
 
+- **Category vs model:** tidak ada “jendela boven”. Kategori saling eksklusif (`WINDOW` | `DOOR` | `BOUVEN`). Model (mis. `JUNGKIT`) boleh ada di jendela **dan** boven sebagai dua baris produk berbeda.
+- **Shopee Excel** tidak punya kolom kategori terisi; import (`ShopeeCatalogTaxonomy::fromProductName`) baca judul: kata `Boven`/`Bouven` → `BOUVEN` (meski diawali “Jendela …”); `Pintu` → `DOOR`; `Jendela` tanpa Boven → `WINDOW`. Model/desain dari kata Jungkit/Sliding/… dan Polos/Ornamen/….
+- **Media:** cover storefront dari `mass_update_media_info` (`ShopeeMediaExport`). Re-import **mengganti** foto utama sesuai cover file dan menyembunyikan URL katalog lama yang tidak ada di file (cegah foto boven nempel di jendela). Perbaiki data existing: `php artisan catalog:resync-shopee-media --download`.
+- Reparse taxonomy tanpa re-upload: `php artisan catalog:reparse-taxonomy` (`--dry-run` tersedia).
+
 - A **Product** (`products.parent_sku`) is the parent item; it holds category/model/design and marketing fields.
 - A **Variant** (`product_variants.variant_sku`) is the sellable unit with `price`, `stock`, `weight_kg`, and dimensions (`width_cm`, `height_cm`, `depth_cm`), plus up to two variation axes (e.g. "Ukuran" / "Warna").
 - Interior items and unrelated accessories are **out of initial scope**.
@@ -250,7 +255,7 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 |-----------|----------------|
 | `HomeController` | Homepage: banners, popular products, promotions, testimonials |
 | `PageController` | `/about`, `/faq`, `/contact`, `/cara-pemesanan`, `/policy/*`, `/reviews` (CMS/static) |
-| `CatalogController` | `/products` (model hub or listing), `/windows`, `/doors`, `/bouven` |
+| `CatalogController` | `/products` (model hub), `/products/{category}`, `/products/{category}/{model}`, `/products/{category}/{model}/{design}` |
 | `ProductController` | `/product/{parent_sku}` PDP with variants, media, attributes, testimonials |
 | `SearchController` | `GET /api/search` — JSON SKU/name search (storefront memakai `/products?q=`) |
 | `CartController` | Session cart CRUD; `count` returns JSON |
@@ -310,9 +315,9 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 | `GET /policy/privacy` | `privacy` | Privacy policy |
 | `GET /policy/terms` | `terms` | Terms |
 | `GET /products` | `catalog.index` | Model hub (no listing query) or SKU listing (with `sort`/`q`/`model`/`price_*`) |
-| `GET /windows` | `catalog.windows` | Window category |
-| `GET /doors` | `catalog.doors` | Door category |
-| `GET /bouven` | `catalog.bouven` | Bouven category |
+| `GET /products/windows` | `catalog.category` | Window category; `/windows` redirects 301 |
+| `GET /products/doors` | `catalog.category` | Door category; `/doors` redirects 301 |
+| `GET /products/bouven` | `catalog.category` | Bouven category; `/bouven` redirects 301 |
 | `GET /search` | `search` | Redirect → `/products` (query `q` dll. diteruskan) |
 | `GET /product/{parent_sku}` | `product.show` | Product detail (PDP) |
 | `GET /cart` | `cart.index` | Cart page |
@@ -452,7 +457,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 - Actions: filter, sort (`sort=popular` = website order volume), paginate, open PDP.
 - States: Empty (no matches), Loading, Error.
 
-**Category pages (`GET /windows`, `/doors`, `/bouven`)**
+**Category pages (`GET /products/{category}`; legacy category paths redirect 301)**
 - Consumes: products filtered by `product_category` + query params (`model`, `design`, `sort`, price range), pagination.
 - Actions: same as listing, scoped to the category.
 - States: Empty/Loading/Error.

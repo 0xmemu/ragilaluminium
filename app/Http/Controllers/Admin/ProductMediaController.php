@@ -140,6 +140,7 @@ class ProductMediaController extends Controller
                 'is_main_image' => (bool) $m->is_main_image,
                 'show_in_catalog' => (bool) $m->show_in_catalog,
                 'is_installation' => (bool) $m->is_installation,
+                'installation_caption' => $m->installation_caption,
                 'product_variant_id' => $m->product_variant_id,
                 'variant_label' => $m->productVariant
                     ? $this->variantLabel($m->productVariant)
@@ -168,6 +169,7 @@ class ProductMediaController extends Controller
             'is_main_image' => ['boolean'],
             'show_in_catalog' => ['boolean'],
             'is_installation' => ['boolean'],
+            'installation_caption' => ['nullable', 'string', 'max:280'],
             'visibility' => ['required', 'in:visible,archived,hidden'],
             'upload' => ['nullable', 'file', 'image', 'max:10240'],
             'product_variant_id' => [
@@ -184,6 +186,7 @@ class ProductMediaController extends Controller
             'is_main_image' => $validated['is_main_image'] ?? false,
             'show_in_catalog' => $validated['show_in_catalog'] ?? true,
             'is_installation' => $validated['is_installation'] ?? false,
+            'installation_caption' => filled($validated['installation_caption'] ?? null) ? trim($validated['installation_caption']) : null,
             'visibility' => $validated['visibility'],
             'source_url' => $validated['source_url'] ?? null,
             'status' => 'pending',
@@ -243,6 +246,7 @@ class ProductMediaController extends Controller
             'visibility' => ['sometimes', 'in:visible,archived,hidden'],
             'show_in_catalog' => ['sometimes', 'boolean'],
             'is_installation' => ['sometimes', 'boolean'],
+            'installation_caption' => ['nullable', 'string', 'max:280'],
             'product_variant_id' => [
                 'sometimes',
                 'nullable',

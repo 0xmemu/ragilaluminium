@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
  */
 class ActiveAnnouncements
 {
+    private const MAX_TICKER_CHARACTERS = 64;
     private const BANNED_PATTERN = '/\b(obral|stok\s+terbatas|kuota\s+habis|stok\s+menipis)\b/iu';
 
     /** Ticker umum tidak boleh teriak Flash Sale berulang; satu slot periode saja. */
@@ -236,6 +237,7 @@ class ActiveAnnouncements
         }
 
         $params = is_array($raw['params'] ?? null) ? $raw['params'] : [];
+        [$routeName, $params] = PublicNavigation::canonicalRoute($routeName, $params);
 
         return route($routeName, $params);
     }
@@ -265,6 +267,13 @@ class ActiveAnnouncements
         return (bool) preg_match(self::FLASH_SHOUT_PATTERN, $text);
     }
 
+    private static function limitTickerText(string $text): string
+    {
+        $normalized = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+
+        return Str::limit($normalized, self::MAX_TICKER_CHARACTERS, '...');
+    }
+
     /**
      * @param  list<array{text: string, href: string}>  $items
      * @return list<array{text: string, href: string}>
@@ -274,12 +283,17 @@ class ActiveAnnouncements
         $seen = [];
         $out = [];
         foreach ($items as $item) {
-            $key = Str::lower($item['text']);
+            $text = self::limitTickerText((string) ($item['text'] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+
+            $key = Str::lower($text);
             if (isset($seen[$key])) {
                 continue;
             }
             $seen[$key] = true;
-            $out[] = $item;
+            $out[] = [...$item, 'text' => $text];
         }
 
         return $out;

@@ -114,18 +114,26 @@ export default function ProductDetail({
   promo = null,
 }: ProductDetailProps) {
   const title = productName(product.name, product.short_name)
-  const axes = React.useMemo(() => variantAxes(variants), [variants])
-  const initialSelections = React.useMemo(() => firstAvailableSelections(variants), [variants])
-  const firstAvailable = variants.find((variant) => variant.stock > 0) ?? variants[0] ?? null
-  const [selections, setSelections] = React.useState<VariantSelections>(initialSelections)
-  const [directVariantId, setDirectVariantId] = React.useState<number | null>(
-    axes.length ? null : firstAvailable?.id ?? null,
+  const axes = React.useMemo(
+    () => variantAxes(variants).filter((axis) => axis.name !== "Ukuran"),
+    [variants],
   )
+  const initialSelections = React.useMemo(
+    () => firstAvailableSelections(variants),
+    [variants],
+  )
+  const [selections, setSelections] = React.useState<VariantSelections>(initialSelections)
 
-  const selectedVariant =
-    axes.length > 0
-      ? resolveVariant(variants, selections)
-      : variants.find((variant) => variant.id === directVariantId) ?? null
+  React.useEffect(() => {
+    setSelections(initialSelections)
+  }, [initialSelections])
+
+  const selectedVariant = React.useMemo(
+    () =>
+      resolveVariant(variants, selections) ??
+      (axes.length === 0 ? variants[0] ?? null : null),
+    [axes.length, selections, variants],
+  )
 
   const variantMedia = React.useMemo(() => {
     if (!selectedVariant) return media
@@ -164,20 +172,30 @@ export default function ProductDetail({
   })
   const [submitIntent, setSubmitIntent] = React.useState<"cart" | "checkout" | null>(null)
 
-  function chooseAxis(axisName: string, option: string) {
-    const next = { ...selections, [axisName]: option }
-    const nextVariant = resolveVariant(variants, next)
-    setSelections(next)
-    form.setData("variant_sku", nextVariant?.variant_sku ?? "")
+  React.useEffect(() => {
+    form.setData("variant_sku", selectedVariant?.variant_sku ?? "")
+    form.setData("quantity", 1)
     form.clearErrors()
-  }
+  }, [selectedVariant?.variant_sku])
 
-  function chooseDirectVariant(id: number) {
-    const nextVariant = variants.find((variant) => variant.id === id) ?? null
-    setDirectVariantId(id)
+  function chooseAxis(axisName: string, option: string) {
+    const nextSelections = { ...selections, [axisName]: option }
+    const nextVariant = resolveVariant(variants, nextSelections)
+
+    setSelections(nextSelections)
     form.setData("variant_sku", nextVariant?.variant_sku ?? "")
     form.setData("quantity", 1)
     form.clearErrors()
+
+    if (nextVariant && typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.set("variant", nextVariant.variant_sku)
+      window.history.replaceState(
+        window.history.state,
+        "",
+        url.pathname + url.search + url.hash,
+      )
+    }
   }
 
   function addToCart(event: React.FormEvent) {
@@ -260,12 +278,12 @@ export default function ProductDetail({
       </section>
 
       <section className="container-page pb-14 lg:pb-20">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
-          <div className="group/gallery" aria-label="Galeri produk">
+        <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
+          <div className="group/gallery min-w-0" aria-label="Galeri produk">
             {activeMedia ? (
               <>
                 {/* Tombol berada di luar frame pada desktop dan muncul saat galeri di-hover/focus. */}
-                <div className="relative mx-auto aspect-square w-full max-w-[min(100%,calc(100dvh-12rem))] bg-white">
+                <div className="relative mx-auto aspect-square w-full max-w-[min(100%,42rem)] overflow-hidden bg-white">
                   <ResponsiveImage
                     key={activeMedia.id}
                     src={activeMedia.url}
@@ -273,7 +291,7 @@ export default function ProductDetail({
                     loading="eager"
                     fetchPriority="high"
                     wrapperClassName="size-full bg-white"
-                    className="object-contain"
+                    className="!object-contain"
                   />
 
                   {variantMedia.length > 1 ? (
@@ -343,12 +361,12 @@ export default function ProductDetail({
             )}
           </div>
 
-          <div className="lg:sticky lg:top-28">
+          <div className="min-w-0 lg:sticky lg:top-28">
             {/* Header: subtitle brand + pill rating */}
             <div className="flex items-start justify-between gap-4">
               <Link
                 href={product.model_href ?? routeUrl("catalog.index")}
-                className="text-lg font-bold leading-snug text-foreground hover:text-primary"
+                className="min-w-0 flex-1 break-words text-lg font-bold leading-snug text-foreground hover:text-primary"
               >
                 {product.subtitle}
               </Link>
@@ -368,7 +386,7 @@ export default function ProductDetail({
               ) : null}
             </div>
 
-            <h1 className="mt-1 text-sm leading-6 text-foreground">{title}</h1>
+            <h1 className="mt-1 break-words text-sm leading-6 text-foreground">{title}</h1>
 
             {/* Harga + promo */}
             <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -398,72 +416,46 @@ export default function ProductDetail({
             </div>
 
             <form onSubmit={addToCart} className="mt-6">
-              {/* Variasi (axes) */}
               {axes.map((axis) => (
-                <fieldset key={axis.name} className="mt-5">
-                  <legend className="flex items-baseline gap-2">
-                    <span className="text-base font-bold text-foreground">{axis.name}</span>
+                <fieldset key={axis.name} className="mt-5 min-w-0">
+                  <legend className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 text-base font-bold text-foreground">
+                      {axis.name === "Warna"
+                        ? "Warna aluminium"
+                        : axis.name === "Kaca"
+                          ? "Jenis kaca"
+                          : axis.name}
+                    </span>
                     {selections[axis.name] ? (
-                      <span className="text-sm text-muted-foreground">{selections[axis.name]}</span>
+                      <span className="min-w-0 truncate text-sm text-muted-foreground">
+                        {selections[axis.name]}
+                      </span>
                     ) : null}
                   </legend>
-                  <div className="mt-2.5 flex flex-wrap gap-2">
+                  <div className="mt-2.5 flex min-w-0 flex-wrap gap-2">
                     {axis.options.map((option) => (
                       <button
                         type="button"
                         key={option}
                         onClick={() => chooseAxis(axis.name, option)}
                         className={cn(
-                          "min-h-10 rounded-full border px-4 text-sm font-semibold transition",
+                          "min-h-10 max-w-full rounded-full border px-4 text-sm font-semibold transition",
                           selections[axis.name] === option
                             ? "border-foreground bg-foreground text-white"
                             : "border-border bg-surface text-foreground hover:border-foreground/40",
                         )}
                         aria-pressed={selections[axis.name] === option}
                       >
-                        {option}
+                        <span className="block max-w-full truncate">{option}</span>
                       </button>
                     ))}
                   </div>
                 </fieldset>
               ))}
 
-              {/* Ukuran / varian langsung */}
-              {axes.length === 0 && variants.length > 1 ? (
-                <fieldset className="mt-5">
-                  <legend className="flex items-baseline gap-2">
-                    <span className="text-base font-bold text-foreground">Ukuran</span>
-                    {selectedVariant ? (
-                      <span className="text-sm text-muted-foreground">
-                        {selectedVariant.dimension_compact ?? selectedVariant.label}
-                      </span>
-                    ) : null}
-                  </legend>
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    {variants.map((variant) => (
-                      <button
-                        type="button"
-                        key={variant.id}
-                        onClick={() => chooseDirectVariant(variant.id)}
-                        disabled={variant.stock < 1}
-                        className={cn(
-                          "min-h-10 rounded-full border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40",
-                          directVariantId === variant.id
-                            ? "border-foreground bg-foreground text-white"
-                            : "border-border bg-surface text-foreground hover:border-foreground/40",
-                        )}
-                        aria-pressed={directVariantId === variant.id}
-                      >
-                        {variant.dimension_compact ?? variant.label}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-              ) : null}
-
               {selectedVariant ? (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="text-muted-foreground">
+                  <span className="min-w-0 flex-1 break-words text-muted-foreground">
                     {selectedVariant.dimension_label ?? selectedVariant.label}
                   </span>
                   <span
@@ -633,10 +625,10 @@ export default function ProductDetail({
                     {attributes.map((attribute, index) => (
                       <div
                         key={`${attribute.name}-${index}`}
-                        className="grid grid-cols-[minmax(7rem,0.65fr)_1fr] gap-4 border-b border-border/60 py-3 text-sm"
+                        className="grid min-w-0 grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)] gap-4 border-b border-border/60 py-3 text-sm"
                       >
-                        <dt className="font-bold text-foreground">{attribute.name}</dt>
-                        <dd className="leading-6 text-foreground">{attribute.value}</dd>
+                        <dt className="min-w-0 break-words font-bold text-foreground">{attribute.name}</dt>
+                        <dd className="min-w-0 break-words leading-6 text-foreground">{attribute.value}</dd>
                       </div>
                     ))}
                   </dl>
@@ -665,11 +657,12 @@ export default function ProductDetail({
                 </div>
                 <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                   {installationMedia.slice(0, 8).map((item) => (
-                    <li key={item.id} className="aspect-square overflow-hidden border border-border bg-muted/20">
+                    <li key={item.id} className="relative flex aspect-[4/3] min-w-0 items-center overflow-hidden border border-border bg-white">
                       <ResponsiveImage
                         src={item.url}
                         alt=""
-                        className="h-full w-full object-cover"
+                        wrapperClassName="size-full bg-white"
+                        className="!object-contain"
                       />
                     </li>
                   ))}
@@ -703,14 +696,14 @@ export default function ProductDetail({
                           <span aria-hidden="true" />
                         )}
                         {review.source ? (
-                          <span className="text-xs text-muted-foreground">{humanize(review.source)}</span>
+                          <span className="min-w-0 truncate text-xs text-muted-foreground">{humanize(review.source)}</span>
                         ) : null}
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
                         Oleh {review.customer_name}
                         {review.location ? ` · ${review.location}` : ""}
                       </p>
-                      <p className="mt-2 inline-block bg-accent px-1.5 py-0.5 text-xs leading-5 text-accent-foreground">
+                      <p className="mt-2 inline-block max-w-full break-words bg-accent px-1.5 py-0.5 text-xs leading-5 text-accent-foreground">
                         {review.message}
                       </p>
                     </li>
@@ -738,7 +731,7 @@ export default function ProductDetail({
       <section className="section-space border-t border-border">
         <div className="container-page">
           <div className="flex items-end justify-between gap-4">
-            <h2 className="text-lg font-bold text-foreground">Anda mungkin juga suka</h2>
+            <h2 className="min-w-0 break-words text-lg font-bold text-foreground">Anda mungkin juga suka</h2>
             <Link
               href={routeUrl("catalog.index")}
               className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] transition hover:bg-[#1A1D1C]/5"
@@ -749,7 +742,7 @@ export default function ProductDetail({
           {relatedProducts.length ? (
             <ProductCardGrid className="mt-6">
               {relatedProducts.map((related) => (
-                <ProductCard key={related.id} product={related} />
+                <ProductCard key={related.id} product={related} imageFit="contain" />
               ))}
             </ProductCardGrid>
           ) : (

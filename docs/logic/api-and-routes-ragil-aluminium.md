@@ -38,15 +38,15 @@ All agents must use these routes and endpoints as the primary integration surfac
 
 ### 1.2 Catalog Browsing
 
-- `GET /windows`
+- `GET /products/windows` (legacy `/windows` redirects 301)
   - Controller: `CatalogController@windows`
   - Purpose:
     - List WINDOW products, with filters for model & design variant.
 
-- `GET /doors`
+- `GET /products/doors` (legacy `/doors` redirects 301)
   - Controller: `CatalogController@doors`
 
-- `GET /bouven`
+- `GET /products/bouven` (legacy `/bouven` redirects 301)
   - Controller: `CatalogController@bouven`
 
 Common query parameters for category pages:
@@ -58,7 +58,7 @@ Common query parameters for category pages:
 
 Example:
 
-- `/windows?model=SLIDING&design=PLAIN&sort=popular`
+- `/products/windows/sliding/plain?sort=popular`
 
 - `GET /search`
   - Controller: `SearchController@index`

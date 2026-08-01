@@ -10,11 +10,11 @@ class CmsTestimonial extends Model
 {
     public const SOURCES = ['shopee', 'whatsapp', 'website', 'other'];
 
-    /** Marketplace / WhatsApp / other — section “Apa kata pelanggan kami”. */
-    public const MARKETPLACE_SOURCES = ['shopee', 'whatsapp', 'other'];
+    /** Marketplace / WhatsApp — section “Apa kata pelanggan kami” (screenshot saja). */
+    public const MARKETPLACE_SOURCES = ['shopee', 'whatsapp'];
 
     public const SOURCE_LABELS = [
-        'shopee' => 'Marketplace / Shopee',
+        'shopee' => 'Shopee',
         'whatsapp' => 'WhatsApp',
         'website' => 'Website',
         'other' => 'Lainnya',
@@ -64,6 +64,12 @@ class CmsTestimonial extends Model
     public function scopeMarketplace(Builder $query): Builder
     {
         return $query->whereIn('source', self::MARKETPLACE_SOURCES);
+    }
+
+    /** Screenshot wajib untuk section Apa kata pelanggan kami. */
+    public function scopeWithScreenshot(Builder $query): Builder
+    {
+        return $query->whereNotNull('image_url')->where('image_url', '!=', '');
     }
 
     public function scopeWebsite(Builder $query): Builder

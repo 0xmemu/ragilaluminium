@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react"
-import { ClipboardText, House, Package, UserCircle, type IconProps } from "@phosphor-icons/react"
+import { ClipboardText, House, Package, Tag, type IconProps } from "@phosphor-icons/react"
 import type { ComponentType } from "react"
 
 import { cn } from "@/lib/utils"
@@ -13,9 +13,8 @@ const NAV_ICONS: Record<string, NavGlyph> = {
   house: House,
   home: House,
   package: Package,
+  tag: Tag,
   "clipboard-list": ClipboardText,
-  "user-round": UserCircle,
-  user: UserCircle,
 }
 
 function NavIcon({ name, active }: { name: string; active: boolean }) {

@@ -56,6 +56,7 @@ class HomeController extends Controller
 
             $marketplaceTestimonials = (clone $base)
                 ->marketplace()
+                ->withScreenshot()
                 ->limit(12)
                 ->get()
                 ->map(fn (CmsTestimonial $t) => $t->toPublicArray())

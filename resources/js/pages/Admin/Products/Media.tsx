@@ -9,6 +9,7 @@ import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { Textarea } from "@/components/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface VariantOption {
@@ -27,6 +28,7 @@ interface MediaRow {
   is_main_image: boolean
   show_in_catalog: boolean
   is_installation: boolean
+  installation_caption?: string | null
   product_variant_id: number | null
   variant_label: string
   thumb_url?: string | null
@@ -49,6 +51,7 @@ function MediaRowCard({
     visibility: row.visibility,
     show_in_catalog: row.show_in_catalog,
     is_installation: row.is_installation,
+    installation_caption: row.installation_caption ?? "",
     product_variant_id: row.product_variant_id ? String(row.product_variant_id) : "",
   })
   const actionForm = useForm({})
@@ -138,6 +141,19 @@ function MediaRowCard({
               Hasil pemasangan
             </label>
           </div>
+
+          <Field
+            id={`media-caption-${row.id}`}
+            label="Deskripsi hasil pemasangan (opsional)"
+            hint="Tampil saat foto diperbesar di halaman Hasil Pemasangan."
+          >
+            <Textarea
+              rows={2}
+              maxLength={280}
+              value={updateForm.data.installation_caption}
+              onChange={(event) => updateForm.setData("installation_caption", event.target.value)}
+            />
+          </Field>
 
           <div className="flex flex-wrap gap-2">
             <Button
@@ -240,6 +256,7 @@ export default function ProductMediaPage({
     is_main_image: boolean
     show_in_catalog: boolean
     is_installation: boolean
+    installation_caption: string
     visibility: string
     product_variant_id: string
     upload: File | null
@@ -249,6 +266,7 @@ export default function ProductMediaPage({
     is_main_image: false,
     show_in_catalog: true,
     is_installation: false,
+    installation_caption: "",
     visibility: "visible",
     product_variant_id:
       filters.variant && filters.variant !== "shared" ? filters.variant : "",

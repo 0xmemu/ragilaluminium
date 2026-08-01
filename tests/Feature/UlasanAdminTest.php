@@ -40,6 +40,7 @@ class UlasanAdminTest extends TestCase
             'customer_name' => 'Budi Santoso',
             'message' => 'Kualitas bagus',
             'rating' => 5,
+            'image_url' => 'https://cdn.example.com/budi.jpg',
             'source' => 'shopee',
             'published' => true,
             'sort_order' => 0,
@@ -62,11 +63,11 @@ class UlasanAdminTest extends TestCase
                 'source' => 'whatsapp',
                 'location' => 'Kudus',
                 'product_id' => '',
-                'image_url' => '',
+                'image_url' => 'https://cdn.example.com/ani-wa.jpg',
                 'sort_order' => 1,
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'marketplace']));
+            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
 
         $this->assertDatabaseHas('cms_testimonials', [
             'customer_name' => 'Ani',
@@ -87,13 +88,23 @@ class UlasanAdminTest extends TestCase
                 'sort_order' => 2,
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'marketplace']));
+            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
 
         $this->assertDatabaseHas('cms_testimonials', [
             'customer_name' => 'Screenshot Only',
             'source' => 'shopee',
             'image_url' => 'https://cdn.example.com/ss-shopee.jpg',
         ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'No Screenshot',
+                'message' => 'tanpa gambar',
+                'source' => 'whatsapp',
+                'image_url' => '',
+                'published' => true,
+            ])
+            ->assertSessionHasErrors(['image', 'image_url']);
 
         $this->actingAs($admin)
             ->post(route('admin.testimonials.store'), [
@@ -201,10 +212,20 @@ class UlasanAdminTest extends TestCase
         CmsTestimonial::create([
             'cms_page_id' => $page->id,
             'customer_name' => 'Siti',
-            'message' => 'Bagus sekali',
-            'source' => 'website',
+            'message' => null,
+            'image_url' => 'https://cdn.example.com/ss-shopee.jpg',
+            'source' => 'shopee',
             'published' => true,
             'sort_order' => 0,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Web Only',
+            'message' => 'Beli di website',
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 1,
         ]);
 
         $this->actingAs($admin)
@@ -215,10 +236,13 @@ class UlasanAdminTest extends TestCase
                 ->where('title', 'Apa Kata Pelanggan Kami')
                 ->where('tab', 'website')
                 ->where('indexRoute', 'admin.apa-kata-pelanggan.index')
+                ->where('canReorder', true)
+                ->has('reorderUrl')
                 ->has('pageMeta')
                 ->where('pageMeta.heading', 'Apa kata pelanggan kami.')
                 ->has('rows', 1)
-                ->where('rows.0.customer_name', 'Siti'));
+                ->where('rows.0.customer_name', 'Siti')
+                ->where('rows.0.source', 'shopee'));
 
         $this->actingAs($admin)
             ->put(route('admin.apa-kata-pelanggan.meta.update'), [
@@ -228,6 +252,29 @@ class UlasanAdminTest extends TestCase
                 'published' => true,
             ])
             ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
+
+        $first = CmsTestimonial::query()->where('customer_name', 'Siti')->firstOrFail();
+        $second = CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Budi WA',
+            'message' => null,
+            'image_url' => 'https://cdn.example.com/ss-wa.jpg',
+            'source' => 'whatsapp',
+            'published' => true,
+            'sort_order' => 5,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.apa-kata-pelanggan.reorder'), [
+                'rows' => [
+                    ['id' => $second->id, 'sort_order' => 0],
+                    ['id' => $first->id, 'sort_order' => 1],
+                ],
+            ])
+            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
+
+        $this->assertSame(0, $second->fresh()->sort_order);
+        $this->assertSame(1, $first->fresh()->sort_order);
 
         $this->assertDatabaseHas('cms_pages', [
             'slug' => 'testimoni',

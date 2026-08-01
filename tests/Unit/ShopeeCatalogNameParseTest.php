@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Imports\ShopeeCatalogExport;
+use App\Support\ShopeeCatalogTaxonomy;
 use App\Support\ShopeeVariationAxes;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -15,7 +16,7 @@ class ShopeeCatalogNameParseTest extends TestCase
         $import = new ShopeeCatalogExport(1);
 
         $dimensions = $this->invoke($import, 'parseDimensions', [$name]);
-        $taxonomy = $this->invoke($import, 'parseTaxonomy', [$name]);
+        $taxonomy = ShopeeCatalogTaxonomy::fromProductName($name);
         $short = $this->invoke($import, 'shortName', [$name]);
 
         $this->assertSame(200.0, $dimensions['height_cm']);
@@ -24,6 +25,39 @@ class ShopeeCatalogNameParseTest extends TestCase
         $this->assertSame('SWING', $taxonomy['model']);
         $this->assertSame('ORNAMEN', $taxonomy['design']);
         $this->assertSame('200x160', $short);
+    }
+
+    public function test_jendela_jungkit_is_window_not_bouven(): void
+    {
+        $taxonomy = ShopeeCatalogTaxonomy::fromProductName(
+            'Jendela 2 Daun Aluminium Jungkit Ornamen Tinggi 170 cm x Panjang 100 cm (170x100)'
+        );
+
+        $this->assertSame('WINDOW', $taxonomy['category']);
+        $this->assertSame('JUNGKIT', $taxonomy['model']);
+        $this->assertSame('ORNAMEN', $taxonomy['design']);
+    }
+
+    public function test_jendela_boven_jungkit_is_bouven_not_window(): void
+    {
+        $taxonomy = ShopeeCatalogTaxonomy::fromProductName(
+            'Jendela Boven Aluminium Jungkit Ornamen (TxP) 50x50,50x60'
+        );
+
+        $this->assertSame('BOUVEN', $taxonomy['category']);
+        $this->assertSame('JUNGKIT', $taxonomy['model']);
+        $this->assertSame('ORNAMEN', $taxonomy['design']);
+    }
+
+    public function test_plain_boven_jungkit_is_bouven(): void
+    {
+        $taxonomy = ShopeeCatalogTaxonomy::fromProductName(
+            'Tinggi 40 cm x Panjang 40 cm (40x40) Boven 1 Daun Aluminium Jungkit Polos'
+        );
+
+        $this->assertSame('BOUVEN', $taxonomy['category']);
+        $this->assertSame('JUNGKIT', $taxonomy['model']);
+        $this->assertSame('POLOS', $taxonomy['design']);
     }
 
     public function test_parse_dimensions_falls_back_to_paren_compact(): void

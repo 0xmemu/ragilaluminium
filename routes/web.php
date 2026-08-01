@@ -44,6 +44,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductEngagementController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Webhook\ShippingController;
 use App\Http\Controllers\Webhook\WhatsAppController;
 use Illuminate\Http\Request;
@@ -56,6 +57,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/faq', [PageController::class, 'faq'])->name('faq');
@@ -66,12 +68,23 @@ Route::get('/policy/privacy', [PageController::class, 'privacy'])->name('privacy
 Route::get('/policy/terms', [PageController::class, 'terms'])->name('terms');
 
 Route::get('/products', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('/products/all', [CatalogController::class, 'all'])->name('catalog.all');
+Route::get('/products/{category}', [CatalogController::class, 'categoryShow'])
+    ->where('category', 'window|windows|door|doors|bouven|boven|jendela|pintu')
+    ->name('catalog.category');
 Route::get('/products/{category}/{model}', [CatalogController::class, 'modelShow'])
     ->where([
         'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu',
         'model' => '[A-Za-z0-9_-]+',
     ])
     ->name('catalog.model');
+Route::get('/products/{category}/{model}/{design}', [CatalogController::class, 'designShow'])
+    ->where([
+        'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu',
+        'model' => '[A-Za-z0-9_-]+',
+        'design' => '[A-Za-z0-9_-]+',
+    ])
+    ->name('catalog.design');
 Route::get('/promo', [CatalogController::class, 'promo'])->name('catalog.promo');
 Route::get('/flash-sale', [CatalogController::class, 'flashSale'])->name('catalog.flash-sale');
 Route::get('/windows', [CatalogController::class, 'windows'])->name('catalog.windows');
@@ -319,6 +332,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('apa-kata-pelanggan', [TestimonialController::class, 'apaKata'])->name('apa-kata-pelanggan.index');
     Route::put('apa-kata-pelanggan/meta', [TestimonialController::class, 'updateApaKataMeta'])->name('apa-kata-pelanggan.meta.update');
+    Route::put('apa-kata-pelanggan/reorder', [TestimonialController::class, 'reorderApaKata'])->name('apa-kata-pelanggan.reorder');
     Route::get('hasil-pemasangan', [TestimonialController::class, 'hasilPemasangan'])->name('hasil-pemasangan.index');
     Route::put('hasil-pemasangan/meta', [TestimonialController::class, 'updateHasilPemasanganMeta'])->name('hasil-pemasangan.meta.update');
 

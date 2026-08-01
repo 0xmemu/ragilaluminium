@@ -195,7 +195,6 @@ export interface ProductCardData {
   sold_count?: number | null
   image?: string | null
   href: string
-  installation_href?: string | null
 }
 
 export interface ModelHighlight {
@@ -256,6 +255,10 @@ export interface InstallationItem {
   product_sku?: string | null
   /** PDP produk terkait (hasil pemasangan level produk). */
   product_href?: string | null
+  /** Featured card copy from ModelProductPresentation (+ CMS desc). */
+  subtitle?: string | null
+  desc?: string | null
+  highlights?: ModelHighlight[]
 }
 
 export interface Testimonial {

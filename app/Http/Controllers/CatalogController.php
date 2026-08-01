@@ -19,7 +19,7 @@ use Inertia\Response;
 
 class CatalogController extends Controller
 {
-    public function index(Request $request): JsonResponse|Response
+    public function index(Request $request): JsonResponse|\Illuminate\Http\RedirectResponse|Response
     {
         // API tetap daftar produk SKU.
         if ($request->is('api/*') || $request->wantsJson()) {
@@ -35,10 +35,39 @@ class CatalogController extends Controller
             || $request->filled('price_max');
 
         if ($listing) {
-            return $this->category(null, $request);
+            return redirect()->route('catalog.all', $request->query());
         }
 
         return $this->modelsHub($request);
+    }
+
+    /** Listing seluruh SKU pada URL yang tidak ambigu. */
+    public function all(Request $request): JsonResponse|Response
+    {
+        return $this->category(null, $request);
+    }
+
+    public function categoryShow(string $category, Request $request): JsonResponse|Response
+    {
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        if ($categoryCode === null || $categoryCode === 'LAINNYA') {
+            abort(404);
+        }
+
+        return $this->category($categoryCode, $request);
+    }
+
+    public function designShow(string $category, string $model, string $design, Request $request): JsonResponse|Response
+    {
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        $modelCode = InstallationGallery::modelFromSlug($model);
+        $designCode = CatalogLabels::normalizeDesign($design);
+        if ($categoryCode === null || $categoryCode === 'LAINNYA' || $modelCode === '' || $designCode === null) {
+            abort(404);
+        }
+        $request->merge(['model' => $modelCode, 'design' => $designCode]);
+
+        return $this->category($categoryCode, $request);
     }
 
     /** Halaman Promo — listing SKU dengan atribut promo eksplisit. */
@@ -53,24 +82,49 @@ class CatalogController extends Controller
         return $this->category(null, $request, mode: 'flash');
     }
 
-    public function windows(Request $request): JsonResponse|Response
+    public function windows(Request $request)
     {
-        return $this->category('WINDOW', $request);
+        return $this->redirectLegacyCategory('windows', $request);
     }
 
-    public function doors(Request $request): JsonResponse|Response
+    public function doors(Request $request)
     {
-        return $this->category('DOOR', $request);
+        return $this->redirectLegacyCategory('doors', $request);
     }
 
-    public function bouven(Request $request): JsonResponse|Response
+    public function bouven(Request $request)
     {
-        return $this->category('BOUVEN', $request);
+        return $this->redirectLegacyCategory('bouven', $request);
+    }
+
+    protected function redirectLegacyCategory(string $category, Request $request)
+    {
+        $model = CatalogLabels::normalizeModel($request->query('model'));
+        $design = CatalogLabels::normalizeDesign($request->query('design'));
+        $parameters = ['category' => $category];
+        $route = 'catalog.category';
+
+        if (filled($model)) {
+            $parameters['model'] = str_replace('_', '-', strtolower($model));
+            $route = 'catalog.model';
+        }
+
+        if (filled($model) && filled($design)) {
+            $parameters['design'] = str_replace('_', '-', strtolower($design));
+            $route = 'catalog.design';
+        }
+
+        $query = $request->except(['model', 'design']);
+
+        return redirect()->to(route($route, $parameters).($query === [] ? '' : '?'.http_build_query($query)), 301);
     }
 
     protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
     {
-        $sort = $request->input('sort');
+        $sort = (string) $request->input('sort', 'popular');
+        if (! in_array($sort, ['popular', 'terlaris', 'bestseller', 'newest', 'baru', 'size_asc', 'size_desc', 'price_asc', 'price_desc'], true)) {
+            $sort = 'popular';
+        }
         $model = CatalogLabels::normalizeModel($request->input('model'));
         $design = CatalogLabels::normalizeDesign($request->input('design'));
         $promoOnly = $mode === 'promo';
@@ -102,7 +156,9 @@ class CatalogController extends Controller
             })
             ->with(['mainImage', 'activeVariants', 'attributes'])
             ->withMin('activeVariants as min_price_sort', 'price')
-            ->withSum('orderItems as sold_count', 'quantity')
+            ->withMin('activeVariants as min_height_sort', 'height_cm')
+            ->withMin('activeVariants as min_width_sort', 'width_cm')
+            ->withSum('validOrderItems as sold_count', 'quantity')
             ->when($model, fn ($q) => $q->where('product_model', $model))
             ->when($design, fn ($q) => $q->where('design_variant', $design))
             ->when(
@@ -132,16 +188,16 @@ class CatalogController extends Controller
                     );
                 }
             )
-            ->when($sort === 'price_asc', fn ($q) => $q->orderBy('min_price_sort'))
-            ->when($sort === 'price_desc', fn ($q) => $q->orderByDesc('min_price_sort'))
+            ->when($sort === 'size_asc', fn ($q) => $q->orderByRaw('min_height_sort is null')->orderBy('min_height_sort')->orderByRaw('min_width_sort is null')->orderBy('min_width_sort')->orderBy('parent_sku'))
+            ->when($sort === 'size_desc', fn ($q) => $q->orderByRaw('min_height_sort is null')->orderByDesc('min_height_sort')->orderByRaw('min_width_sort is null')->orderByDesc('min_width_sort')->orderByDesc('parent_sku'))
+            ->when($sort === 'price_asc', fn ($q) => $q->orderByRaw('min_price_sort is null')->orderBy('min_price_sort')->orderBy('id'))
+            ->when($sort === 'price_desc', fn ($q) => $q->orderByRaw('min_price_sort is null')->orderByDesc('min_price_sort')->orderByDesc('id'))
             ->when($sort === 'newest' || $sort === 'baru', fn ($q) => $q->latest('created_at')->orderByDesc('id'))
-            ->when($sort === 'popular', fn ($q) => $q->orderByDesc('sold_count')->orderByDesc('id'))
             ->when(
-                $sort === 'name_asc' || $sort === 'abjad',
-                fn ($q) => $q->orderByRaw('COALESCE(NULLIF(name, ""), short_name) asc')->orderBy('id')
+                in_array($sort, ['popular', 'terlaris', 'bestseller'], true),
+                fn ($q) => $q->orderByDesc('sold_count')->orderByDesc('id')
             )
-            ->when(! $sort, fn ($q) => $q->latest('created_at')->orderByDesc('id'))
-            ->paginate(24)
+             ->paginate(24)
             ->withQueryString();
 
         $flashSaleSpotlight = [];
@@ -151,7 +207,7 @@ class CatalogController extends Controller
             $flashSaleSpotlight = InertiaCatalog::productCards(
                 $flashQuery
                     ->with(['mainImage', 'activeVariants', 'attributes'])
-                    ->withSum('orderItems as sold_count', 'quantity')
+                    ->withSum('validOrderItems as sold_count', 'quantity')
                     ->latest('updated_at')
                     ->orderByDesc('id')
                     ->limit(8)
@@ -176,7 +232,7 @@ class CatalogController extends Controller
             category: $category,
             model: $model,
             design: $design,
-            sort: $sort,
+            sort: $request->filled('sort') ? $sort : null,
             flashOnly: $flashOnly,
             promoOnly: $promoOnly,
         );
@@ -200,10 +256,11 @@ class CatalogController extends Controller
         $basePath = match (true) {
             $flashOnly => '/flash-sale',
             $promoOnly => '/promo',
-            $category === 'WINDOW' => '/windows',
-            $category === 'DOOR' => '/doors',
-            $category === 'BOUVEN' => '/bouven',
-            default => '/products',
+            $request->routeIs('catalog.category', 'catalog.design') => '/'.$request->path(),
+            $category === 'WINDOW' => '/products/windows',
+            $category === 'DOOR' => '/products/doors',
+            $category === 'BOUVEN' => '/products/bouven',
+            default => '/products/all',
         };
 
         $productCards = InertiaCatalog::productCards($products->getCollection());
@@ -253,6 +310,8 @@ class CatalogController extends Controller
             'priceMin' => $request->filled('price_min') ? (int) $request->input('price_min') : null,
             'priceMax' => $request->filled('price_max') ? (int) $request->input('price_max') : null,
             'basePath' => $basePath,
+            'canonicalUrl' => url($isAllProductsListing ? '/products/all' : $basePath),
+            'robotsDirective' => ! $request->routeIs('catalog.category', 'catalog.design') && ($request->hasAny(['q', 'model', 'design', 'price_min', 'price_max']) || $request->filled('sort')) ? 'noindex,follow' : 'index,follow',
         ]);
     }
 
@@ -291,7 +350,7 @@ class CatalogController extends Controller
         return InertiaCatalog::productCards(
             $flashQuery
                 ->with(['mainImage', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
+                ->withSum('validOrderItems as sold_count', 'quantity')
                 ->latest('updated_at')
                 ->orderByDesc('id')
                 ->limit(8)
@@ -354,22 +413,126 @@ class CatalogController extends Controller
             ->where('product_category', $categoryCode)
             ->where('product_model', $modelCode)
             ->with(['mainImage', 'activeVariants', 'attributes'])
-            ->withCount([
-                'installationMedia as has_installation_gallery' => fn ($q) => $q->visible(),
-            ])
-            ->withSum('orderItems as sold_count', 'quantity')
+            ->withSum('validOrderItems as sold_count', 'quantity')
             ->latest('id')
             ->limit(48)
             ->get();
 
         $listingHref = (string) ($card['href'] ?? route('catalog.index', absolute: false));
+        $designRails = $this->designRailsForModel($products, $categoryCode, $modelCode);
 
         return Inertia::render('Public/ModelDetail', [
             'model' => $card,
             'products' => InertiaCatalog::productCards($products),
+            'designRails' => $designRails,
             'hubHref' => route('catalog.index', absolute: false),
             'listingHref' => $listingHref,
         ]);
+    }
+
+    /**
+     * Rail per desain: hanya produk category+model halaman ini; kartu = ukuran terurut.
+     * Hanya desain yang punya produk yang ditampilkan (tanpa carousel kosong).
+     *
+     * @param  \Illuminate\Support\Collection<int, Product>  $products
+     * @return list<array<string, mixed>>
+     */
+    protected function designRailsForModel($products, string $categoryCode, string $modelCode): array
+    {
+        $grouped = $products
+            ->filter(
+                fn (Product $product) => strtoupper((string) $product->product_category) === strtoupper($categoryCode)
+                    && strtoupper((string) $product->product_model) === strtoupper($modelCode)
+            )
+            ->map(function (Product $product) {
+                $code = CatalogLabels::normalizeDesign($product->design_variant);
+                // Tanpa design_variant → anggap Polos (desain default katalog).
+                if ($code === null || $code === '') {
+                    $code = 'POLOS';
+                }
+
+                return ['code' => $code, 'product' => $product];
+            })
+            ->groupBy('code');
+
+        if ($grouped->isEmpty()) {
+            return [];
+        }
+
+        $categorySlug = match ($categoryCode) {
+            'DOOR' => 'doors',
+            'BOUVEN' => 'bouven',
+            default => 'windows',
+        };
+
+        $ordered = [];
+        foreach (CatalogLabels::DESIGN_ORDER as $code) {
+            if ($grouped->has($code)) {
+                $ordered[] = $code;
+            }
+        }
+        foreach ($grouped->keys() as $code) {
+            if (! in_array($code, $ordered, true)) {
+                $ordered[] = $code;
+            }
+        }
+
+        $rails = [];
+        foreach ($ordered as $code) {
+            $railProducts = $grouped->get($code)->map(fn (array $row) => $row['product'])->values();
+            if ($railProducts->isEmpty()) {
+                continue;
+            }
+
+            $uniqueSizes = [];
+            foreach ($railProducts as $product) {
+                if (! $product->relationLoaded('activeVariants')) {
+                    continue;
+                }
+                foreach ($product->activeVariants as $variant) {
+                    $height = (float) ($variant->height_cm ?? 0);
+                    $width = (float) ($variant->width_cm ?? 0);
+                    if ($height <= 0 || $width <= 0) {
+                        continue;
+                    }
+                    $uniqueSizes[round($height, 2).'x'.round($width, 2)] = true;
+                }
+            }
+
+            $railCards = InertiaCatalog::sizeCardsForRail($railProducts, 12);
+            if ($railCards === []) {
+                $railCards = InertiaCatalog::productCards($railProducts->sortBy('name')->values());
+            }
+            if ($railCards === []) {
+                continue;
+            }
+
+            /** @var Product $sample */
+            $sample = $railProducts->sortByDesc(
+                fn (Product $p) => $p->relationLoaded('activeVariants') ? $p->activeVariants->count() : 0
+            )->first();
+
+            $rails[] = [
+                'value' => $code,
+                'label' => CatalogLabels::design($code) ?: $code,
+                'title' => trim(implode(' ', array_filter([
+                    CatalogLabels::category($categoryCode),
+                    CatalogLabels::model($modelCode),
+                    CatalogLabels::design($code),
+                ]))),
+                'image' => InertiaCatalog::cardImage($sample),
+                'count' => $railProducts->count(),
+                'size_count' => count($uniqueSizes) > 0 ? count($uniqueSizes) : $railProducts->count(),
+                'href' => route('catalog.design', [
+                    'category' => $categorySlug,
+                    'model' => strtolower(str_replace('_', '-', $modelCode)),
+                    'design' => strtolower(str_replace('_', '-', $code)),
+                ], absolute: false),
+                'products' => $railCards,
+            ];
+        }
+
+        return $rails;
     }
 
     /**

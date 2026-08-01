@@ -19,6 +19,7 @@ class ProfileController extends Controller
         return Inertia::render('Admin/Profile/Edit', [
             'profile' => [
                 'name' => $user->name,
+                'username' => $user->username,
                 'email' => $user->email,
                 'role_label' => 'Admin',
                 'status' => $user->status,
@@ -33,12 +34,14 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'username' => ['required', 'string', 'min:3', 'max:64', 'regex:/^[a-zA-Z0-9._-]+$/', Rule::unique('users', 'username')->ignore($user->id)],
+            'email' => ['required', 'email', 'max:255'],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user->name = $validated['name'];
+        $user->username = strtolower(trim((string) $validated['username']));
         $user->email = $validated['email'];
 
         $passwordChanged = filled($validated['password'] ?? null);
@@ -54,6 +57,7 @@ class ProfileController extends Controller
             $user->id,
             [
                 'email' => $user->email,
+                'username' => $user->username,
                 'password_changed' => $passwordChanged,
             ],
             $user->id,

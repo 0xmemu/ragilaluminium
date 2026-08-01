@@ -8,6 +8,7 @@ use App\Models\ImportJobRow;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Support\ShopeeCatalogTaxonomy;
 use App\Support\ShopeeStyleSku;
 use App\Support\ShopeeVariationAxes;
 use Illuminate\Support\Collection;
@@ -83,7 +84,7 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
                 throw new \RuntimeException('nama produk kosong');
             }
 
-            $taxonomy = $this->parseTaxonomy($name);
+            $taxonomy = ShopeeCatalogTaxonomy::fromProductName($name);
             $dimensions = $this->parseDimensions($name);
 
             $product = Product::updateOrCreate(
@@ -160,37 +161,13 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
         return 1000;
     }
 
+    /**
+     * @deprecated gunakan ShopeeCatalogTaxonomy::fromProductName
+     * @return array{category: string, model: string, design: string}
+     */
     protected function parseTaxonomy(string $name): array
     {
-        $upper = mb_strtoupper($name);
-
-        $category = 'WINDOW';
-        if (str_contains($upper, 'PINTU')) {
-            $category = 'DOOR';
-        } elseif (str_contains($upper, 'BOVEN') || str_contains($upper, 'BOUVEN')) {
-            $category = 'BOUVEN';
-        }
-
-        $model = 'SLIDING';
-        if (str_contains($upper, 'JUNGKIT')) {
-            $model = 'JUNGKIT';
-        } elseif (str_contains($upper, 'SWING')) {
-            $model = 'SWING';
-        } elseif (str_contains($upper, 'KACA MATI') || str_contains($upper, 'KACA_MATI') || str_contains($upper, 'FIXED')) {
-            $model = 'KACA_MATI';
-        } elseif (str_contains($upper, 'ZIGZAG')) {
-            $model = 'ZIGZAG';
-        }
-
-        if (str_contains($upper, 'KOMBINASI') || str_contains($upper, 'COMBINATION')) {
-            $design = 'KOMBINASI';
-        } elseif (str_contains($upper, 'ORNAMEN')) {
-            $design = 'ORNAMEN';
-        } else {
-            $design = 'POLOS';
-        }
-
-        return ['category' => $category, 'model' => $model, 'design' => $design];
+        return ShopeeCatalogTaxonomy::fromProductName($name);
     }
 
     protected function parseDimensions(string $name): array

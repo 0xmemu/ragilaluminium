@@ -80,7 +80,7 @@ function PlatformChip({
   }
 
   return (
-    <span className={shell} title={item.label} aria-label={item.label}>
+    <span className={shell} title={item.label} role="img" aria-label={item.label}>
       {content}
     </span>
   )

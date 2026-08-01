@@ -3,6 +3,7 @@ declare module 'ziggy-js' {
   interface RouteList {
     "sanctum.csrf-cookie": [],
     "home": [],
+    "sitemap": [],
     "about": [],
     "faq": [],
     "masalah-dan-solusi": [],
@@ -11,6 +12,37 @@ declare module 'ziggy-js' {
     "privacy": [],
     "terms": [],
     "catalog.index": [],
+    "catalog.all": [],
+    "catalog.category": [
+        {
+            "name": "category",
+            "required": true
+        }
+    ],
+    "catalog.model": [
+        {
+            "name": "category",
+            "required": true
+        },
+        {
+            "name": "model",
+            "required": true
+        }
+    ],
+    "catalog.design": [
+        {
+            "name": "category",
+            "required": true
+        },
+        {
+            "name": "model",
+            "required": true
+        },
+        {
+            "name": "design",
+            "required": true
+        }
+    ],
     "catalog.promo": [],
     "catalog.flash-sale": [],
     "catalog.windows": [],
@@ -23,6 +55,13 @@ declare module 'ziggy-js' {
             "required": true
         }
     ],
+    "product.engage": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "cart.index": [],
     "cart.count": [],
     "cart.add": [],
@@ -30,6 +69,16 @@ declare module 'ziggy-js' {
     "cart.remove": [],
     "reviews": [],
     "installation.index": [],
+    "installation.model": [
+        {
+            "name": "category",
+            "required": true
+        },
+        {
+            "name": "model",
+            "required": true
+        }
+    ],
     "installation.show": [
         {
             "name": "parent_sku",
@@ -706,6 +755,7 @@ declare module 'ziggy-js' {
     "admin.settings.update": [],
     "webhook.whatsapp.verify": [],
     "webhook.whatsapp.handle": [],
+    "webhook.whatsapp.waha": [],
     "webhook.shipping.jnt": [],
     "storage.local": [
         {

@@ -29,6 +29,8 @@ class ProductVariantGalleryTest extends \Tests\TestCase
             'variant_sku' => 'WIN-CLR-1-PUTIH',
             'variation_1_name' => 'Warna',
             'variation_1_option' => 'Putih',
+            'height_cm' => 50,
+            'width_cm' => 120,
             'price' => 100000,
             'stock' => 5,
             'status' => 'active',
@@ -69,6 +71,7 @@ class ProductVariantGalleryTest extends \Tests\TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ProductDetail')
                 ->has('media', 2)
+                ->where('product.breadcrumbs.2.label', 'Ukuran 50 × 120 cm')
                 ->where('media.0.product_variant_id', $putih->id)
                 ->where('media.1.product_variant_id', $hitam->id)
             );
