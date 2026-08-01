@@ -30,7 +30,7 @@ export function TestimonialCard({
   compact?: boolean
   /** Jika diisi, seluruh card menjadi link. Default: produk terkait (jika ada). */
   href?: string | null
-  /** `screenshot` = image-forward (marketplace/WA); `review` = teks+rating. */
+  /** `screenshot` = image-only (marketplace/WA); `review` = teks+rating. */
   variant?: "review" | "screenshot"
 }) {
   const [previewOpen, setPreviewOpen] = React.useState(false)
@@ -41,9 +41,62 @@ export function TestimonialCard({
   const hasImage = Boolean(testimonial.image_url)
   const imageUrl = testimonial.image_url ?? null
   const imageAlt = isScreenshot
-    ? `Screenshot dari ${testimonial.customer_name}`
+    ? `Screenshot ulasan ${testimonial.customer_name}`
     : `Hasil pemasangan dari ${testimonial.customer_name}`
 
+  // Mode Screenshot (Shopee / WhatsApp): Murni gambar screenshot ulasan tanpa frame
+  if (isScreenshot) {
+    return (
+      <>
+        <article className="group flex h-full flex-col overflow-hidden border-0 bg-transparent shadow-none transition-transform duration-300 hover:-translate-y-1">
+          {hasImage ? (
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              className="group/img relative block size-full overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Perbesar screenshot ulasan ${testimonial.customer_name}`}
+            >
+              <ResponsiveImage
+                src={imageUrl!}
+                alt={imageAlt}
+                wrapperClassName="aspect-[4/5] sm:aspect-square size-full bg-surface-muted rounded-lg border border-border/40 overflow-hidden"
+                className="size-full object-contain transition duration-300 group-hover/img:scale-[1.02]"
+              />
+              <span
+                className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition duration-300 group-hover/img:bg-black/20"
+                aria-hidden="true"
+              >
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition duration-300 group-hover/img:opacity-100">
+                  <Icon name="expand" weight="bold" className="h-5 w-5" aria-hidden="true" />
+                </span>
+              </span>
+            </button>
+          ) : (
+            <div className="flex aspect-square items-center justify-center bg-muted p-4 text-center text-xs text-muted-foreground">
+              Bukti ulasan tidak memiliki gambar
+            </div>
+          )}
+        </article>
+
+        {hasImage ? (
+          <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+            <DialogContent className="max-w-[min(calc(100%-2rem),56rem)] p-3 sm:p-5" aria-describedby={undefined}>
+              <DialogTitle className="sr-only">
+                Screenshot ulasan {testimonial.customer_name}
+              </DialogTitle>
+              <img
+                src={imageUrl!}
+                alt={imageAlt}
+                className="mx-auto max-h-[85dvh] w-auto max-w-full rounded object-contain"
+              />
+            </DialogContent>
+          </Dialog>
+        ) : null}
+      </>
+    )
+  }
+
+  // Mode Review (Website): Rating, pesan ulasan, identitas & link produk
   const cardClassName = cn(
     "@container group flex h-full min-w-0 flex-col overflow-hidden border border-border bg-white shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
     cardHref ? "cursor-pointer" : null,
@@ -73,9 +126,7 @@ export function TestimonialCard({
             "text-foreground",
             compact
               ? "mt-2 line-clamp-4 text-xs leading-5"
-              : isScreenshot
-                ? "mt-3 line-clamp-3 text-sm leading-6"
-                : "mt-5 text-base leading-7",
+              : "mt-5 text-base leading-7",
           )}
         >
           “{message}”
@@ -89,7 +140,7 @@ export function TestimonialCard({
             : "mt-auto flex items-end justify-between gap-4 pt-4",
           !message && !rating ? "border-t-0 pt-0" : null,
           !message && rating > 0 ? "mt-3" : null,
-          message && !compact ? (isScreenshot ? "mt-4" : "mt-6") : null,
+          message && !compact ? "mt-6" : null,
         )}
       >
         <div className="min-w-0">
@@ -137,7 +188,7 @@ export function TestimonialCard({
           type="button"
           onClick={() => setPreviewOpen(true)}
           className="group/img relative block w-full shrink-0 overflow-hidden bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label={`Perbesar ${isScreenshot ? "screenshot" : "foto"} dari ${testimonial.customer_name}`}
+          aria-label={`Perbesar foto dari ${testimonial.customer_name}`}
         >
           <div className="aspect-[4/3] w-full overflow-hidden">
             <ResponsiveImage
@@ -171,9 +222,9 @@ export function TestimonialCard({
       )}
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-[min(calc(100%-2rem),56rem)] gap-4 p-4 sm:p-6">
+        <DialogContent className="max-w-[min(calc(100%-2rem),56rem)] gap-4 p-4 sm:p-6" aria-describedby={undefined}>
           <DialogTitle className="sr-only">
-            {isScreenshot ? "Screenshot" : "Foto hasil pemasangan"} dari {testimonial.customer_name}
+            Foto hasil pemasangan dari {testimonial.customer_name}
           </DialogTitle>
           <img
             src={imageUrl ?? undefined}

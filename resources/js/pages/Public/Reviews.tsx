@@ -26,6 +26,86 @@ interface ReviewStats {
   website_total?: number
 }
 
+function ScreenshotCarousel({ items }: { items: Testimonial[] }) {
+  const trackRef = React.useRef<HTMLDivElement>(null)
+  const [canGoBack, setCanGoBack] = React.useState(false)
+  const [canGoNext, setCanGoNext] = React.useState(items.length > 3)
+
+  const updateControls = React.useCallback(() => {
+    const track = trackRef.current
+    if (!track) return
+    const overflow = track.scrollWidth > track.clientWidth + 2
+    setCanGoBack(overflow && track.scrollLeft > 2)
+    setCanGoNext(overflow && track.scrollLeft + track.clientWidth < track.scrollWidth - 2)
+  }, [])
+
+  React.useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    const frame = window.requestAnimationFrame(() => updateControls())
+    track.addEventListener("scroll", updateControls, { passive: true })
+    window.addEventListener("resize", updateControls)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      track.removeEventListener("scroll", updateControls)
+      window.removeEventListener("resize", updateControls)
+    }
+  }, [items.length, updateControls])
+
+  function move(direction: -1 | 1) {
+    const track = trackRef.current
+    if (!track) return
+    track.scrollBy({
+      left: direction * track.clientWidth * 0.75,
+      behavior: "smooth",
+    })
+  }
+
+  return (
+    <div className="relative mt-6 min-w-0">
+      <div
+        ref={trackRef}
+        className="scrollbar-x flex min-w-0 snap-x snap-proximity gap-3.5 overflow-x-auto overscroll-x-contain pb-3 pt-1 [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch]"
+      >
+        {items.map((testimonial) => (
+          <div
+            key={testimonial.id}
+            className="w-[calc((100%-1rem)*5/7)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/2.5)] md:w-[calc((100%-2rem)/3.2)] xl:w-[calc((100%-3rem)/4.2)]"
+          >
+            <TestimonialCard
+              testimonial={testimonial}
+              compact
+              variant="screenshot"
+            />
+          </div>
+        ))}
+      </div>
+
+      {canGoBack ? (
+        <button
+          type="button"
+          onClick={() => move(-1)}
+          className="absolute -left-3 top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-md transition hover:scale-105 hover:bg-muted focus-visible:outline-none md:flex"
+          aria-label="Kembali"
+        >
+          <Icon name="caret-left" className="size-5" weight="bold" />
+        </button>
+      ) : null}
+
+      {canGoNext ? (
+        <button
+          type="button"
+          onClick={() => move(1)}
+          className="absolute -right-3 top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-md transition hover:scale-105 hover:bg-muted focus-visible:outline-none md:flex"
+          aria-label="Berikutnya"
+        >
+          <Icon name="caret-right" className="size-5" weight="bold" />
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 function ReviewGrid({
   items,
   variant,
@@ -49,18 +129,7 @@ function ReviewGrid({
   }
 
   if (variant === "screenshot") {
-    return (
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((testimonial) => (
-          <TestimonialCard
-            key={testimonial.id}
-            testimonial={testimonial}
-            compact
-            variant="screenshot"
-          />
-        ))}
-      </div>
-    )
+    return <ScreenshotCarousel items={items} />
   }
 
   return (
