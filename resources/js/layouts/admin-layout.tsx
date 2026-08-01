@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/admin/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/admin/ui/sheet"
-import { FlashMessages } from "@/components/shared/flash-messages"
+import { FlashMessages } from "@/components/admin/ui/flash-messages"
 import { Icon } from "@/components/shared/icon"
 import {
   applyAdminTheme,
