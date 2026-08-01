@@ -26,12 +26,21 @@ function parsePaginationLink(label: string): { kind: PaginationLinkKind; text: s
 }
 
 /** Admin pagination — kompak, rounded-md, aktif = aksen teal. */
-export function Pagination({ pagination }: { pagination?: PaginationData | null }) {
+export function Pagination({
+  pagination,
+  className,
+}: {
+  pagination?: PaginationData | null
+  className?: string
+}) {
   if (!pagination || pagination.last_page <= 1) return null
 
   return (
     <nav
-      className="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+      className={cn(
+        "mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+        className,
+      )}
       aria-label="Paginasi"
     >
       <p className="text-xs text-muted-foreground">

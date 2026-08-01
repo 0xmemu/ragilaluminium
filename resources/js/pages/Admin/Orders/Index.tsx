@@ -1,14 +1,14 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -120,12 +120,12 @@ function formatRelativeAge(iso: string | null | undefined): string {
   if (Number.isNaN(then)) return "-"
   const diffMs = Math.max(Date.now() - then, 0)
   const minutes = Math.floor(diffMs / 60000)
-  if (minutes < 60) return `${minutes} Menit`
+  if (minutes < 60) return `${minutes} menit`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} Jam`
+  if (hours < 24) return `${hours} jam`
   const days = Math.floor(hours / 24)
   const remHours = hours % 24
-  return remHours > 0 ? `${days} Hari ${remHours} Jam` : `${days} Hari`
+  return remHours > 0 ? `${days} hari ${remHours} jam` : `${days} hari`
 }
 
 function variationLabel(item: OrderItemPreview): string {
@@ -141,7 +141,7 @@ function variationLabel(item: OrderItemPreview): string {
     .join(", ")
 }
 
-/** Grid kolom ala marketplace: produk | bayar | status | waktu | kirim | aksi */
+/** Grid kolom: produk | bayar | status | waktu | kirim | aksi */
 const orderRowGridClass =
   "lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(6.5rem,0.95fr)_minmax(7.5rem,1fr)_minmax(6.5rem,0.9fr)_minmax(7.5rem,1.05fr)_minmax(6rem,0.85fr)] lg:items-start lg:gap-x-3"
 
@@ -150,15 +150,15 @@ function OrderListColumnHeader() {
     <div
       className={cn(
         orderRowGridClass,
-        "hidden rounded-t-md border border-b-0 border-border bg-surface-muted/70 px-3 py-2 text-[11px] font-semibold text-muted-foreground lg:grid",
+        "hidden px-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground lg:grid",
       )}
       aria-hidden="true"
     >
       <span>Produk</span>
-      <span>Dibayar Pembeli</span>
+      <span>Dibayar pembeli</span>
       <span>Status</span>
-      <span>Batas Waktu</span>
-      <span>Jasa Kirim</span>
+      <span>Batas waktu</span>
+      <span>Jasa kirim</span>
       <span className="text-right">Aksi</span>
     </div>
   )
@@ -206,49 +206,54 @@ function OrderCardRow({
   }
 
   return (
-    <article className="overflow-hidden rounded-md border border-border bg-surface shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-muted/50 px-3 py-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Icon name="user" className="size-3.5" aria-hidden="true" />
+    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+            {order.customer_name.slice(0, 1).toUpperCase()}
           </span>
-          <span className="truncate font-semibold text-foreground">{order.customer_name}</span>
+          <span className="truncate font-medium text-foreground">{order.customer_name}</span>
           {order.whatsapp_url ? (
             <a
               href={order.whatsapp_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex size-6 items-center justify-center rounded-full text-primary transition hover:bg-accent"
+              className="inline-flex size-5 items-center justify-center rounded-full text-primary transition hover:bg-accent"
               aria-label={`WhatsApp ${order.customer_name}`}
             >
               <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
             </a>
           ) : null}
-          <span className="hidden text-muted-foreground sm:inline">
-            · {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
+          <span className="hidden sm:inline">
+            {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
           {order.customer_phone ? (
-            <span className="hidden text-muted-foreground md:inline">· {order.customer_phone}</span>
+            <span className="hidden md:inline">· {order.customer_phone}</span>
           ) : null}
         </div>
         <Link
           href={order.href}
-          className="shrink-0 font-mono text-[11px] font-semibold text-foreground hover:text-primary"
+          className="group/order inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-foreground transition hover:text-primary"
         >
-          No. Pesanan {order.order_number}
+          {order.order_number}
+          <Icon
+            name="chevron-right"
+            className="size-3 text-muted-foreground transition group-hover/order:text-primary"
+            aria-hidden="true"
+          />
         </Link>
       </div>
 
-      <div className={cn(orderRowGridClass, "gap-y-3 p-3")}>
+      <div className={cn(orderRowGridClass, "gap-y-3 p-4")}>
         {/* Produk */}
         <div className="min-w-0 space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Produk
           </p>
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {visibleItems.map((item) => (
               <li key={item.id} className="flex gap-2.5">
-                <div className="size-11 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                <div className="size-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                   {item.image ? (
                     <img src={item.image} alt="" className="size-full object-cover" />
                   ) : (
@@ -258,12 +263,14 @@ function OrderCardRow({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-xs font-medium leading-4 text-foreground">{item.name}</p>
-                  <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                  <p className="line-clamp-2 text-[13px] font-medium leading-5 text-foreground">
+                    {item.name}
+                  </p>
+                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                     {variationLabel(item) || item.variant_sku || "-"}
                   </p>
-                  <p className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
-                    x{formatNumber(item.quantity)}
+                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+                    ×{formatNumber(item.quantity)}
                   </p>
                 </div>
               </li>
@@ -273,7 +280,7 @@ function OrderCardRow({
             <button
               type="button"
               onClick={() => setExpanded((value) => !value)}
-              className="text-left text-[11px] font-semibold text-primary hover:underline"
+              className="text-left text-xs font-medium text-primary hover:underline"
             >
               {expanded
                 ? "Sembunyikan produk"
@@ -283,7 +290,7 @@ function OrderCardRow({
             </button>
           ) : null}
           {order.notes ? (
-            <p className="rounded border border-info/20 bg-info/5 px-2.5 py-2 text-[11px] leading-4 text-foreground">
+            <p className="rounded-md border border-info/20 bg-info/5 px-3 py-2 text-xs leading-5 text-foreground">
               <span className="font-semibold">Catatan: </span>
               {order.notes}
             </p>
@@ -291,74 +298,80 @@ function OrderCardRow({
         </div>
 
         {/* Dibayar Pembeli */}
-        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
-            Dibayar Pembeli
+        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+            Dibayar pembeli
           </p>
-          <p className="tabular-nums text-sm font-bold text-foreground">{formatCurrency(order.total_amount)}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="tabular-nums text-sm font-semibold text-foreground">
+            {formatCurrency(order.total_amount)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
             {order.payment_method_label ||
               (order.payment_method ? humanize(order.payment_method) : "Metode -")}
           </p>
-          <p className="mt-1 text-[10px] text-muted-foreground">{statusMeta(order.payment_status).label}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {statusMeta(order.payment_status).label}
+          </p>
         </div>
 
         {/* Status */}
-        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Status
           </p>
           <StatusBadge status={order.order_status} />
-          <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+          <p className="mt-1.5 text-xs leading-4 text-muted-foreground">
             {order.primary_action?.hint || statusMeta(order.order_status).label}
           </p>
           <div className="mt-2 flex flex-wrap gap-1">
             {(order.flow === "cod" || order.cod_flag) && (
-              <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+              <span className="rounded-md border border-warning/25 bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
                 COD
               </span>
             )}
-            <span className="rounded border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              {formatNumber(order.product_count)} Produk
+            <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {formatNumber(order.product_count)} produk
             </span>
           </div>
         </div>
 
         {/* Batas Waktu */}
-        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
-            Batas Waktu
+        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+            Batas waktu
           </p>
-          <p className="text-xs font-semibold text-foreground">{formatRelativeAge(order.updated_at)}</p>
-          <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+          <p className="text-[13px] font-medium text-foreground">
+            {formatRelativeAge(order.updated_at)}
+          </p>
+          <p className="mt-1 text-xs leading-4 text-muted-foreground">
             Dipesan {formatDateTime(order.created_at)}
           </p>
         </div>
 
         {/* Jasa Kirim */}
-        <div className="min-w-0 border-t border-border pt-2 lg:border-t-0 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
-            Jasa Kirim
+        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+            Jasa kirim
           </p>
-          <p className="text-xs font-semibold text-foreground">
+          <p className="text-[13px] font-medium text-foreground">
             {order.shipping_track?.carrier_name || "Pengiriman"}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             {statusMeta(order.shipping_track?.shipping_status || order.shipping_status || "pending_pickup").label}
           </p>
           {order.shipping_track?.waybill_number ? (
-            <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+            <p className="mt-1 font-mono text-xs text-muted-foreground">
               {order.shipping_track.waybill_number}
             </p>
           ) : (
-            <p className="mt-1 text-[11px] text-muted-foreground">Belum ada resi</p>
+            <p className="mt-1 text-xs text-muted-foreground">Belum ada resi</p>
           )}
           {order.shipping_track?.tracking_url ? (
             <a
               href={order.shipping_track.tracking_url}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 inline-block text-[11px] font-semibold text-primary hover:underline"
+              className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
             >
               Lacak
             </a>
@@ -366,8 +379,8 @@ function OrderCardRow({
         </div>
 
         {/* Aksi */}
-        <div className="flex min-w-0 flex-col items-stretch gap-1.5 border-t border-border pt-2 lg:border-t-0 lg:items-end lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground lg:sr-only">
+        <div className="flex min-w-0 flex-col items-stretch gap-1.5 border-t border-border pt-3 lg:border-t-0 lg:items-end lg:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Aksi
           </p>
           {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
@@ -384,7 +397,7 @@ function OrderCardRow({
             </Button>
           ) : null}
 
-          <Button asChild variant="secondary" size="xs" className="w-full lg:w-auto">
+          <Button asChild variant="ghost" size="xs" className="w-full lg:w-auto">
             <Link href={order.href}>Detail</Link>
           </Button>
 
@@ -393,7 +406,7 @@ function OrderCardRow({
               trigger={
                 <button
                   type="button"
-                  className="text-left text-[11px] font-semibold text-destructive hover:underline lg:text-right"
+                  className="text-left text-xs font-medium text-destructive hover:underline lg:text-right"
                 >
                   Batalkan
                 </button>
@@ -412,6 +425,7 @@ function OrderCardRow({
     </article>
   )
 }
+
 
 export default function OrdersIndex({
   title,
@@ -482,36 +496,47 @@ export default function OrdersIndex({
     <AdminLayout title={title} description={description}>
       <Head title={`${title} | Admin`} />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border pb-px">
-        {tabs.map((tab) => {
-          const active = tab.key === activeStatus
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => visit({ order_status: tab.key })}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-semibold transition",
-                active
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {tab.label}
-              <span
+      {/* Tabs status — segmented control ala AI app */}
+      <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+        <div
+          className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted/70 p-1"
+          role="tablist"
+          aria-label="Filter status pesanan"
+        >
+          {tabs.map((tab) => {
+            const active = tab.key === activeStatus
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => visit({ order_status: tab.key })}
                 className={cn(
-                  "tabular-nums rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                  active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition duration-100",
+                  active
+                    ? "bg-surface text-foreground shadow-soft"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {formatNumber(tab.count)}
-              </span>
-            </button>
-          )
-        })}
+                {tab.label}
+                <span
+                  className={cn(
+                    "tabular-nums rounded-full px-1.5 py-px text-[10px] font-semibold",
+                    active ? "bg-accent text-accent-foreground" : "bg-border/60 text-muted-foreground",
+                  )}
+                >
+                  {formatNumber(tab.count)}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+
+      {/* Filter bar */}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <form onSubmit={submitSearch} className="relative min-w-0 flex-1">
           <Icon
             name="search"
@@ -521,26 +546,29 @@ export default function OrdersIndex({
           <Input
             value={q}
             onChange={(event) => setQ(event.target.value)}
-            placeholder="Cari nomor order, nama penerima, no. HP, provinsi, kota..."
-            className="pl-10"
+            placeholder="Cari nomor order, nama penerima, no. HP, provinsi, kota…"
+            className="pl-9"
             data-admin-search
           />
         </form>
         <Select
           value={activeSort}
           onChange={(event) => visit({ sort: event.target.value })}
-          className="sm:w-40"
+          className="sm:w-36"
           aria-label="Urutan"
         >
           <option value="newest">Terbaru</option>
           <option value="oldest">Terlama</option>
         </Select>
         <Button asChild variant="secondary">
-          <a href={exportUrl}>Export</a>
+          <a href={exportUrl}>
+            <Icon name="download" className="size-3.5" aria-hidden="true" />
+            Export
+          </a>
         </Button>
       </div>
 
-      <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+      <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
         <Select
           value={activePaymentStatus || "all"}
           onChange={(event) =>
@@ -596,48 +624,46 @@ export default function OrdersIndex({
           <option value="range">Rentang tanggal</option>
         </Select>
         {activeDatePreset === "range" ? (
-          <form onSubmit={applyDateRange} className="flex flex-wrap items-end gap-2">
-            <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-              Dari
-              <Input
-                type="date"
-                value={rangeFrom}
-                onChange={(event) => setRangeFrom(event.target.value)}
-                className="w-40"
-              />
-            </label>
-            <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-              Sampai
-              <Input
-                type="date"
-                value={rangeTo}
-                onChange={(event) => setRangeTo(event.target.value)}
-                className="w-40"
-              />
-            </label>
-            <Button type="submit" variant="secondary">
+          <form onSubmit={applyDateRange} className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={rangeFrom}
+              onChange={(event) => setRangeFrom(event.target.value)}
+              className="w-36"
+              aria-label="Dari tanggal"
+            />
+            <span className="text-xs text-muted-foreground">—</span>
+            <Input
+              type="date"
+              value={rangeTo}
+              onChange={(event) => setRangeTo(event.target.value)}
+              className="w-36"
+              aria-label="Sampai tanggal"
+            />
+            <Button type="submit" variant="secondary" size="sm">
               Terapkan
             </Button>
           </form>
         ) : null}
       </div>
 
-      <div className="mt-4">
+
+      {/* Daftar pesanan */}
+      <div className="mt-5">
         {orders.length ? (
           <>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-foreground">
-                {formatNumber(pagination?.total ?? orders.length)} Pesanan
-              </p>
-            </div>
+            <p className="mb-2.5 text-xs font-medium text-muted-foreground">
+              <span className="tabular-nums font-semibold text-foreground">
+                {formatNumber(pagination?.total ?? orders.length)}
+              </span>{" "}
+              pesanan
+            </p>
             <div className="overflow-x-auto">
-              <div className="min-w-[56rem]">
+              <div className="min-w-[56rem] space-y-3">
                 <OrderListColumnHeader />
-                <div className="space-y-3">
-                  {orders.map((order) => (
-                    <OrderCardRow key={order.id} order={order} queryState={queryState} />
-                  ))}
-                </div>
+                {orders.map((order) => (
+                  <OrderCardRow key={order.id} order={order} queryState={queryState} />
+                ))}
               </div>
             </div>
           </>
@@ -651,14 +677,17 @@ export default function OrdersIndex({
       </div>
 
       {pagination?.total ? (
-        <p className="mt-6 text-sm text-muted-foreground">
+        <p className="mt-5 text-xs text-muted-foreground">
           Menampilkan{" "}
-          <span className="font-semibold text-foreground">
+          <span className="tabular-nums font-semibold text-foreground">
             {(pagination.current_page - 1) * (pagination.per_page ?? 10) + 1}
-            {" - "}
+            {" – "}
             {Math.min(pagination.current_page * (pagination.per_page ?? 10), pagination.total)}
           </span>{" "}
-          dari <span className="font-semibold text-foreground">{formatNumber(pagination.total)}</span>{" "}
+          dari{" "}
+          <span className="tabular-nums font-semibold text-foreground">
+            {formatNumber(pagination.total)}
+          </span>{" "}
           pesanan
         </p>
       ) : null}
@@ -667,3 +696,4 @@ export default function OrdersIndex({
     </AdminLayout>
   )
 }
+

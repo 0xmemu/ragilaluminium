@@ -6,13 +6,10 @@ import { cn } from "@/lib/utils"
 /** Admin select — native select dengan chevron konsisten, hairline + focus teal. */
 const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
   ({ className, children, ...props }, ref) => (
-    <span className="relative inline-flex w-full items-center">
+    <span className={cn("relative inline-flex w-full items-center", className)}>
       <select
         ref={ref}
-        className={cn(
-          "h-9 min-h-9 w-full appearance-none rounded-md border border-input bg-surface py-2 pl-3 pr-8 text-sm text-foreground transition duration-150 ease-standard hover:border-foreground/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70",
-          className,
-        )}
+        className="h-9 min-h-9 w-full appearance-none rounded-md border border-input bg-surface py-2 pl-3 pr-8 text-sm text-foreground transition duration-150 ease-standard hover:border-foreground/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70"
         {...props}
       >
         {children}
