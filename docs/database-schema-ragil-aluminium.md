@@ -394,17 +394,20 @@ Indexes:
 
 ### 5.2 `whatsapp_messages`
 
-Represents individual messages sent or received via WhatsApp Business API.
+Represents individual messages sent or received via Meta Cloud API or WAHA.
 
 - `id` (PK, bigint, auto increment)  
 - `direction` (enum: outbound, inbound)  
 - `order_id` (FK → `orders.id`, nullable)  
 - `phone_number` (varchar)  
+- `provider` (varchar 32, default `meta`) — `meta` | `waha`  
 - `internal_template_key` (varchar, nullable)  
 - `provider_message_id` (varchar, nullable)  
+- `provider_session` (varchar 64, nullable) — WAHA session name when applicable  
 - `content_text` (text, nullable)  
 - `content_payload` (json, nullable)  
-- `status` (enum: pending, sent, delivered, read, failed, received)  
+- `status` (enum: pending, sent, delivered, read, failed, received, deferred)  
+  - `deferred` = rate-limit / reachout timelock; retry via `RetryDeferredWhatsAppMessage` (do not logout session)  
 - `error_reason` (text, nullable)  
 - `sent_at` (timestamp, nullable)  
 - `received_at` (timestamp, nullable)  
@@ -417,7 +420,8 @@ Indexes:
 - `idx_whatsapp_messages_order` (`order_id`)  
 - `idx_whatsapp_messages_phone` (`phone_number`)  
 - `idx_whatsapp_messages_direction_status` (`direction`, `status`)  
-- `idx_whatsapp_messages_provider_message_id` (`provider_message_id`)
+- `idx_whatsapp_messages_provider_message_id` (`provider_message_id`)  
+- `idx_whatsapp_messages_provider_status` (`provider`, `status`)
 
 ---
 

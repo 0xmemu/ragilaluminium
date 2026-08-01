@@ -4,8 +4,13 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Webhook\WahaWebhookController;
 use App\Http\Controllers\WilayahController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/webhooks/waha', WahaWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('api.webhooks.waha');
 
 /*
 |--------------------------------------------------------------------------

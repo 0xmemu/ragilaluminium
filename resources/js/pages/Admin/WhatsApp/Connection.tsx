@@ -9,11 +9,25 @@ import { formatDate } from "@/lib/format"
 
 interface ConnectionInfo {
   configured: boolean
+  driver?: string
   base_url?: string | null
   number_id_set: boolean
   token_set: boolean
   verify_token_set: boolean
   webhook_path: string
+  waha_webhook_path?: string
+  waha_session_status?: string | null
+  waha_timelock?: boolean
+  providers?: {
+    meta?: { configured?: boolean }
+    waha?: {
+      configured?: boolean
+      base_url?: string | null
+      session?: string | null
+      api_key_set?: boolean
+      hmac_secret_set?: boolean
+    }
+  }
 }
 
 interface ConnectionStats {
@@ -35,6 +49,9 @@ export default function WhatsAppConnection({
   connection: ConnectionInfo
   stats: ConnectionStats
 }) {
+  const driver = connection.driver === "waha" ? "waha" : "meta"
+  const waha = connection.providers?.waha
+
   return (
     <AdminLayout
       title={title}
@@ -60,23 +77,34 @@ export default function WhatsAppConnection({
             </span>
             <div>
               <h2 className="text-lg font-bold">
-                {connection.configured ? "Cloud API terhubung" : "Cloud API belum dikonfigurasi"}
+                {driver === "waha"
+                  ? connection.configured
+                    ? "WAHA aktif"
+                    : "WAHA belum dikonfigurasi"
+                  : connection.configured
+                    ? "Cloud API terhubung"
+                    : "Cloud API belum dikonfigurasi"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Integrasi memakai WhatsApp Business Cloud API / BSP resmi (Stage 8) — bukan tautan WhatsApp Web via QR.
+                Driver aktif: <span className="font-semibold uppercase">{driver}</span>
+                {" "}(ganti via <code className="text-xs">WA_DRIVER</code>). Meta tetap tersedia untuk rollback.
               </p>
             </div>
           </div>
 
           <Alert tone={connection.configured ? "info" : "warning"}>
-            {connection.configured
-              ? "Token dan Phone Number ID terdeteksi di konfigurasi server. Pesan outbound akan dikirim ke provider."
-              : "Set WHATSAPP_API_TOKEN (permanen) dan WHATSAPP_BUSINESS_NUMBER_ID di .env. Tanpa itu, pesan tetap dicatat sebagai sent di mode degradasi (dev)."}
+            {driver === "waha"
+              ? connection.configured
+                ? "WAHA API key dan base URL terdeteksi. Notifikasi order dikirim sebagai teks biasa (tanpa approval template Meta)."
+                : "Set WAHA_BASE_URL dan WAHA_API_KEY di .env, lalu scan QR nomor sekunder di container WAHA."
+              : connection.configured
+                ? "Token dan Phone Number ID terdeteksi. Pesan outbound memakai template Meta."
+                : "Set WHATSAPP_API_TOKEN dan WHATSAPP_BUSINESS_NUMBER_ID, atau alihkan ke WA_DRIVER=waha."}
           </Alert>
 
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">API token</dt>
+              <dt className="text-muted-foreground">API token (Meta)</dt>
               <dd className="font-semibold">{connection.token_set ? "Terisi" : "Kosong"}</dd>
             </div>
             <div className="flex justify-between gap-4">
@@ -88,13 +116,40 @@ export default function WhatsAppConnection({
               <dd className="font-semibold">{connection.verify_token_set ? "Terisi" : "Kosong"}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Webhook</dt>
+              <dt className="text-muted-foreground">Webhook Meta</dt>
               <dd className="font-mono text-xs font-semibold">{connection.webhook_path}</dd>
             </div>
             {connection.base_url ? (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Base URL</dt>
+                <dt className="text-muted-foreground">Base URL Meta</dt>
                 <dd className="max-w-[60%] truncate font-mono text-xs">{connection.base_url}</dd>
+              </div>
+            ) : null}
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">WAHA API key</dt>
+              <dd className="font-semibold">{waha?.api_key_set ? "Terisi" : "Kosong"}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">WAHA HMAC</dt>
+              <dd className="font-semibold">{waha?.hmac_secret_set ? "Terisi" : "Kosong"}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Webhook WAHA</dt>
+              <dd className="font-mono text-xs font-semibold">
+                {connection.waha_webhook_path ?? "/api/webhooks/waha"}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Sesi WAHA</dt>
+              <dd className="font-semibold">
+                {connection.waha_session_status ?? waha?.session ?? "—"}
+                {connection.waha_timelock ? " (timelock)" : ""}
+              </dd>
+            </div>
+            {waha?.base_url ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Base URL WAHA</dt>
+                <dd className="max-w-[60%] truncate font-mono text-xs">{waha.base_url}</dd>
               </div>
             ) : null}
           </dl>

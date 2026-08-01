@@ -9,9 +9,7 @@ use Illuminate\Http\Response;
 
 class WhatsAppController extends Controller
 {
-    public function __construct(protected WhatsAppService $whatsapp)
-    {
-    }
+    public function __construct(protected WhatsAppService $whatsapp) {}
 
     public function verify(Request $request): Response
     {
@@ -19,7 +17,10 @@ class WhatsAppController extends Controller
         $token = $request->query('hub_verify_token');
         $challenge = $request->query('hub_challenge');
 
-        if ($mode === 'subscribe' && $token === config('services.whatsapp.verify_token')) {
+        $expected = config('services.whatsapp.meta.verify_token')
+            ?: config('services.whatsapp.verify_token');
+
+        if ($mode === 'subscribe' && $token === $expected) {
             return response($challenge, 200);
         }
 
@@ -28,22 +29,27 @@ class WhatsAppController extends Controller
 
     public function handle(Request $request): Response
     {
-        if (! $this->signatureValid($request)) {
+        if (! $this->metaSignatureValid($request)) {
             return response('Invalid signature', 403);
         }
 
-        $this->whatsapp->handleWebhook($request->all());
+        $this->whatsapp->handleMetaWebhook($request->all());
 
         return response('OK', 200);
     }
 
     /**
-     * Verifikasi X-Hub-Signature-256 dari Meta (HMAC-SHA256 body mentah dengan
-     * app secret). Dilewati hanya jika app_secret tidak dikonfigurasi (dev).
+     * Legacy path kept for existing tunnels; prefer POST /api/webhooks/waha.
      */
-    protected function signatureValid(Request $request): bool
+    public function handleWaha(Request $request): Response
     {
-        $secret = config('services.whatsapp.app_secret');
+        return app(WahaWebhookController::class)->__invoke($request);
+    }
+
+    protected function metaSignatureValid(Request $request): bool
+    {
+        $secret = config('services.whatsapp.meta.app_secret')
+            ?: config('services.whatsapp.app_secret');
         if (! $secret) {
             return true;
         }

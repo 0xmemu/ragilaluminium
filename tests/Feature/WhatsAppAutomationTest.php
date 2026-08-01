@@ -123,6 +123,7 @@ class WhatsAppAutomationTest extends TestCase
         ]);
 
         app(WhatsAppService::class)->handleOrderCreated(new OrderCreated($codOrder));
+        app(WhatsAppService::class)->handleOrderCreated(new OrderCreated($codOrder));
 
         $this->assertDatabaseHas('whatsapp_messages', [
             'order_id' => $codOrder->id,

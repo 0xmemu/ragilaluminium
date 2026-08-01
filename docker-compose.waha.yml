@@ -1,0 +1,28 @@
+# WAHA self-hosted (GOWS via noweb image — no Chromium).
+# Secrets: set in server .env next to this file (or export before compose).
+# Bind 127.0.0.1 only — Laravel reaches WAHA at http://127.0.0.1:3000.
+#
+# Pin a release tag in production, e.g. noweb-2026.7.2 (see Docker Hub / WAHA configurator).
+# Engine fallback: set WHATSAPP_DEFAULT_ENGINE=NOWEB if GOWS lacks a needed feature.
+
+services:
+  waha:
+    image: ${WAHA_IMAGE:-devlikeapro/waha:noweb-2026.6.2}
+    container_name: ragil-waha
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: ${WHATSAPP_DEFAULT_ENGINE:-GOWS}
+      WAHA_API_KEY: ${WAHA_API_KEY:?WAHA_API_KEY is required}
+      WHATSAPP_HOOK_URL: ${WHATSAPP_HOOK_URL:-https://ra.natauma.me/api/webhooks/waha}
+      WHATSAPP_HOOK_EVENTS: message,message.ack,session.status
+      WHATSAPP_HOOK_HMAC_KEY: ${WAHA_HMAC_SECRET:?WAHA_HMAC_SECRET is required}
+      WHATSAPP_HOOK_RETRIES_POLICY: constant
+      WHATSAPP_HOOK_RETRIES_DELAY_SECONDS: "2"
+      WHATSAPP_HOOK_RETRIES_ATTEMPTS: "8"
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+      WAHA_PRESENCE_AUTO_ONLINE: "False"
+      TZ: Asia/Jakarta
+    volumes:
+      - ./.waha-sessions:/app/.sessions

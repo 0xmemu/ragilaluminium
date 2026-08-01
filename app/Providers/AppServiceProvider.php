@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Services\CartService;
+use App\Services\WhatsApp\MetaDriver;
+use App\Services\WhatsApp\WahaDriver;
+use App\Services\WhatsApp\WhatsAppManager;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -14,6 +17,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(CartService::class, function ($app) {
             return new CartService($app->make('session.store'));
         });
+
+        $this->app->singleton(MetaDriver::class);
+        $this->app->singleton(WahaDriver::class);
+        $this->app->singleton(WhatsAppManager::class);
     }
 
     public function boot(): void

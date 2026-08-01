@@ -104,7 +104,7 @@ The website is the **transaction engine** at the center of an ecosystem:
 ### 2.7 WhatsApp Module
 **Source of truth for messaging logs; notification & communication channel.**
 - Tables: `whatsapp_templates`, `whatsapp_messages`.
-- Uses WhatsApp Business API. Templates map internal keys
+- Uses `WhatsAppManager` with Meta Cloud API and WAHA self-hosted drivers. Templates map internal keys
   (`order_created`, `payment_confirmed`, `order_shipped`, `order_delivered`,
   `order_issue_followup`) to provider templates.
 - Reflects order/payment/shipping state; does **not** own business state or perform

@@ -456,7 +456,7 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 
 - `GET /admin/whatsapp/connection`
   - Controller: `Admin\WhatsAppTemplateController@connection`
-  - Inertia: `Admin/WhatsApp/Connection` — Cloud API config status + outbound stats (not unofficial QR Web link)
+  - Inertia: `Admin/WhatsApp/Connection` — active driver (`meta|waha`), provider readiness, WAHA session/timelock status, and outbound stats
 
 - `POST /admin/whatsapp/templates`
   - Controller: `Admin\WhatsAppTemplateController@store`
@@ -769,6 +769,11 @@ This includes:
 ## 10. External API Endpoints
 
 ### 10.1 WhatsApp Webhook
+
+- `POST /api/webhooks/waha`
+  - Controller: `Webhook\WahaWebhookController`
+  - Requires `X-Webhook-Hmac-Algorithm: sha512` and a valid `X-Webhook-Hmac` over the raw body using `WAHA_HMAC_SECRET`.
+  - Handles inbound `message`, `message.ack`, and `session.status`; duplicate inbound provider IDs are idempotent.
 
 - `GET /webhook/whatsapp`
   - Controller: `Webhook\WhatsAppController@verify`

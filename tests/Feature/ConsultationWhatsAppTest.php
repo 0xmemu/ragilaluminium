@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\WhatsAppTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 
 class ConsultationWhatsAppTest extends \Tests\TestCase
 {
@@ -11,6 +12,18 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
 
     public function test_consultation_send_creates_outbound_whatsapp_message(): void
     {
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'meta-consultation-1']],
+            ], 200),
+        ]);
+        config([
+            'services.whatsapp.driver' => 'meta',
+            'services.whatsapp.meta.token' => 'meta-token',
+            'services.whatsapp.meta.number_id' => '12345',
+            'services.whatsapp.meta.base_url' => 'https://graph.facebook.com/v20.0',
+        ]);
+
         WhatsAppTemplate::create([
             'internal_key' => 'consultation_request',
             'provider_template_name' => 'consultation_request',
