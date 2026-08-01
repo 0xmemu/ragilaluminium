@@ -1,14 +1,17 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
+import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
+import { Checkbox } from "@/components/admin/ui/checkbox"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -285,6 +288,7 @@ export default function OrderShow({
     null
   const needsResi = !latestShipping?.waybill_number
 
+
   return (
     <AdminLayout
       title={`Pesanan ${order.order_number}`}
@@ -293,146 +297,79 @@ export default function OrderShow({
         <Button asChild variant="secondary">
           <Link href={routeUrl("admin.orders.index")}>
             <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali ke daftar
+            Kembali
           </Link>
         </Button>
       }
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
 
-      <p className="text-xs text-muted-foreground">
-        <Link href={routeUrl("admin.orders.index")} className="hover:text-primary">
-          Pesanan
-        </Link>
-        <span className="mx-1.5">/</span>
-        <span className="font-semibold text-foreground">{order.order_number}</span>
-      </p>
-
-      <section className="mt-4 grid gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+      {/* Ringkasan order — 4 sel dengan hairline divider */}
+      <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
+        <div className="bg-card p-5">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Nomor order
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <p className="font-mono text-lg font-bold">{order.order_number}</p>
+            <p className="font-mono text-base font-semibold tracking-tight">{order.order_number}</p>
             <button
               type="button"
               onClick={() => copyText(order.order_number)}
-              className="text-xs font-semibold text-primary hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
+              <Icon name="copy" className="size-3" aria-hidden="true" />
               Salin
             </button>
           </div>
-          <div className="mt-2">
+          <div className="mt-2.5">
             <StatusBadge status={order.order_status} />
           </div>
         </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-            Metode pembayaran
+        <div className="bg-card p-5">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Pembayaran
           </p>
-          <p className="mt-2 text-sm font-bold">{order.payment_method_label}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className="mt-2 text-sm font-semibold">{order.payment_method_label}</p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <StatusBadge status={order.payment_status} />
-            <span className="rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-tight text-muted-foreground">
-              {isCod ? "Alur COD" : "Alur Transfer"}
+            <span className="inline-flex min-h-6 items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {isCod ? "Alur COD" : "Alur transfer"}
             </span>
           </div>
         </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+        <div className="bg-card p-5">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Penerima
           </p>
-          <p className="mt-2 text-sm font-bold">{order.customer_name}</p>
+          <p className="mt-2 text-sm font-semibold">{order.customer_name}</p>
           <p className="mt-1 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </p>
         </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+        <div className="bg-card p-5">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Ringkasan
           </p>
-          <p className="mt-2 text-sm font-semibold">
+          <p className="mt-2 text-xs text-muted-foreground">
             {formatNumber(order.product_count)} produk · {formatNumber(order.unit_count)} unit
           </p>
-          <p className="tabular-nums mt-1 text-xl font-bold">{formatCurrency(order.total_amount)}</p>
+          <p className="tabular-nums mt-1 text-xl font-semibold tracking-tight">
+            {formatCurrency(order.total_amount)}
+          </p>
         </div>
-      </section>
+      </Card>
 
-      <section className="mt-4 grid gap-3 lg:grid-cols-3">
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Riwayat pesanan</h2>
-          <ol className="mt-3 space-y-2 text-xs">
-            <li className="flex justify-between gap-3">
-              <span className="text-muted-foreground">Waktu pemesanan</span>
-              <span className="font-semibold">{formatDateTime(order.created_at)}</span>
-            </li>
-            <li className="flex justify-between gap-3">
-              <span className="text-muted-foreground">Update terakhir</span>
-              <span className="font-semibold">{formatDateTime(order.updated_at)}</span>
-            </li>
-          </ol>
-        </article>
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Log perubahan status</h2>
-          {events.length ? (
-            <ul className="mt-3 space-y-2 text-xs">
-              {events.slice(0, 4).map((event, index) => (
-                <li key={`${event.event_type}-${index}`} className="border-b border-border pb-2 last:border-0">
-                  <p className="font-semibold">{event.label || humanize(event.event_type)}</p>
-                  {typeof event.payload?.reason === "string" && event.payload.reason ? (
-                    <p className="mt-0.5 text-muted-foreground">Alasan: {event.payload.reason}</p>
-                  ) : null}
-                  <p className="mt-0.5 text-muted-foreground">{formatDateTime(event.created_at)}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-xs text-muted-foreground">Belum ada log status.</p>
-          )}
-        </article>
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Riwayat WA otomatis</h2>
-          {order.whatsapp_messages.length ? (
-            <ul className="mt-3 space-y-2 text-xs">
-              {order.whatsapp_messages.slice(0, 4).map((message) => (
-                <li key={message.id} className="border-b border-border pb-2 last:border-0">
-                  <p className="font-semibold">
-                    {message.label ||
-                      (message.internal_template_key
-                        ? humanize(message.internal_template_key)
-                        : humanize(message.direction))}
-                  </p>
-                  <p className="mt-0.5 text-muted-foreground">
-                    <StatusBadge status={message.status} />
-                    <span className="ml-2">
-                      {formatDateTime(message.sent_at || message.received_at)}
-                    </span>
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
-          )}
-        </article>
-      </section>
 
-      {order.flow_hint ? (
-        <p className="mt-4 rounded-md border border-border bg-surface-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
-          {order.flow_hint}
-        </p>
-      ) : null}
-
-      <section className="mt-4 flex flex-wrap gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm">
+      {/* Aksi utama */}
+      <Card className="mt-4 flex flex-wrap items-center gap-2 p-3">
         {primaryAction?.next_status ? (
           <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-xs">
             <Button disabled={statusBusy} onClick={runPrimary}>
               {statusBusy ? "Memproses..." : primaryAction.label}
             </Button>
             {primaryAction.hint ? (
-              <p className="text-[11px] text-muted-foreground">{primaryAction.hint}</p>
+              <p className="text-xs text-muted-foreground">{primaryAction.hint}</p>
             ) : null}
           </div>
         ) : null}
@@ -444,11 +381,8 @@ export default function OrderShow({
             </a>
           </Button>
         ) : null}
-                <Button
-          type="button"
-          variant="secondary"
-          onClick={() => copyText(fullAddress(order))}
-        >
+        <Button type="button" variant="secondary" onClick={() => copyText(fullAddress(order))}>
+          <Icon name="copy" className="size-3.5" aria-hidden="true" />
           Salin alamat
         </Button>
         {workflowLinks.map((link) => (
@@ -458,7 +392,11 @@ export default function OrderShow({
         ))}
         {order.order_status !== "cancelled" ? (
           <ConfirmAction
-            trigger={<Button variant="destructive">Batalkan Pesanan</Button>}
+            trigger={
+              <Button variant="ghost" className="text-destructive hover:text-destructive">
+                Batalkan pesanan
+              </Button>
+            }
             title="Batalkan pesanan?"
             description="Status akan berubah menjadi dibatalkan dan tercatat di log."
             confirmLabel="Batalkan"
@@ -468,18 +406,88 @@ export default function OrderShow({
             onConfirm={(reason) => updateStatus("cancelled", reason)}
           />
         ) : null}
+      </Card>
+
+      {/* Riwayat — 3 kolom */}
+      <section className="mt-4 grid gap-4 lg:grid-cols-3">
+        <SectionCard title="Riwayat pesanan">
+          <ol className="space-y-2.5 text-[13px]">
+            <li className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Waktu pemesanan</span>
+              <span className="font-medium">{formatDateTime(order.created_at)}</span>
+            </li>
+            <li className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Update terakhir</span>
+              <span className="font-medium">{formatDateTime(order.updated_at)}</span>
+            </li>
+          </ol>
+        </SectionCard>
+        <SectionCard title="Log perubahan status">
+          {events.length ? (
+            <ul className="space-y-2.5 text-[13px]">
+              {events.slice(0, 4).map((event, index) => (
+                <li
+                  key={`${event.event_type}-${index}`}
+                  className="border-b border-border pb-2.5 last:border-0 last:pb-0"
+                >
+                  <p className="font-medium">{event.label || humanize(event.event_type)}</p>
+                  {typeof event.payload?.reason === "string" && event.payload.reason ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Alasan: {event.payload.reason}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {formatDateTime(event.created_at)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada log status.</p>
+          )}
+        </SectionCard>
+        <SectionCard title="Riwayat WA otomatis">
+          {order.whatsapp_messages.length ? (
+            <ul className="space-y-2.5 text-[13px]">
+              {order.whatsapp_messages.slice(0, 4).map((message) => (
+                <li
+                  key={message.id}
+                  className="border-b border-border pb-2.5 last:border-0 last:pb-0"
+                >
+                  <p className="font-medium">
+                    {message.label ||
+                      (message.internal_template_key
+                        ? humanize(message.internal_template_key)
+                        : humanize(message.direction))}
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <StatusBadge status={message.status} />
+                    {formatDateTime(message.sent_at || message.received_at)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
+          )}
+        </SectionCard>
       </section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface shadow-sm">
-            <div className="border-b border-border p-4">
-              <h2 className="text-base font-bold">Isi pesanan</h2>
-            </div>
+      {order.flow_hint ? (
+        <p className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
+          {order.flow_hint}
+        </p>
+      ) : null}
+
+
+      {/* Konten utama + aside */}
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-5">
+          <SectionCard title="Isi pesanan" contentClassName="p-0">
             <ul className="divide-y divide-border">
               {order.items.map((item) => (
-                <li key={item.id} className="flex gap-3 p-4">
-                  <div className="size-14 shrink-0 overflow-hidden rounded bg-muted">
+                <li key={item.id} className="flex gap-3.5 px-5 py-4">
+                  <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                     {item.image ? (
                       <img src={item.image} alt="" className="size-full object-cover" />
                     ) : (
@@ -489,41 +497,41 @@ export default function OrderShow({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{item.name}</p>
+                    <p className="text-sm font-medium leading-5">{item.name}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {variationLabel(item) || item.variant_sku || "-"}
                     </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-1.5 text-xs text-muted-foreground">
                       {formatNumber(item.quantity)} × {formatCurrency(item.unit_price)}
                     </p>
                   </div>
-                  <p className="tabular-nums shrink-0 text-sm font-bold">
+                  <p className="tabular-nums shrink-0 text-sm font-semibold">
                     {formatCurrency(item.line_total)}
                   </p>
                 </li>
               ))}
             </ul>
-            <dl className="space-y-2 border-t border-border p-4 text-sm">
+            <dl className="space-y-2 border-t border-border bg-muted/40 px-5 py-4 text-[13px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total produk</dt>
-                <dd className="font-semibold">{formatNumber(order.product_count)} Produk</dd>
+                <dd className="font-medium">{formatNumber(order.product_count)} produk</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total unit</dt>
-                <dd className="font-semibold">{formatNumber(order.unit_count)} Unit</dd>
+                <dd className="font-medium">{formatNumber(order.unit_count)} unit</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total harga produk</dt>
-                <dd className="tabular-nums font-semibold">{formatCurrency(order.subtotal_amount)}</dd>
+                <dd className="tabular-nums font-medium">{formatCurrency(order.subtotal_amount)}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Ongkir dibayar</dt>
-                <dd className="tabular-nums font-semibold">{formatCurrency(order.shipping_amount)}</dd>
+                <dd className="tabular-nums font-medium">{formatCurrency(order.shipping_amount)}</dd>
               </div>
               {(order.shipping_subsidy_amount ?? 0) > 0 ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Subsidi ongkir</dt>
-                  <dd className="tabular-nums font-semibold text-muted-foreground">
+                  <dd className="tabular-nums font-medium text-muted-foreground">
                     −{formatCurrency(order.shipping_subsidy_amount ?? 0)}
                   </dd>
                 </div>
@@ -531,17 +539,17 @@ export default function OrderShow({
               {order.discount_amount > 0 ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Potongan harga (promo item)</dt>
-                  <dd className="tabular-nums font-semibold text-muted-foreground">
+                  <dd className="tabular-nums font-medium text-muted-foreground">
                     −{formatCurrency(order.discount_amount)}
                   </dd>
                 </div>
               ) : null}
               {(order.voucher_discount_amount ?? 0) > 0 ? (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground text-destructive">
+                  <dt className="text-muted-foreground">
                     Voucher{order.voucher_code ? ` (${order.voucher_code})` : ""}
                   </dt>
-                  <dd className="tabular-nums font-semibold text-destructive">
+                  <dd className="tabular-nums font-medium text-destructive">
                     −{formatCurrency(order.voucher_discount_amount ?? 0)}
                   </dd>
                 </div>
@@ -549,66 +557,75 @@ export default function OrderShow({
               {(order.cod_fee_amount ?? 0) > 0 ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Biaya COD</dt>
-                  <dd className="tabular-nums font-semibold">
+                  <dd className="tabular-nums font-medium">
                     {formatCurrency(order.cod_fee_amount ?? 0)}
                   </dd>
                 </div>
               ) : null}
-              <div className="flex justify-between gap-3 border-t border-border pt-2 text-base">
-                <dt className="font-bold">{isCod ? "Total tagihan COD" : "Total tagihan"}</dt>
-                <dd className="tabular-nums font-bold">{formatCurrency(order.total_amount)}</dd>
+              <div className="flex justify-between gap-3 border-t border-border pt-2.5 text-sm">
+                <dt className="font-semibold">{isCod ? "Total tagihan COD" : "Total tagihan"}</dt>
+                <dd className="tabular-nums font-semibold">{formatCurrency(order.total_amount)}</dd>
               </div>
             </dl>
-          </section>
+          </SectionCard>
 
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-bold">Alamat pengiriman</h2>
+
+          <SectionCard
+            title="Alamat pengiriman"
+            action={
               <button
                 type="button"
                 onClick={() => copyText(fullAddress(order))}
-                className="text-xs font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               >
-                Salin alamat
+                <Icon name="copy" className="size-3" aria-hidden="true" />
+                Salin
               </button>
-            </div>
-            <p className="mt-3 text-sm font-semibold">{order.customer_name}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{order.customer_phone}</p>
-            <p className="mt-3 text-sm leading-6">{fullAddress(order) || "-"}</p>
-          </section>
+            }
+          >
+            <p className="text-sm font-semibold">{order.customer_name}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone}</p>
+            <p className="mt-3 text-[13px] leading-6 text-foreground">
+              {fullAddress(order) || "-"}
+            </p>
+          </SectionCard>
 
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-base font-bold">Pembayaran tercatat</h2>
+          <SectionCard title="Pembayaran tercatat" contentClassName="p-0">
             {order.payments.length ? (
-              <ul className="mt-3 divide-y divide-border">
+              <ul className="divide-y divide-border">
                 {order.payments.map((payment) => (
-                  <li key={payment.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                    <div>
-                      <p className="font-semibold">{humanize(payment.payment_method)}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                  <li
+                    key={payment.id}
+                    className="flex items-center justify-between gap-3 px-5 py-3.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium">{humanize(payment.payment_method)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {payment.transaction_reference || formatDateTime(payment.paid_at)}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="shrink-0 text-right">
                       <StatusBadge status={payment.status} />
-                      <p className="tabular-nums mt-1 font-bold">{formatCurrency(payment.amount)}</p>
+                      <p className="tabular-nums mt-1 text-[13px] font-semibold">
+                        {formatCurrency(payment.amount)}
+                      </p>
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Belum ada pembayaran.</p>
+              <p className="px-5 py-5 text-xs text-muted-foreground">Belum ada pembayaran.</p>
             )}
-          </section>
+          </SectionCard>
         </div>
 
-        <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-sm font-bold">Catatan internal</h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+
+        <aside className="space-y-5">
+          <SectionCard title="Catatan internal">
+            <p className="whitespace-pre-wrap text-[13px] leading-6 text-muted-foreground">
               {order.notes?.trim() || "Belum ada catatan."}
             </p>
-          </section>
+          </SectionCard>
 
           <section ref={lacakRef} id="lacak-pesanan" className="space-y-4">
             <ShippingTrackPanel
@@ -632,85 +649,80 @@ export default function OrderShow({
               onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
               onCopyWaybill={copyText}
             />
+
             {isCod && order.order_status === "delivered" ? (
-              <p className="text-xs font-semibold text-foreground">
+              <p className="rounded-lg border border-warning/25 bg-warning/10 px-4 py-3 text-xs font-medium leading-5 text-warning-foreground">
                 Paket diterima — pastikan pembayaran COD sudah dikonfirmasi.
               </p>
             ) : null}
 
             {needsResi || order.order_status === "processing" ? (
-              <form
-                onSubmit={storeShipping}
-                className="space-y-3 rounded-lg border border-border bg-surface p-4 shadow-sm"
-              >
-                <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
-                  Input resi
-                </p>
-                <FormErrorSummary errors={shippingForm.errors} />
-                <Field id="shipping-mode" label="Sumber" required error={shippingForm.errors.mode}>
-                  <Select
-                    value={shippingForm.data.mode}
-                    onChange={(event) => shippingForm.setData("mode", event.target.value)}
-                  >
-                    <option value="jnt" disabled={!shippingActions.jntEnabled}>
-                      Buat via J&T{shippingActions.jntEnabled ? "" : " (nonaktif)"}
-                    </option>
-                    <option value="manual">Input nomor resi manual</option>
-                  </Select>
-                </Field>
-                {shippingForm.data.mode === "manual" ? (
-                  <Field
-                    id="waybill"
-                    label="Nomor resi"
-                    required
-                    error={shippingForm.errors.waybill_number}
-                  >
-                    <Input
-                      value={shippingForm.data.waybill_number}
-                      onChange={(event) =>
-                        shippingForm.setData("waybill_number", event.target.value)
-                      }
-                      placeholder="Mis. JT1234567890"
-                    />
+              <SectionCard title="Input resi">
+                <form onSubmit={storeShipping} className="space-y-3.5">
+                  <FormErrorSummary errors={shippingForm.errors} />
+                  <Field id="shipping-mode" label="Sumber" required error={shippingForm.errors.mode}>
+                    <Select
+                      value={shippingForm.data.mode}
+                      onChange={(event) => shippingForm.setData("mode", event.target.value)}
+                    >
+                      <option value="jnt" disabled={!shippingActions.jntEnabled}>
+                        Buat via J&T{shippingActions.jntEnabled ? "" : " (nonaktif)"}
+                      </option>
+                      <option value="manual">Input nomor resi manual</option>
+                    </Select>
                   </Field>
-                ) : (
-                  <Field id="weight" label="Berat (kg)" error={shippingForm.errors.weight_kg}>
-                    <Input
-                      type="number"
-                      min="0.1"
-                      step="0.1"
-                      value={shippingForm.data.weight_kg}
-                      onChange={(event) => shippingForm.setData("weight_kg", event.target.value)}
-                    />
-                  </Field>
-                )}
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
+                  {shippingForm.data.mode === "manual" ? (
+                    <Field
+                      id="waybill"
+                      label="Nomor resi"
+                      required
+                      error={shippingForm.errors.waybill_number}
+                    >
+                      <Input
+                        value={shippingForm.data.waybill_number}
+                        onChange={(event) =>
+                          shippingForm.setData("waybill_number", event.target.value)
+                        }
+                        placeholder="Mis. JT1234567890"
+                      />
+                    </Field>
+                  ) : (
+                    <Field id="weight" label="Berat (kg)" error={shippingForm.errors.weight_kg}>
+                      <Input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={shippingForm.data.weight_kg}
+                        onChange={(event) => shippingForm.setData("weight_kg", event.target.value)}
+                      />
+                    </Field>
+                  )}
+                  <Checkbox
+                    compact
                     checked={Boolean(shippingForm.data.mark_shipped)}
                     onChange={(event) =>
                       shippingForm.setData("mark_shipped", event.target.checked)
                     }
+                    label="Tandai pesanan sebagai dikirim setelah resi tersimpan"
                   />
-                  Tandai pesanan sebagai dikirim setelah resi tersimpan
-                </label>
-                <Button type="submit" className="w-full" disabled={shippingForm.processing}>
-                  {shippingForm.processing
-                    ? "Menyimpan..."
-                    : shippingForm.data.mode === "jnt"
-                      ? "Buat resi J&T"
-                      : "Simpan resi"}
-                </Button>
-              </form>
+                  <Button type="submit" className="w-full" disabled={shippingForm.processing}>
+                    {shippingForm.processing
+                      ? "Menyimpan..."
+                      : shippingForm.data.mode === "jnt"
+                        ? "Buat resi J&T"
+                        : "Simpan resi"}
+                  </Button>
+                </form>
+              </SectionCard>
             ) : null}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-sm font-bold">Ubah status</h2>
+
+          <SectionCard title="Ubah status">
             <Select
               value={statusForm.data.order_status}
               onChange={(event) => statusForm.setData("order_status", event.target.value)}
-              className="mt-3"
+              aria-label="Status pesanan"
             >
               {orderStatuses.map((status) => (
                 <option key={status} value={status}>
@@ -719,7 +731,9 @@ export default function OrderShow({
               ))}
             </Select>
             {statusForm.errors.order_status ? (
-              <p className="mt-2 text-xs text-destructive">{statusForm.errors.order_status}</p>
+              <p className="mt-2 text-xs font-medium text-destructive">
+                {statusForm.errors.order_status}
+              </p>
             ) : null}
             <Button
               className="mt-3 w-full"
@@ -728,18 +742,17 @@ export default function OrderShow({
             >
               {statusBusy ? "Menyimpan..." : "Simpan status"}
             </Button>
-          </section>
+          </SectionCard>
 
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-sm font-bold">
-              {isCod ? "Pembayaran COD" : "Konfirmasi transfer"}
-            </h2>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              {isCod
-                ? "Tagihan COD biasanya dikonfirmasi saat paket sampai (Tandai Sampai / Selesaikan)."
-                : "Isi referensi bukti transfer, status selesai, lalu simpan — atau pakai tombol Proses Pesanan."}
-            </p>
-            <form onSubmit={storePayment} className="mt-3 space-y-3">
+          <SectionCard
+            title={isCod ? "Pembayaran COD" : "Konfirmasi transfer"}
+            description={
+              isCod
+                ? "Tagihan COD biasanya dikonfirmasi saat paket sampai."
+                : "Isi referensi bukti transfer, status selesai, lalu simpan."
+            }
+          >
+            <form onSubmit={storePayment} className="space-y-3.5">
               <FormErrorSummary errors={paymentForm.errors} />
               <Field id="payment-method" label="Metode" required error={paymentForm.errors.payment_method}>
                 <Select
@@ -793,9 +806,10 @@ export default function OrderShow({
                     : "Konfirmasi transfer"}
               </Button>
             </form>
-          </section>
+          </SectionCard>
         </aside>
       </div>
     </AdminLayout>
   )
 }
+
