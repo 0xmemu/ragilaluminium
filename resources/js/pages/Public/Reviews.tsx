@@ -1,4 +1,5 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
+import * as React from "react"
 
 import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"

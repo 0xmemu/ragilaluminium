@@ -2,9 +2,21 @@ import { Head, Link, router, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { OptionMenu } from "@/components/admin/option-menu"
+import { SectionCard } from "@/components/admin/section-card"
+import { Alert } from "@/components/admin/ui/alert"
+import { Card } from "@/components/admin/ui/card"
+import { DeltaBadge } from "@/components/admin/ui/delta-badge"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
-import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -143,10 +155,10 @@ interface DashboardProps {
 
 function greetingPrefix(date = new Date()): string {
   const hour = date.getHours()
-  if (hour < 11) return "Selamat Pagi"
-  if (hour < 15) return "Selamat Siang"
-  if (hour < 18) return "Selamat Sore"
-  return "Selamat Malam"
+  if (hour < 11) return "Selamat pagi"
+  if (hour < 15) return "Selamat siang"
+  if (hour < 18) return "Selamat sore"
+  return "Selamat malam"
 }
 
 function formatRelativeAge(iso: string | null | undefined): string {
@@ -155,12 +167,11 @@ function formatRelativeAge(iso: string | null | undefined): string {
   if (Number.isNaN(then)) return "-"
   const diffMs = Date.now() - then
   const minutes = Math.floor(diffMs / 60000)
-  if (minutes < 60) return `${Math.max(minutes, 0)} Menit`
+  if (minutes < 60) return `${Math.max(minutes, 0)} menit lalu`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} Jam`
+  if (hours < 24) return `${hours} jam lalu`
   const days = Math.floor(hours / 24)
-  const remHours = hours % 24
-  return remHours > 0 ? `${days} Hari ${remHours} Jam` : `${days} Hari`
+  return `${days} hari lalu`
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -183,68 +194,16 @@ function formatMetricValue(metric: PerformaMetric): string {
   return formatNumber(metric.value)
 }
 
-function DeltaBadge({
-  percent,
-  absolute,
-  absoluteSuffix,
-}: {
-  percent?: number | null
-  absolute?: number
-  absoluteSuffix?: string
-}) {
-  if (absolute !== undefined) {
-    const up = absolute >= 0
-    return (
-      <span
-        className={cn(
-          "inline-flex items-center gap-1 text-xs font-semibold",
-          up ? "text-success" : "text-destructive",
-        )}
-      >
-        <Icon
-          name="trend-up"
-          className={cn("size-3.5", !up && "rotate-180")}
-          aria-hidden="true"
-        />
-        {up ? "+" : ""}
-        {formatNumber(absolute)} {absoluteSuffix} dari kemarin
-      </span>
-    )
-  }
-
-  if (percent === null || percent === undefined) {
-    return <span className="text-xs text-muted-foreground">Belum ada pembanding</span>
-  }
-
-  const up = percent >= 0
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 text-xs font-semibold",
-        up ? "text-success" : "text-destructive",
-      )}
-    >
-      <Icon
-        name="trend-up"
-        className={cn("size-3.5", !up && "rotate-180")}
-        aria-hidden="true"
-      />
-      {up ? "+" : ""}
-      {percent}%
-    </span>
-  )
-}
-
 function Sparkline({ values }: { values: number[] }) {
   const max = Math.max(...values, 1)
   const min = Math.min(...values, 0)
   const range = Math.max(max - min, 1)
-  const width = 128
-  const height = 40
+  const width = 160
+  const height = 48
   const points = values
     .map((value, index) => {
       const x = values.length <= 1 ? 0 : (index / (values.length - 1)) * width
-      const y = height - ((value - min) / range) * (height - 4) - 2
+      const y = height - ((value - min) / range) * (height - 6) - 3
       return `${x},${y}`
     })
     .join(" ")
@@ -252,19 +211,42 @@ function Sparkline({ values }: { values: number[] }) {
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="h-10 w-32 text-success"
+      className="h-12 w-40 text-primary"
       aria-hidden="true"
       role="img"
     >
+      <polygon points={`0,${height} ${points} ${width},${height}`} className="fill-primary/10" stroke="none" />
       <polyline
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="2"
         strokeLinejoin="round"
         strokeLinecap="round"
         points={points}
       />
     </svg>
+  )
+}
+
+function MetricTile({
+  label,
+  value,
+  delta,
+}: {
+  label: string
+  value: React.ReactNode
+  delta?: React.ReactNode
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="tabular-nums mt-1 text-lg font-semibold tracking-tight text-foreground">
+        {value}
+      </p>
+      {delta ? <div className="mt-1">{delta}</div> : null}
+    </div>
   )
 }
 
@@ -284,7 +266,6 @@ export default function Dashboard({
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
   const name = greetingName || auth.user?.name || "Admin"
-  const revenueUp = omzet.change_percent >= 0
 
   function onPerformaPeriodChange(period: string) {
     router.get(
@@ -299,74 +280,57 @@ export default function Dashboard({
       <Head title="Dashboard | Admin" />
       <h1 className="sr-only">Dashboard</h1>
 
-      <div className="space-y-4">
-        {/* Row 1 — Greeting + Omzet | Performa Toko */}
-        <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
-          <article className="relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface p-5">
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-primary" aria-hidden="true" />
-            <div>
-              <p className="text-balance text-xl font-bold tracking-tight text-foreground">
-                {greetingPrefix()}, {name}
-              </p>
-              <p className="mt-0.5 text-pretty text-xs text-muted-foreground">{todayLabel}</p>
-            </div>
+      <div className="space-y-5">
+        {/* Header — sapaan */}
+        <div className="pt-1">
+          <p className="text-xl font-semibold tracking-tight text-foreground">
+            {greetingPrefix()}, {name}
+          </p>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{todayLabel}</p>
+        </div>
 
-            <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold text-muted-foreground">Omzet Hari Ini</p>
-                <p className="tabular-nums mt-1.5 text-3xl font-bold tracking-tight text-foreground">
+        {/* Row 1 — Omzet | Performa Toko */}
+        <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <Card className="flex h-full flex-col">
+            <div className="flex flex-wrap items-start justify-between gap-4 p-5 pb-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Omzet hari ini
+                </p>
+                <p className="tabular-nums mt-1.5 text-3xl font-semibold tracking-tight text-foreground">
                   {formatCurrency(omzet.revenue)}
                 </p>
-                <p
-                  className={cn(
-                    "mt-2 inline-flex items-center gap-1 text-xs font-semibold",
-                    revenueUp ? "text-success" : "text-destructive",
-                  )}
-                >
-                  <Icon
-                    name="trend-up"
-                    className={cn("size-3.5", !revenueUp && "rotate-180")}
-                    aria-hidden="true"
-                  />
-                  {revenueUp ? "+" : ""}
-                  {omzet.change_percent}% dari kemarin
-                </p>
+                <div className="mt-2">
+                  <DeltaBadge percent={omzet.change_percent} />
+                </div>
               </div>
               <Sparkline values={omzet.sparkline} />
             </div>
-
-            <div className="mt-auto grid grid-cols-2 gap-3 pt-5">
-              <div className="rounded-lg bg-surface-muted p-3.5">
-                <p className="text-[11px] text-muted-foreground">Jumlah Order</p>
-                <p className="tabular-nums mt-0.5 text-base font-bold">
-                  {formatNumber(omzet.orders)} Order
-                </p>
-                <div className="mt-1">
-                  <DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="Order" />
-                </div>
+            <div className="mt-auto grid grid-cols-2 divide-x divide-border border-t border-border">
+              <div className="px-5 py-4">
+                <MetricTile
+                  label="Jumlah order"
+                  value={`${formatNumber(omzet.orders)} order`}
+                  delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" />}
+                />
               </div>
-              <div className="rounded-lg bg-surface-muted p-3.5">
-                <p className="text-[11px] text-muted-foreground">Jumlah Unit</p>
-                <p className="tabular-nums mt-0.5 text-base font-bold">
-                  {formatNumber(omzet.units)} Unit
-                </p>
-                <div className="mt-1">
-                  <DeltaBadge absolute={omzet.units_delta} absoluteSuffix="Unit" />
-                </div>
+              <div className="px-5 py-4">
+                <MetricTile
+                  label="Jumlah unit"
+                  value={`${formatNumber(omzet.units)} unit`}
+                  delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
+                />
               </div>
             </div>
-          </article>
+          </Card>
 
-          <article className="flex h-full flex-col rounded-xl border border-border bg-surface p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-md bg-surface-muted text-foreground">
-                  <Icon name="chart-line" className="size-3.5" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 className="text-balance text-sm font-bold tracking-tight">Performa Toko</h2>
-                  <p className="text-[11px] text-muted-foreground">{performa.period_label}</p>
-                </div>
+          <Card className="flex h-full flex-col p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                  Performa toko
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">{performa.period_label}</p>
               </div>
               <div className="flex items-center gap-1.5">
                 <OptionMenu
@@ -378,199 +342,196 @@ export default function Dashboard({
                 />
                 <Link
                   href={performa.detail_href}
-                  className="inline-flex h-8 items-center rounded-md px-2 text-[11px] font-semibold text-primary transition hover:bg-accent"
+                  className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition hover:bg-accent"
                 >
                   Detail
                 </Link>
               </div>
             </div>
-
-            <div className="mt-5 grid flex-1 grid-cols-2 gap-3">
+            <div className="mt-5 grid flex-1 grid-cols-2 gap-x-4 gap-y-5">
               {performa.metrics.map((metric) => (
-                <div
+                <MetricTile
                   key={metric.key}
-                  className="rounded-lg bg-surface-muted p-3.5"
-                >
-                  <p className="text-[10px] font-medium text-muted-foreground">{metric.label}</p>
-                  <p className="tabular-nums mt-0.5 text-lg font-bold">
-                    {formatMetricValue(metric)}
-                  </p>
-                  <div className="mt-1">
-                    <DeltaBadge percent={metric.change_percent} />
-                  </div>
-                </div>
+                  label={metric.label}
+                  value={formatMetricValue(metric)}
+                  delta={<DeltaBadge percent={metric.change_percent} />}
+                />
               ))}
             </div>
-          </article>
+          </Card>
         </section>
 
         {/* Row 2 — Status Order */}
-        <section className="rounded-xl border border-border bg-surface p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-balance text-sm font-bold tracking-tight text-foreground">Status Order</h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">Ringkasan antrean pesanan berdasarkan tahap operasional.</p>
-            </div>
-            <Link href={routeUrl("admin.orders.index")} className="inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold text-primary transition hover:bg-accent">
+        <SectionCard
+          title="Status order"
+          description="Ringkasan antrean pesanan berdasarkan tahap operasional."
+          action={
+            <Link
+              href={routeUrl("admin.orders.index")}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
+            >
               Semua pesanan
               <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
             </Link>
-          </div>
-          <div className="mt-4 grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          }
+        >
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {statusOrder.map((item) => (
               <Link
                 key={item.key}
                 href={item.href}
-                className="group flex h-full min-h-[4.25rem] items-center gap-3 rounded-lg bg-surface-muted px-3.5 py-3 transition hover:bg-accent"
+                className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-muted"
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface text-foreground transition group-hover:text-primary">
-                  <Icon name={item.icon} className="size-3.5" aria-hidden="true" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
+                  <Icon name={item.icon} className="size-4" aria-hidden="true" />
                 </span>
-                <div className="min-w-0">
-                  <p className="truncate text-[10px] font-medium text-muted-foreground">{item.label}</p>
-                  <p className="tabular-nums text-sm font-bold">
+                <span className="min-w-0">
+                  <span className="block truncate text-xs text-muted-foreground">{item.label}</span>
+                  <span className="tabular-nums block text-base font-semibold tracking-tight text-foreground">
                     {formatNumber(item.total)}{" "}
-                    <span className="text-[10px] font-semibold text-muted-foreground">Pesanan</span>
-                  </p>
-                </div>
+                    <span className="text-[11px] font-normal text-muted-foreground">pesanan</span>
+                  </span>
+                </span>
               </Link>
             ))}
           </div>
-        </section>
+        </SectionCard>
 
-        <section className="rounded-xl border border-border bg-surface p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", jntReadiness.client_ready ? "bg-success/10 text-success" : "bg-warning/10 text-warning")}>
-                <Icon name="truck" className="size-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-sm font-bold">{jntReadiness.provider_label}</h2>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {jntReadiness.client_ready ? "Terhubung · " + jntReadiness.environment : "Belum siap · " + jntReadiness.missing.length + " konfigurasi perlu dilengkapi"}
-                </p>
-              </div>
-            </div>
-            <Link href={routeUrl("admin.settings.index")} className="text-xs font-semibold text-primary hover:underline">Periksa konfigurasi</Link>
+        {/* Row 2b — Kesiapan J&T */}
+        <Alert
+          tone={jntReadiness.client_ready ? "success" : "warning"}
+          title={jntReadiness.provider_label}
+          className="items-center"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px]">
+              {jntReadiness.client_ready
+                ? `Terhubung · ${jntReadiness.environment}`
+                : `Belum siap · ${jntReadiness.missing.length} konfigurasi perlu dilengkapi`}
+            </p>
+            <Link
+              href={routeUrl("admin.settings.index")}
+              className="text-xs font-semibold underline underline-offset-2 hover:no-underline"
+            >
+              Periksa konfigurasi
+            </Link>
           </div>
           {!jntReadiness.client_ready && jntReadiness.missing.length ? (
-            <p className="mt-3 rounded-lg bg-surface-muted px-3 py-2 text-[10px] leading-4 text-muted-foreground">Belum lengkap: {jntReadiness.missing.join(", ")}</p>
+            <p className="mt-2 rounded-md bg-current/5 px-3 py-2 font-mono text-[11px] leading-5 opacity-80">
+              {jntReadiness.missing.join(", ")}
+            </p>
           ) : null}
-        </section>
+        </Alert>
 
-        {/* Row 3 — Perlu Perhatian | Produk paling dilihat | Aksi Cepat */}
+        {/* Row 3 — Perlu Perhatian | Produk Paling Dilihat | Aksi Cepat */}
         <section className="grid items-stretch gap-4 lg:grid-cols-12">
-          <div className="min-w-0 rounded-xl border border-border bg-surface p-4 lg:col-span-5">
-            <h2 className="text-balance text-sm font-bold tracking-tight text-primary">
-              Perlu Perhatian
-            </h2>
-            <p className="mt-1 text-[11px] text-muted-foreground">Item yang membutuhkan tindak lanjut.</p>
-            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+          <SectionCard
+            title="Perlu perhatian"
+            description="Item yang membutuhkan tindak lanjut."
+            className="lg:col-span-5"
+            contentClassName="p-0"
+          >
+            <ul className="divide-y divide-border">
               {attention.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className={cn(
-                    "flex min-h-14 items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2.5 transition",
-                    item.count > 0
-                      ? "ring-1 ring-inset ring-destructive/25 hover:bg-accent"
-                      : "hover:bg-muted",
-                  )}
-                >
-                  <span className="flex min-w-0 items-start gap-2">
-                    <Icon
-                      name="alert-circle"
+                <li key={item.key}>
+                  <Link
+                    href={item.href}
+                    className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          item.count > 0 ? "bg-destructive" : "bg-muted-foreground/40",
+                        )}
+                      />
+                      <span className="text-pretty text-[13px] leading-5 text-foreground">
+                        {item.label}
+                      </span>
+                    </span>
+                    <span
                       className={cn(
-                        "mt-0.5 size-3.5 shrink-0",
+                        "tabular-nums shrink-0 text-sm font-semibold",
                         item.count > 0 ? "text-destructive" : "text-muted-foreground",
                       )}
-                      aria-hidden="true"
-                    />
-                    <span className="text-pretty text-[11px] font-medium leading-4 text-foreground">
-                      {item.label}
+                    >
+                      {formatNumber(item.count)}
                     </span>
-                  </span>
-                  <span
-                    className={cn(
-                      "tabular-nums shrink-0 text-[11px] font-bold",
-                      item.count > 0 ? "text-destructive" : "text-muted-foreground",
-                    )}
-                  >
-                    {formatNumber(item.count)}
-                  </span>
-                </Link>
+                  </Link>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </SectionCard>
 
-          <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-surface lg:col-span-4">
-            <div className="border-b border-border px-4 py-3.5">
-              <h2 className="text-balance text-sm font-bold tracking-tight">
-                Produk Paling Dilihat
-              </h2>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                {topEngagedProducts?.period_label ?? performa.period_label}
-              </p>
-            </div>
+          <SectionCard
+            title="Produk paling dilihat"
+            description={topEngagedProducts?.period_label ?? performa.period_label}
+            className="lg:col-span-4"
+            contentClassName="p-0"
+          >
             {topEngagedProducts?.items?.length ? (
               <ul className="divide-y divide-border">
                 {topEngagedProducts.items.slice(0, 5).map((product, index) => (
                   <li key={product.id}>
                     <Link
                       href={product.href}
-                      className="flex min-h-12 items-center gap-2.5 px-4 py-2 transition hover:bg-accent/40"
+                      className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-muted/60"
                     >
-                      <span className="tabular-nums w-3.5 shrink-0 text-[10px] font-bold text-muted-foreground">
+                      <span className="tabular-nums w-4 shrink-0 text-center text-xs font-medium text-muted-foreground">
                         {index + 1}
                       </span>
-                      <div className="size-7 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                      <span className="size-8 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                         {product.image ? (
                           <img src={product.image} alt="" className="size-full object-cover" />
                         ) : (
-                          <div className="flex size-full items-center justify-center text-muted-foreground">
-                            <Icon name="image" className="size-3" aria-hidden="true" />
-                          </div>
+                          <span className="flex size-full items-center justify-center text-muted-foreground">
+                            <Icon name="image" className="size-3.5" aria-hidden="true" />
+                          </span>
                         )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="line-clamp-1 text-[11px] font-semibold leading-4">{product.name}</p>
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          {formatNumber(product.views)} lihat
-                        </p>
-                      </div>
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium text-foreground">
+                          {product.name}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {formatNumber(product.views)} dilihat
+                        </span>
+                      </span>
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="px-2.5 py-3 text-[11px] text-muted-foreground">
+              <p className="px-5 py-6 text-xs text-muted-foreground">
                 Belum ada data kunjungan produk.
               </p>
             )}
-          </div>
+          </SectionCard>
 
-          <div className="min-w-0 rounded-xl border border-border bg-surface p-4 lg:col-span-3">
-            <h2 className="text-balance text-sm font-bold tracking-tight text-foreground">
-              Aksi Cepat
-            </h2>
-            <p className="mt-1 text-[11px] text-muted-foreground">Jalan pintas ke pekerjaan rutin.</p>
-            <nav className="mt-3 overflow-hidden rounded-lg bg-surface-muted" aria-label="Aksi cepat">
+          <SectionCard
+            title="Aksi cepat"
+            description="Jalan pintas ke pekerjaan rutin."
+            className="lg:col-span-3"
+            contentClassName="p-0"
+          >
+            <nav aria-label="Aksi cepat">
               <ul className="divide-y divide-border">
                 {quickActions.map((action) => (
                   <li key={action.label}>
                     <Link
                       href={action.href}
-                      className="flex min-h-11 items-center gap-2.5 px-3 py-2 transition hover:bg-accent"
+                      className="group flex items-center gap-3 px-5 py-3 transition hover:bg-muted/60"
                     >
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded bg-surface-muted text-foreground">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
                         <Icon name={action.icon} className="size-3.5" aria-hidden="true" />
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[11px] font-semibold leading-4">{action.label}</span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+                        {action.label}
                       </span>
                       <Icon
                         name="chevron-right"
-                        className="size-3 shrink-0 text-muted-foreground"
+                        className="size-3.5 shrink-0 text-muted-foreground/60 transition group-hover:text-foreground"
                         aria-hidden="true"
                       />
                     </Link>
@@ -578,68 +539,64 @@ export default function Dashboard({
                 ))}
               </ul>
             </nav>
-          </div>
+          </SectionCard>
         </section>
 
         {/* Row 4 — Pesanan Terbaru */}
-        <section className="overflow-hidden rounded-xl border border-border bg-surface">
-          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border px-3 py-2">
-            <h2 className="text-balance text-sm font-bold tracking-tight">Pesanan Terbaru</h2>
+        <SectionCard
+          title="Pesanan terbaru"
+          action={
             <Link
               href={routeUrl("admin.orders.index")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
             >
-              Lihat Semua Pesanan
+              Lihat semua
               <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
             </Link>
-          </div>
-
+          }
+          contentClassName="p-0"
+        >
           {recentOrders.length ? (
             <>
               <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full min-w-[56rem] text-left text-xs">
-                  <thead className="border-b border-border bg-surface-muted/40 text-[11px] tracking-tight text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 font-semibold">No. Order</th>
-                      <th className="px-3 py-2 font-semibold">Penerima</th>
-                      <th className="px-3 py-2 font-semibold">Status</th>
-                      <th className="px-3 py-2 font-semibold">Pengiriman</th>
-                      <th className="px-3 py-2 font-semibold">Total Tagihan</th>
-                      <th className="px-3 py-2 font-semibold">Metode</th>
-                      <th className="px-3 py-2 font-semibold">Produk</th>
-                      <th className="px-3 py-2 font-semibold">Status Terakhir</th>
-                      <th className="px-3 py-2 font-semibold">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
+                <Table className="min-w-[56rem]">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>No. order</TableHead>
+                      <TableHead>Penerima</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Pengiriman</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Metode</TableHead>
+                      <TableHead>Produk</TableHead>
+                      <TableHead>Diperbarui</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {recentOrders.map((order) => (
-                      <tr key={order.id} className="align-top hover:bg-accent/40">
-                        <td className="px-3 py-2">
+                      <TableRow key={order.id} className="hover:bg-muted/50">
+                        <TableCell>
                           <Link
                             href={order.href}
-                            className="font-mono text-xs font-bold hover:text-primary"
+                            className="font-mono text-xs font-semibold text-foreground hover:text-primary"
                           >
                             {order.order_number}
                           </Link>
-                          <p className="mt-1 text-[11px] text-muted-foreground">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             {formatDateTime(order.created_at)}
                           </p>
-                        </td>
-                        <td className="px-3 py-2">
-                          <p className="font-semibold">{order.customer_name}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {[order.shipping_city, order.shipping_province]
-                              .filter(Boolean)
-                              .join(", ") || "-"}
-                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{order.customer_name}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {order.customer_phone || "-"}
                           </p>
-                        </td>
-                        <td className="px-3 py-2">
+                        </TableCell>
+                        <TableCell>
                           <StatusBadge status={order.order_status} />
-                        </td>
-                        <td className="px-3 py-2">
+                        </TableCell>
+                        <TableCell>
                           <ShippingTrackPanel
                             compact
                             track={
@@ -650,37 +607,37 @@ export default function Dashboard({
                               }
                             }
                           />
-                        </td>
-                        <td className="tabular-nums px-3 py-2 font-bold">
+                        </TableCell>
+                        <TableCell className="tabular-nums font-semibold">
                           {formatCurrency(order.total_amount)}
-                        </td>
-                        <td className="px-3 py-2">
+                        </TableCell>
+                        <TableCell>
                           {order.payment_method ? (
-                            <span className="inline-flex rounded-md border border-border px-2.5 py-1 text-xs font-medium">
+                            <span className="inline-flex rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
                               {humanize(order.payment_method)}
                             </span>
                           ) : (
                             "-"
                           )}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {formatNumber(order.product_count)} Produk ·{" "}
-                          {formatNumber(order.unit_count)} Unit
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatNumber(order.product_count)} produk ·{" "}
+                          {formatNumber(order.unit_count)} unit
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Icon name="clock" className="size-3.5" aria-hidden="true" />
                             {formatRelativeAge(order.updated_at)}
                           </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="inline-flex items-center gap-0.5">
                             {order.whatsapp_url ? (
                               <a
                                 href={order.whatsapp_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex size-9 items-center justify-center rounded-md text-foreground transition hover:bg-muted"
+                                className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                 aria-label={`WhatsApp ${order.customer_name}`}
                               >
                                 <Icon name="whatsapp" className="size-4" aria-hidden="true" />
@@ -688,31 +645,31 @@ export default function Dashboard({
                             ) : null}
                             <Link
                               href={order.href}
-                              className="inline-flex size-9 items-center justify-center rounded-md text-foreground transition hover:bg-muted"
+                              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
                               aria-label={`Buka ${order.order_number}`}
                             >
-                              <Icon name="pencil" className="size-4" aria-hidden="true" />
+                              <Icon name="arrow-right" className="size-4" aria-hidden="true" />
                             </Link>
-                          </div>
-                        </td>
-                      </tr>
+                          </span>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
 
               <div className="divide-y divide-border lg:hidden">
                 {recentOrders.map((order) => (
                   <article key={order.id} className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <Link
                           href={order.href}
-                          className="font-mono text-xs font-bold hover:text-primary"
+                          className="font-mono text-xs font-semibold hover:text-primary"
                         >
                           {order.order_number}
                         </Link>
-                        <p className="mt-1 text-sm font-semibold">{order.customer_name}</p>
+                        <p className="mt-1 text-sm font-medium">{order.customer_name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {formatDateTime(order.created_at)}
                         </p>
@@ -730,7 +687,7 @@ export default function Dashboard({
                       }
                     />
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <span className="tabular-nums font-bold">
+                      <span className="tabular-nums text-sm font-semibold">
                         {formatCurrency(order.total_amount)}
                       </span>
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
@@ -744,7 +701,7 @@ export default function Dashboard({
                           href={order.whatsapp_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium transition hover:bg-muted"
                         >
                           <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
                           WhatsApp
@@ -752,7 +709,7 @@ export default function Dashboard({
                       ) : null}
                       <Link
                         href={order.href}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
+                        className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-primary-hover"
                       >
                         Detail
                       </Link>
@@ -762,71 +719,71 @@ export default function Dashboard({
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-start gap-2.5 p-6">
-              <p className="text-pretty text-xs text-muted-foreground">Belum ada pesanan.</p>
+            <div className="flex flex-col items-start gap-3 p-6">
+              <p className="text-[13px] text-muted-foreground">Belum ada pesanan.</p>
               <Link
                 href={routeUrl("admin.orders.index")}
-                className="inline-flex min-h-9 items-center rounded-md border border-border px-3 text-xs font-semibold"
+                className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium transition hover:bg-muted"
               >
                 Buka daftar pesanan
               </Link>
             </div>
           )}
-        </section>
+        </SectionCard>
 
-        {/* Opsional — di luar frame Figma, tetap fungsional */}
-        <section className="overflow-hidden rounded-xl border border-border bg-surface">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div>
-              <h2 className="text-balance text-sm font-bold tracking-tight">
-                Promo &amp; Flash Sale Aktif
-              </h2>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatNumber(promoTotal)} produk beratribut promo.
-              </p>
-            </div>
+        {/* Row 5 — Promo & Flash Sale Aktif */}
+        <SectionCard
+          title="Promo & flash sale aktif"
+          description={`${formatNumber(promoTotal)} produk beratribut promo.`}
+          action={
             <Link
               href={routeUrl("admin.banners.index")}
-              className="text-xs font-semibold text-primary transition hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
             >
               Kelola banner
             </Link>
-          </div>
+          }
+          contentClassName="p-0"
+        >
           {promoProducts.length ? (
-            <div className="divide-y divide-border">
+            <ul className="divide-y divide-border">
               {promoProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  href={product.href}
-                  className="grid gap-2.5 p-3 transition hover:bg-accent/55 sm:grid-cols-[8rem_1fr_auto_auto] sm:items-center"
-                >
-                  <p className="font-mono text-xs font-semibold">{product.parent_sku}</p>
-                  <p className="line-clamp-1 text-xs">{product.name}</p>
-                  <span className="flex items-center gap-1.5">
-                    {product.discount_percent !== null ? (
-                      <span className="rounded bg-accent px-1.5 py-0.5 text-xs font-semibold text-accent-foreground">
-                        -{product.discount_percent}%
-                      </span>
-                    ) : null}
-                    {product.flash_sale ? (
-                      <span className="text-xs font-extrabold italic uppercase text-primary">
-                        Flash Sale
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {product.homepage_popular ? "Tampil di Home" : "Katalog"}
-                  </span>
-                </Link>
+                <li key={product.id}>
+                  <Link
+                    href={product.href}
+                    className="grid gap-2 px-5 py-3 transition hover:bg-muted/60 sm:grid-cols-[8rem_1fr_auto_auto] sm:items-center"
+                  >
+                    <span className="font-mono text-xs font-semibold text-foreground">
+                      {product.parent_sku}
+                    </span>
+                    <span className="line-clamp-1 text-[13px] text-foreground">{product.name}</span>
+                    <span className="flex items-center gap-1.5">
+                      {product.discount_percent !== null ? (
+                        <span className="rounded-md bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-accent-foreground">
+                          -{product.discount_percent}%
+                        </span>
+                      ) : null}
+                      {product.flash_sale ? (
+                        <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                          Flash sale
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {product.homepage_popular ? "Tampil di home" : "Katalog"}
+                    </span>
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <p className="p-6 text-xs text-muted-foreground">
+            <p className="p-6 text-[13px] text-muted-foreground">
               Tidak ada produk dengan atribut promo aktif.
             </p>
           )}
-        </section>
+        </SectionCard>
       </div>
     </AdminLayout>
   )
 }
+

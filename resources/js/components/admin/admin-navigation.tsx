@@ -1,35 +1,65 @@
 import { Link, usePage } from "@inertiajs/react"
 
-import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
-/** Sidebar graphite #131212 — dasar netral admin; token .dark mengikuti turunan warna ini. */
-const sidebarShell = "flex h-full flex-col bg-[#131212] text-white"
-const sidebarMuted = "text-white/70"
-const sidebarHover = "hover:bg-white/10 hover:text-white"
-const sidebarRule = "border-white/10"
+function AdminBrand() {
+  return (
+    <Link
+      href={routeUrl("admin.dashboard")}
+      className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition hover:bg-muted"
+      aria-label="Ragil Aluminium, ke dashboard admin"
+    >
+      <img
+        src="/images/brand/light-mark.png"
+        alt=""
+        width={28}
+        height={28}
+        className="size-7 object-contain dark:hidden"
+        decoding="async"
+      />
+      <img
+        src="/images/brand/dark-mark.png"
+        alt=""
+        width={28}
+        height={28}
+        className="hidden size-7 object-contain dark:block"
+        decoding="async"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-semibold tracking-tight text-foreground">
+          Ragil Aluminium
+        </span>
+        <span className="block text-[11px] leading-4 text-muted-foreground">Panel Admin</span>
+      </span>
+    </Link>
+  )
+}
 
 export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const { nav } = usePage<SharedPageProps>().props
   const groups = Object.entries(nav?.admin ?? {})
 
   return (
-    <div className={sidebarShell}>
-      <div className={cn("flex min-h-[3.25rem] items-center border-b px-5 lg:min-h-[3.75rem]", sidebarRule)}>
-        <BrandWordmark href={routeUrl("admin.dashboard")} variant="dark" />
+    <div className="flex h-full flex-col bg-surface">
+      <div className="flex h-14 shrink-0 items-center border-b border-border px-3">
+        <AdminBrand />
       </div>
-      <nav className="scrollbar-none flex-1 overflow-y-auto px-3 py-4" aria-label="Navigasi admin">
+
+      <nav
+        className="scrollbar-none flex-1 overflow-y-auto px-2.5 py-3"
+        aria-label="Navigasi admin"
+      >
         {groups.map(([key, group], groupIndex) => (
-          <div key={key} className={cn(groupIndex > 0 && "mt-6")}>
+          <div key={key} className={cn(groupIndex > 0 && "mt-5")}>
             {group.title ? (
-              <p className={cn("px-2.5 text-[10px] font-bold uppercase tracking-wider", sidebarMuted)}>
+              <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                 {group.title}
               </p>
             ) : null}
-            <ul className={cn("space-y-1", group.title && "mt-2")}>
+            <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = isRouteActive(item.active ?? [item.route])
                 return (
@@ -38,20 +68,31 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
                       href={routeUrl(item.route, item.params)}
                       onClick={onNavigate}
                       className={cn(
-                        "flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-semibold leading-5 transition",
+                        "group/item flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition duration-100",
                         active
-                          ? "bg-primary text-primary-foreground"
-                          : cn(sidebarMuted, sidebarHover),
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
                       )}
                       aria-current={active ? "page" : undefined}
                     >
                       <Icon
                         name={item.icon ?? "package"}
-                        className="size-4 shrink-0"
+                        className={cn(
+                          "size-4 shrink-0 transition",
+                          active
+                            ? "text-accent-foreground"
+                            : "text-muted-foreground/80 group-hover/item:text-foreground",
+                        )}
                         weight={active ? "fill" : "regular"}
                         aria-hidden="true"
                       />
                       <span className="truncate">{item.label}</span>
+                      {active ? (
+                        <span
+                          aria-hidden="true"
+                          className="ml-auto size-1.5 shrink-0 rounded-full bg-primary"
+                        />
+                      ) : null}
                     </Link>
                   </li>
                 )
@@ -60,20 +101,18 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ))}
       </nav>
-      <div className={cn("border-t p-3", sidebarRule)}>
+
+      <div className="shrink-0 border-t border-border p-2.5">
         <Link
           href={routeUrl("home")}
           target="_blank"
           rel="noreferrer"
-          className={cn(
-            "flex min-h-10 items-center gap-2.5 rounded-md px-3 text-[13px] font-semibold transition",
-            sidebarMuted,
-            sidebarHover,
-          )}
+          className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
           aria-label="Lihat toko di tab baru"
         >
           <Icon name="storefront" className="size-4" aria-hidden="true" />
           Lihat toko
+          <Icon name="arrow-right" className="ml-auto size-3.5 opacity-60" aria-hidden="true" />
         </Link>
       </div>
     </div>
