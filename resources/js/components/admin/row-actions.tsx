@@ -1,12 +1,12 @@
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/admin/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/admin/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 /** Compact action cluster for table/card rows — wraps cleanly, never overlaps. */
@@ -56,4 +56,4 @@ export function RowActionsMenu({
 
 /** Text/link trigger styled like a compact row action (for ConfirmAction). */
 export const rowActionTextClass =
-  "inline-flex h-8 items-center justify-center px-2 text-xs font-semibold transition hover:underline disabled:pointer-events-none disabled:opacity-50"
+  "inline-flex h-7 items-center justify-center px-2 text-xs font-medium transition hover:underline disabled:pointer-events-none disabled:opacity-50"

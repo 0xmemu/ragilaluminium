@@ -1,9 +1,9 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 
@@ -84,7 +84,7 @@ export default function Attributes({
     >
       <Head title={`Atribut ${product.parent_sku} | Admin`} />
 
-      <section className="rounded-lg border border-border bg-surface shadow-sm">
+      <section className="rounded-xl border border-border bg-card shadow-soft">
         <div className="border-b border-border p-5">
           <h2 className="text-xl font-semibold">Atribut produk</h2>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -102,7 +102,7 @@ export default function Attributes({
         )}
       </section>
 
-      <section className="mt-6 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <h2 className="text-xl font-semibold">Tambah atribut</h2>
         <form onSubmit={submit} className="mt-5 grid gap-4 md:grid-cols-[1fr_1.3fr_10rem_auto] md:items-end">
           <FormErrorSummary errors={form.errors} className="md:col-span-4" />

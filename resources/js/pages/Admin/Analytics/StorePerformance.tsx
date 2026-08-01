@@ -2,10 +2,10 @@ import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
+import { Button } from "@/components/admin/ui/button"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -169,7 +169,7 @@ export default function StorePerformance({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="mb-6 rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Tinjauan bisnis</p>
@@ -259,7 +259,7 @@ export default function StorePerformance({
 
       <div className="space-y-6">
         {report.sections.map((section) => (
-          <section key={section.key} className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+          <section key={section.key} className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
             <header className="border-b border-border px-4 py-3">
               <h3 className="text-base font-bold">{section.title}</h3>
             </header>
@@ -299,7 +299,7 @@ export default function StorePerformance({
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         {report.charts.map((chart) => (
-          <section key={chart.key} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+          <section key={chart.key} className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-sm font-bold">
                 {chart.title} ({report.range.granularity === "hour" ? "Per Jam" : report.range.granularity === "week" ? "Per Minggu" : report.range.granularity === "month" ? "Per Bulan" : "Per Hari"})
@@ -321,7 +321,7 @@ export default function StorePerformance({
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           <header className="border-b border-border px-4 py-3">
             <h3 className="text-base font-bold">Penjualan produk</h3>
             <p className="text-xs text-muted-foreground">Omzet & unit dari pesanan fulfillment (processing–completed).</p>
@@ -389,7 +389,7 @@ export default function StorePerformance({
           )}
         </section>
 
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           <header className="border-b border-border px-4 py-3">
             <h3 className="text-base font-bold">Customer</h3>
             <p className="text-xs text-muted-foreground">Agregat per nomor WhatsApp pada periode terpilih.</p>
@@ -459,7 +459,7 @@ export default function StorePerformance({
       </div>
 
       {report.payment_mix.length ? (
-        <section className="mt-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <section className="mt-6 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h3 className="text-base font-bold">Bauran metode bayar (omzet)</h3>
           <ul className="mt-3 grid gap-2 sm:grid-cols-3">
             {report.payment_mix.map((row) => (

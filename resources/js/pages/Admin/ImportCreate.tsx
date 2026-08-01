@@ -1,11 +1,11 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 
-import { Alert } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
+import { Alert } from "@/components/admin/ui/alert"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
@@ -48,7 +48,7 @@ export default function ImportCreate({
 
       <form onSubmit={submit} className="mx-auto max-w-2xl space-y-6">
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <Field id="import-type" label="Tipe import" required error={form.errors.type}>
             <Select value={form.data.type} onChange={(event) => form.setData("type", event.target.value)}>
               {types.map((type) => (

@@ -3,12 +3,12 @@ import * as React from "react"
 
 import { RowActions } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -156,7 +156,7 @@ export default function ActivityLogsIndex({
         <Button type="submit">Cari</Button>
       </form>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">

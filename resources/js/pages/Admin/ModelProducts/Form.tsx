@@ -1,10 +1,10 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 
@@ -69,7 +69,7 @@ export default function ModelProductForm({
         }}
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field id="model-name" label="Nama tampilan" required error={form.errors.name} className="sm:col-span-2">
               <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} />

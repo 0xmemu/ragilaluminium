@@ -3,13 +3,13 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
@@ -291,7 +291,7 @@ export default function FaqIndex({
       </div>
 
       {showMeta ? (
-        <section className="mt-5 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
+        <section className="mt-5 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Judul hero dan status terbit — jarang diubah. Tutup panel ini setelah selesai.
@@ -441,7 +441,7 @@ export default function FaqIndex({
         <Button type="submit">Cari</Button>
       </form>
 
-      <section className="mt-4 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (
           <ul className="divide-y divide-border">
             {rows.map((row, index) => {

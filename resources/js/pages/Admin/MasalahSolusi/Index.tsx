@@ -3,12 +3,12 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Field } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -128,7 +128,7 @@ export default function MasalahSolusiIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
         <form
           className="mt-4 grid gap-4 sm:grid-cols-2"
@@ -189,7 +189,7 @@ export default function MasalahSolusiIndex({
         <Button type="submit">Cari</Button>
       </form>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (
           <ul className="divide-y divide-border">
             {rows.map((row, index) => (

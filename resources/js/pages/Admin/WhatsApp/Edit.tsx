@@ -2,11 +2,11 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface TemplatePayload {
@@ -93,7 +93,7 @@ export default function WhatsAppEdit({
       </div>
 
       <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <FormErrorSummary errors={form.errors} />
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -151,7 +151,7 @@ export default function WhatsAppEdit({
           </div>
         </section>
 
-        <aside className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24">
+        <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
           <h2 className="text-base font-bold">Urutan variabel Meta</h2>
           <p className="mt-2 text-pretty text-sm text-muted-foreground">
             Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend — jangan ganti jadi nama seperti {"{{order_number}}"}.

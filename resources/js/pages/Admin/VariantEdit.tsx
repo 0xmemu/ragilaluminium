@@ -2,12 +2,12 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { StatusSelect } from "@/components/ui/status-select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { StatusSelect } from "@/components/admin/ui/status-select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 
 const VARIANT_STATUSES = ["active", "inactive", "archived"] as const
@@ -109,7 +109,7 @@ export default function VariantEdit({
       <Head title={`Edit ${variant.variant_sku} | Admin`} />
       <form onSubmit={submit} className="mx-auto max-w-3xl space-y-6">
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Identitas dan opsi</h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             <Field
@@ -136,7 +136,7 @@ export default function VariantEdit({
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Harga, stok, dan dimensi</h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             {[
@@ -177,7 +177,7 @@ export default function VariantEdit({
       </form>
 
       <section className="mx-auto mt-8 max-w-3xl space-y-4">
-        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Foto khusus varian ini</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Gambar di sini hanya tampil di toko saat pelanggan memilih kombinasi opsi ini (mis. warna + kaca).
@@ -241,7 +241,7 @@ export default function VariantEdit({
               },
             })
           }}
-          className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7"
+          className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7"
         >
           <h3 className="text-base font-semibold">Tambah foto untuk {variant.variant_sku}</h3>
           <FormErrorSummary errors={mediaForm.errors} className="mt-3" />

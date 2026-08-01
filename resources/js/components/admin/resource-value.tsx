@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate, humanize } from "@/lib/format"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 
 export function ResourceValue({
   fieldKey,

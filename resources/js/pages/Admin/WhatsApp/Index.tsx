@@ -2,9 +2,9 @@ import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/admin/ui/button"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Switch } from "@/components/admin/ui/switch"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface AutomationRow {
@@ -64,7 +64,7 @@ export default function WhatsAppIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         <div className="hidden grid-cols-[minmax(0,1fr)_8rem_5rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-tight text-muted-foreground sm:grid">
           <span>Trigger event</span>
           <span>Status</span>

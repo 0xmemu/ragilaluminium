@@ -3,13 +3,13 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -165,7 +165,7 @@ export default function VouchersIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground shadow-sm">
+      <section className="mb-4 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
         Hanya <span className="font-semibold text-foreground">1 voucher</span> yang boleh aktif sekaligus.
         Aktif sekarang: <span className="font-semibold tabular-nums text-foreground">{summary.active_count}</span> /{" "}
         {summary.total_count} total.
@@ -242,7 +242,7 @@ export default function VouchersIndex({
       ) : viewMode === "grid" ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {vouchers.map((voucher) => (
-            <article key={voucher.id} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <article key={voucher.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={voucher.published ? "active" : "inactive"} />
                 <span className="text-sm font-bold tabular-nums text-primary">{discountLabel(voucher)}</span>
@@ -259,7 +259,7 @@ export default function VouchersIndex({
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
               <tr>

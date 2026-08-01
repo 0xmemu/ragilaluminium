@@ -1,10 +1,10 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
@@ -85,7 +85,7 @@ export default function ProductForm({
       <form onSubmit={submit} className="mx-auto max-w-4xl space-y-6">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Identitas produk</h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             {editing ? (
@@ -141,7 +141,7 @@ export default function ProductForm({
         </section>
 
         {!editing ? (
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
             <h2 className="text-xl font-semibold">Varian awal dan stok</h2>
             <label className="mt-5 flex cursor-pointer items-start gap-3 bg-surface-muted p-4">
               <input
@@ -194,7 +194,7 @@ export default function ProductForm({
           </section>
         ) : null}
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Taksonomi dan status</h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             <Field id="product-category" label="Kategori" required error={form.errors.product_category}>
@@ -240,7 +240,7 @@ export default function ProductForm({
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Beranda</h2>
           <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-md bg-surface-muted p-4">
             <input

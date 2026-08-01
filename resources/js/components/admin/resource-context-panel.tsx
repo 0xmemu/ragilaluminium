@@ -1,10 +1,10 @@
 import { Link, useForm } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { StatusSelect } from "@/components/ui/status-select"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { StatusSelect } from "@/components/admin/ui/status-select"
 import { routeUrl } from "@/lib/routes"
 import type { ResourceRow } from "@/types"
 

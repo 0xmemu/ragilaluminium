@@ -4,11 +4,12 @@ import { chromium } from "playwright"
 const BASE = process.env.QA_BASE_URL ?? "http://localhost:8200"
 const OUT = "/tmp/admin-shots"
 
-const pages = [
-  { name: "dashboard", path: "/admin" },
-  { name: "orders", path: "/admin/orders" },
-  { name: "products", path: "/admin/products" },
-]
+const pages = (process.env.QA_PAGES ?? "dashboard:/admin,orders:/admin/orders,products:/admin/products")
+  .split(",")
+  .map((pair) => {
+    const [name, path] = pair.split(":")
+    return { name, path }
+  })
 
 const run = async () => {
   const browser = await chromium.launch()
@@ -23,16 +24,8 @@ const run = async () => {
 
   for (const target of pages) {
     await page.goto(`${BASE}${target.path}`, { waitUntil: "networkidle" })
-    await page.waitForTimeout(600)
+    await page.waitForTimeout(500)
     await page.screenshot({ path: `${OUT}/${target.name}-light.png`, fullPage: false })
-
-    // Toggle dark via tombol tema di topbar.
-    await page.click('button[aria-label*="mode gelap"], button[aria-label*="mode terang"]').catch(() => {})
-    await page.waitForTimeout(400)
-    await page.screenshot({ path: `${OUT}/${target.name}-dark.png`, fullPage: false })
-    // Kembali ke light untuk halaman berikutnya.
-    await page.click('button[aria-label*="mode terang"], button[aria-label*="mode gelap"]').catch(() => {})
-    await page.waitForTimeout(300)
   }
 
   await browser.close()

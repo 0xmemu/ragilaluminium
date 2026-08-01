@@ -3,12 +3,12 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -171,7 +171,7 @@ export default function ModelProductsIndex({
         <Button type="submit">Cari</Button>
       </form>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">

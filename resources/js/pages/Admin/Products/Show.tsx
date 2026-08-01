@@ -2,8 +2,8 @@ import { Head, Link, useForm } from "@inertiajs/react"
 
 import { ResourceValue } from "@/components/admin/resource-value"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import type { DetailField, DetailSection } from "@/types"
@@ -50,7 +50,7 @@ export default function ProductShow({
       <Head title={`${title} | Admin`} />
 
       <section className="grid gap-6 lg:grid-cols-[1fr_18rem]">
-        <div className="rounded-lg border border-border bg-surface shadow-sm">
+        <div className="rounded-xl border border-border bg-card shadow-soft">
           <dl className="grid sm:grid-cols-2">
             {fields.map((field, index) => (
               <div
@@ -77,7 +77,7 @@ export default function ProductShow({
             <Link
               key={link.kind}
               href={link.href}
-              className="flex min-h-14 items-center justify-between rounded-lg border border-border bg-surface px-4 text-sm font-semibold shadow-sm transition hover:border-primary/35 hover:bg-accent"
+              className="flex min-h-14 items-center justify-between rounded-xl border border-border bg-card px-4 text-sm font-semibold shadow-sm transition hover:border-primary/35 hover:bg-accent"
             >
               <span className="flex items-center gap-3">
                 <Icon
@@ -121,7 +121,7 @@ export default function ProductShow({
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
         {sections.map((section) => (
-          <section key={section.title} className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <section key={section.title} className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">{section.title}</h2>
               <span className="tabular-nums text-xs text-muted-foreground">{section.rows.length}</span>

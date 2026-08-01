@@ -3,15 +3,15 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
@@ -159,7 +159,7 @@ export default function BannersIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-bold">Banner promosi otomatis</h2>
@@ -205,7 +205,7 @@ export default function BannersIndex({
         </form>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <form
             className="min-w-0 flex-1"
@@ -285,7 +285,7 @@ export default function BannersIndex({
           }
         />
       ) : viewMode === "list" ? (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="min-w-full text-left">
             <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
               <tr>
@@ -338,7 +338,7 @@ export default function BannersIndex({
           {banners.map((banner) => (
             <article
               key={banner.id}
-              className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm"
+              className="overflow-hidden rounded-xl border border-border bg-card shadow-soft"
             >
               <ResponsiveImage
                 src={banner.image_url}

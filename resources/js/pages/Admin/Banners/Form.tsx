@@ -2,9 +2,9 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import AdminLayout from "@/layouts/admin-layout"
 
@@ -89,7 +89,7 @@ export default function BannerForm({
       <form onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <h2 className="text-base font-bold">Informasi promo</h2>
           <div className="mt-4 space-y-4">
             <Field
@@ -136,7 +136,7 @@ export default function BannerForm({
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <h2 className="text-base font-bold">Media</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Unggah gambar promo. Kartu homepage memakai rasio 3:4.

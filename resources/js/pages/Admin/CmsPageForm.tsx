@@ -2,10 +2,10 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 
@@ -63,7 +63,7 @@ export default function CmsPageForm({
         }}
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)] xl:items-start"
       >
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <FormErrorSummary errors={form.errors} />
           <div className="mt-1 grid gap-5 sm:grid-cols-2">
             <Field id="cms-title" label="Judul" required error={form.errors.title}>
@@ -117,7 +117,7 @@ export default function CmsPageForm({
           </div>
         </section>
 
-        <aside className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24">
+        <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">
             Preview aman
           </p>

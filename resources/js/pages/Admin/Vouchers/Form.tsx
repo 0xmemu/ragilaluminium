@@ -1,10 +1,10 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface VoucherFormData {
@@ -80,7 +80,7 @@ export default function VoucherForm({
 
       <form
         onSubmit={submit}
-        className="mx-auto max-w-2xl space-y-6 rounded-lg border border-border bg-surface p-5 shadow-sm"
+        className="mx-auto max-w-2xl space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm"
       >
         <FormErrorSummary errors={form.errors} />
 

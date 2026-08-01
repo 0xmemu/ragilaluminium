@@ -3,15 +3,15 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Field } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -315,7 +315,7 @@ export default function TestimonialsIndex({
       <Head title={`${title} | Admin`} />
 
       {pageMeta && metaUrl ? (
-        <section className="mb-6 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
+        <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">
             {metaHint ?? "Meta halaman"}
           </p>
@@ -453,7 +453,7 @@ export default function TestimonialsIndex({
         </Button>
       </form>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {(tab === "website" ? websiteRows.length > 0 : rows.length + importedRows.length > 0) ? (
           <div className="overflow-x-auto">
             {tab === "website" ? (

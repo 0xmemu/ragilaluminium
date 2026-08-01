@@ -1,9 +1,9 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface HighlightItem {
@@ -57,7 +57,7 @@ export default function ServiceHighlightsForm({
         }}
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <Field id="highlights-title" label="Judul section" required error={form.errors.title}>
             <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
           </Field>
@@ -68,7 +68,7 @@ export default function ServiceHighlightsForm({
 
         <section className="space-y-3">
           {form.data.items.map((item, index) => (
-            <article key={index} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <article key={index} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-sm font-bold">Item {index + 1}</p>
                 <Button

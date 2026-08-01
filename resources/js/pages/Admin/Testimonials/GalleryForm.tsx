@@ -1,8 +1,8 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface GalleryRecord {
@@ -50,7 +50,7 @@ export default function GalleryForm({
         className="mx-auto max-w-3xl space-y-6"
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <div className="grid gap-5">
             <Field id="gallery-label" label="Label" error={form.errors.label}>
               <Input

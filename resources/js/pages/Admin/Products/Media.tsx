@@ -2,14 +2,14 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface VariantOption {
@@ -319,7 +319,7 @@ export default function ProductMediaPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           <div className="border-b border-border p-5">
             <h2 className="text-xl font-semibold">Kelola media</h2>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -357,7 +357,7 @@ export default function ProductMediaPage({
               },
             })
           }}
-          className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24"
+          className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24"
         >
           <h2 className="text-xl font-semibold">Tambah media</h2>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">

@@ -3,14 +3,14 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -93,7 +93,7 @@ function PeriodForm({
   return (
     <form
       onSubmit={submit}
-      className="mb-6 space-y-4 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5"
+      className="mb-6 space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -272,18 +272,18 @@ export default function FlashSaleIndex({
       <PeriodForm period={period} updateUrl={periodUpdateUrl} />
 
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Periode</p>
           <p className="mt-1 text-lg font-bold">{periodStatusLabel(summary.period_status)}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {summary.period_live ? "Live di storefront" : "Tidak tampil di storefront"}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Produk aktif</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">{summary.active_count}</p>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Banner otomatis</p>
           <p className="mt-1 text-sm font-semibold">
             {summary.auto_promotions_enabled ? "On" : "Off"} · {summary.auto_candidate_count} kandidat
@@ -365,7 +365,7 @@ export default function FlashSaleIndex({
       ) : viewMode === "grid" ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
-            <article key={product.id} className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+            <article key={product.id} className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
               <div className="aspect-square bg-muted">
                 {product.image ? (
                   <img src={product.image} alt="" className="size-full object-cover" />
@@ -401,7 +401,7 @@ export default function FlashSaleIndex({
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
               <tr>

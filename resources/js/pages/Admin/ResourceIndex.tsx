@@ -5,12 +5,12 @@ import { ResourceValue } from "@/components/admin/resource-value"
 import { ResourceContextPanel } from "@/components/admin/resource-context-panel"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -155,7 +155,7 @@ export default function ResourceIndex({
 
       <ResourceContextPanel rows={rows} />
 
-      <section className="rounded-lg border border-border bg-surface shadow-sm">
+      <section className="rounded-xl border border-border bg-card shadow-soft">
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center">
           <form onSubmit={submitSearch} className="relative flex-1">
             <Icon

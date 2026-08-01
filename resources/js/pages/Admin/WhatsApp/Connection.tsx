@@ -1,9 +1,9 @@
 import { Head, Link } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
-import { Alert } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Alert } from "@/components/admin/ui/alert"
+import { Button } from "@/components/admin/ui/button"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatDate } from "@/lib/format"
 
@@ -70,7 +70,7 @@ export default function WhatsAppConnection({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-start gap-3">
             <span className="flex size-11 items-center justify-center rounded-md border border-border bg-muted/40 text-primary">
               <Icon name="whatsapp" className="size-6" aria-hidden="true" />
@@ -276,7 +276,7 @@ export default function WhatsAppConnection({
           </div>
         </section>
 
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <h2 className="text-base font-bold">Perangkat & trafik</h2>
           <dl className="space-y-4 text-sm">
             <div>

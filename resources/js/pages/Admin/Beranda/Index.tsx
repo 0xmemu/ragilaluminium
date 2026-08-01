@@ -2,8 +2,8 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -112,7 +112,7 @@ export default function BerandaIndex({
         {sections.map((section, index) => (
           <article
             key={section.key}
-            className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm"
+            className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
           >
             {reorderMode ? (
               <div className="flex flex-col gap-1">

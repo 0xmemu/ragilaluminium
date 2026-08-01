@@ -1,6 +1,6 @@
 import { Head, Link } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/admin/ui/button"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 
@@ -29,7 +29,7 @@ export default function AdminError({ status = 404 }: { status?: number }) {
   return (
     <AdminLayout title={copy.title} description={copy.body}>
       <Head title={`${copy.title} | Admin`} />
-      <section className="mx-auto flex max-w-xl flex-col items-start gap-6 rounded-lg border border-border bg-surface p-8 shadow-sm">
+      <section className="mx-auto flex max-w-xl flex-col items-start gap-6 rounded-xl border border-border bg-card p-8 shadow-sm">
         <p className="font-mono text-sm font-semibold text-muted-foreground">{status}</p>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{copy.title}</h1>

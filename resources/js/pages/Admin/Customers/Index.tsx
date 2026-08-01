@@ -3,12 +3,12 @@ import * as React from "react"
 
 import { RowActions } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -120,7 +120,7 @@ export default function CustomersIndex({
         <Button type="submit">Cari</Button>
       </form>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">
@@ -290,22 +290,22 @@ export default function CustomersIndex({
       </section>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <article className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Provinsi teratas</p>
           <p className="mt-3 text-xl font-bold">{summary.top_province.name}</p>
           <p className="mt-1 text-sm text-muted-foreground">{summary.top_province.share_percent}% dari total pelanggan</p>
         </article>
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <article className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Total pelanggan</p>
           <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.total_customers)}</p>
           <p className="mt-1 text-sm text-muted-foreground">+{formatNumber(summary.growth_percent)}% dari bulan lalu</p>
         </article>
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <article className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Peringatan alamat ganda</p>
           <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.multi_address_customers)} pelanggan</p>
           <p className="mt-1 text-sm text-muted-foreground">Memiliki lebih dari satu alamat aktif</p>
         </article>
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <article className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Skor fraud rata-rata</p>
           <p className="mt-3 text-xl font-bold tabular-nums">{summary.avg_fraud_score} / 100</p>
           <p className="mt-1 text-sm text-muted-foreground">Status: {summary.avg_fraud_label}</p>

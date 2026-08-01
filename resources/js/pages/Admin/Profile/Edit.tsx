@@ -1,9 +1,9 @@
 import { Head, useForm } from "@inertiajs/react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface ProfileRecord {
@@ -48,7 +48,7 @@ export default function ProfileEdit({
       >
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <div className="flex flex-wrap items-center gap-3 border-b border-border pb-5">
             <div>
               <p className="text-xs font-bold tracking-tight text-muted-foreground">Peran & status</p>
@@ -98,7 +98,7 @@ export default function ProfileEdit({
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-base font-semibold tracking-tight">Ganti password</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Kosongkan jika password tidak diubah. Wajib isi password saat ini bila mengganti.

@@ -2,10 +2,10 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface DocumentData {
@@ -77,7 +77,7 @@ export default function CmsDocumentEdit({
       >
         <FormErrorSummary errors={form.errors} />
 
-        <section className="grid gap-4 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6 sm:grid-cols-2">
+        <section className="grid gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6 sm:grid-cols-2">
           <Field id="doc-title" label="Judul CMS" required error={form.errors.title}>
             <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
           </Field>
@@ -111,7 +111,7 @@ export default function CmsDocumentEdit({
               placeholder="Tuliskan isi dokumen di sini..."
             />
           </Field>
-          <aside className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24">
+          <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
             <p className="text-xs font-bold tracking-tight text-muted-foreground">Preview aman</p>
             {preview ? (
               <article className="cms-content mt-4 text-sm" dangerouslySetInnerHTML={{ __html: preview }} />

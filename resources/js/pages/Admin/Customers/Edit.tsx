@@ -2,11 +2,11 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Alert } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Alert } from "@/components/admin/ui/alert"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { statusMeta } from "@/lib/status"
@@ -107,7 +107,7 @@ export default function CustomerEdit({
         </div>
       </div>
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <span className="flex size-12 items-center justify-center rounded-md border border-border bg-muted/40 text-primary">
@@ -158,7 +158,7 @@ export default function CustomerEdit({
       </section>
 
       <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <h3 className="text-base font-bold">Edit data pelanggan</h3>
           <FormErrorSummary errors={form.errors} />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -220,7 +220,7 @@ export default function CustomerEdit({
           </div>
         </section>
 
-        <aside className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24">
+        <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
           <h3 className="text-base font-bold">Riwayat pesanan</h3>
           {orders.length ? (
             <ul className="mt-4 space-y-3">

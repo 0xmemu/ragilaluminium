@@ -3,8 +3,8 @@ import * as React from "react"
 
 import { ResourceValue } from "@/components/admin/resource-value"
 import { Icon } from "@/components/shared/icon"
-import { Alert } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { Alert } from "@/components/admin/ui/alert"
+import { Button } from "@/components/admin/ui/button"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import type { ResourceShowProps } from "@/types"
@@ -99,7 +99,7 @@ export default function ResourceShow({
         </Alert>
       ) : null}
 
-      <section className="rounded-lg border border-border bg-surface shadow-sm">
+      <section className="rounded-xl border border-border bg-card shadow-soft">
         <div className="grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3">
           {fields.map((field, index) => (
             <div
@@ -118,7 +118,7 @@ export default function ResourceShow({
       {sections.length ? (
         <div className="mt-6 grid gap-6 xl:grid-cols-2">
           {sections.map((section) => (
-            <section key={section.title} className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+            <section key={section.title} className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-xl font-semibold">{section.title}</h2>
                 <span className="tabular-nums text-xs text-muted-foreground">

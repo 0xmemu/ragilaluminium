@@ -2,11 +2,11 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 
@@ -119,7 +119,7 @@ export default function CaraPemesananEdit({
       >
         <FormErrorSummary errors={form.errors} />
 
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="cp-title" label="Judul CMS" required error={form.errors.title}>
@@ -165,7 +165,7 @@ export default function CaraPemesananEdit({
             </Button>
           </div>
           {form.data.steps.map((step, index) => (
-            <article key={index} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <article key={index} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-sm font-bold">Langkah {index + 1}</p>
                 <Button
@@ -239,7 +239,7 @@ export default function CaraPemesananEdit({
             </Button>
           </div>
           {form.data.info_cards.map((card, index) => (
-            <article key={index} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <article key={index} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-sm font-bold">Kartu {index + 1}</p>
                 <Button
@@ -281,7 +281,7 @@ export default function CaraPemesananEdit({
           ))}
         </section>
 
-        <section className="grid gap-4 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.8fr)]">
+        <section className="grid gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.8fr)]">
           <Field
             id="cp-body"
             label="Catatan tambahan (HTML/teks)"
