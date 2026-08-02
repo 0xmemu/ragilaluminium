@@ -83,12 +83,51 @@
   }
 
   /* ==========================================================================
-     ADMIN DESIGN LANGUAGE — "Paper" (Perplexity × AI-app aesthetic)
-     Scoped token override: aktif hanya saat <html class="admin-shell">.
-     Storefront tidak terpengaruh. Dark via html.admin-shell.dark.
-     Kanvas: paper hangat · Surface: putih hairline · Aksen: teal tenang.
+     ADMIN DESIGN LANGUAGE — "Ink" (dark command-center, fintech bento)
+     Dark-first: token gelap adalah DEFAULT admin. Mode terang opsional via
+     <html class="admin-shell light">. Storefront tidak terpengaruh.
+     Kanvas: near-black · Kartu: dark raised + hairline · CTA: putih solid ·
+     Aksen fungsional: biru (link, highlight, chart) · Status: semantik.
      ========================================================================== */
   html.admin-shell {
+    color-scheme: dark;
+    --background: 0 0% 4.5%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 8.5%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-hover: 0 0% 84%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 94%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 213 94% 62%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 74% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --sale: 0 74% 56%;
+    --success: 151 55% 48%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 92% 58%;
+    --warning-foreground: 36 95% 82%;
+    --info: 207 82% 62%;
+    --info-foreground: 207 90% 84%;
+    --border: 0 0% 11.5%;
+    --input: 0 0% 16%;
+    --ring: 213 94% 62%;
+    --surface: 0 0% 8%;
+    --surface-muted: 0 0% 11%;
+    --radius: 1rem;
+    --radius-control: 0.625rem;
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.5);
+    --shadow-float: 0 24px 48px -16px hsl(0 0% 0% / 0.65);
+  }
+
+  /* Mode terang alternatif (toggle) — mempertahankan palet "Paper" lama. */
+  html.admin-shell.light {
     color-scheme: light;
     --background: 45 6% 96.5%;
     --foreground: 30 3% 13%;
@@ -119,45 +158,10 @@
     --ring: 187 62% 32%;
     --surface: 0 0% 100%;
     --surface-muted: 45 5% 94%;
-    --radius: 0.75rem;
-    --radius-control: 0.5rem;
+    --radius: 1rem;
+    --radius-control: 0.625rem;
     --shadow-soft: 0 1px 2px hsl(30 4% 12% / 0.05);
     --shadow-float: 0 16px 40px -16px hsl(30 4% 12% / 0.18);
-  }
-
-  html.admin-shell.dark {
-    color-scheme: dark;
-    --background: 45 4% 8.5%;
-    --foreground: 45 6% 92%;
-    --card: 45 4% 11.5%;
-    --card-foreground: 45 6% 92%;
-    --popover: 45 4% 11.5%;
-    --popover-foreground: 45 6% 92%;
-    --primary: 187 52% 48%;
-    --primary-hover: 187 52% 56%;
-    --primary-foreground: 187 60% 10%;
-    --secondary: 45 4% 16%;
-    --secondary-foreground: 45 6% 90%;
-    --muted: 45 4% 15%;
-    --muted-foreground: 40 4% 62%;
-    --accent: 187 28% 17%;
-    --accent-foreground: 187 45% 72%;
-    --destructive: 4 62% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --sale: 4 62% 55%;
-    --success: 158 38% 46%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 62% 55%;
-    --warning-foreground: 38 75% 78%;
-    --info: 207 60% 62%;
-    --info-foreground: 0 0% 100%;
-    --border: 45 4% 21%;
-    --input: 45 4% 27%;
-    --ring: 187 52% 48%;
-    --surface: 45 4% 11.5%;
-    --surface-muted: 45 4% 14.5%;
-    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.4);
-    --shadow-float: 0 16px 40px -16px hsl(0 0% 0% / 0.55);
   }
 
   * {

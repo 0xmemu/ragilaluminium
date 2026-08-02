@@ -242,7 +242,7 @@ function MetricTile({
       <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="tabular-nums mt-1 text-lg font-semibold tracking-tight text-foreground">
+      <p className="tabular-nums mt-1 text-xl font-semibold tracking-tight text-foreground">
         {value}
       </p>
       {delta ? <div className="mt-1">{delta}</div> : null}
@@ -282,11 +282,12 @@ export default function Dashboard({
 
       <div className="space-y-5">
         {/* Header — sapaan */}
-        <div className="pt-1">
-          <p className="text-xl font-semibold tracking-tight text-foreground">
-            {greetingPrefix()}, {name}
+        <div className="pt-2">
+          <p className="text-[26px] font-semibold leading-8 tracking-tight text-foreground">
+            {greetingPrefix()},{" "}
+            <span className="font-normal text-muted-foreground">{name}</span>
           </p>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">{todayLabel}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">{todayLabel}</p>
         </div>
 
         {/* Row 1 — Omzet | Performa Toko */}
@@ -297,7 +298,7 @@ export default function Dashboard({
                 <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                   Omzet hari ini
                 </p>
-                <p className="tabular-nums mt-1.5 text-3xl font-semibold tracking-tight text-foreground">
+                <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
                   {formatCurrency(omzet.revenue)}
                 </p>
                 <div className="mt-2">
@@ -342,7 +343,7 @@ export default function Dashboard({
                 />
                 <Link
                   href={performa.detail_href}
-                  className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition hover:bg-accent"
+                  className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition hover:bg-secondary"
                 >
                   Detail
                 </Link>
@@ -364,6 +365,7 @@ export default function Dashboard({
         {/* Row 2 — Status Order */}
         <SectionCard
           title="Status order"
+          icon="clipboard-list"
           description="Ringkasan antrean pesanan berdasarkan tahap operasional."
           action={
             <Link
@@ -382,12 +384,12 @@ export default function Dashboard({
                 href={item.href}
                 className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-muted"
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
                   <Icon name={item.icon} className="size-4" aria-hidden="true" />
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-xs text-muted-foreground">{item.label}</span>
-                  <span className="tabular-nums block text-base font-semibold tracking-tight text-foreground">
+                  <span className="tabular-nums block text-lg font-semibold tracking-tight text-foreground">
                     {formatNumber(item.total)}{" "}
                     <span className="text-[11px] font-normal text-muted-foreground">pesanan</span>
                   </span>
@@ -427,6 +429,7 @@ export default function Dashboard({
         <section className="grid items-stretch gap-4 lg:grid-cols-12">
           <SectionCard
             title="Perlu perhatian"
+            icon="alert-circle"
             description="Item yang membutuhkan tindak lanjut."
             className="lg:col-span-5"
             contentClassName="p-0"
@@ -466,6 +469,7 @@ export default function Dashboard({
 
           <SectionCard
             title="Produk paling dilihat"
+            icon="eye"
             description={topEngagedProducts?.period_label ?? performa.period_label}
             className="lg:col-span-4"
             contentClassName="p-0"
@@ -511,6 +515,7 @@ export default function Dashboard({
 
           <SectionCard
             title="Aksi cepat"
+            icon="lightning"
             description="Jalan pintas ke pekerjaan rutin."
             className="lg:col-span-3"
             contentClassName="p-0"
@@ -523,8 +528,8 @@ export default function Dashboard({
                       href={action.href}
                       className="group flex items-center gap-3 px-5 py-3 transition hover:bg-muted/60"
                     >
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
-                        <Icon name={action.icon} className="size-3.5" aria-hidden="true" />
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
+                        <Icon name={action.icon} className="size-4" aria-hidden="true" />
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
                         {action.label}

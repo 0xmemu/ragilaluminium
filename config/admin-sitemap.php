@@ -80,9 +80,11 @@ return [
                 ['label' => 'Subsidi Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'icon' => 'truck', 'active' => ['admin.shipping-subsidy.*']],
             ],
         ],
-        'komunikasi' => [
-            'title' => 'Komunikasi',
+        'pelanggan_komunikasi' => [
+            'title' => 'Pelanggan & Komunikasi',
             'items' => [
+                ['label' => 'Customer', 'route' => 'admin.customers.index', 'icon' => 'users', 'active' => ['admin.customers.*']],
+                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*']],
                 [
                     'label' => 'WhatsApp Otomatis',
                     'route' => 'admin.whatsapp.templates.index',
@@ -98,12 +100,10 @@ return [
             ],
         ],
         'monitoring' => [
-            'title' => 'Monitoring',
+            'title' => 'Laporan & Monitoring',
             'items' => [
                 ['label' => 'Performa Toko', 'route' => 'admin.analytics.store-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.store-performance', 'admin.analytics.store-performance.*']],
                 ['label' => 'Performa Import', 'route' => 'admin.analytics.import-performance', 'icon' => 'upload', 'active' => ['admin.analytics.import-performance']],
-                ['label' => 'Customer', 'route' => 'admin.customers.index', 'icon' => 'users', 'active' => ['admin.customers.*']],
-                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*']],
                 ['label' => 'Log Aktivitas', 'route' => 'admin.activity-logs.index', 'icon' => 'history', 'active' => ['admin.activity-logs.*']],
             ],
         ],

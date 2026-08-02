@@ -307,51 +307,44 @@ export default function OrderShow({
       {/* Ringkasan order — 4 sel dengan hairline divider */}
       <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
         <div className="bg-card p-5">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Nomor order
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
+          <div className="mt-1.5 flex items-center gap-1.5">
             <p className="font-mono text-base font-semibold tracking-tight">{order.order_number}</p>
             <button
               type="button"
               onClick={() => copyText(order.order_number)}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              aria-label="Salin nomor order"
+              title="Salin nomor order"
             >
-              <Icon name="copy" className="size-3" aria-hidden="true" />
-              Salin
+              <Icon name="copy" className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <div className="mt-2.5">
+          <div className="mt-2">
             <StatusBadge status={order.order_status} />
           </div>
         </div>
         <div className="bg-card p-5">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Pembayaran
-          </p>
-          <p className="mt-2 text-sm font-semibold">{order.payment_method_label}</p>
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Pembayaran</p>
+          <p className="mt-1.5 text-sm font-semibold">{order.payment_method_label}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <StatusBadge status={order.payment_status} />
-            <span className="inline-flex min-h-6 items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {isCod ? "Alur COD" : "Alur transfer"}
+            <span className="inline-flex min-h-6 items-center rounded-full border border-border px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {isCod ? "COD" : "Transfer"}
             </span>
           </div>
         </div>
         <div className="bg-card p-5">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Penerima
-          </p>
-          <p className="mt-2 text-sm font-semibold">{order.customer_name}</p>
+          <p className="text-xs font-medium text-muted-foreground">Penerima</p>
+          <p className="mt-1.5 text-sm font-semibold">{order.customer_name}</p>
           <p className="mt-1 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </p>
         </div>
         <div className="bg-card p-5">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Ringkasan
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">Ringkasan</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">
             {formatNumber(order.product_count)} produk · {formatNumber(order.unit_count)} unit
           </p>
           <p className="tabular-nums mt-1 text-xl font-semibold tracking-tight">
@@ -362,31 +355,31 @@ export default function OrderShow({
 
 
       {/* Aksi utama */}
-      <Card className="mt-4 flex flex-wrap items-center gap-2 p-3">
+      <Card className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
         {primaryAction?.next_status ? (
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-xs">
-            <Button disabled={statusBusy} onClick={runPrimary}>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Button disabled={statusBusy} onClick={runPrimary} className="shrink-0">
               {statusBusy ? "Memproses..." : primaryAction.label}
             </Button>
             {primaryAction.hint ? (
-              <p className="text-xs text-muted-foreground">{primaryAction.hint}</p>
+              <p className="truncate text-xs text-muted-foreground">{primaryAction.hint}</p>
             ) : null}
           </div>
         ) : null}
         {order.whatsapp_url ? (
-          <Button asChild variant="secondary">
+          <Button asChild variant="ghost">
             <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
               <Icon name="whatsapp" className="size-4" aria-hidden="true" />
               Chat WA
             </a>
           </Button>
         ) : null}
-        <Button type="button" variant="secondary" onClick={() => copyText(fullAddress(order))}>
+        <Button type="button" variant="ghost" onClick={() => copyText(fullAddress(order))}>
           <Icon name="copy" className="size-3.5" aria-hidden="true" />
           Salin alamat
         </Button>
         {workflowLinks.map((link) => (
-          <Button key={link.href} asChild variant="secondary">
+          <Button key={link.href} asChild variant="ghost">
             <Link href={link.href}>{link.label}</Link>
           </Button>
         ))}

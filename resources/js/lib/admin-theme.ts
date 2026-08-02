@@ -2,13 +2,14 @@ const STORAGE_KEY = "ragil-admin-theme"
 
 export type AdminTheme = "light" | "dark"
 
+/** Admin "Ink" adalah dark-first: default gelap, light jadi alternatif. */
 export function readAdminTheme(): AdminTheme {
-  if (typeof window === "undefined") return "light"
+  if (typeof window === "undefined") return "dark"
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored === "dark" ? "dark" : "light"
+    return stored === "light" ? "light" : "dark"
   } catch {
-    return "light"
+    return "dark"
   }
 }
 
@@ -20,21 +21,28 @@ export function writeAdminTheme(theme: AdminTheme): void {
   }
 }
 
-/** Apply theme on <html>. Call cleanup on leave admin so storefront stays light. */
+/**
+ * Apply theme on <html>: dark = default (class "dark" untuk varian dark:),
+ * light = class "light" yang membalik token ke palet terang.
+ * Call cleanup on leave admin so storefront stays light.
+ */
 export function applyAdminTheme(theme: AdminTheme): () => void {
   const root = document.documentElement
   const meta = document.querySelector('meta[name="theme-color"]')
 
-  if (theme === "dark") {
-    root.classList.add("dark")
-    meta?.setAttribute("content", "#151512")
-  } else {
+  if (theme === "light") {
     root.classList.remove("dark")
+    root.classList.add("light")
     meta?.setAttribute("content", "#F7F6F2")
+  } else {
+    root.classList.add("dark")
+    root.classList.remove("light")
+    meta?.setAttribute("content", "#0B0B0B")
   }
 
   return () => {
     root.classList.remove("dark")
+    root.classList.remove("light")
     meta?.setAttribute("content", "#F4F6F5")
   }
 }

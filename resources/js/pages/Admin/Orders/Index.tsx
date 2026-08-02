@@ -143,14 +143,14 @@ function variationLabel(item: OrderItemPreview): string {
 
 /** Grid kolom: produk | bayar | status | waktu | kirim | aksi */
 const orderRowGridClass =
-  "lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(6.5rem,0.95fr)_minmax(7.5rem,1fr)_minmax(6.5rem,0.9fr)_minmax(7.5rem,1.05fr)_minmax(6rem,0.85fr)] lg:items-start lg:gap-x-3"
+  "lg:grid lg:grid-cols-[minmax(0,2.8fr)_minmax(7rem,0.95fr)_minmax(8.5rem,1.05fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] lg:items-start lg:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
     <div
       className={cn(
         orderRowGridClass,
-        "hidden px-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground lg:grid",
+        "hidden px-4 pb-2 text-xs font-medium text-muted-foreground lg:grid",
       )}
       aria-hidden="true"
     >
@@ -206,10 +206,10 @@ function OrderCardRow({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-colors hover:border-foreground/10">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-[10px] font-semibold text-muted-foreground">
             {order.customer_name.slice(0, 1).toUpperCase()}
           </span>
           <span className="truncate font-medium text-foreground">{order.customer_name}</span>
@@ -218,7 +218,7 @@ function OrderCardRow({
               href={order.whatsapp_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex size-5 items-center justify-center rounded-full text-primary transition hover:bg-accent"
+              className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
               aria-label={`WhatsApp ${order.customer_name}`}
             >
               <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
@@ -244,7 +244,7 @@ function OrderCardRow({
         </Link>
       </div>
 
-      <div className={cn(orderRowGridClass, "gap-y-3 p-4")}>
+      <div className={cn(orderRowGridClass, "gap-y-3 p-4 divide-y divide-border lg:divide-y-0")}>
         {/* Produk */}
         <div className="min-w-0 space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
@@ -298,7 +298,7 @@ function OrderCardRow({
         </div>
 
         {/* Dibayar Pembeli */}
-        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+        <div className="min-w-0 pt-3 lg:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Dibayar pembeli
           </p>
@@ -309,23 +309,23 @@ function OrderCardRow({
             {order.payment_method_label ||
               (order.payment_method ? humanize(order.payment_method) : "Metode -")}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-0.5 text-[11px] text-muted-foreground/80">
             {statusMeta(order.payment_status).label}
           </p>
         </div>
 
         {/* Status */}
-        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+        <div className="min-w-0 pt-3 lg:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Status
           </p>
           <StatusBadge status={order.order_status} />
-          <p className="mt-1.5 text-xs leading-4 text-muted-foreground">
+          <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground/80">
             {order.primary_action?.hint || statusMeta(order.order_status).label}
           </p>
           <div className="mt-2 flex flex-wrap gap-1">
             {(order.flow === "cod" || order.cod_flag) && (
-              <span className="rounded-md border border-warning/25 bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
+              <span className="rounded-md border border-warning/30 bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
                 COD
               </span>
             )}
@@ -336,20 +336,20 @@ function OrderCardRow({
         </div>
 
         {/* Batas Waktu */}
-        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+        <div className="min-w-0 pt-3 lg:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Batas waktu
           </p>
-          <p className="text-[13px] font-medium text-foreground">
+          <p className="text-[13px] font-medium leading-snug text-foreground">
             {formatRelativeAge(order.updated_at)}
           </p>
-          <p className="mt-1 text-xs leading-4 text-muted-foreground">
+          <p className="mt-1 text-[11px] leading-4 text-muted-foreground/80">
             Dipesan {formatDateTime(order.created_at)}
           </p>
         </div>
 
         {/* Jasa Kirim */}
-        <div className="min-w-0 border-t border-border pt-3 lg:border-t-0 lg:pt-0">
+        <div className="min-w-0 pt-3 lg:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Jasa kirim
           </p>
@@ -379,7 +379,7 @@ function OrderCardRow({
         </div>
 
         {/* Aksi */}
-        <div className="flex min-w-0 flex-col items-stretch gap-1.5 border-t border-border pt-3 lg:border-t-0 lg:items-end lg:pt-0">
+        <div className="flex min-w-0 flex-col items-stretch gap-1.5 pt-3 lg:items-end lg:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
             Aksi
           </p>
@@ -497,9 +497,9 @@ export default function OrdersIndex({
       <Head title={`${title} | Admin`} />
 
       {/* Tabs status — segmented control ala AI app */}
-      <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+      <div className="scrollbar-none overflow-x-auto">
         <div
-          className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted/70 p-1"
+          className="inline-flex items-center gap-0.5 rounded-xl border border-border bg-card p-1"
           role="tablist"
           aria-label="Filter status pesanan"
         >
@@ -523,7 +523,7 @@ export default function OrdersIndex({
                 <span
                   className={cn(
                     "tabular-nums rounded-full px-1.5 py-px text-[10px] font-semibold",
-                    active ? "bg-accent text-accent-foreground" : "bg-border/60 text-muted-foreground",
+                    active ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground",
                   )}
                 >
                   {formatNumber(tab.count)}
@@ -659,7 +659,7 @@ export default function OrdersIndex({
               pesanan
             </p>
             <div className="overflow-x-auto">
-              <div className="min-w-[56rem] space-y-3">
+              <div className="min-w-[60rem] space-y-3">
                 <OrderListColumnHeader />
                 {orders.map((order) => (
                   <OrderCardRow key={order.id} order={order} queryState={queryState} />

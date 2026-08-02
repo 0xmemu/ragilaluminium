@@ -74,7 +74,7 @@ export function ShippingTrackPanel({
         ) : null}
       </div>
 
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ol className="grid grid-cols-1 gap-1 min-[480px]:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-4">
         {SHIPPING_STEPS.map((step, index) => {
           const meta = statusMeta(step)
           const done = stepIndex >= 0 && index <= stepIndex
@@ -84,21 +84,29 @@ export function ShippingTrackPanel({
             <li
               key={step}
               className={cn(
-                "rounded-md border px-2.5 py-2",
-                current
-                  ? "border-primary/40 bg-primary/5"
-                  : done
-                    ? "border-border bg-surface-muted/50"
-                    : "border-border/70 bg-surface",
+                "flex items-center gap-1.5 rounded-md px-2 py-1.5",
+                current ? "bg-primary/10" : "bg-transparent",
               )}
             >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "size-1.5 shrink-0 rounded-full",
+                  current
+                    ? "bg-primary"
+                    : done
+                      ? "bg-muted-foreground/50"
+                      : "bg-border",
+                )}
+              />
               <p
                 className={cn(
-                  "text-[10px] font-semibold uppercase tracking-tight",
-                  current ? "text-primary" : "text-muted-foreground",
+                  "truncate text-[11px] font-medium leading-tight",
+                  current ? "text-foreground" : "text-muted-foreground",
                 )}
+                title={meta.label}
               >
-                {index + 1}. {meta.label}
+                {meta.label}
               </p>
             </li>
           )

@@ -110,8 +110,52 @@ export default function TestimonialForm({
         encType="multipart/form-data"
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className="grid gap-5 sm:grid-cols-2">
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          {/* Stripe media: thumbnail kiri, upload + URL inline kanan */}
+          <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start">
+            <div className="size-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+              {form.data.image_url || form.data.image ? (
+                <img
+                  src={form.data.image ? URL.createObjectURL(form.data.image) : form.data.image_url}
+                  alt="Pratinjau"
+                  className="size-full object-cover"
+                />
+              ) : (
+                <div className="flex size-full items-center justify-center text-muted-foreground/60">
+                  <span className="text-[10px]">Tanpa gambar</span>
+                </div>
+              )}
+            </div>
+            <div className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2">
+              <Field
+                id="testimonial-image-file"
+                label="Unggah screenshot"
+                error={form.errors.image}
+                hint={
+                  isMarketplace
+                    ? "Wajib. Screenshot Shopee/WhatsApp (max 5MB)."
+                    : "Opsional. Max 5MB. Mengunggah mengganti URL di samping."
+                }
+                required={isMarketplace}
+              >
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
+                />
+              </Field>
+              <Field
+                id="testimonial-image"
+                label="URL gambar"
+                error={form.errors.image_url}
+                required={isMarketplace}
+              >
+                <Input type="url" value={form.data.image_url} onChange={(event) => form.setData("image_url", event.target.value)} />
+              </Field>
+            </div>
+          </div>
+
+          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
             <Field id="testimonial-customer" label="Nama pelanggan" required error={form.errors.customer_name}>
               <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
             </Field>
@@ -176,42 +220,6 @@ export default function TestimonialForm({
                 </Select>
               </Field>
             ) : null}
-            <Field
-              id="testimonial-image-file"
-              label="Unggah screenshot"
-              error={form.errors.image}
-              className="sm:col-span-2"
-              hint={
-                isMarketplace
-                  ? "Wajib. Screenshot Shopee/WhatsApp (max 5MB)."
-                  : "Opsional. Max 5MB. Mengunggah akan mengganti URL di bawah."
-              }
-              required={isMarketplace}
-            >
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
-              />
-            </Field>
-            <Field
-              id="testimonial-image"
-              label="URL gambar"
-              error={form.errors.image_url}
-              className="sm:col-span-2"
-              required={isMarketplace}
-            >
-              <Input type="url" value={form.data.image_url} onChange={(event) => form.setData("image_url", event.target.value)} />
-            </Field>
-            {form.data.image_url || form.data.image ? (
-              <div className="sm:col-span-2">
-                 <img
-                  src={form.data.image ? URL.createObjectURL(form.data.image) : form.data.image_url}
-                  alt="Pratinjau"
-                  className="max-h-64 rounded-md border border-border object-contain"
-                />
-              </div>
-            ) : null}
             {!isMarketplaceIntent ? (
               <Field id="testimonial-sort" label="Urutan" error={form.errors.sort_order}>
                 <Input
@@ -226,7 +234,7 @@ export default function TestimonialForm({
                 Urutan tampilan diatur di daftar Apa Kata Pelanggan lewat tombol <strong>Atur urutan</strong>.
               </p>
             )}
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:self-end">
+            <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm font-medium sm:self-end">
               <input
                 type="checkbox"
                 checked={form.data.published}

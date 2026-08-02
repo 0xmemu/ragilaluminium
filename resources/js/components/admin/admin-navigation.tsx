@@ -43,7 +43,7 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const groups = Object.entries(nav?.admin ?? {})
 
   return (
-    <div className="flex h-full flex-col bg-surface">
+    <div className="flex h-full flex-col bg-background">
       <div className="flex h-14 shrink-0 items-center border-b border-border px-3">
         <AdminBrand />
       </div>
@@ -68,10 +68,10 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
                       href={routeUrl(item.route, item.params)}
                       onClick={onNavigate}
                       className={cn(
-                        "group/item flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition duration-100",
+                        "group/item flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition duration-100",
                         active
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          ? "bg-secondary text-foreground"
+                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                       )}
                       aria-current={active ? "page" : undefined}
                     >
@@ -80,19 +80,13 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
                         className={cn(
                           "size-4 shrink-0 transition",
                           active
-                            ? "text-accent-foreground"
+                            ? "text-foreground"
                             : "text-muted-foreground/80 group-hover/item:text-foreground",
                         )}
                         weight={active ? "fill" : "regular"}
                         aria-hidden="true"
                       />
                       <span className="truncate">{item.label}</span>
-                      {active ? (
-                        <span
-                          aria-hidden="true"
-                          className="ml-auto size-1.5 shrink-0 rounded-full bg-primary"
-                        />
-                      ) : null}
                     </Link>
                   </li>
                 )

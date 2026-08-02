@@ -5,7 +5,6 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
-import { ResponsiveImage } from "@/components/ui/responsive-image"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface BannerFormData {
@@ -89,14 +88,41 @@ export default function BannerForm({
       <form onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="text-base font-bold">Informasi promo</h2>
-          <div className="mt-4 space-y-4">
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          {/* Stripe media: thumbnail kiri, upload inline kanan */}
+          <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start">
+            <div className="h-32 w-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+              {previewUrl ? (
+                <img src={previewUrl} alt="Pratinjau" className="size-full object-cover" />
+              ) : (
+                <div className="flex size-full items-center justify-center text-muted-foreground/60">
+                  <span className="px-1 text-center text-[10px] leading-tight">Tanpa gambar</span>
+                </div>
+              )}
+            </div>
+            <div className="grid min-w-0 flex-1 gap-4">
+              <Field
+                id="image"
+                label="Upload gambar"
+                error={form.errors.image}
+                hint="Kartu homepage memakai rasio 3:4. Tanpa upload, link produk aktif bisa mengisi gambar otomatis."
+              >
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
+                />
+              </Field>
+            </div>
+          </div>
+
+          {/* Field informasi promo */}
+          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
             <Field
               id="title"
               label="Nama / judul promo"
               error={form.errors.title}
-              hint="Maksimal 64 karakter agar pengumuman promo tetap ringkas di mobile."
+              hint="Maksimal 64 karakter agar tetap ringkas di mobile."
             >
               <Input
                 value={form.data.title}
@@ -109,7 +135,7 @@ export default function BannerForm({
               id="link"
               label="Link tujuan / produk terkait"
               error={form.errors.link_url}
-              hint="Path internal /product/SKU atau URL penuh. Tanpa upload, link produk aktif bisa mengisi gambar otomatis."
+              hint="Path internal /product/SKU atau URL penuh."
             >
               <Input
                 value={form.data.link_url}
@@ -117,14 +143,14 @@ export default function BannerForm({
                 placeholder="/product/WIN-JUNG-001"
               />
             </Field>
-            <Field id="sort" label="Urutan slide" error={form.errors.sort_order}>
+            <Field id="sort" label="Urutan slide" error={form.errors.sort_order} className="sm:max-w-40">
               <Input
                 type="number"
                 value={form.data.sort_order}
                 onChange={(event) => form.setData("sort_order", Number(event.target.value))}
               />
             </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
+            <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm font-medium sm:self-end">
               <input
                 type="checkbox"
                 checked={form.data.published}
@@ -134,25 +160,6 @@ export default function BannerForm({
               Status aktif (published)
             </label>
           </div>
-        </section>
-
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="text-base font-bold">Media</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Unggah gambar promo. Kartu homepage memakai rasio 3:4.
-          </p>
-          <Field id="image" label="Upload gambar" className="mt-4" error={form.errors.image}>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
-            />
-          </Field>
-          {previewUrl ? (
-            <div className="mt-4 max-w-xs overflow-hidden rounded-md border border-border">
-              <ResponsiveImage src={previewUrl} alt="Pratinjau" wrapperClassName="aspect-[3/4]" />
-            </div>
-          ) : null}
         </section>
 
         <div className="flex flex-wrap gap-2">

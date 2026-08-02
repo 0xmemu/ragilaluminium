@@ -50,47 +50,54 @@ export default function GalleryForm({
         className="mx-auto max-w-3xl space-y-6"
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className="grid gap-5">
-            <Field id="gallery-label" label="Label" error={form.errors.label}>
-              <Input
-                value={form.data.label}
-                onChange={(event) => form.setData("label", event.target.value)}
-                placeholder="Contoh: Pemasangan Bpk. Ahmad – Perumahan Kudus Indah"
-              />
-            </Field>
-            <Field id="gallery-image" label="URL gambar" required error={form.errors.image_url}>
-              <Input
-                type="url"
-                value={form.data.image_url}
-                onChange={(event) => form.setData("image_url", event.target.value)}
-                placeholder="https://..."
-              />
-            </Field>
-            {form.data.image_url ? (
-              <img
-                src={form.data.image_url}
-                alt=""
-                className="max-h-56 w-full rounded-lg border border-border object-cover"
-              />
-            ) : null}
-            <Field id="gallery-sort" label="Urutan" error={form.errors.sort_order}>
-              <Input
-                type="number"
-                min="0"
-                value={form.data.sort_order}
-                onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-              />
-            </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-              <input
-                type="checkbox"
-                checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Tampilkan di storefront
-            </label>
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          {/* Stripe: thumbnail kiri, field inline kanan */}
+          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start">
+            <div className="size-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+              {form.data.image_url ? (
+                <img src={form.data.image_url} alt="" className="size-full object-cover" />
+              ) : (
+                <div className="flex size-full items-center justify-center text-muted-foreground/60">
+                  <span className="text-[10px]">Tanpa gambar</span>
+                </div>
+              )}
+            </div>
+            <div className="grid min-w-0 flex-1 gap-4">
+              <Field id="gallery-label" label="Label" error={form.errors.label}>
+                <Input
+                  value={form.data.label}
+                  onChange={(event) => form.setData("label", event.target.value)}
+                  placeholder="Contoh: Pemasangan Bpk. Ahmad – Perumahan Kudus Indah"
+                />
+              </Field>
+              <Field id="gallery-image" label="URL gambar" required error={form.errors.image_url}>
+                <Input
+                  type="url"
+                  value={form.data.image_url}
+                  onChange={(event) => form.setData("image_url", event.target.value)}
+                  placeholder="https://..."
+                />
+              </Field>
+              <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+                <Field id="gallery-sort" label="Urutan" error={form.errors.sort_order} className="w-28">
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.data.sort_order}
+                    onChange={(event) => form.setData("sort_order", Number(event.target.value))}
+                  />
+                </Field>
+                <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={form.data.published}
+                    onChange={(event) => form.setData("published", event.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Tampilkan di storefront
+                </label>
+              </div>
+            </div>
           </div>
         </section>
         <div className="flex justify-end gap-2">
