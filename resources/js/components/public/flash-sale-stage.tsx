@@ -272,7 +272,15 @@ export function FlashSaleRedBanner({
               compact ? "size-9 sm:size-10" : "size-10 sm:size-11 lg:size-12",
             )}
           >
-            <FlashSaleBolt className={compact ? "size-5" : "size-5 sm:size-6"} />
+            <Icon
+              name="lightning"
+              weight="fill"
+              className={cn(
+                "shrink-0 text-[#FFB020]",
+                compact ? "size-4 sm:size-5" : "size-5 sm:size-6",
+              )}
+              aria-hidden="true"
+            />
           </span>
           <h1
             className={cn(
