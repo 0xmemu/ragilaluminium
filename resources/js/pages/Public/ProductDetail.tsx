@@ -681,9 +681,9 @@ export default function ProductDetail({
                     </p>
                   ) : null}
                 </div>
-                {attributes.length ? (
+                {attributes.filter(a => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)$/i.test(a.name)).length ? (
                   <dl className="mt-4 border-t border-border">
-                    {attributes.map((attribute, index) => (
+                    {attributes.filter(a => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)$/i.test(a.name)).map((attribute, index) => (
                       <div
                         key={`${attribute.name}-${index}`}
                         className="grid min-w-0 grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)] gap-4 border-b border-border/60 py-3 text-sm"
