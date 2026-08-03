@@ -20,7 +20,6 @@ import {
   FilterBerdasarkanControl,
 } from "@/components/public/filter-berdasarkan-control"
 import { FilterSheetContent } from "@/components/public/filter-sidebar"
-import { SearchDialog } from "@/components/public/search-dialog"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -523,14 +522,9 @@ export default function Catalog({
                   {formatNumber(pagination?.total ?? products.length)} produk ditemukan
                   {searchQuery ? ` untuk “${searchQuery}”` : ""}.
                 </p>
-                <div className="flex shrink-0 items-end justify-end gap-2">
-                  <SearchDialog
-                    triggerClassName="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-10 sm:w-10"
-                  />
-                  {filterToolbar ? (
-                    <div className="flex shrink-0 items-end justify-end">{filterToolbar}</div>
-                  ) : null}
-                </div>
+                {filterToolbar ? (
+                  <div className="flex shrink-0 items-end justify-end">{filterToolbar}</div>
+                ) : null}
               </div>
             </div>
           </div>

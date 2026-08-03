@@ -9,7 +9,7 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { useRotatingPlaceholder } from "@/hooks/use-rotating-placeholder"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { isRouteActive, routeUrl } from "@/lib/routes"
+import { isRouteActive, routeUrl, withQuery } from "@/lib/routes"
 import type { RouteNavItem, SharedPageProps } from "@/types"
 
 function navHref(item: RouteNavItem): string {
@@ -86,20 +86,49 @@ function HeaderSearchForm({
   className?: string
   inputClassName?: string
 }) {
+  const page = usePage()
   const [query, setQuery] = React.useState("")
   const [focused, setFocused] = React.useState(false)
   const placeholder = useRotatingPlaceholder(Boolean(query.trim()) || focused)
 
+  const trimmed = query.trim()
+  // Di halaman listing ber-kategori (kategori/model/desain) tawarkan juga
+  // "cari di halaman ini" ala Shopee; selain itu cukup cari di semua produk.
+  const canSearchInPage = isRouteActive([
+    "catalog.category",
+    "catalog.model",
+    "catalog.design",
+    "catalog.windows",
+    "catalog.doors",
+    "catalog.bouven",
+  ])
+
+  function searchAll(value: string) {
+    router.get(routeUrl("catalog.all"), { q: value })
+  }
+
+  function searchInPage(value: string) {
+    const [path] = page.url.split("?")
+    const current = new URLSearchParams(page.url.split("?")[1] ?? "")
+    const params: Record<string, string> = {}
+    current.forEach((paramValue, key) => {
+      params[key] = paramValue
+    })
+    params.q = value
+    router.get(withQuery(path, params))
+  }
+
+  function submitAll(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (trimmed.length < 2) return
+    setFocused(false)
+    searchAll(trimmed)
+  }
+
+  const showSuggestions = focused && trimmed.length >= 2
+
   return (
-    <form
-      className={className}
-      onSubmit={(event) => {
-        event.preventDefault()
-        const value = query.trim()
-        if (value.length < 2) return
-        router.get(routeUrl("catalog.all"), { q: value })
-      }}
-    >
+    <form className={className} onSubmit={submitAll}>
       <div className="relative w-full">
         <Icon
           name="search"
@@ -114,12 +143,55 @@ function HeaderSearchForm({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={placeholder}
+          autoComplete="off"
           className={cn(
             "h-9 w-full rounded-full border-0 bg-white/10 py-1.5 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-11 md:pl-12 md:pr-5 md:text-base",
             inputClassName,
           )}
           aria-label="Cari produk"
         />
+
+        {showSuggestions ? (
+          <div
+            role="listbox"
+            aria-label="Pilihan pencarian"
+            className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-white p-1.5 text-foreground shadow-xl"
+          >
+            <button
+              type="button"
+              role="option"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                setFocused(false)
+                searchAll(trimmed)
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
+            >
+              <Icon name="search" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span>
+                Cari <span className="font-semibold">“{trimmed}”</span> di semua produk
+              </span>
+            </button>
+
+            {canSearchInPage ? (
+              <button
+                type="button"
+                role="option"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setFocused(false)
+                  searchInPage(trimmed)
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
+              >
+                <Icon name="funnel" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span>
+                  Cari <span className="font-semibold">“{trimmed}”</span> di halaman ini
+                </span>
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </form>
   )

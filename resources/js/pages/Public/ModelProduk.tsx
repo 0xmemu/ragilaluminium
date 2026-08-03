@@ -5,7 +5,6 @@ import { ModelProdukListingSidebar } from "@/components/public/catalog-listing-s
 import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
 import { ModelCard } from "@/components/public/model-card"
 import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
-import { SearchDialog } from "@/components/public/search-dialog"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -80,21 +79,16 @@ export default function ModelProduk({
                 {formatNumber(models.length)} model ditemukan
               </p>
 
-              <div className="flex shrink-0 items-end gap-2">
-                <SearchDialog
-                  triggerClassName="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-10 sm:w-10"
+              <div className="flex shrink-0 items-end gap-2 lg:hidden">
+                <FilterBerdasarkanControl
+                  id="model-produk-design"
+                  variant="plain"
+                  value={design ?? ""}
+                  options={designOptions}
+                  onChange={(value) => selectDesign(value || null)}
+                  ariaLabel="Filter desain model"
+                  menuLabel="Desain"
                 />
-                <div className="lg:hidden">
-                  <FilterBerdasarkanControl
-                    id="model-produk-design"
-                    variant="plain"
-                    value={design ?? ""}
-                    options={designOptions}
-                    onChange={(value) => selectDesign(value || null)}
-                    ariaLabel="Filter desain model"
-                    menuLabel="Desain"
-                  />
-                </div>
               </div>
             </div>
           </div>
