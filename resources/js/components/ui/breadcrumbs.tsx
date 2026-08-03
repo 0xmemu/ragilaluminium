@@ -1,4 +1,5 @@
 import { Link } from "@inertiajs/react"
+import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
@@ -11,8 +12,29 @@ export function Breadcrumbs({ items, className, tone = "default", singleLine = f
   tone?: "default" | "onDark"
   singleLine?: boolean
 }) {
+  const canGoBack = React.useMemo(
+    () => typeof window !== "undefined" && window.history.length > 1,
+    [],
+  )
+
   if (!items.length) return null
-  return <nav aria-label="Breadcrumb" className={className}>
+
+  return <nav aria-label="Breadcrumb" className={cn("flex items-center gap-2", className)}>
+    {canGoBack ? (
+      <button
+        type="button"
+        onClick={() => window.history.back()}
+        className={cn(
+          "inline-flex size-8 shrink-0 -ml-1.5 items-center justify-center rounded-full transition-colors",
+          tone === "onDark"
+            ? "text-white/70 hover:bg-white/10 hover:text-white"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        )}
+        aria-label="Kembali ke halaman sebelumnya"
+      >
+        <Icon name="caret-left" className="size-4" weight="bold" aria-hidden="true" />
+      </button>
+    ) : null}
     <ol className={cn("flex items-center gap-2 text-xs font-medium", singleLine ? "flex-nowrap overflow-hidden" : "flex-wrap", tone === "onDark" ? "text-white/55" : "text-muted-foreground")}>
       {items.map((item, index) => {
         const current = index === items.length - 1
