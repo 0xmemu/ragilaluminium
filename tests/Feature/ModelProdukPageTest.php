@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\CmsModelProduct;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -210,5 +213,107 @@ class ModelProdukPageTest extends TestCase
                 ->where('designRails.0.value', 'ORNAMEN')
                 ->where('designRails.0.count', 1)
             );
+    }
+
+    public function test_products_hub_sorts_fallback_models_by_product_sales(): void
+    {
+        $sliding = $this->makeHubProduct('WIN-HUB-SLIDE', 'SLIDING');
+        $jungkit = $this->makeHubProduct('WIN-HUB-JUNG', 'JUNGKIT');
+
+        // SLIDING lebih laris daripada JUNGKIT — harus di depan walau JUNGKIT
+        // lebih dulu di MODEL_ORDER default (membuktikan sort "popular" bekerja).
+        $this->addSales($sliding, 8);
+        $this->addSales($jungkit, 5);
+
+        $this->get('/products')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/ModelProduk')
+                ->has('models', 2)
+                ->where('models.0.model', 'SLIDING')
+                ->where('models.1.model', 'JUNGKIT')
+            );
+    }
+
+    public function test_products_hub_sorts_cms_models_by_product_sales(): void
+    {
+        $sliding = $this->makeHubProduct('WIN-CMS-SLIDE', 'SLIDING');
+        $jungkit = $this->makeHubProduct('WIN-CMS-JUNG', 'JUNGKIT');
+        $this->addSales($sliding, 9);
+        $this->addSales($jungkit, 2);
+
+        CmsModelProduct::create([
+            'name' => 'Jendela Sliding',
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'type' => 'polos',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+        CmsModelProduct::create([
+            'name' => 'Jendela Jungkit',
+            'product_category' => 'WINDOW',
+            'product_model' => 'JUNGKIT',
+            'type' => 'polos',
+            'status' => 'active',
+            'sort_order' => 2,
+        ]);
+
+        $this->get('/products')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/ModelProduk')
+                ->has('models', 2)
+                ->where('models.0.model', 'SLIDING')
+                ->where('models.1.model', 'JUNGKIT')
+            );
+    }
+
+    private function makeHubProduct(string $sku, string $model): Product
+    {
+        return Product::create([
+            'parent_sku' => $sku,
+            'name' => $model.' Hub',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => $model,
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+    }
+
+    private function addSales(Product $product, int $qty): void
+    {
+        $order = Order::create([
+            'order_number' => 'ORD-'.uniqid(),
+            'customer_name' => 'Buyer',
+            'customer_phone' => '08111111111',
+            'shipping_address_line1' => 'Jl A',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'processing',
+            'payment_status' => 'paid',
+            'shipping_status' => 'pending_pickup',
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+            'subtotal_amount' => 100000 * $qty,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 100000 * $qty,
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'parent_sku' => $product->parent_sku,
+            'name' => $product->name,
+            'unit_price' => 100000,
+            'quantity' => $qty,
+            'line_subtotal' => 100000 * $qty,
+            'line_discount' => 0,
+            'line_total' => 100000 * $qty,
+        ]);
     }
 }

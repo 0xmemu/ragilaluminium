@@ -59,7 +59,7 @@ class CatalogTaxonomy
         $design = CatalogLabels::normalizeDesign($design);
         $cacheKey = self::CACHE_KEY.'.modelCards.'.($limit ?: 'all').'.'.($design ?? 'any');
 
-        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($limit, $design) {
+        $cards = Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($limit, $design) {
             $rows = self::rows();
             if ($rows->isEmpty()) {
                 return [];
@@ -168,6 +168,54 @@ class CatalogTaxonomy
                 $cards,
             );
         });
+
+        // Sortir default "popular" — dihitung segar tiap request agar tidak stale di cache.
+        return self::sortByPopularity($cards);
+    }
+
+    /**
+     * Total kuantitas terjual (validOrderItems) per model untuk sortir "popular".
+     *
+     * @return array<string, int>
+     */
+    protected static function modelPopularity(): array
+    {
+        return Product::visible()
+            ->withSum('validOrderItems as sold_count', 'quantity')
+            ->get()
+            ->groupBy(
+                fn (Product $p) => strtoupper((string) $p->product_category).'|'.strtoupper((string) $p->product_model)
+            )
+            ->map(fn (Collection $group) => (int) $group->sum('sold_count'))
+            ->all();
+    }
+
+    /**
+     * Urutkan kartu model: total penjualan tertinggi di depan (default "popular").
+     *
+     * @param  list<array<string, mixed>>  $cards
+     * @return list<array<string, mixed>>
+     */
+    protected static function sortByPopularity(array $cards): array
+    {
+        if ($cards === []) {
+            return $cards;
+        }
+
+        $popularity = self::modelPopularity();
+        $score = static fn (array $card) => (int) (
+            $popularity[
+                strtoupper((string) ($card['category'] ?? '')).'|'.strtoupper((string) ($card['model'] ?? ''))
+            ] ?? 0
+        );
+
+        usort(
+            $cards,
+            fn (array $a, array $b): int => $score($b) <=> $score($a)
+                ?: strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
+        );
+
+        return $cards;
     }
 
     /**

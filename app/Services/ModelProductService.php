@@ -178,6 +178,7 @@ class ModelProductService
 
         $design = CatalogLabels::normalizeDesign($design);
         $stats = $this->statsByCategoryModel($rows);
+        $popularity = $this->modelPopularity();
         $cards = [];
         $pairs = [];
 
@@ -242,6 +243,7 @@ class ModelProductService
                 'model' => $row->product_model,
                 'category' => $row->product_category,
                 'designs' => $designs,
+                'popularity' => $popularity[$key] ?? 0,
             ];
 
             if ($limit > 0 && count($cards) >= $limit) {
@@ -253,12 +255,45 @@ class ModelProductService
             return CatalogTaxonomy::modelCards($limit, $design);
         }
 
+        // Sortir default "popular": model dengan total penjualan (validOrderItems)
+        // tertinggi di depan, sehingga model produk yang laris tampil lebih dulu.
+        usort(
+            $cards,
+            fn (array $a, array $b): int => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0)
+                ?: strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
+        );
+
+        foreach ($cards as &$card) {
+            unset($card['popularity']);
+        }
+        unset($card);
+
         $inspiration = ModelProductPresentation::inspirationByPair($pairs);
 
         return array_map(
             fn (array $card) => ModelProductPresentation::enrichCard($card, $inspiration),
             $cards,
         );
+    }
+
+    /**
+     * @param  Collection<int, CmsModelProduct>  $items
+     * @return array<string, array{active_count:int,archived_count:int,variant_count:int,designs:list<string>}>
+     */
+    /**
+     * Total kuantitas terjual (validOrderItems) per model (category|model) untuk
+     * sortir model produk secara "popular".
+     *
+     * @return array<string, int>
+     */
+    protected function modelPopularity(): array
+    {
+        return Product::visible()
+            ->withSum('validOrderItems as sold_count', 'quantity')
+            ->get()
+            ->groupBy(fn (Product $p) => $this->pairKey($p->product_category, $p->product_model))
+            ->map(fn (Collection $group) => (int) $group->sum('sold_count'))
+            ->all();
     }
 
     /**
