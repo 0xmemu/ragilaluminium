@@ -4,27 +4,15 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
-import { humanize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Testimonial } from "@/types"
-
-const SOURCE_LABELS: Record<string, string> = {
-  shopee: "Marketplace / Shopee",
-  whatsapp: "WhatsApp",
-  website: "Website",
-  other: "Lainnya",
-}
-
-function sourceLabel(source?: string | null): string | null {
-  if (!source) return null
-  return SOURCE_LABELS[source] ?? humanize(source)
-}
 
 export function TestimonialCard({
   testimonial,
   compact = false,
   href,
   variant = "review",
+  onOpen,
 }: {
   testimonial: Testimonial
   compact?: boolean
@@ -32,8 +20,11 @@ export function TestimonialCard({
   href?: string | null
   /** `screenshot` = image-only (marketplace/WA); `review` = teks+rating. */
   variant?: "review" | "screenshot"
+  /** Dipanggil saat gambar screenshot diklik (mode galeri dengan lightbox eksternal). */
+  onOpen?: () => void
 }) {
   const [previewOpen, setPreviewOpen] = React.useState(false)
+  const [expanded, setExpanded] = React.useState(false)
   const rating = Math.max(0, Math.min(5, testimonial.rating ?? 0))
   const cardHref = href ?? testimonial.product?.href ?? null
   const isScreenshot = variant === "screenshot"
@@ -44,23 +35,23 @@ export function TestimonialCard({
     ? `Screenshot ulasan ${testimonial.customer_name}`
     : `Hasil pemasangan dari ${testimonial.customer_name}`
 
-  // Mode Screenshot (Shopee / WhatsApp): Murni gambar screenshot ulasan tanpa frame
+  // Mode Screenshot (Shopee / WhatsApp): murni gambar 1:1 tanpa frame
   if (isScreenshot) {
     return (
       <>
-        <article className="group flex h-full flex-col overflow-hidden border-0 bg-transparent shadow-none transition-transform duration-300 hover:-translate-y-1">
+        <article className="group flex h-full flex-col">
           {hasImage ? (
             <button
               type="button"
-              onClick={() => setPreviewOpen(true)}
+              onClick={() => (onOpen ? onOpen() : setPreviewOpen(true))}
               className="group/img relative block size-full overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Perbesar screenshot ulasan ${testimonial.customer_name}`}
             >
               <ResponsiveImage
                 src={imageUrl!}
                 alt={imageAlt}
-                wrapperClassName="aspect-[4/5] sm:aspect-square size-full bg-surface-muted rounded-lg border border-border/40 overflow-hidden"
-                className="size-full object-contain transition duration-300 group-hover/img:scale-[1.02]"
+                wrapperClassName="aspect-square size-full overflow-hidden"
+                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
               />
               <span
                 className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition duration-300 group-hover/img:bg-black/20"
@@ -78,16 +69,16 @@ export function TestimonialCard({
           )}
         </article>
 
-        {hasImage ? (
+        {hasImage && !onOpen ? (
           <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-            <DialogContent className="max-w-[min(calc(100%-2rem),56rem)] p-3 sm:p-5" aria-describedby={undefined}>
+          <DialogContent className="!fixed !inset-0 !left-0 !top-0 z-modal !flex !h-dvh !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !gap-0 !overflow-hidden !rounded-none !border-0 !bg-black/95 !p-0 shadow-none" aria-describedby={undefined}>
               <DialogTitle className="sr-only">
                 Screenshot ulasan {testimonial.customer_name}
               </DialogTitle>
               <img
                 src={imageUrl!}
                 alt={imageAlt}
-                className="mx-auto max-h-[85dvh] w-auto max-w-full rounded object-contain"
+                className="mx-auto max-h-[88dvh] w-auto max-w-full object-contain"
               />
             </DialogContent>
           </Dialog>
@@ -98,15 +89,25 @@ export function TestimonialCard({
 
   // Mode Review (Website): Rating, pesan ulasan, identitas & link produk
   const cardClassName = cn(
-    "@container group flex h-full min-w-0 flex-col overflow-hidden border border-border bg-white shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+    "@container group flex h-full min-w-0 flex-col overflow-hidden border border-border bg-white shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none",
     cardHref ? "cursor-pointer" : null,
   )
 
+  const clampLines = hasImage ? (compact ? "line-clamp-2" : "line-clamp-3") : (compact ? "line-clamp-4" : "line-clamp-5")
+
   const body = (
-    <div className={cn("flex flex-1 flex-col", compact ? "p-3" : "p-5 sm:p-6")}>
+    <div className={cn("flex min-h-0 flex-1 flex-col", compact ? "p-3" : "p-4")}>
+      <p
+        className={cn(
+          "font-semibold text-foreground",
+          compact ? "truncate text-xs leading-4" : "text-sm",
+        )}
+      >
+        {testimonial.customer_name}
+      </p>
       {rating > 0 ? (
         <div
-          className="flex gap-0.5 text-warning"
+          className="mt-1.5 flex gap-0.5 text-warning"
           aria-label={`${rating} dari 5 bintang`}
         >
           {Array.from({ length: 5 }).map((_, index) => (
@@ -124,56 +125,26 @@ export function TestimonialCard({
         <blockquote
           className={cn(
             "text-foreground",
-            compact
-              ? "mt-2 line-clamp-4 text-xs leading-5"
-              : "mt-5 text-base leading-7",
+            compact ? "mt-2 text-xs leading-5" : "mt-3 text-sm leading-6",
+            !expanded && clampLines,
           )}
         >
           “{message}”
         </blockquote>
       ) : null}
-      <div
-        className={cn(
-          "border-t border-border",
-          compact
-            ? "mt-auto flex flex-col gap-1.5 pt-2.5"
-            : "mt-auto flex items-end justify-between gap-4 pt-4",
-          !message && !rating ? "border-t-0 pt-0" : null,
-          !message && rating > 0 ? "mt-3" : null,
-          message && !compact ? "mt-6" : null,
-        )}
-      >
-        <div className="min-w-0">
-          <p
-            className={cn(
-              "font-semibold text-foreground",
-              compact ? "truncate text-xs leading-4" : "text-sm",
-            )}
-          >
-            {testimonial.customer_name}
-          </p>
-          <p
-            className={cn(
-              "text-muted-foreground",
-              compact ? "mt-0.5 truncate text-[11px] leading-4" : "mt-1 text-xs",
-            )}
-          >
-            {[testimonial.location, sourceLabel(testimonial.source)]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        </div>
-        {testimonial.product ? (
-          <span
-            className={cn(
-              "font-semibold text-primary",
-              compact ? "text-[11px] leading-4" : "shrink-0 text-xs",
-            )}
-          >
-            Lihat produk
-          </span>
-        ) : null}
-      </div>
+      {message ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            setExpanded((value) => !value)
+          }}
+          className="mt-2 self-start text-xs font-medium text-primary hover:underline"
+        >
+          {expanded ? "sembunyikan" : "selengkapnya"}
+        </button>
+      ) : null}
     </div>
   )
 
@@ -183,21 +154,31 @@ export function TestimonialCard({
 
   return (
     <article className={cardClassName}>
+      {cardHref ? (
+        <Link
+          href={cardHref}
+          className="flex min-h-0 min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={linkLabel}
+        >
+          {body}
+        </Link>
+      ) : (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">{body}</div>
+      )}
+
       {hasImage ? (
         <button
           type="button"
-          onClick={() => setPreviewOpen(true)}
-          className="group/img relative block w-full shrink-0 overflow-hidden bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={() => (onOpen ? onOpen() : setPreviewOpen(true))}
+          className="group/img relative block h-20 w-full shrink-0 overflow-hidden bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={`Perbesar foto dari ${testimonial.customer_name}`}
         >
-          <div className="aspect-[4/3] w-full overflow-hidden">
-            <ResponsiveImage
-              src={imageUrl}
-              alt={imageAlt}
-              wrapperClassName="aspect-[4/3] size-full bg-surface-muted"
-              className="object-cover transition duration-300 group-hover/img:scale-[1.03]"
-            />
-          </div>
+          <ResponsiveImage
+            src={imageUrl}
+            alt={imageAlt}
+            wrapperClassName="size-full bg-surface-muted"
+            className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+          />
           <span
             className="absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition duration-300 group-hover/img:bg-black/20 group-focus-visible/img:bg-black/20"
             aria-hidden="true"
@@ -209,38 +190,23 @@ export function TestimonialCard({
         </button>
       ) : null}
 
-      {cardHref ? (
-        <Link
-          href={cardHref}
-          className="flex min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label={linkLabel}
-        >
-          {body}
-        </Link>
-      ) : (
-        <div className="flex min-w-0 flex-1 flex-col">{body}</div>
-      )}
-
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-[min(calc(100%-2rem),56rem)] gap-4 p-4 sm:p-6" aria-describedby={undefined}>
-          <DialogTitle className="sr-only">
-            Foto hasil pemasangan dari {testimonial.customer_name}
-          </DialogTitle>
-          <img
-            src={imageUrl ?? undefined}
-            alt={imageAlt}
-            className="mx-auto max-h-[80dvh] w-auto max-w-full rounded object-contain"
-          />
-          <div className="text-center">
-            <p className="text-sm font-semibold text-foreground">{testimonial.customer_name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {[testimonial.location, sourceLabel(testimonial.source)]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {hasImage && !onOpen ? (
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="!fixed !inset-0 !left-0 !top-0 z-modal !flex !h-dvh !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !gap-0 !overflow-hidden !rounded-none !border-0 !bg-black/95 !p-0 shadow-none" aria-describedby={undefined}>
+            <DialogTitle className="sr-only">
+              Foto ulasan dari {testimonial.customer_name}
+            </DialogTitle>
+            <img
+              src={imageUrl ?? undefined}
+              alt={imageAlt}
+              className="mx-auto aspect-square max-h-[80dvh] w-auto max-w-full object-contain"
+            />
+            <div className="text-center">
+              <p className="text-sm font-semibold text-white">{testimonial.customer_name}</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </article>
   )
 }

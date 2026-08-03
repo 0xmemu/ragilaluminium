@@ -288,7 +288,7 @@ TXT;
         TestimonialPageSettings::updatePageMeta([
             'title' => 'Ulasan Pelanggan',
             'heading' => 'Apa kata pelanggan kami',
-            'subtitle' => 'Cerita pembeli yang sudah memasang jendela, pintu, dan bouven Ragil Aluminium.',
+            'subtitle' => 'Cerita pelanggan yang sudah belanja di Ragil Aluminium.',
         ]);
 
         $this->relabelGalleryItems();

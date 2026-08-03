@@ -28,7 +28,8 @@ Drawer mobile terstruktur empat zona: **brand header** (wordmark + tagline) → 
 | Promo | `catalog.promo` `/promo` | — | implemented (tidak di drawer / desktop_main; bottom nav mobile) |
 | Flash Sale | `catalog.flash-sale` `/flash-sale` | — | implemented (halaman tetap; **tidak** di `desktop_main` / `hamburger_product`) |
 | Hasil Pemasangan | `installation.index` `/hasil-pemasangan` | produk | implemented |
-| Ulasan | `reviews` `/reviews` | produk | implemented |
+| Ulasan | `reviews` `/reviews` | produk | implemented — galeri screenshot marketplace/WA |
+| Ulasan Website | `ulasan` `/ulasan` | produk | implemented — ulasan pelanggan website |
 | Lacak Pengiriman | `order.status` | info | implemented |
 | Konsultasi Gratis | `contact` | info | implemented |
 | Cara Pemesanan | `cara-pemesanan` | info | implemented |
@@ -69,7 +70,8 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 | Halaman Kebijakan Privasi | `/policy/privacy` | `privacy` | `Public/CmsPage` | implemented |
 | Halaman Ketentuan Layanan | `/policy/terms` | `terms` | `Public/CmsPage` | implemented |
 | Informasi Toko | `/about` | `about` | `Public/CmsPage` | implemented |
-| Halaman Ulasan Pelanggan | `/reviews` | `reviews` | `Public/Reviews` | implemented — **dua section terpisah**: `#apa-kata-pelanggan` (marketplace/WA) + `#ulasan-website`; hero judul netral; meta `cms_pages.testimoni` untuk section marketplace; PDP subset tertaut `product_id` |
+| Halaman Apa Kata Pelanggan (galeri) | `/reviews` | `reviews` | `Public/Reviews` | implemented — galeri screenshot Shopee/WA dengan lightbox; meta `cms_pages.testimoni` |
+| Halaman Ulasan Website | `/ulasan` | `ulasan` | `Public/Ulasan` | implemented — ulasan pelanggan website (teks+rating, sort `newest\|oldest\|rating_desc\|rating_asc`), stats `website_total`/`average_rating` |
 | Halaman Hasil Pemasangan (listing model) | `/hasil-pemasangan` | `installation.index` | `Public/Installations` | implemented — header katalog (breadcrumb + judul + count + `?sort=newest\|photos\|name`) + grid kartu model |
 | Halaman Hasil Pemasangan (produk dalam model) | `/hasil-pemasangan/{category}/{model}` | `installation.model` | `Public/Installations` | implemented — header katalog + kartu **featured** (`ModelProductPresentation`) + **Inspirasi Pemasangan** (grid produk, `?sort=`) |
 | Halaman Isi Hasil Pemasangan (detail galeri) | `/hasil-pemasangan/{parent_sku}` | `installation.show` | `Public/InstallationDetail` | implemented — galeri foto/video instalasi; ketuk media → lightbox (nama produk tetap terlihat) + slide media bersebelahan; breadcrumb model → produk |

@@ -68,6 +68,7 @@ declare module 'ziggy-js' {
     "cart.update": [],
     "cart.remove": [],
     "reviews": [],
+    "ulasan": [],
     "installation.index": [],
     "installation.model": [
         {

@@ -622,14 +622,15 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
 - `PUT /admin/apa-kata-pelanggan/meta` — meta `cms_pages.slug = testimoni` (`title`, `heading`, `subtitle`, `published`) via `TestimonialPageSettings`
 - `PUT /admin/apa-kata-pelanggan/reorder` — body `{ rows: [{ id, sort_order }] }` untuk prioritas tampilan storefront
 - Item CRUD tetap `admin.testimonials.*` (Monitoring → Ulasan memakai index yang sama tanpa meta surface)
-- Public: `GET /reviews` → `Public/Reviews` props `pageMeta` dari `TestimonialPageSettings::forStorefront()` + published `cms_testimonials` / gallery
+- Public: `GET /reviews` → `Public/Reviews` (galeri screenshot marketplace/WA) props `pageMeta` dari `TestimonialPageSettings::forStorefront()` + published `cms_testimonials` marketplace/`marketplaceTestimonials`
+- Public: `GET /ulasan` → `Public/Ulasan` (ulasan website) props `websiteTestimonials`, `stats{website_total, average_rating}`, `activeSort`
 
 ### 7.0k Hasil Pemasangan Kami (Galeri)
 
 - `GET /admin/hasil-pemasangan` — `Admin\TestimonialController@hasilPemasangan` → `Admin/Testimonials/Index` (foto list + meta form)
 - `PUT /admin/hasil-pemasangan/meta` — meta `cms_pages.slug = hasil-pemasangan` via `InstallationPageSettings`
 - Item CRUD tetap `admin.gallery-items.*` (Monitoring → Ulasan tab foto)
-- Public: `GET /reviews` → ulasan saja; `GET /hasil-pemasangan` → listing **per model** (grid kartu + `?sort=newest|photos|name`); `GET /hasil-pemasangan/{category}/{model}` → featured model (subtitle/desc/highlights dari `ModelProductPresentation`) + grid produk (`?sort=newest|photos|name`); `GET /hasil-pemasangan/{parent_sku}` → galeri foto/video per produk (props `media[].is_video`; UI lightbox + slide). Kartu produk terkait dapat memuat `installation_href` bila ada media instalasi.
+- Public: `GET /ulasan` → ulasan website; `GET /reviews` → galeri screenshot marketplace/WA; `GET /hasil-pemasangan` → listing **per model** (grid kartu + `?sort=newest|photos|name`); `GET /hasil-pemasangan/{category}/{model}` → featured model (subtitle/desc/highlights dari `ModelProductPresentation`) + grid produk (`?sort=newest|photos|name`); `GET /hasil-pemasangan/{parent_sku}` → galeri foto/video per produk (props `media[].is_video`; UI lightbox + slide). Kartu produk terkait dapat memuat `installation_href` bila ada media instalasi.
 
 - `GET /admin/banners`
   - Controller: `Admin\BannerController@index`

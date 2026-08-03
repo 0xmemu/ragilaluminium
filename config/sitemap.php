@@ -84,9 +84,10 @@ return [
             'status' => 'implemented',
         ],
         'Halaman Ulasan Pembeli' => [
-            'route' => 'reviews',
-            'path' => '/reviews',
-            'view' => 'Public/Reviews',
+            'route' => 'ulasan',
+            'path' => '/ulasan',
+            'view' => 'Public/Ulasan',
+            'controller' => 'PageController@ulasan',
             'group' => 'core',
             'status' => 'implemented',
         ],

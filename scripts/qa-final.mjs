@@ -1,44 +1,53 @@
 import { chromium } from "playwright"
 const BASE = "http://localhost:8200"
-const OUT = "/tmp/admin-final"
+const OUT = "/tmp/audit-final"
+
 const run = async () => {
   const browser = await chromium.launch()
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
-  const page = await ctx.newPage()
-  await page.goto(`${BASE}/login`, { waitUntil: "networkidle" })
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" })
   await page.fill("#login-identifier", "qa.admin@example.com")
   await page.fill("#login-password", "QaScreenshot2026!")
   await page.click('button[type="submit"]')
   await page.waitForURL(/\/admin/, { timeout: 15000 })
 
-  // dark mode via localStorage appearance
-  await page.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" })
-  await page.evaluate(() => localStorage.setItem("appearance", "dark"))
-  for (const [name, path] of [["dashboard-dark", "/admin"], ["products-dark", "/admin/products"], ["orders-dark", "/admin/orders"]]) {
-    await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" })
-    await page.waitForTimeout(900)
+  const shots = [
+    ["imports-create", "/admin/imports/create", "light"],
+    ["whatsapp-connection", "/admin/whatsapp/connection", "light"],
+    ["settings", "/admin/settings", "light"],
+    ["dashboard-dark", "/admin", "dark"],
+    ["orders-dark", "/admin/orders", "dark"],
+    ["analytics-dark", "/admin/analytics/store-performance", "dark"],
+    ["customers-dark", "/admin/customers", "dark"],
+    ["whatsapp-templates-dark", "/admin/whatsapp/templates", "dark"],
+  ]
+
+  for (const [name, path, mode] of shots) {
+    if (mode === "dark") {
+      await page.evaluate(() => localStorage.setItem("admin-theme", "dark"))
+    }
+    await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 25000 })
+    await page.waitForTimeout(1100)
     await page.screenshot({ path: `${OUT}/${name}.png` })
+    console.log("ok", name)
+    if (mode === "dark") {
+      await page.evaluate(() => localStorage.removeItem("admin-theme"))
+    }
   }
-  await page.evaluate(() => localStorage.setItem("appearance", "light"))
 
-  // mobile
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" })
-  await page.waitForTimeout(700)
-  await page.screenshot({ path: `${OUT}/dashboard-mobile.png` })
-  await page.goto(`${BASE}/admin/products`, { waitUntil: "domcontentloaded" })
-  await page.waitForTimeout(700)
-  await page.screenshot({ path: `${OUT}/products-mobile.png` })
-
-  // storefront sanity
-  await ctx.clearCookies()
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" })
-  await page.waitForTimeout(900)
-  await page.screenshot({ path: `${OUT}/storefront-home.png` })
-  await page.goto(`${BASE}/reviews`, { waitUntil: "domcontentloaded" })
-  await page.waitForTimeout(900)
-  await page.screenshot({ path: `${OUT}/storefront-reviews.png` })
+  // Mobile responsive
+  const mob = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  await mob.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" })
+  await mob.fill("#login-identifier", "qa.admin@example.com")
+  await mob.fill("#login-password", "QaScreenshot2026!")
+  await mob.click('button[type="submit"]')
+  await mob.waitForURL(/\/admin/, { timeout: 15000 })
+  for (const [name, path] of [["m-dashboard","/admin"],["m-orders","/admin/orders"],["m-products-create","/admin/products/create"],["m-customers","/admin/customers"]]) {
+    await mob.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 25000 })
+    await mob.waitForTimeout(1000)
+    await mob.screenshot({ path: `${OUT}/${name}.png` })
+    console.log("ok", name)
+  }
 
   await browser.close()
   console.log("final done")

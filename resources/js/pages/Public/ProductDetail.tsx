@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
@@ -145,6 +146,47 @@ export default function ProductDetail({
     return media
   }, [media, selectedVariant])
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
+  const [lightboxIndex, setLightboxIndex] = React.useState(-1)
+
+  const lightboxItems = React.useMemo(
+    () =>
+      variantMedia
+        .filter((item) => Boolean(item.url))
+        .map((item) => ({ src: item.url!, alt: `${title}, foto ${item.id}` })),
+    [variantMedia, title],
+  )
+
+  // Touch swipe untuk galeri utama (mobile): swipe = pindah foto, tap = buka preview
+  const touchStartX = React.useRef<number | null>(null)
+  const touchStartY = React.useRef<number | null>(null)
+  const didSwipe = React.useRef(false)
+
+  function onGalleryTouchStart(event: React.TouchEvent) {
+    const t = event.touches[0]
+    touchStartX.current = t.clientX
+    touchStartY.current = t.clientY
+    didSwipe.current = false
+  }
+
+  function onGalleryTouchMove(event: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return
+    const dx = event.touches[0].clientX - touchStartX.current
+    const dy = event.touches[0].clientY - touchStartY.current
+    // Horizontal swipe dominan
+    if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy)) {
+      didSwipe.current = true
+    }
+  }
+
+  function onGalleryTouchEnd(event: React.TouchEvent) {
+    if (touchStartX.current === null) return
+    const dx = event.changedTouches[0].clientX - touchStartX.current
+    touchStartX.current = null
+    touchStartY.current = null
+    if (Math.abs(dx) > 50) {
+      moveGallery(dx < 0 ? 1 : -1)
+    }
+  }
 
   React.useEffect(() => {
     setActiveMediaIndex(0)
@@ -284,15 +326,25 @@ export default function ProductDetail({
               <>
                 {/* Tombol berada di luar frame pada desktop dan muncul saat galeri di-hover/focus. */}
                 <div className="relative mx-auto aspect-square w-full max-w-[min(100%,42rem)] overflow-hidden bg-white">
-                  <ResponsiveImage
-                    key={activeMedia.id}
-                    src={activeMedia.url}
-                    alt={`${title}, foto ${activeMediaIndex + 1}`}
-                    loading="eager"
-                    fetchPriority="high"
-                    wrapperClassName="size-full bg-white"
-                    className="!object-contain"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => { if (!didSwipe.current) setLightboxIndex(activeMediaIndex) }}
+                    onTouchStart={onGalleryTouchStart}
+                    onTouchMove={onGalleryTouchMove}
+                    onTouchEnd={onGalleryTouchEnd}
+                    className="group/zoom relative block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label={`Perbesar foto produk ${activeMediaIndex + 1}`}
+                  >
+                    <ResponsiveImage
+                      key={activeMedia.id}
+                      src={activeMedia.url}
+                      alt={`${title}, foto ${activeMediaIndex + 1}`}
+                      loading="eager"
+                      fetchPriority="high"
+                      wrapperClassName="size-full bg-white"
+                      className="!object-contain"
+                    />
+                  </button>
 
                   {variantMedia.length > 1 ? (
                     <>
@@ -360,6 +412,15 @@ export default function ProductDetail({
               />
             )}
           </div>
+
+          {lightboxItems.length ? (
+            <GalleryLightbox
+              items={lightboxItems}
+              index={lightboxIndex}
+              onOpenChange={(open) => { if (!open) setLightboxIndex(-1) }}
+              onIndexChange={setLightboxIndex}
+            />
+          ) : null}
 
           <div className="min-w-0 lg:sticky lg:top-28">
             {/* Header: subtitle brand + pill rating */}

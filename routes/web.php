@@ -107,6 +107,7 @@ Route::post('/cart/update', [CartController::class, 'update'])->name('cart.updat
 Route::post('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
 
 Route::get('/reviews', [PageController::class, 'reviews'])->name('reviews');
+Route::get('/ulasan', [PageController::class, 'ulasan'])->name('ulasan');
 Route::get('/hasil-pemasangan', [PageController::class, 'installations'])->name('installation.index');
 Route::get('/hasil-pemasangan/{category}/{model}', [PageController::class, 'installationModel'])
     ->where([

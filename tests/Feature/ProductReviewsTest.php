@@ -140,7 +140,7 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('marketplaceTestimonials', 2)
-                ->has('websiteTestimonials', 0)
+                ->missing('websiteTestimonials')
                 ->has('pageMeta')
                 ->where('pageMeta.heading', 'Apa kata pelanggan kami')
                 ->missing('installationMeta')
@@ -229,7 +229,7 @@ class ProductReviewsTest extends TestCase
             );
     }
 
-    public function test_reviews_page_always_splits_marketplace_and_website(): void
+    public function test_reviews_page_returns_marketplace_screenshots_only(): void
     {
         $page = CmsPage::create([
             'slug' => 'testimoni',
@@ -267,17 +267,16 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 2,
         ]);
 
-        // Query ?source= diabaikan — selalu dua section terpisah.
+        // /reviews kini murni galeri screenshot marketplace/WA; query ?source= diabaikan.
         $this->get(route('reviews', ['source' => 'marketplace']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('marketplaceTestimonials', 2)
-                ->has('websiteTestimonials', 1)
-                ->where('activeSource', 'all')
-                ->where('stats.total', 3)
-                ->where('stats.marketplace_total', 2)
-                ->where('stats.website_total', 1)
+                ->missing('websiteTestimonials')
+                ->missing('stats')
+                ->has('pageMeta')
+                ->has('installationsHref')
             );
 
         $this->get(route('reviews'))
@@ -285,9 +284,69 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('marketplaceTestimonials', 2)
+                ->missing('websiteTestimonials')
+            );
+    }
+
+    public function test_ulasan_page_returns_website_reviews_only(): void
+    {
+        $page = CmsPage::create([
+            'slug' => 'testimoni',
+            'title' => 'Testimoni',
+            'content' => [],
+            'published' => true,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Shopee User',
+            'message' => 'Dari Shopee',
+            'image_url' => 'https://cdn.example.com/shopee.jpg',
+            'source' => 'shopee',
+            'published' => true,
+            'sort_order' => 0,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Web User',
+            'message' => 'Dari website',
+            'rating' => 5,
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->get(route('ulasan'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Ulasan')
                 ->has('websiteTestimonials', 1)
                 ->where('websiteTestimonials.0.customer_name', 'Web User')
-                ->where('activeSource', 'all')
+                ->where('stats.website_total', 1)
+                ->where('stats.average_rating', 5)
+                ->where('activeSort', 'newest')
+                ->has('installationsHref')
+            );
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Web Draft',
+            'message' => 'Belum terbit',
+            'rating' => 1,
+            'source' => 'website',
+            'published' => false,
+            'sort_order' => 2,
+        ]);
+
+        // Ulasan draft tidak ikut terhitung di stats maupun daftar.
+        $this->get(route('ulasan', ['sort' => 'rating_asc']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Ulasan')
+                ->has('websiteTestimonials', 1)
+                ->where('stats.website_total', 1)
+                ->where('activeSort', 'rating_asc')
             );
     }
 

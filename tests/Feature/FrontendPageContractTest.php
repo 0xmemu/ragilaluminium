@@ -27,6 +27,7 @@ class FrontendPageContractTest extends TestCase
             ['catalog.index', 'Public/ModelProduk'],
             ['catalog.category', 'Public/Catalog', ['category' => 'windows']],
             ['reviews', 'Public/Reviews'],
+            ['ulasan', 'Public/Ulasan'],
             ['cart.index', 'Public/Cart'],
             ['checkout.index', 'Public/Checkout'],
             ['order.status', 'Public/OrderStatus'],

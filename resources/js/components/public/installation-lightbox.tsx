@@ -71,7 +71,8 @@ export function InstallationLightbox({
           ) : null}
           {active ? (
             <div className={cn(
-              "relative z-10 max-w-full motion-safe:animate-[installation-swipe-hint_2.8s_ease-in-out_2]",
+              "relative z-10 flex max-h-[min(72dvh,52rem)] flex-col items-center",
+              "motion-safe:animate-[installation-swipe-hint_2.8s_ease-in-out_2]",
               total < 2 && "motion-safe:animate-none",
             )}>
               {active.is_video ? (
@@ -80,19 +81,23 @@ export function InstallationLightbox({
                   src={active.url}
                   controls
                   playsInline
-                  className="max-h-[min(72dvh,52rem)] max-w-full bg-black object-contain"
+                  className="max-h-[min(72dvh,52rem)] max-w-full bg-black"
                 />
               ) : (
                 <img
                   key={active.id}
                   src={active.url}
                   alt={active.caption || `${productName}, foto ${index + 1}`}
-                  className="max-h-[min(72dvh,52rem)] max-w-full object-contain"
+                  className="max-h-[min(72dvh,52rem)] max-w-full h-auto w-auto"
                 />
               )}
+              {active?.caption ? (
+                <p className="w-full bg-black/55 px-3 py-2 text-center text-sm leading-5 text-white/90">
+                  {active.caption}
+                </p>
+              ) : null}
             </div>
           ) : null}
-          {active?.caption ? <p className="absolute bottom-5 left-1/2 w-[min(36rem,calc(100%-4rem))] -translate-x-1/2 rounded-md bg-black/55 px-3 py-2 text-center text-sm leading-5 text-white/90">{active.caption}</p> : null}
           {total > 1 ? <><button type="button" onClick={() => go(-1)} className="absolute left-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white" aria-label="Media sebelumnya"><Icon name="caret-left" className="size-5" weight="bold" aria-hidden /></button><button type="button" onClick={() => go(1)} className="absolute right-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white" aria-label="Media berikutnya"><Icon name="caret-right" className="size-5" weight="bold" aria-hidden /></button></> : null}
         </div>
       </DialogContent>

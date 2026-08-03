@@ -44,7 +44,7 @@ class WorkflowAuditP2Test extends TestCase
     {
         $nav = config('admin-sitemap.navigation');
         $coreRoutes = collect($nav['core']['items'])->pluck('route')->all();
-        $komunikasiRoutes = collect($nav['komunikasi']['items'])->pluck('route')->all();
+        $komunikasiRoutes = collect($nav['pelanggan_komunikasi']['items'])->pluck('route')->all();
         $monitoringRoutes = collect($nav['monitoring']['items'])->pluck('route')->all();
 
         $this->assertContains('admin.payments.index', $coreRoutes);

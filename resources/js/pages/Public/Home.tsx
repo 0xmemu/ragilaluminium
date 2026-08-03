@@ -372,7 +372,7 @@ function TestimonialCarousel({
 }) {
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
-  const anchor = variant === "screenshot" ? "apa-kata-pelanggan" : "ulasan-website"
+  const targetHref = variant === "screenshot" ? routeUrl("reviews") : routeUrl("ulasan")
 
   return (
     <div className="relative min-w-0 px-1">
@@ -383,7 +383,7 @@ function TestimonialCarousel({
               testimonial={testimonial}
               compact
               variant={variant}
-              href={testimonial.product?.href ?? `${routeUrl("reviews")}#${anchor}`}
+              href={testimonial.product?.href ?? targetHref}
             />
           </div>
         ))}
@@ -1015,7 +1015,7 @@ function HasilPemasangan({
 }
 
 function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = `${routeUrl("reviews")}#apa-kata-pelanggan`
+  const seeMoreHref = routeUrl("reviews")
 
   return (
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
@@ -1046,7 +1046,7 @@ function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
 }
 
 function UlasanPelangganWebsite({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = `${routeUrl("reviews")}#ulasan-website`
+  const seeMoreHref = routeUrl("ulasan")
 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted section-space">

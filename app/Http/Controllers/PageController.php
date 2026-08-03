@@ -118,16 +118,38 @@ class PageController extends Controller
         ]);
     }
 
+    /** Galeri "Apa kata pelanggan kami" — grid screenshot tanpa sort/filter. */
     public function reviews(Request $request): Response
+    {
+        $published = CmsTestimonial::query()->published();
+
+        $marketplaceTestimonials = $published
+            ->marketplace()
+            ->withScreenshot()
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->limit(60)
+            ->get()
+            ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+            ->values()
+            ->all();
+
+        return Inertia::render('Public/Reviews', [
+            'pageMeta' => TestimonialPageSettings::forStorefront(),
+            'marketplaceTestimonials' => $marketplaceTestimonials,
+            'installationsHref' => route('installation.index'),
+        ]);
+    }
+
+    /** Halaman ulasan pelanggan di website — terpisah dari galeri screenshot. */
+    public function ulasan(Request $request): Response
     {
         $sort = (string) $request->input('sort', 'newest');
 
         $published = CmsTestimonial::query()->published();
 
-        $totalCount = (clone $published)->count();
-        $marketplaceTotal = (clone $published)->marketplace()->withScreenshot()->count();
         $websiteTotal = (clone $published)->website()->count();
-        $avgRating = (clone $published)->whereNotNull('rating')->avg('rating');
+        $avgRating = (clone $published)->website()->whereNotNull('rating')->avg('rating');
 
         $applySort = function ($query) use ($sort) {
             return $query
@@ -140,40 +162,22 @@ class PageController extends Controller
                 );
         };
 
-        $mapRows = fn ($collection) => $collection
+        $websiteTestimonials = $applySort(
+            (clone $published)->website()->with('product:id,parent_sku,name,short_name')
+        )
+            ->limit(48)
+            ->get()
             ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
             ->values()
             ->all();
 
-        // Marketplace selalu urutan admin (sort_order); sort query hanya untuk ulasan website.
-        $marketplaceTestimonials = $mapRows(
-            (clone $published)->marketplace()->withScreenshot()
-                ->with('product:id,parent_sku,name,short_name')
-                ->orderBy('sort_order')
-                ->orderByDesc('id')
-                ->limit(48)
-                ->get()
-        );
-        $websiteTestimonials = $mapRows(
-            $applySort((clone $published)->website()->with('product:id,parent_sku,name,short_name'))
-                ->limit(48)
-                ->get()
-        );
-
-        return Inertia::render('Public/Reviews', [
-            'pageMeta' => TestimonialPageSettings::forStorefront(),
-            'marketplaceTestimonials' => $marketplaceTestimonials,
+        return Inertia::render('Public/Ulasan', [
             'websiteTestimonials' => $websiteTestimonials,
-            'testimonials' => array_values(array_merge($marketplaceTestimonials, $websiteTestimonials)),
-            'pagination' => null,
             'stats' => [
-                'total' => $totalCount,
-                'marketplace_total' => $marketplaceTotal,
                 'website_total' => $websiteTotal,
                 'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
             ],
             'activeSort' => $sort,
-            'activeSource' => 'all',
             'installationsHref' => route('installation.index'),
         ]);
     }
