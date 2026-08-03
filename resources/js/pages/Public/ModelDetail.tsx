@@ -317,7 +317,7 @@ export default function ModelDetail({
 
               {highlights.length ? (
                 <ul
-                  className="mt-6 grid grid-cols-3 gap-2.5 sm:mt-8 sm:gap-3"
+                  className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:grid-cols-3 sm:gap-3"
                   aria-label="Keunggulan model"
                 >
                   {highlights.map((item) => (

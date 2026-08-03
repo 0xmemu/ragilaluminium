@@ -307,7 +307,7 @@ export default function Dashboard({
               </div>
               <Sparkline values={omzet.sparkline} />
             </div>
-            <div className="mt-auto grid grid-cols-2 divide-x divide-border border-t border-border">
+            <div className="mt-auto grid sm:grid-cols-2 divide-x divide-border border-t border-border">
               <div className="px-5 py-4">
                 <MetricTile
                   label="Jumlah order"
@@ -349,7 +349,7 @@ export default function Dashboard({
                 </Link>
               </div>
             </div>
-            <div className="mt-5 grid flex-1 grid-cols-2 gap-x-4 gap-y-5">
+            <div className="mt-5 grid flex-1 sm:grid-cols-2 gap-x-4 gap-y-5">
               {performa.metrics.map((metric) => (
                 <MetricTile
                   key={metric.key}

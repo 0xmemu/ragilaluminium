@@ -3,8 +3,8 @@ import { Lightning } from "@phosphor-icons/react"
 import * as React from "react"
 
 import { ProductCard } from "@/components/public/product-card"
-import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
+import { useDragScroll } from "@/hooks/use-drag-scroll"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import {
@@ -632,7 +632,7 @@ export function FlashSaleListingToolbar({
                 />
               </Field>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button
                 type="button"
                 variant="secondary"
@@ -734,7 +734,87 @@ export function FlashSaleListingToolbar({
   )
 }
 
-/** Compact Flash Sale band embedded on Promo page. */
+
+/** Carousel styles for flash sale strip. */
+const flashCarouselTrackClass =
+  "scrollbar-x flex min-w-0 items-stretch snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto]"
+
+const flashCarouselCardClass =
+  "w-[70vw] shrink-0 snap-start sm:w-[calc((100%-0.75rem)/2.5)] md:w-[calc((100%-0.75rem)/3.5)] lg:w-[calc((100%-0.75rem)/4)]"
+
+const flashCarouselNavBtnClass =
+  "absolute top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-11"
+
+function FlashCarouselNavButton({
+  trackId,
+  side,
+  label,
+  enabled,
+  onClick,
+}: {
+  trackId: string
+  side: "left" | "right"
+  label: string
+  enabled: boolean
+  onClick: () => void
+}) {
+  if (!enabled) return null
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-controls={trackId}
+      className={cn(flashCarouselNavBtnClass, side === "left" ? "md:left-1" : "md:right-1")}
+    >
+      <Icon name={side === "left" ? "caret-left" : "caret-right"} className="size-4 md:size-5" weight="bold" aria-hidden="true" />
+    </button>
+  )
+}
+
+function useFlashCarousel(itemCount: number) {
+  const trackRef = React.useRef<HTMLDivElement>(null)
+  const trackId = React.useId()
+  const [canGoBack, setCanGoBack] = React.useState(false)
+  const [canGoNext, setCanGoNext] = React.useState(itemCount > 3)
+
+  useDragScroll(trackRef)
+
+  const updateControls = React.useCallback(() => {
+    const track = trackRef.current
+    if (!track) return
+    const overflow = track.scrollWidth > track.clientWidth + 2
+    setCanGoBack(overflow && track.scrollLeft > 2)
+    setCanGoNext(overflow && track.scrollLeft + track.clientWidth < track.scrollWidth - 2)
+  }, [])
+
+  React.useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    const frame = window.requestAnimationFrame(() => updateControls())
+    track.addEventListener("scroll", updateControls, { passive: true })
+    window.addEventListener("resize", updateControls)
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => updateControls()) : null
+    resizeObserver?.observe(track)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      track.removeEventListener("scroll", updateControls)
+      window.removeEventListener("resize", updateControls)
+      resizeObserver?.disconnect()
+    }
+  }, [itemCount, updateControls])
+
+  function move(direction: -1 | 1) {
+    const track = trackRef.current
+    if (!track) return
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: reduceMotion ? "auto" : "smooth" })
+  }
+
+  return { trackRef, trackId, canGoBack, canGoNext, move }
+}
+
+/** Compact Flash Sale band ??? horizontal carousel. */
 export function PromoFlashSaleSection({
   products,
   period,
@@ -743,8 +823,10 @@ export function PromoFlashSaleSection({
   period?: FlashSalePeriod | null
 }) {
   const resolved = useFlashSalePeriod(period)
+  const items = products.slice(0, 10)
+  const { trackRef, trackId, canGoBack, canGoNext, move } = useFlashCarousel(items.length)
 
-  if (!resolved?.live || !products.length) {
+  if (!resolved?.live || !items.length) {
     return null
   }
 
@@ -755,17 +837,32 @@ export function PromoFlashSaleSection({
       <div className="container-page py-6 lg:py-8">
         <FlashSaleSectionIntro period={resolved} showSeeAll />
 
-        <div className="mt-5">
-          <ProductCardGrid>
-            {products.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                priority={index < 4}
-                emphasis="flash"
-              />
+        <div className="relative mt-5 px-1">
+          <div ref={trackRef} id={trackId} className={flashCarouselTrackClass}>
+            {items.map((product, index) => (
+              <div key={product.id} className={flashCarouselCardClass}>
+                <ProductCard
+                  product={product}
+                  priority={index < 4}
+                  emphasis="flash"
+                />
+              </div>
             ))}
-          </ProductCardGrid>
+          </div>
+          <FlashCarouselNavButton
+            trackId={trackId}
+            side="left"
+            label="Produk sebelumnya"
+            enabled={canGoBack}
+            onClick={() => move(-1)}
+          />
+          <FlashCarouselNavButton
+            trackId={trackId}
+            side="right"
+            label="Produk berikutnya"
+            enabled={canGoNext}
+            onClick={() => move(1)}
+          />
         </div>
       </div>
     </section>

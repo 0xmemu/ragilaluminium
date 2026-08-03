@@ -686,7 +686,7 @@ export default function ProductDetail({
                     {attributes.filter(a => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)$/i.test(a.name)).map((attribute, index) => (
                       <div
                         key={`${attribute.name}-${index}`}
-                        className="grid min-w-0 grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)] gap-4 border-b border-border/60 py-3 text-sm"
+                        className="grid min-w-0 grid-cols-1 gap-3 border-b border-border/60 py-3 text-sm sm:grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)] sm:gap-4"
                       >
                         <dt className="min-w-0 break-words font-bold text-foreground">{attribute.name}</dt>
                         <dd className="min-w-0 break-words leading-6 text-foreground">{attribute.value}</dd>

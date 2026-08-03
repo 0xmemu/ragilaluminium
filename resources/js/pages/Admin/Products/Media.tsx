@@ -397,7 +397,7 @@ export default function ProductMediaPage({
                 ))}
               </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               <Field id="media-position" label="Posisi" required error={form.errors.position}>
                 <Input
                   type="number"

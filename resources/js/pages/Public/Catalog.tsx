@@ -76,7 +76,7 @@ function FilterSheetFooter({
   onApply: () => void
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
       <Button variant="secondary" className="min-h-12" onClick={onReset}>
         Reset
       </Button>
@@ -537,7 +537,7 @@ export default function Catalog({
 
       {isFlash ? <FlashSaleListingShell>{listingBody}</FlashSaleListingShell> : listingBody}
 
-      {!isFlash && !isPromo ? (
+      {!isFlash && !isPromo && activeSort !== "popular" ? (
         <PalingBanyakDipesanSection products={popularProducts} />
       ) : null}
     </PublicLayout>

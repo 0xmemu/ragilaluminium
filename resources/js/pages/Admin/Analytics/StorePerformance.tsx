@@ -320,7 +320,7 @@ export default function StorePerformance({
         ))}
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+      <div className="mt-6 grid gap-6 xl:sm:grid-cols-2">
         <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           <header className="border-b border-border px-4 py-3">
             <h3 className="text-base font-bold">Penjualan produk</h3>
@@ -362,7 +362,7 @@ export default function StorePerformance({
                       <p className="mt-1 font-semibold">{product.name}</p>
                       <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
                     </div>
-                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                    <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                       <div>
                         <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Unit</dt>
                         <dd className="mt-1 text-sm tabular-nums">{formatNumber(product.units)}</dd>
@@ -434,7 +434,7 @@ export default function StorePerformance({
                         <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
                       ) : null}
                     </div>
-                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                    <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                       <div>
                         <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Order</dt>
                         <dd className="mt-1 text-sm tabular-nums">{formatNumber(customer.order_count)}</dd>

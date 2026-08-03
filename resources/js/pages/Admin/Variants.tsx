@@ -151,7 +151,7 @@ export default function Variants({
           </p>
           <form onSubmit={submit} className="mt-5 space-y-4">
             <FormErrorSummary errors={form.errors} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               <Field id="variant-name-1" label="Nama opsi 1" error={form.errors.variation_1_name}>
                 <Input value={form.data.variation_1_name} onChange={(event) => form.setData("variation_1_name", event.target.value)} />
               </Field>
@@ -165,7 +165,7 @@ export default function Variants({
                 <Input value={form.data.variation_2_option} onChange={(event) => form.setData("variation_2_option", event.target.value)} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               <Field id="variant-price" label="Harga" required error={form.errors.price}>
                 <Input type="number" min="0" value={form.data.price} onChange={(event) => form.setData("price", event.target.value)} />
               </Field>
@@ -173,7 +173,7 @@ export default function Variants({
                 <Input type="number" min="0" value={form.data.stock} onChange={(event) => form.setData("stock", event.target.value)} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               {[
                 ["weight_kg", "Berat (kg)"],
                 ["width_cm", "Lebar (cm)"],

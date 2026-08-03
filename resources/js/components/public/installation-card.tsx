@@ -84,7 +84,7 @@ export function InstallationCard({
             className={cn(
               "w-full min-w-0",
               level === "model"
-                ? "grid grid-cols-3 gap-1 border-t border-border/70 pt-1.5"
+                ? "grid grid-cols-2 gap-1 border-t border-border/70 pt-1.5 sm:grid-cols-3"
                 : "flex flex-wrap items-center justify-start gap-x-2 gap-y-0.5 text-left",
             )}
             aria-label="Ringkasan dokumentasi"

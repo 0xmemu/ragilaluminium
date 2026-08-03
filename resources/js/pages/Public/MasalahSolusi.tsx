@@ -107,7 +107,7 @@ function RichSolutionPanel({
         </p>
 
         {photos.length ? (
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {photos.map((photo) => (
               <ResponsiveImage
                 key={photo.src}

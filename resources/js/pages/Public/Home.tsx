@@ -4,13 +4,12 @@ import * as React from "react"
 import { ModelCard } from "@/components/public/model-card"
 import { InstallationCard } from "@/components/public/installation-card"
 import { ProductCard } from "@/components/public/product-card"
+import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import { Icon } from "@/components/shared/icon"
-import { SectionHeading } from "@/components/shared/section-heading"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
-import { useDragScroll } from "@/hooks/use-drag-scroll"
 import PublicLayout from "@/layouts/public-layout"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
@@ -38,8 +37,6 @@ interface HomeProps {
   featuredProducts: ProductCardData[]
   popularProducts: ProductCardData[]
   testimonials?: Testimonial[]
-  marketplaceTestimonials?: Testimonial[]
-  websiteTestimonials?: Testimonial[]
   installations?: InstallationItem[]
   installationMeta?: { title?: string; heading?: string; subtitle?: string } | null
   homepageLayout?: HomepageLayoutProps
@@ -47,66 +44,46 @@ interface HomeProps {
 
 function SectionTitle({
   title,
-  eyebrow,
+  subtitle,
   actionHref,
-  actionLabel = "Lihat selengkapnya",
-  tone = "default",
+  actionLabel = "Lihat semua",
 }: {
   title: string
-  eyebrow?: string
+  subtitle?: string
   actionHref?: string
   actionLabel?: string
-  tone?: "default" | "on-primary"
 }) {
-  const onPrimary = tone === "on-primary"
-
   return (
-    <SectionHeading
-      align="left"
-      size="default"
-      tone={tone}
-      className="mb-3 gap-1 sm:mb-4"
-      eyebrow={eyebrow}
-      title={title}
-      action={
-        actionHref ? (
-          <Link
-            href={actionHref}
-            className={cn(
-              "inline-flex h-7 shrink-0 items-center gap-1 self-end text-[11px] font-light transition sm:text-xs",
-              onPrimary
-                ? "text-white/90 hover:text-white"
-                : "text-foreground/80 hover:text-primary",
-            )}
-          >
-            {actionLabel}
-            <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
-          </Link>
-        ) : undefined
-      }
-    />
+    <div className="mb-6 flex items-end justify-between gap-4 md:mb-8">
+      <div className="min-w-0 text-left">
+        <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
+          {title}
+        </h2>
+        {subtitle ? (
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
+        ) : null}
+      </div>
+      {actionHref ? (
+        <Link
+          href={actionHref}
+          className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] transition hover:bg-[#1A1D1C]/5"
+        >
+          {actionLabel}
+        </Link>
+      ) : null}
+    </div>
   )
 }
 
-/** Desktop next/back — visible from md; mobile memakai slider horizontal. */
+/** Tombol next/back sama seperti banner promosi. */
 const carouselNavBtnClass =
-  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
-
-/** Touch: pan-x + pan-y agar swipe kartu & scroll halaman sama-sama jalan. Mouse = useDragScroll. */
-const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
-
-/** Mobile ≈ 2⅙ kartu di viewport; gap-2 (0.5rem) antar kartu. */
-const carouselCardClass =
-  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
+  "absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:size-12"
 
 function useHorizontalCarousel(itemCount: number) {
   const trackRef = React.useRef<HTMLDivElement>(null)
   const trackId = React.useId()
   const [canGoBack, setCanGoBack] = React.useState(false)
   const [canGoNext, setCanGoNext] = React.useState(itemCount > 4)
-
-  useDragScroll(trackRef)
 
   const updateControls = React.useCallback(() => {
     const track = trackRef.current
@@ -174,8 +151,9 @@ function CarouselNavButton({
       aria-controls={trackId}
       className={cn(
         carouselNavBtnClass,
-        // Inset di dalam track — jangan half-outside (overflow parent memotong tombol).
-        side === "left" ? "md:-left-5" : "md:-right-5",
+        side === "left"
+          ? "left-2 translate-x-0 md:left-0 md:-translate-x-1/2"
+          : "right-2 translate-x-0 md:right-0 md:translate-x-1/2",
       )}
     >
       <Icon
@@ -188,67 +166,25 @@ function CarouselNavButton({
   )
 }
 
-/** Trailing mobile CTA — ikon chevron + label "selengkapnya" di bawahnya. */
-function MobileSeeMoreSlide({
-  href,
-  label = "Lihat selengkapnya",
-  tone = "default",
-}: {
-  href: string
-  label?: string
-  tone?: "default" | "on-primary"
-  /** @deprecated slot selalu sempit; prop diabaikan agar call site lama aman */
-  wide?: boolean
-}) {
-  const onPrimary = tone === "on-primary"
-
-  return (
-    <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
-      <Link
-        href={href}
-        className={cn(
-          "inline-flex flex-col items-center justify-center gap-1 transition active:scale-95",
-          onPrimary ? "text-white hover:text-white/90" : "text-foreground hover:text-primary",
-        )}
-        aria-label={label}
-      >
-        <span
-          className={cn(
-            "inline-flex size-11 items-center justify-center rounded-full border bg-white shadow-sm transition sm:size-12",
-            onPrimary
-              ? "border-white/40 text-primary hover:border-white"
-              : "border-foreground/25 text-foreground hover:border-foreground/40",
-          )}
-        >
-          <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
-        </span>
-        <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
-          selengkapnya
-        </span>
-      </Link>
-    </div>
-  )
-}
-
-function ModelCardCarousel({
-  models,
-  seeMoreHref,
-}: {
-  models: ModelCardData[]
-  seeMoreHref: string
-}) {
+function ModelCardCarousel({ models }: { models: ModelCardData[] }) {
   const items = models.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
 
   return (
-    <div className="relative min-w-0 px-1">
-      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
+    <div className="relative -mx-1 overflow-visible px-1">
+      <div
+        ref={trackRef}
+        id={trackId}
+        className="scrollbar-none flex snap-x snap-mandatory gap-5 overflow-x-auto pb-1"
+      >
         {items.map((model) => (
-          <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
+          <div
+            key={`${model.category}-${model.model}`}
+            className="w-[calc((100%_-_1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%_-_2.5rem)/3)] md:w-[calc((100%_-_3.75rem)/4)] xl:w-[calc((100%_-_5rem)/5)]"
+          >
             <ModelCard model={model} />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -268,40 +204,25 @@ function ModelCardCarousel({
   )
 }
 
-function ProductCardCarousel({
-  products,
-  seeMoreHref,
-  tone = "default",
-}: {
-  products: ProductCardData[]
-  seeMoreHref: string
-  tone?: "default" | "on-primary"
-}) {
+function ProductCardCarousel({ products }: { products: ProductCardData[] }) {
   const items = products.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
-  const onPrimary = tone === "on-primary"
 
   return (
-    <div className={cn("relative min-w-0", onPrimary ? "" : "px-1")}>
+    <div className="relative -mx-1 overflow-visible px-1">
       <div
         ref={trackRef}
         id={trackId}
-        className={cn(
-          carouselTrackClass,
-          onPrimary && "items-stretch pb-1 md:pb-1",
-        )}
+        className="scrollbar-none flex snap-x snap-mandatory gap-5 overflow-x-auto pb-1"
       >
         {items.map((product, index) => (
-          <div key={product.id} className={cn(carouselCardClass, onPrimary && "flex")}>
-            <ProductCard
-              product={product}
-              priority={index < 4}
-              titleStyle="model"
-              className={onPrimary ? "w-full" : undefined}
-            />
+          <div
+            key={product.id}
+            className="w-[calc((100%_-_1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%_-_2.5rem)/3)] md:w-[calc((100%_-_3.75rem)/4)] xl:w-[calc((100%_-_5rem)/5)]"
+          >
+            <ProductCard product={product} priority={index < 4} />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} tone={tone} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -321,25 +242,25 @@ function ProductCardCarousel({
   )
 }
 
-function InstallationCarousel({
-  items,
-  seeMoreHref,
-}: {
-  items: InstallationItem[]
-  seeMoreHref: string
-}) {
+function InstallationCarousel({ items }: { items: InstallationItem[] }) {
   const slides = items.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(slides.length)
 
   return (
-    <div className="relative min-w-0 px-1">
-      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-start")}>
+    <div className="relative -mx-1 overflow-visible px-1">
+      <div
+        ref={trackRef}
+        id={trackId}
+        className="scrollbar-none flex snap-x snap-mandatory gap-5 overflow-x-auto pb-1"
+      >
         {slides.map((item) => (
-          <div key={item.id} className={carouselCardClass}>
-            <InstallationCard item={item} level="model" />
+          <div
+            key={item.id}
+            className="w-[calc((100%_-_1.25rem)/2)] shrink-0 snap-start sm:w-[calc((100%_-_2.5rem)/3)] md:w-[calc((100%_-_3.75rem)/4)] xl:w-[calc((100%_-_5rem)/5)]"
+          >
+            <InstallationCard item={item} />
           </div>
         ))}
-        {slides.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
@@ -359,47 +280,41 @@ function InstallationCarousel({
   )
 }
 
-function TestimonialCarousel({
-  testimonials,
-  seeMoreHref,
-  variant = "review",
-  navLabel = "ulasan",
-}: {
-  testimonials: Testimonial[]
-  seeMoreHref: string
-  variant?: "review" | "screenshot"
-  navLabel?: string
-}) {
+function TestimonialCarousel({ testimonials }: { testimonials: Testimonial[] }) {
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
-  const targetHref = variant === "screenshot" ? routeUrl("reviews") : routeUrl("ulasan")
 
   return (
-    <div className="relative min-w-0 px-1">
-      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-stretch")}>
+    <div className="relative -mx-1 overflow-visible px-1">
+      <div
+        ref={trackRef}
+        id={trackId}
+        className="scrollbar-none flex snap-x snap-mandatory items-stretch gap-5 overflow-x-auto pb-1"
+      >
         {items.map((testimonial) => (
-          <div key={testimonial.id} className={carouselCardClass}>
+          <div
+            key={testimonial.id}
+            className="w-[88%] shrink-0 snap-start sm:w-[calc((100%_-_1.25rem)/2)] lg:w-[calc((100%_-_2.5rem)/3)]"
+          >
             <TestimonialCard
               testimonial={testimonial}
               compact
-              variant={variant}
-              href={testimonial.product?.href ?? targetHref}
+              href={testimonial.product?.href ?? `${routeUrl("reviews")}#testimoni`}
             />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
       <CarouselNavButton
         trackId={trackId}
         side="left"
-        label={`Lihat ${navLabel} sebelumnya`}
+        label="Lihat ulasan sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
       />
       <CarouselNavButton
         trackId={trackId}
         side="right"
-        label={`Lihat ${navLabel} berikutnya`}
+        label="Lihat ulasan berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
       />
@@ -430,28 +345,28 @@ const PROMO_CARD_VARIANTS = [
     headline: "text-white drop-shadow-[0_1px_2px_rgba(10,0,0,0.25)]",
     chip: "bg-white text-primary",
     subheadline: "text-white/90",
-    cta: "bg-black/60 text-white hover:bg-black/70",
+    cta: "bg-white text-[#1A1D1C] hover:bg-white/90",
     disclaimer: "text-white/70",
   },
   {
-    card: "bg-foreground",
+    card: "bg-[#1A1D1C]",
     eyebrow: "text-white/85",
     eyebrowAccent: "text-white",
     headline: "text-white",
     chip: "bg-primary text-white",
     subheadline: "text-white/85",
-    cta: "bg-black/60 text-white hover:bg-black/70",
+    cta: "bg-white text-[#1A1D1C] hover:bg-white/90",
     disclaimer: "text-white/60",
   },
   {
-    card: "bg-border",
-    eyebrow: "text-foreground/85",
+    card: "bg-[#DDE2E0]",
+    eyebrow: "text-[#1A1D1C]/85",
     eyebrowAccent: "text-primary",
-    headline: "text-foreground",
+    headline: "text-[#1A1D1C]",
     chip: "bg-primary text-white",
-    subheadline: "text-foreground/80",
-    cta: "bg-black/60 text-white hover:bg-black/70",
-    disclaimer: "text-foreground/60",
+    subheadline: "text-[#1A1D1C]/80",
+    cta: "bg-[#1A1D1C] text-white hover:bg-[#1A1D1C]/85",
+    disclaimer: "text-[#1A1D1C]/60",
   },
 ] as const
 
@@ -474,7 +389,7 @@ function HeroPromoCard({
   const v = PROMO_CARD_VARIANTS[Math.abs(variantIndex) % PROMO_CARD_VARIANTS.length]
 
   return (
-    <div className="relative h-full w-full bg-muted">
+    <div className="relative h-full w-full bg-[#e8e8e8]">
       <ResponsiveImage
         src={slide.image}
         alt={slide.image_alt ?? slide.headline}
@@ -486,14 +401,11 @@ function HeroPromoCard({
       <div className="absolute inset-0 flex items-center">
         <div
           className={cn(
-            // Mobile: padding dalam lebar (jarak teks↔tepi kartu); sm+: tinggi 72% (DESIGN-SYSTEM).
-            "ml-4 flex aspect-[3/4] h-auto w-[clamp(12.5rem,58%,20rem)] max-h-[85%] flex-col justify-start overflow-hidden rounded-[clamp(0.625rem,1.2vw,0.875rem)] px-[clamp(0.875rem,2.5vw,2.75rem)] py-[clamp(1rem,3.5vw,2.25rem)] shadow-[0_10px_30px_rgba(10,0,0,0.25)]",
-            "sm:ml-8 sm:h-[clamp(60%,72%,78%)] sm:w-auto sm:max-h-none sm:max-w-none sm:overflow-visible sm:px-[clamp(1.25rem,3vw,2.75rem)] sm:py-[clamp(1.5rem,4vw,2.25rem)]",
-            "md:ml-10 md:px-10 lg:ml-14 lg:px-11",
+            "ml-4 flex aspect-[3/4] h-[72%] w-auto flex-col justify-start rounded-[14px] shadow-[0_10px_30px_rgba(10,0,0,0.25)] px-5 py-6 sm:ml-8 sm:px-7 sm:py-8 md:ml-10 md:px-9 lg:ml-14",
             v.card,
           )}
         >
-          <p className={cn("font-display text-[clamp(0.72rem,1.8vw,1.25rem)] font-medium tracking-[-0.04em] sm:mt-4 sm:text-[clamp(1rem,1.4vw,1.25rem)]", v.eyebrow)}>
+          <p className={cn("mt-3 font-display text-base font-medium tracking-[-0.04em] sm:mt-5 sm:text-lg md:text-xl", v.eyebrow)}>
             {eyebrow.lead}
             {eyebrow.accentWord ? (
               <>
@@ -502,29 +414,29 @@ function HeroPromoCard({
               </>
             ) : null}
           </p>
-          <p className={cn("mt-1 whitespace-pre-line font-display text-[clamp(1.2rem,4.2vw,3rem)] font-extrabold leading-[1.05] tracking-[-0.03em] sm:mt-1.5 sm:text-[clamp(1.75rem,4vw,3rem)] md:text-[clamp(2.25rem,3.4vw,3.75rem)]", v.headline)}>
+          <p className={cn("mt-1 whitespace-pre-line font-display text-2xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-4xl md:text-5xl", v.headline)}>
             {headlineLines.length ? headlineLines.join("\n") : slide.headline}
           </p>
           {accent ? (
-            <p className={cn("mt-2 inline-flex self-start rounded-full px-2.5 py-0.5 font-display text-[clamp(1rem,3vw,1.875rem)] font-extrabold tracking-tight sm:mt-2.5 sm:px-3 sm:text-[clamp(1.5rem,2.8vw,1.875rem)]", v.chip)}>
+            <p className={cn("mt-2 inline-flex self-start rounded-full px-3 py-0.5 font-display text-2xl font-extrabold tracking-tight sm:text-3xl", v.chip)}>
               {accent}
             </p>
           ) : null}
           {slide.subheadline ? (
-            <p className={cn("mt-2 text-[clamp(0.68rem,1.4vw,1.125rem)] font-normal leading-snug sm:mt-3", v.subheadline)}>
+            <p className={cn("mt-3 text-sm font-normal leading-snug sm:text-base md:text-lg", v.subheadline)}>
               {slide.subheadline}
             </p>
           ) : null}
           <Link
             href={slide.href}
             className={cn(
-              "mt-auto inline-flex h-[clamp(2rem,4vw,2.5rem)] max-w-full shrink-0 items-center justify-center self-start whitespace-nowrap rounded-full px-[clamp(0.75rem,1.8vw,1.5rem)] text-[clamp(0.68rem,1.2vw,0.875rem)] font-bold transition",
+              "mt-auto inline-flex h-10 items-center justify-center self-start rounded-full px-6 text-sm font-bold transition",
               v.cta,
             )}
           >
             Belanja sekarang
           </Link>
-          <p className={cn("mt-2 truncate text-[clamp(0.55rem,0.9vw,0.75rem)] font-light sm:mt-3", v.disclaimer)}>
+          <p className={cn("mt-3 text-[10px] font-light sm:text-xs", v.disclaimer)}>
             {slide.disclaimer ?? "*Untuk berbagai produk pilihan"}
           </p>
         </div>
@@ -562,14 +474,8 @@ function HeroSlideContent({
         wrapperClassName="absolute inset-0"
         className="object-cover object-center"
       />
-      {/* Mobile: full-bleed dark scrim so white headline stays readable on bright photos. */}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/85 via-foreground/50 to-foreground/25 md:hidden"
-        aria-hidden="true"
-      />
-      {/* Desktop: left-edge scrim only — photo remains the dominant plane. */}
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 hidden w-[52%] max-w-[520px] bg-gradient-to-r from-foreground/85 to-transparent md:block"
+        className="pointer-events-none absolute inset-y-0 left-0 w-[52%] max-w-[520px] bg-gradient-to-r from-[rgba(91,91,91,0.84)] to-[rgba(153,153,153,0.15)]"
         aria-hidden="true"
       />
       <div className="absolute inset-0 flex items-center">
@@ -636,17 +542,9 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const total = slides.length
   const visibleIndex = total ? Math.min(activeIndex, total - 1) : 0
-  const surfaceRef = React.useRef<HTMLDivElement>(null)
-  const dragRef = React.useRef<{
-    pointerId: number | null
-    startX: number
-    dragged: boolean
-  }>({ pointerId: null, startX: 0, dragged: false })
 
   React.useEffect(() => {
     if (total < 2) return
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
-    if (media.matches) return
     const id = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % total)
     }, 6000)
@@ -657,134 +555,18 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
     setActiveIndex((index + total) % total)
   }
 
-  // Swipe from middle of promo card / CTA (pointer when available, else touch).
-  React.useEffect(() => {
-    const el = surfaceRef.current
-    if (!el || total < 2) return
-
-    const state = dragRef.current
-    let suppressClick = false
-    let startX = 0
-    let active = false
-    let dragged = false
-    const usePointer = typeof window.PointerEvent === "function"
-
-    const begin = (clientX: number, pointerId: number | null = null) => {
-      active = true
-      dragged = false
-      startX = clientX
-      state.pointerId = pointerId
-      state.startX = clientX
-      state.dragged = false
-    }
-
-    const markDrag = (clientX: number, event?: Event) => {
-      if (!active) return
-      if (Math.abs(clientX - startX) < 28) return
-      if (!dragged) {
-        dragged = true
-        state.dragged = true
-        suppressClick = true
-        if (state.pointerId !== null && event instanceof PointerEvent) {
-          try {
-            el.setPointerCapture(state.pointerId)
-          } catch {
-            // ignore
-          }
-        }
-      }
-      event?.preventDefault()
-    }
-
-    const finish = (clientX: number) => {
-      if (!active) return
-      const dx = clientX - startX
-      const wasDragged = dragged
-      active = false
-      dragged = false
-      state.pointerId = null
-      state.dragged = false
-      if (!wasDragged || Math.abs(dx) < 40) return
-      setActiveIndex((current) => {
-        const next = current + (dx < 0 ? 1 : -1)
-        return ((next % total) + total) % total
-      })
-    }
-
-    const onClickCapture = (event: MouseEvent) => {
-      if (!suppressClick) return
-      event.preventDefault()
-      event.stopPropagation()
-      suppressClick = false
-    }
-
-    el.addEventListener("click", onClickCapture, true)
-
-    if (usePointer) {
-      const onPointerDown = (event: PointerEvent) => {
-        if (event.pointerType === "mouse" && event.button !== 0) return
-        begin(event.clientX, event.pointerId)
-      }
-      const onPointerMove = (event: PointerEvent) => {
-        if (state.pointerId !== event.pointerId) return
-        markDrag(event.clientX, event)
-      }
-      const onPointerUp = (event: PointerEvent) => {
-        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
-        finish(event.clientX)
-      }
-      el.addEventListener("pointerdown", onPointerDown)
-      el.addEventListener("pointermove", onPointerMove, { passive: false })
-      el.addEventListener("pointerup", onPointerUp)
-      el.addEventListener("pointercancel", onPointerUp)
-      return () => {
-        el.removeEventListener("pointerdown", onPointerDown)
-        el.removeEventListener("pointermove", onPointerMove)
-        el.removeEventListener("pointerup", onPointerUp)
-        el.removeEventListener("pointercancel", onPointerUp)
-        el.removeEventListener("click", onClickCapture, true)
-      }
-    }
-
-    const onTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) return
-      begin(event.touches[0].clientX)
-    }
-    const onTouchMove = (event: TouchEvent) => {
-      if (!active || event.touches.length !== 1) return
-      markDrag(event.touches[0].clientX, event)
-    }
-    const onTouchEnd = (event: TouchEvent) => {
-      finish(event.changedTouches[0]?.clientX ?? startX)
-    }
-    el.addEventListener("touchstart", onTouchStart, { passive: true })
-    el.addEventListener("touchmove", onTouchMove, { passive: false })
-    el.addEventListener("touchend", onTouchEnd)
-    el.addEventListener("touchcancel", onTouchEnd)
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart)
-      el.removeEventListener("touchmove", onTouchMove)
-      el.removeEventListener("touchend", onTouchEnd)
-      el.removeEventListener("touchcancel", onTouchEnd)
-      el.removeEventListener("click", onClickCapture, true)
-    }
-  }, [total])
-
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
-      <div
-        ref={surfaceRef}
-        className="relative w-full overflow-hidden bg-foreground/5 [touch-action:pan-x_pan-y]"
-      >
+      <div className="relative w-full overflow-hidden bg-[rgba(10,0,0,0.05)]">
           {total ? (
             <>
               <div
                 className={cn(
-                  "flex aspect-[1024/426] min-h-[260px] w-full sm:min-h-[320px]",
+                  "flex aspect-[1024/426] min-h-[320px] w-full",
                   !reduceMotion && "transition-transform duration-500 ease-emphasized",
                 )}
                 style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
@@ -812,17 +594,17 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
                     type="button"
                     onClick={() => goTo(visibleIndex - 1)}
                     aria-label="Slide sebelumnya"
-                    className="absolute left-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
+                    className="absolute left-3 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:left-5 md:size-12"
                   >
-                    <Icon name="caret-left" className="size-6" weight="bold" aria-hidden="true" />
+                    <Icon name="caret-left" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => goTo(visibleIndex + 1)}
                     aria-label="Slide berikutnya"
-                    className="absolute right-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
+                    className="absolute right-3 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:right-5 md:size-12"
                   >
-                    <Icon name="caret-right" className="size-6" weight="bold" aria-hidden="true" />
+                    <Icon name="caret-right" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
                   </button>
 
                   <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
@@ -844,7 +626,7 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
               ) : null}
             </>
           ) : (
-            <div className="flex aspect-[1024/426] min-h-[260px] w-full items-center justify-center bg-muted sm:min-h-[320px]">
+            <div className="flex aspect-[1024/426] min-h-[320px] w-full items-center justify-center bg-muted">
               <EmptyState
                 className="min-h-28 border-0 bg-transparent p-4"
                 title="Promo segera hadir"
@@ -858,25 +640,23 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
 }
 
 function PilihModelProduk({ models }: { models: ModelCardData[] }) {
-  const seeMoreHref = routeUrl("catalog.index")
-
   return (
-    <section id="pilih-model-produk" className="scroll-mt-20 bg-surface section-space">
+    <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Temukan model Anda"
           title="Pilih model produk"
-          actionHref={seeMoreHref}
+          subtitle="Bandingkan model produk sebelum memilih ukuran."
+          actionHref={routeUrl("catalog.index")}
         />
         {models.length ? (
-          <ModelCardCarousel models={models} seeMoreHref={seeMoreHref} />
+          <ModelCardCarousel models={models} />
         ) : (
           <EmptyState
             title="Model belum tersedia"
-            description="Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih."
+            description="Model produk akan tampil setelah katalog aktif."
             action={
               <Button asChild>
-                <Link href={seeMoreHref}>Buka katalog</Link>
+                <Link href={routeUrl("catalog.index")}>Buka katalog</Link>
               </Button>
             }
           />
@@ -887,25 +667,27 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
 }
 
 function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
-  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular`
-
   return (
-    <section id="paling-banyak-dipesan" className="scroll-mt-20 section-space">
+    <section id="paling-banyak-dipesan" className="scroll-mt-20 border-t border-border section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Untuk inspirasi Anda"
           title="Paling banyak dipesan"
-          actionHref={seeMoreHref}
+          subtitle="Untuk inspirasi Anda."
+          actionHref={`${routeUrl("catalog.index")}?sort=popular`}
         />
         {products.length ? (
-          <ProductCardCarousel products={products} seeMoreHref={seeMoreHref} />
+          <ProductCardGrid>
+            {products.slice(0, 10).map((product, index) => (
+              <ProductCard key={product.id} product={product} priority={index < 4} />
+            ))}
+          </ProductCardGrid>
         ) : (
           <EmptyState
             title="Belum ada produk populer"
-            description="Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
+            description="Produk paling banyak dipesan akan muncul di sini."
             action={
               <Button asChild>
-                <Link href={routeUrl("catalog.category", { category: "windows" })}>Jelajahi produk</Link>
+                <Link href={routeUrl("catalog.windows")}>Jelajahi produk</Link>
               </Button>
             }
           />
@@ -916,23 +698,27 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
 }
 
 const DEFAULT_ORDER_STEPS = [
-  { step: "01", title: "Pilih model", icon: "package" as const },
-  { step: "02", title: "Pilih ukuran & varian", icon: "ruler" as const },
-  { step: "03", title: "Proses pesanan & konfirmasi WhatsApp", icon: "whatsapp" as const },
+  {
+    step: "01",
+    title: "Pilih model",
+    description: "Tentukan model jendela, pintu, atau bouven yang sesuai kebutuhan.",
+  },
+  {
+    step: "02",
+    title: "Pilih ukuran & varian",
+    description: "Atur ukuran, desain, dan opsi di halaman produk.",
+  },
+  {
+    step: "03",
+    title: "Checkout",
+    description: "Isi data pengiriman, pilih pembayaran, lalu buat pesanan.",
+  },
+  {
+    step: "04",
+    title: "Lacak pesanan",
+    description: "Pantau status tanpa login lewat menu Pesanan.",
+  },
 ]
-
-const ORDER_STEP_ICONS = ["package", "ruler", "whatsapp"] as const
-
-/** Shared step index chip — filled hitam (Kami bantu); dipakai juga di Cara pesan. */
-function orderStepIcon(title: string, index: number): string {
-  const t = title.toLowerCase()
-  if (t.includes("model")) return "package"
-  if (t.includes("ukuran") || t.includes("varian")) return "ruler"
-  if (t.includes("whatsapp") || t.includes("konfirmasi") || t.includes("proses")) return "whatsapp"
-  if (t.includes("checkout") || t.includes("bayar")) return "credit-card"
-  if (t.includes("lacak") || t.includes("pesanan")) return "clipboard-list"
-  return ORDER_STEP_ICONS[index % ORDER_STEP_ICONS.length] ?? "package"
-}
 
 function CaraPesan({
   data,
@@ -940,43 +726,36 @@ function CaraPesan({
   data?: HomepageLayoutProps["how_to_order"]
 }) {
   const title = data?.title || "Cara pesan jendela Anda"
-  const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
+  const subtitle = data?.subtitle || "Alur singkat dari memilih model hingga pesanan terkirim."
+  const steps = data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS
 
   return (
-    <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
+    <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
-        <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
-          <SectionHeading
-            size="display"
-            eyebrow="Panduan"
-            title={title}
-            action={
-              <Link
-                href={routeUrl("cara-pemesanan")}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5"
-              >
-                Lihat panduan
-              </Link>
-            }
-          />
+        <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
+          <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
+            {title}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">{subtitle}</p>
+          <Link
+            href={routeUrl("cara-pemesanan")}
+            className="mt-5 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#1A1D1C] bg-white px-5 text-sm font-semibold text-[#1A1D1C] transition hover:bg-[#1A1D1C]/5"
+          >
+            Lihat panduan
+          </Link>
         </div>
-        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
-          {steps.map((item, index) => {
-            const icon = orderStepIcon(item.title, index)
-            return (
-              <li key={`${index}-${item.title}`}>
-                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-1.5 py-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-4">
-                  <span className="mt-2 flex size-14 items-center justify-center rounded-xl bg-muted text-foreground sm:mt-3 sm:size-16">
-                    <Icon name={icon} className="size-6 sm:size-7" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-2 text-[0.6875rem] font-bold leading-snug tracking-tight text-foreground sm:mt-3 sm:text-sm">
-                    {item.title}
-                  </h3>
-                </article>
-              </li>
-            )
-          })}
-        </ol>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((item) => (
+            <article
+              key={`${item.step}-${item.title}`}
+              className="border border-border bg-surface p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            >
+              <p className="font-mono text-xs font-bold text-primary">{item.step}</p>
+              <h3 className="mt-3 text-sm font-bold tracking-tight">{item.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.description}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -989,24 +768,22 @@ function HasilPemasangan({
   items: InstallationItem[]
   meta?: { heading?: string; subtitle?: string } | null
 }) {
-  const seeMoreHref = routeUrl("installation.index")
-
   return (
-    <section id="hasil-pemasangan" className="scroll-mt-20 section-space">
+    <section className="border-t border-border section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Inspirasi penerapan"
-          title={meta?.heading?.trim() || "Hasil pemasangan"}
-          actionHref={seeMoreHref}
-          actionLabel="Lihat selengkapnya"
+          title={meta?.heading?.trim() || "Hasil pemasangan kami"}
+          subtitle={meta?.subtitle?.trim() || "Dokumentasi pemasangan dari pelanggan dan galeri toko."}
+          actionHref={routeUrl("installation.index")}
+          actionLabel="Semua hasil pemasangan"
         />
         {items.length ? (
-          <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
+          <InstallationCarousel items={items} />
         ) : (
           <EmptyState
             icon="image"
             title="Dokumentasi segera hadir"
-            description="Foto pemasangan sedang dikumpulkan. Sementara itu, chat kami untuk melihat contoh di kota Anda."
+            description="Hasil pemasangan akan tampil setelah admin menambahkan galeri atau import foto instalasi."
           />
         )}
       </div>
@@ -1015,60 +792,22 @@ function HasilPemasangan({
 }
 
 function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = routeUrl("reviews")
-
   return (
-    <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
+    <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
         <SectionTitle
-          eyebrow="Ulasan dari marketplace dan WhatsApp"
           title="Apa kata pelanggan kami"
-          actionHref={seeMoreHref}
-          actionLabel="Lihat selengkapnya"
+          subtitle="Cuplikan ulasan terbit. Semua sumber (Shopee, WhatsApp, website) digabung di halaman Ulasan dengan filter."
+          actionHref={routeUrl("reviews")}
+          actionLabel="Semua ulasan"
         />
         {testimonials.length ? (
-          <TestimonialCarousel
-            testimonials={testimonials}
-            seeMoreHref={seeMoreHref}
-            variant="screenshot"
-            navLabel="testimoni"
-          />
-        ) : (
-          <EmptyState
-            icon="message-circle"
-            title="Belum ada screenshot"
-            description="Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan."
-          />
-        )}
-      </div>
-    </section>
-  )
-}
-
-function UlasanPelangganWebsite({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = routeUrl("ulasan")
-
-  return (
-    <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted section-space">
-      <div className="container-page">
-        <SectionTitle
-          eyebrow="Pembeli lewat website"
-          title="Ulasan pelanggan di website"
-          actionHref={seeMoreHref}
-          actionLabel="Lihat selengkapnya"
-        />
-        {testimonials.length ? (
-          <TestimonialCarousel
-            testimonials={testimonials}
-            seeMoreHref={seeMoreHref}
-            variant="review"
-            navLabel="ulasan"
-          />
+          <TestimonialCarousel testimonials={testimonials} />
         ) : (
           <EmptyState
             icon="star"
-            title="Belum ada ulasan website"
-            description="Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini."
+            title="Belum ada ulasan"
+            description="Ulasan pelanggan akan tampil setelah dipublikasikan di admin."
           />
         )}
       </div>
@@ -1081,56 +820,58 @@ const HELP_STEPS = [
     icon: "headset",
     title: "Konsultasi sebelum produksi",
     description:
-      "Tim kami bantu memilih model yang pas untuk kebutuhan dan tampilan rumah Anda.",
+      "Tim ahli kami membantu memilih model yang paling sesuai dengan fungsionalitas dan estetika bangunan Anda.",
   },
   {
     icon: "ruler",
     title: "Kami bantu cek & konfirmasi ukuran sebelum produksi",
     description:
-      "Ukuran dan opsi dicek ulang bersama Anda sebelum produksi, agar hasilnya pas di lokasi.",
+      "Cek ulang spesifikasi teknis dan ukuran sebelum proses produksi dimulai untuk akurasi mutlak.",
   },
   {
     icon: "package",
     title: "Packing aman & pengiriman ke seluruh Indonesia",
     description:
-      "Produk dikemas rapi agar aman sampai di rumah Anda, ke seluruh Indonesia.",
+      "Pengemasan standar industri untuk menjamin keamanan produk selama perjalanan menuju lokasi Anda.",
   },
   {
     icon: "whatsapp",
     title: "Masih ragu? Chat WhatsApp, kami bantu sampai jelas",
     description:
-      "Tanya apa saja lewat WhatsApp, dari pilihan model sampai panduan pemasangan.",
+      "Layanan purna jual yang menyediakan bantuan panduan instalasi agar hasil akhir maksimal.",
   },
 ]
 
 function KamiBantu() {
   return (
-    <section id="kami-bantu" className="scroll-mt-20 bg-surface-muted section-space">
+    <section className="border-t border-border bg-surface section-space">
       <div className="container-page">
-        <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
-          <SectionHeading
-            size="display"
-            eyebrow="Didukung tim kami"
-            title={
-              <>
-                Kami bantu dari <span className="text-primary">awal sampai jadi</span>
-              </>
-            }
-          />
+        <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
+          <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
+            Kami bantu dari <span className="text-primary">awal sampai jadi</span>
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Proses mudah, aman, dan nyaman untuk hasil yang sesuai harapan Anda.
+          </p>
         </div>
         <div className="mx-auto grid max-w-3xl gap-4">
-          {HELP_STEPS.map((item) => (
+          {HELP_STEPS.map((item, index) => (
             <article
               key={item.title}
-              className="flex items-center gap-4 border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-6 sm:p-6"
+              className="flex items-center gap-4 border border-border bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-6 sm:p-6"
             >
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
                 <Icon name={item.icon} className="size-6 sm:size-7" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
-                  {item.title}
-                </h3>
+                <div className="flex items-start gap-2">
+                  <span className="tabular-nums mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
+                    {index + 1}
+                  </span>
+                  <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
+                    {item.title}
+                  </h3>
+                </div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
               </div>
             </article>
@@ -1146,28 +887,28 @@ function ClosingCta() {
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
 
   return (
-    <section id="closing-cta" className="scroll-mt-20 section-space bg-foreground text-background">
+    <section className="section-space border-t border-border bg-primary text-background">
       <div className="container-page flex flex-col items-center text-center">
-        <SectionHeading
-          size="display"
-          eyebrow="Produk berkualitas"
-          className="text-background [&_h2]:text-background [&_p]:text-white"
-          title="Tingkatkan kualitas bangunan bersama kami"
-        />
-        <div className="mt-10 flex w-full max-w-xl flex-nowrap items-center justify-center gap-2 sm:gap-3">
-          <Button asChild className="min-w-0 flex-1 whitespace-nowrap bg-background px-3 text-xs text-primary hover:bg-background/90 sm:px-6 sm:text-sm">
+        <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">
+          Tingkatkan kualitas bangunan bersama kami
+        </h2>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-white">
+          Pilih model aluminium yang tepat untuk rumah yang lebih rapi, terang, dan tahan lama.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button asChild className="bg-white text-[#a00000] hover:bg-white/90">
             <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
           </Button>
-          <Button asChild variant="secondary" className="min-w-0 flex-1 whitespace-nowrap border-white/40 bg-transparent px-3 text-xs text-white hover:bg-white/10 sm:px-6 sm:text-sm">
+          <Button asChild variant="secondary" className="border-white/40 bg-transparent text-white hover:bg-white/10">
             {whatsappUrl ? (
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
                 <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                Konsultasi ukuran
+                Konsultasi via WhatsApp
               </a>
             ) : (
               <Link href={routeUrl("contact")}>
                 <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                Konsultasi ukuran
+                Konsultasi via WhatsApp
               </Link>
             )}
           </Button>
@@ -1183,16 +924,10 @@ export default function Home({
   featuredProducts = [],
   popularProducts = [],
   testimonials = [],
-  marketplaceTestimonials,
-  websiteTestimonials,
   installations = [],
   installationMeta = null,
   homepageLayout,
 }: HomeProps) {
-  const marketplaceItems = marketplaceTestimonials?.length
-    ? marketplaceTestimonials
-    : testimonials
-  const websiteItems = websiteTestimonials ?? []
   const popular = popularProducts.length ? popularProducts : featuredProducts
   const sections = homepageLayout?.sections?.length
     ? homepageLayout.sections
@@ -1233,10 +968,7 @@ export default function Home({
       <PalingBanyakDipesan products={popular} />
       {showCaraPesan ? <CaraPesan data={homepageLayout?.how_to_order} /> : null}
       <HasilPemasangan items={installations} meta={installationMeta} />
-      <ApaKataPelanggan testimonials={marketplaceItems} />
-      {websiteItems.length >= 10 ? (
-        <UlasanPelangganWebsite testimonials={websiteItems} />
-      ) : null}
+      <ApaKataPelanggan testimonials={testimonials} />
       <KamiBantu />
       <ClosingCta />
     </PublicLayout>

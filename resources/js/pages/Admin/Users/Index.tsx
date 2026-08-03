@@ -232,7 +232,7 @@ export default function UsersIndex({
                       <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
                     </Link>
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                  <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                     <div>
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">No</dt>
                       <dd className="mt-1 text-sm tabular-nums text-muted-foreground">{row.no}</dd>

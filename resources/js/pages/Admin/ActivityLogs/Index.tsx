@@ -241,7 +241,7 @@ export default function ActivityLogsIndex({
                       </Link>
                     ) : null}
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                  <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                     <div>
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">No</dt>
                       <dd className="mt-1 text-sm tabular-nums text-muted-foreground">{row.no}</dd>

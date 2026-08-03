@@ -300,7 +300,7 @@ export default function ResourceIndex({
                         </Link>
                       ) : null}
                     </div>
-                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                    <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                       {columns.slice(1).map((column) => (
                         <div key={column.key}>
                           <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">

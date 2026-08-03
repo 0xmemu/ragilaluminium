@@ -247,7 +247,7 @@ function ProductGridCard({
           </div>
           <p className="mt-1 font-mono text-xs text-muted-foreground">{product.parent_sku}</p>
         </div>
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+        <dl className="grid sm:grid-cols-2 gap-x-3 gap-y-2 text-xs">
           <div>
             <dt className="text-muted-foreground">Kategori</dt>
             <dd className="mt-0.5 font-medium">{product.product_category_label}</dd>
@@ -366,7 +366,7 @@ export default function ProductsIndex({
           />
         </form>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:items-center">
+        <div className="grid sm:grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:items-center">
           <Select
             value={filters.product_category}
             onChange={(event) => visit({ product_category: event.target.value })}
