@@ -98,7 +98,26 @@ export function InstallationLightbox({
               ) : null}
             </div>
           ) : null}
-          {total > 1 ? <><button type="button" onClick={() => go(-1)} className="absolute left-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white" aria-label="Media sebelumnya"><Icon name="caret-left" className="size-5" weight="bold" aria-hidden /></button><button type="button" onClick={() => go(1)} className="absolute right-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white" aria-label="Media berikutnya"><Icon name="caret-right" className="size-5" weight="bold" aria-hidden /></button></> : null}
+          {total > 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => go(-1)}
+                className="absolute left-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex"
+                aria-label="Media sebelumnya"
+              >
+                <Icon name="caret-left" className="size-5" weight="bold" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => go(1)}
+                className="absolute right-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex"
+                aria-label="Media berikutnya"
+              >
+                <Icon name="caret-right" className="size-5" weight="bold" aria-hidden />
+              </button>
+            </>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
