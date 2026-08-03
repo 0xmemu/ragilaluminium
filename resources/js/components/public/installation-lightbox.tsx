@@ -70,32 +70,37 @@ export function InstallationLightbox({
             </div>
           ) : null}
           {active ? (
-            <div className={cn(
-              "relative z-10 flex max-h-[min(72dvh,52rem)] flex-col items-center",
-              "motion-safe:animate-[installation-swipe-hint_2.8s_ease-in-out_2]",
-              total < 2 && "motion-safe:animate-none",
-            )}>
+            <div className="relative z-10 flex max-h-[min(72dvh,52rem)] flex-col items-center">
               {active.is_video ? (
-                <video
-                  key={active.id}
-                  src={active.url}
-                  controls
-                  playsInline
-                  className="max-h-[min(72dvh,52rem)] max-w-full bg-black"
-                />
+                <>
+                  <video
+                    key={active.id}
+                    src={active.url}
+                    controls
+                    playsInline
+                    className="max-h-[min(72dvh,52rem)] max-w-full bg-black"
+                  />
+                  {active?.caption ? (
+                    <p className="w-full bg-black/55 px-3 py-2 text-center text-sm leading-5 text-white/90">
+                      {active.caption}
+                    </p>
+                  ) : null}
+                </>
               ) : (
-                <img
-                  key={active.id}
-                  src={active.url}
-                  alt={active.caption || `${productName}, foto ${index + 1}`}
-                  className="max-h-[min(72dvh,52rem)] max-w-full h-auto w-auto"
-                />
+                <div className="relative w-fit max-w-full">
+                  <img
+                    key={active.id}
+                    src={active.url}
+                    alt={active.caption || `${productName}, foto ${index + 1}`}
+                    className="block max-h-[min(72dvh,52rem)] max-w-full h-auto w-auto"
+                  />
+                  {active?.caption ? (
+                    <p className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-2 text-center text-sm leading-5 text-white/90">
+                      {active.caption}
+                    </p>
+                  ) : null}
+                </div>
               )}
-              {active?.caption ? (
-                <p className="w-full bg-black/55 px-3 py-2 text-center text-sm leading-5 text-white/90">
-                  {active.caption}
-                </p>
-              ) : null}
             </div>
           ) : null}
           {total > 1 ? (
