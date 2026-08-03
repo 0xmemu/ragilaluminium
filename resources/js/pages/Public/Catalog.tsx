@@ -121,7 +121,7 @@ export default function Catalog({
   const listingAllProducts = isAllProductsListing || category === "ALL" || basePath === "/products"
   const resolvedSort = resolveSortValue(activeSort)
   const flashLive = period?.live === true
-  const useModelToggles = isFlash || isPromo
+  const useModelToggles = isPromo
 
   const [loading, setLoading] = React.useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false)
@@ -245,7 +245,7 @@ export default function Catalog({
         ariaLabel="Urutkan produk promo"
       />
     </div>
-  ) : isFlash ? null : (
+  ) : (
     <div className="flex items-end gap-2">
       <FilterBerdasarkanControl
         id="catalog-sort"
