@@ -246,7 +246,7 @@ export function FlashSaleRedBanner({
       : null
 
   return (
-    <div className="relative overflow-hidden bg-primary text-white">
+    <div className="relative bg-primary text-white">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-gradient-to-br from-black/15 via-transparent to-black/25"
@@ -272,15 +272,7 @@ export function FlashSaleRedBanner({
               compact ? "size-9 sm:size-10" : "size-10 sm:size-11 lg:size-12",
             )}
           >
-            <Icon
-              name="lightning"
-              weight="fill"
-              className={cn(
-                "shrink-0 text-[#FFB020]",
-                compact ? "size-4 sm:size-5" : "size-5 sm:size-6",
-              )}
-              aria-hidden="true"
-            />
+            <FlashSaleBolt className={compact ? "size-6 sm:size-8" : "size-8 sm:size-10"} />
           </span>
           <h1
             className={cn(
