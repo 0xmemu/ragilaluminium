@@ -273,9 +273,12 @@ class CatalogController extends Controller
         }
 
         $isAllProductsListing = $category === null && ! $promoOnly && ! $flashOnly;
+        // Carousel "Paling Banyak Dipesan" ditampilkan di semua halaman listing
+        // katalog (semua produk, kategori, model, desain), bukan promo/flash/API.
         $popularProducts = [];
         if (
-            $isAllProductsListing
+            ! $promoOnly
+            && ! $flashOnly
             && ! ($request->is('api/*') || $request->wantsJson())
         ) {
             $popularProducts = InertiaCatalog::popularProductCards(10);

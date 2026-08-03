@@ -543,7 +543,7 @@ export default function Catalog({
 
       {isFlash ? <FlashSaleListingShell>{listingBody}</FlashSaleListingShell> : listingBody}
 
-      {listingAllProducts && !isFlash && !isPromo ? (
+      {!isFlash && !isPromo ? (
         <PalingBanyakDipesanSection products={popularProducts} />
       ) : null}
     </PublicLayout>

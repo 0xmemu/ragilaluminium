@@ -269,6 +269,21 @@ class ModelProdukPageTest extends TestCase
             );
     }
 
+    public function test_category_design_page_shows_popular_products_carousel(): void
+    {
+        $popular = $this->makeHubProduct('WIN-DESIGN-POP', 'JUNGKIT');
+        $popular->update(['design_variant' => 'ORNAMEN']);
+        $this->addSales($popular, 6);
+
+        $this->get('/products/windows/jungkit/ornamen')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Catalog')
+                ->where('isAllProductsListing', false)
+                ->has('popularProducts', 1)
+            );
+    }
+
     private function makeHubProduct(string $sku, string $model): Product
     {
         return Product::create([
