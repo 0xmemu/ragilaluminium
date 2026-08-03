@@ -201,7 +201,14 @@ class CatalogController extends Controller
             ->withQueryString();
 
         $flashSaleSpotlight = [];
-        if ($promoOnly && $flashPeriodLive && ! ($request->is('api/*') || $request->wantsJson())) {
+        if (
+            ! $flashOnly
+            && $products->currentPage() <= 1
+            && $flashPeriodLive
+            && ! ($request->is('api/*') || $request->wantsJson())
+        ) {
+            // Spotlight Flash Sale di atas daftar produk (halaman 1 saja).
+            // Tampil di halaman promo dan halaman "Paling Banyak Dipesan" (popular/all).
             $flashQuery = Product::visible();
             $this->scopeFlashSaleActive($flashQuery);
             $flashSaleSpotlight = InertiaCatalog::productCards(

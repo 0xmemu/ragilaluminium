@@ -531,7 +531,7 @@ export default function Catalog({
         </section>
       )}
 
-      {isPromo ? (
+      {!isFlash && flashSaleSpotlight.length > 0 ? (
         <PromoFlashSaleSection products={flashSaleSpotlight} period={period} />
       ) : null}
 
