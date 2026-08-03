@@ -69,7 +69,7 @@ const doorVariants: ProductVariant[] = [
 describe("product variant resolution", () => {
   it("derives option and dimension axes from backend variants", () => {
     expect(variantAxes(variants)).toEqual([
-      { name: "Warna", options: ["Hitam", "Putih"] },
+      { name: "Warna", options: ["Putih", "Hitam"] },
       { name: "Ukuran", options: ["120 × 100 cm", "140 × 100 cm"] },
     ])
   })
@@ -84,11 +84,8 @@ describe("product variant resolution", () => {
     ).toBe("WIN-WHT-140")
   })
 
-  it("starts with the first in-stock variant", () => {
-    expect(firstAvailableSelections(variants)).toEqual({
-      Warna: "Putih",
-      Ukuran: "140 × 100 cm",
-    })
+  it("starts with no pre-selected options (user must pick explicitly)", () => {
+    expect(firstAvailableSelections(variants)).toEqual({})
   })
 
   it("returns the only variant without requiring selectors", () => {
@@ -101,7 +98,7 @@ describe("product variant resolution", () => {
       { name: "Arah Buka", options: ["Buka Kanan", "Buka Kiri"] },
       {
         name: "Warna & Kaca",
-        options: ["Putih Kaca Bening", "Hitam Kaca Es", "Serat Kayu Kaca Bening"],
+        options: ["Hitam Kaca Es", "Putih Kaca Bening", "Serat Kayu Kaca Bening"],
       },
     ])
     expect(

@@ -137,9 +137,28 @@ export function variantAxes(variants: ProductVariant[]): VariantAxis[] {
   }
 
   const preferredOrder = ["Arah Buka", "Warna & Kaca", "Warna", "Kaca", "Ukuran"]
+
+  // Urutan tampilan opsi di dalam tiap axis.
+  const optionOrder: Record<string, string[]> = {
+    Warna: ["Putih", "Hitam", "Cokelat", "Serat Kayu"],
+    Kaca: ["Kaca Bening", "Kaca Riben", "Kaca Es"],
+  }
+
+  function sortOptions(name: string, options: string[]): string[] {
+    const order = optionOrder[name] ?? []
+    return [...options].sort((a, b) => {
+      const ai = order.findIndex((o) => o.toLowerCase() === a.toLowerCase())
+      const bi = order.findIndex((o) => o.toLowerCase() === b.toLowerCase())
+      if (ai >= 0 && bi >= 0) return ai - bi
+      if (ai >= 0) return -1
+      if (bi >= 0) return 1
+      return a.localeCompare(b, "id")
+    })
+  }
+
   return Array.from(axes, ([name, options]) => ({
     name,
-    options: Array.from(options),
+    options: sortOptions(name, Array.from(options)),
   })).sort((a, b) => {
     const ai = preferredOrder.indexOf(a.name)
     const bi = preferredOrder.indexOf(b.name)
@@ -179,20 +198,9 @@ export function resolveVariant(
   return variants.find((variant) => variantMatchesSelections(variant, selections, axes)) ?? null
 }
 
-export function firstAvailableSelections(variants: ProductVariant[]): VariantSelections {
-  const first = variants.find((variant) => variant.stock > 0) ?? variants[0]
-  if (!first) return {}
-
-  const axes = variantAxes(variants)
-  const pairs = new Map(variantPairs(first))
-  if (axes.some((axis) => axis.name === "Ukuran")) {
-    const dimension = first.dimension_label ?? first.dimension_compact
-    if (dimension) pairs.set("Ukuran", dimension)
-  }
-
-  return Object.fromEntries(
-    axes
-      .map((axis) => [axis.name, pairs.get(axis.name)] as const)
-      .filter((pair): pair is [string, string] => Boolean(pair[1])),
-  )
+export function firstAvailableSelections(_variants: ProductVariant[]): VariantSelections {
+  // Default: tidak ada opsi yang terpilih. Pengguna harus memilih setiap axis
+  // (Warna, Kaca, dll.) secara eksplisit sebelum varian ditemukan dan
+  // tombol "Tambah ke keranjang" / "Beli Sekarang" bisa diklik.
+  return {}
 }
