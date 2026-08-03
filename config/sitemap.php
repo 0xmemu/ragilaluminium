@@ -242,16 +242,16 @@ return [
                 'active' => ['catalog.index', 'catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
-                'label' => 'Promo',
-                'route' => 'catalog.promo',
-                'icon' => 'tag',
-                'active' => ['catalog.promo', 'catalog.flash-sale'],
-            ],
-            [
                 'label' => 'Pesanan',
                 'route' => 'order.status',
                 'icon' => 'clipboard-list',
                 'active' => ['order.status', 'order.status.lookup'],
+            ],
+            [
+                'label' => 'Tentang Kami',
+                'route' => 'about',
+                'icon' => 'storefront',
+                'active' => ['about'],
             ],
         ],
 

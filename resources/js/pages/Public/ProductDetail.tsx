@@ -271,13 +271,8 @@ export default function ProductDetail({
     : null
 
   const currentPrice = selectedVariant?.price ?? promo?.min_price ?? null
-  const comparePrice =
-    promo?.compare_price && currentPrice !== null && promo.compare_price > currentPrice
-      ? promo.compare_price
-      : null
-  const discountPercent = comparePrice && currentPrice !== null
-    ? Math.round(((comparePrice - currentPrice) / comparePrice) * 100)
-    : null
+  const comparePrice = promo?.compare_price ?? null
+  const discountPercent = promo?.discount_percent ?? null
 
   const benefits = [
     { icon: "shield-check", label: promo?.warranty_label || "Garansi 100%" },
@@ -453,7 +448,7 @@ export default function ProductDetail({
             <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <span className="tabular-nums text-2xl font-bold leading-8 text-sale">
                 {currentPrice !== null
-                  ? `${selectedVariant ? "" : "Mulai "}${formatCurrency(currentPrice)}`
+                  ? `${selectedVariant ? '' : '~ '}${formatCurrency(currentPrice)}`
                   : "Harga belum tersedia"}
               </span>
               {comparePrice ? (
@@ -581,7 +576,7 @@ export default function ProductDetail({
 
               <MobileStickyCta
                 aria-label="Beli produk"
-                spacerClassName="h-[7.25rem]"
+                spacerClassName="hidden"
                 className="[&>div]:flex-col [&>div]:items-stretch"
               >
                 <div className="flex w-full gap-2">
@@ -681,9 +676,9 @@ export default function ProductDetail({
                     </p>
                   ) : null}
                 </div>
-                {attributes.filter(a => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)$/i.test(a.name)).length ? (
+                {attributes.filter(a => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name)).length ? (
                   <dl className="mt-4 border-t border-border">
-                    {attributes.filter(a => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)$/i.test(a.name)).map((attribute, index) => (
+                    {attributes.filter(a => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name)).map((attribute, index) => (
                       <div
                         key={`${attribute.name}-${index}`}
                         className="grid min-w-0 grid-cols-1 gap-3 border-b border-border/60 py-3 text-sm sm:grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)] sm:gap-4"
@@ -785,6 +780,10 @@ export default function ProductDetail({
                 </Link>
               ) : null}
             </section>
+
+            {/* Spacer mencegah konten ketutupan MobileStickyCta */}
+            <div className="h-[7.25rem] lg:hidden" aria-hidden="true" />
+
           </div>
         </div>
       </section>

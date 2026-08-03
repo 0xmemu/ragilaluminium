@@ -735,15 +735,15 @@ export function FlashSaleListingToolbar({
 }
 
 
-/** Carousel styles for flash sale strip. */
+/** Carousel styles for flash sale strip — same pattern as Home/ProductCardCarousel. */
 const flashCarouselTrackClass =
-  "scrollbar-x flex min-w-0 items-stretch snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto]"
+  "scrollbar-x flex min-w-0 items-stretch snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 const flashCarouselCardClass =
-  "w-[70vw] shrink-0 snap-start sm:w-[calc((100%-0.75rem)/2.5)] md:w-[calc((100%-0.75rem)/3.5)] lg:w-[calc((100%-0.75rem)/4)]"
+  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/4)]"
 
 const flashCarouselNavBtnClass =
-  "absolute top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-11"
+  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
 function FlashCarouselNavButton({
   trackId,
@@ -765,7 +765,7 @@ function FlashCarouselNavButton({
       onClick={onClick}
       aria-label={label}
       aria-controls={trackId}
-      className={cn(flashCarouselNavBtnClass, side === "left" ? "md:left-1" : "md:right-1")}
+      className={cn(flashCarouselNavBtnClass, side === "left" ? "left-3" : "right-3")}
     >
       <Icon name={side === "left" ? "caret-left" : "caret-right"} className="size-4 md:size-5" weight="bold" aria-hidden="true" />
     </button>
@@ -776,7 +776,7 @@ function useFlashCarousel(itemCount: number) {
   const trackRef = React.useRef<HTMLDivElement>(null)
   const trackId = React.useId()
   const [canGoBack, setCanGoBack] = React.useState(false)
-  const [canGoNext, setCanGoNext] = React.useState(itemCount > 3)
+  const [canGoNext, setCanGoNext] = React.useState(itemCount > 4)
 
   useDragScroll(trackRef)
 
@@ -808,7 +808,7 @@ function useFlashCarousel(itemCount: number) {
     const track = trackRef.current
     if (!track) return
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: reduceMotion ? "auto" : "smooth" })
+    track.scrollBy({ left: direction * track.clientWidth * 0.85, behavior: reduceMotion ? "auto" : "smooth" })
   }
 
   return { trackRef, trackId, canGoBack, canGoNext, move }

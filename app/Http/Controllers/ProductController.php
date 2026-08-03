@@ -224,7 +224,15 @@ class ProductController extends Controller
                 $this->relatedProductsFor($product)
             ),
             // Metadata promo yang sama dengan product card (compare price, flash sale, COD, garansi).
-            'promo' => ProductPromotionMetadata::forProduct($product),
+            'promo' => tap(ProductPromotionMetadata::forProduct($product), function (&$promo) use ($detailVariants) {
+                // Jika varian difilter per dimensi (dari URL), min_price harus dari varian yang terlihat saja.
+                if ($detailVariants->isNotEmpty()) {
+                    $filteredMin = $detailVariants->min('price');
+                    if ($filteredMin !== null) {
+                        $promo['min_price'] = (float) $filteredMin;
+                    }
+                }
+            }),
         ]);
     }
 
