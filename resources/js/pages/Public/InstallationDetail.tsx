@@ -72,14 +72,25 @@ export default function InstallationDetail({
       <Head title={docTitle} />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-3 lg:py-4">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs items={crumbs} />
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+        </div>
+        <div className="container-page flex flex-col gap-3 pb-4 pt-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="flex shrink-0 items-center justify-center"
+                aria-label="Kembali"
+              >
+                <Icon name="caret-left" className="size-5" aria-hidden="true" />
+              </button>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">
                 {product.name}
               </h1>
-              <p className="mt-1.5 text-sm text-muted-foreground">
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
                 {countLabel || `${media.length} dokumentasi`} pemasangan untuk produk ini. Ketuk media
                 untuk memperbesar.
               </p>
@@ -98,7 +109,6 @@ export default function InstallationDetail({
               </Button>
             </div>
           </div>
-        </div>
       </section>
 
       <section className="pt-4 pb-8 sm:pt-6 sm:pb-10">

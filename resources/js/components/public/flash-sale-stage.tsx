@@ -165,7 +165,7 @@ function FlashSaleBolt({ className }: { className?: string }) {
     <span className={cn("relative inline-flex shrink-0", className)} aria-hidden>
       <Lightning
         weight="fill"
-        className="size-full text-[#FFB020] drop-shadow-[1px_2px_0_rgba(80,20,0,0.35)]"
+        className="size-full text-white drop-shadow-[1px_2px_0_rgba(80,20,0,0.35)]"
       />
     </span>
   )
@@ -176,13 +176,13 @@ export function FlashSaleCountdownClock({
   secondsRemaining,
   label = "Berakhir dalam",
   daily = false,
+  size = "lg",
   className,
 }: {
   secondsRemaining: number | null
-  /** Hanya untuk aria-label aksesibel; tidak ditampilkan. */
   label?: string
-  /** true = jam 0–23 (countdown harian); false = akumulasi jam sisa periode/jadwal */
   daily?: boolean
+  size?: "sm" | "lg"
   className?: string
 }) {
   const remaining = useCountdown(secondsRemaining)
@@ -199,6 +199,13 @@ export function FlashSaleCountdownClock({
     { value: parts.seconds, key: "seconds" },
   ]
 
+  const digitClass = size === "sm"
+    ? "min-w-[1.8rem] px-1 py-0.5 text-sm sm:min-w-[2.25rem] sm:text-base"
+    : "min-w-[2.25rem] px-1.5 py-1 text-base sm:min-w-[2.75rem] sm:px-2 sm:py-1.5 sm:text-xl lg:min-w-[3.25rem] lg:text-2xl"
+  const colonClass = size === "sm"
+    ? "text-sm sm:text-base"
+    : "text-base sm:text-xl"
+
   return (
     <div
       className={cn("flex shrink-0 items-center gap-1 sm:gap-1.5", className)}
@@ -209,13 +216,13 @@ export function FlashSaleCountdownClock({
         <React.Fragment key={item.key}>
           {index > 0 ? (
             <span
-              className="px-0.5 font-display text-base font-extrabold leading-none text-[#FFB020] sm:text-xl"
+              className={cn("px-0.5 font-display font-extrabold leading-none text-white", colonClass)}
               aria-hidden
             >
               :
             </span>
           ) : null}
-          <span className="inline-flex min-w-[2.25rem] items-center justify-center rounded-md bg-white/15 px-1.5 py-1 font-display text-base font-extrabold leading-none tabular-nums tracking-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] ring-1 ring-inset ring-white/20 sm:min-w-[2.75rem] sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xl lg:min-w-[3.25rem] lg:text-2xl">
+          <span className={cn("inline-flex items-center justify-center rounded-md bg-black font-display font-extrabold leading-none tabular-nums tracking-tight text-white", digitClass)}>
             {String(item.value).padStart(2, "0")}
           </span>
         </React.Fragment>
@@ -246,51 +253,49 @@ export function FlashSaleRedBanner({
       : null
 
   return (
-    <div className="relative bg-primary text-white">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-black/15 via-transparent to-black/25"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-10 -top-16 size-56 rounded-full bg-[#FFB020]/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-20 left-1/4 size-48 rounded-full bg-white/10 blur-3xl"
-      />
+    <div className="bg-primary text-white">
       <div
         className={cn(
-          "container-page relative flex items-center justify-between gap-3 sm:gap-6",
+          "container-page flex items-center gap-3 sm:gap-6",
           compact ? "py-3.5 sm:py-4" : "py-4 sm:py-5",
         )}
       >
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-inset ring-white/25",
-              compact ? "size-9 sm:size-10" : "size-10 sm:size-11 lg:size-12",
-            )}
-          >
-            <FlashSaleBolt className={compact ? "size-6 sm:size-8" : "size-8 sm:size-10"} />
-          </span>
-          <h1
-            className={cn(
-              "min-w-0 truncate font-display font-extrabold italic leading-none tracking-tight",
-              compact ? "text-xl sm:text-3xl" : "text-[1.65rem] sm:text-3xl lg:text-4xl",
-            )}
-          >
-            FLASH SALE
-          </h1>
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-4">
+          <FlashSaleBolt className={compact ? "size-16 sm:size-20 -my-4" : "size-20 sm:size-28 lg:size-32 -my-6"} />
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+            <h1
+              className={cn(
+                "min-w-0 font-display font-extrabold italic leading-none tracking-tight",
+                compact ? "text-xl sm:text-3xl" : "text-[1.65rem] sm:text-3xl lg:text-4xl",
+              )}
+            >
+              FLASH SALE
+            </h1>
+            {countdownSeconds !== null ? (
+              <FlashSaleCountdownClock
+                secondsRemaining={countdownSeconds}
+                daily={isLive}
+                label={isScheduled ? "Dimulai dalam" : "Berakhir dalam"}
+                size={compact ? "sm" : "lg"}
+              />
+            ) : null}
+          </div>
         </div>
 
-        {countdownSeconds !== null ? (
-          <FlashSaleCountdownClock
-            secondsRemaining={countdownSeconds}
-            daily={isLive}
-            label={isScheduled ? "Dimulai dalam" : "Berakhir dalam"}
-          />
-        ) : resolved?.ends_at_label || resolved?.starts_at_label ? (
+        <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
+          <p className="text-xs font-medium leading-snug text-white/90 sm:text-sm">
+            {resolved?.live ? "Penawaran terbatas, khusus hari ini!" : resolved?.status === "scheduled" ? "Flash Sale segera dimulai." : ""}
+          </p>
+          <Link
+            href={routeUrl("catalog.flash-sale")}
+            className="inline-flex h-6 shrink-0 items-center gap-1 text-[11px] font-light text-white/80 transition hover:text-white sm:text-xs"
+          >
+            Lihat selengkapnya
+            <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden />
+          </Link>
+        </div>
+
+        {countdownSeconds !== null ? null : resolved?.ends_at_label || resolved?.starts_at_label ? (
           <p className="max-w-[11rem] text-right text-xs font-medium leading-snug text-white/90 sm:max-w-xs sm:text-sm">
             {resolved.status === "ended"
               ? `Berakhir ${resolved.ends_at_label}`
@@ -347,10 +352,10 @@ function FlashSaleSectionIntro({
       {showSeeAll ? (
         <Link
           href={routeUrl("catalog.flash-sale")}
-          className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary transition hover:text-primary/80"
+          className="inline-flex h-7 shrink-0 items-center gap-1 self-end text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
         >
-          Lihat Semua
-          <Icon name="caret-right" className="size-4" weight="bold" aria-hidden />
+          Lihat selengkapnya
+          <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden />
         </Link>
       ) : null}
     </div>
@@ -737,13 +742,13 @@ export function FlashSaleListingToolbar({
 
 /** Carousel styles for flash sale strip — same pattern as Home/ProductCardCarousel. */
 const flashCarouselTrackClass =
-  "scrollbar-x flex min-w-0 items-stretch snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 const flashCarouselCardClass =
-  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/4)]"
+  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
 
 const flashCarouselNavBtnClass =
-  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
+  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
 function FlashCarouselNavButton({
   trackId,
@@ -765,9 +770,9 @@ function FlashCarouselNavButton({
       onClick={onClick}
       aria-label={label}
       aria-controls={trackId}
-      className={cn(flashCarouselNavBtnClass, side === "left" ? "left-3" : "right-3")}
+      className={cn(flashCarouselNavBtnClass, side === "left" ? "md:-left-5" : "md:-right-5")}
     >
-      <Icon name={side === "left" ? "caret-left" : "caret-right"} className="size-4 md:size-5" weight="bold" aria-hidden="true" />
+      <Icon name={side === "left" ? "caret-left" : "caret-right"} className="size-5 md:size-6" weight="bold" aria-hidden="true" />
     </button>
   )
 }
@@ -834,10 +839,8 @@ export function PromoFlashSaleSection({
     <section className="bg-white">
       <FlashSaleRedBanner period={resolved} compact />
 
-      <div className="container-page py-6 lg:py-8">
-        <FlashSaleSectionIntro period={resolved} showSeeAll />
-
-        <div className="relative mt-5 px-1">
+      <div className="container-page pb-6 lg:pb-8">
+        <div className="relative mt-0 px-1">
           <div ref={trackRef} id={trackId} className={flashCarouselTrackClass}>
             {items.map((product, index) => (
               <div key={product.id} className={flashCarouselCardClass}>
@@ -848,6 +851,20 @@ export function PromoFlashSaleSection({
                 />
               </div>
             ))}
+            <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
+              <Link
+                href={routeUrl("catalog.flash-sale")}
+                className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
+                aria-label="Lihat selengkapnya"
+              >
+                <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
+                  <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+                </span>
+                <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
+                  selengkapnya
+                </span>
+              </Link>
+            </div>
           </div>
           <FlashCarouselNavButton
             trackId={trackId}

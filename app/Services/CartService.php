@@ -15,9 +15,16 @@ class CartService
     {
     }
 
-    public function get(): array
+    public function get(?array $onlyLineIds = null): array
     {
-        return $this->session->get(self::SESSION_KEY, []);
+        $cart = $this->session->get(self::SESSION_KEY, []);
+
+        if ($onlyLineIds !== null) {
+            $ids = array_flip($onlyLineIds);
+            $cart = array_intersect_key($cart, $ids);
+        }
+
+        return $cart;
     }
 
     public function add(string $parentSku, ?string $variantSku, int $quantity): array
@@ -43,6 +50,7 @@ class CartService
                 'parent_sku' => $parentSku,
                 'variant_sku' => $variantSku,
                 'name' => $product->name,
+                'short_name' => $product->short_name,
                 'variation_1_name' => $variant?->variation_1_name,
                 'variation_1_option' => $variant?->variation_1_option,
                 'variation_2_name' => $variant?->variation_2_name,
@@ -95,10 +103,49 @@ class CartService
     public function remove(string $lineId): array
     {
         $cart = $this->get();
+        if (isset($cart[$lineId])) {
+            $this->session->put(self::SESSION_KEY . '_undo', $cart[$lineId]);
+        }
         unset($cart[$lineId]);
         $this->session->put(self::SESSION_KEY, $cart);
 
         return $cart;
+    }
+
+    public function getLastRemoved(): ?array
+    {
+        return $this->session->get(self::SESSION_KEY . '_undo');
+    }
+
+    public function restoreLastRemoved(): bool
+    {
+        $item = $this->getLastRemoved();
+        if (!$item || empty($item['parent_sku'])) {
+            return false;
+        }
+
+        $cart = $this->get();
+        $lineId = $item['line_id'] ?? ($item['variant_sku'] ?: $item['parent_sku']);
+        $cart[$lineId] = $item;
+        $this->session->put(self::SESSION_KEY, $cart);
+        $this->session->forget(self::SESSION_KEY . '_undo');
+
+        return true;
+    }
+
+    public function selectLines(array $lineIds): void
+    {
+        $this->session->put(self::SESSION_KEY . '_selected', $lineIds);
+    }
+
+    public function getSelectedLines(): array
+    {
+        return $this->session->get(self::SESSION_KEY . '_selected', []);
+    }
+
+    public function clearSelectedLines(): void
+    {
+        $this->session->forget(self::SESSION_KEY . '_selected');
     }
 
     public function clear(): void
@@ -129,9 +176,13 @@ class CartService
      *     discount_total: float
      * }
      */
-    public function pricedLines(): array
+    public function pricedLines(?array $onlyLineIds = null): array
     {
         $raw = collect($this->get())->values();
+        if ($onlyLineIds !== null) {
+            $ids = array_flip($onlyLineIds);
+            $raw = $raw->filter(fn (array $item) => isset($ids[$item['line_id'] ?? '']));
+        }
         if ($raw->isEmpty()) {
             return [
                 'items' => [],

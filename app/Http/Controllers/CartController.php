@@ -18,12 +18,14 @@ class CartController extends Controller
     public function index(): Response
     {
         $priced = $this->cart->pricedLines();
+        $undoItem = $this->cart->getLastRemoved();
 
         return Inertia::render('Public/Cart', [
             'items' => $priced['items'],
             'subtotal' => $priced['subtotal'],
             'compare_subtotal' => $priced['compare_subtotal'],
             'discount_total' => $priced['discount_total'],
+            'undo_item' => $undoItem,
         ]);
     }
 
@@ -73,5 +75,44 @@ class CartController extends Controller
 
         return redirect()->route('cart.index')
             ->with('success', 'Item dihapus dari keranjang.');
+    }
+
+    public function select(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'line_ids' => ['required', 'array'],
+            'line_ids.*' => ['string'],
+        ]);
+
+        $this->cart->selectLines($validated['line_ids']);
+
+        return redirect()->route('checkout.index');
+    }
+
+    public function restore(): RedirectResponse
+    {
+        $restored = $this->cart->restoreLastRemoved();
+
+        return redirect()->route('cart.index')
+            ->with($restored ? 'success' : 'error', $restored
+                ? 'Produk dikembalikan ke keranjang.'
+                : 'Tidak ada produk yang bisa dikembalikan.');
+    }
+
+    public function removeSelected(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'line_ids' => ['required', 'array', 'min:1'],
+            'line_ids.*' => ['string'],
+        ]);
+
+        $count = 0;
+        foreach ($validated['line_ids'] as $lineId) {
+            $this->cart->remove($lineId);
+            $count++;
+        }
+
+        return redirect()->route('cart.index')
+            ->with('success', "{$count} item dihapus dari keranjang.");
     }
 }

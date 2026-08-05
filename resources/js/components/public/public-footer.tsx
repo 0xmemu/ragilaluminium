@@ -74,7 +74,7 @@ export function PublicFooter({ className }: { className?: string }) {
 
   return (
     <footer className={cn("border-t border-white/10 bg-foreground text-background pt-12 lg:pt-14", className)}>
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div className="grid gap-10 border-b border-white/10 pb-10 sm:grid-cols-2 lg:grid-cols-12 lg:items-start lg:gap-8 lg:pb-12">
           <div className="sm:col-span-2 lg:col-span-3">
             <BrandWordmark compact variant="dark" />

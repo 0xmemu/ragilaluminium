@@ -24,21 +24,21 @@ export function QuantityControl({
   return (
     <div
       className={cn(
-        "inline-flex h-11 items-center overflow-hidden rounded-full border border-input bg-surface",
+        "inline-flex items-center gap-0.5",
         className,
       )}
     >
       <button
         type="button"
-        className="inline-flex h-full w-11 shrink-0 items-center justify-center text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
+        className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={decreaseDisabled}
         aria-label={`Kurangi ${label.toLowerCase()}`}
       >
-        <Icon name="minus" className="h-4 w-4" aria-hidden="true" />
+        <Icon name="minus" className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
       <span
-        className="tabular-nums flex h-full min-w-11 items-center justify-center border-x border-input px-3 text-center text-sm font-semibold"
+        className="tabular-nums min-w-[1rem] text-center text-xs font-semibold"
         aria-live="polite"
         aria-label={`${label}: ${value}`}
       >
@@ -46,12 +46,12 @@ export function QuantityControl({
       </span>
       <button
         type="button"
-        className="inline-flex h-full w-11 shrink-0 items-center justify-center text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
+        className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
         onClick={() => onChange(max === undefined ? value + 1 : Math.min(max, value + 1))}
         disabled={increaseDisabled}
         aria-label={`Tambah ${label.toLowerCase()}`}
       >
-        <Icon name="plus" className="h-4 w-4" aria-hidden="true" />
+        <Icon name="plus" className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </div>
   )

@@ -75,7 +75,7 @@ export function InstallationCard({
       </div>
 
       <div className="flex min-w-0 shrink-0 flex-col gap-1.5 bg-white px-2.5 py-2.5 @[16rem]:gap-2 @[16rem]:px-3 @[16rem]:py-3">
-        <h3 className="w-full min-w-0 break-words text-[11px] font-normal leading-4 text-foreground line-clamp-2 @[16rem]:text-xs @[16rem]:leading-4 @[22rem]:text-xs @[22rem]:leading-4">
+        <h3 className="w-full min-w-0 break-words text-xs font-normal leading-4 text-foreground line-clamp-2 min-h-[2em] sm:text-[13px] sm:leading-4">
           {title}
         </h3>
 
@@ -84,7 +84,7 @@ export function InstallationCard({
             className={cn(
               "w-full min-w-0",
               level === "model"
-                ? "grid grid-cols-2 gap-1 border-t border-border/70 pt-1.5 sm:grid-cols-3"
+                ? "grid grid-cols-3 gap-1 border-t border-border/70 pt-1.5"
                 : "flex flex-wrap items-center justify-start gap-x-2 gap-y-0.5 text-left",
             )}
             aria-label="Ringkasan dokumentasi"
@@ -105,14 +105,14 @@ export function InstallationCard({
                     className={cn(
                       "inline-flex shrink-0 items-center justify-center text-primary/80",
                       level === "model"
-                        ? "size-3.5"
+                        ? "size-4"
                         : "size-4 rounded-full bg-white ring-1 ring-border/60",
                     )}
                   >
                     <Icon
                       name={stat.icon}
                       weight="bold"
-                      className="size-2.5 @[16rem]:size-3"
+                      className="size-3"
                       aria-hidden="true"
                     />
                   </span>
@@ -121,8 +121,8 @@ export function InstallationCard({
                   className={cn(
                     "min-w-0 font-light leading-none",
                     level === "model"
-                      ? "whitespace-nowrap text-center text-[8px] @[16rem]:text-[9px]"
-                      : "truncate text-left text-[10px] @[16rem]:text-[11px]",
+                      ? "whitespace-nowrap text-center text-[10px]"
+                      : "truncate text-left text-[11px]",
                   )}
                 >
                   <span className="tabular-nums font-normal text-primary">{formatNumber(stat.value)}</span>

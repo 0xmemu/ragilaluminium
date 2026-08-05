@@ -528,7 +528,7 @@ class CatalogController extends Controller
                 'title' => trim(implode(' ', array_filter([
                     CatalogLabels::category($categoryCode),
                     CatalogLabels::model($modelCode),
-                    CatalogLabels::design($code),
+                    $code !== 'POLOS' ? CatalogLabels::design($code) : null,
                 ]))),
                 'image' => InertiaCatalog::cardImage($sample),
                 'count' => $railProducts->count(),

@@ -89,7 +89,7 @@ function MobileAnnouncementCarousel({ items }: { items: Announcement[] }) {
 
   return (
     <div
-      className="relative flex min-h-9 items-center overflow-hidden py-2 md:hidden"
+      className="relative flex min-h-8 items-center overflow-hidden py-1.5 md:hidden"
       aria-live="polite"
       onTouchStart={() => setPaused(true)}
       onTouchEnd={() => setPaused(false)}
@@ -128,7 +128,7 @@ function DesktopAnnouncementMarquee({ items }: { items: Announcement[] }) {
   const track = items.length === 1 ? [...items, ...items, ...items] : [...items, ...items]
 
   return (
-    <div className="group/announce relative hidden min-h-9 items-center overflow-hidden py-2 md:flex">
+    <div className="group/announce relative hidden min-h-8 items-center overflow-hidden py-1.5 md:flex">
       <div
         className="announcement-marquee flex w-max items-center gap-8 whitespace-nowrap will-change-transform md:gap-10"
         style={{

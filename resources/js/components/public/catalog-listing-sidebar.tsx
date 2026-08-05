@@ -298,7 +298,7 @@ export function CatalogProductListingSidebar({
         </FilterSidebarSection>
       ) : null}
 
-      <FilterSidebarSection title="Rentang Harga" defaultOpen={variant === "draft"}>
+      <FilterSidebarSection title="Rentang Harga" defaultOpen>
         <div className="grid grid-cols-2 gap-2">
           <Field id={`price-min-${fieldSuffix}`} label="Minimum">
             <Input

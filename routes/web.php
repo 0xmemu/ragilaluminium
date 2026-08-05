@@ -105,6 +105,9 @@ Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
 Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
 Route::post('/cart/update', [CartController::class, 'update'])->name('cart.update');
 Route::post('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
+Route::post('/cart/restore', [CartController::class, 'restore'])->name('cart.restore');
+Route::post('/cart/select', [CartController::class, 'select'])->name('cart.select');
+Route::post('/cart/remove-selected', [CartController::class, 'removeSelected'])->name('cart.remove-selected');
 
 Route::get('/reviews', [PageController::class, 'reviews'])->name('reviews');
 Route::get('/ulasan', [PageController::class, 'ulasan'])->name('ulasan');

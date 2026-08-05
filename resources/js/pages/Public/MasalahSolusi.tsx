@@ -100,7 +100,7 @@ function RichSolutionPanel({
   const options = content.options ?? []
 
   return (
-    <div className="grid gap-6">
+    <div className="grid min-w-0 gap-6">
       <div>
         <p className="text-sm font-bold text-foreground">
           {content.examples_label ?? "Contoh kondisi kerusakan"}
@@ -252,7 +252,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-4 lg:py-5">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -260,17 +260,24 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
             ]}
           />
         </div>
-        <div className="container-page flex flex-col items-center pb-12 pt-6 text-center lg:pb-16">
-          <h1 className="max-w-2xl text-2xl font-bold leading-snug tracking-tight sm:text-3xl md:text-4xl">
-            {pageHeading}
-          </h1>
-          {pageSubtitle ? (
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">{pageSubtitle}</p>
-          ) : null}
+        <div className="container-page pb-4 pt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex shrink-0 items-center justify-center"
+              aria-label="Kembali"
+            >
+              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
+              {pageHeading}
+            </h1>
+          </div>
         </div>
       </section>
 
-      <section className="section-space">
+      <section className="py-4">
         <div className="container-page">
           {items.length ? (
             <ol className="mx-auto grid max-w-3xl gap-3">
@@ -297,7 +304,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                       >
                         {index + 1}
                       </span>
-                      <span className="min-w-0 flex-1 text-sm font-semibold text-foreground sm:text-base">
+                      <span className="min-w-0 flex-1 text-sm font-semibold text-foreground sm:text-lg">
                         {item.problem}
                       </span>
                       <Icon
@@ -340,11 +347,11 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
 
           <div className="mx-auto mt-12 max-w-xl text-center">
             <p className="text-sm text-muted-foreground">Masih ragu spesifikasi yang tepat?</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button asChild variant="secondary">
+            <div className="mt-4 flex justify-center gap-2">
+              <Button asChild variant="secondary" className="px-4 sm:px-6">
                 <Link href={routeUrl("faq")}>Lihat FAQ</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="px-4 sm:px-6">
                 {whatsappUrl ? (
                   <a href={whatsappUrl} target="_blank" rel="noreferrer">
                     <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />

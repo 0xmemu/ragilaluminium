@@ -32,3 +32,4 @@ xlsx/
 /test-results
 
 .venv/
+.waha-sessions

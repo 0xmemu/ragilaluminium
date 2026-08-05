@@ -57,19 +57,30 @@ export default function Ulasan({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page grid gap-4 py-5">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: "Ulasan Pelanggan", href: null },
             ]}
           />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        </div>
+        <div className="container-page flex flex-col gap-4 pb-4 pt-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="flex shrink-0 items-center justify-center"
+                aria-label="Kembali"
+              >
+                <Icon name="caret-left" className="size-5" aria-hidden="true" />
+              </button>
+              <h1 className="text-lg font-semibold tracking-tight">
                 Ulasan pelanggan
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            </div>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">
                 Ulasan dari pembeli yang order lewat website.
               </p>
             </div>
@@ -94,11 +105,10 @@ export default function Ulasan({
                 <Link href={routeUrl("reviews")}>Apa kata pelanggan kami</Link>
               </Button>
             </div>
-          </div>
         </div>
       </section>
 
-      <section className="section-space">
+      <section className="py-4">
         <div className="container-page">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import { usePage } from "@inertiajs/react"
 import { AnnouncementBar } from "@/components/public/announcement-bar"
 import { MobileBottomNav } from "@/components/public/mobile-bottom-nav"
 import { PublicFooter } from "@/components/public/public-footer"
@@ -7,6 +8,9 @@ import { PublicHeader } from "@/components/public/public-header"
 import { FlashMessages } from "@/components/shared/flash-messages"
 
 export function PublicLayout({ children }: { children: ReactNode }) {
+  const { component } = usePage()
+  const isHome = component === "Public/Home"
+
   return (
     <div className="public-title-case min-h-screen overflow-x-clip bg-background text-foreground">
       <a
@@ -15,10 +19,10 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       >
         Lewati ke konten utama
       </a>
-      <AnnouncementBar />
+      {isHome ? <AnnouncementBar /> : null}
       <PublicHeader />
       <FlashMessages />
-      <main id="main-content" tabIndex={-1} className="min-h-[55dvh] outline-none">
+      <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full overflow-x-hidden outline-none">
         {children}
       </main>
       <PublicFooter className="hidden lg:block" />

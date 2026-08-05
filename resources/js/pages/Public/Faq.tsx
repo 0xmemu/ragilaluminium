@@ -53,7 +53,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-4 lg:py-5">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -61,20 +61,27 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
             ]}
           />
         </div>
-        <div className="container-page flex flex-col items-center pb-12 pt-6 text-center lg:pb-16">
-          <h1 className="max-w-2xl text-2xl font-bold leading-snug tracking-tight sm:text-3xl md:text-4xl">
-            {guide.heading}
-          </h1>
-          {guide.subtitle ? (
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">{guide.subtitle}</p>
-          ) : null}
+        <div className="container-page pb-4 pt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex shrink-0 items-center justify-center"
+              aria-label="Kembali"
+            >
+              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
+              {guide.heading}
+            </h1>
+          </div>
         </div>
       </section>
 
-      <section className="section-space">
+      <section className="py-4">
         <div className="container-page">
           {guide.categories.length > 1 ? (
-            <div className="mb-8 flex flex-wrap justify-center gap-2">
+            <div className="mb-4 flex flex-wrap justify-center gap-2">
               <button
                 type="button"
                 onClick={() => setActiveCategory("all")}
@@ -107,11 +114,11 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
           ) : null}
 
           {visibleGroups.length ? (
-            <div className="mx-auto grid max-w-3xl gap-8">
+            <div className="mx-auto grid max-w-3xl gap-4">
               {visibleGroups.map((group) => (
                 <div key={group.category}>
-                  <h2 className="text-sm font-bold tracking-tight text-foreground sm:text-base">{group.category}</h2>
-                  <ul className="mt-4 divide-y divide-border border border-border bg-surface">
+                  <h2 className="text-sm font-bold tracking-tight text-foreground sm:text-lg">{group.category}</h2>
+                  <ul className="mt-2 divide-y divide-border border border-border bg-surface">
                     {group.items.map((item) => {
                       const open = openId === item.id
                       const panelId = `faq-panel-${item.id}`
@@ -125,7 +132,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                             aria-controls={panelId}
                             id={`faq-trigger-${item.id}`}
                           >
-                            <span className="text-sm font-semibold text-foreground sm:text-base">{item.question}</span>
+                            <span className="text-sm font-semibold text-foreground sm:text-lg">{item.question}</span>
                             <Icon
                               name={open ? "chevron-up" : "chevron-down"}
                               className="mt-0.5 size-4 shrink-0 text-muted-foreground"
@@ -139,7 +146,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                               aria-labelledby={`faq-trigger-${item.id}`}
                               className="border-t border-border px-4 pb-4 pt-3 sm:px-5"
                             >
-                              <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{item.answer}</p>
+                              <p className="whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{item.answer}</p>
                             </div>
                           ) : null}
                         </li>
@@ -158,13 +165,13 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
             />
           )}
 
-          <div className="mx-auto mt-12 max-w-xl text-center">
+          <div className="mx-auto mt-6 max-w-xl text-center">
             <p className="text-sm text-muted-foreground">Tidak menemukan jawaban?</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button asChild variant="secondary">
+            <div className="mt-3 flex justify-center gap-2">
+              <Button asChild variant="secondary" className="px-4 sm:px-6">
                 <Link href={routeUrl("cara-pemesanan")}>Lihat cara pemesanan</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="px-4 sm:px-6">
                 {whatsappUrl ? (
                   <a href={whatsappUrl} target="_blank" rel="noreferrer">
                     <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />

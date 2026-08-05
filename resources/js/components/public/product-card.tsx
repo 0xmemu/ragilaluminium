@@ -197,14 +197,7 @@ export function ProductCard({
             useModelTitle ? "px-2.5 pb-2 pt-2 @[16rem]:px-3 @[20rem]:px-3.5" : "px-2 pb-2 pt-2",
           )}
         >
-          <FitTwoLineTitle
-            className={cn(
-              "w-full min-w-0 break-words font-medium text-foreground line-clamp-2",
-              useModelTitle
-                ? "text-xs leading-4 @[16rem]:text-[13px] @[16rem]:leading-4 @[22rem]:text-sm @[22rem]:leading-5"
-                : "text-[13px] leading-4 group-hover:underline sm:text-sm sm:leading-5",
-            )}
-          >
+          <FitTwoLineTitle className="w-full min-w-0 font-medium text-foreground text-pretty line-clamp-2 text-xs leading-4 sm:text-[13px] sm:leading-4">
             {title}
           </FitTwoLineTitle>
 

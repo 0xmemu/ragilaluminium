@@ -54,7 +54,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-4 lg:py-5">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -62,25 +62,30 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
             ]}
           />
         </div>
-        <div className="container-page flex flex-col items-center pb-12 pt-6 text-center lg:pb-16">
-          <h1 className="max-w-2xl text-2xl font-bold leading-snug tracking-tight sm:text-3xl md:text-4xl">
-            {guide.heading}
-          </h1>
-          {guide.subtitle ? (
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              {guide.subtitle}
-            </p>
-          ) : null}
+        <div className="container-page pb-4 pt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex shrink-0 items-center justify-center"
+              aria-label="Kembali"
+            >
+              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
+              {guide.heading}
+            </h1>
+          </div>
         </div>
       </section>
 
-      <section className="section-space">
+      <section className="py-4">
         <div className="container-page">
-          <ol className="mx-auto grid max-w-3xl gap-4">
+          <ol className="grid gap-3 sm:grid-cols-2">
             {guide.steps.map((step, index) => (
               <li
                 key={`${step.title}-${index}`}
-                className="flex flex-col gap-4 border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-start sm:gap-6 sm:p-6"
+                className="flex flex-col gap-4 border border-border bg-surface p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-start sm:gap-5 sm:p-5"
               >
                 <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
                   <Icon name={step.icon} className="size-6 sm:size-7" aria-hidden="true" />
@@ -116,29 +121,22 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
               </li>
             ))}
           </ol>
-
-          {bodyHtml ? (
-            <article
-              className="cms-content mx-auto mt-10 max-w-3xl text-sm leading-6 text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: bodyHtml }}
-            />
-          ) : null}
         </div>
       </section>
 
       {guide.info_cards.length ? (
-        <section className="border-t border-border bg-surface section-space">
+        <section className="border-t border-border bg-surface py-4">
           <div className="container-page">
-            <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
+            <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
               <SectionHeading title="Pembayaran, pengiriman & bantuan" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {guide.info_cards.map((card) => (
-                <article key={card.title} className="border border-border bg-white p-5 sm:p-6">
+                <article key={card.title} className="border border-border bg-white p-4 sm:p-5">
                   <span className="flex size-11 items-center justify-center rounded-md bg-accent text-primary">
                     <Icon name={card.icon} className="size-5" aria-hidden="true" />
                   </span>
-                  <h3 className="mt-4 text-sm font-bold tracking-tight text-foreground">{card.title}</h3>
+                  <h3 className="mt-2 text-sm font-bold tracking-tight text-foreground">{card.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{card.description}</p>
                 </article>
               ))}
@@ -147,31 +145,54 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       ) : null}
 
-      <section className="section-space border-t border-border bg-foreground text-background">
+      {bodyHtml ? (
+        <section className="py-4 border-t border-border">
+          <div className="container-page">
+            <article
+              className="cms-content mx-auto max-w-3xl text-xs leading-5 text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            />
+          </div>
+        </section>
+      ) : (
+        <section className="py-4 border-t border-border">
+          <div className="container-page">
+            <div className="text-xs leading-5 text-muted-foreground">
+              <p>
+                <span className="font-bold text-foreground">*Catatan Ukuran Custom:</span> Kami
+                melayani ukuran custom. Sertakan model dan ukuran (Tinggi × Panjang, cm) saat chat
+                admin agar spesifikasi sesuai dan tidak terjadi kesalahan produksi.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="py-4 border-t border-border bg-foreground text-background">
         <div className="container-page flex flex-col items-center text-center">
           <SectionHeading
             className="text-background [&_h2]:text-background [&_p]:text-background/80"
             title="Siap memesan?"
             description="Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu."
           />
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild className="bg-white text-primary hover:bg-white/90">
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <Button asChild className="bg-white text-primary hover:bg-white/90 sm:min-w-[180px]">
               <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
             </Button>
             <Button
               asChild
               variant="secondary"
-              className="border-background/30 bg-transparent text-background hover:bg-background/10"
+              className="border-background/30 bg-transparent text-background hover:bg-background/10 sm:min-w-[180px]"
             >
               {whatsappUrl ? (
                 <a href={whatsappUrl} target="_blank" rel="noreferrer">
                   <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                  Konsultasi via WhatsApp
+                  Konsultasi Sekarang
                 </a>
               ) : (
                 <Link href={routeUrl("contact")}>
                   <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                  Konsultasi via WhatsApp
+                  Konsultasi Sekarang
                 </Link>
               )}
             </Button>

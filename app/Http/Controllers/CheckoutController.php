@@ -27,7 +27,8 @@ class CheckoutController extends Controller
 
     public function index(Request $request): Response
     {
-        $priced = $this->cart->pricedLines();
+        $selected = $this->cart->getSelectedLines();
+        $priced = $this->cart->pricedLines($selected ?: null);
         $applied = $request->session()->get(VoucherService::SESSION_KEY);
         $voucherDiscount = 0.0;
         $voucherPayload = null;
@@ -153,7 +154,7 @@ class CheckoutController extends Controller
                 ->withErrors(['checkout' => 'Mohon lengkapi detail pengiriman terlebih dahulu.']);
         }
 
-        if (empty($this->cart->get())) {
+        if (empty($this->cart->get($this->cart->getSelectedLines() ?: null))) {
             return redirect()->route('cart.index')
                 ->withErrors(['checkout' => 'Keranjang kosong.']);
         }

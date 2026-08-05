@@ -17,6 +17,7 @@ Laravel modular monolith: Inertia + React storefront and admin panel.
    - `frontend/brand/BRAND-KIT.md` + `frontend/docs/DESIGN-SYSTEM.md`
    - `docs/sitemap/*` + `config/sitemap.php` / `config/admin-sitemap.php`
    - `frontend/skills/ragil-public-ui/SKILL.md` or `frontend/skills/ragil-admin-ui/SKILL.md`
+    - **`docs/STANDAR-DESAIN-HALAMAN-PUBLIK.md`** — standar spacing, tipografi, layout semua halaman statis
    - **`frontend/skills/ragil-ui-functional-integration/SKILL.md`** — UI/fitur wajib fungsional + terintegrasi backend (bukan mockup)
 4. Domain stage skill under `skills/stage-*.md` when touching that domain
 

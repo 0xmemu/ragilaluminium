@@ -142,26 +142,25 @@ export default function OrderStatus({
         />
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <div className="container-page grid gap-6 py-10 lg:grid-cols-[1fr_0.82fr] lg:items-end lg:py-14">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {has_session_orders ? "Pesanan di perangkat ini" : "Cek pesanan"}
-            </h1>
-          </div>
-          <p className="max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
-            {has_session_orders
-              ? "Tanpa login. Status pembayaran dan pengiriman ditampilkan dari pesanan yang dibuat di perangkat ini."
-              : "Masukkan nomor pesanan plus nomor HP atau email yang dipakai saat checkout untuk membuka status."}
-          </p>
-        </div>
+      <section className="container-page flex items-center gap-2 pb-4 pt-4 lg:pb-6">
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="flex shrink-0 items-center justify-center"
+          aria-label="Kembali"
+        >
+          <Icon name="caret-left" className="size-5" aria-hidden="true" />
+        </button>
+        <h1 className="text-lg font-bold text-foreground">
+          {has_session_orders ? "Pesanan di perangkat ini" : "Cek pesanan"}
+        </h1>
       </section>
 
-      <section className="container-page py-10 lg:py-14">
+      <section className="container-page min-w-0 pb-5 lg:pb-8">
         {showLookupForm ? (
-          <div className="grid gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
+          <div className="grid min-w-0 gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">
-              <h2 className="text-lg font-semibold sm:text-xl">Cek pesanan</h2>
+              <h2 className="text-lg font-semibold">Cek pesanan</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Gunakan data yang sama dengan saat checkout.
               </p>

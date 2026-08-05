@@ -4,7 +4,7 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { QuantityControl } from "@/components/ui/quantity-control"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, productName } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { CartItem } from "@/types"
 
@@ -13,7 +13,7 @@ function money(value: number | string | null | undefined): number {
   return Number.isFinite(amount) ? amount : 0
 }
 
-export function CartLineItem({ item }: { item: CartItem }) {
+export function CartLineItem({ item, selected, onToggle }: { item: CartItem; selected: boolean; onToggle: () => void }) {
   const updateForm = useForm({ line_id: item.line_id, quantity: item.quantity })
   const removeForm = useForm({ line_id: item.line_id })
 
@@ -23,8 +23,6 @@ export function CartLineItem({ item }: { item: CartItem }) {
   const lineDiscount = money(item.line_discount)
   const hasDiscount =
     lineDiscount > 0 || (comparePrice !== null && comparePrice > unitPrice)
-  const unitDiscount =
-    comparePrice !== null && comparePrice > unitPrice ? comparePrice - unitPrice : 0
   const lineCompare =
     item.line_compare_total != null
       ? money(item.line_compare_total)
@@ -33,8 +31,8 @@ export function CartLineItem({ item }: { item: CartItem }) {
         : lineTotal
   const discountPercent =
     item.discount_percent ??
-    (comparePrice && comparePrice > 0 && unitDiscount > 0
-      ? Math.round((unitDiscount / comparePrice) * 100)
+    (comparePrice && comparePrice > 0 && unitPrice < comparePrice
+      ? Math.round(((comparePrice - unitPrice) / comparePrice) * 100)
       : null)
 
   function updateQuantity(quantity: number) {
@@ -43,20 +41,41 @@ export function CartLineItem({ item }: { item: CartItem }) {
     updateForm.post(routeUrl("cart.update"), { preserveScroll: true })
   }
 
-  const lineTotalBlock = (
-    <div className="text-right">
+  const discountBadge = discountPercent ? (
+    <span className="rounded bg-accent px-1 text-[10px] font-semibold leading-4 text-accent-foreground">
+      −{discountPercent}%
+    </span>
+  ) : null
+
+  const flashSaleBadge = item.flash_sale ? (
+    <span className="inline-flex items-center gap-0.5">
+      <Icon name="lightning" weight="fill" className="size-3 shrink-0 text-sale" aria-hidden />
+      <span className="text-[10px] font-extrabold italic tracking-tight text-sale">FLASH SALE</span>
+    </span>
+  ) : null
+
+  const priceBlock = (
+    <div className="text-left">
+      {(discountBadge || flashSaleBadge) ? (
+        <div className="mb-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          {flashSaleBadge}
+          {discountBadge}
+        </div>
+      ) : null}
       {hasDiscount ? (
         <>
-          <p className="tabular-nums text-xs text-muted-foreground line-through">
+          <p className="tabular-nums text-[10px] leading-4 text-muted-foreground line-through">
             {formatCurrency(lineCompare)}
           </p>
-          <p className="tabular-nums text-base font-bold text-sale">{formatCurrency(lineTotal)}</p>
-          <p className="mt-0.5 text-[11px] font-semibold text-sale">
+          <p className="tabular-nums text-[13px] font-bold leading-4 text-sale">
+            {formatCurrency(lineTotal)}
+          </p>
+          <p className="mt-0.5 text-[10px] font-semibold leading-3 text-sale">
             Hemat {formatCurrency(lineDiscount || lineCompare - lineTotal)}
           </p>
         </>
       ) : (
-        <p className="tabular-nums text-base font-bold text-foreground">
+        <p className="tabular-nums text-[13px] font-bold leading-4 text-foreground">
           {formatCurrency(lineTotal)}
         </p>
       )}
@@ -64,7 +83,7 @@ export function CartLineItem({ item }: { item: CartItem }) {
   )
 
   const quantityControls = (
-    <>
+    <div className="flex items-center gap-1">
       <QuantityControl
         value={updateForm.data.quantity}
         onChange={updateQuantity}
@@ -78,13 +97,22 @@ export function CartLineItem({ item }: { item: CartItem }) {
         disabled={removeForm.processing}
         aria-label={`Hapus ${item.name}`}
       >
-        <Icon name="x" className="h-4 w-4" aria-hidden="true" />
+        <Icon name="x" className="size-3.5" aria-hidden="true" />
       </Button>
-    </>
+    </div>
   )
 
   return (
-    <article className="flex items-start gap-2.5 border-b border-border py-3 sm:gap-4 sm:py-4">
+    <article className="flex min-w-0 items-start gap-3 border-b border-border py-2.5 sm:gap-4 sm:py-3">
+      <label className="flex shrink-0 items-center self-center pt-0">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          className="size-4 cursor-pointer rounded border-border text-primary accent-primary focus:ring-1 focus:ring-primary/50"
+          aria-label={`Pilih ${item.name}`}
+        />
+      </label>
       <Link
         href={routeUrl("product.show", { parent_sku: item.parent_sku })}
         className="shrink-0 self-start"
@@ -92,7 +120,7 @@ export function CartLineItem({ item }: { item: CartItem }) {
         <ResponsiveImage
           src={item.image}
           alt={item.name}
-          wrapperClassName="size-[5.5rem] rounded-none bg-muted sm:size-[8.5rem]"
+          wrapperClassName="size-[4.5rem] rounded-md bg-muted sm:size-[5rem]"
           className="object-cover p-0"
         />
       </Link>
@@ -100,79 +128,34 @@ export function CartLineItem({ item }: { item: CartItem }) {
       <div className="min-w-0 flex-1">
         <Link
           href={routeUrl("product.show", { parent_sku: item.parent_sku })}
-          className="line-clamp-2 text-sm font-semibold leading-5 text-foreground hover:text-primary"
+          className="line-clamp-2 block break-words text-xs font-semibold leading-4 text-foreground hover:text-primary sm:text-[13px]"
         >
-          {item.name}
+          {productName(item.name, item.short_name)}
         </Link>
-        <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-          {item.variation_1_option ? (
-            <div className="flex gap-2">
-              <dt>{item.variation_1_name ?? "Pilihan"}:</dt>
-              <dd className="font-semibold text-foreground">{item.variation_1_option}</dd>
-            </div>
-          ) : null}
-          {item.variation_2_option ? (
-            <div className="flex gap-2">
-              <dt>{item.variation_2_name ?? "Pilihan"}:</dt>
-              <dd className="font-semibold text-foreground">{item.variation_2_option}</dd>
-            </div>
-          ) : null}
-        </dl>
 
-        <div className="mt-3 space-y-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span
-              className={
-                hasDiscount
-                  ? "tabular-nums text-base font-bold text-sale"
-                  : "tabular-nums text-sm font-semibold text-foreground"
-              }
-            >
-              {formatCurrency(unitPrice)}
-            </span>
-            {hasDiscount && comparePrice !== null ? (
-              <>
-                <span className="tabular-nums text-sm font-light text-muted-foreground line-through">
-                  {formatCurrency(comparePrice)}
-                </span>
-                {discountPercent ? (
-                  <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground">
-                    −{discountPercent}%
-                  </span>
-                ) : null}
-                {item.flash_sale ? (
-                  <span className="inline-flex items-center gap-0.5">
-                    <Icon
-                      name="lightning"
-                      weight="fill"
-                      className="size-3.5 shrink-0 text-sale"
-                      aria-hidden
-                    />
-                    <span className="text-xs font-extrabold italic tracking-tight text-sale">
-                      FLASH SALE
-                    </span>
-                  </span>
-                ) : null}
-              </>
+        {/* Variants (left) | Price (right) */}
+        <div className="mt-1.5 grid grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4">
+          <dl className="min-w-0 space-y-0.5 text-[10px] text-muted-foreground">
+            {item.variation_1_option ? (
+              <div className="flex min-w-0 gap-1.5">
+                <dt className="shrink-0">{item.variation_1_name ?? "Pilihan"}:</dt>
+                <dd className="min-w-0 truncate font-semibold text-foreground">{item.variation_1_option}</dd>
+              </div>
             ) : null}
-          </div>
-          {hasDiscount ? (
-            <p className="text-xs font-semibold text-sale">
-              Potongan {formatCurrency(unitDiscount || lineDiscount / Math.max(1, item.quantity))}
-              <span className="font-normal text-muted-foreground"> / item</span>
-            </p>
-          ) : null}
+            {item.variation_2_option ? (
+              <div className="flex min-w-0 gap-1.5">
+                <dt className="shrink-0">{item.variation_2_name ?? "Pilihan"}:</dt>
+                <dd className="min-w-0 truncate font-semibold text-foreground">{item.variation_2_option}</dd>
+              </div>
+            ) : null}
+          </dl>
+          {priceBlock}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 sm:hidden">
-          {lineTotalBlock}
-          <div className="flex items-center gap-2">{quantityControls}</div>
+        {/* Qty controls */}
+        <div className="mt-1.5 flex items-center gap-2">
+          {quantityControls}
         </div>
-      </div>
-
-      <div className="hidden min-h-[7.5rem] shrink-0 flex-col items-end self-stretch sm:flex sm:min-h-[8.5rem]">
-        {lineTotalBlock}
-        <div className="mt-auto flex items-center gap-2 pt-3">{quantityControls}</div>
       </div>
     </article>
   )

@@ -1,0 +1,27 @@
+# WAHA WhatsApp API Gateway (GOWS — no Chromium)
+# Run: docker compose -f docker-compose.waha.yml up -d
+# Laravel reaches WAHA at http://127.0.0.1:3000
+#
+# Pin a release tag in production. See: https://hub.docker.com/r/devlikeapro/waha
+
+services:
+  waha:
+    image: ${WAHA_IMAGE:-devlikeapro/waha:noweb-2026.7.2}
+    container_name: waha
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: ${WHATSAPP_DEFAULT_ENGINE:-GOWS}
+      WAHA_API_KEY: ${WAHA_API_KEY:?WAHA_API_KEY is required}
+      WHATSAPP_HOOK_URL: ${WHATSAPP_HOOK_URL}
+      WHATSAPP_HOOK_EVENTS: message,message.ack,session.status
+      WHATSAPP_HOOK_HMAC_KEY: ${WAHA_HMAC_SECRET}
+      WHATSAPP_HOOK_RETRIES_POLICY: constant
+      WHATSAPP_HOOK_RETRIES_DELAY_SECONDS: "2"
+      WHATSAPP_HOOK_RETRIES_ATTEMPTS: "8"
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+      WAHA_PRESENCE_AUTO_ONLINE: "False"
+      TZ: Asia/Jakarta
+    volumes:
+      - ./.waha-sessions:/app/.sessions

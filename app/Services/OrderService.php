@@ -39,7 +39,8 @@ class OrderService
         ?array $voucher = null,
         float $shippingSubsidy = 0,
     ): Order {
-        $items = $this->cart->get();
+        $selected = $this->cart->getSelectedLines();
+        $items = $this->cart->get($selected ?: null);
 
         if (empty($items)) {
             throw new \DomainException('Keranjang kosong, tidak dapat membuat pesanan.');

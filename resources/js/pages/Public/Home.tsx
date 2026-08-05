@@ -862,7 +862,7 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
 
   return (
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface section-space">
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           eyebrow="Temukan model Anda"
           title="Pilih model produk"
@@ -891,7 +891,7 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
 
   return (
     <section id="paling-banyak-dipesan" className="scroll-mt-20 section-space">
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           eyebrow="Untuk inspirasi Anda"
           title="Paling banyak dipesan"
@@ -944,7 +944,7 @@ function CaraPesan({
 
   return (
     <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
           <SectionHeading
             size="display"
@@ -993,7 +993,7 @@ function HasilPemasangan({
 
   return (
     <section id="hasil-pemasangan" className="scroll-mt-20 section-space">
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           eyebrow="Inspirasi penerapan"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
@@ -1019,7 +1019,7 @@ function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
 
   return (
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           eyebrow="Ulasan dari marketplace dan WhatsApp"
           title="Apa kata pelanggan kami"
@@ -1050,7 +1050,7 @@ function UlasanPelangganWebsite({ testimonials }: { testimonials: Testimonial[] 
 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted section-space">
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           eyebrow="Pembeli lewat website"
           title="Ulasan pelanggan di website"
@@ -1106,7 +1106,7 @@ const HELP_STEPS = [
 function KamiBantu() {
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-surface-muted section-space">
-      <div className="container-page">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
           <SectionHeading
             size="display"
@@ -1118,16 +1118,16 @@ function KamiBantu() {
             }
           />
         </div>
-        <div className="mx-auto grid max-w-3xl gap-4">
+        <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2">
           {HELP_STEPS.map((item) => (
             <article
               key={item.title}
-              className="flex items-center gap-4 border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-6 sm:p-6"
+              className="flex flex-col items-center gap-4 border border-border bg-surface p-5 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-5 sm:p-6"
             >
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
                 <Icon name={item.icon} className="size-6 sm:size-7" aria-hidden="true" />
               </span>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
                   {item.title}
                 </h3>
@@ -1147,7 +1147,7 @@ function ClosingCta() {
 
   return (
     <section id="closing-cta" className="scroll-mt-20 section-space bg-foreground text-background">
-      <div className="container-page flex flex-col items-center text-center">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12 flex flex-col items-center text-center">
         <SectionHeading
           size="display"
           eyebrow="Produk berkualitas"

@@ -64,9 +64,19 @@ export default function OrderConfirmation({
           <p className="mt-6 text-xs font-bold tracking-tight text-success">
             Pesanan berhasil dibuat
           </p>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-            Terima kasih, {order.customer_name}.
-          </h1>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex shrink-0 items-center justify-center"
+              aria-label="Kembali"
+            >
+              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="mt-3 text-lg font-semibold tracking-tight">
+              Terima kasih, {order.customer_name}.
+            </h1>
+          </div>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
             Simpan nomor pesanan berikut. Nomor ini dipakai bersama nomor HP atau email untuk
             melihat status pesanan.
@@ -78,7 +88,7 @@ export default function OrderConfirmation({
                 Nomor pesanan
               </p>
               <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="tabular-nums break-all font-mono text-2xl font-semibold sm:text-3xl">
+                <p className="tabular-nums break-all font-mono text-lg font-semibold">
                   {order.order_number}
                 </p>
                 <Button variant="secondary" onClick={() => copyText(order.order_number, "order")}>
@@ -152,7 +162,7 @@ export default function OrderConfirmation({
             </Alert>
           ) : null}
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
+          <div className="mt-8 grid min-w-0 gap-8 lg:grid-cols-[1fr_20rem]">
             <section>
               <h2 className="text-2xl font-semibold">Item pesanan</h2>
               <ul className="mt-4 divide-y divide-border border-y border-border">

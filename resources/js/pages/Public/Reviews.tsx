@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { GalleryLightbox, toGalleryItems } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
+import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -37,17 +38,28 @@ export default function Reviews({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page grid gap-4 py-5">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: heading, href: null },
             ]}
           />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{heading}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
+        </div>
+        <div className="container-page flex flex-col gap-4 pb-4 pt-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="flex shrink-0 items-center justify-center"
+                aria-label="Kembali"
+              >
+                <Icon name="caret-left" className="size-5" aria-hidden="true" />
+              </button>
+              <h1 className="text-lg font-semibold tracking-tight">{heading}</h1>
+            </div>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">{subtitle}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="secondary" size="sm">
@@ -59,11 +71,10 @@ export default function Reviews({
                 </Link>
               </Button>
             </div>
-          </div>
         </div>
       </section>
 
-      <section className="section-space">
+      <section className="py-4">
         <div className="container-page">
           {marketplaceTestimonials.length ? (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5">

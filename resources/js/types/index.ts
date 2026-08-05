@@ -183,6 +183,7 @@ export interface ProductCardData {
   parent_sku: string
   name: string
   short_name?: string | null
+  card_key?: string | null
   product_category?: string | null
   product_model?: string | null
   design_variant?: string | null
@@ -339,6 +340,7 @@ export interface CartItem {
   parent_sku: string
   variant_sku?: string | null
   name: string
+  short_name?: string | null
   variation_1_name?: string | null
   variation_1_option?: string | null
   variation_2_name?: string | null

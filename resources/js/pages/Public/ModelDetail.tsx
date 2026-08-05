@@ -2,6 +2,7 @@ import { Head, Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { ProductCard } from "@/components/public/product-card"
+import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -216,6 +217,7 @@ function DesignProductRail({
 
 export default function ModelDetail({
   model,
+  products = [],
   designRails = [],
   designVariants = [],
   hubHref,
@@ -280,7 +282,7 @@ export default function ModelDetail({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-3 lg:py-4">
+        <div className="container-page hidden py-3 sm:block lg:py-4">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -306,9 +308,19 @@ export default function ModelDetail({
             </div>
 
             <div className="min-w-0 pt-5 md:pt-0">
-              <h1 className="text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-[1.75rem] lg:text-3xl">
-                {model.title}
-              </h1>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.history.back()}
+                  className="flex shrink-0 items-center justify-center"
+                  aria-label="Kembali"
+                >
+                  <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                </button>
+                <h1 className="text-lg font-bold leading-tight tracking-tight text-foreground">
+                  {model.title}
+                </h1>
+              </div>
               {model.desc ? (
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-4 sm:text-[15px] sm:leading-7">
                   {model.desc}
@@ -364,7 +376,30 @@ export default function ModelDetail({
         </div>
 
         <div id="produk" className="container-page mt-8 scroll-mt-24 sm:mt-10">
-          {rails.length ? (
+          {rails.length === 1 ? (
+            <section aria-labelledby="single-design-heading">
+              <div className="mb-3 sm:mb-4">
+                <h2
+                  id="single-design-heading"
+                  className="text-[clamp(1rem,5vw,1.25rem)] font-bold leading-tight tracking-tight text-foreground"
+                >
+                  {rails[0].title}
+                </h2>
+                <p className="mt-1 text-sm leading-7 text-muted-foreground">
+                  {rails[0].products?.length ?? 0} produk
+                </p>
+              </div>
+              <ProductCardGrid>
+                {(products.length ? products : (rails[0].products ?? [])).map((product) => (
+                  <ProductCard
+                    key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
+                    product={product}
+                    titleStyle="model"
+                  />
+                ))}
+              </ProductCardGrid>
+            </section>
+          ) : rails.length ? (
             <div className="flex flex-col gap-8 sm:gap-10">
               {rails.map((variant) => (
                 <DesignProductRail key={variant.value} variant={variant} />

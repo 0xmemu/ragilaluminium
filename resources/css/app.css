@@ -242,13 +242,13 @@
 
   @media (min-width: 37.5em) {
     .container-page {
-      padding-inline: 2rem;
+      padding-inline: 2.5rem;
     }
   }
 
   @media (min-width: 56.25em) {
     .container-page {
-      padding-inline: 3rem;
+      padding-inline: 15rem;
     }
   }
 

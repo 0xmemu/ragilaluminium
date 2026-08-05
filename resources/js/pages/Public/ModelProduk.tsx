@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { ModelProdukListingSidebar } from "@/components/public/catalog-listing-sidebar"
 import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
+import { Icon } from "@/components/shared/icon"
 import { ModelCard } from "@/components/public/model-card"
 import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
@@ -64,39 +65,50 @@ export default function ModelProduk({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-4 lg:py-5">
+        <div className="container-page hidden py-3 sm:block">
           <Breadcrumbs
             items={[
               { label: "Home", href: routeUrl("home") },
               { label: "Semua Model Produk" },
             ]}
           />
+        </div>
 
-          <div className="mt-5">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Semua Model Produk</h1>
-            <div className="mt-2 flex items-end justify-between gap-3">
-              <p className="min-w-0 text-sm leading-8 text-muted-foreground">
-                {formatNumber(models.length)} model ditemukan
-              </p>
-
-              <div className="flex shrink-0 items-end gap-2 lg:hidden">
-                <FilterBerdasarkanControl
-                  id="model-produk-design"
-                  variant="plain"
-                  value={design ?? ""}
-                  options={designOptions}
-                  onChange={(value) => selectDesign(value || null)}
-                  ariaLabel="Filter desain model"
-                  menuLabel="Desain"
-                />
-              </div>
-            </div>
+        <div className="container-page pb-4 pt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex shrink-0 items-center justify-center sm:hidden"
+              aria-label="Kembali"
+            >
+              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="flex items-baseline gap-2 text-lg font-bold tracking-tight">
+            Semua Model Produk
+            <span className="font-normal text-muted-foreground">|</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              {formatNumber(models.length)} model ditemukan
+            </span>
+          </h1>
           </div>
         </div>
       </section>
 
+      <div className="container-page flex justify-end py-3 lg:hidden">
+        <FilterBerdasarkanControl
+          id="model-produk-design"
+          variant="plain"
+          value={design ?? ""}
+          options={designOptions}
+          onChange={(value) => selectDesign(value || null)}
+          ariaLabel="Filter desain model"
+          menuLabel="Desain"
+        />
+      </div>
+
       <section className="container-page py-4 lg:py-5">
-        <div className="grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
+        <div className="grid min-w-0 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
           <aside className="hidden lg:block">
             <div className="sticky top-28">
               <ModelProdukListingSidebar

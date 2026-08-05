@@ -341,7 +341,7 @@ export default function Checkout({
     return (
       <PublicLayout>
         <Head title="Checkout" />
-        <section className="container-page py-12 lg:py-20">
+        <section className="container-page py-4">
           <EmptyState
             icon="shopping-cart"
             title="Keranjang kosong"
@@ -362,11 +362,21 @@ export default function Checkout({
       <Head title="Checkout" />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-12 lg:py-16">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Proses pesanan
-          </h1>
-          <ol className="mt-8 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border">
+        <div className="container-page pb-4 pt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex shrink-0 items-center justify-center sm:hidden"
+              aria-label="Kembali"
+            >
+              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
+              Proses pesanan
+            </h1>
+          </div>
+          <ol className="mt-4 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border">
             <li className="bg-surface p-4">
               <p className="font-mono text-[10px] text-primary">01</p>
               <p className="mt-1 text-sm font-semibold">Detail pengiriman</p>
@@ -379,14 +389,14 @@ export default function Checkout({
         </div>
       </section>
 
-      <section className="container-page py-10 lg:py-14">
+      <section className="container-page py-4">
         {pageErrors.checkout ? (
-          <Alert tone="danger" title={pageErrors.checkout} className="mb-6" />
+          <Alert tone="danger" title={pageErrors.checkout} className="mb-4" />
         ) : null}
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-14">
-          <div className="space-y-6">
-            <section className="surface-panel p-5 sm:p-7">
-              <div className="flex items-start justify-between gap-4">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <div className="min-w-0 space-y-4">
+            <section className="surface-panel min-w-0 p-5 sm:p-7">
+              <div className="flex items-start justify-between gap-4 min-w-0">
                 <div>
                   <p className="font-mono text-xs font-semibold text-primary">01</p>
                   <h2 className="mt-2 text-2xl font-semibold">Detail pengiriman</h2>
@@ -402,18 +412,18 @@ export default function Checkout({
               </div>
 
               {details && !editingDetails ? (
-                <dl className="mt-6 grid gap-4 rounded-md bg-surface-muted p-4 text-sm sm:grid-cols-2">
+                <dl className="mt-4 grid gap-4 rounded-md bg-surface-muted p-4 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-xs text-muted-foreground">Pemesan</dt>
-                    <dd className="mt-1 font-semibold">{details.name}</dd>
+                    <dd className="mt-1 font-semibold break-words [overflow-wrap:anywhere]">{details.name}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">Nomor HP/WhatsApp</dt>
-                    <dd className="mt-1 font-semibold">{details.phone}</dd>
+                    <dd className="mt-1 font-semibold break-words [overflow-wrap:anywhere]">{details.phone}</dd>
                   </div>
                   <div className="sm:col-span-2">
                     <dt className="text-xs text-muted-foreground">Alamat</dt>
-                    <dd className="mt-1 font-semibold leading-6">{addressSummary}</dd>
+                    <dd className="mt-1 font-semibold leading-6 break-words [overflow-wrap:anywhere]">{addressSummary}</dd>
                   </div>
                 </dl>
               ) : (
@@ -587,7 +597,7 @@ export default function Checkout({
 
             <section
               className={cn(
-                "surface-panel p-5 sm:p-7",
+                "surface-panel min-w-0 p-5 sm:p-7",
                 !details && "pointer-events-none opacity-55",
               )}
               aria-disabled={!details}
@@ -597,7 +607,7 @@ export default function Checkout({
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Pilih metode yang akan dicatat pada pesanan.
               </p>
-              <form onSubmit={placeOrder} className="mt-6">
+              <form onSubmit={placeOrder} className="mt-4">
                 <fieldset disabled={!details || paymentForm.processing}>
                   <legend className="sr-only">Metode pembayaran</legend>
                   <div className="grid gap-3">
@@ -640,9 +650,9 @@ export default function Checkout({
                           onChange={() => paymentForm.setData("payment_method", value)}
                           className="mt-1 h-4 w-4 accent-primary"
                         />
-                        <span>
+                        <span className="min-w-0">
                           <span className="block text-sm font-semibold">{label}</span>
-                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                          <span className="mt-1 block text-xs leading-5 text-muted-foreground break-words">
                             {description}
                           </span>
                         </span>
@@ -661,7 +671,7 @@ export default function Checkout({
                 <Button
                   type="submit"
                   size="lg"
-                  className="mt-6 hidden h-12 w-full lg:inline-flex"
+                  className="mt-4 hidden h-12 w-full lg:inline-flex"
                   disabled={!details || editingDetails || paymentForm.processing}
                 >
                   {paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
@@ -683,9 +693,9 @@ export default function Checkout({
             </section>
           </div>
 
-          <aside className="surface-panel p-6 lg:sticky lg:top-28">
-            <h2 className="text-2xl font-semibold">Ringkasan pesanan</h2>
-            <ul className="mt-5 divide-y divide-border border-y border-border">
+          <aside className="surface-panel min-w-0 p-5 lg:sticky lg:top-28">
+            <h2 className="text-lg font-semibold">Ringkasan pesanan</h2>
+            <ul className="mt-4 divide-y divide-border border-y border-border">
               {items.map((item) => {
                 const lineTotal = Number(item.line_total ?? 0)
                 const lineDiscount = Number(item.line_discount ?? 0)
@@ -703,9 +713,9 @@ export default function Checkout({
                 const discountPercent = item.discount_percent
 
                 return (
-                  <li key={item.line_id} className="flex justify-between gap-4 py-4 text-sm">
+                  <li key={item.line_id} className="flex justify-between gap-4 py-3 text-xs">
                     <span className="min-w-0">
-                      <span className="font-semibold leading-5">{item.name}</span>
+                      <span className="font-semibold leading-5 break-words [overflow-wrap:anywhere]">{item.name}</span>
                       <span className="tabular-nums mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <span>{item.quantity} item</span>
                         {item.flash_sale ? (
@@ -746,7 +756,7 @@ export default function Checkout({
               })}
             </ul>
 
-            <div className="mt-5 border-t border-border pt-4">
+            <div className="mt-4 border-t border-border pt-4">
               {hasVoucher ? (
                 <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
                   <div className="flex items-start justify-between gap-3">
@@ -824,14 +834,14 @@ export default function Checkout({
               )}
             </div>
 
-            <dl className="mt-5 space-y-3 text-sm">
+            <dl className="mt-4 space-y-3 text-xs">
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Subtotal</dt>
+                <dt className="text-muted-foreground min-w-0 break-words">Subtotal</dt>
                 <dd className="tabular-nums font-semibold">{formatCurrency(subtotal)}</dd>
               </div>
               {hasDiscount ? (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Potongan harga</dt>
+                  <dt className="text-muted-foreground min-w-0 break-words">Potongan harga</dt>
                   <dd className="tabular-nums font-semibold text-sale">
                     −{formatCurrency(discount_total)}
                   </dd>
@@ -839,7 +849,7 @@ export default function Checkout({
               ) : null}
               {hasVoucher ? (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Voucher ({voucher?.code})</dt>
+                  <dt className="text-muted-foreground min-w-0 break-words">Voucher ({voucher?.code})</dt>
                   <dd className="tabular-nums font-semibold text-sale">
                     −{formatCurrency(voucher_discount)}
                   </dd>
@@ -847,7 +857,7 @@ export default function Checkout({
               ) : null}
               {showCodFee ? (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Biaya COD</dt>
+                  <dt className="text-muted-foreground min-w-0 break-words">Biaya COD</dt>
                   <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
                 </div>
               ) : null}
@@ -856,36 +866,36 @@ export default function Checkout({
                   {shipping.applied && shipping.subsidy > 0 ? (
                     <>
                       <div className="flex justify-between gap-4">
-                        <dt className="text-muted-foreground">Ongkir (tarif kurir)</dt>
+                        <dt className="text-muted-foreground min-w-0 break-words">Ongkir (tarif kurir)</dt>
                         <dd className="tabular-nums font-semibold">{formatCurrency(shipping.gross)}</dd>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <dt className="text-muted-foreground">Subsidi ongkir</dt>
+                        <dt className="text-muted-foreground min-w-0 break-words">Subsidi ongkir</dt>
                         <dd className="tabular-nums font-semibold text-sale">
                           −{formatCurrency(shipping.subsidy)}
                         </dd>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <dt className="text-muted-foreground">Ongkir dibayar</dt>
+                        <dt className="text-muted-foreground min-w-0 break-words">Ongkir dibayar</dt>
                         <dd className="tabular-nums font-semibold">{formatCurrency(shipping.net)}</dd>
                       </div>
                     </>
                   ) : (
                     <div className="flex justify-between gap-4">
-                      <dt className="text-muted-foreground">Pengiriman</dt>
+                      <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
                       <dd className="tabular-nums font-semibold">{formatCurrency(shipping.net)}</dd>
                     </div>
                   )}
                 </>
               ) : (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Pengiriman</dt>
-                  <dd className="text-right font-semibold">Dihitung dari alamat</dd>
+                  <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
+                  <dd className="text-right font-semibold shrink-0">Dihitung dari alamat</dd>
                 </div>
               )}
             </dl>
 
-            <TrustAssuranceCard className="mt-6" />
+            <TrustAssuranceCard className="mt-4" />
             <Alert tone="info" className="mt-4">
               Total akhir dan nomor pesanan ditampilkan setelah konfirmasi berhasil.
             </Alert>

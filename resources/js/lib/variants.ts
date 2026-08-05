@@ -98,7 +98,7 @@ function normalizeAxisOption(name: string, option: string): string {
   return cleaned
 }
 
-function variantPairs(variant: ProductVariant): Array<[string, string]> {
+export function variantPairs(variant: ProductVariant): Array<[string, string]> {
   const pairs: Array<[string, string]> = []
 
   const firstName = axisNameForPair(variant.variation_1_name, variant.variation_1_option)

@@ -8,6 +8,7 @@ import {
   FilterBerdasarkanControl,
   type FilterBerdasarkanOption,
 } from "@/components/public/filter-berdasarkan-control"
+import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
@@ -102,7 +103,7 @@ export default function Installations({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-3 lg:py-4">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             singleLine={!isModelLevel}
             items={
@@ -118,19 +119,33 @@ export default function Installations({
                   ]
             }
           />
-
-          {isModelLevel ? (
-            <div className="mt-4">
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{heading}</h1>
-              <div className="mt-2 flex items-end justify-between gap-3">
-                <p className="min-w-0 text-sm leading-8 text-muted-foreground">{countLabel}</p>
-                <div className="flex shrink-0 items-end justify-end">{sortControl}</div>
-              </div>
-            </div>
-          ) : (
-            <h1 className="sr-only">{modelMeta?.label || heading}</h1>
-          )}
         </div>
+
+        {isModelLevel ? (
+          <div className="container-page py-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.history.back()}
+                  className="flex shrink-0 items-center justify-center"
+                  aria-label="Kembali"
+                >
+                  <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                </button>
+                <h1 className="flex items-baseline gap-2 text-lg font-bold tracking-tight">
+                  {heading}
+                  <span className="font-normal text-muted-foreground">|</span>
+                  <span className="text-xs font-normal text-muted-foreground">{countLabel}</span>
+                </h1>
+              </div>
+              <div className="flex shrink-0 items-center">{sortControl}</div>
+            </div>
+          </div>
+        ) : (
+          <h1 className="sr-only">{modelMeta?.label || heading}</h1>
+        )}
+
       </section>
 
       <section className={isModelLevel ? "pt-4 pb-8 sm:pt-6 sm:pb-10" : "pt-0 pb-8 sm:pb-10"}>

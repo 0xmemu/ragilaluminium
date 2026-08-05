@@ -232,7 +232,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-4 lg:py-5">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -240,190 +240,151 @@ export default function InformasiToko({ page }: { page: PageData }) {
             ]}
           />
         </div>
-        <div className="container-page mx-auto max-w-2xl pb-8 pt-2">
-          <BrandWordmark className="[&_img]:h-11 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-12" />
-          <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight sm:text-3xl">{heading}</h1>
-          <p className="mt-2 text-sm font-semibold text-foreground sm:text-base">
+        <div className="container-page pb-4 pt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex shrink-0 items-center justify-center"
+              aria-label="Kembali"
+            >
+              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="text-lg font-bold leading-snug tracking-tight">{heading}</h1>
+          </div>
+          <BrandWordmark className="[&_img]:h-11 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-12 mt-3" />
+          <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
             Sejak 2008 memproduksi jendela aluminium
           </p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+          <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm">
             Kami berkomitmen menghadirkan produk berkualitas dengan desain modern, tahan lama, dan
             presisi tinggi untuk setiap kebutuhan Anda.
           </p>
         </div>
       </section>
 
-      <div className="container-page mx-auto max-w-2xl space-y-10 py-8 sm:py-10">
-        <section aria-labelledby="why-ragil">
-          <h2 id="why-ragil" className="text-base font-bold tracking-tight text-foreground">
-            Kenapa Memilih Ragil Aluminium
-          </h2>
-          <PointList items={WHY_POINTS} />
-        </section>
+      <div className="container-page space-y-6 py-6 sm:py-8 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
+        <div className="space-y-6">
+          <section aria-labelledby="why-ragil">
+            <h2 id="why-ragil" className="text-base font-bold tracking-tight text-foreground">
+              Kenapa Memilih Ragil Aluminium
+            </h2>
+            <PointList items={WHY_POINTS} />
+          </section>
 
-        <section aria-labelledby="process-ragil">
-          <h2 id="process-ragil" className="text-base font-bold tracking-tight text-foreground">
-            Proses & Produk Kami
-          </h2>
-          <PointList items={PROCESS_POINTS} />
-        </section>
+          <section aria-labelledby="process-ragil">
+            <h2 id="process-ragil" className="text-base font-bold tracking-tight text-foreground">
+              Proses & Produk Kami
+            </h2>
+            <PointList items={PROCESS_POINTS} />
+          </section>
+        </div>
 
-        <section aria-labelledby="trust-ragil">
-          <h2 id="trust-ragil" className="text-base font-bold tracking-tight text-foreground">
-            Dipercaya oleh Banyak Pelanggan
-          </h2>
-          <PointList items={trustPoints} />
-        </section>
+        <div className="space-y-6">
+          <section aria-labelledby="trust-ragil">
+            <h2 id="trust-ragil" className="text-base font-bold tracking-tight text-foreground">
+              Dipercaya oleh Banyak Pelanggan
+            </h2>
+            <PointList items={trustPoints} />
+          </section>
 
-        <section aria-labelledby="how-ragil">
-          <h2 id="how-ragil" className="text-base font-bold tracking-tight text-foreground">
-            Cara Kerja Kami
-          </h2>
-          <ol className="mt-4 space-y-4">
-            {WORK_STEPS.map((item, index) => (
-              <li key={item.title} className="flex gap-3">
-                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold text-background">
-                  {index + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
-                    <Icon name={item.icon} className="size-4 text-primary" aria-hidden="true" />
-                    {item.title}
-                  </p>
-                  <p className="mt-0.5 text-sm leading-6 text-muted-foreground">{item.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="secondary">
-              <Link href={routeUrl("catalog.index")}>Pilih Model Produk</Link>
-            </Button>
-            {whatsappUrl ? (
-              <Button asChild size="sm">
-                <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                  <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-                  Konsultasi WhatsApp
-                </a>
-              </Button>
-            ) : null}
-          </div>
-        </section>
+          <section aria-labelledby="how-ragil">
+            <h2 id="how-ragil" className="text-base font-bold tracking-tight text-foreground">
+              Cara Kerja Kami
+            </h2>
+            <PointList items={WORK_STEPS.map(s => ({ ...s, body: s.body }))} />
+          </section>
+        </div>
+      </div>
 
+      <div className="container-page space-y-8 py-6 sm:py-8">
         <section aria-labelledby="store-contact">
           <h2 id="store-contact" className="text-base font-bold tracking-tight text-foreground">
             Informasi Kontak
           </h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Kunjungi toko atau hubungi tim kami untuk konsultasi produk.
-          </p>
 
-          <div className="mt-5 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-            <div className="border-b border-border bg-surface-muted/40 px-5 py-5">
-              <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-                Alamat toko
-              </p>
-              <p className="mt-2 text-base font-normal leading-7 tracking-tight text-foreground sm:text-lg">
-                {brand.address}
-              </p>
-              {brand.maps_url ? (
-                <a
-                  href={brand.maps_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline"
-                >
-                  Buka di Google Maps
-                  <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
-                </a>
+          <div className="mt-4">
+            <div className="surface-panel grid gap-0 lg:grid-cols-[1fr_1.2fr] lg:overflow-hidden">
+              <div className="p-5">
+                <p className="text-lg font-semibold">Kontak Ragil Aluminium</p>
+                <p className="mt-3 text-xs leading-6 text-muted-foreground">{brand.address}</p>
+                <div className="mt-4 grid gap-2">
+                  {whatsappUrl ? (
+                    <Button asChild>
+                      <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                        <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+                        {consultationWhatsApp?.directLabel ?? "Chat WhatsApp"}
+                      </a>
+                    </Button>
+                  ) : null}
+                  {phoneHref ? (
+                    <Button asChild variant={whatsappUrl ? "secondary" : undefined}>
+                      <a href={phoneHref}>
+                        <Icon name="headset" className="h-4 w-4" aria-hidden="true" />
+                        Telepon
+                      </a>
+                    </Button>
+                  ) : null}
+                  {brand.email ? (
+                    <Button asChild variant="secondary">
+                      <a href={`mailto:${brand.email}`}>Kirim email</a>
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  {brand.hours ?? "Senin – Sabtu, 08.00 – 17.00 WIB"}
+                </p>
+              </div>
+
+              {brand.maps_embed_url ? (
+                <div className="min-h-[220px] lg:min-h-0">
+                  <iframe
+                    title="Peta lokasi toko Ragil Aluminium"
+                    src={brand.maps_embed_url}
+                    className="size-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                </div>
               ) : null}
             </div>
-
-            {brand.phone || whatsappUrl ? (
-              <ContactRow label="WhatsApp" icon="whatsapp">
-                {brand.phone ? (
-                  <p className="text-sm font-semibold text-foreground">
-                    {phoneHref ? (
-                      <a href={phoneHref} className="hover:text-primary">
-                        {brand.phone}
-                      </a>
-                    ) : (
-                      brand.phone
-                    )}
-                  </p>
-                ) : null}
-                {whatsappUrl ? (
-                  <Button asChild className="mt-2.5" size="sm">
-                    <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                      <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-                      {consultationWhatsApp?.directLabel ?? "Chat via WhatsApp"}
-                    </a>
-                  </Button>
-                ) : null}
-              </ContactRow>
-            ) : null}
-
-            {brand.email ? (
-              <ContactRow label="Email bisnis" icon="envelope">
-                <a
-                  href={`mailto:${brand.email}`}
-                  className="break-all text-sm font-semibold text-primary underline-offset-4 hover:underline"
-                >
-                  {brand.email}
-                </a>
-              </ContactRow>
-            ) : null}
-
-            <ContactRow label="Jam operasional" icon="clock">
-              <p className="text-sm leading-6 text-foreground">
-                {brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB"}
-              </p>
-            </ContactRow>
           </div>
-
-          {brand.maps_embed_url ? (
-            <div className="mt-5 overflow-hidden rounded-xl border border-border">
-              <iframe
-                title="Peta lokasi toko Ragil Aluminium"
-                src={brand.maps_embed_url}
-                className="aspect-[4/3] w-full border-0 sm:aspect-video"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-              />
-            </div>
-          ) : null}
         </section>
 
-        {socials.length ? (
-          <section aria-labelledby="store-social">
-            <h2 id="store-social" className="text-base font-bold tracking-tight text-foreground">
-              Ikuti Kami
-            </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Update produk, tips perawatan, dan dokumentasi pemasangan.
-            </p>
-            <div className="mt-5 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-              {socials.map((item) => (
-                <PlatformLinkRow key={item.key} item={item} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {(socials.length || marketplaces.length) ? (
+          <section aria-labelledby="store-channels" className="grid gap-4 md:grid-cols-2">
+            {socials.length ? (
+              <div>
+                <h2 id="store-social" className="text-base font-bold tracking-tight text-foreground">
+                  Ikuti Kami
+                </h2>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Update produk, tips perawatan, dan dokumentasi pemasangan.
+                </p>
+                <div className="mt-4 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+                  {socials.map((item) => (
+                    <PlatformLinkRow key={item.key} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
-        {marketplaces.length ? (
-          <section aria-labelledby="store-marketplace">
-            <h2 id="store-marketplace" className="text-base font-bold tracking-tight text-foreground">
-              Marketplace
-            </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Belanja melalui toko resmi Ragil Aluminium di platform berikut.
-            </p>
-            <div className="mt-5 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-              {marketplaces.map((item) => (
-                <PlatformLinkRow key={item.key} item={item} />
-              ))}
-            </div>
+            {marketplaces.length ? (
+              <div>
+                <h2 id="store-marketplace" className="text-base font-bold tracking-tight text-foreground">
+                  Marketplace
+                </h2>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Belanja melalui toko resmi Ragil Aluminium di platform berikut.
+                </p>
+                <div className="mt-4 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+                  {marketplaces.map((item) => (
+                    <PlatformLinkRow key={item.key} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
       </div>

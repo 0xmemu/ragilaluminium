@@ -239,7 +239,7 @@ export function PublicHeader() {
   return (
     <>
     <header className="sticky top-0 z-header border-b border-white/10 bg-foreground text-background">
-      <div className="container-page relative flex h-14 items-center gap-1.5 py-0 md:min-h-14 md:gap-0 md:py-2">
+      <div className="container-page relative flex h-14 items-center gap-1.5 py-0 md:min-h-14 md:gap-3 md:py-2 !px-5 md:!px-8 lg:!px-12">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
             <button
@@ -610,7 +610,7 @@ export function PublicHeader() {
 
     {desktopItems.length ? (
       <nav className="hidden border-b border-white/10 bg-foreground text-background md:block" aria-label="Navigasi utama">
-        <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10">
+        <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10 !px-5 md:!px-8 lg:!px-12">
           {desktopItems.map((item) => {
             const listingActive =
               isRouteActive(["catalog.all", "catalog.category", "catalog.design", "catalog.windows", "catalog.doors", "catalog.bouven", "product.show"]) ||
@@ -633,7 +633,7 @@ export function PublicHeader() {
                 key={`${item.label}-${item.route}-${item.hash ?? ""}`}
                 href={navHref(item)}
                 className={cn(
-                  "inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold transition",
+                  "inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold transition",
                   isFlashSale
                     ? cn(
                         "font-extrabold italic text-red-400 hover:text-white",
