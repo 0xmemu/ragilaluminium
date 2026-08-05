@@ -56,14 +56,8 @@ export default function OrderConfirmation({
     <PublicLayout>
       <Head title={`Pesanan ${order.order_number}`} />
 
-      <section className="container-page py-4">
-        <div className="mx-auto max-w-4xl">
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
-            <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
-          </div>
-          <p className="mt-6 text-xs font-bold tracking-tight text-success">
-            Pesanan berhasil dibuat
-          </p>
+      <section className="border-b border-border bg-surface">
+        <div className="container-page pb-4 pt-4">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -73,10 +67,21 @@ export default function OrderConfirmation({
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="mt-3 text-lg font-bold leading-snug tracking-tight text-foreground">
-              Terima kasih, {order.customer_name}.
+            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
+              Pesanan berhasil
             </h1>
           </div>
+        </div>
+      </section>
+
+      <section className="container-page py-4">
+        <div className="mx-auto max-w-4xl">
+          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
+            <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
+          </div>
+          <p className="mt-6 text-xs font-bold tracking-tight text-success">
+            Terima kasih, {order.customer_name}.
+          </p>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
             Simpan nomor pesanan berikut. Nomor ini dipakai bersama nomor HP atau email untuk
             melihat status pesanan.

@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/public/product-card"
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/ui/alert"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { QuantityControl } from "@/components/ui/quantity-control"
@@ -492,6 +493,19 @@ export default function ProductDetail({
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
       </Head>
 
+      <section className="border-b border-border bg-surface">
+        <div className="container-page hidden py-4 sm:block">
+          <Breadcrumbs
+            items={[
+              { label: "Beranda", href: routeUrl("home") },
+              ...(product.model_href && product.model_label
+                ? [{ label: product.model_label, href: product.model_href }]
+                : []),
+              { label: title, href: null },
+            ]}
+          />
+        </div>
+      </section>
 
       <section className="container-page pb-5 pt-5 lg:pb-8 sm:pt-0">
         <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
