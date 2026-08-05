@@ -52,12 +52,12 @@ export default function Reviews({
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex shrink-0 items-center justify-center"
+                className="flex shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="text-lg font-semibold tracking-tight">{heading}</h1>
+              <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">{heading}</h1>
             </div>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">{subtitle}</p>
             </div>

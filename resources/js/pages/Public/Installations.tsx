@@ -128,12 +128,12 @@ export default function Installations({
                 <button
                   type="button"
                   onClick={() => window.history.back()}
-                  className="flex shrink-0 items-center justify-center"
+                  className="flex shrink-0 items-center justify-center sm:hidden"
                   aria-label="Kembali"
                 >
                   <Icon name="caret-left" className="size-5" aria-hidden="true" />
                 </button>
-                <h1 className="flex items-baseline gap-2 text-lg font-bold tracking-tight">
+                <h1 className="flex items-baseline gap-2 text-lg font-bold leading-snug tracking-tight text-foreground">
                   {heading}
                   <span className="font-normal text-muted-foreground">|</span>
                   <span className="text-xs font-normal text-muted-foreground">{countLabel}</span>

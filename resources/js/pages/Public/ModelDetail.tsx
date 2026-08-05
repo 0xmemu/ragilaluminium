@@ -282,7 +282,7 @@ export default function ModelDetail({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-3 sm:block lg:py-4">
+        <div className="container-page hidden py-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -312,7 +312,7 @@ export default function ModelDetail({
                 <button
                   type="button"
                   onClick={() => window.history.back()}
-                  className="flex shrink-0 items-center justify-center"
+                  className="flex shrink-0 items-center justify-center sm:hidden"
                   aria-label="Kembali"
                 >
                   <Icon name="caret-left" className="size-5" aria-hidden="true" />

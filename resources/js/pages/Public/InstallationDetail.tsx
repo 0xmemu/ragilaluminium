@@ -81,12 +81,12 @@ export default function InstallationDetail({
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex shrink-0 items-center justify-center"
+                className="flex shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="text-lg font-bold tracking-tight text-foreground">
+              <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
                 {product.name}
               </h1>
             </div>

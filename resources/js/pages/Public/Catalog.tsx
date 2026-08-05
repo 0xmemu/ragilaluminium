@@ -504,7 +504,7 @@ export default function Catalog({
         <FlashSaleHero period={period} />
       ) : (
         <section className="border-b border-border bg-surface">
-          <div className="container-page hidden py-3 sm:block">
+          <div className="container-page hidden py-4 sm:block">
             <Breadcrumbs
               items={[
                 { label: "Home", href: routeUrl("home") },
@@ -528,7 +528,7 @@ export default function Catalog({
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="flex items-baseline gap-2 text-lg font-bold tracking-tight">
+              <h1 className="flex items-baseline gap-2 text-lg font-bold leading-snug tracking-tight text-foreground">
               {categoryName}
               <span className="font-normal text-muted-foreground">|</span>
               <span className="text-sm font-normal text-muted-foreground">

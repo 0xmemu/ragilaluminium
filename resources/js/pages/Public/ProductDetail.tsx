@@ -628,7 +628,7 @@ export default function ProductDetail({
 
           <div className="min-w-0 lg:sticky lg:top-28">
             {/* Nama produk + varian terpilih */}
-            <h1 className="text-lg font-bold leading-snug text-foreground">
+            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
               {title}
               {selectedVariant?.label ? (
                 <span className="ml-1.5 text-sm font-normal text-muted-foreground">

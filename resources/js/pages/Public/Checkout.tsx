@@ -399,7 +399,7 @@ export default function Checkout({
               <div className="flex items-start justify-between gap-4 min-w-0">
                 <div>
                   <p className="font-mono text-xs font-semibold text-primary">01</p>
-                  <h2 className="mt-2 text-2xl font-semibold">Detail pengiriman</h2>
+                  <h2 className="mt-2 text-lg font-semibold">Detail pengiriman</h2>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     Data ini dipakai untuk pesanan, pengiriman, dan pengecekan status.
                   </p>
@@ -603,7 +603,7 @@ export default function Checkout({
               aria-disabled={!details}
             >
               <p className="font-mono text-xs font-semibold text-primary">02</p>
-              <h2 className="mt-2 text-2xl font-semibold">Metode pembayaran</h2>
+              <h2 className="mt-2 text-lg font-semibold">Metode pembayaran</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Pilih metode yang akan dicatat pada pesanan.
               </p>

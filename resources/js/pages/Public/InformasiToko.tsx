@@ -245,12 +245,12 @@ export default function InformasiToko({ page }: { page: PageData }) {
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center"
+              className="flex shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="text-lg font-bold leading-snug tracking-tight">{heading}</h1>
+            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">{heading}</h1>
           </div>
           <BrandWordmark className="[&_img]:h-11 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-12 mt-3" />
           <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">

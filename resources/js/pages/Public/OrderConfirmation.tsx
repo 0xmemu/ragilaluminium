@@ -56,7 +56,7 @@ export default function OrderConfirmation({
     <PublicLayout>
       <Head title={`Pesanan ${order.order_number}`} />
 
-      <section className="container-page py-12 lg:py-20">
+      <section className="container-page py-4">
         <div className="mx-auto max-w-4xl">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
             <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
@@ -68,12 +68,12 @@ export default function OrderConfirmation({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center"
+              className="flex shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="mt-3 text-lg font-semibold tracking-tight">
+            <h1 className="mt-3 text-lg font-bold leading-snug tracking-tight text-foreground">
               Terima kasih, {order.customer_name}.
             </h1>
           </div>

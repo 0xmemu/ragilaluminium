@@ -71,12 +71,12 @@ export default function Ulasan({
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex shrink-0 items-center justify-center"
+                className="flex shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="text-lg font-semibold tracking-tight">
+              <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
                 Ulasan pelanggan
               </h1>
             </div>
