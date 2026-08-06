@@ -32,6 +32,7 @@ backend contracts stay in `docs/`.
 ## Other
 - [JNT Cargo integration](jnt-cargo-integration.md)
 - [Media storage (R2/local)](media-storage-r2.md)
+- [Current storefront audit TODO](STOREFRONT-AUDIT-TODO.md)
 - [Backend audit plan](backend-audit-and-improvement-plan.md)
 
 > Old visual-design docs (`DESIGN.md`, wireframes, Next.js archive) were removed. Active replacement:

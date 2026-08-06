@@ -26,8 +26,9 @@ class TrackStorefrontPageView
         }
 
         if ($request->header('X-Inertia') || $request->ajax()) {
-            // Still count full document navigations; Inertia partials are GET with X-Inertia.
-            // Count Inertia visits too — they are real page views.
+            // A SPA navigation is not a new document view. Skipping it avoids a
+            // synchronous metrics write on every menu click and partial reload.
+            return $response;
         }
 
         try {

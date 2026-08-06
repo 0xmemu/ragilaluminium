@@ -145,7 +145,7 @@ export interface SharedPageProps extends Record<string, unknown> {
   errors?: Record<string, string>
   flash: FlashMessages
   cartCount: number
-  cartPreview: CartPreviewItem[]
+  cartPreview?: CartPreviewItem[]
   brand: Brand
   consultationWhatsApp: ConsultationWhatsAppConfig
   announcements: Announcement[]

@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { FlashSalePeriod, ProductCardData, SelectOption, SharedPageProps } from "@/types"
@@ -303,61 +302,6 @@ export function FlashSaleRedBanner({
           </p>
         ) : null}
       </div>
-    </div>
-  )
-}
-
-function FlashSaleSectionIntro({
-  period,
-  productCount,
-  searchQuery,
-  showSeeAll = false,
-}: {
-  period?: FlashSalePeriod | null
-  productCount?: number
-  searchQuery?: string
-  showSeeAll?: boolean
-}) {
-  const resolved = useFlashSalePeriod(period)
-  const remaining = useDailyFlashSaleCountdown(resolved)
-  const endsToday = remaining !== null && remaining > 0 && remaining < 86400
-
-  const accent = endsToday ? "khusus hari ini!" : "selagi periode berlangsung!"
-  const lead = resolved?.live
-    ? "Penawaran terbatas,"
-    : resolved?.status === "scheduled"
-      ? "Flash Sale segera dimulai."
-      : resolved?.status === "ended"
-        ? "Periode Flash Sale sudah berakhir."
-        : "Flash Sale sedang disiapkan."
-
-  return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-      <div className="min-w-0">
-        {resolved?.live ? (
-          <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            {lead}{" "}
-            <span className="text-primary">{accent}</span>
-          </h2>
-        ) : (
-          <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">{lead}</h2>
-        )}
-        {resolved?.live && typeof productCount === "number" ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatNumber(productCount)} produk
-            {searchQuery ? ` untuk “${searchQuery}”` : ""} dalam Flash Sale
-          </p>
-        ) : null}
-      </div>
-      {showSeeAll ? (
-        <Link
-          href={routeUrl("catalog.flash-sale")}
-          className="inline-flex h-7 shrink-0 items-center gap-1 self-end text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
-        >
-          Lihat selengkapnya
-          <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden />
-        </Link>
-      ) : null}
     </div>
   )
 }

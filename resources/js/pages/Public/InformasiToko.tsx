@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from "@inertiajs/react"
+import { Head, usePage } from "@inertiajs/react"
 import type { ComponentProps } from "react"
 
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
@@ -176,32 +176,6 @@ function PlatformLinkRow({ item }: { item: SocialLink }) {
   }
 
   return <div className="border-b border-border opacity-55 last:border-b-0">{row}</div>
-}
-
-function ContactRow({
-  label,
-  children,
-  icon,
-  className,
-}: {
-  label: string
-  children: React.ReactNode
-  icon: ComponentProps<typeof Icon>["name"]
-  className?: string
-}) {
-  return (
-    <div className={cn("border-t border-border px-5 py-4 first:border-t-0", className)}>
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <Icon name={icon} className="size-4" aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">{label}</p>
-          <div className="mt-1.5">{children}</div>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export default function InformasiToko({ page }: { page: PageData }) {

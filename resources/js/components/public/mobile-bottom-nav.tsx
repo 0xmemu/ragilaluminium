@@ -52,6 +52,7 @@ export function MobileBottomNav() {
             <Link
               key={`${item.label}-${item.route}`}
               href={routeUrl(item.route, item.params)}
+              prefetch
               className={cn(
                 "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition",
                 active ? "text-foreground" : "text-muted-foreground active:text-foreground",

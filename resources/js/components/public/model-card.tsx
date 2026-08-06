@@ -32,6 +32,7 @@ export function ModelCard({
     >
       <Link
         href={href}
+        prefetch
         className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">

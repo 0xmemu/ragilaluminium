@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -28,14 +29,16 @@ class HandleInertiaRequests extends Middleware
         }
 
         try {
-            $modelMenu = collect(app(\App\Services\ModelProductService::class)->storefrontCards())
-                ->map(fn (array $model) => [
-                    'label' => $model['title'],
-                    'href' => $model['href'],
-                    'category' => $model['category'],
-                ])
-                ->values()
-                ->all();
+            $modelMenu = Cache::remember('storefront:model-menu:v1', now()->addMinutes(2), function (): array {
+                return collect(app(\App\Services\ModelProductService::class)->storefrontCards())
+                    ->map(fn (array $model) => [
+                        'label' => $model['title'],
+                        'href' => $model['href'],
+                        'category' => $model['category'],
+                    ])
+                    ->values()
+                    ->all();
+            });
         } catch (\Throwable) {
             // Navigation remains usable while catalog storage is unavailable.
         }
@@ -57,7 +60,6 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
             ],
             'cartCount' => $cartCount,
-            'cartPreview' => fn () => $this->cartPreview(),
             'brand' => [
                 'name' => config('sitemap.brand.name', config('app.name')),
                 'short_name' => config('sitemap.brand.short_name', 'Ragil Aluminium'),
@@ -133,30 +135,5 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 
-    /**
-     * Ringkasan isi keranjang untuk hover preview header (maks 5 baris).
-     */
-    protected function cartPreview(): array
-    {
-        try {
-            $priced = app(\App\Services\CartService::class)->pricedLines();
 
-            return collect($priced['items'])->take(5)->map(function (array $item) {
-                return [
-                    'line_id' => $item['line_id'],
-                    'parent_sku' => $item['parent_sku'],
-                    'name' => $item['name'],
-                    'variation' => collect([
-                        $item['variation_1_option'] ?? null,
-                        $item['variation_2_option'] ?? null,
-                    ])->filter()->implode(', '),
-                    'quantity' => (int) $item['quantity'],
-                    'unit_price' => (float) $item['unit_price'],
-                    'image' => $item['image'] ?? null,
-                ];
-            })->all();
-        } catch (\Throwable) {
-            return [];
-        }
-    }
 }

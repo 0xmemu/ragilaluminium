@@ -101,6 +101,7 @@ Route::post('/product/{product}/engage', [ProductEngagementController::class, 's
     ->name('product.engage');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::get('/cart/preview', [CartController::class, 'preview'])->name('cart.preview');
 Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
 Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
 Route::post('/cart/update', [CartController::class, 'update'])->name('cart.update');

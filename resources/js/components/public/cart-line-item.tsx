@@ -1,4 +1,5 @@
-import { Link, useForm } from "@inertiajs/react"
+import { Link, useForm, usePage } from "@inertiajs/react"
+import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
@@ -6,16 +7,33 @@ import { QuantityControl } from "@/components/ui/quantity-control"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { formatCurrency, productName } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import type { CartItem } from "@/types"
+import type { CartItem, SharedPageProps } from "@/types"
 
 function money(value: number | string | null | undefined): number {
   const amount = Number(value ?? 0)
   return Number.isFinite(amount) ? amount : 0
 }
 
-export function CartLineItem({ item, selected, onToggle }: { item: CartItem; selected: boolean; onToggle: () => void }) {
-  const updateForm = useForm({ line_id: item.line_id, quantity: item.quantity })
+export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { item: CartItem; selected: boolean; onToggle: () => void; onQuantityChange: (quantity: number) => void }) {
+  const page = usePage<SharedPageProps>()
   const removeForm = useForm({ line_id: item.line_id })
+  const [saving, setSaving] = React.useState(false)
+  const [updateError, setUpdateError] = React.useState<string | null>(null)
+  const timer = React.useRef<number | null>(null)
+  const sequence = React.useRef(0)
+  const latestQuantity = React.useRef(item.quantity)
+  const confirmedQuantity = React.useRef(item.quantity)
+
+  React.useEffect(() => {
+    if (!saving && timer.current === null && latestQuantity.current !== item.quantity) {
+      latestQuantity.current = item.quantity
+      confirmedQuantity.current = item.quantity
+    }
+  }, [item.quantity, saving])
+
+  React.useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current)
+  }, [])
 
   const unitPrice = money(item.unit_price)
   const comparePrice = item.compare_price == null ? null : money(item.compare_price)
@@ -36,9 +54,54 @@ export function CartLineItem({ item, selected, onToggle }: { item: CartItem; sel
       : null)
 
   function updateQuantity(quantity: number) {
-    updateForm.setData("quantity", quantity)
-    updateForm.transform((data) => ({ ...data, quantity }))
-    updateForm.post(routeUrl("cart.update"), { preserveScroll: true })
+    latestQuantity.current = quantity
+    sequence.current += 1
+    const currentSequence = sequence.current
+    setUpdateError(null)
+    onQuantityChange(quantity)
+
+    if (timer.current !== null) window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      timer.current = null
+      void persistQuantity(quantity, currentSequence)
+    }, 220)
+  }
+
+  async function persistQuantity(quantity: number, currentSequence: number) {
+    setSaving(true)
+
+    try {
+      const response = await fetch(routeUrl("cart.update"), {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": page.props.csrf,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ line_id: item.line_id, quantity }),
+      })
+
+      if (!response.ok) throw new Error("Cart update failed")
+
+      const result = await response.json() as { line_id: string; quantity: number; stock: number; cart_count: number }
+      if (currentSequence !== sequence.current) return
+
+      confirmedQuantity.current = result.quantity
+      latestQuantity.current = result.quantity
+      onQuantityChange(result.quantity)
+      window.dispatchEvent(new CustomEvent("cart:updated", {
+        detail: { lineId: result.line_id, quantity: result.quantity, count: result.cart_count },
+      }))
+    } catch {
+      if (currentSequence === sequence.current) {
+        latestQuantity.current = confirmedQuantity.current
+        onQuantityChange(confirmedQuantity.current)
+        setUpdateError("Gagal memperbarui jumlah. Silakan coba lagi.")
+      }
+    } finally {
+      if (currentSequence === sequence.current) setSaving(false)
+    }
   }
 
   const discountBadge = discountPercent ? (
@@ -85,10 +148,10 @@ export function CartLineItem({ item, selected, onToggle }: { item: CartItem; sel
   const quantityControls = (
     <div className="flex items-center gap-1">
       <QuantityControl
-        value={updateForm.data.quantity}
+        value={item.quantity}
         onChange={updateQuantity}
         max={typeof item.stock === "number" ? item.stock : undefined}
-        disabled={updateForm.processing || removeForm.processing}
+        disabled={removeForm.processing}
       />
       <Button
         variant="ghost"
@@ -99,6 +162,7 @@ export function CartLineItem({ item, selected, onToggle }: { item: CartItem; sel
       >
         <Icon name="x" className="size-3.5" aria-hidden="true" />
       </Button>
+      {updateError ? <span role="alert" className="text-[10px] text-destructive">{updateError}</span> : null}
     </div>
   )
 

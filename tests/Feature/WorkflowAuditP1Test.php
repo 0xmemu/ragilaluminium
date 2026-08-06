@@ -111,10 +111,17 @@ class WorkflowAuditP1Test extends TestCase
         $this->assertSame(2, (int) $cart['WIN-STK-1-V1']['quantity']);
         $this->assertSame(2, (int) $cart['WIN-STK-1-V1']['stock']);
 
-        $this->post(route('cart.update'), [
+        $this->withHeaders([
+            'Accept' => 'application/json',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])->post(route('cart.update'), [
             'line_id' => 'WIN-STK-1-V1',
             'quantity' => 9,
-        ])->assertRedirect(route('cart.index'));
+        ])->assertOk()->assertJson([
+            'line_id' => 'WIN-STK-1-V1',
+            'quantity' => 2,
+            'stock' => 2,
+        ]);
 
         $cart = app(CartService::class)->get();
         $this->assertSame(2, (int) $cart['WIN-STK-1-V1']['quantity']);

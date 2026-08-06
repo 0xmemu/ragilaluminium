@@ -48,7 +48,7 @@ export function InstallationFeaturedCard({
           label: "Media",
           value:
             videoCount > 0 && photoCount > 0
-              ? `${formatNumber(photoCount)} foto · ${formatNumber(videoCount)} video`
+              ? `${formatNumber(photoCount)} foto ï¿½ ${formatNumber(videoCount)} video`
               : videoCount > 0
                 ? `${formatNumber(videoCount)} video`
                 : `${formatNumber(photoCount)} foto`,

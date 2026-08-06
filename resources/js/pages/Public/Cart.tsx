@@ -13,8 +13,23 @@ import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { CartItem } from "@/types"
 
+
+function optimisticItem(item: CartItem, quantity: number): CartItem {
+  const unitPrice = Number(item.unit_price ?? 0)
+  const comparePrice = Number(item.compare_price ?? item.unit_price ?? 0)
+  const lineTotal = unitPrice * quantity
+  const lineCompare = comparePrice * quantity
+
+  return {
+    ...item,
+    quantity,
+    line_total: lineTotal,
+    line_compare_total: lineCompare,
+    line_discount: Math.max(0, lineCompare - lineTotal),
+  }
+}
 export default function Cart({
-  items = [],
+  items: initialItems = [],
   subtotal: _subtotal = 0,
   compare_subtotal: _compareSubtotal = 0,
   discount_total: _discountTotal = 0,
@@ -26,22 +41,34 @@ export default function Cart({
   discount_total?: number
   undo_item?: Record<string, unknown> | null
 }) {
+  const [cartItems, setCartItems] = React.useState<CartItem[]>(() => initialItems)
+
+  React.useEffect(() => {
+    setCartItems(initialItems)
+  }, [initialItems])
+
+  function updateLocalQuantity(lineId: string, quantity: number) {
+    setCartItems((current) => current.map((item) =>
+      item.line_id === lineId ? optimisticItem(item, quantity) : item
+    ))
+  }
+
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(
-    () => new Set(items.map((it) => it.line_id))
+    () => new Set(initialItems.map((it) => it.line_id))
   )
   const selectForm = useForm({ line_ids: [] as string[] })
   const deleteForm = useForm({ line_ids: [] as string[] })
   const restoreForm = useForm({})
 
-  const allSelected = items.length > 0 && selectedIds.size === items.length
-  const someSelected = selectedIds.size > 0 && selectedIds.size < items.length
+  const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < cartItems.length
   const noneSelected = selectedIds.size === 0
 
   function toggleAll() {
     if (allSelected) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(items.map((it) => it.line_id)))
+      setSelectedIds(new Set(cartItems.map((it) => it.line_id)))
     }
   }
 
@@ -58,7 +85,7 @@ export default function Cart({
   }
 
   // Compute selected-only subtotals
-  const selectedItems = items.filter((it) => selectedIds.has(it.line_id))
+  const selectedItems = cartItems.filter((it) => selectedIds.has(it.line_id))
   const selectedSubtotal = selectedItems.reduce(
     (sum, it) => sum + (typeof it.line_total === "number" ? it.line_total : 0),
     0
@@ -126,7 +153,7 @@ export default function Cart({
         <div className="border-b border-border bg-accent/10">
           <div className="container-page flex items-center justify-between gap-3 py-2">
             <p className="min-w-0 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{undoItem.name ?? "Produk"}</span> dihapus dari keranjang
+              <span className="font-semibold text-foreground">{String(undoItem.name ?? "Produk")}</span> dihapus dari keranjang
             </p>
             <Button
               type="button"
@@ -142,8 +169,8 @@ export default function Cart({
         </div>
       ) : null}
 
-      <section className={items.length ? "container-page min-w-0 overflow-x-hidden py-4" : "container-page py-4"}>
-        {items.length ? (
+      <section className={cartItems.length ? "container-page min-w-0 overflow-x-hidden py-4" : "container-page py-4"}>
+        {cartItems.length ? (
           <div className="space-y-4">
             {/* Select all bar */}
             <div className="flex items-center justify-between gap-3 border-b border-border pb-2.5">
@@ -160,7 +187,7 @@ export default function Cart({
                     {allSelected
                       ? "Batalkan semua"
                       : someSelected
-                        ? `${selectedIds.size}/${items.length} dipilih`
+                        ? `${selectedIds.size}/${cartItems.length} dipilih`
                         : "Pilih semua"}
                   </span>
                 </label>
@@ -216,12 +243,13 @@ export default function Cart({
             <div className="grid grid-cols-1 min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
               <div className="min-w-0">
                 <div>
-                  {items.map((item) => (
+                  {cartItems.map((item) => (
                     <CartLineItem
                       key={item.line_id}
                       item={item}
                       selected={selectedIds.has(item.line_id)}
                       onToggle={() => toggleOne(item.line_id)}
+                      onQuantityChange={(quantity) => updateLocalQuantity(item.line_id, quantity)}
                     />
                   ))}
                 </div>
@@ -239,7 +267,7 @@ export default function Cart({
                   <div className="flex justify-between gap-4">
                     <dt className="text-muted-foreground">
                       Subtotal
-                      {selectedIds.size !== items.length ? (
+                      {selectedIds.size !== cartItems.length ? (
                         <span className="ml-1 text-[10px]">({selectedIds.size} item)</span>
                       ) : null}
                     </dt>
@@ -289,7 +317,7 @@ export default function Cart({
             <MobileStickyCta aria-label="Lanjut checkout" spacerClassName="h-[4.5rem]">
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="text-[11px] font-medium text-muted-foreground">
-                  Subtotal {selectedIds.size !== items.length ? `(${selectedIds.size} item)` : ""}
+                  Subtotal {selectedIds.size !== cartItems.length ? `(${selectedIds.size} item)` : ""}
                 </span>
                 <span className="tabular-nums text-sm font-bold leading-5">
                   {formatCurrency(selectedSubtotal)}

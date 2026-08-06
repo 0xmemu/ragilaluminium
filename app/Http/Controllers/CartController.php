@@ -34,6 +34,28 @@ class CartController extends Controller
         return response()->json(['count' => $this->cart->count()]);
     }
 
+    public function preview(): JsonResponse
+    {
+        $priced = $this->cart->pricedLines();
+
+        return response()->json([
+            'items' => collect($priced['items'])->take(5)->map(function (array $item) {
+                return [
+                    'line_id' => $item['line_id'],
+                    'parent_sku' => $item['parent_sku'],
+                    'name' => $item['name'],
+                    'variation' => collect([
+                        $item['variation_1_option'] ?? null,
+                        $item['variation_2_option'] ?? null,
+                    ])->filter()->implode(', '),
+                    'quantity' => (int) $item['quantity'],
+                    'unit_price' => (float) $item['unit_price'],
+                    'image' => $item['image'] ?? null,
+                ];
+            })->all(),
+        ]);
+    }
+
     public function add(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -52,14 +74,25 @@ class CartController extends Controller
             ->with('success', 'Produk ditambahkan ke keranjang.');
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'line_id' => ['required', 'string'],
             'quantity' => ['required', 'integer', 'min:0'],
         ]);
 
-        $this->cart->update($validated['line_id'], $validated['quantity']);
+        $cart = $this->cart->update($validated['line_id'], $validated['quantity']);
+
+        if ($request->expectsJson()) {
+            $item = $cart[$validated['line_id']] ?? null;
+
+            return response()->json([
+                'line_id' => $validated['line_id'],
+                'quantity' => (int) ($item['quantity'] ?? 0),
+                'stock' => (int) ($item['stock'] ?? 0),
+                'cart_count' => $this->cart->count(),
+            ]);
+        }
 
         return redirect()->route('cart.index')
             ->with('success', 'Keranjang diperbarui.');

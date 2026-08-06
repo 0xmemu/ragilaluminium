@@ -10,7 +10,7 @@ import { useRotatingPlaceholder } from "@/hooks/use-rotating-placeholder"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl, withQuery } from "@/lib/routes"
-import type { RouteNavItem, SharedPageProps } from "@/types"
+import type { CartPreviewItem, RouteNavItem, SharedPageProps } from "@/types"
 
 function navHref(item: RouteNavItem): string {
   const base = item.route === "catalog.index" && item.params?.sort
@@ -199,11 +199,61 @@ function HeaderSearchForm({
 
 export function PublicHeader() {
   const page = usePage<SharedPageProps>()
-  const { cartCount, cartPreview, nav } = page.props
-  const previewItems = cartPreview ?? []
+  const { cartCount, cartPreview, nav, csrf } = page.props
+  const [visibleCartCount, setVisibleCartCount] = React.useState(cartCount ?? 0)
+  const [previewItems, setPreviewItems] = React.useState<CartPreviewItem[]>(cartPreview ?? [])
+  const [previewLoaded, setPreviewLoaded] = React.useState(Boolean(cartPreview))
+  const [previewLoading, setPreviewLoading] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [modelsOpen, setModelsOpen] = React.useState(false)
   const [cartPreviewOpen, setCartPreviewOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    setVisibleCartCount(cartCount ?? 0)
+    setPreviewItems(cartPreview ?? [])
+    setPreviewLoaded(Boolean(cartPreview))
+  }, [cartCount, cartPreview])
+
+  React.useEffect(() => {
+    const handleCartUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ lineId: string; quantity: number; count: number }>).detail
+      setVisibleCartCount(detail.count)
+      setPreviewItems((current) => current.map((item) =>
+        item.line_id === detail.lineId ? { ...item, quantity: detail.quantity } : item
+      ))
+    }
+
+    window.addEventListener("cart:updated", handleCartUpdated)
+    return () => window.removeEventListener("cart:updated", handleCartUpdated)
+  }, [])
+
+  const loadCartPreview = React.useCallback(async () => {
+    if (previewLoaded || previewLoading) return
+
+    setPreviewLoading(true)
+    try {
+      const response = await fetch(routeUrl("cart.preview"), {
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-TOKEN": csrf,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      })
+      if (!response.ok) throw new Error("Cart preview failed")
+      const result = await response.json() as { items: CartPreviewItem[] }
+      setPreviewItems(result.items ?? [])
+      setPreviewLoaded(true)
+    } catch {
+      setPreviewItems([])
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [csrf, previewLoaded, previewLoading])
+
+  const openCartPreview = React.useCallback(() => {
+    setCartPreviewOpen(true)
+    void loadCartPreview()
+  }, [loadCartPreview])
   const productItems = nav?.public?.hamburger_product ?? nav?.public?.hamburger?.slice(0, 5) ?? []
   const infoItems = nav?.public?.hamburger_info ?? nav?.public?.hamburger?.slice(5) ?? []
   const modelItems = nav?.public?.model_menu ?? []
@@ -406,6 +456,7 @@ export function PublicHeader() {
                             <Link
                               key={`${model.category}-${model.label}`}
                               href={model.href}
+                              prefetch
                               onClick={closeMenu}
                               className="inline-flex min-h-9 items-center text-sm font-medium text-muted-foreground transition hover:translate-x-1 hover:text-primary focus-visible:text-primary"
                             >
@@ -481,9 +532,9 @@ export function PublicHeader() {
           </Link>
           <div
             className="relative shrink-0"
-            onMouseEnter={() => setCartPreviewOpen(true)}
+            onMouseEnter={openCartPreview}
             onMouseLeave={() => setCartPreviewOpen(false)}
-            onFocusCapture={() => setCartPreviewOpen(true)}
+            onFocusCapture={openCartPreview}
             onBlurCapture={(event) => {
               if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                 setCartPreviewOpen(false)
@@ -493,15 +544,15 @@ export function PublicHeader() {
             <Link
               href={routeUrl("cart.index")}
               className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11 lg:h-11 lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
-              aria-label={`Keranjang, ${cartCount ?? 0} barang`}
+              aria-label={`Keranjang, ${visibleCartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
             >
               <span className="relative inline-flex size-6 shrink-0 items-center justify-center lg:size-7">
                 <Icon name="shopping-cart" className="size-7 shrink-0 lg:size-7" aria-hidden="true" />
-                {cartCount > 0 ? (
+                {visibleCartCount > 0 ? (
                   <span className="tabular-nums absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white">
-                    {Math.min(cartCount, 99)}
+                    {Math.min(visibleCartCount, 99)}
                   </span>
                 ) : null}
               </span>
@@ -560,7 +611,7 @@ export function PublicHeader() {
                             </div>
                           </li>
                         ))}
-                        {cartCount > previewItems.reduce((total, item) => total + item.quantity, 0) ? (
+                        {visibleCartCount > previewItems.reduce((total, item) => total + item.quantity, 0) ? (
                           <li className="text-xs text-muted-foreground">
                             Dan produk lainnya di keranjang belanja Anda.
                           </li>
@@ -632,6 +683,7 @@ export function PublicHeader() {
               <Link
                 key={`${item.label}-${item.route}-${item.hash ?? ""}`}
                 href={navHref(item)}
+                prefetch
                 className={cn(
                   "inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold transition",
                   isFlashSale

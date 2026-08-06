@@ -3,6 +3,7 @@
 **Tanggal:** 2026-07-22  
 **Metode:** Simulasi journey end-to-end (kontrak SoT + routes/controllers/Inertia), bukan E2E browser.  
 **SoT acuan:** `PRODUCT-HANDOFF.md`, `config/sitemap.php`, `config/admin-sitemap.php`, Stage 2/9B/10.
+Continuation backlog: docs/STOREFRONT-AUDIT-TODO.md (audit storefront 2026-08-03 onward).
 
 Status: `COMPLETE` | `PARTIAL` | `MISSING` | `BROKEN`
 
