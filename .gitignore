@@ -44,3 +44,13 @@ xlsx/
 /_tmp_*
 /smoke_*.php
 /test-results
+
+# --- Runtime framework (cache/sessions) ---
+/storage/framework/cache/*
+/storage/framework/sessions/*
+
+# --- Backup & legacy dump lokal ---
+/ragil_aluminium.bak-*
+*.legacy-*
+/_cf_rate_limit.py
+/_sync_env_example.py
