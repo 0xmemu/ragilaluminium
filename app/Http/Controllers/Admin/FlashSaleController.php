@@ -85,6 +85,8 @@ class FlashSaleController extends Controller
             'createHref' => route('admin.flash-sale.create'),
             'period' => $period,
             'periodUpdateUrl' => route('admin.flash-sale.period'),
+            'bulkEnableUrl' => route('admin.flash-sale.bulk-enable'),
+            'bulkDisableUrl' => route('admin.flash-sale.bulk-disable'),
             'summary' => [
                 'active_count' => $this->countFlash(true),
                 'inactive_count' => $this->countFlash(false),
@@ -175,6 +177,16 @@ class FlashSaleController extends Controller
         $this->upsertNamedAttribute($product, 'promo_flash_sale', 'true', (int) $request->user()->id, self::FLASH_NAMES);
 
         return redirect()->back()->with('success', 'Flash Sale diaktifkan.');
+    }
+
+    public function bulkEnable(Request $request): RedirectResponse
+    {
+        return $this->applyBulkFlash($request, true);
+    }
+
+    public function bulkDisable(Request $request): RedirectResponse
+    {
+        return $this->applyBulkFlash($request, false);
     }
 
     public function disable(Request $request, Product $product): RedirectResponse
@@ -329,5 +341,42 @@ class FlashSaleController extends Controller
                     });
             })
             ->count();
+    }
+
+    /**
+     * Terapkan status Flash Sale ke banyak produk sekaligus (program massal).
+     *
+     * @return RedirectResponse
+     */
+    private function applyBulkFlash(Request $request, bool $enabled): RedirectResponse
+    {
+        $validated = $request->validate([
+            'product_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'product_ids.*' => ['integer', Rule::exists('products', 'id')],
+        ]);
+
+        $productIds = array_values(array_unique(array_map('intval', $validated['product_ids'])));
+        $userId = (int) $request->user()->id;
+        $count = 0;
+
+        Product::query()
+            ->whereIn('id', $productIds)
+            ->get()
+            ->each(function (Product $product) use ($enabled, $userId, &$count) {
+                $this->upsertNamedAttribute(
+                    $product,
+                    'promo_flash_sale',
+                    $enabled ? 'true' : 'false',
+                    $userId,
+                    self::FLASH_NAMES,
+                );
+                $count++;
+            });
+
+        $message = $enabled
+            ? "Flash Sale diaktifkan untuk {$count} produk."
+            : "Flash Sale dinonaktifkan untuk {$count} produk.";
+
+        return redirect()->back()->with('success', $message);
     }
 }

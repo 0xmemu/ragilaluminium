@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Support\ProductPromotionMetadata;
 use Illuminate\Session\Store;
 
 class CartService
@@ -166,7 +165,7 @@ class CartService
     /**
      * Resolve live selling prices + promo discounts for every cart line.
      * Selling price = variant.price (already the promo/flash-sale price).
-     * Compare / discount come from ProductPromotionMetadata so the cart
+     * Compare / discount come from PriceService so the cart
      * summary can show potongan explicitly and stay aligned with PDP cards.
      *
      * @return array{
@@ -300,28 +299,25 @@ class CartService
             $product->load('mainImage');
         }
 
-        $unitPrice = $variant
-            ? (float) $variant->price
-            : (float) ($product->activeVariants->min('price') ?? 0);
+        $priceService = app(\App\Services\PriceService::class);
 
-        $promo = ProductPromotionMetadata::forProduct($product);
-        $compare = $promo['compare_price'];
-
-        // When a specific variant is selected, keep compare only if it still
-        // sits above that variant's selling price (same rule as PDP).
-        if ($compare !== null && $compare <= $unitPrice) {
-            $compare = null;
+        if ($variant) {
+            $priced = $priceService->forVariant($variant, $product);
+        } else {
+            $card = $priceService->productCard($product);
+            $priced = [
+                'sale' => $card['min_sale'],
+                'compare' => $card['compare'],
+                'discount_percent' => $card['discount_percent'],
+                'flash_sale' => $card['flash_sale'],
+            ];
         }
 
-        $discountPercent = $compare !== null && $unitPrice > 0
-            ? (int) round((($compare - $unitPrice) / $compare) * 100)
-            : null;
-
         return [
-            'unit_price' => $unitPrice,
-            'compare_price' => $compare,
-            'discount_percent' => $discountPercent,
-            'flash_sale' => (bool) $promo['flash_sale'],
+            'unit_price' => (float) $priced['sale'],
+            'compare_price' => $priced['compare'],
+            'discount_percent' => $priced['discount_percent'] > 0 ? $priced['discount_percent'] : null,
+            'flash_sale' => (bool) $priced['flash_sale'],
             'image' => $product->mainImage?->urlFor('card') ?? $product->mainImage?->urlFor('thumb'),
         ];
     }

@@ -47,7 +47,7 @@ class Product extends Model
 
     public function media(): HasMany
     {
-        return $this->hasMany(ProductMedia::class);
+        return $this->hasMany(ProductMedia::class)->with('mediaAsset');
     }
 
     public function installationMedia(): HasMany
@@ -81,6 +81,7 @@ class Product extends Model
     public function mainImage()
     {
         return $this->hasOne(ProductMedia::class)
+            ->with('mediaAsset')
             ->where('is_main_image', true)
             ->where('show_in_catalog', true)
             ->where('visibility', 'visible')
@@ -99,7 +100,7 @@ class Product extends Model
 
     public function scopeVisible(Builder $query): Builder
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 'active')->whereHas('activeVariants');
     }
 
     public function scopeCategory(Builder $query, string $category): Builder
@@ -161,6 +162,7 @@ class Product extends Model
                     ->filter(fn ($m) => $m->show_in_catalog)
                     ->map(fn ($m) => [
                         'id' => $m->id,
+                        'kind' => $m->mediaAsset?->kind ?? (str_starts_with((string) $m->mime_type, 'video/') ? 'video' : 'image'),
                         'position' => $m->position,
                         'is_main_image' => $m->is_main_image,
                         'is_installation' => (bool) $m->is_installation,
@@ -172,13 +174,13 @@ class Product extends Model
                             'thumb' => $m->urlFor('thumb'),
                             'card' => $m->urlFor('card'),
                             'pdp' => $m->urlFor('pdp'),
+                            'video' => $m->urlFor('video'),
                         ],
                         'status' => $m->status,
                     ])->values()->all()
                 : [],
-            'installation_media' => $this->relationLoaded('media')
-                ? $this->media
-                    ->filter(fn ($m) => $m->is_installation)
+            'installation_media' => $this->relationLoaded('installationMedia')
+                ? $this->getRelation('installationMedia')
                     ->map(fn ($m) => [
                         'id' => $m->id,
                         'position' => $m->position,
@@ -190,7 +192,21 @@ class Product extends Model
                         ],
                         'status' => $m->status,
                     ])->values()->all()
-                : [],
+                : ($this->relationLoaded('media')
+                    ? $this->media
+                        ->filter(fn ($m) => $m->is_installation)
+                        ->map(fn ($m) => [
+                            'id' => $m->id,
+                            'position' => $m->position,
+                            'display_url' => $m->display_url,
+                            'urls' => [
+                                'thumb' => $m->urlFor('thumb'),
+                                'card' => $m->urlFor('card'),
+                                'pdp' => $m->urlFor('pdp'),
+                            ],
+                            'status' => $m->status,
+                        ])->values()->all()
+                    : []),
         ];
     }
 }

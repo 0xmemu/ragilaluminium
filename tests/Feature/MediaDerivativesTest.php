@@ -9,8 +9,9 @@ use App\Services\MediaDerivativeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
-class MediaDerivativesTest extends \Tests\TestCase
+class MediaDerivativesTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -25,9 +26,9 @@ class MediaDerivativesTest extends \Tests\TestCase
 
         $png = $this->makePngBytes(120, 80);
         Http::fake([
-            'https://cdn.example.test/product.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+            'https://93.184.216.34/product.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
         ]);
-        config(['media.allowed_source_hosts' => ['cdn.example.test']]);
+        config(['media.allowed_source_hosts' => ['93.184.216.34']]);
 
         $product = Product::create([
             'parent_sku' => 'WIN-MED-1',
@@ -44,7 +45,7 @@ class MediaDerivativesTest extends \Tests\TestCase
             'position' => 1,
             'is_main_image' => true,
             'visibility' => 'visible',
-            'source_url' => 'https://cdn.example.test/product.png',
+            'source_url' => 'https://93.184.216.34/product.png',
             'status' => 'pending',
         ]);
 
@@ -89,9 +90,9 @@ class MediaDerivativesTest extends \Tests\TestCase
 
         $png = $this->makePngBytes(80, 60);
         Http::fake([
-            'https://cdn.example.test/keep.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+            'https://93.184.216.34/keep.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
         ]);
-        config(['media.allowed_source_hosts' => ['cdn.example.test']]);
+        config(['media.allowed_source_hosts' => ['93.184.216.34']]);
 
         $product = Product::create([
             'parent_sku' => 'WIN-MED-KEEP',
@@ -108,7 +109,7 @@ class MediaDerivativesTest extends \Tests\TestCase
             'position' => 1,
             'is_main_image' => true,
             'visibility' => 'visible',
-            'source_url' => 'https://cdn.example.test/keep.png',
+            'source_url' => 'https://93.184.216.34/keep.png',
             'status' => 'pending',
         ]);
 
@@ -143,7 +144,7 @@ class MediaDerivativesTest extends \Tests\TestCase
             'position' => 1,
             'is_main_image' => true,
             'visibility' => 'visible',
-            'source_url' => 'https://cdn.example.test/product.png',
+            'source_url' => 'https://93.184.216.34/product.png',
             'stored_path' => "products/{$product->id}/sample.jpg",
             'stored_url' => 'http://172.24.0.182:8200/storage/media/products/1/sample.jpg',
             'derivatives' => [

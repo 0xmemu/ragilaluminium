@@ -24,6 +24,14 @@ php artisan storage:link
 php artisan media:disk-check
 ```
 
+### Preview VPS saat ini
+
+Preview `ragil-dev` memuat credential R2 dari file eksternal
+`/root/.config/ragilaluminium/cloudflare.env` melalui unit systemd, bukan dari
+`.env` aplikasi. Runtime memakai bucket `ra-media` dan managed public domain
+R2. `config/filesystems.php` menerima nama variabel `CLOUDFLARE_R2_*` sebagai
+fallback agar access key tidak perlu disalin ke repository.
+
 **Local preview URL:** buka **`http://127.0.0.1:8200`** (bukan hanya IP WSL `172.24.x.x`).  
 - Tanpa Vite: `npm run build` (Windows Node 24+), pastikan `public/hot` tidak ada → asset dari `public/build`.  
 - Hot reload: Windows `npm run dev`, WSL `php artisan serve --host=0.0.0.0 --port=8200`, browser tetap `http://127.0.0.1:8200`. Jangan jalankan Vite di WSL Node 18.
@@ -60,6 +68,12 @@ AWS_USE_PATH_STYLE_ENDPOINT=true
 ```
 
 `AWS_URL` = URL publik yang memakai browser (custom domain / r2.dev), **bukan** endpoint API.
+
+Object keys for shared assets are immutable and independent of product IDs:
+`media-assets/{sha256}/thumb.webp`, `card.webp`, `pdp.webp`, or `video.mp4`.
+Set `MEDIA_R2_HOST` only when the dev Nginx same-origin `/media-cdn` proxy is
+needed; `scripts/dev-vps/serve-dev.sh` omits that proxy when no public host is
+configured, so it never points at a stale hardcoded bucket.
 
 ### C. Setelah deploy ke VPS
 

@@ -18,6 +18,8 @@ export function SectionHeading({
   children,
   size = "default",
   tone = "default",
+  fitHeading = true,
+  headingClassName,
 }: {
   title?: ReactNode
   eyebrow?: ReactNode
@@ -30,6 +32,9 @@ export function SectionHeading({
   size?: "default" | "display"
   /** `on-primary` = teks putih di atas Signal Red / primary band. */
   tone?: "default" | "on-primary"
+  /** Keep a page-specific heading size fixed instead of shrinking to one line. */
+  fitHeading?: boolean
+  headingClassName?: string
 }) {
   const heading = children ?? title
   const onPrimary = tone === "on-primary"
@@ -37,7 +42,7 @@ export function SectionHeading({
 
   useLayoutEffect(() => {
     const element = headingRef.current
-    if (!element) return
+    if (!element || !fitHeading) return
 
     const fit = () => {
       element.style.fontSize = ""
@@ -55,12 +60,12 @@ export function SectionHeading({
     observer.observe(element)
     if (element.parentElement) observer.observe(element.parentElement)
     return () => observer.disconnect()
-  }, [heading])
+  }, [fitHeading, heading])
 
   return (
     <div
       className={cn(
-        "flex flex-col gap-1",
+        "flex flex-col gap-1.5",
         align === "center" && "mx-auto max-w-3xl items-center text-center",
         className,
       )}
@@ -81,7 +86,7 @@ export function SectionHeading({
         className={cn(
           "w-full",
           align === "left" && action
-            ? "flex items-end justify-between gap-3"
+            ? "flex items-center justify-between gap-3"
             : align === "center"
               ? "text-center"
               : "",
@@ -91,12 +96,13 @@ export function SectionHeading({
           ref={headingRef}
           id={id}
           className={cn(
-            "min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis",
+            "min-w-0 flex-1 whitespace-normal text-pretty",
             size === "display"
               ? "text-balance text-[clamp(1rem,5vw,1.875rem)] font-bold tracking-tight"
-              : "text-[clamp(0.95rem,4.5vw,1.5rem)] font-bold tracking-tight",
+              : "text-[clamp(1.125rem,4.5vw,1.5rem)] font-bold tracking-tight",
             onPrimary ? "text-white" : "text-foreground",
             align === "center" && size === "display" && "text-center",
+            headingClassName,
           )}
         >
           {heading}

@@ -1,4 +1,4 @@
-# Integrasi J&T Cargo — Ragil Aluminium (`website.4.0`)
+# Integrasi J&T Cargo — Ragil Aluminium
 
 > **Sumber:** [J&T Cargo Open Platform](https://open.jtcargo.co.id/#/apiDoc) (spesifikasi resmi console).
 > **Status:** Implementasi backend selesai; aktivasi menunggu kredensial sandbox/production dari console.
@@ -36,7 +36,7 @@ php artisan jnt:joint-debug --times=3   # setelah kredensial + JNT_ENABLED=true
 | Event | `app/Events/ShippingStatusUpdated.php` + listener WA | notifikasi milestone ke pelanggan |
 | Joint-debug | `app/Console/Commands/JntJointDebug.php` | uji sandbox (bukti sukses ≥3×) |
 | Status / readiness | `app/Console/Commands/JntStatus.php` + `App\Support\JntReadiness` | checklist kredensial + pengirim |
-| Audit log | `config/logging.php` channel `jnt` → `storage/logs/jnt-*.log` | metadata request/response tanpa credential/PII |
+| Audit log | `config/logging.php` channel `jnt` → `storage/logs/jnt-*.log` | allowlist metadata; order/waybill/IP sebagai hash 12 karakter; tanpa credential, payload, provider message, atau exception message mentah |
 
 **Prinsip:** semua nilai spesifik akun (endpoint path, field, kode status) ada di `config/jnt.php` dan bisa di-override lewat `.env` **tanpa mengubah kode**.
 
@@ -112,7 +112,7 @@ Route: `POST /webhook/shipping/jnt` (CSRF dikecualikan, throttle 120/mnt).
 
 Alur `ShippingController::handleJnt`:
 1. Ambil `bizContent` (JSON) + header `digest`.
-2. Kunci webhook wajib tersedia dan signature diverifikasi secara aman. Kunci kosong atau signature gagal akan ditolak.
+2. Kunci webhook wajib tersedia dan signature diverifikasi secara aman. Kunci kosong atau signature gagal akan ditolak. Jika J&T diaktifkan pada `APP_ENV=production` tanpa signing key, application boot gagal.
 3. Parse: `details[]` (push trajektori) ambil scan terbaru, atau field root (push status order). Ambil `scanType`, `scanTypeCode`, `desc`, `scanTime`.
 4. Cari `ShippingRecord` via `billCode` atau `txlogisticId`.
 5. `applyCarrierUpdate()` (idempoten, transaksional, cascade + event).
@@ -135,7 +135,7 @@ php artisan jnt:joint-debug --interface=track --times=3
 
 - Berjalan hanya saat `JNT_ENV=sandbox` (kecuali `--force`).
 - Menembak `tariff, address, create, track, cancel` masing-masing N kali.
-- Metadata request/response tercatat di channel log J&T tanpa digest, credential, alamat, nomor telepon, atau payload pelanggan.
+- Metadata request/response tercatat di channel log J&T tanpa digest, credential, alamat, nomor telepon, payload pelanggan, provider message, atau exception message mentah.
 - Mencetak ringkasan rasio sukses per interface.
 
 ---

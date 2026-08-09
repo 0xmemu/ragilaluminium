@@ -166,7 +166,8 @@ class ProductController extends Controller
                 ])
                 ->values()
                 ->all(),
-            'variants' => $detailVariants->map(function ($v) {
+            'variants' => $detailVariants->map(function ($v) use ($product) {
+                $priced = app(\App\Services\PriceService::class)->forVariant($v, $product);
                 $h = $v->height_cm !== null ? (float) $v->height_cm : null;
                 $w = $v->width_cm !== null ? (float) $v->width_cm : null;
                 $compact = ($h !== null && $w !== null)
@@ -180,6 +181,9 @@ class ProductController extends Controller
                     'id' => $v->id,
                     'variant_sku' => $v->variant_sku,
                     'price' => (float) $v->price,
+                    'sale_price' => (float) $priced['sale'],
+                    'compare_price' => $priced['compare'],
+                    'flash_sale' => (bool) $priced['flash_sale'],
                     'stock' => (int) $v->stock,
                     'variation_1_name' => $v->variation_1_name,
                     'variation_1_option' => $v->variation_1_option,
@@ -224,13 +228,23 @@ class ProductController extends Controller
                 $this->relatedProductsFor($product)
             ),
             // Metadata promo yang sama dengan product card (compare price, flash sale, COD, garansi).
-            'promo' => tap(ProductPromotionMetadata::forProduct($product), function (&$promo) use ($detailVariants) {
+            'promo' => tap(ProductPromotionMetadata::forProduct($product), function (&$promo) use ($detailVariants, $product) {
+                $pricing = app(\App\Services\PriceService::class)->productCard($product);
+                $promo['min_price'] = $pricing['min_sale'] ?? $promo['min_price'];
+                $promo['compare_price'] = $pricing['compare'] ?? $promo['compare_price'];
+                $promo['discount_percent'] = ($pricing['discount_percent'] ?? 0) > 0 ? $pricing['discount_percent'] : $promo['discount_percent'];
+                $promo['flash_sale'] = (bool) $pricing['flash_sale'];
+
                 // Jika varian difilter per dimensi (dari URL), min_price harus dari varian yang terlihat saja.
                 if ($detailVariants->isNotEmpty()) {
-                    $filteredMin = $detailVariants->min('price');
-                    if ($filteredMin !== null) {
-                        $promo['min_price'] = (float) $filteredMin;
+                    $filteredMin = null;
+                    foreach ($detailVariants as $v) {
+                        $p = app(\App\Services\PriceService::class)->forVariant($v, $product);
+                        if ($filteredMin === null || $p['sale'] < $filteredMin) {
+                            $filteredMin = $p['sale'];
+                        }
                     }
+                    $promo['min_price'] = (float) $filteredMin;
                 }
             }),
         ]);

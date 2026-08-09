@@ -6,6 +6,10 @@ import {
   type CatalogListingFilters,
 } from "@/components/public/catalog-listing-sidebar"
 import {
+  CatalogNav,
+  type CatalogNavFilters,
+} from "@/components/public/catalog-nav"
+import {
   FlashSaleHero,
   FlashSaleListingShell,
   FlashSaleListingToolbar,
@@ -26,7 +30,6 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
 import { ProductGridSkeleton } from "@/components/ui/skeleton"
-import { Sheet, SheetTrigger } from "@/components/ui/sheet"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -132,10 +135,9 @@ export default function Catalog({
     priceMax: priceMax?.toString() ?? "",
     sort: resolvedSort,
   })
-  const filtersRef = React.useRef(filters)
-  filtersRef.current = filters
-
   React.useEffect(() => {
+    // Server-side Inertia navigation is the source of truth for filter state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilters({
       model: activeModel ?? "",
       design: activeDesign ?? "",
@@ -149,7 +151,7 @@ export default function Catalog({
     next: Partial<FilterState> = {},
     options?: { clearSearch?: boolean; q?: string | null },
   ) {
-    const merged = { ...filtersRef.current, ...next }
+    const merged = { ...filters, ...next }
     const sort = resolveSortValue(merged.sort)
     const nextQuery =
       options?.clearSearch
@@ -194,7 +196,7 @@ export default function Catalog({
   }
 
   function handleLiveSidebarChange(next: Partial<CatalogListingFilters>) {
-    const merged = { ...filtersRef.current, ...next }
+    const merged = { ...filters, ...next }
 
     const touchesPrice = "priceMin" in next || "priceMax" in next
     const clearingPrice = touchesPrice && !merged.priceMin && !merged.priceMax
@@ -210,7 +212,7 @@ export default function Catalog({
   }
 
   function applyLivePrice() {
-    visit(filtersRef.current)
+    visit(filters)
   }
 
   const activeFilterCount = [activeModel, activeDesign, priceMin, priceMax, searchQuery]
@@ -234,7 +236,32 @@ export default function Catalog({
     onClearAll: reset,
   }
 
-  const filterToolbar = isPromo ? (
+  const filterSheetContent = (
+    <FilterSheetContent
+      title="Filter"
+      description="Pilih produk yang paling sesuai kebutuhan rumah Anda."
+      footer={
+        <FilterSheetFooter
+          onReset={reset}
+          onApply={() => {
+            setMobileFiltersOpen(false)
+            visit()
+          }}
+        />
+      }
+    >
+      <CatalogProductListingSidebar
+        {...sidebarProps}
+        variant="draft"
+        fieldSuffix="sheet"
+        onFiltersChange={(next) =>
+          setFilters((current) => ({ ...current, ...next }))
+        }
+      />
+    </FilterSheetContent>
+  )
+
+  const filterToolbar = (
     <div className="flex items-end gap-2">
       <FilterBerdasarkanControl
         id="promo-sort"
@@ -245,64 +272,25 @@ export default function Catalog({
         ariaLabel="Urutkan produk promo"
       />
     </div>
-  ) : (
-    <div className="flex items-end gap-2">
-      <FilterBerdasarkanControl
-        id="catalog-sort"
-        variant="plain"
-        value={filters.sort || "popular"}
-        options={CATALOG_SORT_OPTIONS}
-        onChange={(sort) => visit({ sort })}
-        ariaLabel="Urutkan produk"
-      />
-      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-        <SheetTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center gap-1 px-0.5 text-xs font-semibold text-foreground sm:text-sm transition hover:text-primary lg:hidden"
-          >
-            <Icon name="sliders" className="h-3.5 w-3.5" aria-hidden="true" />
-            Filter
-            {activeFilterCount > 0 ? (
-              <span className="tabular-nums flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </button>
-        </SheetTrigger>
-        <FilterSheetContent
-          title="Filter"
-          description="Pilih produk yang paling sesuai kebutuhan rumah Anda."
-          footer={
-            <FilterSheetFooter
-              onReset={reset}
-              onApply={() => {
-                setMobileFiltersOpen(false)
-                visit()
-              }}
-            />
-          }
-        >
-          <CatalogProductListingSidebar
-            {...sidebarProps}
-            variant="draft"
-            fieldSuffix="sheet"
-            onFiltersChange={(next) =>
-              setFilters((current) => ({ ...current, ...next }))
-            }
-          />
-        </FilterSheetContent>
-      </Sheet>
-      {activeFilterCount > 0 ? (
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex h-8 items-center px-0.5 text-xs font-semibold text-primary lg:hidden"
-        >
-          Hapus
-        </button>
-      ) : null}
-    </div>
+  )
+
+  const catalogNav = (
+    <CatalogNav
+      category={category}
+      categoryName={categoryName}
+      total={pagination?.total ?? products.length}
+      searchQuery={searchQuery}
+      filterModels={filterModels}
+      filterDesigns={filterDesigns}
+      filters={{ model: filters.model, design: filters.design, sort: filters.sort || "popular" }}
+      activeModel={activeModel}
+      activeDesign={activeDesign}
+      activeFilterCount={activeFilterCount}
+      onVisit={(next: Partial<CatalogNavFilters>) => visit(next)}
+      sheetOpen={mobileFiltersOpen}
+      onSheetOpenChange={setMobileFiltersOpen}
+      filterSheet={filterSheetContent}
+    />
   )
 
   const showYouMightLike = Boolean(searchQuery?.trim()) && youMightLike.length > 0
@@ -502,7 +490,7 @@ export default function Catalog({
 
       {isFlash ? (
         <FlashSaleHero period={period} />
-      ) : (
+      ) : isPromo ? (
         <section className="border-b border-border bg-surface">
           <div className="container-page hidden py-4 sm:block">
             <Breadcrumbs
@@ -523,7 +511,7 @@ export default function Catalog({
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -539,9 +527,11 @@ export default function Catalog({
             </div>
           </div>
         </section>
+      ) : (
+        catalogNav
       )}
 
-      {filterToolbar ? (
+      {isPromo ? (
         <div className="container-page flex justify-end py-3">
           {filterToolbar}
         </div>

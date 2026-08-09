@@ -10,14 +10,13 @@ use App\Support\InertiaAdmin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaymentController extends Controller
 {
-    public function __construct(private readonly PaymentService $payments)
-    {
-    }
+    public function __construct(private readonly PaymentService $payments) {}
 
     public function index(Request $request): Response
     {
@@ -76,11 +75,13 @@ class PaymentController extends Controller
 
     public function store(Request $request, Order $order): RedirectResponse
     {
+        $this->normalizeTransactionReference($request);
+
         $validated = $request->validate([
             'payment_method' => ['required', 'in:cod,transfer,gateway'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
             'status' => ['required', 'in:pending,completed,failed,refunded'],
-            'transaction_reference' => ['nullable', 'string'],
+            'transaction_reference' => ['nullable', 'string', 'max:255', Rule::unique('payments', 'transaction_reference')],
             'evidence_url' => ['nullable', 'url'],
             'paid_at' => ['nullable', 'date'],
         ]);
@@ -93,6 +94,8 @@ class PaymentController extends Controller
 
             if ($validated['status'] === 'completed') {
                 $this->payments->markCompleted($order, $payment, $request->user()->id);
+            } else {
+                $this->payments->reconcile($order, $request->user()->id);
             }
 
             return $payment;
@@ -104,9 +107,16 @@ class PaymentController extends Controller
 
     public function update(Request $request, Payment $payment): RedirectResponse
     {
+        $this->normalizeTransactionReference($request);
+
         $validated = $request->validate([
             'status' => ['required', 'in:pending,completed,failed,refunded'],
-            'transaction_reference' => ['nullable', 'string'],
+            'transaction_reference' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('payments', 'transaction_reference')->ignore($payment->id),
+            ],
             'evidence_url' => ['nullable', 'url'],
             'paid_at' => ['nullable', 'date'],
         ]);
@@ -125,11 +135,21 @@ class PaymentController extends Controller
 
                 return;
             }
-
             $payment->update($validated);
+            $this->payments->reconcile($payment->order()->firstOrFail(), $request->user()->id);
         });
 
         return redirect()->route('admin.orders.show', $payment->order_id)
             ->with('success', 'Pembayaran diperbarui.');
+    }
+
+    private function normalizeTransactionReference(Request $request): void
+    {
+        if (! $request->exists('transaction_reference')) {
+            return;
+        }
+
+        $reference = trim((string) $request->input('transaction_reference'));
+        $request->merge(['transaction_reference' => $reference !== '' ? $reference : null]);
     }
 }

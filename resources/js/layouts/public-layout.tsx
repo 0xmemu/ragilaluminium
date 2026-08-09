@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 
 import { usePage } from "@inertiajs/react"
 import { AnnouncementBar } from "@/components/public/announcement-bar"
+
 import { MobileBottomNav } from "@/components/public/mobile-bottom-nav"
 import { PublicFooter } from "@/components/public/public-footer"
 import { PublicHeader } from "@/components/public/public-header"
@@ -12,7 +13,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   const isHome = component === "Public/Home"
 
   return (
-    <div className="public-title-case min-h-screen overflow-x-clip bg-background text-foreground">
+    <div className="public-title-case min-h-screen overflow-x-clip bg-background text-body">
       <a
         href="#main-content"
         className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition focus:translate-y-0"

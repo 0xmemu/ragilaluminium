@@ -152,6 +152,8 @@ export default function Checkout({
 
   React.useEffect(() => {
     let cancelled = false
+    // Loading flags describe the external wilayah request lifecycle.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingProvinces(true)
     setWilayahError(null)
     fetchWilayah("provinces")
@@ -175,6 +177,8 @@ export default function Checkout({
   React.useEffect(() => {
     const provinceId = detailForm.data.province_id
     if (!provinceId) {
+      // Clear dependent choices when their parent is cleared.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRegencies([])
       return
     }
@@ -204,6 +208,8 @@ export default function Checkout({
   React.useEffect(() => {
     const cityId = detailForm.data.city_id
     if (!cityId) {
+      // Clear dependent choices when their parent is cleared.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDistricts([])
       return
     }
@@ -233,6 +239,8 @@ export default function Checkout({
   React.useEffect(() => {
     const districtId = detailForm.data.district_id
     if (!districtId) {
+      // Clear dependent choices when their parent is cleared.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVillages([])
       return
     }
@@ -367,7 +375,7 @@ export default function Checkout({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -378,11 +386,11 @@ export default function Checkout({
           </div>
           <ol className="mt-4 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border">
             <li className="bg-surface p-4">
-              <p className="font-mono text-[10px] text-primary">01</p>
+              <p className="font-mono text-[11px] text-primary">01</p>
               <p className="mt-1 text-sm font-semibold">Detail pengiriman</p>
             </li>
             <li className={cn("p-4", details ? "bg-surface" : "bg-surface-muted")}>
-              <p className="font-mono text-[10px] text-primary">02</p>
+              <p className="font-mono text-[11px] text-primary">02</p>
               <p className="mt-1 text-sm font-semibold">Pembayaran dan konfirmasi</p>
             </li>
           </ol>
@@ -724,7 +732,7 @@ export default function Checkout({
                           </span>
                         ) : null}
                         {discountPercent ? (
-                          <span className="rounded bg-accent px-1.5 text-[11px] font-semibold leading-5 text-accent-foreground">
+                          <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground">
                             −{discountPercent}%
                           </span>
                         ) : null}

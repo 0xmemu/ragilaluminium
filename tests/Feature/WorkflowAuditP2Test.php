@@ -92,6 +92,37 @@ class WorkflowAuditP2Test extends TestCase
                 ->where('orders.0.order_number', 'ORD-UNPAID-1'));
     }
 
+    public function test_orders_status_filter_exposes_count_and_value_summary(): void
+    {
+        $admin = $this->admin();
+
+        $this->makeOrder([
+            'order_number' => 'ORD-SHIPPED-1',
+            'order_status' => 'shipped',
+            'total_amount' => 125000,
+        ]);
+        $this->makeOrder([
+            'order_number' => 'ORD-SHIPPED-2',
+            'order_status' => 'shipped',
+            'total_amount' => 875000,
+        ]);
+        $this->makeOrder([
+            'order_number' => 'ORD-PROCESSING-1',
+            'order_status' => 'processing',
+            'total_amount' => 500000,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.index', ['order_status' => 'shipped']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Orders/Index')
+                ->where('activeStatus', 'shipped')
+                ->where('summary.count', 2)
+                ->where('summary.total_value', 1000000)
+                ->has('orders', 2));
+    }
+
     public function test_media_hub_rows_include_operational_actions(): void
     {
         $admin = $this->admin();

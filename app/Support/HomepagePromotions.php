@@ -44,21 +44,10 @@ class HomepagePromotions
      */
     public static function slides(): array
     {
-        $manual = self::manualSlides();
-        $auto = HomepagePromotionSettings::enabled()
-            ? self::automaticSlides(
-                excludeSkus: self::skusFromSlides($manual),
-                limit: HomepagePromotionSettings::maxSlides(),
-            )
-            : [];
-
-        $promos = array_values([...$manual, ...$auto]);
-
-        if ($promos === []) {
-            return self::fallbackSlides();
-        }
-
-        return [self::landingSlide(), ...$promos];
+        // Section promo = banner landing (konten dikelola di sini) + banner
+        // manual dari admin (cms_banners). Slide otomatis dari produk dimatikan
+        // agar tidak ada konten lama yang ikut berputar.
+        return [self::landingSlide(), ...self::manualSlides()];
     }
 
     /**
@@ -226,13 +215,13 @@ class HomepagePromotions
             'id' => 0,
             'source' => 'fallback',
             'layout' => 'landing',
-            'eyebrow' => 'Jendela Aluminium',
-            'headline' => "Berbagai Ukuran Siap\nPilih & Bisa Custom",
-            'subheadline' => '1.000.000+ Unit Terpasang di Seluruh Indonesia',
+            'eyebrow' => 'PROMO BOVEN JUNGKIT',
+            'headline' => 'Diskon 20%',
+            'subheadline' => 'Hanya Hari Ini !',
             'accent' => null,
             'image' => '/images/home/model-casement.png',
-            'image_alt' => 'Jendela aluminium berbagai ukuran',
-            'href' => PublicNavigation::canonicalHref('catalog.windows', [], false),
+            'image_alt' => 'Promo bouven jungkit',
+            'href' => PublicNavigation::canonicalHref('catalog.bouven', [], false),
         ];
     }
 

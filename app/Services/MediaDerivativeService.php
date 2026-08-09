@@ -80,6 +80,106 @@ class MediaDerivativeService
         return $out;
     }
 
+    /**
+     * Store immutable derivatives for a shared asset. The checksum is the
+     * storage namespace so different products never create duplicate bytes.
+     *
+     * @return array<string, array{path: string, url: string, width: int, height: int}>
+     */
+    public function storeAssetDerivatives(string $absoluteSourcePath, string $checksum): array
+    {
+        if (! extension_loaded('gd')) {
+            throw new RuntimeException('PHP GD extension is required to generate media derivatives.');
+        }
+
+        $sizes = config('media.derivatives', [
+            'thumb' => 400,
+            'card' => 800,
+            'pdp' => 1400,
+        ]);
+        $quality = (int) config('media.webp_quality', 82);
+        $disk = Storage::disk(config('media.disk', 'media'));
+        $source = $this->loadImage($absoluteSourcePath);
+
+        if ($source === false) {
+            throw new RuntimeException('Unable to read image for shared asset derivatives.');
+        }
+
+        $srcW = imagesx($source);
+        $srcH = imagesy($source);
+        $out = [];
+
+        foreach ($sizes as $name => $maxEdge) {
+            [$dstW, $dstH] = $this->fitWithin($srcW, $srcH, max(1, (int) $maxEdge));
+            $canvas = imagecreatetruecolor($dstW, $dstH);
+            if ($canvas === false) {
+                imagedestroy($source);
+                throw new RuntimeException('Unable to allocate shared derivative canvas.');
+            }
+
+            imagealphablending($canvas, false);
+            imagesavealpha($canvas, true);
+            $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+            imagefilledrectangle($canvas, 0, 0, $dstW, $dstH, $transparent);
+            imagealphablending($canvas, true);
+
+            imagecopyresampled($canvas, $source, 0, 0, 0, 0, $dstW, $dstH, $srcW, $srcH);
+            $tmp = tempnam(sys_get_temp_dir(), 'shared_deriv_');
+            if ($tmp === false || ! imagewebp($canvas, $tmp, $quality)) {
+                imagedestroy($canvas);
+                imagedestroy($source);
+                throw new RuntimeException("Failed to encode shared WebP derivative [{$name}].");
+            }
+            imagedestroy($canvas);
+
+            $path = "media-assets/{$checksum}/{$name}.webp";
+            $disk->put($path, fopen($tmp, 'r'), ['visibility' => 'public']);
+            @unlink($tmp);
+            $out[$name] = [
+                'path' => $path,
+                'url' => $disk->url($path),
+                'width' => $dstW,
+                'height' => $dstH,
+            ];
+        }
+
+        imagedestroy($source);
+
+        return $out;
+    }
+
+    /**
+     * Store one browser-compatible video original in the immutable asset namespace.
+     * Videos intentionally skip image derivatives and transcoding in this phase.
+     *
+     * @return array{path: string, url: string, mime_type: string, size_bytes: int}
+     */
+    public function storeVideoAsset(string $absoluteSourcePath, string $checksum, string $mimeType): array
+    {
+        $disk = Storage::disk(config('media.disk', 'media'));
+        $extension = match ($mimeType) {
+            'video/webm' => 'webm',
+            'video/quicktime' => 'mov',
+            default => 'mp4',
+        };
+        $path = "media-assets/{$checksum}/video.{$extension}";
+        $stream = fopen($absoluteSourcePath, 'r');
+        if ($stream === false || ! $disk->put($path, $stream, ['visibility' => 'public'])) {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            throw new RuntimeException('Unable to store video asset.');
+        }
+        fclose($stream);
+
+        return [
+            'path' => $path,
+            'url' => $disk->url($path),
+            'mime_type' => $mimeType,
+            'size_bytes' => (int) ($disk->size($path) ?: filesize($absoluteSourcePath) ?: 0),
+        ];
+    }
+
     public function keepOriginal(): bool
     {
         return (bool) config('media.keep_original', false);

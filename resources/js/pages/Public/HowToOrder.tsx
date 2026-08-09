@@ -67,7 +67,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -92,7 +92,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="tabular-nums flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
+                    <span className="tabular-nums flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold text-background">
                       {index + 1}
                     </span>
                     <h2 className="text-sm font-bold tracking-tight text-foreground sm:text-base">
@@ -175,7 +175,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
             title="Siap memesan?"
             description="Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu."
           />
-          <div className="mt-5 flex items-center justify-center gap-3">
+          <div className="mt-5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
             <Button asChild className="bg-white text-primary hover:bg-white/90 sm:min-w-[180px]">
               <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
             </Button>

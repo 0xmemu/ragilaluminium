@@ -1,11 +1,15 @@
 import { Link, usePage } from "@inertiajs/react"
-import { Lightning, SealCheck, Tag } from "@phosphor-icons/react"
+import { Lightning, SealCheck, Tag, X } from "@phosphor-icons/react"
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 import type { Announcement, SharedPageProps } from "@/types"
 
-const SLIDE_MS = 5500
+/**
+ * Simpan status dismiss per-konten. Kalau admin mengganti teks/link promo
+ * (fingerprint berubah), bar otomatis muncul lagi meski sudah ditutup.
+ */
+const DISMISS_KEY = "ra.announcement.dismissed.v1"
 
 function AnnouncementMark({ text }: { text: string }) {
   const lower = text.toLowerCase()
@@ -18,17 +22,17 @@ function AnnouncementMark({ text }: { text: string }) {
   return <Tag weight="fill" className="size-3.5 shrink-0 text-white/90" aria-hidden />
 }
 
-/** Emphasize discount chips / model keywords inside ticker copy. */
+/** Emphasize discount chips / model keywords inside promo copy. */
 function AnnouncementText({ text }: { text: string }) {
   const parts = text.split(/(-?\d{1,3}%)/g)
 
   return (
-    <span className="block min-w-0 max-w-full truncate text-[11px] font-semibold leading-none tracking-tight sm:text-xs">
+    <span className="block min-w-0 max-w-full truncate text-xs font-semibold leading-none tracking-tight">
       {parts.map((part, index) =>
         /^-?\d{1,3}%$/.test(part) ? (
           <span
             key={`${part}-${index}`}
-            className="mx-0.5 inline-flex items-center rounded-full bg-white px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums text-primary sm:text-[11px]"
+            className="mx-0.5 inline-flex items-center rounded-full bg-white px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums text-primary"
           >
             {part}
           </span>
@@ -40,23 +44,11 @@ function AnnouncementText({ text }: { text: string }) {
   )
 }
 
-function AnnouncementLink({
-  announcement,
-  className,
-  tabIndex,
-}: {
-  announcement: Announcement
-  className?: string
-  tabIndex?: number
-}) {
+function AnnouncementLink({ announcement }: { announcement: Announcement }) {
   return (
     <Link
       href={announcement.href}
-      tabIndex={tabIndex}
-      className={cn(
-        "inline-flex min-w-0 max-w-full items-center gap-1.5 text-white transition hover:text-white/90 sm:gap-2",
-        className,
-      )}
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-white transition hover:text-white/90 sm:gap-2"
     >
       <AnnouncementMark text={announcement.text} />
       <AnnouncementText text={announcement.text} />
@@ -64,99 +56,56 @@ function AnnouncementLink({
   )
 }
 
-function MobileAnnouncementCarousel({ items }: { items: Announcement[] }) {
-  const [active, setActive] = React.useState(0)
-  const [paused, setPaused] = React.useState(false)
-  const reduceMotion = React.useSyncExternalStore(
-    (onStoreChange) => {
-      const media = window.matchMedia("(prefers-reduced-motion: reduce)")
-      media.addEventListener("change", onStoreChange)
-      return () => media.removeEventListener("change", onStoreChange)
-    },
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false,
-  )
-
-  const safeActive = items.length ? Math.min(active, items.length - 1) : 0
-
-  React.useEffect(() => {
-    if (reduceMotion || paused || items.length <= 1) return
-    const id = window.setInterval(() => {
-      setActive((current) => (current + 1) % items.length)
-    }, SLIDE_MS)
-    return () => window.clearInterval(id)
-  }, [items.length, paused, reduceMotion])
-
-  return (
-    <div
-      className="relative flex min-h-8 items-center overflow-hidden py-1.5 md:hidden"
-      aria-live="polite"
-      onTouchStart={() => setPaused(true)}
-      onTouchEnd={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setPaused(false)
-        }
-      }}
-    >
-      <div className="relative w-full">
-        {items.map((announcement, index) => (
-          <div
-            key={`${announcement.text}-${index}`}
-            className={cn(
-              "flex w-full items-center justify-center px-4 text-center",
-              index === safeActive ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0",
-              !reduceMotion && "transition-opacity duration-[260ms] ease-standard",
-            )}
-            aria-hidden={index !== safeActive}
-          >
-            <AnnouncementLink
-              announcement={announcement}
-              tabIndex={index === safeActive ? 0 : -1}
-              className="min-w-0 max-w-full justify-center [&_span]:max-w-full [&_span]:whitespace-nowrap [&_span]:text-center"
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function DesktopAnnouncementMarquee({ items }: { items: Announcement[] }) {
-  // Duplicate track so the CSS marquee loops seamlessly when only 1–N promos exist.
-  const track = items.length === 1 ? [...items, ...items, ...items] : [...items, ...items]
-
-  return (
-    <div className="group/announce relative hidden min-h-8 items-center overflow-hidden py-1.5 md:flex">
-      <div
-        className="announcement-marquee flex w-max items-center gap-8 whitespace-nowrap will-change-transform md:gap-10"
-        style={{
-          animationDuration: `${Math.max(28, track.length * 8)}s`,
-        }}
-      >
-        {track.map((announcement, index) => (
-          <AnnouncementLink
-            key={`${announcement.text}-${index}`}
-            announcement={announcement}
-            className="shrink-0"
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export function AnnouncementBar() {
+/**
+ * Bar promo statis: menampilkan satu pengumuman teratas (prioritas admin).
+ * Tidak ada marquee / rotasi otomatis. Ikon X menutup bar sampai konten berubah.
+ */
+export function AnnouncementBar({ className }: { className?: string }) {
   const { announcements } = usePage<SharedPageProps>().props
   const items = React.useMemo(() => announcements ?? [], [announcements])
+  const active = items[0]
 
-  if (!items.length) return null
+  const fingerprint = React.useMemo(
+    () => items.map((item) => `${item.text}|${item.href}`).join(";;"),
+    [items],
+  )
+
+  const [dismissFingerprint, setDismissFingerprint] = React.useState<string | null>(() => {
+    try {
+      return window.localStorage.getItem(DISMISS_KEY)
+    } catch {
+      return null
+    }
+  })
+
+  // Derived, tanpa effect: bar tertutup hanya jika fingerprint tersimpan == fingerprint saat ini.
+  // Kalau admin mengganti teks/link promo, fingerprint berubah → bar otomatis muncul lagi.
+  const dismissed = dismissFingerprint !== null && dismissFingerprint === fingerprint
+
+  if (!active || dismissed) return null
+
+  function dismiss() {
+    setDismissFingerprint(fingerprint)
+    try {
+      window.localStorage.setItem(DISMISS_KEY, fingerprint)
+    } catch {
+      // non-persistent close (private mode, etc.)
+    }
+  }
 
   return (
-    <div className="bg-primary text-white">
-      <MobileAnnouncementCarousel items={items} />
-      <DesktopAnnouncementMarquee items={items} />
+    <div className={cn("relative bg-primary text-white", className)}>
+      <div className="mx-auto flex min-h-8 w-full max-w-[80rem] items-center justify-center px-9 py-1.5 sm:px-10">
+        <AnnouncementLink announcement={active} />
+      </div>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Tutup bar promo"
+        className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-white/90 transition hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+      >
+        <X weight="bold" className="size-4" aria-hidden />
+      </button>
       <span className="sr-only">Promo aktif: {items.map((item) => item.text).join(". ")}</span>
     </div>
   )

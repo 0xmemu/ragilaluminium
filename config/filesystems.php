@@ -1,5 +1,11 @@
 <?php
 
+$r2Key = env('AWS_ACCESS_KEY_ID') ?: env('CLOUDFLARE_R2_ACCESS_KEY_ID');
+$r2Secret = env('AWS_SECRET_ACCESS_KEY') ?: env('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+$r2Bucket = env('AWS_BUCKET') ?: env('CLOUDFLARE_R2_BUCKET');
+$r2Url = env('AWS_URL') ?: env('CLOUDFLARE_R2_PUBLIC_URL');
+$r2Endpoint = env('AWS_ENDPOINT') ?: env('CLOUDFLARE_R2_ENDPOINT');
+
 return [
 
     /*
@@ -48,13 +54,14 @@ return [
         'media' => env('MEDIA_DISK', 'local') === 's3'
             ? [
                 'driver' => 's3',
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                'key' => $r2Key,
+                'secret' => $r2Secret,
                 'region' => env('AWS_DEFAULT_REGION', 'auto'),
-                'bucket' => env('AWS_BUCKET'),
-                'url' => env('AWS_URL'),
-                'endpoint' => env('AWS_ENDPOINT'),
-                'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+                'bucket' => $r2Bucket,
+                'url' => env('MEDIA_PUBLIC_URL') ?: $r2Url,
+                'proxy_url' => env('MEDIA_PROXY_URL'),
+                'endpoint' => $r2Endpoint,
+                'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
                 'visibility' => 'public',
                 'throw' => false,
                 'report' => false,
@@ -70,13 +77,14 @@ return [
 
         's3' => [
             'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'key' => $r2Key,
+            'secret' => $r2Secret,
             'region' => env('AWS_DEFAULT_REGION', 'auto'),
-            'bucket' => env('AWS_BUCKET'),
-            'url' => env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'bucket' => $r2Bucket,
+            'url' => env('MEDIA_PUBLIC_URL') ?: $r2Url,
+            'proxy_url' => env('MEDIA_PROXY_URL'),
+            'endpoint' => $r2Endpoint,
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
             'throw' => false,
             'report' => false,
         ],

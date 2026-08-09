@@ -119,11 +119,14 @@ Notes:
 
 ### 2.1 `product_media`
 
-Represents media records for products/variants (images; extensible to video).
+Represents attachment records for products/variants. Physical files belong to
+`media_assets`; this table owns product-specific position, main/catalog, and
+installation flags.
 
 - `id` (PK, bigint, auto increment)  
 - `product_id` (FK → `products.id`)  
 - `product_variant_id` (FK → `product_variants.id`, nullable)  
+- `media_asset_id` (FK → `media_assets.id`, nullable during backfill)
 - `position` (int)  
   - 1–9 for typical image slots.  
 - `is_main_image` (boolean, default false)  
@@ -131,6 +134,8 @@ Represents media records for products/variants (images; extensible to video).
   - When true → included in PDP / product card gallery.  
 - `is_installation` (boolean, default false)  
   - When true → included in Hasil Pemasangan (`/hasil-pemasangan`, home strip, PDP installation section, related product links).  
+- `installation_caption` (varchar(280), nullable)
+  - Caption for installation/project media shown in Hasil Pemasangan and related storefront surfaces.
 - `visibility` (enum: visible, archived, hidden, nullable)  
 - `source_url` (text, nullable)  
   - Archive of the ingest URL (e.g. Shopee CDN). Not for production storefront hotlink when `MEDIA_ALLOW_SOURCE_FALLBACK=false`.  
@@ -165,6 +170,7 @@ Indexes:
 - `idx_product_media_visibility` (`visibility`)  
 - `idx_product_media_created_job` (`created_by_import_job_id`)
 - `idx_product_media_installation` (`is_installation`, `visibility`, `status`)
+- `idx_product_media_asset_visibility` (`media_asset_id`, `visibility`)
 
 Notes:
 
@@ -175,6 +181,24 @@ Notes:
 - Storefront should prefer `derivatives` URLs (`urlFor('card'|'thumb'|'pdp')`); `display_url` resolves to `card` (with safe fallbacks). Never rely on `source_url` in production.
 - Storage efficiency: default **WebP-only on disk** after successful derivatives (`MEDIA_KEEP_ORIGINAL=false`). Prune existing JPG/PNG with `php artisan media:prune-originals`. Re-fetch from `source_url` if a larger master is needed.
 - Import columns: `image_1..9` → catalog; optional `installation_slots` (e.g. `7,8,9`) marks those slots also `is_installation`; `installation_image_1..9` → `show_in_catalog=false`, `is_installation=true` (extra docs outside catalog gallery).
+
+### 2.2 `media_assets`
+
+One physical shared image/video and its immutable delivery metadata. Multiple
+`product_media` attachments may reference one asset.
+
+- `id`, `kind` (`image`/`video`), `label`, `source_url`, `source_url_hash`
+- `checksum` (SHA-256, unique when known), `object_key`, `derivatives` (image
+  `thumb`/`card`/`pdp`; video has one browser-compatible `video` object)
+- `mime_type`, `size_bytes`, `width_px`, `height_px`, optional
+  `duration_ms`/`poster_asset_id`
+- `status` (`pending`, `downloading`, `ready`, `failed`, `archived`) and
+  `visibility` (`visible`, `hidden`, `archived`), error/audit fields, timestamps
+
+New object keys are checksum based: `media-assets/{sha256}/...`. Videos are
+validated and stored as MP4/WebM/MOV originals; transcoding is out of scope.
+`php artisan media:backfill-assets --dry-run` previews linking legacy rows;
+the command never deletes media rows or storage objects.
 
 ---
 
@@ -251,6 +275,7 @@ Represents customer orders created via website checkout.
 
 - `id` (PK, bigint, auto increment)  
 - `order_number` (varchar, unique)  
+- `checkout_idempotency_key` (uuid, nullable, unique) — token session checkout; retry request yang sama mengembalikan order yang sama
 - `customer_id` (FK → `customers.id`, nullable)  
 - `customer_name` (varchar)  
 - `customer_phone` (varchar)  
@@ -285,12 +310,15 @@ Represents customer orders created via website checkout.
 Indexes:
 
 - `idx_orders_order_number` (unique on `order_number`)  
+- `uq_orders_checkout_idempotency_key` (unique on `checkout_idempotency_key`)
 - `idx_orders_customer_phone` (`customer_phone`)  
 - `idx_orders_statuses` (`order_status`, `payment_status`, `shipping_status`)
 
 Notes:
 
 - Orders should generally not be deleted; visibility is handled by filters and date ranges.  
+- Cancellation locks the order and restores each referenced variant stock exactly once before setting `order_status=cancelled`.
+- `payment_status=paid` requires the sum of `payments.amount` with `status=completed` to meet or exceed `orders.total_amount`; otherwise it remains `pending`.
 
 ### 4.2 `order_items`
 
@@ -434,7 +462,8 @@ Represents admins and staff with access to the dashboard.
 
 - `id` (PK, bigint, auto increment)  
 - `name` (varchar)  
-- `email` (varchar, unique)  
+- `username` (varchar(64), unique)
+- `email` (varchar, indexed; not unique)
 - `password` (varchar)  
 - `role` (enum: `super_admin`, `admin`, `staff`, `viewer` — **canonical runtime value is `admin` only**; Stage 2 equal-admin; legacy enum values kept for DB compatibility, normalized to `admin`)  
 - `status` (enum: active, inactive)  
@@ -443,7 +472,8 @@ Represents admins and staff with access to the dashboard.
 
 Indexes:
 
-- `idx_users_email` (unique on `email`)  
+- `idx_users_username` (unique on `username`)
+- `idx_users_email` (`email`)
 - `idx_users_role` (`role`)  
 
 Admin: **Manajemen Admin** (`admin.users.*` → `Admin/Users/{Index,Form}`). Filter `q`/`status`/`sort`. No role picker (all Store Admins equal). Activate/deactivate tanpa hard delete. Guard: no self-deactivate; keep ≥1 active admin.
@@ -525,7 +555,7 @@ Notes:
 ```
 
 - Admin **Beranda Pembeli**: `admin.beranda.*` (`Admin/Beranda/*`) manages layout order/enable + section editors. Banner “Edit konten” opens Promo Toko (`admin.banners.index`). Generic CMS editor must preserve these keys + `auto_promotions`.
-- Homepage merge order: permanent landing slide → published `cms_banners` → automatic product slides (when enabled; prefer newest BOUVEN). When both promo sources empty: real newest BOUVEN (+ DOOR) product photos — no hardcoded dummy promo images.
+- Homepage merge order: permanent landing slide → published `cms_banners` → automatic product slides (when enabled; prefer newest BOUVEN). When automatic mode is disabled, only manual published banners follow the landing slide. When both promo sources are empty while automatic mode is enabled: real newest BOUVEN (+ DOOR) product photos — no hardcoded dummy promo images.
 
 ### `cms_pages.slug = flash-sale`
 

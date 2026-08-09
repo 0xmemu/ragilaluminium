@@ -2,29 +2,40 @@
 
 namespace Tests\Feature;
 
-use App\Imports\CatalogProductsImport;
+use App\Jobs\DownloadMediaAsset;
 use App\Jobs\ProcessCatalogImport;
 use App\Models\ImportJob;
-use App\Models\Product;
-use App\Models\ProductVariant;
-use App\Models\ProductMedia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Facades\Excel;
+use Tests\TestCase;
 
-class ImportPipelineTest extends \Tests\TestCase
+class ImportPipelineTest extends TestCase
 {
     use RefreshDatabase;
 
     public function test_import_creates_products_variants_and_media(): void
     {
+        Queue::fake([DownloadMediaAsset::class]);
         $rows = collect([
             ['parent_sku' => 'WIN-IMP-1', 'name' => 'Window', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-IMP-1-V1', 'price' => 1000000, 'stock' => 5, 'image_1' => 'https://example.com/a.jpg'],
         ]);
-        $export = new class($rows) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        $export = new class($rows) implements FromCollection, WithHeadings
+        {
             public function __construct(public $rows) {}
-            public function collection() { return $this->rows; }
-            public function headings(): array { return array_keys($this->rows->first()); }
+
+            public function collection()
+            {
+                return $this->rows;
+            }
+
+            public function headings(): array
+            {
+                return array_keys($this->rows->first());
+            }
         };
         Excel::store($export, 'imp.xlsx', 'imports');
         $path = Storage::disk('imports')->path('imp.xlsx');
@@ -39,6 +50,7 @@ class ImportPipelineTest extends \Tests\TestCase
         $this->assertDatabaseHas('products', ['parent_sku' => 'WIN-IMP-1', 'status' => 'active']);
         $this->assertDatabaseHas('product_variants', ['variant_sku' => 'WIN-IMP-1-V1']);
         $this->assertDatabaseHas('product_media', ['source_url' => 'https://example.com/a.jpg']);
+        Queue::assertPushed(DownloadMediaAsset::class);
     }
 
     public function test_import_manual_stock_overrides_file_stock(): void
@@ -46,10 +58,19 @@ class ImportPipelineTest extends \Tests\TestCase
         $rows = collect([
             ['parent_sku' => 'WIN-STOCK-1', 'name' => 'Window stock', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-STOCK-1-V1', 'price' => 1000000, 'stock' => 7],
         ]);
-        $export = new class($rows) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        $export = new class($rows) implements FromCollection, WithHeadings
+        {
             public function __construct(public $rows) {}
-            public function collection() { return $this->rows; }
-            public function headings(): array { return array_keys($this->rows->first()); }
+
+            public function collection()
+            {
+                return $this->rows;
+            }
+
+            public function headings(): array
+            {
+                return array_keys($this->rows->first());
+            }
         };
         Excel::store($export, 'manual-stock.xlsx', 'imports');
 

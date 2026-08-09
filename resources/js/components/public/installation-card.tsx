@@ -74,8 +74,8 @@ export function InstallationCard({
         ) : null}
       </div>
 
-      <div className="flex min-w-0 shrink-0 flex-col gap-1.5 bg-white px-2.5 py-2.5 @[16rem]:gap-2 @[16rem]:px-3 @[16rem]:py-3">
-        <h3 className="w-full min-w-0 break-words text-xs font-normal leading-4 text-foreground line-clamp-2 min-h-[2em] sm:text-[13px] sm:leading-4">
+      <div className="flex min-w-0 shrink-0 flex-col gap-1.5 bg-white p-[5px] @[16rem]:gap-2">
+        <h3 className="w-full min-w-0 break-words text-[13px] font-normal leading-4 text-foreground line-clamp-2 min-h-[2em]">
           {title}
         </h3>
 
@@ -121,8 +121,8 @@ export function InstallationCard({
                   className={cn(
                     "min-w-0 font-light leading-none",
                     level === "model"
-                      ? "whitespace-nowrap text-center text-[10px]"
-                      : "truncate text-left text-[11px]",
+                      ? "whitespace-nowrap text-center text-xs"
+                      : "truncate text-left text-xs",
                   )}
                 >
                   <span className="tabular-nums font-normal text-primary">{formatNumber(stat.value)}</span>

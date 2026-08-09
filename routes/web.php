@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\BerandaController;
 use App\Http\Controllers\Admin\CaraPemesananController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\Admin\KebijakanPrivasiController;
 use App\Http\Controllers\Admin\KetentuanLayananController;
 use App\Http\Controllers\Admin\MasalahSolusiController;
 use App\Http\Controllers\Admin\ModelProductController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PageController as AdminPageController;
 use App\Http\Controllers\Admin\PaymentController;
@@ -23,7 +25,9 @@ use App\Http\Controllers\Admin\ProductAttributeController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
+use App\Http\Controllers\Admin\SubModelController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ShippingRecordController;
 use App\Http\Controllers\Admin\ShippingSubsidyController;
@@ -166,10 +170,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('products', AdminProductController::class)->except(['destroy']);
     Route::post('products/{product}/archive', [AdminProductController::class, 'archive'])->name('products.archive');
     Route::post('products/{product}/unarchive', [AdminProductController::class, 'unarchive'])->name('products.unarchive');
+    Route::post('products/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
+    Route::post('products/{product}/duplicate', [AdminProductController::class, 'duplicate'])->name('products.duplicate');
 
     // Variants
     Route::get('products/{product}/variants', [ProductVariantController::class, 'index'])->name('products.variants.index');
     Route::post('products/{product}/variants', [ProductVariantController::class, 'store'])->name('products.variants.store');
+    Route::post('products/{product}/variants/bulk', [ProductVariantController::class, 'bulkStore'])->name('products.variants.bulk');
     Route::get('variants/{variant}/edit', [ProductVariantController::class, 'edit'])->name('variants.edit');
     Route::put('variants/{variant}', [ProductVariantController::class, 'update'])->name('variants.update');
     Route::post('variants/{variant}/archive', [ProductVariantController::class, 'archive'])->name('variants.archive');
@@ -188,6 +195,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('media/{media}/archive', [ProductMediaController::class, 'archive'])->name('media.archive');
     Route::post('media/{media}/redownload', [ProductMediaController::class, 'redownload'])->name('media.redownload');
     Route::delete('media/{media}', [ProductMediaController::class, 'destroy'])->name('media.destroy');
+    Route::post('media/{asset}/attach', [ProductMediaController::class, 'bulkAttach'])->name('media.attach');
 
     // Imports
     Route::get('imports', [ImportJobController::class, 'index'])->name('imports.index');
@@ -203,6 +211,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('orders/export', [AdminOrderController::class, 'export'])->name('orders.export');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::put('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+    Route::put('orders/{order}/items', [AdminOrderController::class, 'updateItems'])->name('orders.items.update');
     Route::post('orders/{order}/shipping', [AdminOrderController::class, 'storeShipping'])->name('orders.shipping.store');
     Route::post('orders/{order}/shipping/refresh', [AdminOrderController::class, 'refreshShipping'])->name('orders.shipping.refresh');
 
@@ -237,6 +246,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('activity-logs/export', [ActivityLogController::class, 'export'])->name('activity-logs.export');
 
+    // Notifikasi admin
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+
     // Customers (guest buyers — not admin users)
     Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
@@ -259,6 +273,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('banners/{banner}/publish', [BannerController::class, 'publish'])->name('banners.publish');
     Route::post('banners/{banner}/unpublish', [BannerController::class, 'unpublish'])->name('banners.unpublish');
 
+    // Bar promo (announcement ticker)
+    Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
+    Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::get('announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])->name('announcements.edit');
+    Route::put('announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
+    Route::post('announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->name('announcements.publish');
+    Route::post('announcements/{announcement}/unpublish', [AnnouncementController::class, 'unpublish'])->name('announcements.unpublish');
+
     // Flash Sale (product_attributes: promo_flash_sale + promo_compare_price)
     Route::get('flash-sale', [FlashSaleController::class, 'index'])->name('flash-sale.index');
     Route::get('flash-sale/create', [FlashSaleController::class, 'create'])->name('flash-sale.create');
@@ -267,6 +290,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('flash-sale/{product}/edit', [FlashSaleController::class, 'edit'])->name('flash-sale.edit');
     Route::put('flash-sale/{product}', [FlashSaleController::class, 'update'])->name('flash-sale.update');
     Route::post('flash-sale/{product}/enable', [FlashSaleController::class, 'enable'])->name('flash-sale.enable');
+    Route::post('flash-sale/bulk-enable', [FlashSaleController::class, 'bulkEnable'])->name('flash-sale.bulk-enable');
+    Route::post('flash-sale/bulk-disable', [FlashSaleController::class, 'bulkDisable'])->name('flash-sale.bulk-disable');
     Route::post('flash-sale/{product}/disable', [FlashSaleController::class, 'disable'])->name('flash-sale.disable');
 
     Route::get('vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
@@ -290,6 +315,22 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('beranda/how-to-order', [BerandaController::class, 'editHowToOrder'])->name('beranda.how-to-order.edit');
     Route::put('beranda/how-to-order', [BerandaController::class, 'updateHowToOrder'])->name('beranda.how-to-order.update');
 
+    Route::get('sub-models', [SubModelController::class, 'index'])->name('sub-models.index');
+    Route::get('sub-models/create', [SubModelController::class, 'create'])->name('sub-models.create');
+    Route::post('sub-models', [SubModelController::class, 'store'])->name('sub-models.store');
+    Route::get('sub-models/{subModel}/edit', [SubModelController::class, 'edit'])->name('sub-models.edit');
+    Route::put('sub-models/{subModel}', [SubModelController::class, 'update'])->name('sub-models.update');
+    Route::post('sub-models/{subModel}/toggle', [SubModelController::class, 'toggle'])->name('sub-models.toggle');
+    Route::post('sub-models/reorder', [SubModelController::class, 'reorder'])->name('sub-models.reorder');
+    Route::get('promotions', [PromotionController::class, 'index'])->name('promotions.index');
+    Route::get('promotions/create', [PromotionController::class, 'create'])->name('promotions.create');
+    Route::post('promotions', [PromotionController::class, 'store'])->name('promotions.store');
+    Route::get('promotions/{promotion}/edit', [PromotionController::class, 'edit'])->name('promotions.edit');
+    Route::put('promotions/{promotion}', [PromotionController::class, 'update'])->name('promotions.update');
+    Route::post('promotions/{promotion}/duplicate', [PromotionController::class, 'duplicate'])->name('promotions.duplicate');
+    Route::post('promotions/{promotion}/end', [PromotionController::class, 'end'])->name('promotions.end');
+    Route::post('promotions/{promotion}/activate', [PromotionController::class, 'activate'])->name('promotions.activate');
+    Route::post('promotions/{promotion}/impact', [PromotionController::class, 'impact'])->name('promotions.impact');
     Route::get('model-products', [ModelProductController::class, 'index'])->name('model-products.index');
     Route::get('model-products/create', [ModelProductController::class, 'create'])->name('model-products.create');
     Route::post('model-products', [ModelProductController::class, 'store'])->name('model-products.store');

@@ -5,28 +5,34 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ApplyCheckoutVoucherRequest;
 use App\Http\Requests\PlaceOrderRequest;
 use App\Http\Requests\StoreCheckoutDetailsRequest;
+use App\Models\Order;
 use App\Services\CartService;
 use App\Services\OrderService;
 use App\Services\ShippingService;
 use App\Services\VoucherService;
 use App\Support\CodSettings;
+use App\Support\OperationalTelemetry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CheckoutController extends Controller
 {
+    private const IDEMPOTENCY_SESSION_KEY = 'checkout_idempotency_key';
+
     public function __construct(
         protected CartService $cart,
         protected OrderService $orders,
         protected ShippingService $shipping,
         protected VoucherService $vouchers,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): Response
     {
+        $this->prepareCheckoutIdempotencyKey($request);
+
         $selected = $this->cart->getSelectedLines();
         $priced = $this->cart->pricedLines($selected ?: null);
         $applied = $request->session()->get(VoucherService::SESSION_KEY);
@@ -138,6 +144,8 @@ class CheckoutController extends Controller
     {
         $validated = $request->validated();
 
+        $this->prepareCheckoutIdempotencyKey($request, rotateCompleted: true);
+
         $request->session()->put('checkout_details', $validated);
 
         return redirect()->route('checkout.index')->with('success', 'Detail pesanan tervalidasi.');
@@ -147,19 +155,39 @@ class CheckoutController extends Controller
     {
         $validated = $request->validated();
 
+        $idempotencyKey = $this->prepareCheckoutIdempotencyKey($request);
+        $existingOrder = Order::where('checkout_idempotency_key', $idempotencyKey)->first();
+
+        if ($existingOrder) {
+            OperationalTelemetry::checkoutOutcome(
+                outcome: 'duplicate_replay',
+                paymentMethod: $validated['payment_method'],
+                idempotencyReplay: true,
+            );
+            $this->rememberConfirmedOrder($request, $existingOrder);
+
+            return redirect()->route('order.confirmation', $existingOrder->order_number);
+        }
+
         $details = $request->session()->get('checkout_details');
 
         if (empty($details)) {
+            OperationalTelemetry::checkoutOutcome('missing_details', $validated['payment_method']);
+
             return redirect()->route('checkout.index')
                 ->withErrors(['checkout' => 'Mohon lengkapi detail pengiriman terlebih dahulu.']);
         }
 
         if (empty($this->cart->get($this->cart->getSelectedLines() ?: null))) {
+            OperationalTelemetry::checkoutOutcome('empty_cart', $validated['payment_method']);
+
             return redirect()->route('cart.index')
                 ->withErrors(['checkout' => 'Keranjang kosong.']);
         }
 
         if ($validated['payment_method'] === 'cod' && ! CodSettings::enabled()) {
+            OperationalTelemetry::checkoutOutcome('cod_unavailable', $validated['payment_method']);
+
             return redirect()->route('checkout.index')
                 ->withErrors(['payment_method' => 'Layanan COD sedang tidak tersedia. Pilih transfer bank.']);
         }
@@ -182,19 +210,43 @@ class CheckoutController extends Controller
                 shippingCost: $shipping['net'],
                 voucher: $voucher,
                 shippingSubsidy: $shipping['subsidy'],
+                idempotencyKey: $idempotencyKey,
             );
         } catch (\DomainException $e) {
+            OperationalTelemetry::checkoutOutcome('order_rejected', $validated['payment_method']);
+
             return redirect()->route('checkout.index')->withErrors(['checkout' => $e->getMessage()]);
         }
 
-        $confirmed = $request->session()->get('confirmed_orders', []);
-        $confirmed[] = $order->order_number;
-        $request->session()->put('confirmed_orders', $confirmed);
+        OperationalTelemetry::checkoutOutcome('order_created', $validated['payment_method']);
+
+        $this->rememberConfirmedOrder($request, $order);
 
         $this->cart->clear();
         $request->session()->forget('checkout_details');
         $request->session()->forget(VoucherService::SESSION_KEY);
 
         return redirect()->route('order.confirmation', $order->order_number);
+    }
+
+    private function prepareCheckoutIdempotencyKey(Request $request, bool $rotateCompleted = false): string
+    {
+        $key = (string) $request->session()->get(self::IDEMPOTENCY_SESSION_KEY, '');
+        $isCompleted = $key !== ''
+            && Order::where('checkout_idempotency_key', $key)->exists();
+
+        if (! Str::isUuid($key) || ($rotateCompleted && $isCompleted)) {
+            $key = (string) Str::uuid();
+            $request->session()->put(self::IDEMPOTENCY_SESSION_KEY, $key);
+        }
+
+        return $key;
+    }
+
+    private function rememberConfirmedOrder(Request $request, Order $order): void
+    {
+        $confirmed = $request->session()->get('confirmed_orders', []);
+        $confirmed[] = $order->order_number;
+        $request->session()->put('confirmed_orders', array_values(array_unique($confirmed)));
     }
 }

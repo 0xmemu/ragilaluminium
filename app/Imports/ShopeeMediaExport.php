@@ -2,11 +2,12 @@
 
 namespace App\Imports;
 
-use App\Jobs\DownloadProductMedia;
+use App\Jobs\DownloadMediaAsset;
 use App\Models\ImportJob;
 use App\Models\ImportJobRow;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Services\MediaAssetResolver;
 use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Row;
@@ -140,17 +141,19 @@ class ShopeeMediaExport implements OnEachRow, WithChunkReading
         $touched = 0;
 
         foreach ($urls as $position => $url) {
+            $asset = app(MediaAssetResolver::class)->fromSourceUrl($url, jobId: $this->jobId);
             $media = ProductMedia::query()
                 ->where('product_id', $product->id)
-                ->where('source_url', $url)
+                ->where('media_asset_id', $asset->id)
                 ->whereNull('product_variant_id')
                 ->first();
 
             if (! $media) {
                 $media = new ProductMedia([
                     'product_id' => $product->id,
+                    'media_asset_id' => $asset->id,
                     'source_url' => $url,
-                    'status' => 'pending',
+                    'status' => $asset->status === 'ready' ? 'downloaded' : 'pending',
                     'created_by_import_job_id' => $this->jobId,
                 ]);
             }
@@ -161,6 +164,9 @@ class ShopeeMediaExport implements OnEachRow, WithChunkReading
                 'is_installation' => false,
                 'visibility' => 'visible',
                 'last_updated_by_import_job_id' => $this->jobId,
+                'media_asset_id' => $asset->id,
+                'source_url' => $url,
+                'status' => $asset->status === 'ready' ? 'downloaded' : 'pending',
             ]);
 
             if ($media->status === 'failed') {
@@ -171,8 +177,8 @@ class ShopeeMediaExport implements OnEachRow, WithChunkReading
             $media->save();
             $touched++;
 
-            if (in_array($media->status, ['pending', 'failed'], true)) {
-                DownloadProductMedia::dispatch($media->id);
+            if ($asset->status === 'pending') {
+                DownloadMediaAsset::dispatch($asset->id);
             }
         }
 

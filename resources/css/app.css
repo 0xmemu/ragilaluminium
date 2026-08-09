@@ -7,26 +7,30 @@
   :root {
     color-scheme: light;
     --background: 0 0% 100%;
-    --foreground: 150 6% 11%;
+    --foreground: 0 0% 20%;
+    --action-foreground: 0 0% 15.686%;
+    --body-foreground: 0 0% 40%;
     --card: 0 0% 100%;
-    --card-foreground: 150 6% 11%;
+    --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 150 6% 11%;
+    --popover-foreground: 0 0% 20%;
     --primary: 0 100% 38%;
     --primary-hover: 0 100% 31%;
     --primary-foreground: 0 0% 100%;
     --secondary: 150 8% 93%;
-    --secondary-foreground: 150 6% 11%;
+    --secondary-foreground: 0 0% 20%;
     --muted: 150 8% 94%;
-    --muted-foreground: 150 5% 38%;
+    --muted-foreground: 0 0% 40%;
     --accent: 0 72% 96%;
     --accent-foreground: 0 100% 28%;
     --destructive: 0 84% 40%;
     --destructive-foreground: 0 0% 100%;
     --sale: 0 100% 38%;
+    /* Light coral accent for dark bands (AA on --foreground). */
+    --on-dark-accent: 0 88% 75%;
     --success: 149 45% 31%;
     --success-foreground: 0 0% 100%;
-    --warning: 35 84% 42%;
+    --warning: 35 84% 30%;
     --warning-foreground: 35 92% 10%;
     --info: 205 56% 39%;
     --info-foreground: 0 0% 100%;
@@ -54,6 +58,8 @@
     color-scheme: dark;
     --background: 0 3% 7.5%;
     --foreground: 0 0% 96%;
+    --action-foreground: 0 0% 96%;
+    --body-foreground: 0 0% 78%;
     --card: 0 2% 12%;
     --card-foreground: 0 0% 96%;
     --popover: 0 2% 12%;
@@ -70,6 +76,8 @@
     --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 100%;
     --sale: 0 100% 38%;
+    /* Light coral accent for dark bands (AA on --foreground). */
+    --on-dark-accent: 0 88% 75%;
     --success: 149 42% 46%;
     --warning: 35 78% 54%;
     --info: 205 62% 56%;
@@ -93,6 +101,8 @@
     color-scheme: dark;
     --background: 0 0% 4.5%;
     --foreground: 0 0% 96%;
+    --action-foreground: 0 0% 94%;
+    --body-foreground: 0 0% 60%;
     --card: 0 0% 8%;
     --card-foreground: 0 0% 96%;
     --popover: 0 0% 8.5%;
@@ -104,7 +114,7 @@
     --secondary-foreground: 0 0% 94%;
     --muted: 0 0% 11%;
     --muted-foreground: 0 0% 60%;
-    --accent: 213 94% 62%;
+    --accent: 213 94% 45%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 74% 56%;
     --destructive-foreground: 0 0% 100%;
@@ -131,6 +141,8 @@
     color-scheme: light;
     --background: 45 6% 96.5%;
     --foreground: 30 3% 13%;
+    --action-foreground: 30 4% 15%;
+    --body-foreground: 35 3% 42%;
     --card: 0 0% 100%;
     --card-foreground: 30 3% 13%;
     --popover: 0 0% 100%;
@@ -175,8 +187,13 @@
   }
 
   body {
-    @apply min-h-screen bg-background font-sans text-foreground antialiased;
+    @apply min-h-screen bg-background font-sans text-body antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  a,
+  button {
+    color: hsl(var(--action-foreground));
   }
 
   /* Admin shell: density ala Shopee Seller (root 14px, ~+17% dari 12px).
@@ -187,6 +204,10 @@
 
   html.admin-shell .text-xs {
     font-size: 0.857rem; /* 12px literal di root 14px */
+  }
+
+  html.admin-shell:not(.light) .admin-status-danger {
+    color: hsl(0 90% 72%);
   }
 
   html.admin-shell .admin-main {
@@ -248,13 +269,13 @@
 
   @media (min-width: 56.25em) {
     .container-page {
-      padding-inline: 15rem;
+      padding-inline: 3rem;
     }
   }
 
   /* Ritme vertikal antar section — rapat untuk strip carousel berurutan. */
   .section-space {
-    padding-block: 1.75rem;
+    padding-block: 1.25rem;
   }
 
   @media (min-width: 56.25em) {
@@ -284,7 +305,7 @@
   }
 
   .cms-content {
-    @apply text-base font-normal leading-7 text-foreground;
+    @apply text-base font-normal leading-7 text-body;
   }
 
   .cms-content > * + * {

@@ -81,7 +81,7 @@ export default function InstallationDetail({
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -148,7 +148,7 @@ export default function InstallationDetail({
                       className="object-contain transition group-hover:opacity-95"
                     />
                   )}
-                  <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-foreground/75 px-2.5 py-1 text-[11px] font-semibold text-background backdrop-blur-sm">
+                  <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-foreground/75 px-2.5 py-1 text-xs font-semibold text-background backdrop-blur-sm">
                     Ketuk untuk perbesar
                   </span>
                 </button>

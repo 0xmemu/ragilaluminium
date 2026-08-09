@@ -91,7 +91,7 @@ export default function BannerForm({
         <section className="overflow-hidden rounded-xl border border-border bg-card">
           {/* Stripe media: thumbnail kiri, upload inline kanan */}
           <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start">
-            <div className="h-32 w-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+            <div className="aspect-[1024/426] w-full max-w-[280px] shrink-0 overflow-hidden rounded-md border border-border bg-muted">
               {previewUrl ? (
                 <img src={previewUrl} alt="Pratinjau" className="size-full object-cover" />
               ) : (
@@ -105,7 +105,7 @@ export default function BannerForm({
                 id="image"
                 label="Upload gambar"
                 error={form.errors.image}
-                hint="Kartu homepage memakai rasio 3:4. Tanpa upload, link produk aktif bisa mengisi gambar otomatis."
+                hint="Gunakan kanvas 1024 × 426 px, atau 2048 × 852 px untuk hasil tajam. Rasio sekitar 2,4:1 dan crop responsif, jadi simpan objek utama di tengah. Tanpa upload, link produk aktif bisa mengisi gambar dari produk."
               >
                 <Input
                   type="file"

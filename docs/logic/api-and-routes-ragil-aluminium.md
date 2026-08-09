@@ -3,7 +3,9 @@
 This document defines the **core routes and API endpoints** for the Ragil Aluminium website.  
 It connects the System Architecture, database schema, and UI flows (admin + public store) into a concrete map of URLs and controllers.
 
-All agents must use these routes and endpoints as the primary integration surface; do not add ad‑hoc endpoints that bypass the documented modules.
+This historical copy is not an active integration surface; use the canonical route contract referenced below.
+
+> **Status: HISTORICAL / NON-CANONICAL.** This duplicate logic document is retained for audit context only. Do not use its route, controller, taxonomy, or enum examples for implementation. The active contract is `docs/api-and-routes-ragil-aluminium.md`, supported by `docs/contracts/ROLE-AND-STATUS-CONTRACT.md` and the active sitemap files. In particular, the runtime uses `/products` and `/products/all`, redirects `/search` to `/products`, and uses `POLOS` rather than `PLAIN`.
 
 ---
 
@@ -249,6 +251,12 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 
 - `POST /admin/media/{media_id}/archive`
   - Controller: `Admin\ProductMediaController@archive`
+
+- `POST /admin/media/{asset_id}/attach`
+  - Controller: `Admin\ProductMediaController@bulkAttach`
+  - Body: `product_ids[]`, `position`, `show_in_catalog`, `is_installation`, `is_main_image`, `visibility`.
+  - One shared asset can be attached idempotently to up to 100 products; this
+    does not duplicate bytes or delete a physical asset.
 
 ---
 

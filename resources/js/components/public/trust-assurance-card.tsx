@@ -17,7 +17,7 @@ export function TrustAssuranceCard({ className }: { className?: string }) {
       />
       <div className="min-w-0">
         <p className="text-xs font-bold tracking-tight text-foreground">Belanja Aman & Terpercaya</p>
-        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+        <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
           Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
         </p>
       </div>

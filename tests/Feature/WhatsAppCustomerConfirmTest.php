@@ -7,6 +7,7 @@ use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class WhatsAppCustomerConfirmTest extends TestCase
@@ -24,6 +25,27 @@ class WhatsAppCustomerConfirmTest extends TestCase
             'category' => 'transactional',
             'status' => 'active',
         ]);
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function postSignedMeta(array $payload): TestResponse
+    {
+        config(['services.whatsapp.app_secret' => 'meta-app-secret']);
+        $body = json_encode($payload, JSON_THROW_ON_ERROR);
+
+        return $this->call(
+            'POST',
+            '/webhook/whatsapp',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_ACCEPT' => 'application/json',
+                'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $body, 'meta-app-secret'),
+            ],
+            $body,
+        );
     }
 
     public function test_button_reply_processes_cod_order(): void
@@ -83,7 +105,7 @@ class WhatsAppCustomerConfirmTest extends TestCase
             ]],
         ];
 
-        $this->postJson('/webhook/whatsapp', $payload)->assertOk();
+        $this->postSignedMeta($payload)->assertOk();
 
         $order->refresh();
         $this->assertSame('processing', $order->order_status);
@@ -131,7 +153,7 @@ class WhatsAppCustomerConfirmTest extends TestCase
             ]],
         ];
 
-        $this->postJson('/webhook/whatsapp', $payload)->assertOk();
+        $this->postSignedMeta($payload)->assertOk();
 
         $order->refresh();
         $this->assertSame('pending_payment', $order->order_status);

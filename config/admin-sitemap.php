@@ -57,6 +57,7 @@ return [
         'core' => [
             'items' => [
                 ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => ['admin.dashboard']],
+                ['label' => 'Notifikasi', 'route' => 'admin.notifications.index', 'icon' => 'bell', 'active' => ['admin.notifications.*']],
                 ['label' => 'Pesanan', 'route' => 'admin.orders.index', 'icon' => 'clipboard-list', 'active' => ['admin.orders.*']],
                 ['label' => 'Pembayaran', 'route' => 'admin.payments.index', 'icon' => 'hand-coins', 'active' => ['admin.payments.*', 'admin.orders.payments']],
                 ['label' => 'Pengiriman', 'route' => 'admin.shipping.index', 'icon' => 'truck', 'active' => ['admin.shipping.*']],
@@ -73,8 +74,9 @@ return [
         'harga_promo' => [
             'title' => 'Harga & Promo',
             'items' => [
-                ['label' => 'Promo Toko', 'route' => 'admin.banners.index', 'icon' => 'ticket', 'active' => ['admin.banners.*']],
-                ['label' => 'Flash Sale', 'route' => 'admin.flash-sale.index', 'icon' => 'lightning', 'active' => ['admin.flash-sale.*']],
+                ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'icon' => 'ticket', 'active' => ['admin.promotions.*', 'admin.banners.*']],
+                ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'icon' => 'megaphone', 'active' => ['admin.announcements.*']],
+                ['label' => 'Flash Sale', 'route' => 'admin.promotions.index?type=flash_sale', 'icon' => 'lightning', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
                 ['label' => 'Voucher Toko', 'route' => 'admin.vouchers.index', 'icon' => 'voucher', 'active' => ['admin.vouchers.*']],
                 ['label' => 'Biaya COD', 'route' => 'admin.cod-settings.edit', 'icon' => 'hand-coins', 'active' => ['admin.cod-settings.*']],
                 ['label' => 'Subsidi Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'icon' => 'truck', 'active' => ['admin.shipping-subsidy.*']],
@@ -112,6 +114,7 @@ return [
             'items' => [
                 ['label' => 'Beranda Pembeli', 'route' => 'admin.beranda.index', 'icon' => 'layout-grid', 'active' => ['admin.beranda.*']],
                 ['label' => 'Model Produk', 'route' => 'admin.model-products.index', 'icon' => 'box', 'active' => ['admin.model-products.*']],
+                ['label' => 'Sub Model', 'route' => 'admin.sub-models.index', 'icon' => 'layout-grid', 'active' => ['admin.sub-models.*']],
                 ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
                 ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],

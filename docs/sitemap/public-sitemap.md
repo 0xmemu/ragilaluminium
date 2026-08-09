@@ -1,7 +1,7 @@
 # Sitemap publik — Ragil Aluminium
 
 **IA / menu / daftar halaman:** route + config di repo; referensi Figma lama hanya konteks historis.  
-**Style visual aktif:** `frontend/brand/BRAND-KIT.md` + `frontend/docs/DESIGN-SYSTEM.md`.  
+**Style visual aktif:** `frontend/docs/UI-CONSISTENCY-CONTRACT.md` + `frontend/brand/BRAND-KIT.md` + `frontend/docs/DESIGN-SYSTEM.md`.
 **Binding runtime:** `config/sitemap.php` · `routes/web.php`.
 
 Jangan menambah URL baru tanpa update dokumen ini + `config/sitemap.php` + `docs/api-and-routes-ragil-aluminium.md`.
@@ -70,7 +70,7 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 | Halaman Kebijakan Privasi | `/policy/privacy` | `privacy` | `Public/CmsPage` | implemented |
 | Halaman Ketentuan Layanan | `/policy/terms` | `terms` | `Public/CmsPage` | implemented |
 | Informasi Toko | `/about` | `about` | `Public/CmsPage` | implemented |
-| Halaman Apa Kata Pelanggan (galeri) | `/reviews` | `reviews` | `Public/Reviews` | implemented — galeri screenshot Shopee/WA dengan lightbox; meta `cms_pages.testimoni` |
+| Halaman Apa Kata Pelanggan (galeri) | `/reviews` | `reviews` | `Public/Reviews` | implemented — galeri screenshot Shopee/WA dengan lightbox; jika belum ada screenshot, sementara menampilkan ulasan website bergambar; meta `cms_pages.testimoni` |
 | Halaman Ulasan Website | `/ulasan` | `ulasan` | `Public/Ulasan` | implemented — ulasan pelanggan website (teks+rating, sort `newest\|oldest\|rating_desc\|rating_asc`), stats `website_total`/`average_rating` |
 | Halaman Hasil Pemasangan (listing model) | `/hasil-pemasangan` | `installation.index` | `Public/Installations` | implemented — header katalog (breadcrumb + judul + count + `?sort=newest\|photos\|name`) + grid kartu model |
 | Halaman Hasil Pemasangan (produk dalam model) | `/hasil-pemasangan/{category}/{model}` | `installation.model` | `Public/Installations` | implemented — header katalog + kartu **featured** (`ModelProductPresentation`) + **Inspirasi Pemasangan** (grid produk, `?sort=`) |

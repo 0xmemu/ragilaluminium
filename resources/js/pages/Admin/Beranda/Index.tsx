@@ -40,6 +40,8 @@ export default function BerandaIndex({
   })
 
   React.useEffect(() => {
+    // Inertia refresh replaces the editable section list with the server snapshot.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSections(initialSections)
     form.setData(
       "sections",
@@ -49,6 +51,8 @@ export default function BerandaIndex({
         sort_order: section.sort_order,
       })),
     )
+    // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSections])
 
   function syncForm(next: SectionRow[]) {

@@ -229,11 +229,14 @@ function RichSolutionPanel({
 export default function MasalahSolusi({ guide }: { guide?: Guide }) {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
-  const items = guide?.items ?? []
+  const guideItems = guide?.items
+  const items = React.useMemo(() => guideItems ?? [], [guideItems])
   const [openId, setOpenId] = React.useState<number | null>(items[0]?.id ?? null)
 
   React.useEffect(() => {
     if (openId !== null && !items.some((item) => item.id === openId)) {
+      // Keep the accordion selection valid when CMS content changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpenId(items[0]?.id ?? null)
     }
   }, [items, openId])
@@ -265,7 +268,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />

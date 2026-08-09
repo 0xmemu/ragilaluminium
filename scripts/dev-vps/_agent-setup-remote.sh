@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SSH_HOST="${RAGIL_SSH:-ragil-dev}"
-REMOTE_DIR="${RAGIL_REMOTE_DIR:-/var/www/website.4.0}"
+REMOTE_DIR="${RAGIL_REMOTE_DIR:-/var/www/ragilaluminium}"
 APP_URL="${RAGIL_APP_URL:-http://49.51.136.145:8200}"
 
 ssh_run() {

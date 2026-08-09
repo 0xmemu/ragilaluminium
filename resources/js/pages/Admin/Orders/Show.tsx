@@ -10,6 +10,7 @@ import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import AdminLayout from "@/layouts/admin-layout"
@@ -103,6 +104,12 @@ interface PrimaryAction {
   hint?: string | null
 }
 
+interface EditPolicy {
+  allowed: boolean
+  require_note: boolean
+  reason: string | null
+}
+
 interface ShippingActions {
   createUrl: string
   refreshUrl: string
@@ -186,6 +193,264 @@ function fullAddress(order: OrderDetail): string {
     .join(", ")
 }
 
+interface EditLine {
+  item_id: number | null
+  parent_sku: string
+  variant_sku: string
+  qty: number
+}
+
+interface EditFormData {
+  customer_name: string
+  customer_phone: string
+  customer_email: string
+  address_line1: string
+  address_line2: string
+  village: string
+  district: string
+  city: string
+  province: string
+  postal_code: string
+  notes: string
+  edit_note: string
+  items: EditLine[]
+}
+
+function OrderEditPanel({
+  order,
+  editUrl,
+  requireNote,
+  onCancel,
+}: {
+  order: OrderDetail
+  editUrl: string
+  requireNote: boolean
+  onCancel: () => void
+}) {
+  const [newLine, setNewLine] = React.useState({ parent_sku: "", variant_sku: "", qty: 1 })
+  const form = useForm<EditFormData>({
+    customer_name: order.customer_name ?? "",
+    customer_phone: order.customer_phone ?? "",
+    customer_email: order.customer_email ?? "",
+    address_line1: order.shipping_address_line1 ?? "",
+    address_line2: order.shipping_address_line2 ?? "",
+    village: order.shipping_village ?? "",
+    district: order.shipping_district ?? "",
+    city: order.shipping_city ?? "",
+    province: order.shipping_province ?? "",
+    postal_code: order.shipping_postal_code ?? "",
+    notes: order.notes ?? "",
+    edit_note: "",
+    items: order.items.map((item) => ({
+      item_id: item.id,
+      parent_sku: "",
+      variant_sku: "",
+      qty: item.quantity,
+    })),
+  })
+
+  const itemById = React.useMemo(
+    () => new Map(order.items.map((item) => [item.id, item])),
+    [order.items],
+  )
+
+  function setQty(index: number, qty: number) {
+    form.setData(
+      "items",
+      form.data.items.map((line, i) =>
+        i === index ? { ...line, qty: Math.max(1, qty) } : line,
+      ),
+    )
+  }
+
+  function removeLine(index: number) {
+    form.setData(
+      "items",
+      form.data.items.filter((_, i) => i !== index),
+    )
+  }
+
+  function addLine() {
+    const sku = newLine.parent_sku.trim()
+    if (!sku) return
+    form.setData("items", [
+      ...form.data.items,
+      {
+        item_id: null,
+        parent_sku: sku,
+        variant_sku: newLine.variant_sku.trim(),
+        qty: Math.max(1, newLine.qty),
+      },
+    ])
+    setNewLine({ parent_sku: "", variant_sku: "", qty: 1 })
+  }
+
+  function submit() {
+    const lines = form.data.items.filter((line) => line.qty >= 1)
+    if (lines.length === 0) return
+    form.setData("items", lines)
+    form.put(editUrl, { preserveScroll: true })
+  }
+
+  return (
+    <div className="space-y-4 border-t border-border bg-muted/30 px-5 py-4">
+      <FormErrorSummary errors={form.errors} />
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Produk
+        </p>
+        <ul className="mt-2 space-y-2">
+          {form.data.items.map((line, index) => {
+            const original = line.item_id != null ? itemById.get(line.item_id) : undefined
+            return (
+              <li key={line.item_id ?? `new-${index}`} className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium">
+                    {original?.name ?? (line.parent_sku || "(produk baru)")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {original
+                      ? variationLabel(original) || original.variant_sku || "-"
+                      : line.variant_sku || "tanpa varian"}
+                  </p>
+                </div>
+                <Input
+                  type="number"
+                  min={1}
+                  className="w-20"
+                  value={String(line.qty)}
+                  onChange={(event) => setQty(index, Number(event.target.value) || 1)}
+                />
+                <Button type="button" variant="ghost" size="sm" onClick={() => removeLine(index)}>
+                  Hapus
+                </Button>
+              </li>
+            )
+          })}
+        </ul>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Input
+            className="w-36"
+            placeholder="parent_sku"
+            value={newLine.parent_sku}
+            onChange={(event) => setNewLine({ ...newLine, parent_sku: event.target.value })}
+          />
+          <Input
+            className="w-40"
+            placeholder="variant_sku (opsional)"
+            value={newLine.variant_sku}
+            onChange={(event) => setNewLine({ ...newLine, variant_sku: event.target.value })}
+          />
+          <Input
+            type="number"
+            min={1}
+            className="w-20"
+            value={String(newLine.qty)}
+            onChange={(event) => setNewLine({ ...newLine, qty: Number(event.target.value) || 1 })}
+          />
+          <Button type="button" variant="secondary" size="sm" onClick={addLine}>
+            Tambah produk
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3.5 sm:grid-cols-2">
+        <Field id="edit-customer-name" label="Nama penerima" required error={form.errors.customer_name}>
+          <Input
+            value={form.data.customer_name}
+            onChange={(event) => form.setData("customer_name", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-customer-phone" label="Nomor HP" required error={form.errors.customer_phone}>
+          <Input
+            value={form.data.customer_phone}
+            onChange={(event) => form.setData("customer_phone", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-customer-email" label="Email (opsional)" error={form.errors.customer_email}>
+          <Input
+            value={form.data.customer_email}
+            onChange={(event) => form.setData("customer_email", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-address1" label="Alamat" required error={form.errors.address_line1}>
+          <Input
+            value={form.data.address_line1}
+            onChange={(event) => form.setData("address_line1", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-address2" label="Alamat 2 (opsional)" error={form.errors.address_line2}>
+          <Input
+            value={form.data.address_line2}
+            onChange={(event) => form.setData("address_line2", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-village" label="Desa/Kelurahan" error={form.errors.village}>
+          <Input
+            value={form.data.village}
+            onChange={(event) => form.setData("village", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-district" label="Kecamatan" error={form.errors.district}>
+          <Input
+            value={form.data.district}
+            onChange={(event) => form.setData("district", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-city" label="Kota/Kabupaten" required error={form.errors.city}>
+          <Input
+            value={form.data.city}
+            onChange={(event) => form.setData("city", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-province" label="Provinsi" required error={form.errors.province}>
+          <Input
+            value={form.data.province}
+            onChange={(event) => form.setData("province", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-postal" label="Kode pos" required error={form.errors.postal_code}>
+          <Input
+            value={form.data.postal_code}
+            onChange={(event) => form.setData("postal_code", event.target.value)}
+          />
+        </Field>
+      </div>
+
+      <Field id="edit-notes" label="Catatan pesanan (opsional)" error={form.errors.notes}>
+        <Textarea
+          rows={2}
+          value={form.data.notes}
+          onChange={(event) => form.setData("notes", event.target.value)}
+        />
+      </Field>
+
+      <Field
+        id="edit-note"
+        label={requireNote ? "Catatan perubahan (wajib)" : "Catatan perubahan (opsional)"}
+        required={requireNote}
+        error={form.errors.edit_note || form.errors.edit}
+      >
+        <Textarea
+          rows={2}
+          value={form.data.edit_note}
+          onChange={(event) => form.setData("edit_note", event.target.value)}
+          placeholder="Alasan perubahan isi pesanan - tercatat di riwayat."
+        />
+      </Field>
+
+      <div className="flex items-center gap-2">
+        <Button type="button" onClick={submit} disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan perubahan"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Batal
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function OrderShow({
   order,
   events = [],
@@ -194,6 +459,8 @@ export default function OrderShow({
   updateStatusUrl,
   shippingActions,
   workflowLinks,
+  editPolicy,
+  editUrl,
 }: {
   order: OrderDetail
   events?: OrderEvent[]
@@ -202,6 +469,8 @@ export default function OrderShow({
   updateStatusUrl: string
   shippingActions: ShippingActions
   workflowLinks: Array<{ label: string; href: string }>
+  editPolicy?: EditPolicy | null
+  editUrl?: string
 }) {
   const isCod = order.flow === "cod" || order.cod_flag
   const lacakRef = React.useRef<HTMLElement | null>(null)
@@ -222,6 +491,7 @@ export default function OrderShow({
     mark_shipped: true,
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
 
   function updateStatus(next?: string, cancelReason?: string) {
     const nextStatus = next ?? statusForm.data.order_status
@@ -476,7 +746,25 @@ export default function OrderShow({
       {/* Konten utama + aside */}
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
-          <SectionCard title="Isi pesanan" contentClassName="p-0">
+          <SectionCard
+            title="Isi pesanan"
+            contentClassName="p-0"
+            action={
+              editPolicy?.allowed ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing((value) => !value)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {editing ? "Tutup edit" : "Edit pesanan"}
+                </button>
+              ) : editPolicy?.reason ? (
+                <span className="text-xs text-muted-foreground" title={editPolicy.reason}>
+                  Terkunci
+                </span>
+              ) : null
+            }
+          >
             <ul className="divide-y divide-border">
               {order.items.map((item) => (
                 <li key={item.id} className="flex gap-3.5 px-5 py-4">
@@ -504,6 +792,14 @@ export default function OrderShow({
                 </li>
               ))}
             </ul>
+            {editing && editUrl ? (
+              <OrderEditPanel
+                order={order}
+                editUrl={editUrl}
+                requireNote={Boolean(editPolicy?.require_note)}
+                onCancel={() => setEditing(false)}
+              />
+            ) : null}
             <dl className="space-y-2 border-t border-border bg-muted/40 px-5 py-4 text-[13px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total produk</dt>

@@ -117,7 +117,7 @@ WHATSAPP_API_BASE_URL=https://graph.facebook.com/v21.0
 WHATSAPP_API_TOKEN=EAAB...              # permanent System User token
 WHATSAPP_BUSINESS_NUMBER_ID=1065...     # Phone number ID (bukan WABA ID)
 WHATSAPP_VERIFY_TOKEN=string-acak-yang-kamu-buat
-WHATSAPP_APP_SECRET=...                 # App Settings → Basic (opsional)
+WHATSAPP_APP_SECRET=...                 # App Settings → Basic (wajib untuk webhook production)
 WHATSAPP_BUSINESS_PHONE=62812...        # display E.164 tanpa + (opsional)
 WHATSAPP_LANGUAGE=id
 ```
@@ -302,7 +302,7 @@ Inbound POSTs contain JSON payloads for:
 
 Backend flow in `WhatsAppWebhookController@handle`:
 
-1. Validate signature and/or token per provider spec.  
+1. Validate signature per provider spec; missing secret or signature is rejected.  
 2. Parse events:
    - For inbound messages:
      - Extract sender phone number.
@@ -416,7 +416,7 @@ Webhook endpoint:
 
 - Must validate:
   - verification token (`WHATSAPP_VERIFY_TOKEN`) on setup.  
-  - optional signature headers if provider uses them.
+  - required signature/secret headers for every provider webhook.
 
 ### 8.2 Data Protection
 
@@ -473,7 +473,7 @@ Before implementing or modifying anything related to WhatsApp integration, agent
 - [ ] Store message logs in `whatsapp_messages` with clear `direction`, `status`, `order_id` (when known), and `provider_message_id`.  
 - [ ] Use approved templates for business‑initiated messages like order creation, payment confirmation, shipping, and delivery status.  
 - [ ] Map Stage 4 workflow events (order, payment, shipping) to specific WhatsApp templates and trigger them via the WhatsApp Module.  
-- [ ] Validate and secure webhook requests (verify token, optional signatures) and ensure inbound messages are linked to orders only through safe logic.  
+- [ ] Validate and secure webhook requests (verify token plus required signatures) and ensure inbound messages are linked to orders only through safe logic.  
 - [ ] Respect customer opt‑in/opt‑out and WhatsApp messaging policies; do not spam or send unauthorized messages.  
 - [ ] Avoid any unofficial integrations (web scraping, device automation) for production; only the Business API‑based integration is allowed.  
 - [ ] Ensure logging and monitoring exist for WhatsApp traffic so issues (failed sends, webhook errors) can be detected and resolved quickly.

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Orders\OrderStateMachine;
 use App\Events\PaymentConfirmed;
 use App\Models\EventLog;
 use App\Models\Order;
@@ -10,13 +11,31 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentService
 {
+    public function __construct(private readonly OrderStateMachine $states) {}
+
     /**
-     * Tandai pembayaran selesai + order lunas (idempotent).
-     * Jika order masih pending_payment, majukan ke processing.
+     * Tandai satu payment selesai lalu lunasi order hanya jika total settlement cukup.
+     * Order dan seluruh payment dikunci agar request admin paralel tetap konsisten.
      */
     public function markCompleted(Order $order, Payment $payment, int $userId): void
     {
-        DB::transaction(function () use ($order, $payment, $userId) {
+        $confirmation = null;
+
+        DB::transaction(function () use ($order, $payment, $userId, &$confirmation) {
+            $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $payment = Payment::query()
+                ->where('order_id', $order->id)
+                ->lockForUpdate()
+                ->findOrFail($payment->id);
+
+            if ((float) $payment->amount <= 0) {
+                throw new \DomainException('Nominal pembayaran harus lebih dari nol.');
+            }
+
+            if ((float) $order->total_amount <= 0) {
+                throw new \DomainException('Total pesanan harus lebih dari nol untuk dikonfirmasi lunas.');
+            }
+
             if ($payment->status !== 'completed') {
                 $payment->update([
                     'status' => 'completed',
@@ -25,26 +44,110 @@ class PaymentService
                 ]);
             }
 
-            $alreadyPaid = $order->payment_status === 'paid';
+            $payments = $order->payments()->lockForUpdate()->get(['status', 'amount']);
+            $settledAmount = (float) $payments
+                ->where('status', 'completed')
+                ->sum(fn (Payment $item): float => (float) $item->amount);
 
-            $updates = ['payment_status' => 'paid', 'updated_by_user_id' => $userId];
-            if ($order->order_status === 'pending_payment') {
-                $updates['order_status'] = 'processing';
+            if ($settledAmount + 0.0001 < (float) $order->total_amount) {
+                if ($order->payment_status !== 'pending') {
+                    $order->update([
+                        'payment_status' => 'pending',
+                        'updated_by_user_id' => $userId,
+                    ]);
+                }
+
+                return;
             }
-            $order->update($updates);
+
+            $alreadyPaid = $order->payment_status === 'paid';
+            $order->update([
+                'payment_status' => 'paid',
+                'updated_by_user_id' => $userId,
+            ]);
+
+            if ($order->order_status === 'pending_payment') {
+                $this->states->transition(
+                    $order,
+                    'processing',
+                    $userId,
+                    'payment_settled',
+                    ['payment_id' => $payment->id],
+                );
+            }
 
             if (! $alreadyPaid) {
                 EventLog::create([
                     'event_type' => 'payment.confirmed',
                     'entity_type' => 'order',
                     'entity_id' => $order->id,
-                    'payload' => ['payment_id' => $payment->id, 'amount' => $payment->amount],
+                    'payload' => [
+                        'payment_id' => $payment->id,
+                        'amount' => $payment->amount,
+                        'settled_amount' => $settledAmount,
+                        'required_amount' => (float) $order->total_amount,
+                    ],
                     'created_by_user_id' => $userId,
                     'created_at' => now(),
                 ]);
 
-                PaymentConfirmed::dispatch($order->fresh(), $payment->fresh());
+                $confirmation = [$order->fresh(), $payment->fresh()];
             }
+        });
+
+        if ($confirmation !== null) {
+            PaymentConfirmed::dispatch($confirmation[0], $confirmation[1]);
+        }
+    }
+
+    /**
+     * Sinkronkan status order setelah payment menjadi pending/failed/refunded.
+     * Status order fulfillment tidak diregresikan otomatis.
+     */
+    public function reconcile(Order $order, int $userId): void
+    {
+        DB::transaction(function () use ($order, $userId) {
+            $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $payments = $order->payments()->lockForUpdate()->get(['status', 'amount']);
+
+            $completedAmount = (float) $payments
+                ->where('status', 'completed')
+                ->sum(fn (Payment $item): float => (float) $item->amount);
+            $refundedAmount = (float) $payments
+                ->where('status', 'refunded')
+                ->sum(fn (Payment $item): float => (float) $item->amount);
+
+            $nextStatus = match (true) {
+                (float) $order->total_amount > 0
+                    && $completedAmount + 0.0001 >= (float) $order->total_amount => 'paid',
+                $refundedAmount > 0 && $completedAmount <= 0 => 'refunded',
+                default => 'pending',
+            };
+
+            if ($order->payment_status === $nextStatus) {
+                return;
+            }
+
+            $from = $order->payment_status;
+            $order->update([
+                'payment_status' => $nextStatus,
+                'updated_by_user_id' => $userId,
+            ]);
+
+            EventLog::create([
+                'event_type' => 'payment.reconciled',
+                'entity_type' => 'order',
+                'entity_id' => $order->id,
+                'payload' => [
+                    'from' => $from,
+                    'payment_status' => $nextStatus,
+                    'completed_amount' => $completedAmount,
+                    'refunded_amount' => $refundedAmount,
+                    'required_amount' => (float) $order->total_amount,
+                ],
+                'created_by_user_id' => $userId,
+                'created_at' => now(),
+            ]);
         });
     }
 
@@ -57,21 +160,27 @@ class PaymentService
         $method = $preferredMethod
             ?? ($order->cod_flag || $order->payment_method === 'cod' ? 'cod' : 'transfer');
 
-        $payment = $order->payments()
-            ->where('status', 'pending')
-            ->latest('id')
-            ->first();
+        $payment = DB::transaction(function () use ($order, $userId, $method) {
+            $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $payment = $order->payments()
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
 
-        if (! $payment) {
-            $payment = Payment::create([
-                'order_id' => $order->id,
-                'payment_method' => $method,
-                'amount' => $order->total_amount,
-                'status' => 'pending',
-                'created_by_user_id' => $userId,
-                'updated_by_user_id' => $userId,
-            ]);
-        }
+            if (! $payment) {
+                $payment = Payment::create([
+                    'order_id' => $order->id,
+                    'payment_method' => $method,
+                    'amount' => $order->total_amount,
+                    'status' => 'pending',
+                    'created_by_user_id' => $userId,
+                    'updated_by_user_id' => $userId,
+                ]);
+            }
+
+            return $payment;
+        });
 
         $this->markCompleted($order->fresh(), $payment->fresh(), $userId);
 

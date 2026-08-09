@@ -41,18 +41,18 @@ atau showroom mewah generik.
 
 ## Typography
 
-Satu keluarga font untuk seluruh situs (mengikuti arah IKEA yang memakai Noto Sans global).
+Satu keluarga font untuk seluruh situs memakai Apple system font.
 
 ### Display
 
-**Noto Sans Variable**, weight 600-800.
+**Apple system font**, weight 600-800: `-apple-system`, `BlinkMacSystemFont`, `Segoe UI`, sans-serif.
 
 Dipakai untuk H1, H2, angka KPI besar, dan title utama. Tracking rapat (`tracking-tight` / sekitar `-0.025em`) diterapkan di **seluruh halaman** (public, admin, auth) untuk heading, eyebrow, label kolom, dan CTA. Hindari tracking lebar (`0.06em`–`0.16em`) dan `tracking-wide`. Akronim status seperti `FLASH SALE` tetap boleh uppercase, tetap dengan tracking rapat.
 Headline public maksimal dua baris pada hero desktop.
 
 ### Body and UI
 
-**Noto Sans Variable**, weight 400-700.
+**Apple system font**, weight 400-700: `-apple-system`, `BlinkMacSystemFont`, `Segoe UI`, sans-serif.
 
 Dipakai untuk body, navigation, form, button, table, dan helper text. Body ideal 16-18px dengan
 line-height 1.6.
@@ -64,14 +64,14 @@ hanya boleh dipakai pada string teknis pendek, bukan body copy.
 
 ## Type hierarchy
 
-- Display XL: clamp 44-72px, Noto Sans 700, line-height 0.98-1.05
-- H1: clamp 38-60px, Noto Sans 700
-- H2: clamp 30-46px, Noto Sans 650
-- H3: 22-28px, Noto Sans 600
-- Body large: 18px, Noto Sans 450
-- Body: 16px, Noto Sans 450
-- Small: 14px, Noto Sans 500
-- Micro label: 12px, Noto Sans 650; bukan default pada setiap section
+- Display XL: clamp 44-72px, Apple system font 700, line-height 0.98-1.05
+- H1: clamp 38-60px, Apple system font 700
+- H2: clamp 30-46px, Apple system font 650; heading section homepage dikunci 18px
+- H3: 22-28px, Apple system font 600
+- Body large: 18px, Apple system font 450
+- Body: 16px, Apple system font 450
+- Small: 14px, Apple system font 500
+- Micro label: 12px, Apple system font 650; bukan default pada setiap section
 
 ## Shape and material
 
@@ -85,13 +85,13 @@ hanya boleh dipakai pada string teknis pendek, bukan body copy.
 
 ## Header storefront
 
-- Header publik memakai **Graphite** (`bg-foreground` / gelap) dengan teks/ikon terang — disengaja (bukan Signal Red penuh). Aksen merah hanya pada search submit, badge keranjang, dan Flash Sale.
+- Header publik, navbar, footer, dan bottom navigation memakai **action graphite** `#262626` (`bg-action`) dengan teks/ikon terang. Aksen merah hanya pada search submit, badge keranjang, active indicator, dan Flash Sale.
 
 ## Wordmark and logo
 
 Repo belum memiliki logo resmi. Sampai aset resmi tersedia:
 
-- Gunakan wordmark teks “Ragil Aluminium” dengan Noto Sans 700.
+- Gunakan wordmark teks “Ragil Aluminium” dengan Apple system font 700.
 - Jangan membuat simbol, monogram, atau logo permanen baru.
 - Sisakan slot rasio horizontal untuk file resmi di kemudian hari.
 - Logo resmi tidak boleh diubah warna, proporsi, atau clear space tanpa persetujuan brand owner.

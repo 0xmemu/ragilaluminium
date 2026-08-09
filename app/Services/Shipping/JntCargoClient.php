@@ -5,6 +5,7 @@ namespace App\Services\Shipping;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Low-level client untuk J&T Cargo Open Platform.
@@ -142,7 +143,7 @@ class JntCargoClient
             config('jnt.headers.digest') => $digest,
         ];
 
-        $requestId = (string) \Illuminate\Support\Str::uuid();
+        $requestId = (string) Str::uuid();
         $startedAt = microtime(true);
 
         Log::channel('jnt')->info('JNT request', [
@@ -151,8 +152,8 @@ class JntCargoClient
             'endpoint' => $endpointKey,
             'url' => $url,
             'timestamp' => $timestamp,
-            'customer_order_id' => $bizContent['txlogisticId'] ?? null,
-            'waybill' => $bizContent['billCode'] ?? $bizContent['billCodes'] ?? null,
+            'customer_order_ref' => $this->logReference($bizContent['txlogisticId'] ?? null),
+            'waybill_ref' => $this->logReference($bizContent['billCode'] ?? $bizContent['billCodes'] ?? null),
         ]);
 
         try {
@@ -171,7 +172,6 @@ class JntCargoClient
                 'elapsed_ms' => $elapsedMs,
                 'business_code' => $body['code'] ?? null,
                 'business_success' => $this->isBusinessSuccess($body),
-                'message' => $body['msg'] ?? $body['message'] ?? null,
             ]);
 
             return new JntResponse(
@@ -187,7 +187,8 @@ class JntCargoClient
             Log::channel('jnt')->error('JNT request failed', [
                 'request_id' => $requestId,
                 'endpoint' => $endpointKey,
-                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'error_code' => $e->getCode(),
                 'elapsed_ms' => $elapsedMs,
             ]);
 
@@ -199,6 +200,19 @@ class JntCargoClient
                 elapsedMs: $elapsedMs,
             );
         }
+    }
+
+    protected function logReference(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = is_scalar($value)
+            ? (string) $value
+            : (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return substr(hash('sha256', $normalized), 0, 12);
     }
 
     protected function httpClient(string $endpointKey): PendingRequest

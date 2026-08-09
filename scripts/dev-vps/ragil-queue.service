@@ -6,8 +6,10 @@ After=network.target mysql.service
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/website.4.0
-ExecStart=/usr/bin/php /var/www/website.4.0/artisan queue:work database --sleep=1 --tries=3 --timeout=90 --max-time=3600
+WorkingDirectory=/var/www/ragilaluminium
+# Imports can run for up to 30 minutes. Consume named queues explicitly so
+# imports/media are not stranded behind the database connection's default queue.
+ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan queue:work database --queue=imports,media,default --sleep=1 --tries=3 --timeout=1800 --max-time=3600
 Restart=always
 RestartSec=3
 

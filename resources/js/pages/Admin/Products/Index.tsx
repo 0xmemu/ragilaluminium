@@ -54,6 +54,7 @@ interface ProductCard {
   media_href: string
   archive_url: string
   unarchive_url: string
+  duplicate_url: string
   public_href: string
 }
 
@@ -116,6 +117,14 @@ function ProductRowActions({
           <a href={product.public_href} target="_blank" rel="noreferrer">
             Lihat di toko
           </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            router.post(product.duplicate_url, {}, { preserveScroll: true })
+          }}
+        >
+          Salin
         </DropdownMenuItem>
       </RowActionsMenu>
       {archived ? (

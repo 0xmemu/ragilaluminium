@@ -162,9 +162,11 @@ export default function BannersIndex({
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold">Banner promosi otomatis</h2>
+            <h2 className="text-base font-bold">Mode banner promosi</h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Produk dengan harga coret atau Flash Sale masuk slide otomatis (bukan baris cms_banners).
+              {autoForm.data.enabled
+                ? "Mode otomatis aktif. Produk dengan harga coret atau Flash Sale dapat masuk setelah banner manual."
+                : "Mode manual aktif. Hanya banner manual yang dipublish yang tampil setelah slide pembuka brand."}
             </p>
           </div>
           <StatusBadge status={autoForm.data.enabled ? "active" : "inactive"} />
@@ -184,7 +186,7 @@ export default function BannersIndex({
               onChange={(event) => autoForm.setData("enabled", event.target.checked)}
               className="h-4 w-4 accent-primary"
             />
-            Aktifkan banner otomatis
+            Gunakan banner otomatis dari produk
           </label>
           <Field id="auto-max-slides" label="Maks. slide" error={autoForm.errors.max_slides}>
             <Input
@@ -201,6 +203,10 @@ export default function BannersIndex({
           <p className="text-xs text-muted-foreground md:col-span-3">
             Kandidat produk:{" "}
             <span className="font-semibold text-foreground">{autoPromotions.candidate_count}</span>
+          </p>
+          <p className="text-xs leading-5 text-muted-foreground md:col-span-3">
+            Rekomendasi desain banner: <span className="font-semibold text-foreground">1024 × 426 px</span>
+            {" "}(rasio sekitar 2,4:1). Tampilan publik melakukan crop responsif.
           </p>
         </form>
       </section>
@@ -277,7 +283,11 @@ export default function BannersIndex({
         <EmptyState
           className="mt-6"
           title="Belum ada promo manual"
-          description="Tambah slide promo beranda, atau aktifkan banner otomatis di atas."
+          description={
+            autoForm.data.enabled
+              ? "Tambah slide promo beranda, atau matikan mode otomatis untuk menyiapkan mode manual penuh."
+              : "Mode manual aktif. Tambahkan dan publish banner agar tampil setelah slide pembuka brand."
+          }
           action={
             <Button asChild>
               <Link href={createHref}>Tambah Promo</Link>
@@ -343,7 +353,7 @@ export default function BannersIndex({
               <ResponsiveImage
                 src={banner.image_url}
                 alt={banner.title ?? `Promo #${banner.id}`}
-                wrapperClassName="aspect-[16/9]"
+                wrapperClassName="aspect-[1024/426]"
               />
               <div className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-2">

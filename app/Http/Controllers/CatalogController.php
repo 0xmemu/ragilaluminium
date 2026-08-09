@@ -142,10 +142,15 @@ class CatalogController extends Controller
 
         $products = Product::visible()
             ->when($category, fn ($q) => $q->where('product_category', $category))
-            ->when($promoOnly, fn ($q) => $q->whereHas(
-                'attributes',
-                fn ($qa) => $qa->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $promoAttributes)
-            ))
+            ->when($promoOnly, function ($q) use ($promoAttributes) {
+                $ids = app(\App\Services\CampaignService::class)->promoProductIds();
+                if ($ids !== []) {
+                    $q->whereIn('id', $ids);
+
+                    return;
+                }
+                $q->whereHas('attributes', fn ($qa) => $qa->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $promoAttributes));
+            })
             ->when($flashOnly, function ($q) use ($flashPeriodLive) {
                 if (! $flashPeriodLive) {
                     $q->whereRaw('0 = 1');
@@ -197,7 +202,7 @@ class CatalogController extends Controller
                 in_array($sort, ['popular', 'terlaris', 'bestseller'], true),
                 fn ($q) => $q->orderByDesc('sold_count')->orderByDesc('id')
             )
-             ->paginate(24)
+             ->paginate(14)
             ->withQueryString();
 
         $flashSaleSpotlight = [];
@@ -371,6 +376,11 @@ class CatalogController extends Controller
     /** @param  Builder<Product>  $query */
     protected function scopeFlashSaleActive($query)
     {
+        $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
+        if ($flashIds !== []) {
+            return $query->whereIn('id', $flashIds);
+        }
+
         $flashAttributes = ['promo_flash_sale', 'flash_sale'];
         $trueValues = ['true', '1', 'yes', 'on'];
 

@@ -56,7 +56,7 @@ function PlatformChip({
         <span
           className={cn(
             "text-xs font-semibold tracking-tight",
-            dark ? "text-background" : "text-foreground",
+            dark ? "text-white" : "text-foreground",
           )}
         >
           {item.label}
@@ -122,7 +122,7 @@ export function StorefrontPlatforms({
           <p
             className={cn(
               "text-sm font-bold tracking-tight",
-              dark ? "text-background" : "text-muted-foreground",
+              dark ? "text-white" : "text-muted-foreground",
             )}
           >
             {title}
@@ -152,7 +152,7 @@ export function StorefrontPlatforms({
           className={cn(
             compact ? "text-sm font-bold" : "text-lg font-semibold",
             "tracking-tight",
-            dark ? "text-background" : "text-foreground",
+            dark ? "text-white" : "text-foreground",
           )}
         >
           {title}
@@ -163,8 +163,8 @@ export function StorefrontPlatforms({
         <div>
           <p
             className={cn(
-              "text-[11px] font-semibold uppercase tracking-tight",
-              dark ? "text-background/75" : "text-muted-foreground",
+              "text-xs font-semibold uppercase tracking-tight",
+              dark ? "text-white/80" : "text-muted-foreground",
             )}
           >
             Marketplace
@@ -183,8 +183,8 @@ export function StorefrontPlatforms({
         <div>
           <p
             className={cn(
-              "text-[11px] font-semibold uppercase tracking-tight",
-              dark ? "text-background/75" : "text-muted-foreground",
+              "text-xs font-semibold uppercase tracking-tight",
+              dark ? "text-white/80" : "text-muted-foreground",
             )}
           >
             Media Sosial

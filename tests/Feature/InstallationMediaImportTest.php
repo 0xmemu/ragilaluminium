@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\DownloadMediaAsset;
 use App\Jobs\ProcessCatalogImport;
 use App\Models\CmsGalleryItem;
 use App\Models\CmsPage;
@@ -10,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Support\InstallationGallery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -22,6 +24,7 @@ class InstallationMediaImportTest extends TestCase
 
     public function test_import_creates_catalog_and_installation_media_flags(): void
     {
+        Queue::fake([DownloadMediaAsset::class]);
         $rows = collect([
             [
                 'parent_sku' => 'WIN-INST-1',
@@ -79,6 +82,7 @@ class InstallationMediaImportTest extends TestCase
         ]);
 
         $this->assertSame(2, ProductMedia::where('product_id', $product->id)->count());
+        Queue::assertPushed(DownloadMediaAsset::class, 2);
     }
 
     public function test_reviews_page_includes_imported_installation_media(): void
@@ -275,6 +279,7 @@ class InstallationMediaImportTest extends TestCase
                 ->where('media.1.is_video', true)
                 ->where('product.name', 'Jendela Video'));
     }
+
     public function test_model_cards_follow_model_product_list_even_without_installation_media(): void
     {
         Product::create([

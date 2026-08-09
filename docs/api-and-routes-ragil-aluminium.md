@@ -40,13 +40,18 @@ All agents must use these routes and endpoints as the primary integration surfac
 ### 1.2 Catalog Browsing
 
 - `GET /products`
-- `GET /products/{category}/{model}` → `catalog.model` → `Public/ModelDetail` (halaman detail model; klik kartu model, bukan popup; CTA ke listing SKU)
   - Controller: `CatalogController@index`
-  - Purpose (Inertia):
-    - **Default (no listing query):** hub **Semua Model Produk** — `Public/ModelProduk`, kartu `card-model-produk` (bukan daftar SKU).
-    - Optional `?design=POLOS|ORNAMEN|KOMBINASI` filters model cards.
-    - **With listing query** (`sort`, `q`, `model`, `price_*`): daftar produk SKU — `Public/Catalog`, kartu `card-produk` (mis. `/products/all?sort=popular` = Paling Banyak Dipesan).
-  - API (`Accept: application/json` / `/api/*`): selalu payload daftar produk.
+  - Purpose:
+    - Render the model hub by default, or the SKU listing when listing query parameters are present.
+
+- `GET /products/all`
+  - Controller: `CatalogController@all`
+  - Purpose:
+    - Render the complete SKU listing (`Public/Catalog`), including sort/filter query parameters such as `sort=popular`.
+- `GET /products/{category}/{model}` → `catalog.model` → `Public/ModelDetail` (halaman detail model; klik kartu model, bukan popup; CTA ke listing SKU)
+  - Controller: `CatalogController@modelShow`
+  - Purpose:
+    - Render the selected model detail page and link customers to the SKU listing.
 
 - `GET /promo`
   - Controller: `CatalogController@promo`
@@ -96,7 +101,7 @@ Example:
   - Purpose:
     - Show product detail page, gallery, variant selector, attributes.
     - Inertia props include `reviews`: published `cms_testimonials` where `product_id` matches (Ulasan tab).
-    - Inertia `media[]` includes `product_variant_id`; PDP gallery switches when warna/varian dipilih.
+    - Inertia `media[]` includes `product_variant_id`; PDP gallery switches when warna/varian dipilih. Public API media items include `kind` and `urls.video` for video assets.
   - Route model binding:
     - `parent_sku` maps to `products.parent_sku`.
 
@@ -120,6 +125,10 @@ Optional alternative:
   - Purpose:
     - Show cart contents, summary, and actions.
 
+- `GET /cart/preview`
+  - Controller: `CartController@preview`
+  - Response JSON: preview of up to five priced cart items for hover/focus surfaces; pricing is not shared on every Inertia navigation.
+
 - `GET /cart/count`
   - Controller: `CartController@count`
   - Response JSON: `{ "count": <int> }` — total quantity of products in session cart (navbar badge).
@@ -141,9 +150,24 @@ Optional alternative:
   - Payload:
     - `line_id` or `(parent_sku, variant_sku)`.
 
+- `POST /cart/restore`
+  - Controller: `CartController@restore`
+  - Behavior:
+    - Restore the most recently removed cart item, or return a flash error when none is available.
+
+- `POST /cart/select`
+  - Controller: `CartController@select`
+  - Payload:
+    - `line_ids[]` — selected cart line IDs to carry into checkout.
+
+- `POST /cart/remove-selected`
+  - Controller: `CartController@removeSelected`
+  - Payload:
+    - `line_ids[]` — selected cart line IDs to remove.
+
 Implementation detail:
 
-- Cart can be session‑based, cookie‑based, or user‑based (if authenticated); the routes abstract this away.
+- Cart is session-based for the guest-only storefront; the routes abstract the session storage away.
 
 ### 2.2 Checkout
 
@@ -166,7 +190,9 @@ Implementation detail:
   - Payload:
     - `payment_method` (`cod` / `transfer`). Opsi lain tidak ditawarkan di form publik — diproses manual via WhatsApp/admin.
   - Behavior:
+    - Use a server-generated, session-scoped idempotency key persisted on `orders.checkout_idempotency_key`.
     - Create `orders` (incl. `shipping_district`, `shipping_village`), `order_items`, and initial `payments` records.
+    - Retry/double-submit with the same key redirects to the same order and does not decrement stock again.
     - Trigger domain events for order creation.
 
 - `GET /api/wilayah/provinces`
@@ -318,7 +344,7 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
   - Props: daftar varian + baris media dengan `product_variant_id`, thumb, aksi
 
 - `POST /admin/products/{id}/media`
-  - Body: `source_url` / `upload`, `position`, `visibility`, `is_main_image`, **`product_variant_id` (nullable)** — tautkan foto ke kombinasi warna/kaca
+  - Body: `kind=image|video`, `media_asset_id` or `source_url` / `upload`, `position`, `visibility`, `is_main_image`, **`product_variant_id` (nullable)** — tautkan media ke kombinasi warna/kaca
 
 - `PUT /admin/media/{media_id}`
   - Boleh update `position`, `visibility`, **`product_variant_id`** (null = gambar bersama produk)
@@ -328,6 +354,11 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 
 - `POST /admin/media/{media_id}/archive`
   - Controller: `Admin\ProductMediaController@archive`
+
+- `POST /admin/media/{asset_id}/attach`
+  - Controller: `Admin\ProductMediaController@bulkAttach`
+  - Body: `product_ids[]`, `position`, `show_in_catalog`, `is_installation`, `is_main_image`, `visibility`.
+  - Attaches one shared asset to up to 100 products idempotently; attachment flags remain product-specific and archive actions never delete the physical asset.
 
 - Edit varian (`Admin/VariantEdit`) juga bisa unggah foto dengan `product_variant_id` terisi otomatis.
 
@@ -410,6 +441,7 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
     - New `order_status` (validated against allowed transitions).
     - Opsional: `redirect_to=index` + filter query untuk kembali ke daftar.
   - Alur berbeda per metode:
+    - **Cancellation**: lock order, restore variant stock exactly once, write `EventLog`, then set `order_status=cancelled`.
     - **Transfer** (`payment_method=transfer`): dari `pending_payment` → `processing` mengonfirmasi pembayaran pending (lunas) lalu memproses.
     - **COD** (`cod_flag` / `payment_method=cod`): dari `pending_payment` → `processing` tanpa menandai lunas; pembayaran COD dikonfirmasi saat status `delivered` / `completed`.
 
@@ -424,10 +456,13 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 - `POST /admin/orders/{id}/payments`
   - Controller: `Admin\PaymentController@store`
   - Purpose:
-    - Add payment record (e.g. manual transfer confirmation).
+    - Add a strictly positive payment record (e.g. manual transfer confirmation).
+    - `payment_status=paid` and transition to `processing` occur only after total completed payments cover `orders.total_amount`.
 
 - `PUT /admin/payments/{payment_id}`
   - Controller: `Admin\PaymentController@update`
+  - Behavior:
+    - Reconcile completed/failed/refunded payment rows back to `orders.payment_status` without automatically regressing fulfillment status.
 
 ### 6.3 Shipping Records
 
@@ -622,7 +657,7 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
 - `PUT /admin/apa-kata-pelanggan/meta` — meta `cms_pages.slug = testimoni` (`title`, `heading`, `subtitle`, `published`) via `TestimonialPageSettings`
 - `PUT /admin/apa-kata-pelanggan/reorder` — body `{ rows: [{ id, sort_order }] }` untuk prioritas tampilan storefront
 - Item CRUD tetap `admin.testimonials.*` (Monitoring → Ulasan memakai index yang sama tanpa meta surface)
-- Public: `GET /reviews` → `Public/Reviews` (galeri screenshot marketplace/WA) props `pageMeta` dari `TestimonialPageSettings::forStorefront()` + published `cms_testimonials` marketplace/`marketplaceTestimonials`
+- Public: `GET /reviews` → `Public/Reviews` (galeri screenshot marketplace/WA; fallback sementara ke ulasan website terbit yang memiliki `image_url` bila galeri marketplace kosong) props `pageMeta` dari `TestimonialPageSettings::forStorefront()` + `marketplaceTestimonials` + `testimonialMode`
 - Public: `GET /ulasan` → `Public/Ulasan` (ulasan website) props `websiteTestimonials`, `stats{website_total, average_rating}`, `activeSort`
 
 ### 7.0k Hasil Pemasangan Kami (Galeri)
@@ -728,7 +763,7 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
 - `GET /admin/users`
   - Controller: `Admin\UserController@index`
   - Inertia: `Admin/Users/Index`
-  - Query: `q`, `role` (`super_admin|admin|staff|viewer`), `status` (`active|inactive`), `sort` (`newest|oldest|name|role`)
+  - Query: `q`, `role` (`admin`), `status` (`active|inactive`), `sort` (`newest|oldest|name|role`)
   - Purpose: Manajemen Admin — daftar akun panel (`users`)
 
 - `GET /admin/users/create` / `POST /admin/users`
@@ -740,7 +775,7 @@ Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `o
   - Password opsional; tidak boleh menonaktifkan akun sendiri; tidak boleh menurunkan/nonaktifkan Super Admin terakhir yang aktif
 
 - `POST /admin/users/{id}/activate` / `POST /admin/users/{id}/deactivate`
-  - Toggle `status`; deactivate self / last active super_admin ditolak
+  - Toggle `status`; deactivate self / last active admin ditolak. Role is canonical `admin` and is not user-selectable.
 
 ### 9.1b Profil Saya (akun login)
 

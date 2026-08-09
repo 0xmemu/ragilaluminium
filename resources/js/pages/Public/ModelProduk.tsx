@@ -31,6 +31,8 @@ export default function ModelProduk({
   const [design, setDesign] = React.useState<string | null>(activeDesign ?? null)
 
   React.useEffect(() => {
+    // Inertia navigation can replace the active filter while this page instance remains mounted.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDesign(activeDesign ?? null)
   }, [activeDesign])
 
@@ -79,7 +81,7 @@ export default function ModelProduk({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />

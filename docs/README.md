@@ -1,4 +1,4 @@
-# Ragil Aluminium – Documentation Index (website.4.0)
+# Ragil Aluminium – Documentation Index
 
 Inertia + React storefront and admin. Visual direction and UI skills live under `frontend/`;
 backend contracts stay in `docs/`.
@@ -11,6 +11,11 @@ backend contracts stay in `docs/`.
 5. [`../AGENTS.md`](../AGENTS.md) — phases + mandatory report format.
 6. [`MEMORY.md`](MEMORY.md) — cross-session milestone log.
 7. [System Architecture](architecture/system-architecture-ragil-aluminium.md) — modules, data flow, integrations.
+8. [Full-Stack Production Checklist](FULL-STACK-PRODUCTION-CHECKLIST.md) — release gates for frontend, backend, infrastructure, security, observability, and recovery.
+9. [Agent Architect & Production Orchestrator Contract](AGENT-ARCHITECT-ORCHESTRATOR.md) — planning, gap analysis, ADR, CI/CD, and release governance.
+10. [Agent efficiency and compound workflow ADR](decisions/ADR-002-agent-efficiency-and-compound-workflow.md) — Caveman compression and Compound Engineering process rules.
+11. [Production VPS environment contract](production-vps-env-contract.md) — agent request packet, secret boundaries, R2, and Cloudflare Tunnel setup.
+12. [Full-stack production readiness plan](production-readiness-plan.md) — target architecture, workstreams, evidence, human runbook, and go/no-go.
 
 ## Contracts (canonical — do not invent beyond these)
 - [Database Schema](database-schema-ragil-aluminium.md)
@@ -33,7 +38,10 @@ backend contracts stay in `docs/`.
 - [JNT Cargo integration](jnt-cargo-integration.md)
 - [Media storage (R2/local)](media-storage-r2.md)
 - [Current storefront audit TODO](STOREFRONT-AUDIT-TODO.md)
-- [Backend audit plan](backend-audit-and-improvement-plan.md)
+- [Current backend audit](backend-audit-current.md)
+- [Recommended skills and contracts](RECOMMENDED-SKILLS-AND-CONTRACTS.md)
+- [Architecture decisions](decisions/ADR-001-agent-architect-production-orchestrator.md), [agent efficiency workflow](decisions/ADR-002-agent-efficiency-and-compound-workflow.md)
+- [Cloudflare Tunnel ingress decision](decisions/ADR-003-cloudflare-tunnel-ingress.md)
 
 > Old visual-design docs (`DESIGN.md`, wireframes, Next.js archive) were removed. Active replacement:
 > `frontend/`. Marketplace skills under `.agents/skills/` are technique-only.

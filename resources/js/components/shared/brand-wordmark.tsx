@@ -36,7 +36,7 @@ export function BrandWordmark({
       onClick={onClick}
       className={cn(
         "group relative z-20 inline-flex items-center",
-        mark ? "size-9 shrink-0" : compact ? "min-h-9" : "min-h-10",
+        mark ? "size-11 shrink-0" : compact ? "min-h-9" : "min-h-10",
         className,
       )}
       aria-label="Ragil Aluminium, ke beranda"

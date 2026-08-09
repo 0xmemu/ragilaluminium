@@ -40,15 +40,20 @@ export function InstallationLightbox({
     onIndexChange((index + delta + total) % total)
   }
 
+  const goPreviousOrNext = React.useCallback((delta: number) => {
+    if (total < 2) return
+    onIndexChange((index + delta + total) % total)
+  }, [index, onIndexChange, total])
+
   React.useEffect(() => {
     if (!open) return
     function onKey(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft") { event.preventDefault(); go(-1) }
-      else if (event.key === "ArrowRight") { event.preventDefault(); go(1) }
+      if (event.key === "ArrowLeft") { event.preventDefault(); goPreviousOrNext(-1) }
+      else if (event.key === "ArrowRight") { event.preventDefault(); goPreviousOrNext(1) }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [open, index, total])
+  }, [goPreviousOrNext, open])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

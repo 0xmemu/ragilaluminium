@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Bootstrap Ragil website.4.0 on Ubuntu 22.04/24.04 — DEV workstation only.
+# Bootstrap Ragil Aluminium on Ubuntu 22.04/24.04 — DEV workstation only.
 # Usage (as root/sudo):
-#   export RAGIL_GIT_URL='git@github.com:ORG/website.4.0.git'
+#   export RAGIL_GIT_URL='git@github.com:ORG/ragilaluminium.git'
 #   export RAGIL_APP_URL='http://YOUR_VPS_IP:8200'
 #   sudo -E bash scripts/dev-vps/bootstrap.sh
 #
 # If the tree is already on the VPS (rsync/scp), omit RAGIL_GIT_URL.
 #
 # Optional:
-#   RAGIL_APP_DIR=/var/www/website.4.0
+#   RAGIL_APP_DIR=/var/www/ragilaluminium
 #   RAGIL_DB_NAME=ragil RAGIL_DB_USER=ragil RAGIL_DB_PASS=...
 set -euo pipefail
 
@@ -17,7 +17,7 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
-APP_DIR="${RAGIL_APP_DIR:-/var/www/website.4.0}"
+APP_DIR="${RAGIL_APP_DIR:-/var/www/ragilaluminium}"
 GIT_URL="${RAGIL_GIT_URL:-}"
 APP_URL="${RAGIL_APP_URL:-http://127.0.0.1:8200}"
 DB_NAME="${RAGIL_DB_NAME:-ragil}"
@@ -123,6 +123,7 @@ set_env DB_DATABASE "${DB_NAME}"
 set_env DB_USERNAME "${DB_USER}"
 set_env DB_PASSWORD "${DB_PASS}"
 set_env QUEUE_CONNECTION database
+set_env DB_QUEUE_RETRY_AFTER 1860
 set_env SESSION_DRIVER database
 set_env MEDIA_DISK local
 

@@ -1,4 +1,4 @@
-# START HERE — Ragil Aluminium website.4.0
+# START HERE — Ragil Aluminium
 
 Laravel modular monolith with **Inertia + React** storefront and admin. Visual governance lives under
 `frontend/`; application runtime stays in `resources/js` and `resources/css`.

@@ -145,7 +145,7 @@ function HeaderSearchForm({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "h-9 w-full rounded-full border-0 bg-white/10 py-1.5 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-11 md:pl-12 md:pr-5 md:text-base",
+            "h-9 w-full rounded-full border-0 bg-white/10 py-1.5 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-9 md:pl-12 md:pr-5 md:text-base",
             inputClassName,
           )}
           aria-label="Cari produk"
@@ -209,6 +209,8 @@ export function PublicHeader() {
   const [cartPreviewOpen, setCartPreviewOpen] = React.useState(false)
 
   React.useEffect(() => {
+    // Inertia replaces shared props after cart mutations; local preview state must follow it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCartCount(cartCount ?? 0)
     setPreviewItems(cartPreview ?? [])
     setPreviewLoaded(Boolean(cartPreview))
@@ -256,7 +258,8 @@ export function PublicHeader() {
   }, [loadCartPreview])
   const productItems = nav?.public?.hamburger_product ?? nav?.public?.hamburger?.slice(0, 5) ?? []
   const infoItems = nav?.public?.hamburger_info ?? nav?.public?.hamburger?.slice(5) ?? []
-  const modelItems = nav?.public?.model_menu ?? []
+  const modelMenu = nav?.public?.model_menu
+  const modelItems = React.useMemo(() => modelMenu ?? [], [modelMenu])
   const desktopItems = nav?.public?.desktop_main ?? []
   const hamburgerFooter = nav?.public?.hamburger_footer ?? []
   const hamburgerCopyright = nav?.public?.hamburger_copyright ?? ''
@@ -283,12 +286,14 @@ export function PublicHeader() {
   )
 
   React.useEffect(() => {
+    // Keep nested menu state aligned when the parent Sheet closes via escape/outside click.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!menuOpen) setModelsOpen(false)
   }, [menuOpen])
 
   return (
     <>
-    <header className="sticky top-0 z-header border-b border-white/10 bg-foreground text-background">
+    <header className="sticky top-0 z-header border-b border-white/10 bg-[#1a1e1c] text-background">
       <div className="container-page relative flex h-14 items-center gap-1.5 py-0 md:min-h-14 md:gap-3 md:py-2 !px-5 md:!px-8 lg:!px-12">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
@@ -660,7 +665,7 @@ export function PublicHeader() {
     </header>
 
     {desktopItems.length ? (
-      <nav className="hidden border-b border-white/10 bg-foreground text-background md:block" aria-label="Navigasi utama">
+      <nav className="hidden border-b border-white/10 bg-[#1a1e1c] text-background md:block" aria-label="Navigasi utama">
         <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10 !px-5 md:!px-8 lg:!px-12">
           {desktopItems.map((item) => {
             const listingActive =

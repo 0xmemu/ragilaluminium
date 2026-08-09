@@ -220,6 +220,8 @@ export default function FlashSaleIndex({
   summary,
   period,
   periodUpdateUrl,
+  bulkEnableUrl,
+  bulkDisableUrl,
 }: {
   title: string
   description: string
@@ -232,9 +234,42 @@ export default function FlashSaleIndex({
   summary: Summary
   period: FlashSalePeriod
   periodUpdateUrl: string
+  bulkEnableUrl: string
+  bulkDisableUrl: string
 }) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
+  const [selected, setSelected] = React.useState<number[]>([])
+  const [bulkBusy, setBulkBusy] = React.useState<"enable" | "disable" | null>(null)
+
+  const pageIds = products.map((product) => product.id)
+  const allSelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id))
+
+  function toggleSelect(id: number) {
+    setSelected((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    )
+  }
+
+  function toggleSelectAll() {
+    setSelected((current) =>
+      allSelected ? current.filter((item) => !pageIds.includes(item)) : Array.from(new Set([...current, ...pageIds])),
+    )
+  }
+
+  function clearSelection() {
+    setSelected([])
+  }
+
+  function bulkSubmit(mode: "enable" | "disable") {
+    if (!selected.length) return
+    setBulkBusy(mode)
+    router.post(
+      mode === "enable" ? bulkEnableUrl : bulkDisableUrl,
+      { product_ids: selected },
+      { preserveScroll: true, onFinish: () => { setBulkBusy(null); clearSelection() } },
+    )
+  }
 
   function visit(params: Record<string, string | undefined>) {
     const next: Record<string, string> = {}
@@ -252,6 +287,7 @@ export default function FlashSaleIndex({
       next[key] = value
     })
     router.get("/admin/flash-sale", next, { preserveState: true, replace: true })
+    clearSelection()
   }
 
   return (
@@ -352,6 +388,43 @@ export default function FlashSaleIndex({
         </div>
       </div>
 
+      {selected.length > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm font-semibold">
+            {selected.length} produk dipilih
+            <button type="button" onClick={clearSelection} className="ml-2 text-xs font-normal text-muted-foreground underline-offset-2 hover:underline">
+              batal pilih
+            </button>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <ConfirmAction
+              trigger={
+                <Button type="button" variant="secondary" size="sm" disabled={bulkBusy !== null}>
+                  Aktifkan {selected.length}
+                </Button>
+              }
+              title={`Aktifkan Flash Sale ${selected.length} produk?`}
+              description="Semua produk terpilih ditandai promo_flash_sale=true."
+              confirmLabel="Aktifkan"
+              processing={bulkBusy === "enable"}
+              onConfirm={() => bulkSubmit("enable")}
+            />
+            <ConfirmAction
+              trigger={
+                <Button type="button" variant="destructive" size="sm" disabled={bulkBusy !== null}>
+                  Nonaktifkan {selected.length}
+                </Button>
+              }
+              title={`Nonaktifkan Flash Sale ${selected.length} produk?`}
+              description="Semua produk terpilih ditandai promo_flash_sale=false."
+              confirmLabel="Nonaktifkan"
+              processing={bulkBusy === "disable"}
+              onConfirm={() => bulkSubmit("disable")}
+            />
+          </div>
+        </div>
+      ) : null}
+
       {!products.length ? (
         <EmptyState
           title="Belum ada Flash Sale"
@@ -366,7 +439,14 @@ export default function FlashSaleIndex({
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
             <article key={product.id} className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-              <div className="aspect-square bg-muted">
+              <div className="relative aspect-square bg-muted">
+                <input
+                  type="checkbox"
+                  aria-label={`Pilih ${product.name}`}
+                  checked={selected.includes(product.id)}
+                  onChange={() => toggleSelect(product.id)}
+                  className="absolute left-2 top-2 z-10 size-4 rounded border-border accent-primary"
+                />
                 {product.image ? (
                   <img src={product.image} alt="" className="size-full object-cover" />
                 ) : (
@@ -405,6 +485,15 @@ export default function FlashSaleIndex({
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
               <tr>
+                <th className="w-[1%] px-3 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Pilih semua di halaman ini"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="size-4 rounded border-border accent-primary"
+                  />
+                </th>
                 <th className="px-3 py-3 font-semibold">Produk</th>
                 <th className="px-3 py-3 font-semibold">Harga</th>
                 <th className="px-3 py-3 font-semibold">Diskon</th>
@@ -416,6 +505,15 @@ export default function FlashSaleIndex({
             <tbody>
               {products.map((product) => (
                 <tr key={product.id} className="border-b border-border last:border-0">
+                  <td className="w-[1%] px-3 py-3 align-middle">
+                    <input
+                      type="checkbox"
+                      aria-label={`Pilih ${product.name}`}
+                      checked={selected.includes(product.id)}
+                      onChange={() => toggleSelect(product.id)}
+                      className="size-4 rounded border-border accent-primary"
+                    />
+                  </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
                       <div className="size-12 shrink-0 overflow-hidden rounded bg-muted">

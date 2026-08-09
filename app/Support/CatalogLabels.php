@@ -102,7 +102,9 @@ class CatalogLabels
             return '';
         }
 
-        return self::DESIGN[$key] ?? self::titleCaseIndonesia($key);
+        $map = self::designLabelMap();
+
+        return $map[$key] ?? self::DESIGN[$key] ?? self::titleCaseIndonesia($key);
     }
 
     /**
@@ -151,9 +153,35 @@ class CatalogLabels
     }
 
     /** @return list<string> */
-    public static function designCodes(): array
+    public static function designCodes(?string $productModel = null): array
     {
-        return self::DESIGN_ORDER;
+        $codes = \Illuminate\Support\Facades\Cache::remember(
+            'catalog.sub_model_codes.'.($productModel ?? 'all'),
+            3600,
+            function () use ($productModel): array {
+                $query = \App\Models\SubModel::query()->where('is_active', true);
+                if ($productModel !== null) {
+                    $query->where('product_model', $productModel);
+                }
+
+                return $query->orderBy('sort_order')->orderBy('id')->pluck('code')->all();
+            }
+        );
+
+        return array_values(array_unique(array_merge($codes, self::DESIGN_ORDER)));
+    }
+
+    /** @return array<string, string> Kode sub model aktif -> label */
+    private static function designLabelMap(): array
+    {
+        return \Illuminate\Support\Facades\Cache::remember('catalog.sub_model_labels', 3600, function (): array {
+            return \App\Models\SubModel::query()
+                ->where('is_active', true)
+                ->get(['code', 'name'])
+                ->pluck('name', 'code')
+                ->map(fn (string $name) => (string) $name)
+                ->all();
+        });
     }
 
     private static function titleCaseIndonesia(string $raw): string

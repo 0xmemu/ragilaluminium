@@ -1,18 +1,23 @@
 {
+  "name": "ragilaluminium",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint resources/js tests/frontend tests/e2e playwright.config.ts vitest.config.ts",
+    "lint": "eslint resources/js tests/frontend tests/e2e playwright.config.ts vitest.config.ts --max-warnings=0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:only": "playwright test",
+    "budget": "node scripts/ci/check-bundle-budget.mjs",
+    "quality": "npm run typecheck && npm run lint && npm run test && npm run build && npm run budget",
+    "security:audit": "npm audit --audit-level=moderate",
     "test:php": "node -e \"const {spawnSync}=require('child_process'); const isWin=process.platform==='win32'; const cmd=isWin?'wsl': 'php'; const args=isWin?['php','vendor/bin/phpunit']:['vendor/bin/phpunit']; const r=spawnSync(cmd,args,{stdio:'inherit'}); process.exit(r.status??1)\""
   },
   "dependencies": {
-    "@fontsource-variable/noto-sans": "^5.2.10",
     "@inertiajs/react": "^2.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-dialog": "^1.1.4",

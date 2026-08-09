@@ -74,4 +74,35 @@ class ShopeeMediaSyncTest extends TestCase
             'visibility' => 'visible',
         ]);
     }
+
+    public function test_product_api_serializes_loaded_installation_media(): void
+    {
+        $product = Product::create([
+            'parent_sku' => 'SP-API-INSTALLATION-001',
+            'name' => 'Produk API Installation Media',
+            'short_name' => 'Produk API',
+            'description' => 'Produk API',
+            'category_id' => 0,
+            'product_category' => 'WINDOW',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'ORNAMEN',
+            'status' => 'active',
+        ]);
+
+        $installationMedia = ProductMedia::create([
+            'product_id' => $product->id,
+            'position' => 1,
+            'is_main_image' => false,
+            'show_in_catalog' => false,
+            'is_installation' => true,
+            'visibility' => 'visible',
+            'source_url' => 'https://cf.shopee.co.id/file/installation-api-test',
+            'status' => 'downloaded',
+        ]);
+
+        $payload = $product->load(['media', 'installationMedia'])->toApiArray();
+
+        $this->assertCount(1, $payload['installation_media']);
+        $this->assertSame($installationMedia->id, $payload['installation_media'][0]['id']);
+    }
 }

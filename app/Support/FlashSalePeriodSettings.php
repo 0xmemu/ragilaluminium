@@ -33,6 +33,11 @@ class FlashSalePeriodSettings
      */
     public static function get(): array
     {
+        $campaignPeriod = app(\App\Services\CampaignService::class)->flashPeriod();
+        if ($campaignPeriod !== null) {
+            return $campaignPeriod;
+        }
+
         $page = self::page();
         $stored = is_array($page?->content['period'] ?? null)
             ? $page->content['period']

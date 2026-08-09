@@ -48,7 +48,7 @@ class OrderConfirmationTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-        Order::create([
+        $pending = Order::create([
             'order_number' => 'RA-DASH-1',
             'customer_name' => 'A',
             'customer_phone' => '0812',
@@ -67,6 +67,10 @@ class OrderConfirmationTest extends TestCase
             'updated_at' => now()->subDays(2),
             'created_at' => now()->subDays(2),
         ]);
+        $pending->forceFill([
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ])->save();
 
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))

@@ -22,23 +22,32 @@ class MediaDiskCheck extends Command
             $this->warn('MEDIA_DISK=public diperlakukan sebagai local (alias). Prefer MEDIA_DISK=local.');
         }
         $disk = Storage::disk($diskName);
+        $diskConfig = (array) config("filesystems.disks.{$diskName}", []);
 
         $this->info("MEDIA_DISK={$mode} → filesystems.disks.{$diskName}");
         $this->line('driver: '.(config("filesystems.disks.{$diskName}.driver") ?? '?'));
 
         if ($mode === 's3') {
-            foreach (['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_BUCKET', 'AWS_ENDPOINT', 'AWS_URL'] as $key) {
-                $ok = filled(env($key));
+            $required = [
+                'AWS_ACCESS_KEY_ID' => $diskConfig['key'] ?? null,
+                'AWS_SECRET_ACCESS_KEY' => $diskConfig['secret'] ?? null,
+                'AWS_BUCKET' => $diskConfig['bucket'] ?? null,
+                'AWS_ENDPOINT' => $diskConfig['endpoint'] ?? null,
+                'AWS_URL' => $diskConfig['url'] ?? null,
+            ];
+
+            foreach ($required as $key => $value) {
+                $ok = filled($value);
                 $this->line(($ok ? '[ok] ' : '[MISSING] ').$key);
                 if (! $ok) {
-                    $this->error('Lengkapi kredensial R2 di .env (lihat docs/media-storage-r2.md).');
+                    $this->error('Lengkapi konfigurasi R2 pada disk media (lihat docs/media-storage-r2.md).');
 
                     return self::FAILURE;
                 }
             }
-            $this->line('endpoint: '.env('AWS_ENDPOINT'));
-            $this->line('public AWS_URL: '.env('AWS_URL'));
-            $this->line('bucket: '.env('AWS_BUCKET'));
+            $this->line('endpoint: '.$diskConfig['endpoint']);
+            $this->line('public AWS_URL: '.$diskConfig['url']);
+            $this->line('bucket: '.$diskConfig['bucket']);
         }
 
         $path = 'healthchecks/'.Str::lower(Str::random(12)).'.txt';

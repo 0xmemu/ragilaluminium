@@ -1,8 +1,8 @@
 # Skill: Stage 10 – Public Store UI & Checkout Contract (Ragil Aluminium)
 
 This document connects the **public store data & behaviour** to backend modules (Catalog, Order, Payment, Shipping, WhatsApp, CMS) defined in Stage 1–9.  
-**Visual SoT:** `docs/DESIGN.md` Bagian A + `resources/views/public/partials/home-desktop.blade.php` + `docs/sitemap/public-*`.  
-**Do not** use Next.js (`website_2.0/ui`) or legacy `public_store_ui_blueprint.md` as visual source of truth.
+**Visual SoT:** `frontend/docs/UI-CONSISTENCY-CONTRACT.md` + `frontend/brand/BRAND-KIT.md` + `frontend/docs/DESIGN-SYSTEM.md` + `docs/sitemap/public-*`. Runtime UI: `resources/js`.
+**Do not** use Next.js (`website_2.0/ui`) or legacy Blade/Figma references as visual source of truth.
 
 ---
 
@@ -22,13 +22,13 @@ Beranda reads data from:
   - Footer legal & contact info (Informasi Toko, Ketentuan Layanan, Kebijakan Privasi).  
 
 - **Catalog Module** (Stage 3):
-  - Showcase “Kategori Produk” (Casement, Sliding, Bouven) and possibly a few featured models.
+  - Showcase “Kategori Produk” (Window, Door, Bouven) and possibly a few featured models; canonical models are `JUNGKIT`, `SLIDING`, `SWING`, `KACA_MATI`, and `ZIGZAG`.
 
 ### 1.2 Behaviour Contract
 
 - **Dual CTA Buttons**:
   - “Pilih Model Produk”:
-    - navigates to **Katalog Produk** route (e.g. `/produk`), pre-filtered to main categories or models.  
+    - navigates to **Katalog Produk** route `/products`, pre-filtered to main categories or models.
   - “Konsultasi WhatsApp”:
     - opens WhatsApp chat deep link using store business number, with a prefilled message template.  
     - message template is managed by WhatsApp Module templates (Stage 8).
@@ -56,7 +56,7 @@ Katalog reads from:
 
 - **Catalog Module** (Stage 3):
   - `products` and aggregated `product_variants`.  
-  - attributes for filtering: category (Window/Door/Bouven), model (Casement, Sliding, Bouven), price range, color, glass type, dimensions.  
+  - attributes for filtering: category (Window/Door/Bouven), model (`JUNGKIT`, `SLIDING`, `SWING`, `KACA_MATI`, `ZIGZAG`), price range, color, glass type, dimensions.
 
 - **Performance & Caching** (Stage 7):
   - query results should be cached (Redis) for common filters to keep UI responsive.
@@ -230,7 +230,7 @@ Checkout uses:
   - to estimate shipping cost and store address.  
 
 - **Payment Module**:
-  - to create initial `payment` record with status `unpaid`.
+  - to create initial `payment` record with status `pending`.
 
 ### 5.2 Behaviour Contract
 
@@ -245,10 +245,11 @@ Form fields:
 On “Buat Pesanan” / “Konfirmasi Pesanan”:
 
 - backend must:
+  - assign/persist a session-scoped unique checkout idempotency key; retry/double-submit returns the same order without a second stock decrement.
   - create `order` entity as per Stage 4:  
     - `order_status = pending_payment`  
-    - `payment_status = unpaid`  
-    - `shipping_status = awaiting_shipment` (or equivalent initial)  
+    - `payment_status = pending`
+    - `shipping_status = pending_pickup` (canonical initial; see `docs/contracts/ROLE-AND-STATUS-CONTRACT.md`)
   - create `payment` record (Payment Module).  
   - create `shipping` record with address (Shipping Module).  
 
@@ -362,7 +363,7 @@ Public store must respect Stage 7:
 
 Before implementing or modifying public store UI or checkout, agents must:
 
-- [ ] Treat `docs/DESIGN.md` + Home Desktop partial + `docs/sitemap/public-*` as visual source of truth; do not alter layout or menu without explicit design updates.  
+- [ ] Treat `frontend/docs/UI-CONSISTENCY-CONTRACT.md` + public React pages + `docs/sitemap/public-*` as visual source of truth; do not alter layout or menu without explicit design updates.
 - [ ] Wire Beranda Publik sections to CMS (hero, portofolio, testimoni, legal texts) and Catalog (kategori & showcase) so admin edits appear correctly.  
 - [ ] Implement Katalog Produk filters & sorting as views over Catalog Module data, with proper indexing and caching to keep grid responsive.  
 - [ ] Make Detail Produk variant selection drive actual `product_variant` choices and price updates, enforcing stock constraints.  

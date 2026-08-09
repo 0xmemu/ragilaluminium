@@ -1,7 +1,9 @@
 import { Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
+import { AdminBottomNav } from "@/components/admin/admin-bottom-nav"
 import { AdminCommandSearch } from "@/components/admin/admin-command-search"
+import { NotificationBell, type NotificationItem } from "@/components/admin/notification-bell"
 import { AdminNavigation } from "@/components/admin/admin-navigation"
 import { Button } from "@/components/admin/ui/button"
 import {
@@ -62,7 +64,8 @@ export function AdminLayout({
   description?: string | null
   actions?: React.ReactNode
 }) {
-  const { auth } = usePage<SharedPageProps>().props
+  const { auth, adminNotifications } = usePage<SharedPageProps>().props
+  const notifications = (adminNotifications as NotificationItem[] | undefined) ?? []
   const [navigationOpen, setNavigationOpen] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [theme, setTheme] = React.useState<AdminTheme>(() => readAdminTheme())
@@ -135,6 +138,8 @@ export function AdminLayout({
           </button>
 
           <div className="ml-auto flex items-center gap-1.5">
+            <NotificationBell notifications={notifications} />
+
             <Button
               variant="ghost"
               size="icon-sm"
@@ -226,9 +231,10 @@ export function AdminLayout({
               </div>
             </div>
           )}
-          <div className="w-full px-4 pb-10 md:px-6 lg:px-8">{children}</div>
+          <div className="w-full px-4 pb-24 md:px-6 lg:px-8 lg:pb-10">{children}</div>
         </main>
       </div>
+      <AdminBottomNav onOpenMenu={() => setNavigationOpen(true)} />
     </div>
   )
 }

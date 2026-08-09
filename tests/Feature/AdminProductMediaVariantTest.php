@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\DownloadMediaAsset;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -16,6 +18,7 @@ class AdminProductMediaVariantTest extends TestCase
 
     public function test_admin_can_attach_media_to_variant_and_reassign(): void
     {
+        Queue::fake([DownloadMediaAsset::class]);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $product = Product::create([
             'parent_sku' => 'WIN-MEDIA-1',
@@ -66,6 +69,7 @@ class AdminProductMediaVariantTest extends TestCase
             ])
             ->assertRedirect();
 
+        Queue::assertPushed(DownloadMediaAsset::class);
         $media = ProductMedia::query()->where('product_id', $product->id)->first();
         $this->assertNotNull($media);
         $this->assertSame($putih->id, $media->product_variant_id);

@@ -8,11 +8,13 @@ use App\Models\Order;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
+use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use App\Support\JntReadiness;
 use App\Support\OrderEventLabels;
 use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -40,6 +42,7 @@ class OrderController extends Controller
         private readonly PaymentService $payments,
         private readonly ShippingService $shipping,
         private readonly OrderService $orders,
+        private readonly \App\Services\WhatsAppService $whatsapp,
     ) {}
 
     public function index(Request $request): Response
@@ -69,7 +72,7 @@ class OrderController extends Controller
             ->groupBy('order_status')
             ->pluck('total', 'order_status');
 
-        $orders = Order::query()
+        $ordersQuery = Order::query()
             ->with([
                 'items.product.mainImage',
                 'shippingRecords' => fn ($q) => $q->latest('id'),
@@ -104,7 +107,14 @@ class OrderController extends Controller
             ->when(
                 $datePreset === 'range' && $dateTo !== '',
                 fn ($q) => $q->whereDate('created_at', '<=', $dateTo)
-            )
+            );
+
+        $summary = [
+            'count' => (int) (clone $ordersQuery)->count(),
+            'total_value' => (float) (clone $ordersQuery)->sum('total_amount'),
+        ];
+
+        $orders = (clone $ordersQuery)
             ->when($sort === 'oldest', fn ($q) => $q->oldest())
             ->when($sort !== 'oldest', fn ($q) => $q->latest())
             ->paginate(10)
@@ -145,6 +155,7 @@ class OrderController extends Controller
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
             'searchQuery' => trim((string) $request->input('q', '')),
+            'summary' => $summary,
             'orders' => $orders->getCollection()->map(fn (Order $order) => $this->orderCard($order))->values()->all(),
             'pagination' => InertiaAdmin::pagination($orders),
             'exportUrl' => route('admin.orders.export', $filterQuery),
@@ -206,9 +217,11 @@ class OrderController extends Controller
 
         $filename = 'pesanan-'.now()->format('Ymd-His').'.csv';
 
+        ExportSafety::assertQueryWithinLimit($query);
+
         return response()->streamDownload(function () use ($query) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, [
+            ExportSafety::writeCsvRow($handle, [
                 'order_number',
                 'customer_name',
                 'customer_phone',
@@ -225,7 +238,7 @@ class OrderController extends Controller
 
             $query->chunk(200, function ($orders) use ($handle) {
                 foreach ($orders as $order) {
-                    fputcsv($handle, [
+                    ExportSafety::writeCsvRow($handle, [
                         $order->order_number,
                         $order->customer_name,
                         $order->customer_phone,
@@ -364,6 +377,8 @@ class OrderController extends Controller
             'tracking' => OrderTrackingPresenter::forOrder($order, $activeShipping),
             'primaryAction' => $primaryAction,
             'updateStatusUrl' => route('admin.orders.status', $order),
+            'editPolicy' => $this->orders->editPolicy($order),
+            'editUrl' => route('admin.orders.items.update', $order),
             'shippingActions' => [
                 'createUrl' => route('admin.orders.shipping.store', $order),
                 'refreshUrl' => route('admin.orders.shipping.refresh', $order),
@@ -386,6 +401,13 @@ class OrderController extends Controller
             'mark_shipped' => ['nullable', 'boolean'],
         ]);
 
+        if ($request->boolean('mark_shipped')
+            && ! $this->orders->canTransition($order, 'shipped', 'shipping_store')) {
+            return back()->withErrors([
+                'mark_shipped' => 'Pesanan harus berstatus diproses sebelum ditandai dikirim.',
+            ])->withInput();
+        }
+
         try {
             if ($validated['mode'] === 'jnt') {
                 $record = Cache::lock("shipping:jnt:create:{$order->id}", 60)->block(
@@ -405,25 +427,18 @@ class OrderController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        if ($request->boolean('mark_shipped') && in_array($order->order_status, ['pending_payment', 'processing'], true)) {
-            $from = $order->order_status;
-            $order->update([
-                'order_status' => 'shipped',
-                'updated_by_user_id' => $request->user()->id,
-            ]);
-            EventLog::create([
-                'event_type' => 'order_status_changed',
-                'entity_type' => 'order',
-                'entity_id' => $order->id,
-                'payload' => [
-                    'from' => $from,
-                    'order_status' => 'shipped',
-                    'via' => 'shipping_store',
-                    'waybill' => $record->waybill_number,
-                ],
-                'created_by_user_id' => $request->user()->id,
-                'created_at' => now(),
-            ]);
+        if ($request->boolean('mark_shipped')) {
+            try {
+                $this->orders->transition(
+                    $order,
+                    'shipped',
+                    $request->user()->id,
+                    'shipping_store',
+                    ['waybill' => $record->waybill_number],
+                );
+            } catch (DomainException $exception) {
+                return back()->withErrors(['mark_shipped' => $exception->getMessage()]);
+            }
         }
 
         return redirect()->route('admin.orders.show', $order)
@@ -447,10 +462,71 @@ class OrderController extends Controller
             ->with('success', 'Status J&T disegarkan.');
     }
 
+    /**
+     * Edit isi pesanan (keputusan #7/#23): MK bebas, Diproses dgn catatan,
+     * terkunci setelah resi. Hitung ulang harga/ongkir/total, kirim ulang WA
+     * konfirmasi, catat log order.edited.
+     */
+    public function updateItems(Request $request, Order $order): RedirectResponse
+    {
+        $policy = $this->orders->editPolicy($order);
+        if (! $policy['allowed']) {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['edit' => $policy['reason']]);
+        }
+
+        $validated = $request->validate([
+            'customer_name' => ['required', 'string', 'max:150'],
+            'customer_phone' => ['required', 'string', 'max:30'],
+            'customer_email' => ['nullable', 'email', 'max:150'],
+            'address_line1' => ['required', 'string', 'max:255'],
+            'address_line2' => ['nullable', 'string', 'max:255'],
+            'village' => ['nullable', 'string', 'max:100'],
+            'district' => ['nullable', 'string', 'max:100'],
+            'city' => ['required', 'string', 'max:100'],
+            'province' => ['required', 'string', 'max:100'],
+            'postal_code' => ['required', 'string', 'max:10'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'edit_note' => ['nullable', 'string', 'max:500'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_id' => ['nullable', 'integer'],
+            'items.*.parent_sku' => ['nullable', 'string', 'max:100'],
+            'items.*.variant_sku' => ['nullable', 'string', 'max:100'],
+            'items.*.qty' => ['required', 'integer', 'min:1', 'max:999'],
+        ], [], [
+            'items' => 'daftar produk',
+            'edit_note' => 'catatan perubahan',
+            'customer_name' => 'nama penerima',
+            'customer_phone' => 'nomor HP',
+            'address_line1' => 'alamat',
+            'city' => 'kota',
+            'province' => 'provinsi',
+            'postal_code' => 'kode pos',
+        ]);
+
+        $note = trim((string) ($validated['edit_note'] ?? ''));
+        if ($policy['require_note'] && $note === '') {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['edit_note' => 'Pesanan Diproses memerlukan catatan perubahan.']);
+        }
+
+        try {
+            $this->orders->editOrder($order, $validated, $request->user()->id, $note);
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['edit' => $e->getMessage()]);
+        }
+
+        $this->whatsapp->notifyOrderEdited($order->fresh());
+
+        return redirect()->route('admin.orders.show', $order->fresh())
+            ->with('success', 'Pesanan diperbarui. Harga dihitung ulang dan konfirmasi dikirim ulang ke pelanggan.');
+    }
+
     public function updateStatus(Request $request, Order $order): RedirectResponse
     {
         $validated = $request->validate([
-            'order_status' => ['required', 'in:pending_payment,processing,shipped,delivered,completed,issue,return_in_process,cancelled'],
+            'order_status' => ['required', 'in:pending_payment,processing,shipped,delivered,completed,issue,return_in_process,return_completed,cancelled'],
             'cancel_reason' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -461,6 +537,23 @@ class OrderController extends Controller
         $cancelReason = filled($validated['cancel_reason'] ?? null)
             ? trim((string) $validated['cancel_reason'])
             : null;
+
+        if (! $this->orders->canTransition($order, $to, 'admin_status')) {
+            return $this->statusRedirect($request, $order)
+                ->withErrors(['order_status' => "Perubahan status {$from} → {$to} tidak diizinkan."]);
+        }
+
+        if ($to === 'cancelled') {
+            try {
+                $changed = $this->orders->cancel($order, $userId, $cancelReason);
+            } catch (DomainException $exception) {
+                return $this->statusRedirect($request, $order)
+                    ->withErrors(['order_status' => $exception->getMessage()]);
+            }
+
+            return $this->statusRedirect($request, $order->fresh())
+                ->with('success', $changed ? 'Pesanan dibatalkan dan stok dikembalikan.' : 'Pesanan sudah dibatalkan.');
+        }
 
         // Transfer: proses dari "perlu konfirmasi" = konfirmasi transfer dulu.
         if ($from === 'pending_payment' && $to === 'processing' && ! $isCod && $order->payment_status !== 'paid') {
@@ -488,24 +581,36 @@ class OrderController extends Controller
         }
 
         if ($order->order_status !== $to) {
-            $order->update([
-                'order_status' => $to,
-                'updated_by_user_id' => $userId,
-            ]);
+            try {
+                $this->orders->transition(
+                    $order,
+                    $to,
+                    $userId,
+                    'admin_status',
+                    ['flow' => $isCod ? 'cod' : 'transfer'],
+                );
+            } catch (DomainException $exception) {
+                return $this->statusRedirect($request, $order->fresh())
+                    ->withErrors(['order_status' => $exception->getMessage()]);
+            }
+        }
 
-            EventLog::create([
-                'event_type' => 'order_status_changed',
-                'entity_type' => 'order',
-                'entity_id' => $order->id,
-                'payload' => array_filter([
-                    'from' => $from,
-                    'order_status' => $to,
-                    'flow' => $isCod ? 'cod' : 'transfer',
-                    'reason' => $to === 'cancelled' ? $cancelReason : null,
-                ], fn ($value) => $value !== null && $value !== ''),
-                'created_by_user_id' => $userId,
-                'created_at' => now(),
-            ]);
+        // Spec ??H: pesan WA otomatis saat retur masuk (issue) dan retur selesai (return_completed).
+        if ($order->order_status === $to && in_array($to, ['issue', 'return_in_process'], true)) {
+            $this->whatsapp->sendTemplateMessage(
+                $order->customer_phone,
+                'order_issue_followup',
+                [$order->customer_name ?: 'Kak', $order->order_number],
+                $order->id,
+            );
+        } elseif ($order->order_status === $to && $to === 'return_completed') {
+            $waybill = (string) ($order->shippingRecords()->latest()->value('waybill_number') ?: '-');
+            $this->whatsapp->sendTemplateMessage(
+                $order->customer_phone,
+                'order_returned',
+                [$order->customer_name ?: 'Kak', $order->order_number, $waybill],
+                $order->id,
+            );
         }
 
         $message = match (true) {
@@ -523,6 +628,11 @@ class OrderController extends Controller
                 'order_status' => $request->input('filter_status'),
                 'q' => $request->input('filter_q'),
                 'sort' => $request->input('filter_sort'),
+                'payment_status' => $request->input('filter_payment_status'),
+                'shipping_status' => $request->input('filter_shipping_status'),
+                'date_preset' => $request->input('filter_date_preset'),
+                'date_from' => $request->input('filter_date_from'),
+                'date_to' => $request->input('filter_date_to'),
             ], fn ($value) => filled($value) && $value !== 'all'));
         }
 

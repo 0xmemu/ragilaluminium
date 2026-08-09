@@ -76,6 +76,8 @@ export function WilayahSearchSelect({
 
   React.useEffect(() => {
     if (disabled) {
+      // Disabled controls cannot remain open or retain a stale search query.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(false)
       setQuery("")
     }

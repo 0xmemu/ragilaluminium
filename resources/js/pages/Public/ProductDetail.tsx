@@ -119,13 +119,13 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
       <Link
         href={href}
         className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
-        aria-label="Lihat selengkapnya"
+        aria-label="Lihat semua"
       >
         <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
           <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
-        <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
-          selengkapnya
+        <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
+          Lihat semua
         </span>
       </Link>
     </div>
@@ -271,6 +271,8 @@ export default function ProductDetail({
   const variantSectionRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
+    // Variant choices are server-derived when the product changes through Inertia.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelections(initialSelections)
   }, [initialSelections])
 
@@ -313,7 +315,7 @@ export default function ProductDetail({
 
     const productLevel = media.filter((item) => item.product_variant_id == null)
     return productLevel
-  }, [media, selectedVariant, selections, variants])
+  }, [media, selections, variants])
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
 
@@ -329,7 +331,7 @@ export default function ProductDetail({
   const [galleryDrag, setGalleryDrag] = React.useState(0)
   const [galleryDragging, setGalleryDragging] = React.useState(false)
   const galleryStartX = React.useRef(0)
-  const galleryWidth = React.useRef(0)
+  const [galleryWidth, setGalleryWidth] = React.useState(0)
   const galleryRef = React.useRef<HTMLDivElement>(null)
   const didSwipe = React.useRef(false)
 
@@ -337,7 +339,7 @@ export default function ProductDetail({
     if (variantMedia.length <= 1) return
     const t = event.touches[0]
     galleryStartX.current = t.clientX
-    galleryWidth.current = galleryRef.current?.clientWidth ?? 0
+    setGalleryWidth(galleryRef.current?.clientWidth ?? 0)
     didSwipe.current = false
     setGalleryDragging(true)
     setGalleryDrag(0)
@@ -353,7 +355,7 @@ export default function ProductDetail({
   function onGalleryTouchEnd() {
     if (!galleryDragging) return
     setGalleryDragging(false)
-    const threshold = galleryWidth.current * 0.2
+    const threshold = galleryWidth * 0.2
     if (Math.abs(galleryDrag) > threshold) {
       moveGallery(galleryDrag < 0 ? 1 : -1)
     }
@@ -361,11 +363,15 @@ export default function ProductDetail({
   }
 
   React.useEffect(() => {
+    // A new variant starts from its first media item.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveMediaIndex(0)
   }, [selectedVariant?.id])
 
   React.useEffect(() => {
     if (activeMediaIndex >= variantMedia.length) {
+      // Clamp the selected media when the matching variant has fewer images.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveMediaIndex(Math.max(0, variantMedia.length - 1))
     }
   }, [activeMediaIndex, variantMedia.length])
@@ -390,6 +396,8 @@ export default function ProductDetail({
     form.setData("variant_sku", selectedVariant?.variant_sku ?? "")
     form.setData("quantity", 1)
     form.clearErrors()
+    // `useForm` returns a new facade on every render; variant SKU is the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVariant?.variant_sku])
 
   function chooseAxis(axisName: string, option: string) {
@@ -453,9 +461,11 @@ export default function ProductDetail({
     ? (Math.round(averageRating * 10) / 10).toLocaleString("id-ID")
     : null
 
-  const currentPrice = selectedVariant?.price ?? promo?.min_price ?? null
-  const comparePrice = promo?.compare_price ?? null
-  const discountPercent = promo?.discount_percent ?? null
+  const currentPrice = selectedVariant?.sale_price ?? selectedVariant?.price ?? promo?.min_price ?? null
+  const comparePrice = selectedVariant?.compare_price ?? promo?.compare_price ?? null
+  const discountPercent = selectedVariant?.compare_price != null && selectedVariant?.sale_price != null
+    ? Math.round(((selectedVariant.compare_price - selectedVariant.sale_price) / selectedVariant.compare_price) * 100)
+    : (promo?.discount_percent ?? null)
 
   const benefits = [
     { icon: "shield-check", label: promo?.warranty_label || "Garansi 100%" },
@@ -474,7 +484,7 @@ export default function ProductDetail({
       ? {
           "@type": "Offer",
           priceCurrency: "IDR",
-          price: selectedVariant.price,
+          price: selectedVariant.sale_price ?? selectedVariant.price,
           availability:
             selectedVariant.stock > 0
               ? "https://schema.org/InStock"
@@ -523,7 +533,7 @@ export default function ProductDetail({
                   <button
                     type="button"
                     onClick={() => window.history.back()}
-                    className="absolute left-3 top-3 z-20 flex size-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:hidden"
+                    className="absolute left-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:hidden"
                     aria-label="Kembali"
                   >
                     <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -536,7 +546,7 @@ export default function ProductDetail({
                       if (!didSwipe.current && event.target === event.currentTarget) setLightboxIndex(activeMediaIndex)
                     }}
                     style={{
-                      transform: `translateX(${-activeMediaIndex * 100 + (galleryWidth.current ? (galleryDrag / galleryWidth.current) * 100 : 0)}%)`,
+                      transform: `translateX(${-activeMediaIndex * 100 + (galleryWidth ? (galleryDrag / galleryWidth) * 100 : 0)}%)`,
                       transition: galleryDragging ? 'none' : 'transform 320ms cubic-bezier(0.22,1,0.36,1)',
                     }}
                   >
@@ -660,7 +670,7 @@ export default function ProductDetail({
                 {product.subtitle}
               </Link>
               {averageRating !== null ? (
-                <div className="inline-flex shrink-0 items-center gap-0.5 text-[11px]">
+                <div className="inline-flex shrink-0 items-center gap-0.5 text-xs">
                   <span className="font-semibold text-foreground">{ratingLabel}</span>
                   <Icon name="star" weight="fill" className="size-3 text-warning" aria-hidden />
                   <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
@@ -703,7 +713,7 @@ export default function ProductDetail({
                 {axes.map((axis) => (
                 <fieldset key={axis.name} className="min-w-0">
                   <div className="flex min-w-0 flex-nowrap items-center gap-x-2 gap-y-1.5 overflow-x-auto">
-                    <legend className="text-[10px] font-medium text-muted-foreground shrink-0">
+                    <legend className="text-xs font-medium text-muted-foreground shrink-0">
                       {axis.name === "Warna"
                         ? "Warna"
                         : axis.name === "Kaca"
@@ -716,7 +726,7 @@ export default function ProductDetail({
                         key={option}
                         onClick={() => chooseAxis(axis.name, option)}
                         className={cn(
-                          "min-h-8 shrink-0 rounded-full border px-3 text-xs font-semibold transition",
+                          "min-h-11 shrink-0 rounded-full border px-3 text-xs font-semibold transition sm:min-h-8",
                           variantError && !selections[axis.name]
                             ? "border-destructive animate-pulse"
                             : selections[axis.name] === option
@@ -875,7 +885,7 @@ export default function ProductDetail({
                       weight="fill"
                       aria-hidden="true"
                     />
-                    <p className="relative z-10 text-[11px] font-medium leading-tight text-foreground/80">
+                    <p className="relative z-10 text-xs font-medium leading-tight text-foreground/80">
                       {benefit.label}
                     </p>
                   </div>
@@ -936,10 +946,9 @@ export default function ProductDetail({
                   <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
                   <Link
                     href={routeUrl("installation.show", { parent_sku: product.parent_sku })}
-                    className="inline-flex h-7 shrink-0 items-center gap-1 text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
                   >
-                    Lihat semua
-                    <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+                    Lihat semua →
                   </Link>
                 </div>
                 <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -1005,10 +1014,9 @@ export default function ProductDetail({
               {reviews.length ? (
                 <Link
                   href={routeUrl("reviews")}
-                  className="inline-flex h-7 shrink-0 items-center gap-1 text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
                 >
-                  Lihat semua ulasan
-                  <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+                  Lihat semua →
                 </Link>
               ) : null}
             </section>
@@ -1023,10 +1031,9 @@ export default function ProductDetail({
             <h2 className="min-w-0 break-words text-base font-bold text-foreground">Anda mungkin juga suka</h2>
             <Link
               href={routeUrl("catalog.index")}
-              className="inline-flex h-7 shrink-0 items-center gap-1 text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
             >
-              Lihat semua
-              <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+              Lihat semua →
             </Link>
           </div>
           {relatedProducts.length ? (

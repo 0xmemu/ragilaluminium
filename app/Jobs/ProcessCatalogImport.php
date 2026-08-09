@@ -6,26 +6,48 @@ use App\Imports\CatalogProductsImport;
 use App\Imports\ShopeeCatalogExport;
 use App\Imports\ShopeeMediaExport;
 use App\Models\ImportJob;
+use App\Support\CatalogTaxonomy;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-class ProcessCatalogImport implements ShouldQueue
+class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1; // impor tidak idempoten penuh; hindari re-run ganda
+
+    public int $uniqueFor = 1860;
 
     public int $timeout = 1800; // 30 menit untuk file besar
 
     public function __construct(public int $jobId, public string $storedPath, public string $kind = 'catalog')
     {
         $this->onQueue('imports');
+    }
+
+    public function uniqueId(): string
+    {
+        return $this->kind.':'.$this->jobId;
+    }
+
+    /**
+     * @return list<WithoutOverlapping>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('catalog-import:'.$this->uniqueId()))
+                ->expireAfter($this->timeout + 60)
+                ->dontRelease(),
+        ];
     }
 
     /** Dipanggil bila job gagal permanen (mis. timeout / exception tak tertangani). */
@@ -55,7 +77,7 @@ class ProcessCatalogImport implements ShouldQueue
                 'completed_at' => now(),
             ]);
 
-            return;
+            throw new \RuntimeException('Berkas sumber impor tidak ditemukan.');
         }
 
         try {
@@ -72,7 +94,7 @@ class ProcessCatalogImport implements ShouldQueue
                 'completed_at' => now(),
             ]);
 
-            return;
+            throw $e;
         }
 
         $job->refresh();
@@ -80,7 +102,7 @@ class ProcessCatalogImport implements ShouldQueue
             $job->update(['status' => 'completed', 'completed_at' => now()]);
         }
 
-        \App\Support\CatalogTaxonomy::forgetCache();
+        CatalogTaxonomy::forgetCache();
     }
 
     /**

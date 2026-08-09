@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Announcement;
 use App\Models\CmsBanner;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,14 @@ class ActiveAnnouncements
         $cfg = config('sitemap.announcement', []);
         if (! ($cfg['enabled'] ?? false)) {
             return [];
+        }
+
+        // Bar promo yang dikelola admin (dashboard) lebih diutamakan.
+        // Begitu tabel pernah terisi, hasil DB otoritatif: item yang tidak aktif
+        // atau periode berakhir berarti bar tidak menampilkan apa pun (tidak
+        // kembali ke sumber lama) — "nonaktifkan semua" benar-benar menyembunyikan bar.
+        if (Announcement::query()->exists()) {
+            return self::fromAdminAnnouncements();
         }
 
         $now = Carbon::now();
@@ -74,6 +83,42 @@ class ActiveAnnouncements
         }
 
         return self::uniqueByText(array_values($out));
+    }
+
+    /**
+     * Item bar promo dari tabel `announcements` (dikelola di dashboard admin).
+     * Urutan tampil = urutan `sort_order`; hanya item aktif + dalam periode.
+     *
+     * @return list<array{text: string, href: string}>
+     */
+    private static function fromAdminAnnouncements(): array
+    {
+        try {
+            $rows = Announcement::query()
+                ->published()
+                ->active()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get();
+        } catch (\Throwable) {
+            // Tabel belum tersedia di sebagian environment.
+            return [];
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            $text = self::limitTickerText((string) $row->text);
+            if ($text === '' || self::isBannedCopy($text)) {
+                continue;
+            }
+            $href = trim((string) $row->href);
+            $out[] = [
+                'text' => $text,
+                'href' => $href !== '' ? $href : route('catalog.index'),
+            ];
+        }
+
+        return $out;
     }
 
     /**

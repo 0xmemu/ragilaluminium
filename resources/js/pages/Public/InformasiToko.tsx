@@ -6,7 +6,6 @@ import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
-import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps, SocialLink } from "@/types"
 
@@ -131,51 +130,45 @@ function PointList({
   )
 }
 
-function PlatformLinkRow({ item }: { item: SocialLink }) {
+function PlatformChip({ item }: { item: SocialLink }) {
   const live = isLiveHref(item.href)
 
-  const row = (
-    <div
-      className={cn(
-        "flex min-h-[3.5rem] items-center gap-3 px-4 py-3.5",
-        live && "transition-colors hover:bg-muted/60",
-      )}
-    >
+  const inner = (
+    <>
       {item.icon ? (
-        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-surface">
-          <img src={item.icon} alt="" className="size-6 object-contain" width={24} height={24} />
-        </span>
+        <img src={item.icon} alt="" className="size-5 shrink-0 object-contain" width={20} height={20} />
       ) : (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
           <Icon name="storefront" className="size-4" aria-hidden="true" />
         </span>
       )}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold tracking-tight text-foreground">{item.label}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {live ? "Buka tautan" : "Tautan belum tersedia"}
-        </p>
-      </div>
-      {live ? (
-        <Icon name="arrow-right" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      ) : null}
-    </div>
+      <span className="text-xs font-semibold tracking-tight text-foreground">{item.label}</span>
+    </>
   )
 
   if (live) {
     return (
-      <a
-        href={item.href}
-        target="_blank"
-        rel="noreferrer"
-        className="block border-b border-border last:border-b-0"
-      >
-        {row}
-      </a>
+      <li>
+        <a
+          href={item.href}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 transition-colors hover:bg-muted/60"
+        >
+          {inner}
+        </a>
+      </li>
     )
   }
 
-  return <div className="border-b border-border opacity-55 last:border-b-0">{row}</div>
+  return (
+    <li
+      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 opacity-55"
+      title={item.label}
+    >
+      {inner}
+    </li>
+  )
 }
 
 export default function InformasiToko({ page }: { page: PageData }) {
@@ -219,7 +212,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -327,20 +320,17 @@ export default function InformasiToko({ page }: { page: PageData }) {
         </section>
 
         {(socials.length || marketplaces.length) ? (
-          <section aria-labelledby="store-channels" className="grid gap-4 md:grid-cols-2">
+          <section aria-label="Sosial dan marketplace" className="grid gap-6 md:grid-cols-2">
             {socials.length ? (
               <div>
                 <h2 id="store-social" className="text-base font-bold tracking-tight text-foreground">
                   Ikuti Kami
                 </h2>
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Update produk, tips perawatan, dan dokumentasi pemasangan.
-                </p>
-                <div className="mt-4 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+                <ul className="mt-3 flex flex-wrap gap-2">
                   {socials.map((item) => (
-                    <PlatformLinkRow key={item.key} item={item} />
+                    <PlatformChip key={item.key} item={item} />
                   ))}
-                </div>
+                </ul>
               </div>
             ) : null}
 
@@ -349,14 +339,11 @@ export default function InformasiToko({ page }: { page: PageData }) {
                 <h2 id="store-marketplace" className="text-base font-bold tracking-tight text-foreground">
                   Marketplace
                 </h2>
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Belanja melalui toko resmi Ragil Aluminium di platform berikut.
-                </p>
-                <div className="mt-4 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+                <ul className="mt-3 flex flex-wrap gap-2">
                   {marketplaces.map((item) => (
-                    <PlatformLinkRow key={item.key} item={item} />
+                    <PlatformChip key={item.key} item={item} />
                   ))}
-                </div>
+                </ul>
               </div>
             ) : null}
           </section>

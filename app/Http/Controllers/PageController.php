@@ -134,9 +134,27 @@ class PageController extends Controller
             ->values()
             ->all();
 
+        $testimonialMode = 'marketplace';
+        if ($marketplaceTestimonials === []) {
+            $marketplaceTestimonials = CmsTestimonial::query()
+                ->published()
+                ->website()
+                ->withScreenshot()
+                ->with('product:id,parent_sku,name,short_name')
+                ->orderBy('sort_order')
+                ->orderByDesc('id')
+                ->limit(60)
+                ->get()
+                ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+                ->values()
+                ->all();
+            $testimonialMode = 'website_fallback';
+        }
+
         return Inertia::render('Public/Reviews', [
             'pageMeta' => TestimonialPageSettings::forStorefront(),
             'marketplaceTestimonials' => $marketplaceTestimonials,
+            'testimonialMode' => $testimonialMode,
             'installationsHref' => route('installation.index'),
         ]);
     }

@@ -39,6 +39,8 @@ function useDailyFlashSaleCountdown(period: FlashSalePeriod | null | undefined):
 
   React.useEffect(() => {
     if (period?.live !== true || !dailyEndsAt) {
+      // Reset the timer when the server turns the campaign off.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRemaining(null)
       return
     }
@@ -130,6 +132,8 @@ function useCountdown(secondsRemaining: number | null | undefined): number | nul
 
   React.useEffect(() => {
     if (typeof secondsRemaining !== "number") {
+      // The timer state mirrors the incoming server deadline.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRemaining(null)
       return
     }
@@ -287,10 +291,9 @@ export function FlashSaleRedBanner({
           </p>
           <Link
             href={routeUrl("catalog.flash-sale")}
-            className="inline-flex h-6 shrink-0 items-center gap-1 text-[11px] font-light text-white/80 transition hover:text-white sm:text-xs"
+            className="inline-flex h-6 shrink-0 items-center gap-1 text-xs font-light text-white/90 transition hover:text-white"
           >
-            Lihat selengkapnya
-            <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden />
+            Lihat semua →
           </Link>
         </div>
 
@@ -487,11 +490,15 @@ export function FlashSaleListingToolbar({
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
+    // Filter drafts follow server navigation while remaining editable locally.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftMin(priceMin)
     setDraftMax(priceMax)
   }, [priceMin, priceMax])
 
   React.useEffect(() => {
+    // Search draft follows the URL after an Inertia visit.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftQuery(searchQuery)
     if (searchQuery.trim()) {
       setSearchOpen(true)
@@ -799,13 +806,13 @@ export function PromoFlashSaleSection({
               <Link
                 href={routeUrl("catalog.flash-sale")}
                 className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
-                aria-label="Lihat selengkapnya"
+                aria-label="Lihat semua"
               >
                 <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
                   <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
                 </span>
-                <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
-                  selengkapnya
+                <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
+                  Lihat semua
                 </span>
               </Link>
             </div>

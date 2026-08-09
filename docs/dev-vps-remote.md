@@ -124,6 +124,7 @@ DB_USERNAME=ragil
 DB_PASSWORD=...   # di-generate bootstrap
 
 QUEUE_CONNECTION=database
+DB_QUEUE_RETRY_AFTER=1860
 MEDIA_DISK=local
 SESSION_DRIVER=database
 ```
@@ -136,7 +137,7 @@ Salin token WA dari laptop hanya jika perlu tes Cloud API; **jangan** commit `.e
 cd /var/www/website.4.0
 sudo bash scripts/dev-vps/serve-dev.sh   # Nginx :8200 + php-fpm (bukan artisan serve)
 # terminal lain:
-php artisan queue:work --tries=3
+php artisan queue:work database --queue=imports,media,default --tries=3 --timeout=1800
 ```
 
 Atau pakai helper:

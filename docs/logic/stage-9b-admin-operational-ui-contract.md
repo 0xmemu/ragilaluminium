@@ -43,7 +43,7 @@ Based on the current admin UI design: [file:586]
   - Hasil Pemasangan Kami  
 - **Akun**:
   - Profil Saya (`admin.profile.*` → edit nama/email/password akun login; peran read-only)  
-  - Manajemen Admin (`admin.users.*` → `Admin/Users/{Index,Form}`; filter status; equal-admin — no role hierarchy; guard self + last active admin)  
+  - Manajemen Admin (`admin.users.*` → `Admin/Users/{Index,Form}`; filter status; canonical role `admin`; equal-admin — no role hierarchy; guard self + last active admin). See `docs/contracts/ROLE-AND-STATUS-CONTRACT.md`.
   - Pengaturan Sistem (`admin.settings.*` → status integrasi env, read-only)  
 - Logout.
 
@@ -77,8 +77,8 @@ UI behaviour:
   - search box global (cari No. Order, nama penerima, nomor WA, provinsi).  
   - filter berdasarkan:
     - `order_status` (Perlu Konfirmasi, Diproses, Dikirim, Sampai, Retur Diproses, Completed, Issue).  
-    - `payment_status` (Unpaid, Paid, Refunded).  
-    - `shipping_status` (pending, shipped, delivered).  
+    - `payment_status` (`pending`, `paid`, `refunded`).
+    - `shipping_status` (`pending_pickup`, `in_process`, `in_transit`, `delivered`, `cancelled`).
   - opsi filter waktu (Hari ini, 7 hari terakhir, rentang tanggal).
 
 Data contract:
@@ -86,9 +86,15 @@ Data contract:
 - List Pesanan membaca dari Order Module:
   - `orders` + `order_items` + Payment & Shipping relasi.  
 - Label status pada UI adalah mapping deterministik dari kombinasi:
-  - `order_status`,  
-  - `payment_status`,  
+  - `order_status`,
+  - `payment_status`,
   - `shipping_status`.
+
+- Ringkasan di atas daftar mengikuti query filter yang sama dengan kartu order:
+  - `count` adalah jumlah order yang cocok dengan seluruh filter aktif.
+  - `total_value` adalah jumlah `orders.total_amount` dari order yang cocok.
+  - Aksi perubahan status dari daftar mempertahankan status, pencarian, urutan,
+    status pembayaran, status pengiriman, dan rentang waktu aktif.
 
 ### 2.2 Detail Pesanan
 
@@ -119,13 +125,13 @@ UI behaviour:
       - Completed atau Issue/Retur.  
 
   - **Payment Panel**:
-    - `payment_status` (unpaid/paid/refunded).  
+    - `payment_status` (pending/paid/refunded).
     - link ke bukti pembayaran (gambar/file/WA message).  
 
   - **Shipping Panel**:
     - carrier (misal JNT Cargo).  
     - nomor resi/waybill.  
-    - status pengiriman (in transit/delivered).  
+    - status pengiriman (`in_transit` / `delivered`).
 
   - **WhatsApp Panel**:
     - list `whatsapp_messages` terkait order (direction, waktu, status).  
@@ -179,11 +185,13 @@ UI behaviour:
   - Daftar varian:
     - varian per `variant_sku` dengan atribut (warna, ukuran, kaca, dll.), harga, stok, berat, dimensi.  
   - Media:
-    - list gambar/video terkait produk dan varian (Image 1–9).  
+    - list gambar/video terkait produk dan varian (Image 1–9), termasuk pemilihan
+      asset yang sudah ada tanpa upload ulang.
     - Admin dapat menautkan `product_media.product_variant_id` per kombinasi opsi (warna/kaca) lewat `Admin/Products/Media` atau form edit varian.  
   - Aksi:
     - tambah varian, edit varian, aktif/nonaktif varian.  
-    - upload media baru (manual) atau lihat status import media.
+    - upload media baru (gambar/video), lihat status import media, cari berdasarkan
+      label/jenis/status, dan pasang satu shared asset ke banyak produk.
 
 Saat membuat parent product, form boleh mengaktifkan **Buat varian awal sekarang**. Jika aktif, admin wajib mengisi SKU varian, harga, dan stok manual; product dan varian awal dibuat dalam satu transaksi. Varian lanjutan tetap dikelola melalui halaman Kelola varian.
 
@@ -194,7 +202,8 @@ Data contract:
   - tidak menulis langsung ke DB tanpa log.
 
 - Media:
-  - membaca dan mengupdate `product_media` & `media_files` sesuai Media Module.
+  - membaca dan mengupdate attachment `product_media` serta shared asset
+    `media_assets` melalui controller/service Media Module.
 
 ### 3.3 Shortcut ke Import & Media
 
@@ -286,9 +295,10 @@ UI behaviour:
     - referensi ke produk/variant.  
   - Thumbnail gambar.  
   - Source URL (Shopee atau lainnya).  
-  - Stored URL (internal media disk).  
+  - Preview URL turunan WebP untuk gambar atau URL object video pada media disk.
   - Status:
-    - `pending_download`, `downloaded`, `failed`.  
+    - attachment legacy `pending`, `downloading`, `downloaded`, `failed`; asset
+      library `pending`, `downloading`, `ready`, `failed`, `archived`.
   - Error Reason (jika `failed`).  
 
 - Filter:
@@ -297,7 +307,7 @@ UI behaviour:
 
 Data contract:
 
-- Data diambil dari `product_media` + `media_files` (Stage 5).  
+- Data diambil dari `product_media` + `media_assets` (Stage 5).
 - Aksi:
 
   - “Coba download ulang” → memicu media worker untuk record tersebut.  

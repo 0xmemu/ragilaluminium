@@ -3,15 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\DownloadMediaAsset;
 use App\Jobs\DownloadProductMedia;
+use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
-use App\Services\MediaDerivativeService;
+use App\Services\MediaAssetResolver;
 use App\Support\InertiaAdmin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,12 +21,34 @@ class ProductMediaController extends Controller
 {
     public function index(Request $request): Response
     {
-        $media = ProductMedia::with(['product', 'productVariant'])
+        $media = ProductMedia::with(['product', 'productVariant', 'mediaAsset'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('visibility'), fn ($q) => $q->where('visibility', $request->visibility))
             ->latest()
             ->paginate(24)
             ->withQueryString();
+
+        $assets = MediaAsset::query()
+            ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
+            ->where('visibility', '!=', 'archived')
+            ->when($request->filled('asset_kind'), fn ($query) => $query->where('kind', $request->query('asset_kind')))
+            ->when($request->filled('asset_status'), fn ($query) => $query->where('status', $request->query('asset_status')))
+            ->when($request->filled('asset_q'), function ($query) use ($request): void {
+                $q = trim((string) $request->query('asset_q'));
+                $query->where(fn ($inner) => $inner->where('label', 'like', "%{$q}%")->orWhere('source_url', 'like', "%{$q}%"));
+            })
+            ->latest()
+            ->limit(24)
+            ->get();
+        $products = Product::query()
+            ->where('status', '!=', 'archived')
+            ->when($request->filled('product_q'), function ($query) use ($request): void {
+                $q = trim((string) $request->query('product_q'));
+                $query->where(fn ($inner) => $inner->where('name', 'like', "%{$q}%")->orWhere('parent_sku', 'like', "%{$q}%"));
+            })
+            ->orderBy('name')
+            ->limit(100)
+            ->get(['id', 'name', 'parent_sku']);
 
         return Inertia::render('Admin/ResourceIndex', [
             'title' => 'Media',
@@ -93,12 +116,31 @@ class ProductMediaController extends Controller
                 ];
             })->all(),
             'pagination' => InertiaAdmin::pagination($media),
+            'assetLibrary' => $assets->map(fn (MediaAsset $asset) => [
+                'id' => $asset->id,
+                'label' => $asset->label ?: 'Media #'.$asset->id,
+                'kind' => $asset->kind,
+                'status' => $asset->status,
+                'usage_count' => (int) $asset->usage_count,
+                'preview_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
+                'attach_url' => route('admin.media.attach', $asset),
+            ])->values()->all(),
+            'assetFilters' => [
+                'q' => (string) $request->query('asset_q', ''),
+                'kind' => (string) $request->query('asset_kind', ''),
+                'status' => (string) $request->query('asset_status', ''),
+            ],
+            'productSearch' => (string) $request->query('product_q', ''),
+            'productOptions' => $products->map(fn (Product $product) => [
+                'id' => $product->id,
+                'label' => $product->name.' · '.$product->parent_sku,
+            ])->values()->all(),
         ]);
     }
 
     public function byProduct(Request $request, Product $product): Response
     {
-        $product->load(['variants' => fn ($q) => $q->orderBy('id'), 'media.productVariant']);
+        $product->load(['variants' => fn ($q) => $q->orderBy('id'), 'media.productVariant', 'media.mediaAsset']);
 
         $filterVariant = $request->query('variant');
         $filterVariantId = is_numeric($filterVariant) ? (int) $filterVariant : null;
@@ -109,6 +151,22 @@ class ProductMediaController extends Controller
         } elseif ($filterVariant === 'shared') {
             $mediaQuery = $mediaQuery->whereNull('product_variant_id')->values();
         }
+
+        $assetQuery = MediaAsset::query()
+            ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
+            ->where('visibility', '!=', 'archived')
+            ->when($request->filled('kind'), fn ($query) => $query->where('kind', $request->query('kind')))
+            ->when($request->filled('asset_status'), fn ($query) => $query->where('status', $request->query('asset_status')))
+            ->when($request->filled('q'), function ($query) use ($request) {
+                $q = trim((string) $request->query('q'));
+                $query->where(function ($inner) use ($q) {
+                    $inner->where('label', 'like', "%{$q}%")
+                        ->orWhere('source_url', 'like', "%{$q}%");
+                });
+            })
+            ->latest()
+            ->limit(30)
+            ->get();
 
         return Inertia::render('Admin/Products/Media', [
             'product' => [
@@ -129,6 +187,20 @@ class ProductMediaController extends Controller
                     ? (string) $filterVariantId
                     : ($filterVariant === 'shared' ? 'shared' : ''),
             ],
+            'assetSearch' => (string) $request->query('q', ''),
+            'assetFilters' => [
+                'kind' => (string) $request->query('kind', ''),
+                'status' => (string) $request->query('asset_status', ''),
+            ],
+            'library' => $assetQuery->map(fn (MediaAsset $asset) => [
+                'id' => $asset->id,
+                'label' => $asset->label ?: 'Media #'.$asset->id,
+                'kind' => $asset->kind,
+                'status' => $asset->status,
+                'usage_count' => (int) $asset->usage_count,
+                'thumb_url' => $asset->urlFor('thumb'),
+                'media_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
+            ])->values()->all(),
             'storeUrl' => route('admin.products.media.store', $product),
             'indexUrl' => route('admin.products.media.byProduct', $product),
             'rows' => $mediaQuery->map(fn (ProductMedia $m) => [
@@ -146,6 +218,8 @@ class ProductMediaController extends Controller
                     ? $this->variantLabel($m->productVariant)
                     : 'Semua (produk)',
                 'thumb_url' => $m->urlFor('thumb') ?? $m->stored_url,
+                'media_kind' => $m->mediaAsset?->kind ?? (str_starts_with((string) $m->mime_type, 'video/') ? 'video' : 'image'),
+                'media_url' => $m->urlFor('video') ?? $m->urlFor('pdp') ?? $m->stored_url,
                 'update_url' => route('admin.media.update', $m),
                 'set_main_url' => route('admin.media.set-main', $m),
                 'archive_url' => route('admin.media.archive', $m),
@@ -164,14 +238,16 @@ class ProductMediaController extends Controller
         }
 
         $validated = $request->validate([
+            'kind' => ['sometimes', 'in:image,video'],
             'source_url' => ['nullable', 'url'],
+            'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'position' => ['required', 'integer', 'min:1', 'max:109'],
             'is_main_image' => ['boolean'],
             'show_in_catalog' => ['boolean'],
             'is_installation' => ['boolean'],
             'installation_caption' => ['nullable', 'string', 'max:280'],
             'visibility' => ['required', 'in:visible,archived,hidden'],
-            'upload' => ['nullable', 'file', 'image', 'max:10240'],
+            'upload' => ['nullable', 'file', 'max:51200'],
             'product_variant_id' => [
                 'nullable',
                 'integer',
@@ -179,50 +255,44 @@ class ProductMediaController extends Controller
             ],
         ]);
 
-        $data = [
-            'product_id' => $product->id,
+        $kind = $validated['kind'] ?? 'image';
+        if ($kind === 'video' && ! empty($validated['is_main_image'])) {
+            return redirect()->back()->withErrors(['kind' => 'Video tidak dapat dijadikan gambar utama.']);
+        }
+
+        $resolver = app(MediaAssetResolver::class);
+        try {
+            $asset = ! empty($validated['media_asset_id'])
+                ? MediaAsset::where('visibility', '!=', 'archived')->findOrFail((int) $validated['media_asset_id'])
+                : ($request->hasFile('upload')
+                    ? $resolver->fromUploadedFile($request->file('upload'), $kind, (int) $request->user()->id)
+                    : (! empty($validated['source_url'])
+                        ? $resolver->fromSourceUrl((string) $validated['source_url'], $kind, (int) $request->user()->id)
+                        : null));
+        } catch (\Throwable $e) {
+            return redirect()->back()->withErrors(['upload' => $e->getMessage()]);
+        }
+
+        if (! $asset) {
+            return redirect()->back()->withErrors(['source_url' => 'Pilih media library, upload file, atau isi source URL.']);
+        }
+
+        if ($asset->kind !== $kind) {
+            return redirect()->back()->withErrors(['kind' => 'Jenis media tidak cocok dengan aset yang dipilih.']);
+        }
+
+        $media = $resolver->attach($product, $asset, [
             'product_variant_id' => $validated['product_variant_id'] ?? null,
             'position' => $validated['position'],
-            'is_main_image' => $validated['is_main_image'] ?? false,
+            'is_main_image' => $kind === 'image' && ($validated['is_main_image'] ?? false),
             'show_in_catalog' => $validated['show_in_catalog'] ?? true,
             'is_installation' => $validated['is_installation'] ?? false,
             'installation_caption' => filled($validated['installation_caption'] ?? null) ? trim($validated['installation_caption']) : null,
             'visibility' => $validated['visibility'],
-            'source_url' => $validated['source_url'] ?? null,
-            'status' => 'pending',
-            'created_by_user_id' => $request->user()->id,
-        ];
+        ], (int) $request->user()->id);
 
-        if ($request->hasFile('upload')) {
-            $file = $request->file('upload');
-            $path = $file->store("products/{$product->id}", 'media');
-            $data['stored_path'] = $path;
-            $data['stored_url'] = Storage::disk(config('media.disk', 'media'))->url($path);
-            $data['mime_type'] = $file->getMimeType();
-            $data['size_bytes'] = $file->getSize();
-            $data['status'] = 'downloaded';
-
-            try {
-                $derivatives = app(MediaDerivativeService::class);
-                $built = $derivatives->regenerateFromStored($path, (int) $product->id);
-                $data['derivatives'] = $built;
-                $promoted = $derivatives->promoteMasterAndDiscardOriginal($path, $built);
-                if ($promoted !== null) {
-                    $data = array_merge($data, $promoted);
-                }
-            } catch (\Throwable $e) {
-                report($e);
-            }
-        }
-
-        if (! empty($data['is_main_image'])) {
-            ProductMedia::where('product_id', $product->id)->update(['is_main_image' => false]);
-        }
-
-        $media = ProductMedia::create($data);
-
-        if ($data['status'] === 'pending' && ! empty($data['source_url'])) {
-            DownloadProductMedia::dispatch($media->id);
+        if ($asset->status === 'pending') {
+            DownloadMediaAsset::dispatch($asset->id);
         }
 
         $params = ['product' => $product];
@@ -233,6 +303,40 @@ class ProductMediaController extends Controller
         return redirect()
             ->route('admin.products.media.byProduct', $params)
             ->with('success', 'Media ditambahkan.');
+    }
+
+    public function bulkAttach(Request $request, MediaAsset $asset): RedirectResponse
+    {
+        $validated = $request->validate([
+            'product_ids' => ['required', 'array', 'min:1', 'max:100'],
+            'product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
+            'position' => ['required', 'integer', 'min:1', 'max:109'],
+            'show_in_catalog' => ['boolean'],
+            'is_installation' => ['boolean'],
+            'is_main_image' => ['boolean'],
+            'visibility' => ['required', 'in:visible,hidden,archived'],
+        ]);
+
+        if ($asset->visibility === 'archived') {
+            return redirect()->back()->with('error', 'Shared asset yang sudah diarsipkan tidak dapat dipasang.');
+        }
+        if ($asset->kind === 'video' && ! empty($validated['is_main_image'])) {
+            return redirect()->back()->with('error', 'Video tidak dapat dijadikan gambar utama.');
+        }
+
+        $resolver = app(MediaAssetResolver::class);
+        $products = Product::query()->whereIn('id', $validated['product_ids'])->get();
+        foreach ($products as $product) {
+            $resolver->attach($product, $asset, [
+                'position' => $validated['position'],
+                'is_main_image' => $asset->kind === 'image' && ($validated['is_main_image'] ?? false),
+                'show_in_catalog' => $validated['show_in_catalog'] ?? true,
+                'is_installation' => $validated['is_installation'] ?? false,
+                'visibility' => $validated['visibility'],
+            ], (int) $request->user()->id);
+        }
+
+        return redirect()->back()->with('success', "Media dipasang ke {$products->count()} produk.");
     }
 
     public function update(Request $request, ProductMedia $media): RedirectResponse
@@ -262,6 +366,10 @@ class ProductMediaController extends Controller
 
     public function setMain(ProductMedia $media): RedirectResponse
     {
+        if (($media->mediaAsset?->kind ?? (str_starts_with((string) $media->mime_type, 'video/') ? 'video' : 'image')) === 'video') {
+            return redirect()->back()->with('error', 'Video tidak dapat dijadikan gambar utama.');
+        }
+
         ProductMedia::where('product_id', $media->product_id)->update(['is_main_image' => false]);
         $media->update(['is_main_image' => true]);
 
@@ -278,7 +386,12 @@ class ProductMediaController extends Controller
     public function redownload(ProductMedia $media): RedirectResponse
     {
         $media->update(['status' => 'pending', 'error_reason' => null]);
-        DownloadProductMedia::dispatch($media->id);
+        if ($media->media_asset_id) {
+            $media->mediaAsset?->update(['status' => 'pending', 'error_reason' => null]);
+            DownloadMediaAsset::dispatch($media->media_asset_id);
+        } else {
+            DownloadProductMedia::dispatch($media->id);
+        }
 
         return redirect()->back()->with('success', 'Download media dijadwalkan ulang.');
     }
@@ -287,6 +400,12 @@ class ProductMediaController extends Controller
     {
         if ($media->status !== 'failed') {
             return redirect()->back()->with('error', 'Hanya media berstatus gagal yang dapat dihapus permanen. Arsipkan media lain.');
+        }
+
+        if ($media->media_asset_id) {
+            $media->update(['visibility' => 'archived']);
+
+            return redirect()->back()->with('success', 'Attachment media diarsipkan tanpa menghapus shared asset.');
         }
 
         $paths = array_filter([

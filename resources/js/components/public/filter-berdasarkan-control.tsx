@@ -23,7 +23,7 @@ export const CATALOG_SORT_OPTIONS: FilterBerdasarkanOption[] = [
   { value: "price_desc", label: "Harga Tertinggi" },
 ]
 
-function SortArrowsIcon({ className }: { className?: string }) {
+export function SortArrowsIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -126,8 +126,8 @@ export function FilterBerdasarkanControl({
           aria-expanded={open}
           className={cn(
             plain
-              ? "inline-flex h-8 max-w-full items-center gap-1 rounded-md px-0.5 text-xs font-semibold text-foreground sm:text-sm transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              : "inline-flex h-8 max-w-full items-stretch rounded-lg border border-[#DEDEDE] bg-surface transition hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              ? "inline-flex min-h-11 max-w-full items-center gap-1 rounded-md px-0.5 text-xs font-semibold text-foreground sm:text-sm transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              : "inline-flex min-h-11 max-w-full items-stretch rounded-lg border border-[#DEDEDE] bg-surface transition hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             !plain && open && "border-foreground/25 shadow-soft",
             className,
           )}
@@ -135,7 +135,7 @@ export function FilterBerdasarkanControl({
           <span
             className={cn(
               "flex min-w-0 items-center truncate",
-              plain ? "pr-0.5" : "pl-3 pr-0.5 text-[#262626]",
+              plain ? "pr-0.5" : "pl-3 pr-0.5 text-action",
             )}
           >
             {selected?.label}
@@ -143,7 +143,7 @@ export function FilterBerdasarkanControl({
           <span
             className={cn(
               "flex shrink-0 items-center justify-center",
-              plain ? "size-5 text-current" : "h-8 w-8 text-[#262626]",
+              plain ? "size-5 text-current" : "h-8 w-8 text-action",
             )}
           >
             <SortArrowsIcon className={plain ? "h-5 w-5" : "h-6 w-6"} />

@@ -19,8 +19,7 @@ import { Icon } from "@/components/shared/icon"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
-import { cn } from "@/lib/utils"
+import { routeUrl, withQuery } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
 interface OmzetData {
@@ -42,12 +41,29 @@ interface PerformaMetric {
   format: string
 }
 
+interface PerformaTrend {
+  total: number
+  total_format: string
+  granularity: string
+  series: Array<{ bucket: string; label: string; value: number }>
+}
+
 interface PerformaData {
   period: string
   period_label: string
   period_options: Array<{ value: string; label: string }>
   metrics: PerformaMetric[]
+  trend: PerformaTrend
   detail_href: string
+}
+
+interface FinancialData {
+  pending_payment_amount: number
+  pending_payment_orders: number
+  active_order_amount: number
+  active_order_count: number
+  received_today_amount: number
+  received_today_count: number
 }
 
 interface StatusOrderItem {
@@ -55,6 +71,7 @@ interface StatusOrderItem {
   label: string
   icon: string
   total: number
+  total_value: number
   href: string
 }
 
@@ -82,6 +99,7 @@ interface RecentOrderRow {
   shipping_province?: string | null
   customer_phone?: string | null
   order_status: string
+  payment_status: string
   shipping_status?: string
   waybill_number?: string | null
   shipping_track?: {
@@ -100,6 +118,7 @@ interface RecentOrderRow {
   product_count: number
   unit_count: number
   href: string
+  shipping_href: string
   whatsapp_url?: string | null
 }
 
@@ -138,11 +157,56 @@ interface JntReadiness {
   missing: string[]
 }
 
+interface IntegrationReadinessItem {
+  key: string
+  label: string
+  icon: string
+  ready: boolean
+  verified: boolean
+  status_label: string
+  detail: string
+  href: string
+}
+
+interface MediaStatusSummary {
+  ready: number
+  pending: number
+  failed: number
+  archived: number
+}
+
+interface ImportMediaSummary {
+  imports: {
+    running: number
+    failed: number
+    completed: number
+    failed_rows: number
+    recent: Array<{
+      id: number
+      file_name: string
+      status: string
+      failed_rows: number
+      updated_at: string | null
+      href: string
+    }>
+    href: string
+  }
+  media: {
+    attachments: MediaStatusSummary
+    shared_assets: MediaStatusSummary
+    href: string
+  }
+}
+
 interface DashboardProps {
   greetingName: string
   todayLabel: string
+  generatedAt: string
   jntReadiness: JntReadiness
+  integrationReadiness: IntegrationReadinessItem[]
+  importMediaSummary: ImportMediaSummary
   omzet: OmzetData
+  financial: FinancialData
   performa: PerformaData
   statusOrder: StatusOrderItem[]
   attention: AttentionItem[]
@@ -228,6 +292,23 @@ function Sparkline({ values }: { values: number[] }) {
   )
 }
 
+function TrendBars({ trend }: { trend: PerformaTrend }) {
+  const max = Math.max(...trend.series.map((point) => point.value), 1)
+
+  return (
+    <div className="mt-3 flex h-16 items-end gap-1" role="img" aria-label="Tren omzet sesuai periode aktif">
+      {trend.series.map((point) => (
+        <div key={point.bucket} className="flex min-w-0 flex-1 items-end" title={`${point.label}: ${formatCurrency(point.value)}`}>
+          <div
+            className="w-full rounded-sm bg-primary/70"
+            style={{ height: `${Math.max(4, (point.value / max) * 100)}%` }}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function MetricTile({
   label,
   value,
@@ -253,8 +334,12 @@ function MetricTile({
 export default function Dashboard({
   greetingName,
   todayLabel,
+  generatedAt,
   jntReadiness,
+  integrationReadiness = [],
+  importMediaSummary,
   omzet,
+  financial,
   performa,
   statusOrder = [],
   attention = [],
@@ -265,7 +350,13 @@ export default function Dashboard({
   topEngagedProducts,
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
+  const [refreshing, setRefreshing] = React.useState(false)
+  const [refreshError, setRefreshError] = React.useState(false)
   const name = greetingName || auth.user?.name || "Admin"
+  const pendingPaymentOrders = statusOrder.find((item) => item.key === "pending_payment")
+  const pendingPaymentOrdersHref =
+    pendingPaymentOrders?.href ??
+    withQuery(routeUrl("admin.orders.index"), { order_status: "pending_payment" })
 
   function onPerformaPeriodChange(period: string) {
     router.get(
@@ -273,6 +364,15 @@ export default function Dashboard({
       { performa_period: period },
       { preserveState: true, preserveScroll: true, replace: true },
     )
+  }
+
+  function refreshDashboard() {
+    setRefreshing(true)
+    setRefreshError(false)
+    router.reload({
+      onError: () => setRefreshError(true),
+      onFinish: () => setRefreshing(false),
+    })
   }
 
   return (
@@ -283,11 +383,32 @@ export default function Dashboard({
       <div className="space-y-5">
         {/* Header — sapaan */}
         <div className="pt-2">
-          <p className="text-[26px] font-semibold leading-8 tracking-tight text-foreground">
-            {greetingPrefix()},{" "}
-            <span className="font-normal text-muted-foreground">{name}</span>
-          </p>
-          <p className="mt-1 text-[13px] text-muted-foreground">{todayLabel}</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[26px] font-semibold leading-8 tracking-tight text-foreground">
+                {greetingPrefix()},{" "}
+                <span className="font-normal text-muted-foreground">{name}</span>
+              </p>
+              <p className="mt-1 text-[13px] text-muted-foreground">{todayLabel}</p>
+              <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
+                {refreshing ? "Memperbarui data dashboard..." : `Data diperbarui ${formatDateTime(generatedAt)}`}
+              </p>
+              {refreshError ? (
+                <p className="mt-1 text-xs font-medium text-destructive" role="status">
+                  Data belum diperbarui. Coba refresh lagi.
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={refreshDashboard}
+              disabled={refreshing}
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border px-3 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-wait disabled:opacity-60"
+            >
+              <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+              {refreshing ? "Memuat..." : "Refresh data"}
+            </button>
+          </div>
         </div>
 
         {/* Row 1 — Omzet | Performa Toko */}
@@ -303,6 +424,25 @@ export default function Dashboard({
                 </p>
                 <div className="mt-2">
                   <DeltaBadge percent={omzet.change_percent} />
+                </div>
+                <div className="mt-4 rounded-md border border-info/20 bg-info/5 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+                  <div className="flex items-start gap-2">
+                    <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">Belum masuk omzet</p>
+                      <p>
+                        Order Perlu Konfirmasi, batal, atau bermasalah belum dihitung. Omzet hanya
+                        memakai order yang sudah masuk proses fulfillment.
+                      </p>
+                      <Link
+                        href={pendingPaymentOrdersHref}
+                        className="mt-1 inline-flex items-center gap-1 font-semibold text-info underline underline-offset-2 hover:no-underline"
+                      >
+                        Lihat {formatNumber(pendingPaymentOrders?.total ?? 0)} order Perlu Konfirmasi
+                        <Icon name="arrow-right" className="size-3" aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               </div>
               <Sparkline values={omzet.sparkline} />
@@ -359,8 +499,50 @@ export default function Dashboard({
                 />
               ))}
             </div>
+            <div className="mt-5 border-t border-border pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-muted-foreground">Tren omzet</p>
+                <p className="tabular-nums text-xs font-semibold text-foreground">
+                  {formatCurrency(performa.trend.total)}
+                </p>
+              </div>
+              <TrendBars trend={performa.trend} />
+            </div>
           </Card>
         </section>
+
+        <SectionCard
+          title="Ringkasan nilai pesanan"
+          icon="hand-coins"
+          description="Nilai operasional dipisahkan dari omzet agar status pembayaran tetap jelas."
+          action={
+            <Link
+              href={pendingPaymentOrdersHref}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
+            >
+              Lihat belum dibayar
+              <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
+            </Link>
+          }
+        >
+          <div className="grid gap-5 sm:grid-cols-3">
+            <MetricTile
+              label="Belum dibayar"
+              value={formatCurrency(financial.pending_payment_amount)}
+              delta={formatNumber(financial.pending_payment_orders) + " order pending"}
+            />
+            <MetricTile
+              label="Pesanan aktif"
+              value={formatCurrency(financial.active_order_amount)}
+              delta={formatNumber(financial.active_order_count) + " order diproses"}
+            />
+            <MetricTile
+              label="Pembayaran diterima hari ini"
+              value={formatCurrency(financial.received_today_amount)}
+              delta={formatNumber(financial.received_today_count) + " pembayaran selesai"}
+            />
+          </div>
+        </SectionCard>
 
         {/* Row 2 — Status Order */}
         <SectionCard
@@ -387,13 +569,16 @@ export default function Dashboard({
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
                   <Icon name={item.icon} className="size-4" aria-hidden="true" />
                 </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-xs text-muted-foreground">{item.label}</span>
-                  <span className="tabular-nums block text-lg font-semibold tracking-tight text-foreground">
-                    {formatNumber(item.total)}{" "}
-                    <span className="text-[11px] font-normal text-muted-foreground">pesanan</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs text-muted-foreground">{item.label}</span>
+                    <span className="tabular-nums block text-lg font-semibold tracking-tight text-foreground">
+                      {formatNumber(item.total)}{" "}
+                      <span className="text-[11px] font-normal text-muted-foreground">pesanan</span>
+                    </span>
+                    <span className="tabular-nums block text-[11px] text-muted-foreground">
+                      {formatCurrency(item.total_value)}
+                    </span>
                   </span>
-                </span>
               </Link>
             ))}
           </div>
@@ -401,14 +586,14 @@ export default function Dashboard({
 
         {/* Row 2b — Kesiapan J&T */}
         <Alert
-          tone={jntReadiness.client_ready ? "success" : "warning"}
+          tone="warning"
           title={jntReadiness.provider_label}
           className="items-center"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[13px]">
               {jntReadiness.client_ready
-                ? `Terhubung · ${jntReadiness.environment}`
+                ? `Konfigurasi tersedia, koneksi live belum diverifikasi · ${jntReadiness.environment}`
                 : `Belum siap · ${jntReadiness.missing.length} konfigurasi perlu dilengkapi`}
             </p>
             <Link
@@ -425,6 +610,122 @@ export default function Dashboard({
           ) : null}
         </Alert>
 
+        <SectionCard
+          title="Kesiapan layanan"
+          icon="gauge"
+          description="Status konfigurasi yang memengaruhi operasi order, media, dan notifikasi."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {integrationReadiness.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="group rounded-md border border-border p-3 transition hover:border-foreground/20 hover:bg-muted/50"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
+                    <Icon name={item.icon} className="size-4" aria-hidden="true" />
+                  </span>
+                  <span
+                    className={
+                      item.verified
+                        ? "rounded-full bg-success/10 px-2 py-1 text-[10px] font-semibold text-success"
+                        : "rounded-full bg-warning/15 px-2 py-1 text-[10px] font-semibold text-warning-foreground"
+                    }
+                  >
+                    {item.verified ? "Terverifikasi" : item.ready ? "Konfigurasi ada" : "Perlu cek"}
+                  </span>
+                </div>
+                <p className="mt-3 text-[13px] font-semibold text-foreground">{item.label}</p>
+                <p className="mt-1 text-xs font-medium text-foreground/80">{item.status_label}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+              </Link>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Import & media"
+          icon="images"
+          description="Antrean katalog dan status aset yang perlu dipantau."
+        >
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-md border border-border p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Import katalog</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatNumber(importMediaSummary.imports.failed_rows)} baris gagal dari seluruh job
+                  </p>
+                </div>
+                <Link href={importMediaSummary.imports.href} className="text-xs font-semibold text-primary hover:underline">
+                  Buka import
+                </Link>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <MetricTile label="Berjalan" value={formatNumber(importMediaSummary.imports.running)} />
+                <MetricTile label="Gagal" value={formatNumber(importMediaSummary.imports.failed)} />
+                <MetricTile label="Selesai" value={formatNumber(importMediaSummary.imports.completed)} />
+              </div>
+              {importMediaSummary.imports.recent.length ? (
+                <ul className="mt-4 divide-y divide-border border-t border-border">
+                  {importMediaSummary.imports.recent.map((job) => (
+                    <li key={job.id}>
+                      <Link href={job.href} className="flex items-center justify-between gap-3 py-2.5 hover:bg-muted/50">
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-medium text-foreground">{job.file_name}</span>
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            {job.failed_rows ? `${formatNumber(job.failed_rows)} baris gagal · ` : ""}
+                            {formatRelativeAge(job.updated_at)}
+                          </span>
+                        </span>
+                        <StatusBadge status={job.status} />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">Belum ada job import.</p>
+              )}
+            </div>
+
+            <div className="rounded-md border border-border p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Status media</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Attachment produk dan shared asset dipisahkan.</p>
+                </div>
+                <Link href={importMediaSummary.media.href} className="text-xs font-semibold text-primary hover:underline">
+                  Buka media
+                </Link>
+              </div>
+              <div className="mt-4 space-y-3">
+                {([
+                  ["Attachment produk", importMediaSummary.media.attachments],
+                  ["Shared asset", importMediaSummary.media.shared_assets],
+                ] as const).map(([label, status]) => (
+                  <div key={label} className="rounded-md bg-muted/40 p-3">
+                    <p className="text-xs font-semibold text-foreground">{label}</p>
+                    <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                      {([
+                        ["Siap", status.ready],
+                        ["Menunggu", status.pending],
+                        ["Gagal", status.failed],
+                        ["Arsip", status.archived],
+                      ] as const).map(([statusLabel, count]) => (
+                        <div key={statusLabel}>
+                          <p className="tabular-nums text-sm font-semibold text-foreground">{formatNumber(count)}</p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">{statusLabel}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
         {/* Row 3 — Perlu Perhatian | Produk Paling Dilihat | Aksi Cepat */}
         <section className="grid items-stretch gap-4 lg:grid-cols-12">
           <SectionCard
@@ -434,37 +735,35 @@ export default function Dashboard({
             className="lg:col-span-5"
             contentClassName="p-0"
           >
-            <ul className="divide-y divide-border">
-              {attention.map((item) => (
-                <li key={item.key}>
-                  <Link
-                    href={item.href}
-                    className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
-                  >
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "size-1.5 shrink-0 rounded-full",
-                          item.count > 0 ? "bg-destructive" : "bg-muted-foreground/40",
-                        )}
-                      />
-                      <span className="text-pretty text-[13px] leading-5 text-foreground">
-                        {item.label}
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        "tabular-nums shrink-0 text-sm font-semibold",
-                        item.count > 0 ? "text-destructive" : "text-muted-foreground",
-                      )}
+            {attention.length ? (
+              <ul className="divide-y divide-border">
+                {attention.map((item) => (
+                  <li key={item.key}>
+                    <Link
+                      href={item.href}
+                      className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
                     >
-                      {formatNumber(item.count)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
+                        <span className="text-pretty text-[13px] leading-5 text-foreground">
+                          {item.label}
+                        </span>
+                      </span>
+                      <span className="tabular-nums shrink-0 text-sm font-semibold text-destructive">
+                        {formatNumber(item.count)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex items-center gap-3 px-5 py-6">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+                  <Icon name="check-circle" className="size-4" aria-hidden="true" />
+                </span>
+                <p className="text-[13px] text-muted-foreground">Tidak ada pekerjaan yang perlu ditindaklanjuti.</p>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard
@@ -602,16 +901,21 @@ export default function Dashboard({
                           <StatusBadge status={order.order_status} />
                         </TableCell>
                         <TableCell>
-                          <ShippingTrackPanel
-                            compact
-                            track={
-                              order.shipping_track ?? {
-                                shipping_status: order.shipping_status || "pending_pickup",
-                                waybill_number: order.waybill_number,
-                                order_status: order.order_status,
+                          <div className="space-y-1.5">
+                            <ShippingTrackPanel
+                              compact
+                              track={
+                                order.shipping_track ?? {
+                                  shipping_status: order.shipping_status || "pending_pickup",
+                                  waybill_number: order.waybill_number,
+                                  order_status: order.order_status,
+                                }
                               }
-                            }
-                          />
+                            />
+                            <Link href={order.shipping_href} className="text-xs font-medium text-primary hover:underline">
+                              Kelola pengiriman
+                            </Link>
+                          </div>
                         </TableCell>
                         <TableCell className="tabular-nums font-semibold">
                           {formatCurrency(order.total_amount)}
@@ -624,6 +928,9 @@ export default function Dashboard({
                           ) : (
                             "-"
                           )}
+                          <div className="mt-1">
+                            <StatusBadge status={order.payment_status} />
+                          </div>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {formatNumber(order.product_count)} produk ·{" "}
@@ -675,6 +982,7 @@ export default function Dashboard({
                           {order.order_number}
                         </Link>
                         <p className="mt-1 text-sm font-medium">{order.customer_name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {formatDateTime(order.created_at)}
                         </p>
@@ -691,6 +999,25 @@ export default function Dashboard({
                         }
                       }
                     />
+                    <Link href={order.shipping_href} className="inline-flex text-xs font-medium text-primary hover:underline">
+                      Kelola pengiriman
+                    </Link>
+                    <div className="grid grid-cols-2 gap-3 rounded-md bg-muted/40 p-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Pembayaran</p>
+                        <div className="mt-1"><StatusBadge status={order.payment_status} /></div>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Metode</p>
+                        <p className="mt-1 font-medium text-foreground">{order.payment_method ? humanize(order.payment_method) : "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Produk</p>
+                        <p className="mt-1 font-medium text-foreground">
+                          {formatNumber(order.product_count)} produk · {formatNumber(order.unit_count)} unit
+                        </p>
+                      </div>
+                    </div>
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="tabular-nums text-sm font-semibold">
                         {formatCurrency(order.total_amount)}
@@ -791,4 +1118,3 @@ export default function Dashboard({
     </AdminLayout>
   )
 }
-

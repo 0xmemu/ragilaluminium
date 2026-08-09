@@ -102,6 +102,8 @@ export default function OrderStatus({
 
   React.useEffect(() => {
     const list = orders.length ? orders : order ? [order] : []
+    // Keep the selected order valid after a lookup response replaces the list.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveNumber((current) =>
       list.some((row) => row.order_number === current)
         ? current
@@ -146,7 +148,7 @@ export default function OrderStatus({
         <button
           type="button"
           onClick={() => window.history.back()}
-          className="flex shrink-0 items-center justify-center sm:hidden"
+          className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
           aria-label="Kembali"
         >
           <Icon name="caret-left" className="size-5" aria-hidden="true" />

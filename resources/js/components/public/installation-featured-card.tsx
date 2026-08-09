@@ -70,7 +70,7 @@ export function InstallationFeaturedCard({
               {highlights.map((highlight) => (
                 <li key={highlight.label} className="flex min-h-[5.5rem] flex-col items-center justify-center gap-2.5 rounded-xl border border-border bg-white px-2.5 py-4 text-center sm:min-h-[6.25rem] sm:gap-3 sm:px-3 sm:py-5">
                   <Icon name={highlight.icon} weight="regular" className="size-7 text-foreground sm:size-8" aria-hidden />
-                  <span className="text-[10px] font-medium leading-snug text-foreground/85 sm:text-xs">{highlight.label}</span>
+                  <span className="text-xs font-medium leading-snug text-foreground/85">{highlight.label}</span>
                 </li>
               ))}
             </ul>

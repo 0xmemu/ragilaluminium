@@ -110,6 +110,26 @@ class HandleInertiaRequests extends Middleware
             'nav' => fn () => $this->sharedNavigation($modelMenu),
             'csrf' => csrf_token(),
             'consultationWhatsApp' => fn () => \App\Support\ConsultationWhatsApp::sharedProps(),
+            'adminNotificationCount' => fn () => $request->user()
+                ? (int) \App\Models\AdminNotification::unread()->count()
+                : 0,
+            'adminNotifications' => fn () => $request->user()
+                ? \App\Models\AdminNotification::query()
+                    ->latest('id')
+                    ->limit(12)
+                    ->get()
+                    ->map(fn ($n) => [
+                        'id' => $n->id,
+                        'type' => $n->type,
+                        'title' => $n->title,
+                        'body' => $n->body,
+                        'href' => $n->href,
+                        'read_at' => $n->read_at?->toIso8601String(),
+                        'created_at' => $n->created_at?->toIso8601String(),
+                        'created_at_label' => $n->created_at?->locale('id')->diffForHumans(),
+                    ])
+                    ->all()
+                : [],
         ];
     }
 

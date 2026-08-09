@@ -24,7 +24,7 @@ export function GalleryLightbox({
   const [drag, setDrag] = React.useState(0)
   const [dragging, setDragging] = React.useState(false)
   const startX = React.useRef(0)
-  const widthRef = React.useRef(0)
+  const [width, setWidth] = React.useState(0)
   const wrapRef = React.useRef<HTMLDivElement>(null)
 
   const count = items.length
@@ -54,9 +54,8 @@ export function GalleryLightbox({
   }, [index, count])
 
   React.useEffect(() => {
-    widthRef.current = wrapRef.current?.clientWidth ?? 0
     function onResize() {
-      widthRef.current = wrapRef.current?.clientWidth ?? 0
+      setWidth(wrapRef.current?.clientWidth ?? 0)
     }
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
@@ -66,7 +65,7 @@ export function GalleryLightbox({
     if (count <= 1) return
     setDragging(true)
     startX.current = event.clientX
-    widthRef.current = wrapRef.current?.clientWidth ?? 0
+    setWidth(wrapRef.current?.clientWidth ?? 0)
     ;(event.target as Element).setPointerCapture?.(event.pointerId)
   }
 
@@ -77,7 +76,7 @@ export function GalleryLightbox({
 
   function onPointerUp() {
     if (!dragging) return
-    const threshold = widthRef.current * 0.18
+    const threshold = width * 0.18
     setDragging(false)
     if (Math.abs(drag) > threshold) {
       go(drag < 0 ? index + 1 : index - 1)
@@ -87,7 +86,7 @@ export function GalleryLightbox({
 
   if (index < 0 || !items[index]) return null
 
-  const translate = -index * 100 + (widthRef.current ? (drag / widthRef.current) * 100 : 0)
+  const translate = -index * 100 + (width ? (drag / width) * 100 : 0)
 
   return (
     <div

@@ -105,6 +105,8 @@ export default function FaqIndex({
   })
 
   React.useEffect(() => {
+    // Inertia refresh replaces the editable rows with the server snapshot.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(initialRows)
     setEditingId(null)
     setReorderMode(false)
@@ -112,13 +114,19 @@ export default function FaqIndex({
       rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
       status,
     })
+    // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRows, status])
 
   React.useEffect(() => {
+    // Query flags are navigation inputs, while the local state drives the panel.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowCreate(openCreate)
   }, [openCreate])
 
   React.useEffect(() => {
+    // Query flags are navigation inputs, while the local state drives the panel.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowMeta(openMeta)
   }, [openMeta])
 
@@ -127,8 +135,12 @@ export default function FaqIndex({
       createForm.reset()
       createForm.clearErrors()
       createForm.setData("category", categories[0] ?? "")
+      // Close the create panel after the server confirms creation.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowCreate(false)
     }
+    // `useForm` returns a new facade on every render; the flash transition is the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flash?.success])
 
   React.useEffect(() => {

@@ -4,13 +4,13 @@
 #
 # Usage:
 #   export RAGIL_SSH=ragil-dev
-#   export RAGIL_REMOTE_DIR=/var/www/website.4.0
+#   export RAGIL_REMOTE_DIR=/var/www/ragilaluminium
 #   bash scripts/dev-vps/rsync-to-vps.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SSH_HOST="${RAGIL_SSH:-ragil-dev}"
-REMOTE_DIR="${RAGIL_REMOTE_DIR:-/var/www/website.4.0}"
+REMOTE_DIR="${RAGIL_REMOTE_DIR:-/var/www/ragilaluminium}"
 
 echo "Rsync ${ROOT}/ → ${SSH_HOST}:${REMOTE_DIR}/"
 ssh "${SSH_HOST}" "mkdir -p '${REMOTE_DIR}'"

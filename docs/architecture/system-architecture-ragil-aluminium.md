@@ -94,12 +94,13 @@ The website is the **transaction engine** at the center of an ecosystem:
   catalog changes go through this module — no ad-hoc bulk scripts.
 
 ### 2.6 Media Module
-**Source of truth for product images/media URLs.**
-- Table: `product_media`.
-- Reads image URLs from Shopee source files, downloads and stores them in internal
-  storage/CDN, and exposes `stored_url`. Frontend consumes `stored_url` and respects
-  `visibility`. Uses archive-style flags (`visibility = archived` / `hidden`) instead
-  of deleting media.
+**Source of truth for product media attachments and physical assets.**
+- Tables: `media_assets` (one immutable shared image/video object) and
+  `product_media` (product/variant attachment flags).
+- Reads image URLs from Shopee source files, resolves repeated URLs/checksums to
+  one asset, and exposes derived URLs from the configured media disk. Frontend
+  respects attachment and asset visibility. Uses archive-style flags instead of
+  deleting media.
 
 ### 2.7 WhatsApp Module
 **Source of truth for messaging logs; notification & communication channel.**
@@ -141,10 +142,10 @@ Admin uploads Shopee file
   → Job: ProcessCatalogImport (queued; holds only jobId + storedPath)
       → parses rows → import_job_rows
       → writes products / product_variants / product_attributes
-      → creates product_media (status: pending, source_url from Shopee)
-  → Job: DownloadProductMedia (queued per media row)
-      → downloads image → stored_path / stored_url
-      → product_media.status: downloaded
+      → creates media_assets + product_media attachments (pending, source_url from Shopee)
+  → Job: DownloadMediaAsset (queued per shared asset)
+      → downloads image/video → checksum-based media-assets/{sha256}/...
+      → asset.status: ready; attachments.status: downloaded
   → import_jobs.status: completed (success_rows / failed_rows tallied)
 ```
 Failed rows stay as `import_job_rows` with `error_reason`; admins download
@@ -155,8 +156,9 @@ corrections. No hard deletes — archive flags instead.
 Customer: POST /cart/add → CartService (session/cookie)
 Customer: POST /checkout/validate → validation + shipping estimate
 Customer: POST /checkout/place-order
-  → CheckoutController@placeOrder
+  → CheckoutController@placeOrder (session idempotency key)
   → OrderService::createFromCart()
+      → unique orders.checkout_idempotency_key guards retries/concurrency
       → writes orders, order_items, initial payments
       → dispatches OrderCreated event
   → Listener: SendOrderCreatedWhatsApp
@@ -170,13 +172,20 @@ row or no API token exists.
 ### 3.3 Payment → Order → WhatsApp
 ```
 Admin: POST /admin/orders/{id}/payments (manual transfer confirmation)
-  → PaymentController@store → payments (completed, evidence_url)
+  → PaymentController@store → PaymentService (row locks + settlement sum)
+  → only full settlement marks order paid/processing
   → PaymentConfirmed event
   → Listener: SendPaymentConfirmedWhatsApp
       → whatsapp_messages (outbound), order status advances
 ```
 
-### 3.4 Shipping → Order / WhatsApp (two directions)
+### 3.4 Cancellation → Inventory
+
+`PUT /admin/orders/{id}/status` with `cancelled` routes through
+`OrderService::cancel()`: lock order, aggregate item quantities per variant,
+restore stock once, write the status event, then commit cancellation.
+
+### 3.5 Shipping → Order / WhatsApp (two directions)
 - **Outbound (admin-initiated):** `POST /admin/shipping/{id}/refresh` →
   `ShippingService::applyCarrierUpdate` re-queries carrier; updates
   `shipping_records` and cascades `orders.shipping_status`; customer is notified
@@ -186,7 +195,7 @@ Admin: POST /admin/orders/{id}/payments (manual transfer confirmation)
   `shipping_records` + cascades `orders.shipping_status` (graceful when waybill
   missing).
 
-### 3.5 WhatsApp Inbound (customer)
+### 3.6 WhatsApp Inbound (customer)
 ```
 POST /webhook/whatsapp → WhatsAppController@handle
   → parses payload Meta → whatsapp_messages (inbound, provider=meta)

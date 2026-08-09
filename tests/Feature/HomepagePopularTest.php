@@ -314,7 +314,7 @@ class HomepagePopularTest extends \Tests\TestCase
 
     public function test_fallback_promo_uses_newest_bouven_product_photo_not_dummy(): void
     {
-        HomepagePromotionSettings::update(['enabled' => false, 'max_slides' => 3]);
+        HomepagePromotionSettings::update(['enabled' => true, 'max_slides' => 3]);
 
         $older = Product::create([
             'parent_sku' => 'BOU-OLD',
@@ -505,6 +505,32 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->has('promoSlides', 1)
                 ->where('promoSlides.0.source', 'fallback')
                 ->where('promoSlides.0.layout', 'landing'));
+    }
+
+    public function test_manual_promos_are_the_only_campaign_slides_when_automatic_mode_is_off(): void
+    {
+        $this->makePromoProduct('BOU-MANUAL-1', 'Boven Manual', [
+            'promo_compare_price' => '1000000',
+        ]);
+
+        CmsBanner::create([
+            'title' => 'Promo Manual',
+            'image_url' => 'https://cdn.example/manual-banner.jpg',
+            'link_url' => '/product/BOU-MANUAL-1',
+            'sort_order' => 1,
+            'published' => true,
+        ]);
+
+        HomepagePromotionSettings::update(['enabled' => false, 'max_slides' => 3]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('promoSlides', 2)
+                ->where('promoSlides.0.source', 'fallback')
+                ->where('promoSlides.0.layout', 'landing')
+                ->where('promoSlides.1.source', 'manual')
+                ->where('promoSlides.1.href', '/product/BOU-MANUAL-1'));
     }
 
     public function test_admin_can_update_auto_promotion_settings(): void

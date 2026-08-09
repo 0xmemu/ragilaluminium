@@ -44,6 +44,8 @@ export default function Cart({
   const [cartItems, setCartItems] = React.useState<CartItem[]>(() => initialItems)
 
   React.useEffect(() => {
+    // Cart props are refreshed by Inertia after a mutation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCartItems(initialItems)
   }, [initialItems])
 
@@ -137,7 +139,7 @@ export default function Cart({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="flex shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -192,7 +194,7 @@ export default function Cart({
                   </span>
                 </label>
                 {selectedIds.size > 0 ? (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {selectedIds.size} item
                   </span>
                 ) : null}
@@ -202,14 +204,14 @@ export default function Cart({
                 <form onSubmit={deleteSelected} className="flex items-center gap-2">
                   {confirmDelete ? (
                     <>
-                      <span className="text-[11px] font-semibold text-destructive">
+                      <span className="text-xs font-semibold text-destructive">
                         Hapus {selectedIds.size} item?
                       </span>
                       <Button
                         type="submit"
                         variant="destructive"
                         size="xs"
-                        className="h-7 px-2.5 text-[10px]"
+                        className="h-7 px-2.5 text-[11px]"
                         disabled={deleteForm.processing}
                       >
                         Ya, hapus
@@ -218,7 +220,7 @@ export default function Cart({
                         type="button"
                         variant="ghost"
                         size="xs"
-                        className="h-7 px-2.5 text-[10px]"
+                        className="h-7 px-2.5 text-[11px]"
                         onClick={cancelDelete}
                         disabled={deleteForm.processing}
                       >
@@ -230,7 +232,7 @@ export default function Cart({
                       type="submit"
                       variant="secondary"
                       size="xs"
-                      className="h-7 gap-1 px-2 text-[10px] text-destructive border-destructive/30"
+                      className="h-7 gap-1 px-2 text-[11px] text-destructive border-destructive/30"
                     >
                       <Icon name="x" className="size-3" aria-hidden="true" />
                       Hapus ({selectedIds.size})
@@ -268,7 +270,7 @@ export default function Cart({
                     <dt className="text-muted-foreground">
                       Subtotal
                       {selectedIds.size !== cartItems.length ? (
-                        <span className="ml-1 text-[10px]">({selectedIds.size} item)</span>
+                        <span className="ml-1 text-xs">({selectedIds.size} item)</span>
                       ) : null}
                     </dt>
                     <dd className="tabular-nums font-semibold">{formatCurrency(selectedSubtotal)}</dd>
@@ -316,7 +318,7 @@ export default function Cart({
 
             <MobileStickyCta aria-label="Lanjut checkout" spacerClassName="h-[4.5rem]">
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="text-[11px] font-medium text-muted-foreground">
+                <span className="text-xs font-medium text-muted-foreground">
                   Subtotal {selectedIds.size !== cartItems.length ? `(${selectedIds.size} item)` : ""}
                 </span>
                 <span className="tabular-nums text-sm font-bold leading-5">

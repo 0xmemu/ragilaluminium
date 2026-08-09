@@ -15,9 +15,11 @@ return [
     // semua host publik (private/reserved IP tetap diblokir).
     'allowed_source_hosts' => array_filter(explode(',', (string) env('MEDIA_ALLOWED_HOSTS', 'cf.shopee.co.id,down-id.img.susercontent.com,cvws.img.susercontent.com,deo.shopeemobile.com'))),
 
-    'max_bytes' => (int) env('MEDIA_MAX_BYTES', 10 * 1024 * 1024), // 10 MB
+    'max_bytes' => (int) env('MEDIA_MAX_BYTES', 10 * 1024 * 1024), // 10 MB image
+    'max_video_bytes' => (int) env('MEDIA_MAX_VIDEO_BYTES', 50 * 1024 * 1024), // 50 MB video
     'download_timeout' => (int) env('MEDIA_DOWNLOAD_TIMEOUT', 60),
     'allowed_mime' => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    'allowed_video_mime' => ['video/mp4', 'video/webm', 'video/quicktime'],
 
     // Disk name in config/filesystems.php (`media` switches local vs s3 via MEDIA_DISK).
     'disk' => 'media',

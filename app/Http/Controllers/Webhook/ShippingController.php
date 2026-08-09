@@ -15,8 +15,7 @@ class ShippingController extends Controller
     public function __construct(
         protected ShippingService $shipping,
         protected JntCargoClient $jnt,
-    ) {
-    }
+    ) {}
 
     /**
      * Push status dari J&T Cargo.
@@ -39,7 +38,7 @@ class ShippingController extends Controller
 
         if (! $this->jnt->verifyWebhookSignature($rawJson, $signature)) {
             Log::channel('jnt')->warning('JNT webhook signature invalid', [
-                'ip' => $request->ip(),
+                'source_ip_ref' => $this->logReference($request->ip()),
                 'has_signature' => (bool) $signature,
             ]);
 
@@ -55,8 +54,8 @@ class ShippingController extends Controller
         $txlogisticId = $payload['txlogisticId'] ?? $payload['customerOrderId'] ?? null;
 
         Log::channel('jnt')->info('JNT webhook received', [
-            'waybill' => $waybill,
-            'customer_order_id' => $txlogisticId,
+            'waybill_ref' => $this->logReference($waybill),
+            'customer_order_ref' => $this->logReference($txlogisticId),
             'detail_count' => is_array($payload['details'] ?? null) ? count($payload['details']) : 0,
         ]);
 
@@ -88,6 +87,15 @@ class ShippingController extends Controller
         }
 
         return $this->ack(true);
+    }
+
+    protected function logReference(?string $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        return substr(hash('sha256', $value), 0, 12);
     }
 
     protected function ack(bool $success, ?string $message = null): JsonResponse

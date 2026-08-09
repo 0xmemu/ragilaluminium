@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
 use App\Services\StorePerformanceService;
+use App\Support\ExportSafety;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -54,6 +55,7 @@ class AnalyticsController extends Controller
                 ['value' => 'day', 'label' => 'Per Hari'],
                 ['value' => 'week', 'label' => 'Per Minggu'],
                 ['value' => 'month', 'label' => 'Per Bulan'],
+                ['value' => 'year', 'label' => 'Per Tahun'],
             ],
             'report' => $payload,
             'exportUrl' => route('admin.analytics.store-performance.export', [
@@ -77,18 +79,20 @@ class AnalyticsController extends Controller
 
         $filename = 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.csv';
 
+        ExportSafety::assertPerformancePayloadWithinLimit($payload);
+
         return response()->streamDownload(function () use ($payload) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
 
-            fputcsv($out, ['Performa Toko', $payload['range']['label']]);
-            fputcsv($out, ['Dari', $payload['range']['from_date'], 'Sampai', $payload['range']['to_date']]);
-            fputcsv($out, []);
-            fputcsv($out, ['Bagian', 'Metrik', 'Nilai', 'Periode sebelumnya', 'Perubahan %']);
+            ExportSafety::writeCsvRow($out, ['Performa Toko', $payload['range']['label']]);
+            ExportSafety::writeCsvRow($out, ['Dari', $payload['range']['from_date'], 'Sampai', $payload['range']['to_date']]);
+            ExportSafety::writeCsvRow($out, []);
+            ExportSafety::writeCsvRow($out, ['Bagian', 'Metrik', 'Nilai', 'Periode sebelumnya', 'Perubahan %']);
 
             foreach ($payload['sections'] as $section) {
                 foreach ($section['kpis'] as $kpi) {
-                    fputcsv($out, [
+                    ExportSafety::writeCsvRow($out, [
                         $section['title'],
                         $kpi['label'],
                         $kpi['value'],
@@ -98,11 +102,11 @@ class AnalyticsController extends Controller
                 }
             }
 
-            fputcsv($out, []);
-            fputcsv($out, ['Produk terlaris']);
-            fputcsv($out, ['SKU', 'Nama', 'Unit', 'Omzet', 'Jumlah order']);
+            ExportSafety::writeCsvRow($out, []);
+            ExportSafety::writeCsvRow($out, ['Produk terlaris']);
+            ExportSafety::writeCsvRow($out, ['SKU', 'Nama', 'Unit', 'Omzet', 'Jumlah order']);
             foreach ($payload['top_products'] as $product) {
-                fputcsv($out, [
+                ExportSafety::writeCsvRow($out, [
                     $product['parent_sku'],
                     $product['name'],
                     $product['units'],
@@ -111,11 +115,11 @@ class AnalyticsController extends Controller
                 ]);
             }
 
-            fputcsv($out, []);
-            fputcsv($out, ['Customer']);
-            fputcsv($out, ['Nama', 'Telepon', 'Frekuensi', 'Total belanja', 'Order terakhir']);
+            ExportSafety::writeCsvRow($out, []);
+            ExportSafety::writeCsvRow($out, ['Customer']);
+            ExportSafety::writeCsvRow($out, ['Nama', 'Telepon', 'Frekuensi', 'Total belanja', 'Order terakhir']);
             foreach ($payload['customers'] as $customer) {
-                fputcsv($out, [
+                ExportSafety::writeCsvRow($out, [
                     $customer['customer_name'],
                     $customer['customer_phone'],
                     $customer['order_count'],
@@ -125,11 +129,11 @@ class AnalyticsController extends Controller
             }
 
             foreach ($payload['charts'] as $chart) {
-                fputcsv($out, []);
-                fputcsv($out, [$chart['title']]);
-                fputcsv($out, ['Bucket', 'Label', 'Nilai']);
+                ExportSafety::writeCsvRow($out, []);
+                ExportSafety::writeCsvRow($out, [$chart['title']]);
+                ExportSafety::writeCsvRow($out, ['Bucket', 'Label', 'Nilai']);
                 foreach ($chart['series'] as $point) {
-                    fputcsv($out, [$point['bucket'], $point['label'], $point['value']]);
+                    ExportSafety::writeCsvRow($out, [$point['bucket'], $point['label'], $point['value']]);
                 }
             }
 

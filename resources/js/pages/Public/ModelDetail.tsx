@@ -134,7 +134,7 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
         <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
           <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
-        <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
+        <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
           selengkapnya
         </span>
       </Link>
@@ -170,7 +170,7 @@ function DesignProductRail({
           <p className="min-w-0 text-sm leading-7 text-muted-foreground">{sizeLabel}</p>
           <Link
             href={variant.href}
-            className="inline-flex h-7 shrink-0 items-center gap-1 text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
           >
             Lihat selengkapnya
             <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
@@ -312,7 +312,7 @@ export default function ModelDetail({
                 <button
                   type="button"
                   onClick={() => window.history.back()}
-                  className="flex shrink-0 items-center justify-center sm:hidden"
+                  className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                   aria-label="Kembali"
                 >
                   <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -343,7 +343,7 @@ export default function ModelDetail({
                         className="size-7 text-foreground sm:size-8"
                         aria-hidden="true"
                       />
-                      <span className="text-[10px] font-medium leading-snug text-foreground/85 sm:text-xs">
+                      <span className="text-xs font-medium leading-snug text-foreground/85">
                         {item.label}
                       </span>
                     </li>

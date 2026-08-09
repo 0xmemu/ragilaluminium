@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Orders\OrderStateMachine;
 use App\Events\ShippingStatusUpdated;
 use App\Models\EventLog;
 use App\Models\Order;
@@ -9,14 +10,17 @@ use App\Models\ShippingRecord;
 use App\Services\Shipping\JntCargoClient;
 use App\Services\Shipping\JntResponse;
 use App\Support\ShippingSubsidySettings;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ShippingService
 {
-    public function __construct(protected JntCargoClient $jnt)
-    {
-    }
+    public function __construct(
+        protected JntCargoClient $jnt,
+        protected OrderStateMachine $states,
+    ) {}
 
     /**
      * Estimasi ongkir. Jika J&T aktif & tarif dikonfigurasi, pakai API tarif;
@@ -82,7 +86,7 @@ class ShippingService
                         return round((float) $cost, 2);
                     }
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::channel('jnt')->warning('JNT tariff failed, fallback to local estimate', ['error' => $e->getMessage()]);
             }
         }
@@ -260,7 +264,6 @@ class ShippingService
         ?string $scanTypeCode = null,
     ): void {
         $mapped = $this->mapCarrierStatus($rawStatus, $scanTypeCode);
-        $previous = $record->status;
 
         if ($mapped === null) {
             // Status tak dikenal: simpan mentahnya untuk audit, jangan cascade.
@@ -273,15 +276,47 @@ class ShippingService
             return;
         }
 
-        DB::transaction(function () use ($record, $mapped, $statusRaw, $rawStatus, $trackingUrl, $previous, $occurredAt) {
+        $eventTime = $this->carrierEventTime($occurredAt);
+
+        DB::transaction(function () use ($record, $mapped, $statusRaw, $rawStatus, $trackingUrl, $eventTime) {
+            $record = ShippingRecord::query()->lockForUpdate()->findOrFail($record->id);
+            $previous = $record->status;
+
+            if ($record->last_status_at !== null && $eventTime->lt($record->last_status_at)) {
+                Log::warning('carrier_update_ignored_stale', [
+                    'shipping_record_id' => $record->id,
+                    'from' => $previous,
+                    'to' => $mapped,
+                    'event_time' => $eventTime->toIso8601String(),
+                    'last_status_at' => $record->last_status_at->toIso8601String(),
+                ]);
+
+                return;
+            }
+
+            if (! $this->states->canTransitionShipping($previous, $mapped)) {
+                $record->update([
+                    'status_raw' => $statusRaw ?? $rawStatus,
+                    'last_status_at' => $eventTime,
+                    'tracking_url' => $trackingUrl ?? $record->tracking_url,
+                ]);
+                Log::warning('carrier_update_ignored_regression', [
+                    'shipping_record_id' => $record->id,
+                    'from' => $previous,
+                    'to' => $mapped,
+                ]);
+
+                return;
+            }
+
             $record->update([
                 'status' => $mapped,
                 'status_raw' => $statusRaw ?? $rawStatus,
-                'last_status_at' => $occurredAt ? \Illuminate\Support\Carbon::parse($occurredAt) : now(),
+                'last_status_at' => $eventTime,
                 'tracking_url' => $trackingUrl ?? $record->tracking_url,
             ]);
 
-            $order = $record->order;
+            $order = $record->order()->lockForUpdate()->first();
             if ($order) {
                 $order->update(['shipping_status' => $mapped]);
                 $this->cascadeOrderStatus($order, $mapped);
@@ -305,14 +340,48 @@ class ShippingService
     protected function cascadeOrderStatus(Order $order, string $shippingStatus): void
     {
         $target = match ($shippingStatus) {
-            'in_transit' => in_array($order->order_status, ['pending_payment', 'processing'], true) ? 'shipped' : null,
+            'in_transit' => 'shipped',
             'delivered' => 'delivered',
             'returned' => 'return_in_process',
             default => null,
         };
 
         if ($target && $order->order_status !== $target) {
-            $order->update(['order_status' => $target]);
+            if ($this->states->canTransition($order, $target, 'carrier')) {
+                $this->states->transition(
+                    $order,
+                    $target,
+                    null,
+                    'carrier',
+                    ['shipping_status' => $shippingStatus],
+                );
+
+                return;
+            }
+
+            Log::warning('carrier_order_transition_rejected', [
+                'order_id' => $order->id,
+                'from' => $order->order_status,
+                'to' => $target,
+                'shipping_status' => $shippingStatus,
+            ]);
+        }
+    }
+
+    protected function carrierEventTime(?string $occurredAt): Carbon
+    {
+        if (blank($occurredAt)) {
+            return now();
+        }
+
+        try {
+            return Carbon::parse($occurredAt);
+        } catch (Throwable $exception) {
+            Log::warning('carrier_event_time_invalid', [
+                'exception_class' => $exception::class,
+            ]);
+
+            return now();
         }
     }
 

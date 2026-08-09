@@ -157,6 +157,7 @@ export interface SharedPageProps extends Record<string, unknown> {
     admin: Record<string, AdminNavGroup>
   }
   csrf: string
+  adminNotificationCount?: number
 }
 
 export interface SelectOption {
@@ -287,6 +288,9 @@ export interface ProductVariant {
   id: number
   variant_sku: string
   price: number
+  sale_price?: number | null
+  compare_price?: number | null
+  flash_sale?: boolean
   stock: number
   variation_1_name?: string | null
   variation_1_option?: string | null
@@ -462,6 +466,18 @@ export interface ResourceIndexProps {
   columns: ResourceColumn[]
   rows: ResourceRow[]
   pagination?: Pagination
+  assetLibrary?: Array<{
+    id: number
+    label: string
+    kind: string
+    status: string
+    usage_count: number
+    preview_url?: string | null
+    attach_url: string
+  }>
+  assetFilters?: { q: string; kind: string; status: string }
+  productSearch?: string
+  productOptions?: Array<{ id: number; label: string }>
 }
 
 export interface ResourceShowProps extends Record<string, unknown> {

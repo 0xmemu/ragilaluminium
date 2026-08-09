@@ -96,6 +96,10 @@ interface OrdersIndexProps {
   dateFrom?: string
   dateTo?: string
   searchQuery: string
+  summary: {
+    count: number
+    total_value: number
+  }
   orders: OrderCard[]
   pagination: PaginationData
   exportUrl: string
@@ -169,7 +173,16 @@ function OrderCardRow({
   queryState,
 }: {
   order: OrderCard
-  queryState: { order_status: string; q: string; sort: string }
+  queryState: {
+    order_status: string
+    q: string
+    sort: string
+    payment_status: string
+    shipping_status: string
+    date_preset: string
+    date_from: string
+    date_to: string
+  }
 }) {
   const [expanded, setExpanded] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
@@ -187,6 +200,11 @@ function OrderCardRow({
         filter_status: queryState.order_status,
         filter_q: queryState.q,
         filter_sort: queryState.sort,
+        filter_payment_status: queryState.payment_status,
+        filter_shipping_status: queryState.shipping_status,
+        filter_date_preset: queryState.date_preset,
+        filter_date_from: queryState.date_from,
+        filter_date_to: queryState.date_to,
         ...(nextStatus === "cancelled" && cancelReason ? { cancel_reason: cancelReason } : {}),
       },
       {
@@ -439,6 +457,7 @@ export default function OrdersIndex({
   dateFrom = "",
   dateTo = "",
   searchQuery,
+  summary,
   orders,
   pagination,
   exportUrl,
@@ -450,6 +469,11 @@ export default function OrdersIndex({
     order_status: activeStatus,
     q: searchQuery,
     sort: activeSort,
+    payment_status: activePaymentStatus,
+    shipping_status: activeShippingStatus,
+    date_preset: activeDatePreset,
+    date_from: activeDatePreset === "range" ? dateFrom : "",
+    date_to: activeDatePreset === "range" ? dateTo : "",
   }
 
   function visit(params: Record<string, string | undefined>) {
@@ -647,6 +671,16 @@ export default function OrdersIndex({
         ) : null}
       </div>
 
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>
+          <span className="tabular-nums font-semibold text-foreground">{formatNumber(summary.count)}</span>{" "}
+          pesanan sesuai filter
+        </span>
+        <span className="tabular-nums">
+          Nilai pesanan:{" "}
+          <span className="font-semibold text-foreground">{formatCurrency(summary.total_value)}</span>
+        </span>
+      </div>
 
       {/* Daftar pesanan */}
       <div className="mt-5">
@@ -696,4 +730,3 @@ export default function OrdersIndex({
     </AdminLayout>
   )
 }
-

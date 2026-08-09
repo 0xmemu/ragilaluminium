@@ -68,11 +68,15 @@ export default function MasalahSolusiIndex({
   })
 
   React.useEffect(() => {
+    // Inertia refresh replaces the editable rows with the server snapshot.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(initialRows)
     reorderForm.setData(
       "rows",
       initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
     )
+    // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRows])
 
   function apply(next?: Partial<{ q: string }>) {

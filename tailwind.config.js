@@ -8,8 +8,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Noto Sans Variable', 'Noto Sans', 'Helvetica Neue', 'Arial', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-                display: ['Noto Sans Variable', 'Noto Sans', 'Helvetica Neue', 'Arial', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+                display: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
                 mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'monospace'],
             },
             colors: {
@@ -18,6 +18,8 @@ export default {
                 ring: 'hsl(var(--ring))',
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
+                action: 'hsl(var(--action-foreground))',
+                body: 'hsl(var(--body-foreground))',
                 sale: 'hsl(var(--sale))',
                 surface: {
                     DEFAULT: 'hsl(var(--surface))',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Services\CustomerService;
+use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -159,10 +160,12 @@ class CustomerController extends Controller
             })
             ->latest('id');
 
+        ExportSafety::assertQueryWithinLimit($query);
+
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, [
+            ExportSafety::writeCsvRow($out, [
                 'Kode', 'Nama', 'Telepon', 'Email', 'Alamat', 'Kota', 'Provinsi',
                 'Jumlah Order', 'Total Belanja', 'Status', 'Fraud Score', 'Fraud Label',
             ]);
@@ -170,7 +173,7 @@ class CustomerController extends Controller
             $query->chunk(100, function ($chunk) use ($out) {
                 foreach ($chunk as $customer) {
                     $metrics = $this->customers->metricsFor($customer);
-                    fputcsv($out, [
+                    ExportSafety::writeCsvRow($out, [
                         $this->customers->publicCode($customer),
                         $customer->name,
                         $customer->phone,

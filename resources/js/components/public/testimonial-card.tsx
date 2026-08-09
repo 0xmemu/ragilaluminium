@@ -24,7 +24,6 @@ export function TestimonialCard({
   onOpen?: () => void
 }) {
   const [previewOpen, setPreviewOpen] = React.useState(false)
-  const [expanded, setExpanded] = React.useState(false)
   const rating = Math.max(0, Math.min(5, testimonial.rating ?? 0))
   const cardHref = href ?? testimonial.product?.href ?? null
   const isScreenshot = variant === "screenshot"
@@ -96,7 +95,7 @@ export function TestimonialCard({
   const clampLines = hasImage ? (compact ? "line-clamp-2" : "line-clamp-3") : (compact ? "line-clamp-4" : "line-clamp-5")
 
   const body = (
-    <div className={cn("flex min-h-0 flex-1 flex-col", compact ? "p-3" : "p-4")}>
+    <div className="flex min-h-0 flex-1 flex-col p-[5px]">
       <p
         className={cn(
           "font-semibold text-foreground",
@@ -107,7 +106,7 @@ export function TestimonialCard({
       </p>
       {rating > 0 ? (
         <div
-          className="mt-1.5 flex gap-0.5 text-warning"
+          className="mt-1 flex gap-0.5 text-warning"
           aria-label={`${rating} dari 5 bintang`}
         >
           {Array.from({ length: 5 }).map((_, index) => (
@@ -125,25 +124,12 @@ export function TestimonialCard({
         <blockquote
           className={cn(
             "text-foreground",
-            compact ? "mt-2 text-xs leading-5" : "mt-3 text-sm leading-6",
-            !expanded && clampLines,
+            compact ? "mt-1.5 text-xs leading-5" : "mt-2 text-sm leading-6",
+            clampLines,
           )}
         >
           “{message}”
         </blockquote>
-      ) : null}
-      {message ? (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            setExpanded((value) => !value)
-          }}
-          className="mt-2 self-start text-xs font-medium text-primary hover:underline"
-        >
-          {expanded ? "sembunyikan" : "selengkapnya"}
-        </button>
       ) : null}
     </div>
   )

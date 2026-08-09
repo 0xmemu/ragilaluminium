@@ -26,8 +26,8 @@ The public store has several main entry points:
   - Window, Door, Bouven views.  
 
 - **Model/series filters**  
-  - JUNGKIT, SLIDING, SWING, FIXED, ZIGZAG, etc.  
-  - Design variants (PLAIN, ORNAMENT, COMBINATION, SERIES_A/B/C).
+  - JUNGKIT, SLIDING, SWING, KACA_MATI, ZIGZAG.
+  - Design variants (POLOS, ORNAMEN, KOMBINASI, SERIES_A/B/C).
 
 - **Search**  
   - Keyword search across product names, SKUs, attributes.
@@ -114,8 +114,8 @@ Provide structured browsing for customers focused on a specific category.
   - Optionally highlight sub‑models (e.g. “Sliding Windows”).
 
 - Filters:
-  - Product model (JUNGKIT, SLIDING, SWING, FIXED, ZIGZAG).  
-  - Design variant (PLAIN, ORNAMENT, COMBINATION, SERIES_A/B/C).  
+  - Product model (JUNGKIT, SLIDING, SWING, KACA_MATI, ZIGZAG).
+  - Design variant (POLOS, ORNAMEN, KOMBINASI, SERIES_A/B/C).
   - Price range.  
   - Attributes (e.g. color, glass type).  
 
@@ -343,10 +343,10 @@ Backend:
 
 ### 7.1 Order Status Page
 
-If customers can view status via website (with order number + phone or account login):
+Customers use guest-only order status access; no customer account or login is required.
 
 - Entry:
-  - Form to input order number and phone/email (or login).  
+  - Form to input order number and phone/email.
 
 - Status view:
   - Summary of order.  

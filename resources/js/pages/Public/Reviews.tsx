@@ -15,17 +15,20 @@ import type { SharedPageProps, Testimonial } from "@/types"
 export default function Reviews({
   pageMeta,
   marketplaceTestimonials = [],
+  testimonialMode = "marketplace",
   installationsHref,
 }: {
   pageMeta?: { title: string; heading: string; subtitle: string } | null
   marketplaceTestimonials?: Testimonial[]
+  testimonialMode?: "marketplace" | "website_fallback"
   installationsHref?: string
 }) {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const heading = pageMeta?.heading?.trim().replace(/\.$/, "") || "Apa kata pelanggan kami"
-  const subtitle =
-    pageMeta?.subtitle?.trim() ||
-    "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website."
+  const isWebsiteFallback = testimonialMode === "website_fallback"
+  const subtitle = isWebsiteFallback
+    ? "Untuk sementara, kami menampilkan ulasan yang masuk lewat website. Screenshot pesan pelanggan akan ditambahkan setelah aset tersedia."
+    : pageMeta?.subtitle?.trim() || "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website."
   const docTitle = pageMeta?.title?.trim() || heading
 
   const galleryItems = React.useMemo(() => toGalleryItems(marketplaceTestimonials), [marketplaceTestimonials])
@@ -52,7 +55,7 @@ export default function Reviews({
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -62,10 +65,10 @@ export default function Reviews({
             <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">{subtitle}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="secondary" size="sm">
-                <Link href={routeUrl("ulasan")}>Ulasan pelanggan di website</Link>
+              <Button asChild variant="secondary" size="md">
+                <Link href={routeUrl("ulasan")}>{isWebsiteFallback ? "Semua ulasan website" : "Ulasan pelanggan di website"}</Link>
               </Button>
-              <Button asChild variant="ghost" size="sm">
+              <Button asChild variant="ghost" size="md">
                 <Link href={installationsHref ?? routeUrl("installation.index")}>
                   Hasil pemasangan
                 </Link>
@@ -85,7 +88,7 @@ export default function Reviews({
                     key={testimonial.id}
                     testimonial={testimonial}
                     compact
-                    variant="screenshot"
+                    variant={isWebsiteFallback ? "review" : "screenshot"}
                     onOpen={itemIndex >= 0 ? () => setLightboxIndex(itemIndex) : undefined}
                   />
                 )
@@ -94,8 +97,8 @@ export default function Reviews({
           ) : (
             <EmptyState
               icon="message-circle"
-              title="Belum ada screenshot"
-              description="Bukti percakapan pelanggan akan tampil di sini. Sementara itu, lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
+              title="Belum ada ulasan pelanggan"
+              description="Bukti pengalaman pelanggan akan tampil di sini. Sementara itu, lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
               action={
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button asChild variant="secondary">

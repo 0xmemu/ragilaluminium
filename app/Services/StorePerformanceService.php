@@ -83,9 +83,23 @@ class StorePerformanceService
             [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
         }
 
-        $seconds = max(1, $end->diffInSeconds($start));
-        $previousTo = $start->copy()->subSecond();
-        $previousFrom = $previousTo->copy()->subSeconds($seconds - 1);
+        // Carbon 3: diffInSeconds default absolute=false ??? hitung dari $start ke $end.
+        $fullSeconds = max(1, (int) round($start->diffInSeconds($end)));
+        // Spec ??G: periode berjalan ??? bandingkan sampai jam sama; selesai ??? penuh.
+        $now = now();
+        $elapsedSeconds = $now->lessThan($end)
+            ? max(1, (int) round($start->diffInSeconds($now)))
+            : $fullSeconds;
+        $isRunning = $elapsedSeconds < $fullSeconds;
+        if ($isRunning) {
+            // Periode masih berjalan: potong periode sebelumnya di jam yang sama.
+            $previousFrom = $start->copy()->subSeconds($fullSeconds);
+            $previousTo = $previousFrom->copy()->addSeconds($elapsedSeconds - 1);
+        } else {
+            // Periode selesai: bandingkan penuh.
+            $previousTo = $start->copy()->subSecond();
+            $previousFrom = $previousTo->copy()->subSeconds($fullSeconds - 1);
+        }
 
         $autoGranularity = match (true) {
             $period === 'today' || $period === 'yesterday' => 'hour',
@@ -94,7 +108,7 @@ class StorePerformanceService
             default => 'day',
         };
 
-        $granularity = in_array($granularity, ['hour', 'day', 'week', 'month'], true)
+        $granularity = in_array($granularity, ['hour', 'day', 'week', 'month', 'year'], true)
             ? $granularity
             : $autoGranularity;
 
@@ -106,6 +120,7 @@ class StorePerformanceService
             'label' => $label,
             'granularity' => $granularity,
             'period' => $period,
+            'is_running' => $isRunning,
         ];
     }
 
@@ -121,7 +136,7 @@ class StorePerformanceService
         $salesKpis = [
             $this->kpi('omzet', 'Omset', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
-            $this->kpi('models', 'Jumlah Model Produk', $current['models_sold'], $previous['models_sold'], 'number'),
+            $this->kpi('models', 'Model/Sub Model Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
             $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number'),
             $this->kpi('avg_unit_price', 'Harga Rata-rata per Unit', $current['avg_unit_price'], $previous['avg_unit_price'], 'currency'),
         ];
@@ -159,6 +174,9 @@ class StorePerformanceService
                             ? ''
                             : ' – '.$range['previous_to']->translatedFormat('j M Y')
                     ),
+                'compare_from_date' => $range['previous_from']->toDateString(),
+                'compare_to_date' => $range['previous_to']->toDateString(),
+                'is_running' => $range['is_running'],
             ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
@@ -174,11 +192,11 @@ class StorePerformanceService
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'revenue'),
                 ],
                 [
-                    'key' => 'orders',
-                    'title' => 'Tren Jumlah Pesanan',
-                    'total' => $current['orders'],
+                    'key' => 'visitors',
+                    'title' => 'Tren Pengunjung',
+                    'total' => $current['visitors'],
                     'total_format' => 'number',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'orders'),
+                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'visitors'),
                 ],
                 [
                     'key' => 'units',
@@ -213,9 +231,10 @@ class StorePerformanceService
         $modelsSold = $revenueOrderIds->isEmpty()
             ? 0
             : (int) OrderItem::query()
-                ->whereIn('order_id', $revenueOrderIds)
-                ->whereNotNull('product_id')
-                ->selectRaw('COUNT(DISTINCT product_id) as aggregate')
+                ->join('products', 'products.id', '=', 'order_items.product_id')
+                ->whereIn('order_items.order_id', $revenueOrderIds)
+                ->whereNotNull('order_items.product_id')
+                ->selectRaw("COUNT(DISTINCT products.product_model || '|' || COALESCE(products.design_variant, '')) as aggregate")
                 ->value('aggregate');
 
         $avgUnitPrice = $units > 0 ? round($revenue / $units, 2) : 0.0;
@@ -254,6 +273,27 @@ class StorePerformanceService
      */
     public function series(Carbon $from, Carbon $to, string $granularity, string $metric): array
     {
+        // Visitors hanya punya data per hari ??? turunkan granularity jam ke hari.
+        $visitorGranularity = $granularity === 'hour' ? 'day' : $granularity;
+        if ($metric === 'visitors') {
+            $buckets = $this->emptyBuckets($from, $to, $visitorGranularity);
+            $rows = PerformanceMetric::query()
+                ->selectRaw($this->bucketSelect('metric_date', $visitorGranularity).' as bucket')
+                ->selectRaw('SUM(metric_value) as value')
+                ->where('metric_name', 'storefront_unique_visitors')
+                ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
+                ->groupBy('bucket')
+                ->pluck('value', 'bucket');
+
+            return collect($buckets)->map(function (array $bucket) use ($rows) {
+                return [
+                    'bucket' => $bucket['key'],
+                    'label' => $bucket['label'],
+                    'value' => round((float) ($rows[$bucket['key']] ?? 0), 2),
+                ];
+            })->values()->all();
+        }
+
         $buckets = $this->emptyBuckets($from, $to, $granularity);
 
         if ($metric === 'units') {
@@ -524,6 +564,7 @@ class StorePerformanceService
                 'hour' => "strftime('%Y-%m-%d %H:00:00', {$column})",
                 'week' => "strftime('%Y-%W', {$column})",
                 'month' => "strftime('%Y-%m', {$column})",
+                'year' => "strftime('%Y', {$column})",
                 default => "strftime('%Y-%m-%d', {$column})",
             };
         }
@@ -532,6 +573,7 @@ class StorePerformanceService
             'hour' => "DATE_FORMAT({$column}, '%Y-%m-%d %H:00:00')",
             'week' => "DATE_FORMAT({$column}, '%x-%v')",
             'month' => "DATE_FORMAT({$column}, '%Y-%m')",
+            'year' => "DATE_FORMAT({$column}, '%Y')",
             default => "DATE({$column})",
         };
     }
@@ -574,6 +616,18 @@ class StorePerformanceService
                 $key = $cursor->format('Y-m');
                 $buckets[] = ['key' => $key, 'label' => $cursor->translatedFormat('M Y')];
                 $cursor->addMonth();
+            }
+
+            return $buckets;
+        }
+
+        if ($granularity === 'year') {
+            $cursor = $from->copy()->startOfYear();
+            $end = $to->copy()->startOfYear();
+            while ($cursor <= $end) {
+                $key = $cursor->format('Y');
+                $buckets[] = ['key' => $key, 'label' => (string) $cursor->year];
+                $cursor->addYear();
             }
 
             return $buckets;

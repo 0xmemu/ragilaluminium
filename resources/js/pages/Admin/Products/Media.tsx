@@ -32,11 +32,23 @@ interface MediaRow {
   product_variant_id: number | null
   variant_label: string
   thumb_url?: string | null
+  media_kind?: string
+  media_url?: string | null
   update_url: string
   set_main_url: string
   archive_url: string
   redownload_url: string
   destroy_url?: string | null
+}
+
+interface LibraryAsset {
+  id: number
+  label: string
+  kind: string
+  status: string
+  usage_count: number
+  thumb_url?: string | null
+  media_url?: string | null
 }
 
 function MediaRowCard({
@@ -60,7 +72,9 @@ function MediaRowCard({
     <article className="border-b border-border p-4 last:border-b-0">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30">
-          {row.thumb_url ? (
+          {row.media_kind === "video" && row.media_url ? (
+            <video src={row.media_url} controls muted preload="metadata" className="h-full w-full object-cover" />
+          ) : row.thumb_url ? (
             <img src={row.thumb_url} alt="" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -232,6 +246,9 @@ export default function ProductMediaPage({
   product,
   variants = [],
   filters,
+  assetSearch = "",
+  assetFilters,
+  library = [],
   storeUrl,
   indexUrl,
   rows = [],
@@ -245,12 +262,20 @@ export default function ProductMediaPage({
   }
   variants: VariantOption[]
   filters: { variant: string }
+  assetSearch?: string
+  assetFilters?: { kind: string; status: string }
+  library?: LibraryAsset[]
   storeUrl: string
   indexUrl: string
   rows: MediaRow[]
 }) {
   const [variantFilter, setVariantFilter] = React.useState(filters.variant)
+  const [librarySearch, setLibrarySearch] = React.useState(assetSearch)
+  const [libraryKind, setLibraryKind] = React.useState(assetFilters?.kind ?? "")
+  const [libraryStatus, setLibraryStatus] = React.useState(assetFilters?.status ?? "")
   const form = useForm<{
+    kind: "image" | "video"
+    media_asset_id: string
     source_url: string
     position: number
     is_main_image: boolean
@@ -261,6 +286,8 @@ export default function ProductMediaPage({
     product_variant_id: string
     upload: File | null
   }>({
+    kind: "image",
+    media_asset_id: "",
     source_url: "",
     position: 1,
     is_main_image: false,
@@ -277,7 +304,15 @@ export default function ProductMediaPage({
     setVariantFilter(next)
     router.get(
       indexUrl,
-      next ? { variant: next } : {},
+      { variant: next || undefined, q: librarySearch || undefined, kind: libraryKind || undefined, asset_status: libraryStatus || undefined },
+      { preserveState: true, preserveScroll: true },
+    )
+  }
+
+  function searchLibrary() {
+    router.get(
+      indexUrl,
+      { variant: variantFilter || undefined, q: librarySearch || undefined, kind: libraryKind || undefined, asset_status: libraryStatus || undefined },
       { preserveState: true, preserveScroll: true },
     )
   }
@@ -314,7 +349,7 @@ export default function ProductMediaPage({
           ))}
         </Select>
         <p className="text-xs text-muted-foreground">
-          {rows.length} gambar · {variants.length} varian tersedia
+          {rows.length} media · {variants.length} varian tersedia
         </p>
       </div>
 
@@ -361,14 +396,77 @@ export default function ProductMediaPage({
         >
           <h2 className="text-xl font-semibold">Tambah media</h2>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Untuk 4 warna × 3 kaca: unggah foto per kombinasi varian, atau foto umum tanpa tautan.
+            Untuk 4 warna × 3 kaca: pasang gambar/video per kombinasi varian, atau media umum tanpa tautan.
           </p>
           <FormErrorSummary errors={form.errors} className="mt-4" />
           <div className="mt-5 space-y-4">
-            <Field id="media-upload" label="File gambar" error={form.errors.upload}>
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">Media Library bersama</p>
+                {form.data.media_asset_id ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => form.setData("media_asset_id", "")}>Batal pilih</Button>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Pasang aset yang sudah ada tanpa upload ulang. Satu media bisa dipakai banyak produk.</p>
+              <div className="mt-3 flex gap-2">
+                <Input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Cari motif, label, atau URL" />
+                <Select value={libraryKind} onChange={(event) => setLibraryKind(event.target.value)} aria-label="Jenis media library">
+                  <option value="">Semua</option>
+                  <option value="image">Gambar</option>
+                  <option value="video">Video</option>
+                </Select>
+                <Select value={libraryStatus} onChange={(event) => setLibraryStatus(event.target.value)} aria-label="Status media library">
+                  <option value="">Semua status</option>
+                  <option value="ready">Siap</option>
+                  <option value="pending">Menunggu</option>
+                  <option value="failed">Gagal</option>
+                </Select>
+                <Button type="button" variant="secondary" onClick={searchLibrary}>Cari</Button>
+              </div>
+              <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                {library.length ? library.map((asset) => (
+                  <button
+                    key={asset.id}
+                    type="button"
+                    onClick={() => {
+                      form.setData("media_asset_id", String(asset.id))
+                      form.setData("kind", asset.kind === "video" ? "video" : "image")
+                      if (asset.kind === "video") form.setData("is_main_image", false)
+                      form.setData("upload", null)
+                      form.setData("source_url", "")
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors ${form.data.media_asset_id === String(asset.id) ? "border-primary bg-primary/10" : "border-border hover:bg-surface-muted"}`}
+                  >
+                    <span className="h-12 w-12 shrink-0 overflow-hidden rounded border border-border bg-muted/30">
+                      {asset.kind === "video" && asset.media_url ? <video src={asset.media_url} muted preload="metadata" className="h-full w-full object-cover" /> : asset.thumb_url ? <img src={asset.thumb_url} alt="" className="h-full w-full object-cover" /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold">{asset.label}</span>
+                      <span className="mt-1 block text-[11px] text-muted-foreground">{asset.status} · Dipakai di {asset.usage_count} produk</span>
+                    </span>
+                  </button>
+                )) : <p className="py-3 text-xs text-muted-foreground">Belum ada aset bersama yang cocok.</p>}
+              </div>
+            </div>
+            <Field id="media-kind" label="Jenis media" error={form.errors.kind}>
+              <Select
+                value={form.data.kind}
+                disabled={Boolean(form.data.media_asset_id)}
+                onChange={(event) => {
+                  const kind = event.target.value as "image" | "video"
+                  form.setData("kind", kind)
+                  if (kind === "video") form.setData("is_main_image", false)
+                }}
+              >
+                <option value="image">Gambar</option>
+                <option value="video">Video (MP4/WebM/MOV)</option>
+              </Select>
+            </Field>
+            <Field id="media-upload" label={form.data.kind === "video" ? "File video" : "File gambar"} error={form.errors.upload}>
               <Input
                 type="file"
-                accept="image/*"
+                accept={form.data.kind === "video" ? "video/mp4,video/webm,video/quicktime" : "image/*"}
+                disabled={Boolean(form.data.media_asset_id)}
                 onChange={(event) => form.setData("upload", event.target.files?.[0] ?? null)}
               />
             </Field>
@@ -376,6 +474,7 @@ export default function ProductMediaPage({
               <Input
                 type="url"
                 value={form.data.source_url}
+                disabled={Boolean(form.data.media_asset_id)}
                 onChange={(event) => form.setData("source_url", event.target.value)}
               />
             </Field>
@@ -422,6 +521,7 @@ export default function ProductMediaPage({
               <input
                 type="checkbox"
                 checked={form.data.is_main_image}
+                disabled={form.data.kind === "video"}
                 onChange={(event) => form.setData("is_main_image", event.target.checked)}
                 className="h-4 w-4 accent-primary"
               />
@@ -449,10 +549,10 @@ export default function ProductMediaPage({
           <Button
             type="submit"
             className="mt-5 w-full"
-            disabled={form.processing || (!form.data.upload && !form.data.source_url)}
+            disabled={form.processing || (!form.data.media_asset_id && !form.data.upload && !form.data.source_url)}
           >
             <Icon name="upload" className="h-4 w-4" aria-hidden="true" />
-            {form.processing ? "Mengunggah..." : "Tambah media"}
+            {form.processing ? "Menyimpan..." : form.data.media_asset_id ? "Pasang tanpa upload ulang" : "Tambah media"}
           </Button>
         </form>
       </div>

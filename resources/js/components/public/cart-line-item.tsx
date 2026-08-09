@@ -105,7 +105,7 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { i
   }
 
   const discountBadge = discountPercent ? (
-    <span className="rounded bg-accent px-1 text-[10px] font-semibold leading-4 text-accent-foreground">
+    <span className="rounded bg-accent px-1 text-[11px] font-semibold leading-4 text-accent-foreground">
       −{discountPercent}%
     </span>
   ) : null
@@ -113,7 +113,7 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { i
   const flashSaleBadge = item.flash_sale ? (
     <span className="inline-flex items-center gap-0.5">
       <Icon name="lightning" weight="fill" className="size-3 shrink-0 text-sale" aria-hidden />
-      <span className="text-[10px] font-extrabold italic tracking-tight text-sale">FLASH SALE</span>
+      <span className="text-[11px] font-extrabold italic tracking-tight text-sale">FLASH SALE</span>
     </span>
   ) : null
 
@@ -127,13 +127,13 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { i
       ) : null}
       {hasDiscount ? (
         <>
-          <p className="tabular-nums text-[10px] leading-4 text-muted-foreground line-through">
+          <p className="tabular-nums text-xs leading-4 text-muted-foreground line-through">
             {formatCurrency(lineCompare)}
           </p>
           <p className="tabular-nums text-[13px] font-bold leading-4 text-sale">
             {formatCurrency(lineTotal)}
           </p>
-          <p className="mt-0.5 text-[10px] font-semibold leading-3 text-sale">
+          <p className="mt-0.5 text-xs font-semibold leading-3 text-sale">
             Hemat {formatCurrency(lineDiscount || lineCompare - lineTotal)}
           </p>
         </>
@@ -162,7 +162,7 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { i
       >
         <Icon name="x" className="size-3.5" aria-hidden="true" />
       </Button>
-      {updateError ? <span role="alert" className="text-[10px] text-destructive">{updateError}</span> : null}
+      {updateError ? <span role="alert" className="text-xs text-destructive">{updateError}</span> : null}
     </div>
   )
 
@@ -199,7 +199,7 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { i
 
         {/* Variants (left) | Price (right) */}
         <div className="mt-1.5 grid grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4">
-          <dl className="min-w-0 space-y-0.5 text-[10px] text-muted-foreground">
+          <dl className="min-w-0 space-y-0.5 text-xs text-muted-foreground">
             {item.variation_1_option ? (
               <div className="flex min-w-0 gap-1.5">
                 <dt className="shrink-0">{item.variation_1_name ?? "Pilihan"}:</dt>

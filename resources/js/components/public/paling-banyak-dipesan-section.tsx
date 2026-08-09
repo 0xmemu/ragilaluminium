@@ -112,13 +112,13 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
       <Link
         href={href}
         className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
-        aria-label="Lihat selengkapnya"
+        aria-label="Lihat semua"
       >
         <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
           <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
-        <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
-          selengkapnya
+        <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
+          Lihat semua
         </span>
       </Link>
     </div>
@@ -190,10 +190,9 @@ export function PalingBanyakDipesanSection({
           action={
             <Link
               href={seeMoreHref}
-              className="inline-flex h-7 shrink-0 items-center gap-1 self-end text-[11px] font-light text-foreground/80 transition hover:text-primary sm:text-xs"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end text-xs font-light text-foreground/80 transition hover:text-primary"
             >
-              Lihat selengkapnya
-              <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+              Lihat semua →
             </Link>
           }
         />

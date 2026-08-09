@@ -8,46 +8,6 @@ import { trackProductClick } from "@/lib/product-engage"
 import { cn } from "@/lib/utils"
 import type { ProductCardData, SharedPageProps } from "@/types"
 
-/** Shrink title font so up to 2 lines fill the card width (hindari orphan kata di baris 2). */
-function FitTwoLineTitle({
-  children,
-  className,
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
-  const ref = React.useRef<HTMLHeadingElement>(null)
-
-  React.useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    const fit = () => {
-      el.style.fontSize = ""
-      const base = parseFloat(getComputedStyle(el).fontSize) || 13
-      const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || base * 1.25
-      const maxHeight = lineHeight * 2 + 0.5
-      let size = base
-      const min = Math.max(10, base - 3)
-      while (el.scrollHeight > maxHeight + 0.5 && size > min) {
-        size -= 0.5
-        el.style.fontSize = `${size}px`
-      }
-    }
-
-    fit()
-    const observer = new ResizeObserver(fit)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [children])
-
-  return (
-    <h3 ref={ref} className={className}>
-      {children}
-    </h3>
-  )
-}
-
 /** Keep compare-price + discount badge on one line; shrink font when the row overflows. */
 function FitOneLine({
   children,
@@ -67,7 +27,7 @@ function FitOneLine({
       const parent = el.parentElement
       if (!parent) return
       let size = parseFloat(getComputedStyle(el).fontSize) || 11
-      const min = 8
+      const min = 10.5
       while (el.scrollWidth > parent.clientWidth + 0.5 && size > min) {
         size -= 0.5
         el.style.fontSize = `${size}px`
@@ -194,13 +154,15 @@ export function ProductCard({
 
         <div
           className={cn(
-            "relative flex flex-1 flex-col gap-0",
-            useModelTitle ? "px-2.5 pb-2 pt-2 @[16rem]:px-3 @[20rem]:px-3.5" : "px-2 pb-2 pt-2",
+            "relative flex flex-1 flex-col gap-0 p-[5px]",
           )}
         >
-          <FitTwoLineTitle className="w-full min-w-0 font-medium text-foreground text-pretty line-clamp-2 text-xs leading-4 sm:text-[13px] sm:leading-4">
+          <h3
+            data-slot="product-item-name"
+            className="min-h-8 w-full min-w-0 line-clamp-2 text-[13px] font-light leading-4 text-action text-pretty"
+          >
             {title}
-          </FitTwoLineTitle>
+          </h3>
 
           {/* Harga bertumpuk: compare + diskon wajib satu baris (mengecil bila sempit). */}
           <div className="mt-0.5 flex min-w-0 flex-col leading-none">
@@ -216,7 +178,7 @@ export function ProductCard({
                         {formatCurrency(compareValue)}
                       </span>
                       {discountPercent !== null && discountPercent > 0 ? (
-                        <span className="shrink-0 bg-accent px-1 text-[11px] font-normal leading-4 text-accent-foreground sm:text-xs">
+                        <span className="shrink-0 bg-red-50 px-1 text-xs font-normal leading-4 text-red-800">
                           -{discountPercent}%
                         </span>
                       ) : null}
@@ -234,7 +196,7 @@ export function ProductCard({
             {showFlash ? (
               <span className="inline-flex shrink-0 items-center">
                 <Lightning weight="fill" className="-mr-px size-3.5 shrink-0 text-sale" aria-hidden />
-                <span className="whitespace-nowrap text-[11px] font-extrabold italic leading-none tracking-tight text-sale sm:text-sm">
+                <span className="whitespace-nowrap text-xs font-extrabold italic leading-none tracking-tight text-sale sm:text-sm">
                   FLASH SALE
                 </span>
               </span>
@@ -242,12 +204,12 @@ export function ProductCard({
           </div>
 
           <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
-            <span className="inline-flex min-w-0 items-center gap-1 text-[10px] font-medium leading-none text-warning lg:text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1 text-xs font-medium leading-none text-warning">
               <SealCheck weight="fill" className="size-3.5 shrink-0 lg:size-4" aria-hidden />
               <span className="truncate">{warrantyLabel}</span>
             </span>
             {soldCount > 0 ? (
-              <span className="shrink-0 text-[10px] font-light leading-none text-muted-foreground lg:text-xs">
+              <span className="shrink-0 text-xs font-light leading-none text-muted-foreground">
                 {soldCount.toLocaleString("id-ID")} terjual
               </span>
             ) : (

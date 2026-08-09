@@ -273,6 +273,7 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('marketplaceTestimonials', 2)
+                ->where('testimonialMode', 'marketplace')
                 ->missing('websiteTestimonials')
                 ->missing('stats')
                 ->has('pageMeta')
@@ -284,7 +285,46 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('marketplaceTestimonials', 2)
+                ->where('testimonialMode', 'marketplace')
                 ->missing('websiteTestimonials')
+            );
+    }
+
+    public function test_reviews_page_falls_back_to_published_website_reviews_with_images(): void
+    {
+        $page = CmsPage::create([
+            'slug' => 'testimoni',
+            'title' => 'Testimoni',
+            'content' => [],
+            'published' => true,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Web User',
+            'message' => 'Ulasan dari website',
+            'image_url' => 'https://cdn.example.com/review.jpg',
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 0,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Web Tanpa Foto',
+            'message' => 'Belum punya foto',
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->get(route('reviews'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Reviews')
+                ->has('marketplaceTestimonials', 1)
+                ->where('marketplaceTestimonials.0.customer_name', 'Web User')
+                ->where('testimonialMode', 'website_fallback')
             );
     }
 

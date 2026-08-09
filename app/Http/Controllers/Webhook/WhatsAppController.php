@@ -9,9 +9,7 @@ use Illuminate\Http\Response;
 
 class WhatsAppController extends Controller
 {
-    public function __construct(protected WhatsAppService $whatsapp)
-    {
-    }
+    public function __construct(protected WhatsAppService $whatsapp) {}
 
     public function verify(Request $request): Response
     {
@@ -50,13 +48,13 @@ class WhatsAppController extends Controller
 
     /**
      * Verifikasi X-Hub-Signature-256 dari Meta (HMAC-SHA256 body mentah dengan
-     * app secret). Dilewati hanya jika app_secret tidak dikonfigurasi (dev).
+     * app secret). Unsigned request hanya boleh lewat flag eksplisit non-production.
      */
     protected function signatureValid(Request $request): bool
     {
         $secret = config('services.whatsapp.app_secret');
         if (! $secret) {
-            return true;
+            return $this->unsignedWebhooksAllowed();
         }
 
         $header = $request->header('X-Hub-Signature-256', '');
@@ -69,13 +67,32 @@ class WhatsAppController extends Controller
     {
         $secret = config('services.whatsapp.waha.webhook_secret');
         if (! $secret) {
-            return true;
+            return $this->unsignedWebhooksAllowed();
         }
 
+        // WAHA mode HMAC: header X-Webhook-Hmac berisi hex HMAC dari body mentah.
+        // Algoritma ditentukan header X-Webhook-Hmac-Algorithm (WAHA kirim 'sha512').
+        $hmac = $request->header('X-Webhook-Hmac');
+        if (is_string($hmac) && $hmac !== '') {
+            $algo = strtolower(trim((string) $request->header('X-Webhook-Hmac-Algorithm', 'sha512')));
+            if (! in_array($algo, ['sha256', 'sha512'], true)) {
+                $algo = 'sha512';
+            }
+            $expected = hash_hmac($algo, $request->getContent(), $secret);
+
+            return hash_equals($expected, strtolower(trim($hmac)));
+        }
+
+        // WAHA mode plain secret: X-Webhook-Secret / X-WAHA-Secret (query-string ditolak).
         $provided = $request->header('X-Webhook-Secret')
-            ?? $request->header('X-WAHA-Secret')
-            ?? $request->query('secret');
+            ?? $request->header('X-WAHA-Secret');
 
         return is_string($provided) && hash_equals($secret, $provided);
+    }
+
+    protected function unsignedWebhooksAllowed(): bool
+    {
+        return ! app()->environment('production')
+            && (bool) config('services.whatsapp.allow_unsigned_webhooks', false);
     }
 }

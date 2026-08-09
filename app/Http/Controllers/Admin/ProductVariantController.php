@@ -8,6 +8,7 @@ use App\Models\ProductVariant;
 use App\Support\ShopeeStyleSku;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -70,6 +71,42 @@ class ProductVariantController extends Controller
 
         return redirect()->route('admin.products.variants.index', $product)
             ->with('success', 'Varian dibuat dengan SKU '.$validated['variant_sku'].'.');
+    }
+
+    public function bulkStore(Request $request, Product $product): RedirectResponse
+    {
+        $validated = $request->validate([
+            'wizard_step' => ['nullable', 'in:variants,media,review'],
+            'variants' => ['required', 'array', 'min:1'],
+            'variants.*.variation_1_name' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_1_option' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_2_name' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_2_option' => ['nullable', 'string', 'max:255'],
+            'variants.*.price' => ['required', 'numeric', 'min:0'],
+            'variants.*.stock' => ['required', 'integer', 'min:0'],
+            'variants.*.weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.width_cm' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.height_cm' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.depth_cm' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.status' => ['required', 'in:active,inactive,archived'],
+        ]);
+
+        DB::transaction(function () use ($validated, $product, $request): void {
+            foreach ($validated['variants'] as $row) {
+                ProductVariant::create([
+                    ...$row,
+                    'product_id' => $product->id,
+                    'variant_sku' => ShopeeStyleSku::nextVariantSku($product),
+                    'created_by_user_id' => $request->user()->id,
+                    'updated_by_user_id' => $request->user()->id,
+                ]);
+            }
+        });
+
+        return redirect()->route('admin.products.edit', [
+            'product' => $product,
+            'step' => $validated['wizard_step'] ?? 'variants',
+        ])->with('success', count($validated['variants']).' varian disimpan.');
     }
 
     public function edit(ProductVariant $variant): Response

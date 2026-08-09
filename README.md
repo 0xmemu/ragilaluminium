@@ -1,4 +1,4 @@
-# Ragil Aluminium — `website.4.0`
+# Ragil Aluminium
 
 Laravel modular monolith: **Inertia + React + shadcn** storefront & admin, plus domain services (catalog, order, import, WhatsApp, JNT).
 

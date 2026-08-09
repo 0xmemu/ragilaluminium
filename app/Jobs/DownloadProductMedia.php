@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
+class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -63,6 +63,7 @@ class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
                 $media->update($payload);
             } catch (\Throwable $e) {
                 $this->fail($media, $e->getMessage());
+                throw $e;
             }
 
             return;
@@ -77,10 +78,15 @@ class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
 
             $tmp = tempnam(sys_get_temp_dir(), 'media_');
             $response = Http::timeout((int) config('media.download_timeout', 60))
+                ->withoutRedirecting()
                 ->withOptions(['sink' => $tmp])
                 ->get($media->source_url);
 
             if (! $response->successful()) {
+                if ($response->status() === 429 || $response->serverError()) {
+                    throw new \RuntimeException('Sumber media sementara tidak tersedia (HTTP '.$response->status().').');
+                }
+
                 $this->fail($media, 'HTTP '.$response->status());
 
                 return;
@@ -143,6 +149,7 @@ class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
             $media->update($payload);
         } catch (\Throwable $e) {
             $this->fail($media, $e->getMessage());
+            throw $e;
         } finally {
             if ($tmp && is_file($tmp)) {
                 @unlink($tmp);

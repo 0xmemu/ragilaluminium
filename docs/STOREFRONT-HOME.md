@@ -72,7 +72,7 @@ Edit teks unit terpasang (Informasi Toko): `config/sitemap.php` → `brand.units
 |------|--------|
 | Route | `GET /reviews` → `PageController@reviews` → `Public/Reviews` |
 | Model | `CmsTestimonial` (`source`: `shopee` \| `whatsapp` \| `website` \| `other`; `message` nullable jika ada `image_url`) |
-| Default | Selalu dua section terpisah: `#apa-kata-pelanggan` (marketplace/WA) + `#ulasan-website` (bukan tab filter yang menyatukan) |
+| Default | `#apa-kata-pelanggan` memprioritaskan marketplace/WA; bila belum ada screenshot marketplace, `/reviews` memakai fallback sementara dari ulasan website terbit yang memiliki gambar. Section ulasan website tetap terpisah di `/ulasan`. |
 | Query | `?sort=` saja (newest/oldest/rating_*); `?source=` diabaikan |
 | marketplace | `source IN (shopee, whatsapp, other)` |
 | website | `source = website` |

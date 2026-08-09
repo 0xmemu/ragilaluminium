@@ -10,6 +10,7 @@ class InertiaCatalog
 {
     public static function productCard(Product $product): array
     {
+        $pricing = app(\App\Services\PriceService::class)->productCard($product);
         $promo = ProductPromotionMetadata::forProduct($product);
 
         $card = [
@@ -20,11 +21,11 @@ class InertiaCatalog
             'product_category' => $product->product_category,
             'product_model' => $product->product_model,
             'design_variant' => $product->design_variant,
-            'min_price' => $promo['min_price'],
-            'compare_price' => $promo['compare_price'],
-            'discount_percent' => $promo['discount_percent'],
+            'min_price' => $pricing['min_sale'] ?? $promo['min_price'],
+            'compare_price' => $pricing['compare'] ?? $promo['compare_price'],
+            'discount_percent' => ($pricing['discount_percent'] ?? 0) > 0 ? $pricing['discount_percent'] : $promo['discount_percent'],
             'sold_count' => (int) ($product->sold_count ?? 0),
-            'flash_sale' => $promo['flash_sale'],
+            'flash_sale' => (bool) $pricing['flash_sale'],
             'cod_eligible' => $promo['cod_eligible'],
             'warranty_label' => $promo['warranty_label'],
             'image' => self::cardImage($product),
@@ -56,7 +57,11 @@ class InertiaCatalog
                 $line !== '' ? ' '.$line : '',
             ));
             $card['short_name'] = $heightLabel.'x'.$widthLabel;
-            $card = self::applyVariantPromotion($card, $promo, (float) $variant->price);
+            $priced = app(\App\Services\PriceService::class)->forVariant($variant, $product);
+            $card['min_price'] = $priced['sale'];
+            $card['compare_price'] = $priced['compare'];
+            $card['discount_percent'] = $priced['discount_percent'] > 0 ? $priced['discount_percent'] : null;
+            $card['flash_sale'] = $priced['flash_sale'];
             $card['variant_sku'] = $variant->variant_sku;
             $card['card_key'] = $product->parent_sku.'-'.$variant->id;
             $card['href'] = route('product.show', $product->parent_sku, absolute: false)
@@ -99,7 +104,6 @@ class InertiaCatalog
     public static function sizeCard(Product $product, ProductVariant $variant): array
     {
         $card = self::productCard($product);
-        $promo = ProductPromotionMetadata::forProduct($product);
         $height = (float) ($variant->height_cm ?? 0);
         $width = (float) ($variant->width_cm ?? 0);
         $heightLabel = rtrim(rtrim(number_format($height, 2, '.', ''), '0'), '.');
@@ -118,7 +122,11 @@ class InertiaCatalog
             $line !== '' ? ' '.$line : '',
         ));
         $card['short_name'] = $heightLabel.'x'.$widthLabel;
-        $card = self::applyVariantPromotion($card, $promo, (float) $variant->price);
+        $priced = app(\App\Services\PriceService::class)->forVariant($variant, $product);
+        $card['min_price'] = $priced['sale'];
+        $card['compare_price'] = $priced['compare'];
+        $card['discount_percent'] = $priced['discount_percent'] > 0 ? $priced['discount_percent'] : null;
+        $card['flash_sale'] = $priced['flash_sale'];
         $card['variant_sku'] = $variant->variant_sku;
         $card['card_key'] = $product->parent_sku.'-'.$variant->id;
 
@@ -215,46 +223,6 @@ class InertiaCatalog
         return $cards;
     }
 
-    /**
-     * Product-level compare price represents the discount rate. Apply that same
-     * rate to every concrete size so a Flash Sale card never loses its discount
-     * merely because the selected size costs more than the cheapest variant.
-     *
-     * @param  array<string, mixed>  $card
-     * @param  array<string, mixed>  $promo
-     * @return array<string, mixed>
-     */
-    protected static function applyVariantPromotion(array $card, array $promo, float $variantPrice): array
-    {
-        $card['min_price'] = $variantPrice;
-        $discountPercent = (int) ($promo['discount_percent'] ?? 0);
-        $hasPercentageDiscount = $promo['compare_price'] !== null
-            && $discountPercent > 0
-            && $discountPercent < 100;
-
-        if ($hasPercentageDiscount) {
-            $card['compare_price'] = round($variantPrice / (1 - ($discountPercent / 100)));
-            $card['discount_percent'] = $discountPercent;
-
-            return $card;
-        }
-
-        $comparePrice = isset($promo['compare_price']) ? (float) $promo['compare_price'] : null;
-        if ($comparePrice !== null && $comparePrice > $variantPrice) {
-            $card['compare_price'] = $comparePrice;
-            $card['discount_percent'] = (int) round(
-                (($comparePrice - $variantPrice) / $comparePrice) * 100
-            );
-
-            return $card;
-        }
-
-        $card['compare_price'] = null;
-        $card['discount_percent'] = null;
-
-        return $card;
-    }
-
     protected static function sizeDisplayScore(
         Product $product,
         float $height,
@@ -310,6 +278,49 @@ class InertiaCatalog
                 ->with($with)
                 ->withSum('validOrderItems as sold_count', 'quantity')
                 ->orderByWebsiteSales()
+                ->limit($limit)
+                ->get();
+        }
+
+        return self::productCards($products);
+    }
+
+    /**
+     * Kartu produk Flash Sale untuk homepage/section publik.
+     * Hanya produk berlabel flash sale aktif (promo_flash_sale/flash_sale = true).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function flashSaleProductCards(int $limit = 10): array
+    {
+        $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
+
+        if ($flashIds === []) {
+            $flashNames = ['promo_flash_sale', 'flash_sale'];
+            $trueValues = ['true', '1', 'yes', 'on'];
+
+            $products = Product::visible()
+                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                ->withSum('validOrderItems as sold_count', 'quantity')
+                ->whereHas('attributes', function ($attr) use ($flashNames, $trueValues) {
+                    $attr->whereIn('attribute_name', $flashNames)
+                        ->where(function ($inner) use ($trueValues) {
+                            foreach ($trueValues as $value) {
+                                $inner->orWhereRaw('LOWER(TRIM(attribute_value)) = ?', [$value]);
+                            }
+                        });
+                })
+                ->orderByDesc('sold_count')
+                ->orderByDesc('id')
+                ->limit($limit)
+                ->get();
+        } else {
+            $products = Product::visible()
+                ->whereIn('id', $flashIds)
+                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                ->withSum('validOrderItems as sold_count', 'quantity')
+                ->orderByDesc('sold_count')
+                ->orderByDesc('id')
                 ->limit($limit)
                 ->get();
         }

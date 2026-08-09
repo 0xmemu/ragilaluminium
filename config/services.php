@@ -42,6 +42,7 @@ return [
     */
 
     'whatsapp' => [
+        'allow_unsigned_webhooks' => (bool) env('WHATSAPP_ALLOW_UNSIGNED_WEBHOOKS', false),
         'default_provider' => env('WHATSAPP_PROVIDER', 'meta'),
         'compare_provider' => env('WHATSAPP_COMPARE_PROVIDER'),
         'compare_allowlist' => array_values(array_filter(array_map(

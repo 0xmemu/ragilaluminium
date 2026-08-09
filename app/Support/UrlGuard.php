@@ -26,7 +26,13 @@ class UrlGuard
             throw new \RuntimeException("Host {$host} tidak ada di daftar izin.");
         }
 
-        foreach (self::resolveIps($host) as $ip) {
+        $ips = self::resolveIps($host);
+
+        if ($ips === []) {
+            throw new \RuntimeException("Host {$host} tidak dapat di-resolve dengan aman.");
+        }
+
+        foreach ($ips as $ip) {
             if (! self::isPublicIp($ip)) {
                 throw new \RuntimeException("Host {$host} me-resolve ke IP non-publik ({$ip}).");
             }
@@ -63,8 +69,6 @@ class UrlGuard
             }
         }
 
-        // Jika DNS gagal (mis. sandbox/offline), jangan blokir buta — biarkan
-        // lapisan allowlist host & timeout HTTP yang membatasi.
         return $ips;
     }
 

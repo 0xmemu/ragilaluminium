@@ -3,8 +3,10 @@
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReadinessController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\WilayahController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,8 +15,12 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+Route::get('/health/ready', ReadinessController::class)
+    ->middleware('throttle:60,1')
+    ->name('health.ready');
+
 Route::middleware('throttle:60,1')->group(function () {
-    Route::get('/catalog/{category}', function ($category, \Illuminate\Http\Request $request) {
+    Route::get('/catalog/{category}', function ($category, Request $request) {
         $controller = app(CatalogController::class);
 
         return match (strtoupper($category)) {

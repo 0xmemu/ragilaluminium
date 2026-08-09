@@ -30,7 +30,7 @@ export function QuantityControl({
     >
       <button
         type="button"
-        className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
+        className="inline-flex size-11 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={decreaseDisabled}
         aria-label={`Kurangi ${label.toLowerCase()}`}
@@ -46,7 +46,7 @@ export function QuantityControl({
       </span>
       <button
         type="button"
-        className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
+        className="inline-flex size-11 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35"
         onClick={() => onChange(max === undefined ? value + 1 : Math.min(max, value + 1))}
         disabled={increaseDisabled}
         aria-label={`Tambah ${label.toLowerCase()}`}

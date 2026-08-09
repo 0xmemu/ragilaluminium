@@ -221,16 +221,22 @@ export default function TestimonialsIndex({
       subtitle: pageMeta.subtitle,
       published: pageMeta.published,
     })
+    // `useForm` returns a new facade on every render; CMS metadata is the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageMeta])
 
   React.useEffect(() => {
     if (tab !== "website") return
     const next = rows as WebsiteRow[]
+    // Keep the reorder editor aligned with the active website testimonial tab.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrderedRows(next)
     setReorderMode(false)
     reorderForm.setData({
       rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
     })
+    // `useForm` returns a new facade on every render; rows/tab define the editor snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, tab])
 
   function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string }>) {

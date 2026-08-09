@@ -212,7 +212,7 @@ flowchart TB
   - **UI rule:** display images via `urlFor()`/`display_url` (derivatives). Never hotlink `source_url` in production.
 
 ### 6.3 Orders & commerce
-- **`Order`** — lifecycle master with customer/shipping snapshot. `order_number` (unique, format `RA-YYMMDD-XXXXXX`), customer contact/address fields (`shipping_address_line1/2`, `shipping_city`, `shipping_province`, `shipping_district`, `shipping_village`, `shipping_postal_code`, `shipping_country`), tri-status:
+- **`Order`** — lifecycle master with customer/shipping snapshot. `order_number` (unique, format `RA-YYMMDD-XXXXXX`), `checkout_idempotency_key` (nullable unique UUID for session retry/double-submit protection), customer contact/address fields (`shipping_address_line1/2`, `shipping_city`, `shipping_province`, `shipping_district`, `shipping_village`, `shipping_postal_code`, `shipping_country`), tri-status:
   - `order_status`: `pending_payment`, `processing`, `shipped`, `delivered`, `completed`, `issue`, `return_in_process`, `cancelled`
   - `payment_status`: `pending`, `paid`, `refunded`
   - `shipping_status`: `pending_pickup`, `in_process`, `in_transit`, `delivered`, `cancelled`
@@ -272,7 +272,8 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 | Service | Role |
 |---------|------|
 | `CartService` | Session cart (`ragil_cart` key): add/update/remove, subtotal, count |
-| `OrderService` | `createFromCart()` — DB revalidation, stock lock/decrement, create order+items+payment, `EventLog`, dispatch `OrderCreated`; generates `RA-YYMMDD-XXXXXX` numbers |
+| `OrderService` | `createFromCart()` — DB revalidation, unique checkout idempotency key, stock lock/decrement, create order+items+payment; `cancel()` restores variant stock exactly once under order lock |
+| `PaymentService` | Locks order/payments, requires positive amounts and full completed settlement before `paid`; reconciles failed/refunded rows back to order payment status |
 | `ShippingService` | J&T tariff estimate (local fallback formula), `createShipment`, `refreshStatus`, `cancelShipment`, `applyCarrierUpdate` (idempotent; cascades order status; dispatches `ShippingStatusUpdated`) |
 | `WhatsAppService` | Template send via Meta Graph API, webhook handling, order/payment/shipping notification handlers; degrades safely without token |
 | `MediaDerivativeService` | GD-based WebP derivatives (thumb ~400 / card ~800 / pdp ~1400 px longest edge) |
@@ -281,7 +282,7 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 ### 7.3 Jobs (`app/Jobs/`)
 | Job | Queue | Role |
 |-----|-------|------|
-| `ProcessCatalogImport` | `imports` | Load Excel, detect Shopee vs internal format, upsert products/variants, create media stubs, dispatch downloads; 30-min timeout |
+| `ProcessCatalogImport` | `imports` | Load Excel, detect Shopee vs internal format, upsert products/variants, create media stubs, dispatch downloads; 30-min timeout, unique dispatch, overlap lock |
 | `DownloadProductMedia` | `media` | Download image (URL guard + size/MIME checks), store original + derivatives; unique per media ID; 3 retries |
 
 ### 7.4 Imports (`app/Imports/`)
@@ -403,7 +404,7 @@ sequenceDiagram
     CO-->>C: redirect /order/{order_number}/confirmation
 ```
 - Order number format: `RA-260717-ABCDEF`.
-- Payment confirmation (admin) sets `payment_status: paid`, `order_status: processing`, fires `PaymentConfirmed` → WhatsApp.
+- Payment confirmation (admin) sets `payment_status: paid` and `order_status: processing` only when completed payments cover the full order total, then fires `PaymentConfirmed` → WhatsApp.
 
 ### D. WhatsApp notifications
 ```
@@ -442,7 +443,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 ### 10.1 Public storefront
 
 **Home (`GET /`)**
-- Consumes: homepage promo slides (permanent landing slide first, then manual `cms_banners` published, then automatic product promos when `cms_pages.beranda.content.auto_promotions.enabled`; when both promo sources empty, fallback memakai **foto produk asli** — prefer BOUVEN terbaru, lalu DOOR terbaru; tidak memakai aset dummy `hero-boven-jungkit.png`), popular products (`homepage_popular` picks or website-sales fallback), published testimonials, category entry points.
+- Consumes: homepage promo slides (permanent landing slide first, then manual `cms_banners` published, then automatic product promos when `cms_pages.beranda.content.auto_promotions.enabled`; when automatic mode is disabled, only manual banners follow the landing slide; when both promo sources are empty while automatic mode is enabled, fallback memakai **foto produk asli** — prefer BOUVEN terbaru, lalu DOOR terbaru; tidak memakai aset dummy `hero-boven-jungkit.png`), popular products (`homepage_popular` picks or website-sales fallback), published testimonials, category entry points.
 - Automatic slides: products with explicit compare price or Flash Sale attribute + active variant + main image; **prefer kategori BOUVEN terbaru** lalu kandidat lain; headline = kategori+model (bukan ukuran); copy banner memakai "Promo Diskon" (bukan "Flash Sale"); CTA ke listing model; max `auto_promotions.max_slides` (default 3); layout kartu promo 3:4; not duplicated if already linked by a manual banner; excluded from announcement ticker.
 - Actions: navigate to categories, PDPs, add-to-cart shortcuts (where present).
 - States: Empty (no banners/popular → still render category nav + fallback hero), Loading, Error.
@@ -563,7 +564,7 @@ Admin sidebar structure/labels: `config/admin-sitemap.php` + `docs/sitemap/admin
 
 ## 13. Explicit exclusions & constraints for the UI agent
 
-**You have full freedom over:** visual design, color, typography, spacing, layout, component library choice, motion/interaction, and overall look and feel. Nothing in the old `docs/DESIGN.md`, Relume, or Figma references binds the new UI.
+**Visual governance:** active UI follows `frontend/docs/UI-CONSISTENCY-CONTRACT.md`, Brand Kit, and Design System. Legacy `docs/DESIGN.md`, Relume, Figma, and Blade references are historical only and do not bind runtime UI.
 
 **You must NOT change:**
 - Routes, URL paths, or **route names** (§8). The Inertia/`route()` bindings depend on them.
@@ -606,4 +607,4 @@ Canonical sources for deeper detail (this doc summarizes them; they win on confl
 | Domain workflows (stages 1–8) | `skills/stage-1-foundation.md` … `skills/stage-8-whatsapp-business-integration.md` |
 
 **Active UI governance:** `frontend/README.md`, `frontend/brand/*`, `frontend/docs/*`, and
-`frontend/skills/*`. Removed legacy UI skills and visual docs are not references for this build.
+`frontend/skills/*`. Removed legacy UI skills and visual docs are not references for this build; see `docs/RECOMMENDED-SKILLS-AND-CONTRACTS.md`.

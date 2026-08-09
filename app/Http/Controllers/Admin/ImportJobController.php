@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessCatalogImport;
 use App\Models\ImportJob;
 use App\Services\ActivityLogService;
+use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -192,7 +193,9 @@ class ImportJobController extends Controller
 
     public function downloadCorrectionFile(ImportJob $import_job): StreamedResponse
     {
-        $failed = $import_job->failedRows()->get();
+        $failedQuery = $import_job->failedRows();
+        ExportSafety::assertQueryWithinLimit($failedQuery);
+        $failed = $failedQuery->get();
 
         return Excel::download(new \App\Exports\CorrectionFileExport($failed), 'correction-'.$import_job->id.'.xlsx');
     }

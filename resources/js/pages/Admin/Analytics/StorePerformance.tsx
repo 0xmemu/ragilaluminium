@@ -48,6 +48,9 @@ interface Report {
     to_date: string
     granularity: string
     compare_label: string
+    compare_from_date: string
+    compare_to_date: string
+    is_running: boolean
   }
   sections: Section[]
   charts: ChartBlock[]
@@ -255,6 +258,17 @@ export default function StorePerformance({
               </button>
             ))}
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+          <Icon name="arrow-right" className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <p className="text-[13px] font-medium text-foreground">
+            Perbandingan dengan: {report.range.compare_label}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            ({report.range.compare_from_date} ??? {report.range.compare_to_date}
+            {report.range.is_running ? " ?? periode berjalan, dibandingkan sampai jam yang sama" : " ?? periode penuh"})
+          </p>
+        </div>
       </section>
 
       <div className="space-y-6">
@@ -302,7 +316,17 @@ export default function StorePerformance({
           <section key={chart.key} className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-sm font-bold">
-                {chart.title} ({report.range.granularity === "hour" ? "Per Jam" : report.range.granularity === "week" ? "Per Minggu" : report.range.granularity === "month" ? "Per Bulan" : "Per Hari"})
+                {chart.title} (
+                  {report.range.granularity === "hour"
+                    ? "Per Jam"
+                    : report.range.granularity === "week"
+                      ? "Per Minggu"
+                      : report.range.granularity === "month"
+                        ? "Per Bulan"
+                        : report.range.granularity === "year"
+                          ? "Per Tahun"
+                          : "Per Hari"}
+                )
               </h3>
               <div className="text-right">
                 <p className="text-[11px] text-muted-foreground">Total</p>
@@ -473,6 +497,14 @@ export default function StorePerformance({
           </ul>
         </section>
       ) : null}
+
+      <p className="mt-6 text-xs leading-5 text-muted-foreground">
+        Keterangan perbandingan: metrik dibandingkan secara otomatis dengan periode sebelumnya
+        ({report.range.compare_label}: {report.range.compare_from_date} ??? {report.range.compare_to_date}).
+        {report.range.is_running
+          ? " Karena periode berjalan masih berlangsung, data pembanding dipotong sampai jam yang sama agar adil."
+          : " Periode pembanding dihitung penuh."}
+      </p>
     </AdminLayout>
   )
 }

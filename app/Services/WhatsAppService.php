@@ -636,7 +636,16 @@ class WhatsAppService
 
     public function handleOrderCreated(OrderCreated $event): void
     {
-        $order = $event->order->loadMissing('items');
+        $this->sendOrderConfirmation($event->order);
+    }
+
+    /**
+     * Konfirmasi pesanan (order_created / payment_instructions) - dipakai saat
+     * checkout dan dikirim ULANG setelah admin mengedit isi pesanan (keputusan #7).
+     */
+    public function sendOrderConfirmation(Order $order): ?WhatsAppMessage
+    {
+        $order->loadMissing('items');
 
         // Stage 8: COD → order_created; transfer → payment_instructions.
         $key = ($order->cod_flag || $order->payment_method === 'cod')
@@ -647,12 +656,27 @@ class WhatsAppService
             ? $this->variablesForOrderCreatedCod($order)
             : $this->variablesForPaymentInstructions($order);
 
-        $this->sendTemplateMessage(
+        return $this->sendTemplateMessage(
             $order->customer_phone,
             $key,
             $variables,
             $order->id
         );
+    }
+
+    /** WA ulang konfirmasi setelah pesanan diedit admin. Aman bila gagal. */
+    public function notifyOrderEdited(Order $order): ?WhatsAppMessage
+    {
+        try {
+            return $this->sendOrderConfirmation($order);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal kirim ulang WA konfirmasi setelah edit pesanan', [
+                'order' => $order->order_number,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     public function handlePaymentConfirmed(PaymentConfirmed $event): void

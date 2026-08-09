@@ -3,8 +3,9 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-class WhatsAppWebhookTest extends \Tests\TestCase
+class WhatsAppWebhookTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -12,7 +13,23 @@ class WhatsAppWebhookTest extends \Tests\TestCase
     {
         $payload = ['entry' => [['changes' => [['value' => ['messages' => [['from' => '62812', 'id' => 'w1', 'text' => ['body' => 'Halo']]], 'statuses' => []]]]]]];
 
-        $this->postJson('/webhook/whatsapp', $payload)->assertStatus(200);
+        config(['services.whatsapp.app_secret' => 'meta-app-secret']);
+        $body = json_encode($payload, JSON_THROW_ON_ERROR);
+        $signature = 'sha256='.hash_hmac('sha256', $body, 'meta-app-secret');
+
+        $this->call(
+            'POST',
+            '/webhook/whatsapp',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_ACCEPT' => 'application/json',
+                'HTTP_X_HUB_SIGNATURE_256' => $signature,
+            ],
+            $body,
+        )->assertOk();
 
         $this->assertDatabaseHas('whatsapp_messages', ['direction' => 'inbound', 'phone_number' => '62812', 'provider' => 'meta', 'status' => 'received']);
     }
@@ -32,7 +49,8 @@ class WhatsAppWebhookTest extends \Tests\TestCase
             ],
         ];
 
-        $this->postJson('/webhook/whatsapp/waha?secret=secret-waha', $payload)->assertOk();
+        $this->withHeader('X-Webhook-Secret', 'secret-waha')
+            ->postJson('/webhook/whatsapp/waha', $payload)->assertOk();
 
         $this->assertDatabaseHas('whatsapp_messages', [
             'direction' => 'inbound',

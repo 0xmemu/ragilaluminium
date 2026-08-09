@@ -1,4 +1,4 @@
-# Orchestration — Ragil Aluminium (`website.4.0`)
+# Orchestration — Ragil Aluminium
 
 Cara berpikir agent (adaptasi LOOPKIT, **bukan** harness Claude):  
 **kontrak → SoT → skill track → code → report → (opsional) memory.**
@@ -26,6 +26,27 @@ AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
 | `MEMORY.md` | `docs/MEMORY.md` |
 | `run.sh` | Tidak — alur di §6 |
 
+### Agent efficiency protocol
+
+Ragil agents MUST use two complementary external techniques as process
+helpers, not as application contracts:
+
+1. **Caveman** — default compression for prose-like agent output. Preserve
+   code, commands, paths, error strings, JSON, test evidence, contracts, and
+   the exact report format. If the runtime does not support the plugin, apply
+   the rule manually by removing repetition without changing meaning.
+2. **Compound Engineering** — default task loop:
+   **brainstorm → plan → work → review → compound**. If plugin commands are
+   unavailable, perform equivalent local phases using this document, the
+   relevant domain skills, tests, and `docs/MEMORY.md`.
+
+The local Ragil hierarchy always wins: explicit user scope and safety rules,
+`AGENTS.md`, this orchestration contract, canonical product/schema/API/UI
+contracts, then external technique helpers. These repositories are therefore
+agent-process references, not permission to invent routes, fields, statuses,
+providers, or UI behavior. See
+[`ADR-002`](decisions/ADR-002-agent-efficiency-and-compound-workflow.md).
+
 ---
 
 ## 1. Kontrak (selalu)
@@ -33,6 +54,7 @@ AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
 | File | Peran |
 |------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Operating rules, phase timeline, **format laporan wajib** |
+| [`AGENT-ARCHITECT-ORCHESTRATOR.md`](AGENT-ARCHITECT-ORCHESTRATOR.md) | Supplemental architecture, gap, ADR, CI/CD, and release-gate contract |
 | File ini | Hierarki SoT, inventaris skill, alur baca, verify, out-of-scope |
 | [`MEMORY.md`](MEMORY.md) | Shift log lintas sesi (isi hanya di milestone) |
 
@@ -43,12 +65,13 @@ AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
 | Prioritas | Sumber | Dipakai untuk |
 |-----------|--------|----------------|
 | 1 | [`PRODUCT-HANDOFF.md`](PRODUCT-HANDOFF.md) + route/controller/schema/API | Perilaku, data, dan inventaris layar |
-| 2 | [`../frontend/brand/BRAND-KIT.md`](../frontend/brand/BRAND-KIT.md) + `frontend/docs/*` | Visual language, UX, dan quality gate |
-| 3 | `docs/sitemap/*` + `config/sitemap.php` (+ `admin-sitemap.php`) | URL, label menu, status implemented/planned |
-| 4 | `docs/logic/stage-9*.md`, `docs/logic/stage-10*.md`, `docs/logic/ui-*-flows-*.md` | Perilaku data & form UI |
-| 5 | [`STOREFRONT-HOME.md`](STOREFRONT-HOME.md) | Peta beranda / ulasan / logo platform (Figma = referensi) |
-| 6 | `skills/stage-1` … `stage-8` | Workflow domain |
-| 7 | `frontend/skills/*` | Workflow UI storefront/admin/visual QA |
+2 | [`FULL-STACK-PRODUCTION-CHECKLIST.md`](FULL-STACK-PRODUCTION-CHECKLIST.md) | Release gate, security, operations, recovery, and production evidence |
+3 | [`../frontend/brand/BRAND-KIT.md`](../frontend/brand/BRAND-KIT.md) + `frontend/docs/*` | Visual language, UX, dan quality gate |
+4 | `docs/sitemap/*` + `config/sitemap.php` (+ `admin-sitemap.php`) | URL, label menu, status implemented/planned |
+5 | `docs/logic/stage-9*.md`, `docs/logic/stage-10*.md`, `docs/logic/ui-*-flows-*.md` | Perilaku data & form UI |
+6 | [`STOREFRONT-HOME.md`](STOREFRONT-HOME.md) | Peta beranda / ulasan / logo platform (Figma = referensi) |
+7 | `skills/stage-1` … `stage-8` | Workflow domain |
+8 | `frontend/skills/*` | Workflow UI storefront/admin/visual QA |
 
 **Dilarang:** menyalin/port UI dari `website_2.0/ui` (Next.js). Sitemap/CTA/wireframe → `docs/sitemap/`.
 
@@ -73,7 +96,8 @@ Lokasi:
 |--------|-----|
 | `skills/*.md` | Domain Ragil stage 1–8 (**autoritatif**) |
 | `frontend/skills/*` | Workflow UI Ragil public, admin, dan visual QA |
-| `.agents/skills/*` | Marketplace / teknik: Laravel, Blade, Tailwind, Alpine, frontend, docs, `design-taste-frontend`, `laravel-testing` |
+| `.agents/skills/*` | Teknik aktif: Laravel, Blade, Tailwind, frontend, docs, `design-taste-frontend`, `laravel-testing` |
+| `.agents/skills-archive/*` | Teknik historis/nonaktif; dipakai hanya setelah scope eksplisit |
 | Cursor skills | Review, PR, loop — hanya jika user minta |
 | `docs/logic/*`, schema, API | Kontrak behaviour / data (bukan skill file) |
 
@@ -85,9 +109,11 @@ Marketplace **tidak** mengganti Product Handoff / frontend governance / schema /
 |-----------|--------|--------|
 | Operating rules + report | `AGENTS.md` | Ada |
 | SoT + peta skill | `docs/ORCHESTRATION.md` (file ini) | Ada |
-| Pola Agents.md | `.agents/skills/create-agentsmd` | Ada (jarang) |
+| Pola Agents.md | `.agents/skills-archive/create-agentsmd` | Arsip — tidak diperlukan runtime |
 | Disiplin docs / ADR | `.agents/skills/documentation-and-adrs` | Ada |
-| Cari skill baru | `.agents/skills/find-skills` | Ada |
+| Cari skill baru | `.agents/skills-archive/find-skills` | Arsip — install manual bila dibutuhkan |
+| Output efficiency | `JuliusBrussee/caveman` | Wajib sebagai teknik, plugin opsional |
+| Task execution loop | `EveryInc/compound-engineering-plugin` | Wajib sebagai teknik, plugin opsional |
 
 ### Track B — Domain backend (Ragil-only)
 
@@ -179,7 +205,8 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 |--------|-----|
 | `skills/*.md` | Domain stage 1–8 |
 | `frontend/skills/*` | Public/admin/visual QA lokal |
-| `.agents/skills/*` | Marketplace teknik (Laravel, Blade, Tailwind, Alpine, frontend, docs, design-taste, laravel-testing) |
+| `.agents/skills/*` | Teknik aktif (Laravel, Blade, Tailwind, frontend, docs, design-taste, laravel-testing) |
+| `.agents/skills-archive/*` | Teknik yang tidak dipakai oleh runtime saat ini |
 | Cursor skills | Review / PR / loop |
 | `docs/logic/stage-9*`, `stage-10*` | Kontrak UI (bukan marketplace) |
 
@@ -187,15 +214,18 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 
 ## 6. Alur kerja agent (urutan)
 
-1. Baca `AGENTS.md` (format laporan).
-2. Baca file ini — pilih **track** dan skill wajib.
-3. Baca SoT yang relevan (Product Handoff / frontend / sitemap / schema / API / logic).
-4. Baca skill domain di `skills/` dan UI di `frontend/skills/`.
-5. Bila perlu teknik saja: skill di `.agents/skills/` (boleh; jangan override SoT).
-6. Ubah code; jangan invent field/route/JSON di luar schema & API docs.
+1. Jalankan fase **brainstorm** Compound Engineering secara ringkas: pahami tujuan, risiko, dan batasan.
+2. Baca `AGENTS.md` (format laporan) dan terapkan kompresi prose Caveman tanpa mengubah bukti teknis.
+3. Bila merencanakan, mengaudit, membuat ADR, atau menilai release: baca `AGENT-ARCHITECT-ORCHESTRATOR.md`.
+4. Jalankan fase **plan**: baca file ini, pilih **track**, skill wajib, SoT, dan strategi test.
+5. Baca SoT yang relevan (Product Handoff / frontend / sitemap / schema / API / logic).
+6. Baca skill domain di `skills/` dan UI di `frontend/skills/`.
+7. Bila perlu teknik saja: skill di `.agents/skills/` (boleh; jangan override SoT).
+8. Jalankan fase **work**: ubah code; jangan invent field/route/JSON di luar schema & API docs.
    - **UI/fitur:** analisis aksi di layar → sambungkan ke backend yang ada → verifikasi fungsional (lihat `ragil-ui-functional-integration`). Dilarang selesai sebagai mockup.
-7. Laporkan SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS.
-8. Milestone besar: satu entri singkat di `docs/MEMORY.md`.
+9. Jalankan fase **review**: cek diff, kontrak, keamanan, regression, dan test evidence.
+10. Laporkan SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS.
+11. Jalankan fase **compound**: hanya catat keputusan, gotcha, atau milestone reusable di `docs/MEMORY.md`.
 
 ---
 

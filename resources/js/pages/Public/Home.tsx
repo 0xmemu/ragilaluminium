@@ -2,6 +2,7 @@ import { Head, Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { ModelCard } from "@/components/public/model-card"
+import { IntroCards } from "@/components/public/intro-cards"
 import { InstallationCard } from "@/components/public/installation-card"
 import { ProductCard } from "@/components/public/product-card"
 import { TestimonialCard } from "@/components/public/testimonial-card"
@@ -47,13 +48,11 @@ interface HomeProps {
 
 function SectionTitle({
   title,
-  eyebrow,
   actionHref,
-  actionLabel = "Lihat selengkapnya",
+  actionLabel = "Lihat semua →",
   tone = "default",
 }: {
   title: string
-  eyebrow?: string
   actionHref?: string
   actionLabel?: string
   tone?: "default" | "on-primary"
@@ -65,22 +64,22 @@ function SectionTitle({
       align="left"
       size="default"
       tone={tone}
+      fitHeading={false}
+      headingClassName="!text-[18px]"
       className="mb-3 gap-1 sm:mb-4"
-      eyebrow={eyebrow}
       title={title}
       action={
         actionHref ? (
           <Link
             href={actionHref}
             className={cn(
-              "inline-flex h-7 shrink-0 items-center gap-1 self-end text-[11px] font-light transition sm:text-xs",
+              "inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition",
               onPrimary
                 ? "text-white/90 hover:text-white"
                 : "text-foreground/80 hover:text-primary",
             )}
           >
             {actionLabel}
-            <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
           </Link>
         ) : undefined
       }
@@ -94,7 +93,7 @@ const carouselNavBtnClass =
 
 /** Touch: pan-x + pan-y agar swipe kartu & scroll halaman sama-sama jalan. Mouse = useDragScroll. */
 const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 /** Mobile ≈ 2⅙ kartu di viewport; gap-2 (0.5rem) antar kartu. */
 const carouselCardClass =
@@ -188,10 +187,10 @@ function CarouselNavButton({
   )
 }
 
-/** Trailing mobile CTA — ikon chevron + label "selengkapnya" di bawahnya. */
+/** Trailing mobile CTA — ikon chevron + label di bawahnya. */
 function MobileSeeMoreSlide({
   href,
-  label = "Lihat selengkapnya",
+  label = "Lihat semua",
   tone = "default",
 }: {
   href: string
@@ -222,8 +221,8 @@ function MobileSeeMoreSlide({
         >
           <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
-        <span className="max-w-full text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs">
-          selengkapnya
+        <span className="max-w-full text-center text-[12px] font-bold leading-tight tracking-tight">
+          {label}
         </span>
       </Link>
     </div>
@@ -245,7 +244,7 @@ function ModelCardCarousel({
       <div ref={trackRef} id={trackId} className={carouselTrackClass}>
         {items.map((model) => (
           <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
-            <ModelCard model={model} />
+            <ModelCard model={model} showDesc={false} />
           </div>
         ))}
         {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
@@ -407,140 +406,46 @@ function TestimonialCarousel({
   )
 }
 
-function splitPromoEyebrow(eyebrow?: string | null): { lead: string; accentWord: string | null } {
-  const text = (eyebrow ?? "Promo").trim()
-  // Homepage promo banner accents "Diskon" only — Flash Sale has /flash-sale.
-  const match = text.match(/^(.*?)(\bDiskon\b)(.*)$/i)
-  if (!match) {
-    return { lead: text, accentWord: null }
-  }
-  const before = match[1].trim()
-  return {
-    lead: before || "Promo",
-    accentWord: "Diskon",
-  }
-}
-
-/** Variasi warna kartu promo (dirotasi per slide): Signal Red, Graphite, Aluminium. */
-const PROMO_CARD_VARIANTS = [
-  {
-    card: "bg-primary",
-    eyebrow: "text-white/90",
-    eyebrowAccent: "text-white",
-    headline: "text-white drop-shadow-[0_1px_2px_rgba(10,0,0,0.25)]",
-    chip: "bg-white text-primary",
-    subheadline: "text-white/90",
-    cta: "bg-black/60 text-white hover:bg-black/70",
-    disclaimer: "text-white/70",
-  },
-  {
-    card: "bg-foreground",
-    eyebrow: "text-white/85",
-    eyebrowAccent: "text-white",
-    headline: "text-white",
-    chip: "bg-primary text-white",
-    subheadline: "text-white/85",
-    cta: "bg-black/60 text-white hover:bg-black/70",
-    disclaimer: "text-white/60",
-  },
-  {
-    card: "bg-border",
-    eyebrow: "text-foreground/85",
-    eyebrowAccent: "text-primary",
-    headline: "text-foreground",
-    chip: "bg-primary text-white",
-    subheadline: "text-foreground/80",
-    cta: "bg-black/60 text-white hover:bg-black/70",
-    disclaimer: "text-foreground/60",
-  },
-] as const
-
-function HeroPromoCard({
-  slide,
-  priority,
-  variantIndex = 0,
-}: {
-  slide: PromoSlide
-  priority: boolean
-  variantIndex?: number
-}) {
-  const accent = slide.accent
-    ? slide.accent.startsWith("-") || !/\d/.test(slide.accent)
-      ? slide.accent
-      : `-${slide.accent}`
-    : null
-  const eyebrow = splitPromoEyebrow(slide.eyebrow)
+/** Banner promo solid — persis contoh: 3 baris teks rata kiri (baris kecil di atas,
+    headline besar bold di tengah, subteks regular di bawah). Seluruh banner adalah
+    link, tanpa tombol / chip / disclaimer. */
+function HeroPromoCard({ slide }: { slide: PromoSlide }) {
   const headlineLines = (slide.headline || "").split("\n").filter(Boolean)
-  const v = PROMO_CARD_VARIANTS[Math.abs(variantIndex) % PROMO_CARD_VARIANTS.length]
+  const label = [slide.eyebrow, slide.headline, slide.subheadline]
+    .filter(Boolean)
+    .join(" — ")
 
   return (
-    <div className="relative h-full w-full bg-muted">
-      <ResponsiveImage
-        src={slide.image}
-        alt={slide.image_alt ?? slide.headline}
-        loading={priority ? "eager" : "lazy"}
-        fetchPriority={priority ? "high" : "auto"}
-        wrapperClassName="absolute inset-0"
-        className="object-cover object-center"
-      />
-      <div className="absolute inset-0 flex items-center">
-        <div
-          className={cn(
-            // Mobile: padding dalam lebar (jarak teks↔tepi kartu); sm+: tinggi 72% (DESIGN-SYSTEM).
-            "ml-4 flex aspect-[3/4] h-auto w-[clamp(12.5rem,58%,20rem)] max-h-[85%] flex-col justify-start overflow-hidden rounded-[clamp(0.625rem,1.2vw,0.875rem)] px-[clamp(0.875rem,2.5vw,2.75rem)] py-[clamp(1rem,3.5vw,2.25rem)] shadow-[0_10px_30px_rgba(10,0,0,0.25)]",
-            "sm:ml-8 sm:h-[clamp(60%,72%,78%)] sm:w-auto sm:max-h-none sm:max-w-none sm:overflow-visible sm:px-[clamp(1.25rem,3vw,2.75rem)] sm:py-[clamp(1.5rem,4vw,2.25rem)]",
-            "md:ml-10 md:px-10 lg:ml-14 lg:px-11",
-            v.card,
-          )}
-        >
-          <p className={cn("font-display text-[clamp(0.72rem,1.8vw,1.25rem)] font-medium tracking-[-0.04em] sm:mt-4 sm:text-[clamp(1rem,1.4vw,1.25rem)]", v.eyebrow)}>
-            {eyebrow.lead}
-            {eyebrow.accentWord ? (
-              <>
-                {" "}
-                <span className={cn("text-[1.5em] font-extrabold", v.eyebrowAccent)}>{eyebrow.accentWord}</span>
-              </>
-            ) : null}
+    <Link
+      href={slide.href}
+      className="group relative flex h-full w-full items-center overflow-hidden rounded-md bg-primary transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      aria-label={label || "Lihat promo"}
+    >
+      <div className="flex w-full flex-col justify-center px-4 sm:px-8 lg:px-10">
+        {slide.eyebrow ? (
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/90">
+            {slide.eyebrow}
           </p>
-          <p className={cn("mt-1 whitespace-pre-line font-display text-[clamp(1.2rem,4.2vw,3rem)] font-extrabold leading-[1.05] tracking-[-0.03em] sm:mt-1.5 sm:text-[clamp(1.75rem,4vw,3rem)] md:text-[clamp(2.25rem,3.4vw,3.75rem)]", v.headline)}>
-            {headlineLines.length ? headlineLines.join("\n") : slide.headline}
+        ) : null}
+        <p className="mt-0.5 whitespace-pre-line font-display text-xl font-extrabold leading-[1.15] tracking-[-0.02em] text-white sm:mt-1 sm:text-3xl lg:text-4xl">
+          {headlineLines.length ? headlineLines.join("\n") : slide.headline}
+        </p>
+        {slide.subheadline ? (
+          <p className="mt-1 text-xs leading-4 text-white/90 sm:mt-1.5">
+            {slide.subheadline}
           </p>
-          {accent ? (
-            <p className={cn("mt-2 inline-flex self-start rounded-full px-2.5 py-0.5 font-display text-[clamp(1rem,3vw,1.875rem)] font-extrabold tracking-tight sm:mt-2.5 sm:px-3 sm:text-[clamp(1.5rem,2.8vw,1.875rem)]", v.chip)}>
-              {accent}
-            </p>
-          ) : null}
-          {slide.subheadline ? (
-            <p className={cn("mt-2 text-[clamp(0.68rem,1.4vw,1.125rem)] font-normal leading-snug sm:mt-3", v.subheadline)}>
-              {slide.subheadline}
-            </p>
-          ) : null}
-          <Link
-            href={slide.href}
-            className={cn(
-              "mt-auto inline-flex h-[clamp(2rem,4vw,2.5rem)] max-w-full shrink-0 items-center justify-center self-start whitespace-nowrap rounded-full px-[clamp(0.75rem,1.8vw,1.5rem)] text-[clamp(0.68rem,1.2vw,0.875rem)] font-bold transition",
-              v.cta,
-            )}
-          >
-            Belanja sekarang
-          </Link>
-          <p className={cn("mt-2 truncate text-[clamp(0.55rem,0.9vw,0.75rem)] font-light sm:mt-3", v.disclaimer)}>
-            {slide.disclaimer ?? "*Untuk berbagai produk pilihan"}
-          </p>
-        </div>
+        ) : null}
       </div>
-    </div>
+    </Link>
   )
 }
 
 function HeroSlideContent({
   slide,
   priority,
-  index = 0,
 }: {
   slide: PromoSlide
   priority: boolean
-  index?: number
 }) {
   const accent = slide.accent
     ? slide.accent.startsWith("-") || !/\d/.test(slide.accent)
@@ -548,8 +453,8 @@ function HeroSlideContent({
       : `-${slide.accent}`
     : null
 
-  if (slide.layout === "promo_card" || slide.sticker) {
-    return <HeroPromoCard slide={slide} priority={priority} variantIndex={index} />
+  if (slide.layout === "promo_card" || slide.sticker || slide.layout === "landing") {
+    return <HeroPromoCard slide={slide} />
   }
 
   return (
@@ -575,7 +480,7 @@ function HeroSlideContent({
       <div className="absolute inset-0 flex items-center">
         <div className="w-full max-w-[560px] px-5 py-5 text-left text-white sm:px-16 md:px-[72px] lg:px-[88px]">
           {slide.eyebrow ? (
-            <p className="font-display text-base font-normal leading-[1.25] tracking-[-0.01em] sm:text-2xl md:text-[2rem]">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/75 sm:text-sm">
               {slide.eyebrow}
             </p>
           ) : null}
@@ -634,8 +539,9 @@ function HeroSlideContent({
 
 function HeroPromo({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
-  const total = slides.length
-  const visibleIndex = total ? Math.min(activeIndex, total - 1) : 0
+  // Slide terakhir = banner 2-zona info brand (IntroCards); total selalu ≥ 1.
+  const total = slides.length + 1
+  const visibleIndex = Math.min(activeIndex, total - 1)
   const surfaceRef = React.useRef<HTMLDivElement>(null)
   const dragRef = React.useRef<{
     pointerId: number | null
@@ -775,36 +681,48 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   return (
-    <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
-      <div
-        ref={surfaceRef}
-        className="relative w-full overflow-hidden bg-foreground/5 [touch-action:pan-x_pan-y]"
-      >
-          {total ? (
-            <>
+    <section id="promo" className="scroll-mt-20 bg-surface pt-5 md:pt-8 lg:pt-12" aria-label="Promo dan campaign">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <div
+          ref={surfaceRef}
+          className="relative w-full overflow-hidden rounded-md bg-surface-muted shadow-[0_2px_16px_hsl(var(--foreground)/0.06)] [touch-action:pan-x_pan-y]"
+        >
+          <>
+            <div
+              className={cn(
+                // Mobile: strip seragam 134px seperti banner sebelumnya (lebih tinggi di layar <360px agar teks tidak terpotong); sm+ mengikuti konten tertinggi.
+                // Mobile: strip FIX 134px (sesuai spec 398x134) — tidak diubah-ubah; sm+ mengikuti konten.
+                "flex h-[134px] w-full items-stretch sm:h-auto sm:min-h-[132px] lg:min-h-[148px]",
+                !reduceMotion && "transition-transform duration-500 ease-emphasized",
+              )}
+              style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
+              aria-live="polite"
+            >
+              {slides.map((slide, index) => {
+                const hidden = index !== visibleIndex
+                return (
+                  <div
+                    key={slide.id}
+                    className="h-full w-full shrink-0 basis-full"
+                    aria-hidden={hidden ? "true" : undefined}
+                    // Hidden carousel slides must not keep focusable CTAs in tab order (axe aria-hidden-focus).
+                    {...(hidden ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>) : {})}
+                  >
+                    <HeroSlideContent slide={slide} priority={index === 0} />
+                  </div>
+                )
+              })}
               <div
-                className={cn(
-                  "flex aspect-[1024/426] min-h-[260px] w-full sm:min-h-[320px]",
-                  !reduceMotion && "transition-transform duration-500 ease-emphasized",
-                )}
-                style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
-                aria-live="polite"
+                className="h-full w-full shrink-0 basis-full"
+                aria-hidden={slides.length !== visibleIndex ? "true" : undefined}
+                {...(slides.length !== visibleIndex
+                  ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>)
+                  : {})}
               >
-                {slides.map((slide, index) => {
-                  const hidden = index !== visibleIndex
-                  return (
-                    <div
-                      key={slide.id}
-                      className="h-full w-full shrink-0 basis-full"
-                      aria-hidden={hidden ? "true" : undefined}
-                      // Hidden carousel slides must not keep focusable CTAs in tab order (axe aria-hidden-focus).
-                      {...(hidden ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>) : {})}
-                    >
-                      <HeroSlideContent slide={slide} priority={index === 0} index={index} />
-                    </div>
-                  )
-                })}
+                {/* Satu banner utuh full-bleed — mengisi slide seperti banner merah. */}
+                <IntroCards className="h-full w-full" />
               </div>
+            </div>
 
               {total > 1 ? (
                 <>
@@ -826,32 +744,29 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
                   </button>
 
                   <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
-                    {slides.map((item, index) => (
+                    {Array.from({ length: total }).map((_, index) => (
                       <button
                         type="button"
-                        key={item.id}
+                        key={index}
                         onClick={() => goTo(index)}
-                        className={cn(
-                          "h-2 rounded-full transition-all",
-                          index === visibleIndex ? "w-5 bg-white" : "w-2 bg-white/40",
-                        )}
+                        className="flex size-8 items-center justify-center rounded-full transition-all"
                         aria-label={`Slide ${index + 1}`}
                         aria-current={index === visibleIndex ? "true" : undefined}
-                      />
+                      >
+                        <span
+                          className={cn(
+                            // Ring tipis agar dot tetap terlihat di atas kartu putih (slide intro).
+                            "h-2 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
+                            index === visibleIndex ? "w-5 bg-white" : "w-2 bg-white/50",
+                          )}
+                        />
+                      </button>
                     ))}
                   </div>
                 </>
               ) : null}
-            </>
-          ) : (
-            <div className="flex aspect-[1024/426] min-h-[260px] w-full items-center justify-center bg-muted sm:min-h-[320px]">
-              <EmptyState
-                className="min-h-28 border-0 bg-transparent p-4"
-                title="Promo segera hadir"
-                description="Banner promo akan tampil setelah konten aktif."
-              />
-            </div>
-          )}
+          </>
+        </div>
       </div>
     </section>
   )
@@ -864,7 +779,6 @@ function PilihModelProduk({ models }: { models: ModelCardData[] }) {
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
-          eyebrow="Temukan model Anda"
           title="Pilih model produk"
           actionHref={seeMoreHref}
         />
@@ -893,7 +807,6 @@ function PalingBanyakDipesan({ products }: { products: ProductCardData[] }) {
     <section id="paling-banyak-dipesan" className="scroll-mt-20 section-space">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
-          eyebrow="Untuk inspirasi Anda"
           title="Paling banyak dipesan"
           actionHref={seeMoreHref}
         />
@@ -939,48 +852,201 @@ function CaraPesan({
 }: {
   data?: HomepageLayoutProps["how_to_order"]
 }) {
-  const title = data?.title || "Cara pesan jendela Anda"
+  const title = data?.title || "cara pesan jendela impian anda"
   const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
+  const stepDescriptions: Record<string, string> = {
+    "Pilih model": "telusuri katalog di website dan pilih model jendela favoritmu",
+    "Pilih ukuran & varian": "tentukan ukuran & varian yang kamu butuhkan, lalu masukkan ke keranjang",
+    "Proses pesanan & konfirmasi WhatsApp": "selesaikan checkout, lalu konfirmasi pesananmu lewat WhatsApp",
+  }
+  const [active, setActive] = React.useState(0)
+  const total = steps.length
+  const surfaceRef = React.useRef<HTMLDivElement>(null)
+  const dragRef = React.useRef<{
+    pointerId: number | null
+    startX: number
+    dragged: boolean
+  }>({ pointerId: null, startX: 0, dragged: false })
+
+  React.useEffect(() => {
+    if (total < 2) return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (media.matches) return
+    const id = window.setInterval(() => {
+      setActive((current) => (current + 1) % total)
+    }, 2000)
+    return () => window.clearInterval(id)
+  }, [total])
+
+  // Swipe kiri/kanan untuk ganti langkah.
+  React.useEffect(() => {
+    const el = surfaceRef.current
+    if (!el || total < 2) return
+
+    const state = dragRef.current
+    let startX = 0
+    let activeDrag = false
+    let dragged = false
+    const usePointer = typeof window.PointerEvent === "function"
+
+    const begin = (clientX: number, pointerId: number | null = null) => {
+      activeDrag = true
+      dragged = false
+      startX = clientX
+      state.pointerId = pointerId
+      state.dragged = false
+    }
+
+    const markDrag = (clientX: number, event?: Event) => {
+      if (!activeDrag) return
+      if (Math.abs(clientX - startX) < 28) return
+      if (!dragged) {
+        dragged = true
+        state.dragged = true
+        if (state.pointerId !== null && event instanceof PointerEvent) {
+          try {
+            el.setPointerCapture(state.pointerId)
+          } catch {
+            // ignore
+          }
+        }
+      }
+      event?.preventDefault()
+    }
+
+    const finish = (clientX: number) => {
+      if (!activeDrag) return
+      const dx = clientX - startX
+      const wasDragged = dragged
+      activeDrag = false
+      dragged = false
+      state.pointerId = null
+      state.dragged = false
+      if (!wasDragged || Math.abs(dx) < 40) return
+      setActive((current) => ((current + (dx < 0 ? 1 : -1)) % total + total) % total)
+    }
+
+    if (usePointer) {
+      const onPointerDown = (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return
+        begin(event.clientX, event.pointerId)
+      }
+      const onPointerMove = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        markDrag(event.clientX, event)
+      }
+      const onPointerUp = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        finish(event.clientX)
+      }
+      el.addEventListener("pointerdown", onPointerDown)
+      el.addEventListener("pointermove", onPointerMove, { passive: false })
+      el.addEventListener("pointerup", onPointerUp)
+      el.addEventListener("pointercancel", onPointerUp)
+      return () => {
+        el.removeEventListener("pointerdown", onPointerDown)
+        el.removeEventListener("pointermove", onPointerMove)
+        el.removeEventListener("pointerup", onPointerUp)
+        el.removeEventListener("pointercancel", onPointerUp)
+      }
+    }
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      begin(event.touches[0].clientX)
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (!activeDrag || event.touches.length !== 1) return
+      markDrag(event.touches[0].clientX, event)
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      finish(event.changedTouches[0]?.clientX ?? startX)
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true })
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    el.addEventListener("touchend", onTouchEnd)
+    el.addEventListener("touchcancel", onTouchEnd)
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart)
+      el.removeEventListener("touchmove", onTouchMove)
+      el.removeEventListener("touchend", onTouchEnd)
+      el.removeEventListener("touchcancel", onTouchEnd)
+    }
+  }, [total])
 
   return (
     <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
-        <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
-          <SectionHeading
-            size="display"
-            eyebrow="Panduan"
-            title={title}
-            action={
-              <Link
-                href={routeUrl("cara-pemesanan")}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-foreground bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-foreground/5"
-              >
-                Lihat panduan
-              </Link>
-            }
-          />
-        </div>
-        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
-          {steps.map((item, index) => {
-            const icon = orderStepIcon(item.title, index)
-            return (
-              <li key={`${index}-${item.title}`}>
-                <article className="flex h-full flex-col items-center rounded-xl border border-border bg-background px-1.5 py-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-3 sm:py-4">
-                  <span className="mt-2 flex size-14 items-center justify-center rounded-xl bg-muted text-foreground sm:mt-3 sm:size-16">
-                    <Icon name={icon} className="size-6 sm:size-7" aria-hidden="true" />
+        <SectionTitle
+          title={title}
+          actionHref={routeUrl("cara-pemesanan")}
+          actionLabel="Lihat panduan →"
+        />
+
+        <div
+          ref={surfaceRef}
+          className="relative w-full overflow-hidden rounded-xl bg-foreground shadow-[0_2px_16px_rgba(10,0,0,0.12)] [touch-action:pan-y]"
+        >
+          <div
+            className={cn(
+              "flex h-[90px] w-full",
+              !(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) &&
+                "transition-transform duration-200 ease-emphasized",
+            )}
+            style={{ transform: `translateX(-${active * 100}%)` }}
+            aria-live="polite"
+          >
+            {steps.map((item, index) => {
+              const icon = orderStepIcon(item.title, index)
+              const desc =
+                stepDescriptions[item.title] ??
+                ("description" in item ? item.description : undefined)
+              return (
+                <div
+                  key={`${index}-${item.title}`}
+                  className="flex h-full w-full shrink-0 items-center gap-3 px-4 sm:gap-4 sm:px-6"
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white sm:size-10">
+                    <Icon name={icon} className="size-4.5 sm:size-5" aria-hidden="true" />
                   </span>
-                  <h3 className="mt-2 text-[0.6875rem] font-bold leading-snug tracking-tight text-foreground sm:mt-3 sm:text-sm">
-                    {item.title}
-                  </h3>
-                </article>
-              </li>
-            )
-          })}
-        </ol>
+                  <div className="min-w-0">
+                    <h3 className="mt-0.5 truncate text-[13px] font-bold leading-snug tracking-tight text-white sm:text-sm">
+                      {item.title.toLowerCase()}
+                    </h3>
+                    {desc ? (
+                      <p className="mt-0.5 truncate text-[11px] leading-snug text-white/70 sm:text-xs">
+                        {desc.toLowerCase()}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Dots tipis di kanan bawah */}
+          {total > 1 ? (
+            <div className="absolute bottom-2 right-3 flex items-center gap-1">
+              {steps.map((item, index) => (
+                <button
+                  key={`dot-${index}-${item.title}`}
+                  type="button"
+                  onClick={() => setActive(index)}
+                  aria-label={`Langkah ${index + 1}`}
+                  className={cn(
+                    "h-1 rounded-full transition-all duration-300",
+                    index === active ? "w-4 bg-white" : "w-1 bg-white/40 hover:bg-white/70",
+                  )}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   )
 }
+
 
 function HasilPemasangan({
   items,
@@ -995,10 +1061,9 @@ function HasilPemasangan({
     <section id="hasil-pemasangan" className="scroll-mt-20 section-space">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
-          eyebrow="Inspirasi penerapan"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           actionHref={seeMoreHref}
-          actionLabel="Lihat selengkapnya"
+          actionLabel="Lihat semua →"
         />
         {items.length ? (
           <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
@@ -1021,10 +1086,9 @@ function ApaKataPelanggan({ testimonials }: { testimonials: Testimonial[] }) {
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
-          eyebrow="Ulasan dari marketplace dan WhatsApp"
           title="Apa kata pelanggan kami"
           actionHref={seeMoreHref}
-          actionLabel="Lihat selengkapnya"
+          actionLabel="Lihat semua →"
         />
         {testimonials.length ? (
           <TestimonialCarousel
@@ -1052,10 +1116,9 @@ function UlasanPelangganWebsite({ testimonials }: { testimonials: Testimonial[] 
     <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted section-space">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
-          eyebrow="Pembeli lewat website"
           title="Ulasan pelanggan di website"
           actionHref={seeMoreHref}
-          actionLabel="Lihat selengkapnya"
+          actionLabel="Lihat semua →"
         />
         {testimonials.length ? (
           <TestimonialCarousel
@@ -1103,58 +1166,88 @@ const HELP_STEPS = [
   },
 ]
 
-function KamiBantu() {
-  return (
-    <section id="kami-bantu" className="scroll-mt-20 bg-surface-muted section-space">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12">
-        <div className="mx-auto mb-4 max-w-xl text-center md:mb-5">
-          <SectionHeading
-            size="display"
-            eyebrow="Didukung tim kami"
-            title={
-              <>
-                Kami bantu dari <span className="text-primary">awal sampai jadi</span>
-              </>
-            }
-          />
-        </div>
-        <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2">
-          {HELP_STEPS.map((item) => (
-            <article
-              key={item.title}
-              className="flex flex-col items-center gap-4 border border-border bg-surface p-5 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:gap-5 sm:p-6"
-            >
-              <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
-                <Icon name={item.icon} className="size-6 sm:size-7" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
+const HELP_CARD_VARIANTS = [
+  {
+    card: "bg-primary text-white",
+    icon: "bg-white/15 text-white",
+    number: "text-white",
+    title: "text-white",
+    description: "text-white",
+  },
+  {
+    card: "bg-action text-white",
+    icon: "bg-white/10 text-white",
+    number: "text-white/80",
+    title: "text-white",
+    description: "text-white/80",
+  },
+  {
+    card: "bg-white/10 text-white",
+    icon: "bg-white/10 text-white",
+    number: "text-white/80",
+    title: "text-white",
+    description: "text-white/80",
+  },
+  {
+    card: "bg-white text-action",
+    icon: "bg-action/10 text-action",
+    number: "text-action",
+    title: "text-action",
+    description: "text-action",
+  },
+] as const
 
-function ClosingCta() {
+function KamiBantu() {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
 
   return (
-    <section id="closing-cta" className="scroll-mt-20 section-space bg-foreground text-background">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 flex flex-col items-center text-center">
-        <SectionHeading
-          size="display"
-          eyebrow="Produk berkualitas"
-          className="text-background [&_h2]:text-background [&_p]:text-white"
-          title="Tingkatkan kualitas bangunan bersama kami"
-        />
-        <div className="mt-10 flex w-full max-w-xl flex-nowrap items-center justify-center gap-2 sm:gap-3">
+    <section id="kami-bantu" className="scroll-mt-20 bg-foreground text-background section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <div className="mx-auto mb-3 max-w-xl text-center md:mb-4">
+          <SectionHeading
+            size="display"
+            fitHeading={false}
+            headingClassName="!text-[18px]"
+            className="text-background [&_h2]:text-background [&_p]:text-white"
+            title={
+              <>
+                Kami bantu dari <span className="text-[hsl(var(--on-dark-accent))]">awal sampai jadi</span>
+              </>
+            }
+          />
+        </div>
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {HELP_STEPS.map((item, index) => {
+            const variant = HELP_CARD_VARIANTS[index % HELP_CARD_VARIANTS.length]
+
+            return (
+              <article
+                key={item.title}
+                className={cn(
+                  "flex min-h-[13.5rem] flex-col items-start gap-4 rounded-md border border-white/10 p-4 text-left shadow-[0_8px_24px_rgba(10,0,0,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(10,0,0,0.18)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:min-h-[14.5rem] sm:p-5",
+                  variant.card,
+                )}
+              >
+                <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-md sm:size-12", variant.icon)}>
+                  <Icon name={item.icon} className="size-5 sm:size-6" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <span className={cn("text-[11px] font-bold tracking-tight", variant.number)}>
+                    0{index + 1}
+                  </span>
+                  <h3 className={cn("mt-1 text-[14px] font-bold leading-snug tracking-tight", variant.title)}>
+                    {item.title}
+                  </h3>
+                  <p className={cn("mt-2 line-clamp-3 text-xs leading-5 sm:text-sm", variant.description)}>
+                    {item.description}
+                  </p>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+        <div className="mt-6 flex w-full max-w-xl flex-col items-stretch gap-2 sm:mx-auto sm:flex-row sm:items-center sm:justify-center sm:gap-3">
           <Button asChild className="min-w-0 flex-1 whitespace-nowrap bg-background px-3 text-xs text-primary hover:bg-background/90 sm:px-6 sm:text-sm">
             <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
           </Button>
@@ -1176,6 +1269,7 @@ function ClosingCta() {
     </section>
   )
 }
+
 
 export default function Home({
   promoSlides = [],
@@ -1238,7 +1332,6 @@ export default function Home({
         <UlasanPelangganWebsite testimonials={websiteItems} />
       ) : null}
       <KamiBantu />
-      <ClosingCta />
     </PublicLayout>
   )
 }

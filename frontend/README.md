@@ -9,7 +9,7 @@ Urutan prioritas ketika ada perbedaan:
 
 1. `docs/PRODUCT-HANDOFF.md`, route, controller, schema, dan API untuk perilaku/data.
 2. `frontend/brand/BRAND-KIT.md` untuk identitas visual.
-3. `frontend/docs/DESIGN-SYSTEM.md` dan `frontend/docs/UX-FLOWS.md` untuk pola UI/UX.
+3. `frontend/docs/UI-CONSISTENCY-CONTRACT.md`, `frontend/docs/DESIGN-SYSTEM.md`, dan `frontend/docs/UX-FLOWS.md` untuk pola UI/UX.
 4. `config/sitemap.php` dan `config/admin-sitemap.php` untuk IA dan navigasi.
 5. `frontend/skills/*` untuk workflow implementasi dan quality gate.
 6. Skill teknik eksternal hanya membantu teknik dan tidak boleh mengubah kontrak di atas.
