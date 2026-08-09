@@ -112,6 +112,7 @@ parent→child ke MySQL. Atau seeder + import manual.
 ```bash
 chown -R www-data:www-data storage bootstrap/cache
 chmod -R ug+rw storage bootstrap/cache
+chown root:www-data .env && chmod 640 .env   # www-data harus bisa BACA .env
 # Jika repo di /root/... : beri traverse
 chmod o+x /root /root/ragilaluminium 2>/dev/null || true
 ```
@@ -295,8 +296,10 @@ redis-cli dbsize
 3. FPM `clear_env` harus `no` — kalau tidak, `APP_ENV` terbaca NULL → Laravel fallback ke
    `production` + guard error.
 4. Storage & bootstrap/cache harus milik `www-data` — kalau 500 "Permission denied", ini dia.
-5. Ganti `APP_URL` → pastikan `config:cache` ikut diperbarui.
-6. Server produksi sebaiknya di **Indonesia/Singapura** (RTT ~10–50ms). Server di US membuat
+5. `.env` harus **terbaca** www-data (`chown root:www-data .env; chmod 640 .env`) — kalau 500
+   "APP_URL wajib HTTPS" saat config cache bersih, ini penyebabnya (www-data tak bisa baca .env → fallback production).
+6. Ganti `APP_URL` → pastikan `config:cache` ikut diperbarui.
+7. Server produksi sebaiknya di **Indonesia/Singapura** (RTT ~10–50ms). Server di US membuat
    TTFB dinamis 0.5–1.0s meski render origin sudah 60–160ms.
-7. WhatsApp: engine (Baileys/WAHA) dipanggil internal (`WHATSAPP_ENGINE_URL=http://localhost:PORT`),
-   jangan dipublikasikan. Webhook masuk lewat `https://domain/webhook/whatsapp/waha`.
+8. WhatsApp: engine (Baileys/BAILEYS) dipanggil internal (`WHATSAPP_ENGINE_URL=http://localhost:PORT`),
+   jangan dipublikasikan. Webhook masuk lewat `https://domain/webhook/whatsapp/baileys`.
