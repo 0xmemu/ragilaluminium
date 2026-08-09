@@ -233,21 +233,57 @@ systemctl enable --now ragil-queue.service
 
 ---
 
-## 8a. Backup MySQL (wajib sebelum cutover)
+## 8a. Backup & Disaster Recovery
 
-Script:  (di server) — dump  + gzip,
-rotasi 7 hari, symlink . Cron root:
+### Arsitektur backup (2 lapis)
 
+1. **Lokal** — `/root/backups/ragil/`: dump `mysqldump` + gzip setiap hari
+   (cron `17 3 * * *`), rotasi 7 hari, symlink `ragil_aluminium-latest.sql.gz`.
+2. **Off-site R2** — setiap backup lokal otomatis di-upload ke bucket
+   `ra-media` (prefix `backups/mysql/`), retensi 30 hari. Data aman walau
+   VPS mati total. Media produk sudah di R2 sejak awal (bukan di VPS).
 
+Script: `/root/scripts_backup_mysql.sh` (dump + upload), diikuti
+`/root/scripts_r2_upload_backup.py` (SigV4 R2, hanya stdlib, tidak perlu aws cli).
 
-Uji restore (lengkap, verifikasi count per tabel):
+Cron root:
+```
+17 3 * * * /root/scripts_backup_mysql.sh >> /root/backups/ragil-backup.log 2>&1
+```
 
+### Uji restore (wajib berkala)
 
+```bash
+mysql -uroot -e 'CREATE DATABASE ragil_restore_test;'
+zcat /root/backups/ragil/ragil_aluminium-latest.sql.gz | mysql -uroot ragil_restore_test
+# bandingkan TABLE_ROWS per tabel (information_schema) antara ragil_aluminium dan ragil_restore_test
+mysql -uroot -e 'DROP DATABASE ragil_restore_test;'
+```
 
-Catatan: restore lewat pipe  adalah metode yang benar — verifikasi
-row count per tabel harus  semua. Jangan menjalankan restore bersamaan dengan
-backup (bisa baca dump yang sedang ditulis).
+Catatan: jangan menjalankan restore bersamaan dengan backup (bisa baca dump
+yang sedang ditulis). Verifikasi row count per tabel harus identik semua.
 
+### Recovery — VPS mati total / error
+
+Media (R2) tidak hilang — tinggal arahkan app ke bucket yang sama.
+Data MySQL diambil dari backup R2:
+
+```bash
+# 1. Siapkan VPS baru (ikuti runbook dari awal: Nginx, PHP-FPM, MySQL, Redis)
+# 2. Buat DB + user, lalu restore dari backup off-site:
+mysql -uragil -p<pass> -e 'CREATE DATABASE ragil_aluminium CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+# download backup dari R2 (pakai scripts_r2_verify_download.py / aws cli / dashboard R2)
+zcat ragil_aluminium-YYYYMMDD-HHMMSS.sql.gz | mysql -uragil -p<pass> ragil_aluminium
+# 3. Verifikasi count: SELECT COUNT(*) FROM products; -- harus 50+
+# 4. Jalankan migrate hanya untuk migration yang BELUM ada (backup sudah berisi tabel)
+php artisan migrate --force
+# 5. config:cache, route:cache, view:cache; start queue worker + tunnel
+```
+
+Data performa toko (KPI) dihitung langsung dari tabel `orders`, `customers`,
+`products` oleh `StorePerformanceService` — ikut ter-restore bersama dump.
+`performance_metrics` hanya agregat view/click produk, tidak pernah menjadi
+sumber tunggal.
 
 ---
 
