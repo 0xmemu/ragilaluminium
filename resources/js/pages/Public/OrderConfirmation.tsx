@@ -67,7 +67,7 @@ export default function OrderConfirmation({
             >
               <Icon name="caret-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
               Pesanan berhasil
             </h1>
           </div>

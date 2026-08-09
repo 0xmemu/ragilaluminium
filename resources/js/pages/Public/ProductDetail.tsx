@@ -652,7 +652,7 @@ export default function ProductDetail({
 
           <div className="min-w-0 lg:sticky lg:top-28">
             {/* Nama produk + varian terpilih */}
-            <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
               {title}
               {selectedVariant?.label ? (
                 <span className="ml-1.5 text-sm font-normal text-muted-foreground">
@@ -789,7 +789,7 @@ export default function ProductDetail({
                   type="button"
                   variant="secondary"
                   size="md"
-                  className="h-10 flex-1 text-sm"
+                  className="h-11 flex-1 text-sm"
                   disabled={selectedVariant?.stock != null && selectedVariant.stock < 1 || form.processing}
                   onClick={buyNow}
                 >
@@ -799,7 +799,7 @@ export default function ProductDetail({
                 <Button
                   type="submit"
                   size="md"
-                  className="h-10 flex-1 text-sm"
+                  className="h-11 flex-1 text-sm"
                   disabled={selectedVariant?.stock != null && selectedVariant.stock < 1 || form.processing}
                 >
                   <Icon name="shopping-cart" className="size-4" aria-hidden="true" />
@@ -830,7 +830,7 @@ export default function ProductDetail({
                   type="button"
                   variant="secondary"
                   size="md"
-                  className="h-10 min-h-10 flex-1 text-xs"
+                  className="h-11 min-h-11 flex-1 text-xs"
                   disabled={selectedVariant?.stock != null && selectedVariant.stock < 1 || form.processing}
                   onClick={buyNow}
                 >
@@ -842,7 +842,7 @@ export default function ProductDetail({
                 <Button
                   type="submit"
                   size="md"
-                  className="h-10 min-h-10 flex-1 text-xs"
+                  className="h-11 min-h-11 flex-1 text-xs"
                   disabled={selectedVariant?.stock != null && selectedVariant.stock < 1 || form.processing}
                 >
                   <Icon name="shopping-cart" className="size-4 shrink-0" aria-hidden="true" />

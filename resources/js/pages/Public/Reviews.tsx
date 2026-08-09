@@ -60,7 +60,7 @@ export default function Reviews({
               >
                 <Icon name="caret-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="text-lg font-bold leading-snug tracking-tight text-foreground">{heading}</h1>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">{heading}</h1>
             </div>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">{subtitle}</p>
             </div>

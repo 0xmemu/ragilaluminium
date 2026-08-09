@@ -133,7 +133,7 @@ export default function Installations({
                 >
                   <Icon name="caret-left" className="size-5" aria-hidden="true" />
                 </button>
-                <h1 className="flex items-baseline gap-2 text-lg font-bold leading-snug tracking-tight text-foreground">
+                <h1 className="flex items-baseline gap-2 text-xl font-bold tracking-tight text-foreground">
                   {heading}
                   <span className="font-normal text-muted-foreground">|</span>
                   <span className="text-xs font-normal text-muted-foreground">{countLabel}</span>

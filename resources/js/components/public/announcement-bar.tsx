@@ -48,7 +48,7 @@ function AnnouncementLink({ announcement }: { announcement: Announcement }) {
   return (
     <Link
       href={announcement.href}
-      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-white transition hover:text-white/90 sm:gap-2"
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 py-2 text-white transition hover:text-white/90 sm:gap-2"
     >
       <AnnouncementMark text={announcement.text} />
       <AnnouncementText text={announcement.text} />

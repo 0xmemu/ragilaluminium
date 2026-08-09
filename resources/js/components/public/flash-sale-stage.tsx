@@ -291,7 +291,7 @@ export function FlashSaleRedBanner({
           </p>
           <Link
             href={routeUrl("catalog.flash-sale")}
-            className="inline-flex h-6 shrink-0 items-center gap-1 text-xs font-light text-white/90 transition hover:text-white"
+            className="inline-flex h-8 shrink-0 items-center gap-1 text-xs font-light text-white/90 transition hover:text-white"
           >
             Lihat semua →
           </Link>
