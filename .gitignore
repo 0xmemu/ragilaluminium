@@ -54,3 +54,4 @@ xlsx/
 *.legacy-*
 /_cf_rate_limit.py
 /_sync_env_example.py
+/.gitignore.bak-*
