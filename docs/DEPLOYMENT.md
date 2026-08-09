@@ -235,21 +235,27 @@ systemctl enable --now ragil-queue.service
 
 ## 8a. Backup & Disaster Recovery
 
-### Arsitektur backup (2 lapis)
+### Arsitektur backup (3 lapis)
 
 1. **Lokal** — `/root/backups/ragil/`: dump `mysqldump` + gzip setiap hari
    (cron `17 3 * * *`), rotasi 7 hari, symlink `ragil_aluminium-latest.sql.gz`.
-2. **Off-site R2** — setiap backup lokal otomatis di-upload ke bucket
-   `ra-media` (prefix `backups/mysql/`), retensi 30 hari. Data aman walau
-   VPS mati total. Media produk sudah di R2 sejak awal (bukan di VPS).
+2. **Off-site R2 — bucket terpisah `ra-backup`**: setiap backup lokal otomatis
+   di-upload (prefix `mysql/`), retensi 30 hari via **lifecycle rule Cloudflare**
+   di bucket (bukan delete di script). Bucket backup **terisolasi** dari media —
+   kalau kredensial media bocor, backup tetap aman.
+3. **Media** — bucket `ra-media` (produk/gambar) terpisah dari backup, sudah di
+   R2 sejak awal (bukan di VPS). Tidak ikut hilang saat VPS mati.
 
 Script: `/root/scripts_backup_mysql.sh` (dump + upload), diikuti
-`/root/scripts_r2_upload_backup.py` (SigV4 R2, hanya stdlib, tidak perlu aws cli).
+`/root/scripts_r2_upload_backup.py` (SigV4 R2, stdlib Python, tanpa aws cli).
 
 Cron root:
 ```
 17 3 * * * /root/scripts_backup_mysql.sh >> /root/backups/ragil-backup.log 2>&1
 ```
+
+Bucket: `ra-backup` (backup, lifecycle 30 hari) & `ra-media` (media).
+Kredensial R2 di `.env` (CLOUDFLARE_R2_*), sama untuk kedua bucket.
 
 ### Uji restore (wajib berkala)
 
@@ -266,13 +272,13 @@ yang sedang ditulis). Verifikasi row count per tabel harus identik semua.
 ### Recovery — VPS mati total / error
 
 Media (R2) tidak hilang — tinggal arahkan app ke bucket yang sama.
-Data MySQL diambil dari backup R2:
+Data MySQL diambil dari backup R2 (`ra-backup`):
 
 ```bash
 # 1. Siapkan VPS baru (ikuti runbook dari awal: Nginx, PHP-FPM, MySQL, Redis)
 # 2. Buat DB + user, lalu restore dari backup off-site:
 mysql -uragil -p<pass> -e 'CREATE DATABASE ragil_aluminium CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
-# download backup dari R2 (pakai scripts_r2_verify_download.py / aws cli / dashboard R2)
+# download backup dari R2 (dashboard R2 / aws cli / script SigV4 GET)
 zcat ragil_aluminium-YYYYMMDD-HHMMSS.sql.gz | mysql -uragil -p<pass> ragil_aluminium
 # 3. Verifikasi count: SELECT COUNT(*) FROM products; -- harus 50+
 # 4. Jalankan migrate hanya untuk migration yang BELUM ada (backup sudah berisi tabel)
