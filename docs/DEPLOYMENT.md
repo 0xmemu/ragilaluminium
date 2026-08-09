@@ -215,7 +215,7 @@ After=network-online.target mysql.service redis-server.service
 [Service]
 User=www-data
 WorkingDirectory=/var/www/ragilaluminium
-ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan queue:work --queue=imports,media,default --tries=3
+ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan queue:work --queue=imports,media,default --tries=3 --timeout=1800 --max-time=3600
 Restart=always
 RestartSec=3
 
@@ -229,6 +229,25 @@ systemctl enable --now ragil-queue.service
 
 > Setelah mengubah `.env` atau `config/*.php`: `php artisan config:clear && php artisan config:cache`
 > (jangan lupa, config cache menyimpan nilai lama).
+
+
+---
+
+## 8a. Backup MySQL (wajib sebelum cutover)
+
+Script:  (di server) — dump  + gzip,
+rotasi 7 hari, symlink . Cron root:
+
+
+
+Uji restore (lengkap, verifikasi count per tabel):
+
+
+
+Catatan: restore lewat pipe  adalah metode yang benar — verifikasi
+row count per tabel harus  semua. Jangan menjalankan restore bersamaan dengan
+backup (bisa baca dump yang sedang ditulis).
+
 
 ---
 
