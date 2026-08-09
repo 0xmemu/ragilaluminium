@@ -1,864 +1,685 @@
-# Database Schema – Ragil Aluminium Website
+# Database Schema - Ragil Aluminium Website
 
-This document defines the **core SQL schema** for the Ragil Aluminium website.  
-It translates the Stage 1–10 skills and System Architecture into concrete tables, fields, and relationships.
+**Generated 2026-08-09 from the live production database (SQLite).**
+Source of truth: `database/migrations/` (forward-only, no wipe). All agents must treat this as the canonical data model; any new table/column must be added to both a migration and this document.
 
-All agents must treat this schema as the **canonical data model**:  
-do not invent new tables or fields that conflict with this document without updating it explicitly.
-
----
+Legend: PK = primary key, FK = foreign key, UQ = unique, IDX = index, NN = NOT NULL.
 
 ## 1. Catalog & Taxonomy
 
 ### 1.1 `products`
 
-Represents the parent product (aligned with Shopee parent item).
-
-- `id` (PK, bigint, auto increment)  
-- `parent_sku` (varchar, unique)  
-  - Opaque public product ID and URL segment (`/product/{parent_sku}`).  
-  - Shopee import: `SP{product_id}`. Website/admin create: random token with prefix `WEB` (config).  
-  - **Not displayed on the storefront**; admin may label it “Kode produk”.  
-- `name` (varchar)  
-- `short_name` (varchar, nullable)  
-- `description` (text, nullable)  
-- `category_id` (bigint)  
-  - Shopee category ID or mapping to an internal category table.  
-- `product_category` (enum: WINDOW, DOOR, BOUVEN)  
-- `product_model` (enum: JUNGKIT, SLIDING, SWING, KACA_MATI, ZIGZAG)  
-- `design_variant` (enum: POLOS, ORNAMEN, KOMBINASI, SERIES_A, SERIES_B, SERIES_C)  
-- `status` (enum: active, inactive, archived, draft)  
-- `homepage_popular` (boolean, default false)  
-  - Manual pick for Home **Paling Banyak Dipesan** (kurasi stok/workshop; bukan auto Shopee).  
-- `homepage_popular_sort` (unsigned int, default 0)  
-  - Urutan di Home (lebih kecil = lebih dulu).  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `updated_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `parent_sku` (`VARCHAR`), NN, UQ
+- `name` (`VARCHAR`), NN
+- `short_name` (`VARCHAR`), nullable
+- `description` (`TEXT`), nullable
+- `category_id` (`INTEGER`), NN
+- `product_category` (`VARCHAR`), NN
+- `status` (`VARCHAR`), NN, default 'active'
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `product_model` (`VARCHAR`), nullable
+- `design_variant` (`VARCHAR`), nullable
+- `homepage_popular` (`TINYINT(1)`), NN, default '0'
+- `homepage_popular_sort` (`INTEGER`), NN, default '0'
 
 Indexes:
-
-- `idx_products_parent_sku` (unique on `parent_sku`)  
-- `idx_products_category_model_design` (`product_category`, `product_model`, `design_variant`)  
-- `idx_products_status_category` (`status`, `product_category`) — public catalog filters at scale  
-- `idx_products_homepage_popular` (`homepage_popular`, `homepage_popular_sort`)  
-
-- `idx_products_category_id` (`category_id`)
-
-Notes:
-
-- When a product is “taken down”, set `status = archived`; public catalog must not show archived products.  
-- Historical orders referencing archived products remain valid; reports may include archived products when needed.  
-- **Popular:** Catalog `?sort=popular` = sum website `order_items.quantity`. Home strip = `homepage_popular` picks; if none, fallback website sales.
+- `idx_products_status_category` (IDX on `status`, `product_category`)
+- `idx_products_homepage_popular` (IDX on `homepage_popular`, `homepage_popular_sort`)
+- `idx_products_category_model_design` (IDX on `product_category`, `product_model`, `design_variant`)
+- `idx_products_category_id` (IDX on `category_id`)
 
 ### 1.2 `product_variants`
 
-Represents individual variants of a product (sellable units; import may align with Shopee variation IDs).
-
-- `id` (PK, bigint, auto increment)  
-- `product_id` (FK → `products.id`)  
-- `variant_sku` (varchar, unique) — opaque cart/order key; **not shown on storefront**  
-- `variation_1_name` (varchar, nullable)  
-- `variation_1_option` (varchar, nullable)  
-- `variation_2_name` (varchar, nullable)  
-- `variation_2_option` (varchar, nullable)  
-- `price` (decimal(12,2))  
-- `stock` (int)  
-- `weight_kg` (decimal(8,3), nullable)  
-- `width_cm` (decimal(8,2), nullable)  
-- `height_cm` (decimal(8,2), nullable)  
-- `depth_cm` (decimal(8,2), nullable)  
-- `status` (enum: active, inactive, archived)  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `updated_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `product_id` (`INTEGER`), NN, FK -> products.id
+- `variant_sku` (`VARCHAR`), NN, UQ
+- `variation_1_name` (`VARCHAR`), nullable
+- `variation_1_option` (`VARCHAR`), nullable
+- `variation_2_name` (`VARCHAR`), nullable
+- `variation_2_option` (`VARCHAR`), nullable
+- `price` (`NUMERIC`), NN
+- `stock` (`INTEGER`), NN, default '0'
+- `weight_kg` (`NUMERIC`), nullable
+- `width_cm` (`NUMERIC`), nullable
+- `height_cm` (`NUMERIC`), nullable
+- `depth_cm` (`NUMERIC`), nullable
+- `status` (`VARCHAR`), NN, default 'active'
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
-
-- `idx_product_variants_product_id` (`product_id`)  
-- `idx_product_variants_variant_sku` (unique on `variant_sku`)  
-- `idx_product_variants_variations` (`variation_1_name`, `variation_1_option`, `variation_2_name`, `variation_2_option`)
-
-Notes:
-
-- Variants that are no longer sold should be marked `archived` instead of deleted.  
-- Public catalog surfaces only variants with `status = active`; admin views can include `inactive` and `archived`.
+- `idx_product_variants_variations` (IDX on `variation_1_name`, `variation_1_option`, `variation_2_name`, `variation_2_option`)
+- `idx_product_variants_product_id` (IDX on `product_id`)
 
 ### 1.3 `product_attributes`
 
-Stores structured attributes for products/variants.
-
-- `id` (PK, bigint)  
-- `product_id` (FK → `products.id`, nullable)  
-- `product_variant_id` (FK → `product_variants.id`, nullable)  
-- `attribute_name` (varchar)  
-- `attribute_value` (varchar)  
-- `source` (enum: shopee, internal)  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `updated_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `product_id` (`INTEGER`), nullable, FK -> products.id
+- `product_variant_id` (`INTEGER`), nullable, FK -> product_variants.id
+- `attribute_name` (`VARCHAR`), NN
+- `attribute_value` (`VARCHAR`), NN
+- `source` (`VARCHAR`), NN, default 'internal'
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `idx_product_attributes_name` (IDX on `attribute_name`)
+- `idx_product_attributes_variant` (IDX on `product_variant_id`)
+- `idx_product_attributes_product` (IDX on `product_id`)
 
-- `idx_product_attributes_product` (`product_id`)  
-- `idx_product_attributes_variant` (`product_variant_id`)  
-- `idx_product_attributes_name` (`attribute_name`)
+### 1.4 `product_media`
 
-Notes:
-
-- Either `product_id` or `product_variant_id` is set.  
-- Used for filters, specs, and mapping to Shopee category attributes.
-- Internal storefront promotion attributes use `promo_compare_price`, `promo_flash_sale`, `promo_cod`, and `promo_warranty`. `promo_compare_price` is shown only when greater than the current minimum active-variant price; the storefront derives the discount percentage from those two values. Boolean promotion values use `true`/`false`; Flash Sale defaults `false` and is enabled per participating product. Global campaign window (not a separate table) lives on `cms_pages.slug = flash-sale` → `content.period` (`enabled`, `starts_at`, `ends_at`); storefront treats `promo_flash_sale` as live only while that period is active. When `promo_compare_price` is absent, an optional global event may derive the comparison price from `STOREFRONT_PRODUCT_CARD_DISCOUNT_PERCENT` (default `0`).
-
----
-
-## 2. Media
-
-### 2.1 `product_media`
-
-Represents attachment records for products/variants. Physical files belong to
-`media_assets`; this table owns product-specific position, main/catalog, and
-installation flags.
-
-- `id` (PK, bigint, auto increment)  
-- `product_id` (FK → `products.id`)  
-- `product_variant_id` (FK → `product_variants.id`, nullable)  
-- `media_asset_id` (FK → `media_assets.id`, nullable during backfill)
-- `position` (int)  
-  - 1–9 for typical image slots.  
-- `is_main_image` (boolean, default false)  
-- `show_in_catalog` (boolean, default true)  
-  - When true → included in PDP / product card gallery.  
-- `is_installation` (boolean, default false)  
-  - When true → included in Hasil Pemasangan (`/hasil-pemasangan`, home strip, PDP installation section, related product links).  
-- `installation_caption` (varchar(280), nullable)
-  - Caption for installation/project media shown in Hasil Pemasangan and related storefront surfaces.
-- `visibility` (enum: visible, archived, hidden, nullable)  
-- `source_url` (text, nullable)  
-  - Archive of the ingest URL (e.g. Shopee CDN). Not for production storefront hotlink when `MEDIA_ALLOW_SOURCE_FALLBACK=false`.  
-- `stored_path` (varchar, nullable)  
-- `stored_url` (text, nullable)  
-  - Master file on disk `media` (local or R2/S3). Default efisien (`MEDIA_KEEP_ORIGINAL=false`): path ke WebP terbesar (`pdp`), bukan JPG original.  
-  - Original penuh hanya dipertahankan bila `MEDIA_KEEP_ORIGINAL=true`, atau sementara bila derivative gagal.  
-- `derivatives` (json, nullable)  
-  - WebP delivery variants after download, shape:  
-    `{ "thumb": { "path", "url", "width", "height" }, "card": {...}, "pdp": {...} }`  
-  - Longest-edge targets (config): thumb ~400, card ~800, pdp ~1400. Quality default `MEDIA_WEBP_QUALITY=82`.  
-  - List/catalog use `card`/`thumb`; PDP gallery uses `pdp` (via `ProductMedia::urlFor()`).  
-- `mime_type` (varchar, nullable)  
-- `size_bytes` (bigint, nullable)  
-- `width_px` (int, nullable)  
-- `height_px` (int, nullable)  
-- `status` (enum: pending, downloading, downloaded, failed)  
-- `error_reason` (text, nullable)  
-- `created_by_import_job_id` (FK → `import_jobs.id`, nullable)  
-- `last_updated_by_import_job_id` (FK → `import_jobs.id`, nullable)  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `updated_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `product_id` (`INTEGER`), NN, FK -> products.id
+- `product_variant_id` (`INTEGER`), nullable, FK -> product_variants.id
+- `position` (`INTEGER`), NN, default '1'
+- `is_main_image` (`TINYINT(1)`), NN, default '0'
+- `visibility` (`VARCHAR`), NN, default 'visible'
+- `source_url` (`TEXT`), nullable
+- `stored_path` (`VARCHAR`), nullable
+- `stored_url` (`TEXT`), nullable
+- `mime_type` (`VARCHAR`), nullable
+- `size_bytes` (`INTEGER`), nullable
+- `width_px` (`INTEGER`), nullable
+- `height_px` (`INTEGER`), nullable
+- `status` (`VARCHAR`), NN, default 'pending'
+- `error_reason` (`TEXT`), nullable
+- `created_by_import_job_id` (`INTEGER`), nullable, FK -> import_jobs.id
+- `last_updated_by_import_job_id` (`INTEGER`), nullable, FK -> import_jobs.id
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `derivatives` (`TEXT`), nullable
+- `show_in_catalog` (`TINYINT(1)`), NN, default '1'
+- `is_installation` (`TINYINT(1)`), NN, default '0'
+- `installation_caption` (`VARCHAR`), nullable
+- `media_asset_id` (`INTEGER`), nullable, FK -> media_assets.id
 
 Indexes:
+- `idx_product_media_asset_visibility` (IDX on `media_asset_id`, `visibility`)
+- `idx_product_media_visibility` (IDX on `visibility`)
+- `idx_product_media_variant` (IDX on `product_variant_id`, `position`)
+- `idx_product_media_status` (IDX on `status`)
+- `idx_product_media_product` (IDX on `product_id`, `position`)
+- `idx_product_media_is_main` (IDX on `product_id`, `is_main_image`)
+- `idx_product_media_installation` (IDX on `is_installation`, `visibility`, `status`)
+- `idx_product_media_created_job` (IDX on `created_by_import_job_id`)
 
-- `idx_product_media_product` (`product_id`, `position`)  
-- `idx_product_media_variant` (`product_variant_id`, `position`)  
-- `idx_product_media_status` (`status`)  
-- `idx_product_media_is_main` (`product_id`, `is_main_image`)  
-- `idx_product_media_visibility` (`visibility`)  
-- `idx_product_media_created_job` (`created_by_import_job_id`)
-- `idx_product_media_installation` (`is_installation`, `visibility`, `status`)
-- `idx_product_media_asset_visibility` (`media_asset_id`, `visibility`)
+### 1.5 `media_assets`
 
-Notes:
-
-- Frontend must only use media with appropriate `visibility` (e.g. `visible`) for catalog/gallery.  
-- Catalog gallery filters `show_in_catalog = true`; Hasil Pemasangan aggregates `is_installation = true` (plus manual `cms_gallery_items`).  
-- `is_main_image` supports consistent main thumbnail (only among catalog-visible media).  
-- `product_variant_id` nullable: null = shared product gallery; set = foto khusus kombinasi opsi (warna/kaca). Admin: `Admin/Products/Media` + upload di `Admin/VariantEdit`. PDP memakai foto khusus varian bila ada, else fallback shared.
-- Storefront should prefer `derivatives` URLs (`urlFor('card'|'thumb'|'pdp')`); `display_url` resolves to `card` (with safe fallbacks). Never rely on `source_url` in production.
-- Storage efficiency: default **WebP-only on disk** after successful derivatives (`MEDIA_KEEP_ORIGINAL=false`). Prune existing JPG/PNG with `php artisan media:prune-originals`. Re-fetch from `source_url` if a larger master is needed.
-- Import columns: `image_1..9` → catalog; optional `installation_slots` (e.g. `7,8,9`) marks those slots also `is_installation`; `installation_image_1..9` → `show_in_catalog=false`, `is_installation=true` (extra docs outside catalog gallery).
-
-### 2.2 `media_assets`
-
-One physical shared image/video and its immutable delivery metadata. Multiple
-`product_media` attachments may reference one asset.
-
-- `id`, `kind` (`image`/`video`), `label`, `source_url`, `source_url_hash`
-- `checksum` (SHA-256, unique when known), `object_key`, `derivatives` (image
-  `thumb`/`card`/`pdp`; video has one browser-compatible `video` object)
-- `mime_type`, `size_bytes`, `width_px`, `height_px`, optional
-  `duration_ms`/`poster_asset_id`
-- `status` (`pending`, `downloading`, `ready`, `failed`, `archived`) and
-  `visibility` (`visible`, `hidden`, `archived`), error/audit fields, timestamps
-
-New object keys are checksum based: `media-assets/{sha256}/...`. Videos are
-validated and stored as MP4/WebM/MOV originals; transcoding is out of scope.
-`php artisan media:backfill-assets --dry-run` previews linking legacy rows;
-the command never deletes media rows or storage objects.
-
----
-
-## 3. Import Pipeline
-
-### 3.1 `import_jobs`
-
-Represents a bulk import/update operation.
-
-- `id` (PK, bigint, auto increment)  
-- `type` (enum: shopee_mass_upload, shopee_mass_update, internal_bulk_update)  
-- `source_file_name` (varchar)  
-- `source_file_path` (varchar, nullable)  
-- `stock_mode` (varchar, default `file`; allowed application values: `file`, `manual`)  
-- `manual_stock` (unsigned int, nullable; required by application when `stock_mode = manual`)  
-- `total_rows` (int, nullable)  
-- `processed_rows` (int, default 0)  
-- `success_rows` (int, default 0)  
-- `failed_rows` (int, default 0)  
-- `status` (enum: pending, running, completed, failed)  
-- `started_at` (timestamp, nullable)  
-- `completed_at` (timestamp, nullable)  
-- `global_error_message` (text, nullable)  
-- `triggered_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `kind` (`VARCHAR`), NN, default 'image'
+- `label` (`VARCHAR`), nullable
+- `source_url_hash` (`VARCHAR`), nullable, UQ
+- `checksum` (`VARCHAR`), nullable, UQ
+- `source_url` (`TEXT`), nullable
+- `object_key` (`VARCHAR`), nullable, UQ
+- `derivatives` (`TEXT`), nullable
+- `mime_type` (`VARCHAR`), nullable
+- `size_bytes` (`INTEGER`), nullable
+- `width_px` (`INTEGER`), nullable
+- `height_px` (`INTEGER`), nullable
+- `duration_ms` (`INTEGER`), nullable
+- `poster_asset_id` (`INTEGER`), nullable, FK -> media_assets.id
+- `status` (`VARCHAR`), NN, default 'pending'
+- `visibility` (`VARCHAR`), NN, default 'visible'
+- `error_reason` (`TEXT`), nullable
+- `created_by_import_job_id` (`INTEGER`), nullable, FK -> import_jobs.id
+- `last_updated_by_import_job_id` (`INTEGER`), nullable, FK -> import_jobs.id
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `idx_media_assets_created_at` (IDX on `created_at`)
+- `idx_media_assets_library` (IDX on `kind`, `status`, `visibility`)
 
-- `idx_import_jobs_status` (`status`)  
-- `idx_import_jobs_type` (`type`)  
-- `idx_import_jobs_triggered_by` (`triggered_by_user_id`)
+### 1.6 `sub_models`
 
-Notes:
-
-- `stock_mode = file` preserves each row's stock value from the source spreadsheet.
-- `stock_mode = manual` applies `manual_stock` to every variant processed by the job. The choice is persisted on the job so retries use the same stock rule.
-
-### 3.2 `import_job_rows`
-
-Represents individual rows from an import job.
-
-- `id` (PK, bigint, auto increment)  
-- `import_job_id` (FK → `import_jobs.id`)  
-- `row_number` (int)  
-- `raw_data` (json)  
-- `status` (enum: pending, processed, success, failed)  
-- `error_reason` (text, nullable)  
-- `linked_product_id` (FK → `products.id`, nullable)  
-- `linked_product_variant_id` (FK → `product_variants.id`, nullable)  
-- `processed_at` (timestamp, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `product_model` (`VARCHAR`), NN
+- `code` (`VARCHAR`), NN
+- `name` (`VARCHAR`), NN
+- `description` (`TEXT`), nullable
+- `image_url` (`VARCHAR`), nullable
+- `sort_order` (`INTEGER`), NN, default '0'
+- `is_active` (`TINYINT(1)`), NN, default '1'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `sub_models_product_model_code_unique` (UQ  on `product_model`, `code`)
 
-- `idx_import_job_rows_job` (`import_job_id`, `row_number`)  
-- `idx_import_job_rows_status` (`status`)  
-- `idx_import_job_rows_linked_product` (`linked_product_id`)  
-- `idx_import_job_rows_linked_variant` (`linked_product_variant_id`)
+### 1.7 `customers`
 
-Notes:
+- `id` (`INTEGER`), PK, NN
+- `name` (`VARCHAR`), NN
+- `phone` (`VARCHAR`), NN, UQ
+- `email` (`VARCHAR`), nullable
+- `default_address_line1` (`VARCHAR`), nullable
+- `default_address_line2` (`VARCHAR`), nullable
+- `default_city` (`VARCHAR`), nullable
+- `default_province` (`VARCHAR`), nullable
+- `default_postal_code` (`VARCHAR`), nullable
+- `default_country` (`VARCHAR`), nullable
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
-- Correction files for admins are generated from rows with `status = failed` and `error_reason`.  
-- Import logic should prefer row‑level failures over whole‑job failure.
+## 2. Promotions & Pricing
 
----
+### 2.1 `promotions`
 
-## 4. Orders, Payments, Shipping
-
-### 4.1 `orders`
-
-Represents customer orders created via website checkout.
-
-- `id` (PK, bigint, auto increment)  
-- `order_number` (varchar, unique)  
-- `checkout_idempotency_key` (uuid, nullable, unique) — token session checkout; retry request yang sama mengembalikan order yang sama
-- `customer_id` (FK → `customers.id`, nullable)  
-- `customer_name` (varchar)  
-- `customer_phone` (varchar)  
-- `customer_email` (varchar, nullable)  
-- `shipping_address_line1` (varchar)  
-- `shipping_address_line2` (varchar, nullable)  
-- `shipping_city` (varchar)  
-- `shipping_province` (varchar)  
-- `shipping_district` (varchar) — Kecamatan (nama snapshot dari pilihan wilayah)  
-- `shipping_village` (varchar) — Desa/Kelurahan (nama snapshot dari pilihan wilayah)  
-- `shipping_postal_code` (varchar)  
-- `shipping_country` (varchar)  
-- `order_status` (enum: pending_payment, processing, shipped, delivered, completed, issue, return_in_process, cancelled)  
-- `payment_status` (enum: pending, paid, refunded)  
-- `shipping_status` (enum: pending_pickup, in_process, in_transit, delivered, cancelled)  
-- `subtotal_amount` (decimal(12,2))  
-- `shipping_amount` (decimal(12,2)) — net shipping customer pays after subsidy  
-- `shipping_subsidy_amount` (decimal(12,2), default 0) — store-funded shipping discount snapshot  
-- `discount_amount` (decimal(12,2), default 0) — savings vs compare price on line items (informational; unit prices already promo-adjusted)  
-- `voucher_code` (varchar, nullable) — applied store voucher code snapshot  
-- `voucher_discount_amount` (decimal(12,2), default 0) — rupiah subtracted from payable total  
-- `cod_fee_amount` (decimal(12,2), default 0) — COD handling fee added when paying COD  
-- `total_amount` (decimal(12,2)) — `subtotal + shipping_amount - voucher_discount + cod_fee` (`shipping_amount` already net of subsidy)  
-- `payment_method` (enum: cod, transfer, other)  
-- `cod_flag` (boolean)  
-- `notes` (text, nullable)  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `updated_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `type` (`VARCHAR`), NN, default 'store'
+- `name` (`VARCHAR`), NN
+- `status` (`VARCHAR`), NN, default 'draft'
+- `starts_at` (`DATETIME`), nullable
+- `ends_at` (`DATETIME`), nullable
+- `discount_percent` (`INTEGER`), NN
+- `sync_banner` (`TINYINT(1)`), NN, default '0'
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `promotions_type_status_index` (IDX on `type`, `status`)
 
-- `idx_orders_order_number` (unique on `order_number`)  
-- `uq_orders_checkout_idempotency_key` (unique on `checkout_idempotency_key`)
-- `idx_orders_customer_phone` (`customer_phone`)  
-- `idx_orders_statuses` (`order_status`, `payment_status`, `shipping_status`)
+### 2.2 `promotion_items`
 
-Notes:
-
-- Orders should generally not be deleted; visibility is handled by filters and date ranges.  
-- Cancellation locks the order and restores each referenced variant stock exactly once before setting `order_status=cancelled`.
-- `payment_status=paid` requires the sum of `payments.amount` with `status=completed` to meet or exceed `orders.total_amount`; otherwise it remains `pending`.
-
-### 4.2 `order_items`
-
-Represents line items within an order.
-
-- `id` (PK, bigint, auto increment)  
-- `order_id` (FK → `orders.id`)  
-- `product_id` (FK → `products.id`)  
-- `product_variant_id` (FK → `product_variants.id`, nullable)  
-- `parent_sku` (varchar)  
-- `variant_sku` (varchar, nullable)  
-- `name` (varchar)  
-- `variation_1_name` (varchar, nullable)  
-- `variation_1_option` (varchar, nullable)  
-- `variation_2_name` (varchar, nullable)  
-- `variation_2_option` (varchar, nullable)  
-- `unit_price` (decimal(12,2))  
-- `quantity` (int)  
-- `line_subtotal` (decimal(12,2))  
-- `line_discount` (decimal(12,2), default 0)  
-- `line_total` (decimal(12,2))  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `promotion_id` (`INTEGER`), NN, FK -> promotions.id
+- `target_type` (`VARCHAR`), NN
+- `target_id` (`VARCHAR`), NN
+- `excluded` (`TINYINT(1)`), NN, default '0'
+- `override_discount_percent` (`INTEGER`), nullable
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `promotion_items_promotion_id_target_type_target_id_unique` (UQ  on `promotion_id`, `target_type`, `target_id`)
+- `promotion_items_promotion_id_index` (IDX on `promotion_id`)
 
-- `idx_order_items_order` (`order_id`)  
-- `idx_order_items_variant_sku` (`variant_sku`)
+### 2.3 `store_vouchers`
 
-### 4.3 `payments`
-
-Represents payment records associated with orders.
-
-- `id` (PK, bigint, auto increment)  
-- `order_id` (FK → `orders.id`)  
-- `payment_method` (enum: cod, transfer, gateway)  
-- `amount` (decimal(12,2))  
-- `status` (enum: pending, completed, failed, refunded)  
-- `transaction_reference` (varchar, nullable)  
-- `evidence_url` (text, nullable)  
-- `paid_at` (timestamp, nullable)  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `updated_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `name` (`VARCHAR`), NN
+- `code` (`VARCHAR`), NN, UQ
+- `discount_type` (`VARCHAR`), NN, default 'percent'
+- `discount_value` (`NUMERIC`), NN
+- `min_purchase` (`NUMERIC`), NN, default '0'
+- `starts_at` (`DATETIME`), nullable
+- `ends_at` (`DATETIME`), nullable
+- `published` (`TINYINT(1)`), NN, default '0'
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `idx_store_vouchers_active_window` (IDX on `published`, `starts_at`, `ends_at`)
 
-- `idx_payments_order` (`order_id`)  
-- `idx_payments_status` (`status`)
+## 3. Orders & Shipping
 
-### 4.4 `shipping_records`
+### 3.1 `orders`
 
-Represents shipping information and status reflecting carrier data.
-
-- `id` (PK, bigint, auto increment)  
-- `order_id` (FK → `orders.id`)  
-- `carrier_name` (varchar)  
-- `service_name` (varchar, nullable)  
-- `waybill_number` (varchar, unique)  
-- `shipping_cost` (decimal(12,2))  
-- `status` (enum: pending_pickup, in_process, in_transit, delivered, returned, cancelled)  
-- `status_raw` (varchar, nullable)  
-- `last_status_at` (timestamp, nullable)  
-- `tracking_url` (text, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
-
-Indexes:
-
-- `idx_shipping_records_order` (`order_id`)  
-- `idx_shipping_records_waybill` (unique on `waybill_number`)  
-- `idx_shipping_records_status` (`status`)
-
----
-
-## 5. WhatsApp Integration
-
-### 5.1 `whatsapp_templates`
-
-Represents mapping between internal template keys and provider templates.
-
-- `id` (PK, bigint, auto increment)  
-- `internal_key` (varchar, unique)  
-  - e.g. `order_created`, `payment_confirmed`, `order_shipped`, `order_delivered`, `order_issue_followup`.  
-- `provider_template_name` (varchar)  
-- `language_code` (varchar, default `id`)  
-- `category` (enum: transactional, marketing, otp)  
-- `status` (enum: active, inactive)  
-- `description` (text, nullable) — short admin note / catalog blurb  
-- `body_preview` (text, nullable) — editable message draft for admin UI (Meta/BSP still owns approved template body)  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `updated_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `order_number` (`VARCHAR`), NN, UQ
+- `customer_id` (`INTEGER`), nullable, FK -> customers.id
+- `customer_name` (`VARCHAR`), NN
+- `customer_phone` (`VARCHAR`), NN
+- `customer_email` (`VARCHAR`), nullable
+- `shipping_address_line1` (`VARCHAR`), NN
+- `shipping_address_line2` (`VARCHAR`), nullable
+- `shipping_city` (`VARCHAR`), NN
+- `shipping_province` (`VARCHAR`), NN
+- `shipping_postal_code` (`VARCHAR`), NN
+- `shipping_country` (`VARCHAR`), NN, default 'Indonesia'
+- `order_status` (`VARCHAR`), NN
+- `payment_status` (`VARCHAR`), NN, default 'pending'
+- `shipping_status` (`VARCHAR`), NN, default 'pending_pickup'
+- `subtotal_amount` (`NUMERIC`), NN
+- `shipping_amount` (`NUMERIC`), NN, default '0'
+- `discount_amount` (`NUMERIC`), NN, default '0'
+- `total_amount` (`NUMERIC`), NN
+- `payment_method` (`VARCHAR`), NN, default 'transfer'
+- `cod_flag` (`TINYINT(1)`), NN, default '0'
+- `notes` (`TEXT`), nullable
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `shipping_district` (`VARCHAR`), nullable
+- `shipping_village` (`VARCHAR`), nullable
+- `voucher_code` (`VARCHAR`), nullable
+- `voucher_discount_amount` (`NUMERIC`), NN, default '0'
+- `cod_fee_amount` (`NUMERIC`), NN, default '0'
+- `shipping_subsidy_amount` (`NUMERIC`), NN, default '0'
+- `checkout_idempotency_key` (`VARCHAR`), nullable, UQ
 
 Indexes:
+- `idx_orders_statuses` (IDX on `order_status`, `payment_status`, `shipping_status`)
+- `idx_orders_customer_phone` (IDX on `customer_phone`)
+- `idx_orders_created_at` (IDX on `created_at`)
 
-- `idx_whatsapp_templates_key` (unique on `internal_key`)  
-- `idx_whatsapp_templates_status` (`status`)
+### 3.2 `order_items`
 
-### 5.2 `whatsapp_messages`
-
-Represents individual messages sent or received via WhatsApp providers (`meta` resmi atau `waha`).
-
-- `id` (PK, bigint, auto increment)  
-- `direction` (enum: outbound, inbound)  
-- `order_id` (FK → `orders.id`, nullable)  
-- `phone_number` (varchar)  
-- `provider` (varchar, default `meta`)
-  - e.g. `meta`, `waha`
-- `internal_template_key` (varchar, nullable)  
-- `provider_message_id` (varchar, nullable)  
-- `provider_session` (varchar, nullable)
-  - WAHA session name when applicable, e.g. `default`
-- `content_text` (text, nullable)  
-- `content_payload` (json, nullable)  
-- `status` (enum: pending, sent, delivered, read, failed, received)  
-- `error_reason` (text, nullable)  
-- `sent_at` (timestamp, nullable)  
-- `received_at` (timestamp, nullable)  
-- `raw_payload` (json, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `order_id` (`INTEGER`), NN, FK -> orders.id
+- `product_id` (`INTEGER`), NN, FK -> products.id
+- `product_variant_id` (`INTEGER`), nullable, FK -> product_variants.id
+- `parent_sku` (`VARCHAR`), NN
+- `variant_sku` (`VARCHAR`), nullable
+- `name` (`VARCHAR`), NN
+- `variation_1_name` (`VARCHAR`), nullable
+- `variation_1_option` (`VARCHAR`), nullable
+- `variation_2_name` (`VARCHAR`), nullable
+- `variation_2_option` (`VARCHAR`), nullable
+- `unit_price` (`NUMERIC`), NN
+- `quantity` (`INTEGER`), NN
+- `line_subtotal` (`NUMERIC`), NN
+- `line_discount` (`NUMERIC`), NN, default '0'
+- `line_total` (`NUMERIC`), NN
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `idx_order_items_variant_sku` (IDX on `variant_sku`)
+- `idx_order_items_order` (IDX on `order_id`)
 
-- `idx_whatsapp_messages_order` (`order_id`)  
-- `idx_whatsapp_messages_phone` (`phone_number`)  
-- `idx_whatsapp_messages_direction_status` (`direction`, `status`)  
-- `idx_whatsapp_messages_provider_message_id` (`provider_message_id`)
-- `idx_whatsapp_messages_provider_status` (`provider`, `status`)
+### 3.3 `order_number_sequences`
 
----
+- `id` (`INTEGER`), PK, NN
+- `sequence_key` (`VARCHAR`), NN, UQ
+- `seq` (`INTEGER`), NN, default '0'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
-## 6. Users & Customers
+### 3.4 `shipping_records`
 
-### 6.1 `users` (Admin / Staff)
-
-Represents admins and staff with access to the dashboard.
-
-- `id` (PK, bigint, auto increment)  
-- `name` (varchar)  
-- `username` (varchar(64), unique)
-- `email` (varchar, indexed; not unique)
-- `password` (varchar)  
-- `role` (enum: `super_admin`, `admin`, `staff`, `viewer` — **canonical runtime value is `admin` only**; Stage 2 equal-admin; legacy enum values kept for DB compatibility, normalized to `admin`)  
-- `status` (enum: active, inactive)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
-
-Indexes:
-
-- `idx_users_username` (unique on `username`)
-- `idx_users_email` (`email`)
-- `idx_users_role` (`role`)  
-
-Admin: **Manajemen Admin** (`admin.users.*` → `Admin/Users/{Index,Form}`). Filter `q`/`status`/`sort`. No role picker (all Store Admins equal). Activate/deactivate tanpa hard delete. Guard: no self-deactivate; keep ≥1 active admin.
-
-### 6.2 `customers`
-
-Represents customer entities for reporting and reuse.
-
-- `id` (PK, bigint, auto increment)  
-- `name` (varchar)  
-- `phone` (varchar, unique)  
-- `email` (varchar, nullable)  
-- `default_address_line1` (varchar, nullable)  
-- `default_address_line2` (varchar, nullable)  
-- `default_city` (varchar, nullable)  
-- `default_province` (varchar, nullable)  
-- `default_postal_code` (varchar, nullable)  
-- `default_country` (varchar, nullable)  
-- `created_at` (timestamp)  
-- `updated_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `order_id` (`INTEGER`), NN, FK -> orders.id
+- `carrier_name` (`VARCHAR`), NN
+- `service_name` (`VARCHAR`), nullable
+- `waybill_number` (`VARCHAR`), NN, UQ
+- `shipping_cost` (`NUMERIC`), NN, default '0'
+- `status` (`VARCHAR`), NN, default 'pending_pickup'
+- `status_raw` (`VARCHAR`), nullable
+- `last_status_at` (`DATETIME`), nullable
+- `tracking_url` (`TEXT`), nullable
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `idx_shipping_records_status` (IDX on `status`)
+- `idx_shipping_records_order` (IDX on `order_id`)
 
-- `idx_customers_phone` (unique on `phone`)
+### 3.5 `payments`
 
-Notes:
-
-- Orders may reference `customers.id` to group histories; order snapshot fields remain the source of truth for that specific order.
-- Checkout upserts by unique `phone` (normalized `62…`) and sets `orders.customer_id`.
-- Admin Monitoring **Customer** (`admin.customers.*`) manages these rows — not `users` (admin staff).
-- Status (`aktif` / `tidak_aktif` / `baru`) and fraud score are **derived** from order history (not stored columns).
-
----
-
-## 6a. Homepage Promo Banners
-
-### `cms_banners`
-
-Ordered homepage promotion slides managed from Admin CMS.
-
-- `id` (PK)
-- `title` (varchar, nullable) — promotion copy, e.g. `Diskon sampai 30%`
-- `image_url` (varchar) — uploaded fallback image
-- `link_url` (varchar, nullable) — internal `/product/{parent_sku}` or full URL
-- `sort_order` (integer, default 0)
-- `published` (boolean, default true) — active/running promotion flag
-- `created_at`, `updated_at` (timestamp)
-
-Notes:
-
-- A product link is resolved at render time; the active product's main media replaces `image_url` when available.
-- Multiple published rows rotate on the homepage in `sort_order`.
-- Automatic promo slides (products with explicit compare-price / Flash Sale attributes) are **not** rows in `cms_banners`. Their enablement lives on `cms_pages.slug = beranda` as JSON:
-
-```json
-{
-  "auto_promotions": {
-    "enabled": true,
-    "max_slides": 3
-  },
-  "layout": {
-    "sections": [
-      { "key": "banner", "enabled": true, "sort_order": 0 },
-      { "key": "service_highlights", "enabled": true, "sort_order": 1 },
-      { "key": "how_to_order", "enabled": true, "sort_order": 2 }
-    ]
-  },
-  "service_highlights": {
-    "title": "Sorotan layanan",
-    "subtitle": "...",
-    "items": [{ "icon": "cod|shield|truck|check|package|star|whatsapp", "title": "...", "description": "..." }]
-  },
-  "how_to_order": {
-    "title": "Cara pesan jendela Anda",
-    "subtitle": "...",
-    "steps": [{ "title": "...", "description": "..." }]
-  }
-}
-```
-
-- Admin **Beranda Pembeli**: `admin.beranda.*` (`Admin/Beranda/*`) manages layout order/enable + section editors. Banner “Edit konten” opens Promo Toko (`admin.banners.index`). Generic CMS editor must preserve these keys + `auto_promotions`.
-- Homepage merge order: permanent landing slide → published `cms_banners` → automatic product slides (when enabled; prefer newest BOUVEN). When automatic mode is disabled, only manual published banners follow the landing slide. When both promo sources are empty while automatic mode is enabled: real newest BOUVEN (+ DOOR) product photos — no hardcoded dummy promo images.
-
-### `cms_pages.slug = flash-sale`
-
-Global Flash Sale campaign window (no dedicated campaign table):
-
-```json
-{
-  "period": {
-    "enabled": false,
-    "starts_at": "2026-07-01T00:00:00+07:00",
-    "ends_at": "2026-07-07T23:59:59+07:00"
-  }
-}
-```
-
-- Admin: `PUT /admin/flash-sale/period` (`FlashSalePeriodSettings`).
-- Participating products still use `product_attributes.promo_flash_sale` (+ optional `promo_compare_price`).
-- Storefront (`/flash-sale`, promo spotlight, card badge, announcement when live) only treats Flash Sale as active while `enabled` and within `starts_at`…`ends_at` (open-ended if a bound is null).
-
-### `cms_pages.slug = cara-pemesanan`
-
-Public panduan pemesanan (`/cara-pemesanan`) + admin `admin.cara-pemesanan.*`.
-
-```json
-{
-  "heading": "Cara pesan jendela Anda",
-  "subtitle": "Alur ringkas…",
-  "body": "<p>Catatan tambahan (opsional)</p>",
-  "steps": [
-    { "icon": "search", "title": "Pilih model", "description": "…", "points": ["…"] }
-  ],
-  "info_cards": [
-    { "icon": "credit-card", "title": "Metode pembayaran", "description": "…" }
-  ]
-}
-```
-
-Notes:
-
-- Berbeda dari `cms_pages.beranda` → `content.how_to_order` (section singkat di beranda).
-- Storefront: `CaraPemesananSettings::forStorefront()` → `Public/HowToOrder`.
-
-### `cms_faq_items`
-
-FAQ Q&A untuk `/faq` (slug halaman `faq`).
-
-- `id` (PK)
-- `cms_page_id` (FK → `cms_pages.id`)
-- `question` (varchar)
-- `answer` (text)
-- `category` (varchar; default `Umum & Profil Toko`) — nilai: `Umum & Profil Toko`, `Spesifikasi Material & Ukuran`, `Metode Pembayaran`, `Pengiriman & Pemasangan`
-- `status` (enum/string: `active` | `archived`; default `active`) — hanya `active` tampil di storefront
-- `sort_order` (integer, default 0)
-- `created_at`, `updated_at`
+- `id` (`INTEGER`), PK, NN
+- `order_id` (`INTEGER`), NN, FK -> orders.id
+- `payment_method` (`VARCHAR`), NN
+- `amount` (`NUMERIC`), NN
+- `status` (`VARCHAR`), NN, default 'pending'
+- `transaction_reference` (`VARCHAR`), nullable, UQ
+- `evidence_url` (`TEXT`), nullable
+- `paid_at` (`DATETIME`), nullable
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
 Indexes:
+- `idx_payments_status` (IDX on `status`)
+- `idx_payments_order` (IDX on `order_id`)
 
-- `idx_cms_faq_items_page_status` (`cms_page_id`, `status`)
+## 4. WhatsApp
 
-Notes:
+### 4.1 `whatsapp_templates`
 
-- Admin: `admin.faq.*` → `Admin/Faq/Index` (tab Aktif / Diarsipkan; form tambah on-demand; meta halaman tersembunyi).
-- Archive = soft hide (bukan hard delete). Hapus permanen tersedia di tab Diarsipkan.
-- Public: `FaqSettings::forStorefront()` → `Public/Faq` (items `status=active` saja).
-- Meta hero di `cms_pages.faq` (`heading`, `subtitle`, `published`).
-
-### `cms_problems_solutions`
-
-Pasangan masalah & solusi untuk `/masalah-dan-solusi` (slug halaman `masalah-solusi`).
-
-- `id` (PK)
-- `cms_page_id` (FK → `cms_pages.id`)
-- `problem` (text) — kendala pelanggan (stage-9a: problem_text)
-- `solution` (text) — rekomendasi Ragil (stage-9a: solution_text)
-- `sort_order` (integer, default 0)
-- `created_at`, `updated_at`
-
-Notes:
-
-- Admin: `admin.masalah-solusi.*`. Meta hero di `cms_pages.masalah-solusi`.
-- Public: `ProblemsSolutionsSettings::forStorefront()` → `Public/MasalahSolusi`.
-
-### `cms_pages` dokumen panjang (Informasi Toko / Legal)
-
-Slug dokumen dengan `content.body` (+ `heading`):
-
-- `tentang-kami` — admin `admin.tentang-kami.*`, publik `/about`
-- `storefront-platforms` — admin `admin.storefront-platforms.*` (`content.links` keyed by platform key); publik via Inertia share `platforms`
-- `ketentuan-layanan` — admin `admin.ketentuan-layanan.*`, publik `/policy/terms`
-- `kebijakan-privasi` — admin `admin.kebijakan-privasi.*`, publik `/policy/privacy`
-
-Helper: `CmsDocumentSettings`.
-
----
-
-## 6c. Store Vouchers (Voucher Toko)
-
-### `store_vouchers`
-
-Checkout voucher codes managed from Admin → Harga & Promo → Voucher Toko.
-
-- `id` (PK)
-- `name` (varchar) — internal label (not shown to customers)
-- `code` (varchar, unique) — customer-entered code at checkout (stored uppercase)
-- `discount_type` (enum: `percent`, `fixed`)
-- `discount_value` (decimal(12,2)) — percent 0.01–100 or fixed rupiah amount
-- `min_purchase` (decimal(12,2), default 0) — minimum cart subtotal
-- `starts_at` / `ends_at` (timestamp, nullable) — validity window
-- `published` (boolean, default false) — only published vouchers are usable
-- `created_by_user_id` / `updated_by_user_id` (FK → `users.id`, nullable)
-- `created_at` / `updated_at`
+- `id` (`INTEGER`), PK, NN
+- `internal_key` (`VARCHAR`), NN, UQ
+- `provider_template_name` (`VARCHAR`), NN
+- `language_code` (`VARCHAR`), NN, default 'id'
+- `category` (`VARCHAR`), NN, default 'transactional'
+- `status` (`VARCHAR`), NN, default 'active'
+- `description` (`TEXT`), nullable
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `body_preview` (`TEXT`), nullable
 
 Indexes:
+- `idx_whatsapp_templates_status` (IDX on `status`)
 
-- unique on `code`
-- `idx_store_vouchers_active_window` (`published`, `starts_at`, `ends_at`)
+### 4.2 `whatsapp_messages`
 
-Notes:
-
-- **Only one** `published = true` voucher may exist at a time (enforced in `VoucherService::publishExclusive`).
-- Applied at checkout → session → `orders.voucher_code` + `orders.voucher_discount_amount`; payable `total_amount` subtracts voucher discount.
-- `orders.discount_amount` remains line-level compare-price savings (informational); do not conflate with voucher.
-
-### Orders voucher columns
-
-- `voucher_code` (varchar, nullable)
-- `voucher_discount_amount` (decimal(12,2), default 0)
-- `cod_fee_amount` (decimal(12,2), default 0) — handling fee when `payment_method = cod`
-- `shipping_subsidy_amount` (decimal(12,2), default 0) — store subsidy; `shipping_amount` remains net paid
-
----
-
-## 6d. COD settings (Biaya COD)
-
-Stored on `cms_pages.slug = checkout` → `content.cod` (no dedicated table):
-
-```json
-{
-  "cod": {
-    "enabled": true,
-    "fee_type": "percent",
-    "fee_value": 0,
-    "max_order_amount": null
-  }
-}
-```
-
-- `enabled` — store-wide COD availability at checkout
-- `fee_type` — `percent` | `fixed` (Figma primary UI = percent handling fee)
-- `fee_value` — percent 0–100 or fixed rupiah
-- `max_order_amount` — optional COD subtotal cap after voucher; null/0 = unlimited
-- Fee base = goods subtotal − voucher discount; added to `orders.total_amount` and snapshotted as `orders.cod_fee_amount`
-- Admin: `GET/PUT /admin/cod-settings` (`Admin\CodSettingsController`)
-
-Wilayah COD coverage from Figma copy is **out of scope** until a region contract exists; current control is enable + fee + max order.
-
----
-
-## 6e. Shipping subsidy (Subsidi Ongkir)
-
-Stored on `cms_pages.slug = checkout` → `content.shipping_subsidy` (sibling of `content.cod`; no dedicated table):
-
-```json
-{
-  "shipping_subsidy": {
-    "enabled": false,
-    "subsidy_type": "percent",
-    "subsidy_value": 0,
-    "carriers": { "jnt": true }
-  }
-}
-```
-
-- `enabled` — store-wide shipping subsidy at checkout
-- `subsidy_type` — `percent` | `fixed` (Figma primary = percent of courier tariff)
-- `subsidy_value` — percent 0–100 or fixed rupiah (capped at gross shipping)
-- `carriers.jnt` — only J&T is wired; if false, no subsidy even when enabled
-- Gross tariff from `ShippingService`; net = gross − subsidy → `orders.shipping_amount`; subsidy snapshot → `orders.shipping_subsidy_amount`
-- Admin: `GET/PUT /admin/shipping-subsidy` (`Admin\ShippingSubsidyController`)
-
-Multi-carrier / wilayah coverage beyond J&T toggle is **out of scope**.
-
----
-
-## 6a2. CMS Model Produk (Showcase)
-
-### `cms_model_products`
-
-Kurasi kartu model di storefront (beranda / hub `/products` / menu model), terpisah dari CRUD katalog SKU.
-
-- `id` (PK)
-- `name` (varchar) — label tampilan, e.g. `Jendela Jungkit`
-- `product_category` (varchar 32, nullable) — `WINDOW` | `DOOR` | `BOUVEN`
-- `product_model` (varchar 64, nullable) — e.g. `JUNGKIT`, `SLIDING`
-- `image_url` (varchar, nullable)
-- `description` (text, nullable) — deskripsi model di halaman detail storefront; diedit di admin Model Produk
-- `type` (enum: `polos`, `ornamen`, `lainnya`, default `polos`)
-- `status` (enum: `active`, `draft`, default `draft`)
-- `sort_order` (integer, default 0)
-- `created_at`, `updated_at`
+- `id` (`INTEGER`), PK, NN
+- `direction` (`VARCHAR`), NN
+- `order_id` (`INTEGER`), nullable, FK -> orders.id
+- `phone_number` (`VARCHAR`), NN
+- `internal_template_key` (`VARCHAR`), nullable
+- `provider_message_id` (`VARCHAR`), nullable
+- `content_text` (`TEXT`), nullable
+- `content_payload` (`TEXT`), nullable
+- `status` (`VARCHAR`), NN, default 'pending'
+- `error_reason` (`TEXT`), nullable
+- `sent_at` (`DATETIME`), nullable
+- `received_at` (`DATETIME`), nullable
+- `raw_payload` (`TEXT`), nullable
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `provider` (`VARCHAR`), NN, default 'meta'
+- `provider_session` (`VARCHAR`), nullable
 
 Indexes:
+- `idx_whatsapp_messages_provider_status` (IDX on `provider`, `status`)
+- `idx_whatsapp_messages_provider_message_id` (IDX on `provider_message_id`)
+- `idx_whatsapp_messages_direction_status` (IDX on `direction`, `status`)
+- `idx_whatsapp_messages_phone` (IDX on `phone_number`)
+- `idx_whatsapp_messages_order` (IDX on `order_id`)
 
-- `cms_model_products_category_model_idx` (`product_category`, `product_model`)
+## 5. CMS & Content
 
-Notes:
+### 5.1 `cms_pages`
 
-- Admin: Pengaturan Website → **Model Produk** (`admin.model-products.*`). Sync membuat baris dari pasangan kategori+model katalog yang belum ada.
-- Storefront memakai baris `active` berurutan; jika tidak ada baris aktif → fallback taxonomy dari produk.
-- Bukan pengganti `products` / `admin.products.*`.
+- `id` (`INTEGER`), PK, NN
+- `slug` (`VARCHAR`), NN, UQ
+- `title` (`VARCHAR`), NN
+- `content` (`TEXT`), nullable
+- `published` (`TINYINT(1)`), NN, default '0'
+- `updated_by_admin_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
----
+### 5.2 `cms_banners`
 
-## 6b. CMS Testimonials (Ulasan)
+- `id` (`INTEGER`), PK, NN
+- `title` (`VARCHAR`), nullable
+- `image_url` (`VARCHAR`), NN
+- `link_url` (`VARCHAR`), nullable
+- `sort_order` (`INTEGER`), NN, default '0'
+- `published` (`TINYINT(1)`), NN, default '1'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
-### `cms_testimonials`
+### 5.3 `cms_faq_items`
 
-Manual customer reviews (often copied from Shopee/WhatsApp) for the public storefront.
-
-- `id` (PK)
-- `cms_page_id` (FK → `cms_pages.id`) — usually the `testimoni` page
-- `product_id` (FK → `products.id`, **nullable**)
-  - Set → shown on that product’s PDP **Ulasan** tab (Stage 10 filter by product ID)
-  - Null → general testimonial on `/reviews` only
-- `customer_name` (varchar)
-- `message` (text, **nullable**) — boleh kosong jika `image_url` terisi (screenshot murni / admin-added WA SS)
-- `rating` (tinyint 1–5, nullable)
-- `source` (varchar: `shopee`, `whatsapp`, `website`, `other`)
-  - `shopee` / `whatsapp` → section **Apa kata pelanggan kami** (wajib `image_url` screenshot; di luar transaksi website)
-  - `website` → section **Ulasan pelanggan di website** (+ PDP tab ulasan bila `product_id` set)
-  - `other` → legacy; tidak masuk section Apa kata pelanggan
-- `location` (varchar, nullable)
-- `image_url` (varchar, nullable) — **wajib** untuk `shopee`/`whatsapp` di storefront
-- `published` (boolean)
-- `sort_order` (int) — prioritas tampilan Apa kata pelanggan; diubah admin via `PUT /admin/apa-kata-pelanggan/reorder`
-
-Notes:
-
-- **Hasil pemasangan** = union of (1) `product_media` with `is_installation=true` (from catalog import / admin media flags) and (2) manual `cms_gallery_items` (no SKU). Do not treat gallery as product reviews / ratings.
-- Admin CRUD: `/admin/testimonials` (Monitoring → Ulasan) with tabs **Ulasan Website** (`cms_testimonials`) and **Ulasan Foto** (`cms_gallery_items` via `/admin/gallery-items/*` + imported installation media listed read-only).
-- Pengaturan Website → **Apa Kata Pelanggan Kami** (`/admin/apa-kata-pelanggan`): list **hanya** screenshot Shopee/WA + meta `cms_pages.slug = testimoni` + **atur urutan** (`reorder`).
-- Pengaturan Website → **Hasil Pemasangan Kami** (`/admin/hasil-pemasangan`): meta on `cms_pages.slug = hasil-pemasangan` via `InstallationPageSettings` for `/hasil-pemasangan` + beranda section; photos come from import + manual gallery.
-
----
-
-## 7. Analytics & Logs
-
-### 7.1 `event_logs`
-
-Generic log table for domain events.
-
-- `id` (PK, bigint, auto increment)  
-- `event_type` (varchar)  
-- `entity_type` (varchar)  
-- `entity_id` (bigint)  
-- `payload` (json, nullable)  
-- `created_by_user_id` (FK → `users.id`, nullable)  
-- `created_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `cms_page_id` (`INTEGER`), NN, FK -> cms_pages.id
+- `question` (`VARCHAR`), NN
+- `answer` (`TEXT`), NN
+- `category` (`VARCHAR`), NN, default 'Umum & Profil Toko'
+- `sort_order` (`INTEGER`), NN, default '0'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `status` (`VARCHAR`), NN, default 'active'
 
 Indexes:
+- `idx_cms_faq_items_page_status` (IDX on `cms_page_id`, `status`)
 
-- `idx_event_logs_entity` (`entity_type`, `entity_id`)  
-- `idx_event_logs_event_type` (`event_type`)
+### 5.4 `cms_gallery_items`
 
-### 7.2 `performance_metrics` (optional)
+- `id` (`INTEGER`), PK, NN
+- `cms_page_id` (`INTEGER`), NN, FK -> cms_pages.id
+- `image_url` (`VARCHAR`), NN
+- `label` (`VARCHAR`), nullable
+- `published` (`TINYINT(1)`), NN, default '1'
+- `sort_order` (`INTEGER`), NN, default '0'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
-Stores aggregated metrics for reporting (can also be computed from queries).
+### 5.5 `cms_model_products`
 
-- `id` (PK, bigint)  
-- `metric_date` (date)  
-- `metric_name` (varchar) — e.g. `storefront_page_views`, `storefront_unique_visitors`  
-- `metric_value` (decimal(18,4))  
-- `context` (json, nullable)  
-- `created_at` (timestamp)
+- `id` (`INTEGER`), PK, NN
+- `name` (`VARCHAR`), NN
+- `image_url` (`VARCHAR`), nullable
+- `type` (`VARCHAR`), NN, default 'polos'
+- `status` (`VARCHAR`), NN, default 'draft'
+- `sort_order` (`INTEGER`), NN, default '0'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `product_category` (`VARCHAR`), nullable
+- `product_model` (`VARCHAR`), nullable
+- `description` (`TEXT`), nullable
 
 Indexes:
+- `cms_model_products_category_model_idx` (IDX on `product_category`, `product_model`)
 
-- `idx_performance_metrics_date_name` (`metric_date`, `metric_name`)
+### 5.6 `cms_problems_solutions`
 
-Notes:
+- `id` (`INTEGER`), PK, NN
+- `cms_page_id` (`INTEGER`), NN, FK -> cms_pages.id
+- `problem` (`TEXT`), NN
+- `solution` (`TEXT`), NN
+- `sort_order` (`INTEGER`), NN, default '0'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
-- Storefront middleware increments `storefront_page_views` and (once per session/day) `storefront_unique_visitors`.
-- Product engagement (admin dashboard only): `product_views` (PDP load) and `product_clicks` (kartu produk storefront) with `context.product_id`; aggregated per `metric_date`.
-- Performa Toko conversion = orders in period ÷ unique visitors (0 if no visitor data yet).
-- Sales/omzet KPIs are computed live from `orders` / `order_items` (not only from this table).
-- **Log Aktivitas (admin):** Monitoring → `admin.activity-logs.*` reads append-only `event_logs` (filter by category derived from `event_type` / `entity_type`, search, CSV export). Critical writers include order/payment/shipping, import start/retry, WhatsApp template changes, and admin login/logout. Do not hard-delete log rows.
+### 5.7 `cms_testimonials`
 
----
----
+- `id` (`INTEGER`), PK, NN
+- `cms_page_id` (`INTEGER`), NN, FK -> cms_pages.id
+- `customer_name` (`VARCHAR`), NN
+- `message` (`TEXT`), NN
+- `image_url` (`VARCHAR`), nullable
+- `published` (`TINYINT(1)`), NN, default '1'
+- `sort_order` (`INTEGER`), NN, default '0'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `product_id` (`INTEGER`), nullable, FK -> products.id
+- `rating` (`INTEGER`), nullable
+- `source` (`VARCHAR`), NN, default 'other'
+- `location` (`VARCHAR`), nullable
 
-## 8. Agent Checklist for Schema Usage
+Indexes:
+- `cms_testimonials_product_published_idx` (IDX on `product_id`, `published`)
 
-Before designing or implementing any data logic, agents must:
+### 5.8 `announcements`
 
-- Treat `parent_sku` / `variant_sku` as opaque public IDs (URL + backend); do not invent a second public ID system; **never display them on the storefront**.  
-- Route all bulk catalog and inventory changes through `import_jobs` and `import_job_rows`, not ad‑hoc scripts.  
-- Use `product_media` as the single source of truth for product images; frontend should consume `stored_url` and respect `visibility`.  
-- Keep `orders`, `order_items`, `payments`, and `shipping_records` as the authoritative source for transaction and logistics data.  
-- Log WhatsApp interactions in `whatsapp_templates` and `whatsapp_messages`.  
-- Maintain links between tables for traceability (job → rows → catalog/media, order → WhatsApp → shipping).  
-- Use archive‑style status/flags (e.g. `status = archived`, `visibility = archived`) for catalog/media instead of deleting rows.  
-- Avoid creating new tables or fields that duplicate existing concepts without updating this schema document.
+- `id` (`INTEGER`), PK, NN
+- `text` (`VARCHAR`), NN
+- `href` (`VARCHAR`), nullable
+- `starts_at` (`DATE`), nullable
+- `ends_at` (`DATE`), nullable
+- `sort_order` (`INTEGER`), NN, default '0'
+- `published` (`TINYINT(1)`), NN, default '1'
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
 
-Any schema change that conflicts with this document must be reviewed and the document updated before being accepted into the Ragil Aluminium system.
+## 6. Users, Admin & Notifications
 
----
+### 6.1 `users`
+
+- `id` (`INTEGER`), PK, NN
+- `name` (`VARCHAR`), NN
+- `email` (`VARCHAR`), NN
+- `email_verified_at` (`DATETIME`), nullable
+- `password` (`VARCHAR`), NN
+- `role` (`VARCHAR`), NN, default 'staff'
+- `status` (`VARCHAR`), NN, default 'active'
+- `remember_token` (`VARCHAR`), nullable
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `username` (`VARCHAR`), nullable, UQ
+
+Indexes:
+- `users_email_index` (IDX on `email`)
+- `idx_users_role` (IDX on `role`)
+
+### 6.2 `admin_notifications`
+
+- `id` (`INTEGER`), PK, NN
+- `type` (`VARCHAR`), NN
+- `title` (`VARCHAR`), NN
+- `body` (`TEXT`), nullable
+- `order_id` (`INTEGER`), nullable, FK -> orders.id
+- `href` (`VARCHAR`), nullable
+- `read_at` (`DATETIME`), nullable
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+
+Indexes:
+- `admin_notifications_read_at_index` (IDX on `read_at`)
+- `admin_notifications_order_id_index` (IDX on `order_id`)
+- `admin_notifications_type_index` (IDX on `type`)
+
+### 6.3 `password_reset_tokens`
+
+- `email` (`VARCHAR`), PK, NN
+- `token` (`VARCHAR`), NN
+- `created_at` (`DATETIME`), nullable
+
+## 7. Import, Events & Monitoring
+
+### 7.1 `import_jobs`
+
+- `id` (`INTEGER`), PK, NN
+- `type` (`VARCHAR`), NN
+- `source_file_name` (`VARCHAR`), NN
+- `source_file_path` (`VARCHAR`), nullable
+- `total_rows` (`INTEGER`), nullable
+- `processed_rows` (`INTEGER`), NN, default '0'
+- `success_rows` (`INTEGER`), NN, default '0'
+- `failed_rows` (`INTEGER`), NN, default '0'
+- `status` (`VARCHAR`), NN, default 'pending'
+- `started_at` (`DATETIME`), nullable
+- `completed_at` (`DATETIME`), nullable
+- `global_error_message` (`TEXT`), nullable
+- `triggered_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+- `stock_mode` (`VARCHAR`), NN, default 'file'
+- `manual_stock` (`INTEGER`), nullable
+
+Indexes:
+- `idx_import_jobs_triggered_by` (IDX on `triggered_by_user_id`)
+- `idx_import_jobs_type` (IDX on `type`)
+- `idx_import_jobs_status` (IDX on `status`)
+
+### 7.2 `import_job_rows`
+
+- `id` (`INTEGER`), PK, NN
+- `import_job_id` (`INTEGER`), NN, FK -> import_jobs.id
+- `row_number` (`INTEGER`), NN
+- `raw_data` (`TEXT`), nullable
+- `status` (`VARCHAR`), NN, default 'pending'
+- `error_reason` (`TEXT`), nullable
+- `linked_product_id` (`INTEGER`), nullable, FK -> products.id
+- `linked_product_variant_id` (`INTEGER`), nullable, FK -> product_variants.id
+- `processed_at` (`DATETIME`), nullable
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+
+Indexes:
+- `idx_import_job_rows_linked_variant` (IDX on `linked_product_variant_id`)
+- `idx_import_job_rows_linked_product` (IDX on `linked_product_id`)
+- `idx_import_job_rows_status` (IDX on `status`)
+- `idx_import_job_rows_job` (IDX on `import_job_id`, `row_number`)
+
+### 7.3 `event_logs`
+
+- `id` (`INTEGER`), PK, NN
+- `event_type` (`VARCHAR`), NN
+- `entity_type` (`VARCHAR`), NN
+- `entity_id` (`INTEGER`), NN
+- `payload` (`TEXT`), nullable
+- `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
+- `created_at` (`DATETIME`), NN
+
+Indexes:
+- `idx_event_logs_event_type` (IDX on `event_type`)
+- `idx_event_logs_entity` (IDX on `entity_type`, `entity_id`)
+
+### 7.4 `performance_metrics`
+
+- `id` (`INTEGER`), PK, NN
+- `metric_date` (`DATE`), NN
+- `metric_name` (`VARCHAR`), NN
+- `metric_value` (`NUMERIC`), NN
+- `context` (`TEXT`), nullable
+- `created_at` (`DATETIME`), NN
+
+Indexes:
+- `idx_performance_metrics_date_name` (IDX on `metric_date`, `metric_name`)
+
+## 8. Framework & Infra
+
+### 8.1 `cache`
+
+- `key` (`VARCHAR`), PK, NN
+- `value` (`TEXT`), NN
+- `expiration` (`INTEGER`), NN
+
+### 8.2 `cache_locks`
+
+- `key` (`VARCHAR`), PK, NN
+- `owner` (`VARCHAR`), NN
+- `expiration` (`INTEGER`), NN
+
+### 8.3 `sessions`
+
+- `id` (`VARCHAR`), PK, NN
+- `user_id` (`INTEGER`), nullable
+- `ip_address` (`VARCHAR`), nullable
+- `user_agent` (`TEXT`), nullable
+- `payload` (`TEXT`), NN
+- `last_activity` (`INTEGER`), NN
+
+Indexes:
+- `sessions_last_activity_index` (IDX on `last_activity`)
+- `sessions_user_id_index` (IDX on `user_id`)
+
+### 8.4 `jobs`
+
+- `id` (`INTEGER`), PK, NN
+- `queue` (`VARCHAR`), NN
+- `payload` (`TEXT`), NN
+- `attempts` (`INTEGER`), NN
+- `reserved_at` (`INTEGER`), nullable
+- `available_at` (`INTEGER`), NN
+- `created_at` (`INTEGER`), NN
+
+Indexes:
+- `jobs_queue_index` (IDX on `queue`)
+
+### 8.5 `job_batches`
+
+- `id` (`VARCHAR`), PK, NN
+- `name` (`VARCHAR`), NN
+- `total_jobs` (`INTEGER`), NN
+- `pending_jobs` (`INTEGER`), NN
+- `failed_jobs` (`INTEGER`), NN
+- `failed_job_ids` (`TEXT`), NN
+- `options` (`TEXT`), nullable
+- `cancelled_at` (`INTEGER`), nullable
+- `created_at` (`INTEGER`), NN
+- `finished_at` (`INTEGER`), nullable
+
+### 8.6 `failed_jobs`
+
+- `id` (`INTEGER`), PK, NN
+- `uuid` (`VARCHAR`), NN, UQ
+- `connection` (`TEXT`), NN
+- `queue` (`TEXT`), NN
+- `payload` (`TEXT`), NN
+- `exception` (`TEXT`), NN
+- `failed_at` (`DATETIME`), NN, default CURRENT_TIMESTAMP
+
+### 8.7 `migrations`
+
+- `id` (`INTEGER`), PK, NN
+- `migration` (`VARCHAR`), NN
+- `batch` (`INTEGER`), NN

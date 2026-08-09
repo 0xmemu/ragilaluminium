@@ -35,13 +35,13 @@ class WhatsAppController extends Controller
         return response('OK', 200);
     }
 
-    public function handleWaha(Request $request): Response
+    public function handleBaileys(Request $request): Response
     {
-        if (! $this->wahaSecretValid($request)) {
-            return response('Invalid WAHA secret', 403);
+        if (! $this->baileysSecretValid($request)) {
+            return response('Invalid BAILEYS secret', 403);
         }
 
-        $this->whatsapp->handleWahaWebhook($request->all());
+        $this->whatsapp->handleBaileysWebhook($request->all());
 
         return response('OK', 200);
     }
@@ -63,15 +63,15 @@ class WhatsAppController extends Controller
         return is_string($header) && hash_equals($expected, $header);
     }
 
-    protected function wahaSecretValid(Request $request): bool
+    protected function baileysSecretValid(Request $request): bool
     {
-        $secret = config('services.whatsapp.waha.webhook_secret');
+        $secret = config('services.whatsapp.baileys.webhook_secret');
         if (! $secret) {
             return $this->unsignedWebhooksAllowed();
         }
 
-        // WAHA mode HMAC: header X-Webhook-Hmac berisi hex HMAC dari body mentah.
-        // Algoritma ditentukan header X-Webhook-Hmac-Algorithm (WAHA kirim 'sha512').
+        // BAILEYS mode HMAC: header X-Webhook-Hmac berisi hex HMAC dari body mentah.
+        // Algoritma ditentukan header X-Webhook-Hmac-Algorithm (BAILEYS kirim 'sha512').
         $hmac = $request->header('X-Webhook-Hmac');
         if (is_string($hmac) && $hmac !== '') {
             $algo = strtolower(trim((string) $request->header('X-Webhook-Hmac-Algorithm', 'sha512')));
@@ -83,9 +83,9 @@ class WhatsAppController extends Controller
             return hash_equals($expected, strtolower(trim($hmac)));
         }
 
-        // WAHA mode plain secret: X-Webhook-Secret / X-WAHA-Secret (query-string ditolak).
+        // BAILEYS mode plain secret: X-Webhook-Secret / X-BAILEYS-Secret (query-string ditolak).
         $provided = $request->header('X-Webhook-Secret')
-            ?? $request->header('X-WAHA-Secret');
+            ?? $request->header('X-BAILEYS-Secret');
 
         return is_string($provided) && hash_equals($secret, $provided);
     }

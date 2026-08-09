@@ -102,7 +102,7 @@ class HomepagePromotions
                 'eyebrow' => $copy['eyebrow'],
                 'headline' => $copy['headline'],
                 'subheadline' => $copy['subheadline'],
-                'accent' => $copy['accent'] ?? ($promo['discount_percent'] ? '-'.$promo['discount_percent'].'%' : null),
+                'accent' => $copy['accent'] ?? ((($promo['discount_percent'] ?? 0) > 0) ? '-'.$promo['discount_percent'].'%' : null),
                 'image' => $image,
                 'image_alt' => $product?->name ?: ($banner->title ?: 'Promo Ragil Aluminium'),
                 'href' => $banner->link_url ?: ($product ? route('product.show', $product->parent_sku, absolute: false) : route('catalog.index', absolute: false)),

@@ -84,8 +84,8 @@ class WhatsAppService
             return $message;
         }
 
-        $result = $provider === 'waha'
-            ? $this->sendViaWaha($phone, $text)
+        $result = $provider === 'baileys'
+            ? $this->sendViaBaileys($phone, $text)
             : $this->sendViaMetaText($phone, $text);
 
         $this->applyProviderResult($message, $result);
@@ -128,13 +128,13 @@ class WhatsAppService
                     'number_id_set' => filled(config('services.whatsapp.meta.number_id')),
                     'verify_token_set' => filled(config('services.whatsapp.meta.verify_token')),
                 ],
-                'waha' => [
-                    'configured' => $this->providerConfigured('waha'),
-                    'base_url' => config('services.whatsapp.waha.base_url'),
-                    'token_set' => filled(config('services.whatsapp.waha.api_key')),
-                    'session' => config('services.whatsapp.waha.session'),
-                    'api_key_set' => filled(config('services.whatsapp.waha.api_key')),
-                    'webhook_secret_set' => filled(config('services.whatsapp.waha.webhook_secret')),
+                'baileys' => [
+                    'configured' => $this->providerConfigured('baileys'),
+                    'base_url' => config('services.whatsapp.baileys.base_url'),
+                    'token_set' => filled(config('services.whatsapp.baileys.api_key')),
+                    'session' => config('services.whatsapp.baileys.session'),
+                    'api_key_set' => filled(config('services.whatsapp.baileys.api_key')),
+                    'webhook_secret_set' => filled(config('services.whatsapp.baileys.webhook_secret')),
                 ],
             ],
         ];
@@ -166,16 +166,16 @@ class WhatsAppService
         );
     }
 
-    public function handleWahaWebhook(array $payload): void
+    public function handleBaileysWebhook(array $payload): void
     {
         $event = (string) ($payload['event'] ?? '');
         $body = $payload['payload'] ?? [];
-        $session = $payload['session'] ?? config('services.whatsapp.waha.session');
+        $session = $payload['session'] ?? config('services.whatsapp.baileys.session');
 
         if ($event === 'message' && ! ($body['fromMe'] ?? false)) {
-            $this->handleCanonicalWebhook('waha', [[
+            $this->handleCanonicalWebhook('baileys', [[
                 'provider_message_id' => $body['id'] ?? null,
-                'phone' => $this->normalizeWahaPhone($body['from'] ?? ($body['chatId'] ?? null)),
+                'phone' => $this->normalizeBaileysPhone($body['from'] ?? ($body['chatId'] ?? null)),
                 'text' => $body['body'] ?? null,
                 'raw' => $payload,
                 'provider_session' => $session,
@@ -185,9 +185,9 @@ class WhatsAppService
         }
 
         if ($event === 'message.ack') {
-            $this->handleCanonicalWebhook('waha', [], [[
+            $this->handleCanonicalWebhook('baileys', [], [[
                 'provider_message_id' => $body['id'] ?? null,
-                'status' => $this->mapWahaAckStatus($body['ack'] ?? null),
+                'status' => $this->mapBaileysAckStatus($body['ack'] ?? null),
             ]]);
         }
     }
@@ -208,7 +208,7 @@ class WhatsAppService
             'provider' => $provider,
             'internal_template_key' => $internalKey,
             'status' => 'pending',
-            'content_text' => $provider === 'waha' ? $this->renderTemplateBody($template, $variables) : null,
+            'content_text' => $provider === 'baileys' ? $this->renderTemplateBody($template, $variables) : null,
             'content_payload' => ['variables' => $variables],
         ]);
 
@@ -224,8 +224,8 @@ class WhatsAppService
             return $message;
         }
 
-        $result = $provider === 'waha'
-            ? $this->sendViaWaha($phone, $this->renderTemplateBody($template, $variables))
+        $result = $provider === 'baileys'
+            ? $this->sendViaBaileys($phone, $this->renderTemplateBody($template, $variables))
             : $this->sendViaMetaTemplate($template, $phone, $variables);
 
         $this->applyProviderResult($message, $result);
@@ -307,21 +307,21 @@ class WhatsAppService
         }
     }
 
-    protected function sendViaWaha(string $phone, string $text): array
+    protected function sendViaBaileys(string $phone, string $text): array
     {
         $payload = [
-            'session' => config('services.whatsapp.waha.session', 'default'),
-            'chatId' => $this->toWahaChatId($phone),
+            'session' => config('services.whatsapp.baileys.session', 'default'),
+            'chatId' => $this->toBaileysChatId($phone),
             'text' => $text,
         ];
 
         try {
             $response = Http::withHeaders([
-                'X-Api-Key' => (string) config('services.whatsapp.waha.api_key'),
+                'X-Api-Key' => (string) config('services.whatsapp.baileys.api_key'),
             ])
-                ->timeout((int) config('services.whatsapp.waha.timeout', 15))
+                ->timeout((int) config('services.whatsapp.baileys.timeout', 15))
                 ->retry(2, 500, throw: false)
-                ->post(rtrim((string) config('services.whatsapp.waha.base_url'), '/').'/api/sendText', $payload);
+                ->post(rtrim((string) config('services.whatsapp.baileys.base_url'), '/').'/api/sendText', $payload);
 
             return [
                 'successful' => $response->successful(),
@@ -403,13 +403,13 @@ class WhatsAppService
 
     protected function normalizeProvider(string $provider): string
     {
-        return strtolower($provider) === 'waha' ? 'waha' : 'meta';
+        return strtolower($provider) === 'baileys' ? 'baileys' : 'meta';
     }
 
     protected function providerConfigured(string $provider): bool
     {
         return match ($provider) {
-            'waha' => filled(config('services.whatsapp.waha.base_url')) && filled(config('services.whatsapp.waha.api_key')),
+            'baileys' => filled(config('services.whatsapp.baileys.base_url')) && filled(config('services.whatsapp.baileys.api_key')),
             default => filled(config('services.whatsapp.meta.token')) && filled(config('services.whatsapp.meta.number_id')),
         };
     }
@@ -442,12 +442,12 @@ class WhatsAppService
         return trim($body) !== '' ? trim($body) : implode("\n", $variables);
     }
 
-    protected function toWahaChatId(string $phone): string
+    protected function toBaileysChatId(string $phone): string
     {
         return $phone.'@c.us';
     }
 
-    protected function normalizeWahaPhone(?string $chatId): ?string
+    protected function normalizeBaileysPhone(?string $chatId): ?string
     {
         if (! $chatId) {
             return null;
@@ -458,7 +458,7 @@ class WhatsAppService
         return PhoneNumber::normalize($chatId) ?? $chatId;
     }
 
-    protected function mapWahaAckStatus(mixed $ack): string
+    protected function mapBaileysAckStatus(mixed $ack): string
     {
         return match ((int) $ack) {
             3 => 'read',

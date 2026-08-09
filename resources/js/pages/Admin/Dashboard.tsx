@@ -3,7 +3,6 @@ import * as React from "react"
 
 import { OptionMenu } from "@/components/admin/option-menu"
 import { SectionCard } from "@/components/admin/section-card"
-import { Alert } from "@/components/admin/ui/alert"
 import { Card } from "@/components/admin/ui/card"
 import { DeltaBadge } from "@/components/admin/ui/delta-badge"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -149,14 +148,6 @@ interface TopEngagedProductsData {
   items: TopEngagedProduct[]
 }
 
-interface JntReadiness {
-  provider_label: string
-  environment: string
-  enabled_flag: boolean
-  client_ready: boolean
-  missing: string[]
-}
-
 interface IntegrationReadinessItem {
   key: string
   label: string
@@ -202,7 +193,6 @@ interface DashboardProps {
   greetingName: string
   todayLabel: string
   generatedAt: string
-  jntReadiness: JntReadiness
   integrationReadiness: IntegrationReadinessItem[]
   importMediaSummary: ImportMediaSummary
   omzet: OmzetData
@@ -215,6 +205,7 @@ interface DashboardProps {
   promoProducts: PromoProduct[]
   promoTotal: number
   topEngagedProducts?: TopEngagedProductsData
+  productCount: number
 }
 
 function greetingPrefix(date = new Date()): string {
@@ -331,11 +322,19 @@ function MetricTile({
   )
 }
 
+function DensityChip({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5">
+      <p className="tabular-nums text-lg font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{label}</p>
+    </div>
+  )
+}
+
 export default function Dashboard({
   greetingName,
   todayLabel,
   generatedAt,
-  jntReadiness,
   integrationReadiness = [],
   importMediaSummary,
   omzet,
@@ -348,6 +347,7 @@ export default function Dashboard({
   promoProducts = [],
   promoTotal = 0,
   topEngagedProducts,
+  productCount = 0,
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
   const [refreshing, setRefreshing] = React.useState(false)
@@ -357,6 +357,10 @@ export default function Dashboard({
   const pendingPaymentOrdersHref =
     pendingPaymentOrders?.href ??
     withQuery(routeUrl("admin.orders.index"), { order_status: "pending_payment" })
+  const hasOrders =
+    statusOrder.reduce((sum, item) => sum + item.total, 0) > 0 || omzet.orders > 0
+  const visitorsMetric = performa.metrics.find((metric) => metric.key === "visitors")
+  const onboardingActions = quickActions.filter((action) => action.label !== "Lihat Pending Payment")
 
   function onPerformaPeriodChange(period: string) {
     router.get(
@@ -413,57 +417,108 @@ export default function Dashboard({
 
         {/* Row 1 — Omzet | Performa Toko */}
         <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <Card className="flex h-full flex-col">
-            <div className="flex flex-wrap items-start justify-between gap-4 p-5 pb-4">
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Omzet hari ini
-                </p>
-                <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
-                  {formatCurrency(omzet.revenue)}
-                </p>
-                <div className="mt-2">
-                  <DeltaBadge percent={omzet.change_percent} />
-                </div>
-                <div className="mt-4 rounded-md border border-info/20 bg-info/5 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
-                  <div className="flex items-start gap-2">
-                    <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground">Belum masuk omzet</p>
-                      <p>
-                        Order Perlu Konfirmasi, batal, atau bermasalah belum dihitung. Omzet hanya
-                        memakai order yang sudah masuk proses fulfillment.
-                      </p>
-                      <Link
-                        href={pendingPaymentOrdersHref}
-                        className="mt-1 inline-flex items-center gap-1 font-semibold text-info underline underline-offset-2 hover:no-underline"
-                      >
-                        Lihat {formatNumber(pendingPaymentOrders?.total ?? 0)} order Perlu Konfirmasi
-                        <Icon name="arrow-right" className="size-3" aria-hidden="true" />
-                      </Link>
+          {hasOrders ? (
+            <Card className="flex h-full flex-col">
+              <div className="flex flex-wrap items-start justify-between gap-4 p-5 pb-4">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Omzet hari ini
+                  </p>
+                  <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
+                    {formatCurrency(omzet.revenue)}
+                  </p>
+                  <div className="mt-2">
+                    <DeltaBadge percent={omzet.change_percent} />
+                  </div>
+                  {(pendingPaymentOrders?.total ?? 0) > 0 ? (
+                    <div className="mt-4 rounded-md border border-info/20 bg-info/5 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+                      <div className="flex items-start gap-2">
+                        <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground">Belum masuk omzet</p>
+                          <p>
+                            Order Perlu Konfirmasi, batal, atau bermasalah belum dihitung. Omzet hanya
+                            memakai order yang sudah masuk proses fulfillment.
+                          </p>
+                          <Link
+                            href={pendingPaymentOrdersHref}
+                            className="mt-1 inline-flex items-center gap-1 font-semibold text-info underline underline-offset-2 hover:no-underline"
+                          >
+                            Lihat {formatNumber(pendingPaymentOrders?.total ?? 0)} order Perlu Konfirmasi
+                            <Icon name="arrow-right" className="size-3" aria-hidden="true" />
+                          </Link>
+                        </div>
+                      </div>
                     </div>
+                  ) : null}
+                </div>
+                <Sparkline values={omzet.sparkline} />
+              </div>
+              <div className="mt-auto grid sm:grid-cols-2 divide-x divide-border border-t border-border">
+                <div className="px-5 py-4">
+                  <MetricTile
+                    label="Jumlah order"
+                    value={`${formatNumber(omzet.orders)} order`}
+                    delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" />}
+                  />
+                </div>
+                <div className="px-5 py-4">
+                  <MetricTile
+                    label="Jumlah unit"
+                    value={`${formatNumber(omzet.units)} unit`}
+                    delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
+                  />
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="flex h-full flex-col p-6">
+              <div className="flex h-full flex-col justify-between gap-6">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Mulai berjualan
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                    Toko belum memiliki pesanan
+                  </h2>
+                  <p className="mt-1.5 max-w-lg text-[13px] leading-5 text-muted-foreground">
+                    Semua siap dipakai. Lengkapi katalog dan pastikan layanan terkoneksi
+                    supaya order pertama bisa masuk dan diproses lancar.
+                  </p>
+                  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <DensityChip label="Produk aktif" value={formatNumber(productCount)} />
+                    <DensityChip
+                      label="Media siap"
+                      value={formatNumber(importMediaSummary.media.attachments.ready)}
+                    />
+                    <DensityChip
+                      label="Import selesai"
+                      value={formatNumber(importMediaSummary.imports.completed)}
+                    />
+                    <DensityChip label="Pengunjung" value={formatNumber(visitorsMetric?.value ?? 0)} />
                   </div>
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  {onboardingActions.map((action) => (
+                    <Link
+                      key={action.label}
+                      href={action.href}
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover"
+                    >
+                      <Icon name={action.icon} className="size-4" aria-hidden="true" />
+                      {action.label}
+                    </Link>
+                  ))}
+                  <Link
+                    href={routeUrl("admin.products.index")}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                  >
+                    Buka katalog
+                  </Link>
+                </div>
               </div>
-              <Sparkline values={omzet.sparkline} />
-            </div>
-            <div className="mt-auto grid sm:grid-cols-2 divide-x divide-border border-t border-border">
-              <div className="px-5 py-4">
-                <MetricTile
-                  label="Jumlah order"
-                  value={`${formatNumber(omzet.orders)} order`}
-                  delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" />}
-                />
-              </div>
-              <div className="px-5 py-4">
-                <MetricTile
-                  label="Jumlah unit"
-                  value={`${formatNumber(omzet.units)} unit`}
-                  delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
-                />
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
 
           <Card className="flex h-full flex-col p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -511,10 +566,12 @@ export default function Dashboard({
           </Card>
         </section>
 
-        <SectionCard
-          title="Ringkasan nilai pesanan"
-          icon="hand-coins"
-          description="Nilai operasional dipisahkan dari omzet agar status pembayaran tetap jelas."
+        {hasOrders ? (
+          <>
+            <SectionCard
+              title="Ringkasan nilai pesanan"
+              icon="hand-coins"
+              description="Nilai operasional dipisahkan dari omzet agar status pembayaran tetap jelas."
           action={
             <Link
               href={pendingPaymentOrdersHref}
@@ -583,32 +640,8 @@ export default function Dashboard({
             ))}
           </div>
         </SectionCard>
-
-        {/* Row 2b — Kesiapan J&T */}
-        <Alert
-          tone="warning"
-          title={jntReadiness.provider_label}
-          className="items-center"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[13px]">
-              {jntReadiness.client_ready
-                ? `Konfigurasi tersedia, koneksi live belum diverifikasi · ${jntReadiness.environment}`
-                : `Belum siap · ${jntReadiness.missing.length} konfigurasi perlu dilengkapi`}
-            </p>
-            <Link
-              href={routeUrl("admin.settings.index")}
-              className="text-xs font-semibold underline underline-offset-2 hover:no-underline"
-            >
-              Periksa konfigurasi
-            </Link>
-          </div>
-          {!jntReadiness.client_ready && jntReadiness.missing.length ? (
-            <p className="mt-2 rounded-md bg-current/5 px-3 py-2 font-mono text-[11px] leading-5 opacity-80">
-              {jntReadiness.missing.join(", ")}
-            </p>
-          ) : null}
-        </Alert>
+          </>
+        ) : null}
 
         <SectionCard
           title="Kesiapan layanan"
@@ -641,88 +674,6 @@ export default function Dashboard({
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
               </Link>
             ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Import & media"
-          icon="images"
-          description="Antrean katalog dan status aset yang perlu dipantau."
-        >
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-md border border-border p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Import katalog</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatNumber(importMediaSummary.imports.failed_rows)} baris gagal dari seluruh job
-                  </p>
-                </div>
-                <Link href={importMediaSummary.imports.href} className="text-xs font-semibold text-primary hover:underline">
-                  Buka import
-                </Link>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <MetricTile label="Berjalan" value={formatNumber(importMediaSummary.imports.running)} />
-                <MetricTile label="Gagal" value={formatNumber(importMediaSummary.imports.failed)} />
-                <MetricTile label="Selesai" value={formatNumber(importMediaSummary.imports.completed)} />
-              </div>
-              {importMediaSummary.imports.recent.length ? (
-                <ul className="mt-4 divide-y divide-border border-t border-border">
-                  {importMediaSummary.imports.recent.map((job) => (
-                    <li key={job.id}>
-                      <Link href={job.href} className="flex items-center justify-between gap-3 py-2.5 hover:bg-muted/50">
-                        <span className="min-w-0">
-                          <span className="block truncate text-xs font-medium text-foreground">{job.file_name}</span>
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {job.failed_rows ? `${formatNumber(job.failed_rows)} baris gagal · ` : ""}
-                            {formatRelativeAge(job.updated_at)}
-                          </span>
-                        </span>
-                        <StatusBadge status={job.status} />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">Belum ada job import.</p>
-              )}
-            </div>
-
-            <div className="rounded-md border border-border p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Status media</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">Attachment produk dan shared asset dipisahkan.</p>
-                </div>
-                <Link href={importMediaSummary.media.href} className="text-xs font-semibold text-primary hover:underline">
-                  Buka media
-                </Link>
-              </div>
-              <div className="mt-4 space-y-3">
-                {([
-                  ["Attachment produk", importMediaSummary.media.attachments],
-                  ["Shared asset", importMediaSummary.media.shared_assets],
-                ] as const).map(([label, status]) => (
-                  <div key={label} className="rounded-md bg-muted/40 p-3">
-                    <p className="text-xs font-semibold text-foreground">{label}</p>
-                    <div className="mt-2 grid grid-cols-4 gap-2 text-center">
-                      {([
-                        ["Siap", status.ready],
-                        ["Menunggu", status.pending],
-                        ["Gagal", status.failed],
-                        ["Arsip", status.archived],
-                      ] as const).map(([statusLabel, count]) => (
-                        <div key={statusLabel}>
-                          <p className="tabular-nums text-sm font-semibold text-foreground">{formatNumber(count)}</p>
-                          <p className="mt-0.5 text-[10px] text-muted-foreground">{statusLabel}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </SectionCard>
 
@@ -1051,14 +1002,36 @@ export default function Dashboard({
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-start gap-3 p-6">
-              <p className="text-[13px] text-muted-foreground">Belum ada pesanan.</p>
-              <Link
-                href={routeUrl("admin.orders.index")}
-                className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium transition hover:bg-muted"
-              >
-                Buka daftar pesanan
-              </Link>
+            <div className="flex flex-col gap-5 p-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">Belum ada pesanan</p>
+                <p className="mt-1 max-w-lg text-[13px] leading-5 text-muted-foreground">
+                  Order pertama akan tampil di sini. Supaya siap menerima pesanan, pastikan
+                  katalog terpasang, media aman, dan layanan WhatsApp/queue terkoneksi.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={routeUrl("admin.products.index")}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium transition hover:bg-muted"
+                >
+                  <Icon name="package" className="size-3.5" aria-hidden="true" />
+                  Buka katalog
+                </Link>
+                <Link
+                  href={routeUrl("admin.imports.index")}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium transition hover:bg-muted"
+                >
+                  <Icon name="upload" className="size-3.5" aria-hidden="true" />
+                  Cek import
+                </Link>
+                <Link
+                  href={routeUrl("admin.orders.index")}
+                  className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-primary-hover"
+                >
+                  Buka daftar pesanan
+                </Link>
+              </div>
             </div>
           )}
         </SectionCard>
@@ -1113,6 +1086,89 @@ export default function Dashboard({
               Tidak ada produk dengan atribut promo aktif.
             </p>
           )}
+        </SectionCard>
+
+        {/* Row 6 — Import & Media */}
+        <SectionCard
+          title="Import & media"
+          icon="images"
+          description="Antrean katalog dan status aset yang perlu dipantau."
+        >
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-md border border-border p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Import katalog</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatNumber(importMediaSummary.imports.failed_rows)} baris gagal dari seluruh job
+                  </p>
+                </div>
+                <Link href={importMediaSummary.imports.href} className="text-xs font-semibold text-primary hover:underline">
+                  Buka import
+                </Link>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <MetricTile label="Berjalan" value={formatNumber(importMediaSummary.imports.running)} />
+                <MetricTile label="Gagal" value={formatNumber(importMediaSummary.imports.failed)} />
+                <MetricTile label="Selesai" value={formatNumber(importMediaSummary.imports.completed)} />
+              </div>
+              {importMediaSummary.imports.recent.length ? (
+                <ul className="mt-4 divide-y divide-border border-t border-border">
+                  {importMediaSummary.imports.recent.map((job) => (
+                    <li key={job.id}>
+                      <Link href={job.href} className="flex items-center justify-between gap-3 py-2.5 hover:bg-muted/50">
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-medium text-foreground">{job.file_name}</span>
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            {job.failed_rows ? `${formatNumber(job.failed_rows)} baris gagal · ` : ""}
+                            {formatRelativeAge(job.updated_at)}
+                          </span>
+                        </span>
+                        <StatusBadge status={job.status} />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">Belum ada job import.</p>
+              )}
+            </div>
+
+            <div className="rounded-md border border-border p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Status media</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Attachment produk dan shared asset dipisahkan.</p>
+                </div>
+                <Link href={importMediaSummary.media.href} className="text-xs font-semibold text-primary hover:underline">
+                  Buka media
+                </Link>
+              </div>
+              <div className="mt-4 space-y-3">
+                {([
+                  ["Attachment produk", importMediaSummary.media.attachments],
+                  ["Shared asset", importMediaSummary.media.shared_assets],
+                ] as const).map(([label, status]) => (
+                  <div key={label} className="rounded-md bg-muted/40 p-3">
+                    <p className="text-xs font-semibold text-foreground">{label}</p>
+                    <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                      {([
+                        ["Siap", status.ready],
+                        ["Menunggu", status.pending],
+                        ["Gagal", status.failed],
+                        ["Arsip", status.archived],
+                      ] as const).map(([statusLabel, count]) => (
+                        <div key={statusLabel}>
+                          <p className="tabular-nums text-sm font-semibold text-foreground">{formatNumber(count)}</p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">{statusLabel}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </SectionCard>
       </div>
     </AdminLayout>

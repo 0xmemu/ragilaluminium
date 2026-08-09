@@ -115,7 +115,7 @@ class OrderConfirmationTest extends TestCase
             'total_amount' => $total,
             'payment_method' => $paymentMethod,
             'cod_flag' => $paymentMethod === 'cod',
-            'order_status' => $paymentMethod === 'cod' ? 'pending' : 'pending_payment',
+            'order_status' => 'pending_payment',
             'payment_status' => 'pending',
             'shipping_status' => 'pending',
         ]);

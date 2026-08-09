@@ -3,7 +3,7 @@
 Status: **NOT PRODUCTION-READY**  
 Audit baseline: 2026-08-06  
 Scope: Laravel 11 + Inertia React storefront/admin, MySQL production target,
-Cloudflare/R2 media, WhatsApp, WAHA, J&T Cargo, and VPS operations.
+Cloudflare/R2 media, WhatsApp, BAILEYS, J&T Cargo, and VPS operations.
 
 This is the release gate for Ragil Aluminium. A dev preview being reachable is
 not evidence that the transaction system is safe, recoverable, observable, or
@@ -217,7 +217,7 @@ ready to receive real orders.
 - `[ ]` Production ingress is HTTPS on the approved domain; port 8200 is not
   publicly exposed unless explicitly required and restricted by firewall.
 - `[ ]` Configure firewall with SSH key-only access, restricted source IPs where
-  possible, HTTP/HTTPS only, no public database/Redis/WAHA ports, and automatic
+  possible, HTTP/HTTPS only, no public database/Redis/BAILEYS ports, and automatic
   security updates.
 - `[ ]` Disable password SSH login/root login, install intrusion protection,
   rotate keys, and record break-glass access securely.
@@ -226,7 +226,7 @@ ready to receive real orders.
 - `[ ]` Run the app under a non-root service account with read-only code and
   write access only to required storage/cache/log paths.
 - `[ ]` Set filesystem ownership/permissions and confirm `.env`, backups, logs,
-  `.waha-sessions`, and uploaded files cannot be downloaded via the web root.
+  `.baileys-sessions`, and uploaded files cannot be downloaded via the web root.
 - `[ ]` Add disk/inode/RAM/CPU/PHP-FPM/queue/database monitoring and alert thresholds.
 
 ### Cloudflare and edge
@@ -239,21 +239,21 @@ ready to receive real orders.
 - `[ ]` Configure cache rules only for immutable assets/public media; bypass cache
   for admin, checkout, cart, order lookup, webhooks, and authenticated responses.
 - `[ ]` Configure upload/request limits and bot/rate controls without breaking
-  checkout, Meta verification, J&T webhook, or WAHA webhook traffic.
+  checkout, Meta verification, J&T webhook, or BAILEYS webhook traffic.
 - `[ ]` Verify forwarded host/proto handling, canonical HTTPS redirects, HSTS
   rollout, origin certificate validity, and no redirect loops.
 - `[ ]` Run external checks from a network outside the VPS: DNS, TLS, headers,
   cache behavior, webhook reachability, asset URLs, and `/up`.
 
-### WAHA and provider boundaries
+### BAILEYS and provider boundaries
 
-- `[x]` WAHA compose pins a `noweb` image tag, binds its port to loopback, uses a
+- `[x]` BAILEYS compose pins a `noweb` image tag, binds its port to loopback, uses a
   session volume, and supports a webhook path.
-- `[ ]` Pin and approve the exact WAHA image digest for production; do not use
-  `latest` or expose WAHA directly to the Internet.
-- `[ ]` Store WAHA API key/webhook secret in deployment secrets, rotate them,
+- `[ ]` Pin and approve the exact BAILEYS image digest for production; do not use
+  `latest` or expose BAILEYS directly to the Internet.
+- `[ ]` Store BAILEYS API key/webhook secret in deployment secrets, rotate them,
   restrict sessions volume permissions, and test restart/session recovery.
-- `[ ]` Decide whether Meta or WAHA is primary; keep compare mode limited to an
+- `[ ]` Decide whether Meta or BAILEYS is primary; keep compare mode limited to an
   explicit test allowlist and disable it before real customer traffic.
 
 ## 6. CI/CD and version control
@@ -301,7 +301,7 @@ ready to receive real orders.
 - `[~]` Existing application throttles cover several API/webhook paths, but the
   production policy and edge limits are not yet one documented matrix.
 - `[ ]` Publish a rate-limit matrix by route class: login, catalog/search, cart,
-  checkout, order lookup, admin, exports, uploads, media, Meta webhook, WAHA,
+  checkout, order lookup, admin, exports, uploads, media, Meta webhook, BAILEYS,
   and J&T webhook. Define limit, key, response, retry-after, and alert behavior.
 - `[ ]` Verify trusted proxy/IP handling so Cloudflare does not collapse all users
   into one throttle key and clients cannot spoof their source IP.
@@ -323,7 +323,7 @@ ready to receive real orders.
   verified external error tracker, centralized retention, or on-call alert path.
 - `[ ]` Choose an error tracker and configure release/environment tagging, PII
   scrubbing, source map policy, alert ownership, and issue deduplication.
-- `[ ]` Centralize or ship Nginx, PHP-FPM, Laravel, queue, MySQL/Redis, WAHA,
+- `[ ]` Centralize or ship Nginx, PHP-FPM, Laravel, queue, MySQL/Redis, BAILEYS,
   Cloudflare, and deployment logs with retention and access control.
 - `[ ]` Emit metrics for request rate/latency/errors, checkout conversion,
   payment status, shipping status, queue depth/failures, import failures, media
@@ -349,7 +349,7 @@ ready to receive real orders.
 - `[ ]` Test maintenance mode and health checks without trapping health probes,
   webhook verification, or recovery operators.
 - `[ ]` Verify process supervision auto-restarts PHP-FPM, queue workers, Nginx,
-  Redis/WAHA where applicable, and does not create duplicate workers.
+  Redis/BAILEYS where applicable, and does not create duplicate workers.
 - `[ ]` Verify queue deployment uses `queue:restart`/graceful drain and failed
   jobs are visible, retryable, and not silently discarded.
 - `[ ]` Run a game-day recovery drill on a non-production clone and record:
@@ -362,13 +362,13 @@ ready to receive real orders.
 
 ## 11. External integration release gates
 
-### WhatsApp / WAHA
+### WhatsApp / BAILEYS
 
 - `[ ]` Meta production number, permanent system-user token, approved templates,
   payment method, business verification, and webhook URL are verified.
 - `[ ]` Send and receive a test order notification with real template mapping,
   delivery status, inbound message logging, and duplicate/retry behavior.
-- `[ ]` Confirm WAHA is either disabled or explicitly configured for the approved
+- `[ ]` Confirm BAILEYS is either disabled or explicitly configured for the approved
   compare/backup role; no test allowlist receives accidental customer traffic.
 
 ### J&T Cargo

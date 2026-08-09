@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Admin\WhatsAppMessageController;
 use App\Http\Controllers\Admin\WhatsAppTemplateController;
+use App\Http\Controllers\Admin\WhatsAppPairingController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
@@ -237,6 +238,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('whatsapp/messages', [WhatsAppMessageController::class, 'index'])->name('whatsapp.messages.index');
     Route::get('orders/{order}/whatsapp', [WhatsAppMessageController::class, 'byOrder'])->name('orders.whatsapp');
     Route::get('whatsapp/messages/{message}', [WhatsAppMessageController::class, 'show'])->name('whatsapp.messages.show');
+    Route::get('whatsapp/pairing', [WhatsAppPairingController::class, 'show'])->name('whatsapp.pairing');
+    Route::get('whatsapp/pairing/status', [WhatsAppPairingController::class, 'status'])->name('whatsapp.pairing.status');
+    Route::get('whatsapp/pairing/qr', [WhatsAppPairingController::class, 'qr'])->name('whatsapp.pairing.qr');
+    Route::post('whatsapp/pairing/code', [WhatsAppPairingController::class, 'code'])->name('whatsapp.pairing.code');
+
 
     // Analytics
     Route::get('analytics/store-performance', [AnalyticsController::class, 'storePerformance'])->name('analytics.store-performance');
@@ -424,6 +430,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 Route::middleware('throttle:120,1')->group(function () {
     Route::get('/webhook/whatsapp', [WhatsAppController::class, 'verify'])->name('webhook.whatsapp.verify');
     Route::post('/webhook/whatsapp', [WhatsAppController::class, 'handle'])->name('webhook.whatsapp.handle');
-Route::post('/webhook/whatsapp/waha', [WhatsAppController::class, 'handleWaha'])->name('webhook.whatsapp.waha');
+Route::post('/webhook/whatsapp/baileys', [WhatsAppController::class, 'handleBaileys'])->name('webhook.whatsapp.baileys');
     Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])->name('webhook.shipping.jnt');
 });

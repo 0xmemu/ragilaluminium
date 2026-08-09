@@ -333,22 +333,22 @@ recipient. Production boot fails when unsigned webhooks are enabled or an active
 Disable compare mode before customer traffic unless explicitly
 approved.
 
-## WAHA variables (conditional)
+## BAILEYS variables (conditional)
 
-Ask for these only if WAHA is the approved primary or fallback provider:
+Ask for these only if BAILEYS is the approved primary or fallback provider:
 
 ```env
-WHATSAPP_WAHA_BASE_URL=http://127.0.0.1:<waha-port>
-WHATSAPP_WAHA_API_KEY=<waha-api-key>
-WHATSAPP_WAHA_SESSION=ragil
-WHATSAPP_WAHA_WEBHOOK_SECRET=<waha-webhook-secret>
-WHATSAPP_WAHA_TIMEOUT=15
+WHATSAPP_BAILEYS_BASE_URL=http://127.0.0.1:<baileys-port>
+WHATSAPP_BAILEYS_API_KEY=<baileys-api-key>
+WHATSAPP_BAILEYS_SESSION=ragil
+WHATSAPP_BAILEYS_WEBHOOK_SECRET=<baileys-webhook-secret>
+WHATSAPP_BAILEYS_TIMEOUT=15
 ```
 
-WAHA webhook secrets must use `X-Webhook-Secret` or `X-WAHA-Secret`; query-string secrets are rejected.
+BAILEYS webhook secrets must use `X-Webhook-Secret` or `X-BAILEYS-Secret`; query-string secrets are rejected.
 
-WAHA must bind to loopback, use a pinned image/session volume, and never be
-exposed directly to the Internet. If Meta is primary and WAHA is not approved,
+BAILEYS must bind to loopback, use a pinned image/session volume, and never be
+exposed directly to the Internet. If Meta is primary and BAILEYS is not approved,
 leave the provider disabled instead of requesting unused secrets.
 
 ## J&T Cargo variables (conditional)
@@ -474,7 +474,7 @@ MYSQL_CREDENTIAL=<secure attachment/reference>
 REDIS_CREDENTIAL=<secure attachment/reference>
 TUNNEL_MODE=cloudflare-tunnel|direct-cloudflare-proxy
 TUNNEL_CREDENTIAL=<secure attachment/reference if tunnel>
-WHATSAPP_MODE=disabled|meta|waha
+WHATSAPP_MODE=disabled|meta|baileys
 WHATSAPP_CREDENTIAL=<secure attachment/reference if enabled>
 JNT_MODE=disabled|sandbox|production
 JNT_CREDENTIAL=<secure attachment/reference if enabled>

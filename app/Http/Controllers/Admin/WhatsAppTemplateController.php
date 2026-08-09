@@ -73,6 +73,7 @@ class WhatsAppTemplateController extends Controller
             'variables' => $catalog['variables'],
             'submitUrl' => route('admin.whatsapp.templates.update', $template),
             'backUrl' => route('admin.whatsapp.templates.index'),
+            'pairingUrl' => route('admin.whatsapp.pairing'),
             'activateUrl' => route('admin.whatsapp.templates.activate', $template),
             'deactivateUrl' => route('admin.whatsapp.templates.deactivate', $template),
         ]);
@@ -89,11 +90,11 @@ class WhatsAppTemplateController extends Controller
 
         return Inertia::render('Admin/WhatsApp/Connection', [
             'title' => 'Hubungkan WhatsApp',
-            'description' => 'Status integrasi Meta resmi dan WAHA untuk pesan otomatis toko, termasuk compare mode yang aman untuk nomor uji.',
+            'description' => 'Status integrasi Meta resmi dan BAILEYS untuk pesan otomatis toko, termasuk compare mode yang aman untuk nomor uji.',
             'backUrl' => route('admin.whatsapp.templates.index'),
             'connection' => array_merge($connection, [
                 'webhook_path' => '/webhook/whatsapp',
-                'waha_webhook_path' => '/webhook/whatsapp/waha',
+                'baileys_webhook_path' => '/webhook/whatsapp/baileys',
             ]),
             'stats' => [
                 'sent_count' => $sentCount,

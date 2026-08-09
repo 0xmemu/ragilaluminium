@@ -75,6 +75,8 @@ class WhatsAppAutomationTest extends TestCase
 
     public function test_connection_page_renders_cloud_api_status(): void
     {
+        config(['services.whatsapp.default_provider' => 'meta']);
+
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $this->actingAs($admin)
@@ -84,27 +86,27 @@ class WhatsAppAutomationTest extends TestCase
                 ->component('Admin/WhatsApp/Connection')
                 ->where('connection.default_provider', 'meta')
                 ->has('connection.providers.meta')
-                ->has('connection.providers.waha')
+                ->has('connection.providers.baileys')
                 ->has('stats'));
     }
 
-    public function test_compare_mode_sends_copy_to_waha_allowlist_only(): void
+    public function test_compare_mode_sends_copy_to_baileys_allowlist_only(): void
     {
         Http::fake([
             'https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'meta-1']]], 200),
-            'https://waha.test/*' => Http::response(['id' => 'waha-1'], 200),
+            'https://baileys.test/*' => Http::response(['id' => 'baileys-1'], 200),
         ]);
 
         config([
             'services.whatsapp.default_provider' => 'meta',
-            'services.whatsapp.compare_provider' => 'waha',
+            'services.whatsapp.compare_provider' => 'baileys',
             'services.whatsapp.compare_allowlist' => ['6281234567890'],
             'services.whatsapp.meta.token' => 'meta-token',
             'services.whatsapp.meta.number_id' => '12345',
             'services.whatsapp.meta.base_url' => 'https://graph.facebook.com/v20.0',
-            'services.whatsapp.waha.base_url' => 'https://waha.test',
-            'services.whatsapp.waha.api_key' => 'waha-key',
-            'services.whatsapp.waha.session' => 'ragil-test',
+            'services.whatsapp.baileys.base_url' => 'https://baileys.test',
+            'services.whatsapp.baileys.api_key' => 'baileys-key',
+            'services.whatsapp.baileys.session' => 'ragil-test',
         ]);
 
         $template = WhatsAppTemplate::create([
@@ -125,8 +127,8 @@ class WhatsAppAutomationTest extends TestCase
             'status' => 'sent',
         ]);
         $this->assertDatabaseHas('whatsapp_messages', [
-            'provider' => 'waha',
-            'provider_message_id' => 'waha-1',
+            'provider' => 'baileys',
+            'provider_message_id' => 'baileys-1',
             'provider_session' => 'ragil-test',
             'status' => 'sent',
         ]);

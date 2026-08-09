@@ -5,15 +5,17 @@ namespace Tests\Feature;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\CreatesVisibleProducts;
 use Tests\TestCase;
 
 class CatalogSearchTest extends TestCase
 {
+    use CreatesVisibleProducts;
     use RefreshDatabase;
 
     public function test_search_matches_indonesian_model_phrase(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-SL-1',
             'name' => 'Sample Sliding Window',
             'category_id' => 1,
@@ -23,7 +25,7 @@ class CatalogSearchTest extends TestCase
             'status' => 'active',
         ]);
 
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-JK-1',
             'name' => 'Sample Jungkit Window',
             'category_id' => 1,
@@ -44,7 +46,7 @@ class CatalogSearchTest extends TestCase
 
     public function test_category_listing_title_includes_active_model_and_design_filters(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-SL-TITLE-1',
             'name' => 'Sliding Title',
             'category_id' => 1,

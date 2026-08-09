@@ -1,852 +1,295 @@
-# API & Routes – Ragil Aluminium Website
-
-This document defines the **core routes and API endpoints** for the Ragil Aluminium website.
-It connects the System Architecture, database schema, and UI flows (admin + public store) into a concrete map of URLs and controllers.
-
-All agents must use these routes and endpoints as the primary integration surface; do not add ad‑hoc endpoints that bypass the documented modules.
-
----
-
-## 1. Public Store – Web Routes
-
-### 1.1 Homepage & Static Pages
-
-- `GET /`
-  - Controller: `HomeController@index`
-  - Purpose:
-    - Render homepage: hero, category highlights, featured products, benefits, promos.
-  - Data sources:
-    - Featured `products` / `product_variants` and media.
-    - CMS content (hero text, benefits, promos).
-
-- `GET /about`
-  - Controller: `PageController@about`
-  - Purpose:
-    - Show About Ragil Aluminium page.
-
-- `GET /faq`
-  - Controller: `PageController@faq`
-  - Inertia: `Public/Faq` — props `guide` dari `FaqSettings::forStorefront()` (`cms_faq_items` per kategori)
-
-- `GET /contact`
-  - Controller: `PageController@contact`
-
-- `GET /policy/privacy`
-  - Controller: `PageController@privacy`
-
-- `GET /policy/terms`
-  - Controller: `PageController@terms`
-
-### 1.2 Catalog Browsing
-
-- `GET /products`
-  - Controller: `CatalogController@index`
-  - Purpose:
-    - Render the model hub by default, or the SKU listing when listing query parameters are present.
-
-- `GET /products/all`
-  - Controller: `CatalogController@all`
-  - Purpose:
-    - Render the complete SKU listing (`Public/Catalog`), including sort/filter query parameters such as `sort=popular`.
-- `GET /products/{category}/{model}` → `catalog.model` → `Public/ModelDetail` (halaman detail model; klik kartu model, bukan popup; CTA ke listing SKU)
-  - Controller: `CatalogController@modelShow`
-  - Purpose:
-    - Render the selected model detail page and link customers to the SKU listing.
-
-- `GET /promo`
-  - Controller: `CatalogController@promo`
-  - Purpose (Inertia):
-    - Listing produk SKU (`Public/Catalog`, `listingMode: promo`, `basePath /promo`, `categoryName "Promo"`) yang punya atribut promo eksplisit. **Tanpa sidebar**; filter model via toggle pill di atas galeri (`?model=`). Props tambahan: `flashSaleSpotlight` (maks. 8 kartu untuk strip Flash Sale). Query `sort` / `q` didukung.
-
-- `GET /flash-sale`
-  - Controller: `CatalogController@flashSale`
-  - Purpose (Inertia):
-    - Listing produk SKU (`Public/Catalog`, `listingMode: flash`, `basePath /flash-sale`, `categoryName "Flash Sale"`) hanya yang bertanda `promo_flash_sale` / `flash_sale` **dan** periode kampanye `live` (`cms_pages.flash-sale.content.period`). Props: `flashSalePeriod`. UI: banner Signal Red marketplace (petir + countdown harian), toolbar chip **Populer** / **Terbaru** / **Terlaris** (`?sort=`), **Filter harga** (`price_min` / `price_max`), ikon cari ukuran (`?q=` scoped ke `/flash-sale`). Tanpa sidebar. Tidak ada carousel Flash Sale di homepage.
-
-- `GET /products/{category}` (`catalog.category`): listing SKU per kategori.
-- `GET /products/{category}/{model}` (`catalog.model`): landing detail model.
-- `GET /products/{category}/{model}/{design}` (`catalog.design`): listing SKU per desain.
-- Kategori kanonis: `windows`, `doors`, `bouven`.
-- URL lama `/windows`, `/doors`, dan `/bouven` dipertahankan sebagai redirect 301; parameter `model` dan `design` dipindahkan ke path.
-
-Common query parameters for listing pages:
-- `price_min`, `price_max`
-- sort: newest / baru, price_asc, price_desc, size_asc, size_desc, popular, terlaris / bestseller
-  - `popular` adalah default = jumlah terjual website terbanyak; `newest` / `baru` = baru ditambahkan (`created_at` desc).
-  - `popular` / `terlaris` / `bestseller` = ranking by website `SUM(order_items.quantity)` (bukan Shopee). Alias `terlaris` dipakai label chip Flash Sale.
-  - size_asc / size_desc = ukuran tinggi lalu lebar; SKU menjadi tie-breaker saat ukuran sama.
-  - Home **Paling Banyak Dipesan** = maksimal 10 produk aktif bertanda `homepage_popular` (admin), diurutkan oleh `homepage_popular_sort`; tidak memakai item dummy atau filler otomatis.
-
-Example:
-
-- `/products/windows/sliding/polos?sort=popular`
-
-- `GET /search`
-  - Redirect ke `catalog.index` (`/products`) dengan query string yang sama (`q`, dll.).
-  - Hasil pencarian storefront dirender oleh `CatalogController` → `Public/Catalog`.
-  - JSON search tetap di `GET /api/search` (`SearchController@index`).
-
-- `GET /products?q=`
-  - Controller: `CatalogController@index` → listing produk
-  - Query params:
-    - `q` – search term (name, parent_sku, short_name, attributes).
-  - Purpose:
-    - Pencarian storefront (menggantikan halaman `/search` terpisah).
-  - Saat periode Flash Sale live: produk flash terkait (match teks atau model yang sama) diurutkan di depan; prop `youMightLike` (maks. 8) tampil di atas hasil dengan heading **Anda mungkin suka**.
-
-### 1.3 Product Detail
-
-- `GET /product/{parent_sku}`
-  - Controller: `ProductController@show`
-  - Purpose:
-    - Show product detail page, gallery, variant selector, attributes.
-    - Inertia props include `reviews`: published `cms_testimonials` where `product_id` matches (Ulasan tab).
-    - Inertia `media[]` includes `product_variant_id`; PDP gallery switches when warna/varian dipilih. Public API media items include `kind` and `urls.video` for video assets.
-  - Route model binding:
-    - `parent_sku` maps to `products.parent_sku`.
-
-Optional alternative:
-
-- `GET /product/{id}` if you prefer numeric IDs, but `parent_sku` is recommended for consistency with Shopee.
-
-- `POST /product/{product}/engage`
-  - Controller: `ProductEngagementController@store`
-  - Body: `{ "action": "click" }` — catat klik kartu produk storefront (`performance_metrics.product_clicks`).
-  - View PDP dicatat server-side di `ProductController@show` (`product_views`). Ranking hanya di admin dashboard.
-
----
-
-## 2. Public Store – Cart & Checkout Routes
-
-### 2.1 Cart
-
-- `GET /cart`
-  - Controller: `CartController@index`
-  - Purpose:
-    - Show cart contents, summary, and actions.
-
-- `GET /cart/preview`
-  - Controller: `CartController@preview`
-  - Response JSON: preview of up to five priced cart items for hover/focus surfaces; pricing is not shared on every Inertia navigation.
-
-- `GET /cart/count`
-  - Controller: `CartController@count`
-  - Response JSON: `{ "count": <int> }` — total quantity of products in session cart (navbar badge).
-
-- `POST /cart/add`
-  - Controller: `CartController@add`
-  - Payload:
-    - `parent_sku`, `variant_sku` (optional if variant), `quantity`.
-  - Behavior:
-    - Add item to cart; respond with updated cart state.
-
-- `POST /cart/update`
-  - Controller: `CartController@update`
-  - Payload:
-    - `line_id` or `(parent_sku, variant_sku)` and new `quantity`.
-
-- `POST /cart/remove`
-  - Controller: `CartController@remove`
-  - Payload:
-    - `line_id` or `(parent_sku, variant_sku)`.
-
-- `POST /cart/restore`
-  - Controller: `CartController@restore`
-  - Behavior:
-    - Restore the most recently removed cart item, or return a flash error when none is available.
-
-- `POST /cart/select`
-  - Controller: `CartController@select`
-  - Payload:
-    - `line_ids[]` — selected cart line IDs to carry into checkout.
-
-- `POST /cart/remove-selected`
-  - Controller: `CartController@removeSelected`
-  - Payload:
-    - `line_ids[]` — selected cart line IDs to remove.
-
-Implementation detail:
-
-- Cart is session-based for the guest-only storefront; the routes abstract the session storage away.
-
-### 2.2 Checkout
-
-- `GET /checkout`
-  - Controller: `CheckoutController@index`
-  - Purpose:
-    - Render checkout page (steps for customer details, shipping, payment).
-
-- `POST /checkout/validate`
-  - Controller: `CheckoutController@validateDetails`
-  - Payload:
-    - `name`, `phone`, `email` (optional)
-    - Wilayah (required names + ids): `province`, `city`, `district`, `village`, `province_id`, `city_id`, `district_id`, `village_id`
-    - Manual: `address_line1` (required), `address_line2` (optional patokan), `postal_code` (required), `notes` (optional)
-  - Purpose:
-    - Validate inputs, store session `checkout_details`, optionally estimate shipping.
-
-- `POST /checkout/place-order`
-  - Controller: `CheckoutController@placeOrder`
-  - Payload:
-    - `payment_method` (`cod` / `transfer`). Opsi lain tidak ditawarkan di form publik — diproses manual via WhatsApp/admin.
-  - Behavior:
-    - Use a server-generated, session-scoped idempotency key persisted on `orders.checkout_idempotency_key`.
-    - Create `orders` (incl. `shipping_district`, `shipping_village`), `order_items`, and initial `payments` records.
-    - Retry/double-submit with the same key redirects to the same order and does not decrement stock again.
-    - Trigger domain events for order creation.
-
-- `GET /api/wilayah/provinces`
-  - Controller: `WilayahController@provinces`
-  - Query: `q` (optional name filter)
-  - Response: `{ "data": [{ "id": "...", "name": "..." }, ...] }`
-
-- `GET /api/wilayah/regencies/{provinceId}`
-  - Controller: `WilayahController@regencies`
-  - Query: `q` (optional)
-  - Response: `{ "data": [{ "id": "...", "name": "..." }, ...] }`
-
-- `GET /api/wilayah/districts/{regencyId}`
-  - Controller: `WilayahController@districts`
-  - Query: `q` (optional)
-
-- `GET /api/wilayah/villages/{districtId}`
-  - Controller: `WilayahController@villages`
-  - Query: `q` (optional)
-
-- `POST /consultation/whatsapp`
-  - Controller: `ConsultationController@send`
-  - Payload:
-    - `phone` (required) — customer WhatsApp number (normalized server-side).
-    - `source` (optional) — e.g. `model_produk`.
-  - Behavior:
-    - Sends outbound WhatsApp template `consultation_request` (config: `storefront.consultation_template_key`) via `WhatsAppService`.
-    - Logs row in `whatsapp_messages`. Graceful degrade when template/token missing (flash error + suggest direct chat).
-  - Rate limit: `throttle:10,1`.
-  - Shared Inertia prop `consultationWhatsApp.directUrl` — wa.me link for **Chat Langsung** (customer initiates chat without entering their number).
-
-- `GET /order/{order_number}/confirmation`
-  - Controller: `OrderController@confirmation`
-  - Purpose:
-    - Show post‑checkout confirmation page.
-
-- `GET /order/count`
-  - Controller: `OrderController@count`
-  - Response JSON: `{ "count": <int> }` — sum of `order_items.quantity` for orders in session `confirmed_orders` (navbar Pesanan badge).
-
----
-
-## 3. Public Store – Order Status View (Optional)
-
-- `GET /order/status`
-  - Controller: `OrderController@statusForm`
-  - Purpose:
-    - **Session first (guest, no login):** if session `confirmed_orders` has numbers, load those orders (J&T refresh when waybill present), show detail — **no lookup form**.
-    - **Fallback:** if session empty (cache/data sementara hilang), show lookup form (order number + phone/email).
-  - Inertia props: `has_session_orders`, `orders[]`, `order` (active/latest or null), `searched`.
-
-- `POST /order/status`
-  - Controller: `OrderController@statusLookup`
-  - Payload:
-    - `order_number`, `customer_phone` or `customer_email`.
-  - Behaviour:
-    - Guest-safe (no login). When the matched order has a J&T waybill, refresh carrier track via `ShippingService::refreshStatus` (skipped if refreshed within ~2 minutes).
-    - On match: append `order_number` to session `confirmed_orders` so next visit skips the form.
-  - Response (Inertia `Public/OrderStatus`):
-    - Order summary, tri-status timeline, items, and optional `shipping` (`carrier_name`, `waybill_number`, `status`, `status_raw`, `tracking_url`, `last_status_at`).
-
-- `GET /api/orders/{order_number}/status`
-  - Same identity gate + J&T refresh behaviour; JSON payload mirrors the public order summary including `shipping`.
-
----
-
-## 4. Admin – Web Routes
-
-All admin routes are typically prefixed with `/admin` and protected by auth + role middleware.
-
-### 4.1 Admin Dashboard
-
-- `GET /admin`
-  - Controller: `Admin\DashboardController@index`
-  - Purpose:
-    - Render Beranda admin with KPIs, pipeline overview, operational alerts.
-
-### 4.2 Catalog – Products, Variants, Attributes, Media
-
-- `GET /admin/products`
-  - Controller: `Admin\ProductController@index`
-  - Inertia: `Admin/Products/Index` (list/grid, search, filter kategori/model/status)
-
-- `GET /admin/products/export`
-  - Controller: `Admin\ProductController@export`
-  - CSV download mengikuti filter aktif
-
-- `GET /admin/products/create`
-  - Controller: `Admin\ProductController@create`
-
-- `POST /admin/products`
-  - Controller: `Admin\ProductController@store`
-  - Optional initial variant fields:
-    - `create_initial_variant` (boolean).
-    - When true: `initial_variant_sku`, `initial_price`, and `initial_stock` are required; product and initial variant are created atomically.
-
-- `GET /admin/products/{id}`
-  - Controller: `Admin\ProductController@show`
-
-- `GET /admin/products/{id}/edit`
-  - Controller: `Admin\ProductController@edit`
-
-- `PUT /admin/products/{id}`
-  - Controller: `Admin\ProductController@update`
-
-- `POST /admin/products/{id}/archive`
-  - Controller: `Admin\ProductController@archive`
-
-- `POST /admin/products/{id}/unarchive`
-  - Controller: `Admin\ProductController@unarchive`
-
-#### Variants (per product)
-
-- `GET /admin/products/{id}/variants`
-  - Controller: `Admin\ProductVariantController@index`
-
-- `POST /admin/products/{id}/variants`
-  - Controller: `Admin\ProductVariantController@store`
-
-- `GET /admin/variants/{variant_id}/edit`
-  - Controller: `Admin\ProductVariantController@edit`
-
-- `PUT /admin/variants/{variant_id}`
-  - Controller: `Admin\ProductVariantController@update`
-
-- `POST /admin/variants/{variant_id}/archive`
-  - Controller: `Admin\ProductVariantController@archive`
-
-#### Attributes
-
-- `GET /admin/products/{id}/attributes`
-  - Controller: `Admin\ProductAttributeController@index`
-
-- `POST /admin/products/{id}/attributes`
-  - Controller: `Admin\ProductAttributeController@store`
-
-- `PUT /admin/attributes/{attribute_id}`
-  - Controller: `Admin\ProductAttributeController@update`
-
-#### Media
-
-- `GET /admin/media`
-  - Controller: `Admin\ProductMediaController@index`
-
-- `GET /admin/products/{id}/media`
-  - Controller: `Admin\ProductMediaController@byProduct`
-  - Inertia: `Admin/Products/Media`
-  - Query: `variant` = `{variant_id}` | `shared` | (kosong = semua)
-  - Props: daftar varian + baris media dengan `product_variant_id`, thumb, aksi
-
-- `POST /admin/products/{id}/media`
-  - Body: `kind=image|video`, `media_asset_id` or `source_url` / `upload`, `position`, `visibility`, `is_main_image`, **`product_variant_id` (nullable)** — tautkan media ke kombinasi warna/kaca
-
-- `PUT /admin/media/{media_id}`
-  - Boleh update `position`, `visibility`, **`product_variant_id`** (null = gambar bersama produk)
-
-- `POST /admin/media/{media_id}/set-main`
-  - Controller: `Admin\ProductMediaController@setMain`
-
-- `POST /admin/media/{media_id}/archive`
-  - Controller: `Admin\ProductMediaController@archive`
-
-- `POST /admin/media/{asset_id}/attach`
-  - Controller: `Admin\ProductMediaController@bulkAttach`
-  - Body: `product_ids[]`, `position`, `show_in_catalog`, `is_installation`, `is_main_image`, `visibility`.
-  - Attaches one shared asset to up to 100 products idempotently; attachment flags remain product-specific and archive actions never delete the physical asset.
-
-- Edit varian (`Admin/VariantEdit`) juga bisa unggah foto dengan `product_variant_id` terisi otomatis.
-
----
-
-## 5. Admin – Imports
-
-### 5.1 Import Jobs
-
-- `GET /admin/imports`
-  - Controller: `Admin\ImportJobController@index`
-
-- `GET /admin/imports/create`
-  - Controller: `Admin\ImportJobController@create`
-  - Purpose:
-    - Form to upload Shopee Excel or internal bulk files.
-
-- `POST /admin/imports`
-  - Controller: `Admin\ImportJobController@store`
-  - Payload:
-    - `type`, `file`.
-    - `stock_mode`: `file` or `manual`.
-    - `manual_stock`: required non-negative integer when `stock_mode = manual`.
-  - Behavior:
-    - Save file, persist the stock rule on `import_jobs`, and dispatch the job to the queue. Retry reuses the persisted rule.
-
-- `GET /admin/imports/{id}`
-  - Controller: `Admin\ImportJobController@show`
-  - Purpose:
-    - Detail view with row stats and failed rows.
-
-- `POST /admin/imports/{id}/retry`
-  - Controller: `Admin\ImportJobController@retry`
-  - Purpose:
-    - Re‑run job (with safeguards).
-
-### 5.2 Failed Rows & Correction Files
-
-- `GET /admin/imports/{id}/failed-rows`
-  - Controller: `Admin\ImportJobController@failedRows`
-  - Purpose:
-    - Focused view of `import_job_rows` with errors.
-
-- `GET /admin/imports/{id}/correction-file`
-  - Controller: `Admin\ImportJobController@downloadCorrectionFile`
-  - Purpose:
-    - Download Excel containing failed rows + error reasons.
-
----
-
-## 6. Admin – Orders, Payments, Shipping
-
-### 6.1 Orders
-
-- `GET /admin/orders`
-  - Controller: `Admin\OrderController@index`
-  - Inertia: `Admin/Orders/Index` (tabs status, search, sort, kartu pesanan)
-
-- `GET /admin/orders/export`
-  - Controller: `Admin\OrderController@export`
-  - CSV download (mengikuti filter `q` / `order_status`)
-
-- `GET /admin/orders/{id}`
-  - Controller: `Admin\OrderController@show`
-  - Inertia: `Admin/Orders/Show`
-  - Blok **Lacak pesanan** per order: baca `shipping_records`, poll J&T (`refreshStatus`) bila resi ada & update >~2 menit.
-
-- `POST /admin/orders/{id}/shipping`
-  - Controller: `Admin\OrderController@storeShipping`
-  - Payload: `mode=jnt|manual`, `waybill_number` (manual), `weight_kg` (jnt), `mark_shipped` (opsional → `order_status=shipped`)
-  - `mode=jnt` → `ShippingService::createShipment`; `mode=manual` → `attachManualWaybill`
-
-- `POST /admin/orders/{id}/shipping/refresh`
-  - Controller: `Admin\OrderController@refreshShipping`
-  - Re-query J&T trace untuk resi aktif order ini.
-
-- `PUT /admin/orders/{id}/status`
-  - Controller: `Admin\OrderController@updateStatus`
-  - Payload:
-    - New `order_status` (validated against allowed transitions).
-    - Opsional: `redirect_to=index` + filter query untuk kembali ke daftar.
-  - Alur berbeda per metode:
-    - **Cancellation**: lock order, restore variant stock exactly once, write `EventLog`, then set `order_status=cancelled`.
-    - **Transfer** (`payment_method=transfer`): dari `pending_payment` → `processing` mengonfirmasi pembayaran pending (lunas) lalu memproses.
-    - **COD** (`cod_flag` / `payment_method=cod`): dari `pending_payment` → `processing` tanpa menandai lunas; pembayaran COD dikonfirmasi saat status `delivered` / `completed`.
-
-### 6.2 Payments
-
-- `GET /admin/payments`
-  - Controller: `Admin\PaymentController@index`
-
-- `GET /admin/orders/{id}/payments`
-  - Controller: `Admin\PaymentController@byOrder`
-
-- `POST /admin/orders/{id}/payments`
-  - Controller: `Admin\PaymentController@store`
-  - Purpose:
-    - Add a strictly positive payment record (e.g. manual transfer confirmation).
-    - `payment_status=paid` and transition to `processing` occur only after total completed payments cover `orders.total_amount`.
-
-- `PUT /admin/payments/{payment_id}`
-  - Controller: `Admin\PaymentController@update`
-  - Behavior:
-    - Reconcile completed/failed/refunded payment rows back to `orders.payment_status` without automatically regressing fulfillment status.
-
-### 6.3 Shipping Records
-
-- `GET /admin/shipping`
-  - Controller: `Admin\ShippingRecordController@index`
-
-- `GET /admin/shipping/{id}`
-  - Controller: `Admin\ShippingRecordController@show`
-
-- `POST /admin/shipping/{id}/refresh`
-  - Controller: `Admin\ShippingRecordController@refreshStatus`
-  - Purpose:
-    - Trigger re‑query to carrier API.
-
----
-
-## 7. Admin – WhatsApp
-
-### 7.1 Templates
-
-- `GET /admin/whatsapp/templates`
-  - Controller: `Admin\WhatsAppTemplateController@index`
-  - Inertia: `Admin/WhatsApp/Index` — fixed Stage-8 automations (COD / transfer / diproses / resi / sampai) with toggle + edit
-
-- `GET /admin/whatsapp/connection`
-  - Controller: `Admin\WhatsAppTemplateController@connection`
-  - Inertia: `Admin/WhatsApp/Connection` — status Meta + WAHA, provider aktif, compare provider, allowlist nomor uji, dan outbound stats
-
-- `POST /admin/whatsapp/templates`
-  - Controller: `Admin\WhatsAppTemplateController@store`
-  - Catalog-owned automations; free-form create redirects with error
-
-- `GET /admin/whatsapp/templates/{id}/edit`
-  - Controller: `Admin\WhatsAppTemplateController@edit`
-  - Inertia: `Admin/WhatsApp/Edit` — provider name, language, body_preview + variable chips
-
-- `PUT /admin/whatsapp/templates/{id}`
-  - Controller: `Admin\WhatsAppTemplateController@update`
-
-- `POST /admin/whatsapp/templates/{id}/activate`
-  - Controller: `Admin\WhatsAppTemplateController@activate`
-
-- `POST /admin/whatsapp/templates/{id}/deactivate`
-  - Controller: `Admin\WhatsAppTemplateController@deactivate`
-
-### 7.2 Messages
-
-- `GET /admin/whatsapp/messages`
-  - Controller: `Admin\WhatsAppMessageController@index`
-
-- `GET /admin/orders/{id}/whatsapp`
-  - Controller: `Admin\WhatsAppMessageController@byOrder`
-
-- `GET /admin/whatsapp/messages/{id}`
-  - Controller: `Admin\WhatsAppMessageController@show`
-
----
-
-## 8. Admin – Analytics & CMS
-
-### 8.1 Analytics
-
-- `GET /admin/analytics/store-performance`
-  - Controller: `Admin\AnalyticsController@storePerformance`
-  - Inertia: `Admin/Analytics/StorePerformance`
-  - Query: `period` (`today|yesterday|last_7|last_30|this_month|this_year|all|custom`), optional `from`/`to`, `granularity` (`hour|day|week|month`)
-  - KPI sections: Penjualan / Kunjungan & Layanan / Operasional; charts; top products; customers; payment mix
-  - Omzet hanya dari `order_status` ∈ `processing|shipped|delivered|completed`
-  - Unique visitors dari `performance_metrics.storefront_unique_visitors` (middleware storefront)
-
-- `GET /admin/analytics/store-performance/export`
-  - Controller: `Admin\AnalyticsController@exportStorePerformance`
-  - CSV UTF-8 (KPI + produk + customer + series)
-
-- `GET /admin/analytics/import-performance`
-  - Controller: `Admin\AnalyticsController@importPerformance`
-
-### 8.1c Log Aktivitas (Monitoring)
-
-- `GET /admin/activity-logs`
-  - Controller: `Admin\ActivityLogController@index`
-  - Inertia: `Admin/ActivityLogs/Index`
-  - Query: `category` (`all|attendance|product|order|whatsapp|backup|settings`), `q`, `sort` (`newest|oldest`)
-  - Source: append-only `event_logs` (order/payment/shipping, import, WhatsApp template, auth login/logout)
-  - Aksi baris: tautan Detail ke entity terkait (bukan hapus — audit trail)
-
-- `GET /admin/activity-logs/export`
-  - Controller: `Admin\ActivityLogController@export`
-  - CSV UTF-8 filtered by current category/`q`
-
-### 8.1b Customers (Monitoring)
-
-- `GET /admin/customers`
-  - Controller: `Admin\CustomerController@index`
-  - Inertia: `Admin/Customers/Index`
-  - Syncs missing phones from `orders` → `customers`; search/sort; derived status + fraud score; summary cards; CSV export link
-
-- `GET /admin/customers/export`
-  - Controller: `Admin\CustomerController@export`
-
-- `GET /admin/customers/{id}` / `GET /admin/customers/{id}/edit`
-  - Controller: `Admin\CustomerController@show` / `@edit`
-  - Inertia: `Admin/Customers/Edit` — profile edit + order history + fraud/duplicate warnings
-
-- `PUT /admin/customers/{id}`
-  - Controller: `Admin\CustomerController@update`
-  - Phone is immutable (identity key); name/email/default address editable
-
-Checkout `OrderService::createFromCart` upserts `customers` by phone and sets `orders.customer_id`.
-
-### 8.2 CMS
-
-- `GET /admin/pages`
-  - Controller: `Admin\PageController@index`
-
-- `GET /admin/pages/create`
-  - Controller: `Admin\PageController@create`
-
-- `POST /admin/pages`
-  - Controller: `Admin\PageController@store`
-
-- `GET /admin/pages/{id}/edit`
-  - Controller: `Admin\PageController@edit`
-
-- `PUT /admin/pages/{id}`
-  - Controller: `Admin\PageController@update`
-
-### 7.0b Beranda Pembeli (Tata Letak)
-
-- `GET /admin/beranda` — `Admin\BerandaController@index` → `Admin/Beranda/Index`
-- `PUT /admin/beranda` — save `content.layout.sections` on `cms_pages.beranda`
-- `GET|PUT /admin/beranda/service-highlights` — `Admin/Beranda/ServiceHighlightsForm`
-- `GET|PUT /admin/beranda/how-to-order` — `Admin/Beranda/HowToOrderForm`
-- Public Home props: `homepageLayout` from `HomepageLayoutSettings::forStorefront()`
-
-### 7.0c Model Produk (CMS Showcase)
-
-- `GET /admin/model-products` — `Admin\ModelProductController@index` → `Admin/ModelProducts/Index`
-  - List/kurasi `cms_model_products` + stats katalog (aktif/arsip/varian/sub-model), filter `q`/`status`, mode reorder
-- `GET /admin/model-products/create` / `POST /admin/model-products`
-- `POST /admin/model-products/sync` — buat baris CMS dari pasangan `product_category`+`product_model` yang belum ada
-- `PUT /admin/model-products/reorder` — body `{ rows: [{ id, sort_order }] }`
-- `GET /admin/model-products/{id}/edit` / `PUT /admin/model-products/{id}`
-- `POST /admin/model-products/{id}/activate` / `POST /admin/model-products/{id}/deactivate`
-- Storefront: `HomeController` / `CatalogController@modelsHub` / shared `modelMenu` memakai `ModelProductService::storefrontCards()` (aktif CMS; fallback `CatalogTaxonomy::modelCards`)
-
-### 7.0d Cara Pemesanan (CMS Page)
-
-- `GET /admin/cara-pemesanan` — `Admin\CaraPemesananController@edit` → `Admin/CaraPemesanan/Edit`
-- `PUT /admin/cara-pemesanan` — simpan `cms_pages.slug = cara-pemesanan` (`heading`, `subtitle`, `body`, `steps`, `info_cards`, `published`)
-- Public: `GET /cara-pemesanan` → `Public/HowToOrder` props `guide` dari `CaraPemesananSettings::forStorefront()`
-
-### 7.0e Sering Ditanyakan (FAQ)
-
-- `GET /admin/faq` — `Admin\FaqController@index` → `Admin/Faq/Index`
-- `PUT /admin/faq/meta` — meta `cms_pages.faq` (`title`, `heading`, `subtitle`, `published`)
-- `PUT /admin/faq/reorder` — `{ rows: [{ id, sort_order }] }`
-- `GET /admin/faq/create` / `POST /admin/faq`
-- `GET /admin/faq/{id}/edit` / `PUT /admin/faq/{id}` / `DELETE /admin/faq/{id}`
-- Public: `GET /faq` → `Public/Faq` props `guide` dari `FaqSettings::forStorefront()`
-
-### 7.0f Masalah & Solusi
-
-- `GET /admin/masalah-solusi` — `Admin\MasalahSolusiController@index` → `Admin/MasalahSolusi/Index`
-- `PUT /admin/masalah-solusi/meta` — meta `cms_pages.masalah-solusi`
-- `PUT /admin/masalah-solusi/reorder`
-- `GET /admin/masalah-solusi/create` / `POST /admin/masalah-solusi`
-- `GET /admin/masalah-solusi/{id}/edit` / `PUT` / `DELETE`
-- Public: `GET /masalah-dan-solusi` → `Public/MasalahSolusi` props `guide` dari `ProblemsSolutionsSettings::forStorefront()`
-
-### 7.0g Informasi Toko (CMS Document)
-
-- `GET /admin/tentang-kami` — `Admin\TentangKamiController@edit` → `Admin/CmsDocument/Edit`
-- `PUT /admin/tentang-kami` — simpan `cms_pages.slug = tentang-kami` (`title`, `heading`, `body`, `published`)
-- Public: `GET /about` → `Public/CmsPage` (body dari `content.body`, sanitize)
-
-### 7.0h Ketentuan Layanan (CMS Document)
-
-- `GET /admin/ketentuan-layanan` — `Admin\KetentuanLayananController@edit` → `Admin/CmsDocument/Edit`
-- `PUT /admin/ketentuan-layanan` — simpan `cms_pages.slug = ketentuan-layanan`
-- Public: `GET /policy/terms` → `Public/CmsPage`
-
-### 7.0i Kebijakan Privasi (CMS Document)
-
-- `GET /admin/kebijakan-privasi` — `Admin\KebijakanPrivasiController@edit` → `Admin/CmsDocument/Edit`
-- `PUT /admin/kebijakan-privasi` — simpan `cms_pages.slug = kebijakan-privasi`
-- Public: `GET /policy/privacy` → `Public/CmsPage`
-
-### 7.0j Apa Kata Pelanggan Kami (Testimoni)
-
-- `GET /admin/apa-kata-pelanggan` — `Admin\TestimonialController@apaKata` → `Admin/Testimonials/Index` (screenshot Shopee/WA saja + meta form + mode atur urutan)
-- `PUT /admin/apa-kata-pelanggan/meta` — meta `cms_pages.slug = testimoni` (`title`, `heading`, `subtitle`, `published`) via `TestimonialPageSettings`
-- `PUT /admin/apa-kata-pelanggan/reorder` — body `{ rows: [{ id, sort_order }] }` untuk prioritas tampilan storefront
-- Item CRUD tetap `admin.testimonials.*` (Monitoring → Ulasan memakai index yang sama tanpa meta surface)
-- Public: `GET /reviews` → `Public/Reviews` (galeri screenshot marketplace/WA; fallback sementara ke ulasan website terbit yang memiliki `image_url` bila galeri marketplace kosong) props `pageMeta` dari `TestimonialPageSettings::forStorefront()` + `marketplaceTestimonials` + `testimonialMode`
-- Public: `GET /ulasan` → `Public/Ulasan` (ulasan website) props `websiteTestimonials`, `stats{website_total, average_rating}`, `activeSort`
-
-### 7.0k Hasil Pemasangan Kami (Galeri)
-
-- `GET /admin/hasil-pemasangan` — `Admin\TestimonialController@hasilPemasangan` → `Admin/Testimonials/Index` (foto list + meta form)
-- `PUT /admin/hasil-pemasangan/meta` — meta `cms_pages.slug = hasil-pemasangan` via `InstallationPageSettings`
-- Item CRUD tetap `admin.gallery-items.*` (Monitoring → Ulasan tab foto)
-- Public: `GET /ulasan` → ulasan website; `GET /reviews` → galeri screenshot marketplace/WA; `GET /hasil-pemasangan` → listing **per model** (grid kartu + `?sort=newest|photos|name`); `GET /hasil-pemasangan/{category}/{model}` → featured model (subtitle/desc/highlights dari `ModelProductPresentation`) + grid produk (`?sort=newest|photos|name`); `GET /hasil-pemasangan/{parent_sku}` → galeri foto/video per produk (props `media[].is_video`; UI lightbox + slide). Kartu produk terkait dapat memuat `installation_href` bila ada media instalasi.
-
-- `GET /admin/banners`
-  - Controller: `Admin\BannerController@index`
-  - Inertia: `Admin/Banners/Index` (Promo Toko — list/grid, search, filter status, auto-promotions)
-  - Props: `banners`, `pagination`, `viewMode`, `filters`, `createHref`, `autoPromotions`
-
-- `GET /admin/banners/create` / `POST /admin/banners`
-  - Create form + store (`title`, `link_url`, `sort_order`, `published`, `image`)
-
-- `GET /admin/banners/{id}/edit` / `PUT /admin/banners/{id}`
-  - Edit form + update (gambar opsional; jika tidak diunggah ulang, gambar lama / resolve dari link produk)
-
-- `POST /admin/banners/{id}/publish` / `POST /admin/banners/{id}/unpublish`
-  - Toggle `published` (aktif di beranda publik)
-
-- `PUT /admin/banners/auto-promotions`
-  - Controller: `Admin\BannerController@updateAutoPromotions`
-  - Body: `enabled` (bool, required), `max_slides` (int 1–8, optional; default 3).
-  - Persists to `cms_pages.slug = beranda` → `content.auto_promotions` (no new table).
-
-- `GET /admin/flash-sale`
-  - Controller: `Admin\FlashSaleController@index`
-  - Inertia: `Admin/FlashSale/Index` (list/grid produk dengan atribut `promo_flash_sale` / `flash_sale`)
-  - Props: `products`, `pagination`, `viewMode`, `activeStatus`, `summary`, `createHref`, `period`, `periodUpdateUrl`
-  - Periode kampanye: `cms_pages.slug = flash-sale` → `content.period` (`enabled`, `starts_at`, `ends_at`). Tidak ada tabel kampanye terpisah.
-
-- `PUT /admin/flash-sale/period`
-  - Controller: `Admin\FlashSaleController@updatePeriod`
-  - Body: `enabled` (bool), `starts_at` / `ends_at` (nullable datetime; ends setelah starts)
-  - Menyimpan `content.period` pada `cms_pages.flash-sale`. Storefront hanya menampilkan label/listing Flash Sale saat status `live`.
-
-- `GET /admin/flash-sale/create` / `POST /admin/flash-sale`
-  - Form pilih produk + `flash_sale` + opsional `compare_price` → menulis `product_attributes` (`promo_flash_sale`, `promo_compare_price`, source `internal`)
-
-- `GET /admin/flash-sale/{product}/edit` / `PUT /admin/flash-sale/{product}`
-  - Edit flag Flash Sale + harga coret produk
-
-- `POST /admin/flash-sale/{product}/enable` / `POST /admin/flash-sale/{product}/disable`
-  - Toggle `promo_flash_sale` true/false
-
-- `GET /admin/vouchers`
-  - Controller: `Admin\VoucherController@index`
-  - Inertia: `Admin/Vouchers/Index` (list/grid `store_vouchers`)
-
-- `GET /admin/vouchers/create` / `POST /admin/vouchers`
-  - Create voucher (`name`, `code`, `discount_type`, `discount_value`, `min_purchase`, `starts_at`, `ends_at`, optional `publish_now`)
-
-- `GET /admin/vouchers/{id}/edit` / `PUT /admin/vouchers/{id}`
-  - Update voucher fields
-
-- `POST /admin/vouchers/{id}/publish` / `POST /admin/vouchers/{id}/unpublish`
-  - Publish is exclusive (other published vouchers set unpublished)
-
-- `POST /checkout/voucher`
-  - Apply code → session `checkout_voucher`; validates published + schedule + min_purchase
-
-- `POST /checkout/voucher/remove`
-  - Clear session voucher
-
-- `GET /admin/cod-settings` / `PUT /admin/cod-settings`
-  - Controller: `Admin\CodSettingsController@edit` / `@update`
-  - Inertia: `Admin/CodSettings/Edit`
-  - Persists to `cms_pages.slug = checkout` → `content.cod` (`enabled`, `fee_type`, `fee_value`, `max_order_amount`)
-
-- `GET /admin/shipping-subsidy` / `PUT /admin/shipping-subsidy`
-  - Controller: `Admin\ShippingSubsidyController@edit` / `@update`
-  - Inertia: `Admin/ShippingSubsidy/Edit`
-  - Persists to `cms_pages.slug = checkout` → `content.shipping_subsidy` (`enabled`, `subsidy_type`, `subsidy_value`, `carriers.jnt`)
-  - Checkout applies via `ShippingService::estimateBreakdown`; order stores net `shipping_amount` + `shipping_subsidy_amount`
-
-- `GET /admin/testimonials`
-  - Controller: `Admin\TestimonialController@index`
-  - Inertia: `Admin/Testimonials/Index`
-  - Query: `tab=website|foto`, `q`, `sort`, `published`
-  - Purpose: Monitoring → Ulasan — dual list for `cms_testimonials` (website) and `cms_gallery_items` (foto / hasil pemasangan). Meta halaman `/reviews` diedit lewat `admin.apa-kata-pelanggan.*`.
-
-- `GET /admin/testimonials/create` / `POST /admin/testimonials`
-- `GET /admin/testimonials/{id}/edit` / `PUT /admin/testimonials/{id}`
-  - Inertia: `Admin/Testimonials/Form`
-- `POST /admin/testimonials/{id}/publish` / `POST /admin/testimonials/{id}/unpublish`
-
-- `GET /admin/gallery-items/create` / `POST /admin/gallery-items`
-- `GET /admin/gallery-items/{id}/edit` / `PUT /admin/gallery-items/{id}`
-  - Controller: `Admin\GalleryItemController`
-  - Inertia: `Admin/Testimonials/GalleryForm`
-  - Attaches to `cms_pages.slug = hasil-pemasangan`
-- `POST /admin/gallery-items/{id}/publish` / `POST /admin/gallery-items/{id}/unpublish`
-
----
-
-## 9. Admin – Settings & Users
-
-### 9.1 Users / Manajemen Admin
-
-- `GET /admin/users`
-  - Controller: `Admin\UserController@index`
-  - Inertia: `Admin/Users/Index`
-  - Query: `q`, `role` (`admin`), `status` (`active|inactive`), `sort` (`newest|oldest|name|role`)
-  - Purpose: Manajemen Admin — daftar akun panel (`users`)
-
-- `GET /admin/users/create` / `POST /admin/users`
-  - Inertia: `Admin/Users/Form`
-  - Body: `name`, `email`, `password` + `password_confirmation`, `role`, `status`
-
-- `GET /admin/users/{id}/edit` / `PUT /admin/users/{id}`
-  - Inertia: `Admin/Users/Form`
-  - Password opsional; tidak boleh menonaktifkan akun sendiri; tidak boleh menurunkan/nonaktifkan Super Admin terakhir yang aktif
-
-- `POST /admin/users/{id}/activate` / `POST /admin/users/{id}/deactivate`
-  - Toggle `status`; deactivate self / last active admin ditolak. Role is canonical `admin` and is not user-selectable.
-
-### 9.1b Profil Saya (akun login)
-
-- `GET /admin/profile` — `Admin\ProfileController@edit` → `Admin/Profile/Edit`
-- `PUT /admin/profile` — update `name`, `email`, optional `password` (+ `current_password` + `password_confirmation`)
-- Tidak mengubah `role` / `status` (itu `admin.users.*`)
-
-### 9.2 System Settings
-
-- `GET /admin/settings`
-  - Controller: `Admin\SettingsController@index`
-  - Inertia: `Admin/ResourceShow` (judul Pengaturan Sistem; nilai integrasi read-only dari config/env)
-
-- `PUT /admin/settings`
-  - Controller: `Admin\SettingsController@update`
-  - Konfirmasi saja; kredensial tetap di `.env`
-
-This includes:
-
-- WhatsApp API keys and configuration.
-- Shopee import settings (template references).
-- Shipping provider settings.
-
----
-
-## 10. External API Endpoints
-
-### 10.1 WhatsApp Webhook
-
-- `GET /webhook/whatsapp`
-  - Controller: `Webhook\WhatsAppController@verify`
-  - Purpose:
-    - Handle verification handshake Meta (e.g. `hub.challenge`).
-
-- `POST /webhook/whatsapp`
-  - Controller: `Webhook\WhatsAppController@handle`
-  - Purpose:
-    - Receive inbound messages and status updates from Meta/BSP resmi.
-  - Behavior:
-    - Parse payload.
-    - Store `whatsapp_messages` with `provider=meta`.
-    - Link messages to `orders` where applicable.
-
-- `POST /webhook/whatsapp/waha`
-  - Controller: `Webhook\WhatsAppController@handleWaha`
-  - Purpose:
-    - Receive inbound WAHA events when WAHA is active or used as compare provider.
-  - Behavior:
-    - Parse `message` / `message.ack` events.
-    - Store `whatsapp_messages` with `provider=waha`.
-
-### 10.2 Shipping Provider Webhook (optional)
-
-- `POST /webhook/shipping/jnt`
-  - Controller: `Webhook\ShippingController@handleJnt`
-  - Purpose:
-    - Receive status updates from JNT or similar carriers.
-  - Behavior:
-    - Update `shipping_records` and cascade `shipping_status` on `orders`.
-
----
-
-## 11. Agent Checklist for Routes & APIs
-
-When adding or modifying routes/APIs, agents must:
-
-- Keep public store routes focused on catalog, cart, and checkout; avoid exposing internal data unnecessarily.
-- Map admin routes to the functional sections defined in the Admin UI flows (Dashboard, Catalog, Imports, Orders, Shipping, WhatsApp, Analytics, CMS, Settings).
-- Ensure API endpoints for imports, orders, payments, shipping, and WhatsApp go through domain modules, not ad‑hoc logic.
-- Secure admin and webhook routes with appropriate middleware and validation.
-- Update this routes document whenever new major endpoints or route groups are introduced.
-- Avoid introducing overlapping or duplicate endpoints that bypass logging and domain contracts.
-
----
+# API & Routes - Ragil Aluminium Website
+
+**Generated 2026-08-09 from `php artisan route:list` (production).**
+Canonical route map; do not add ad-hoc endpoints outside the documented modules.
+
+Total: 269 routes.
+
+## 1. Public Storefront
+
+- `GET /` -> `HomeController@index`  (name: `home`)
+- `GET /about` -> `PageController@about`  (name: `about`)
+- `GET /api/catalog/{category}` -> `Closure`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/health/ready` -> `ReadinessController`  (name: `health.ready`)  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/orders/{order_number}/status` -> `OrderController@statusApi`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/products/{parent_sku}` -> `ProductController@show`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/search` -> `SearchController@index`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/wilayah/districts/{regencyId}` -> `WilayahController@districts`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/wilayah/provinces` -> `WilayahController@provinces`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/wilayah/regencies/{provinceId}` -> `WilayahController@regencies`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /api/wilayah/villages/{districtId}` -> `WilayahController@villages`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- `GET /bouven` -> `CatalogController@bouven`  (name: `catalog.bouven`)
+- `GET /cara-pemesanan` -> `PageController@howToOrder`  (name: `cara-pemesanan`)
+- `GET /cart` -> `CartController@index`  (name: `cart.index`)
+- `POST /cart/add` -> `CartController@add`  (name: `cart.add`)
+- `GET /cart/count` -> `CartController@count`  (name: `cart.count`)
+- `GET /cart/preview` -> `CartController@preview`  (name: `cart.preview`)
+- `POST /cart/remove` -> `CartController@remove`  (name: `cart.remove`)
+- `POST /cart/remove-selected` -> `CartController@removeSelected`  (name: `cart.remove-selected`)
+- `POST /cart/restore` -> `CartController@restore`  (name: `cart.restore`)
+- `POST /cart/select` -> `CartController@select`  (name: `cart.select`)
+- `POST /cart/update` -> `CartController@update`  (name: `cart.update`)
+- `GET /checkout` -> `CheckoutController@index`  (name: `checkout.index`)
+- `POST /checkout/place-order` -> `CheckoutController@placeOrder`  (name: `checkout.place-order`)  [Illuminate\Routing\Middleware\ThrottleRequests:10,1]
+- `POST /checkout/validate` -> `CheckoutController@validateDetails`  (name: `checkout.validate`)
+- `POST /checkout/voucher` -> `CheckoutController@applyVoucher`  (name: `checkout.voucher.apply`)  [Illuminate\Routing\Middleware\ThrottleRequests:20,1]
+- `POST /checkout/voucher/remove` -> `CheckoutController@removeVoucher`  (name: `checkout.voucher.remove`)
+- `POST /consultation/whatsapp` -> `ConsultationController@send`  (name: `consultation.whatsapp.send`)  [Illuminate\Routing\Middleware\ThrottleRequests:10,1]
+- `GET /contact` -> `PageController@contact`  (name: `contact`)
+- `GET /doors` -> `CatalogController@doors`  (name: `catalog.doors`)
+- `GET /faq` -> `PageController@faq`  (name: `faq`)
+- `GET /flash-sale` -> `CatalogController@flashSale`  (name: `catalog.flash-sale`)
+- `GET /hasil-pemasangan` -> `PageController@installations`  (name: `installation.index`)
+- `GET /hasil-pemasangan/{category}/{model}` -> `PageController@installationModel`  (name: `installation.model`)
+- `GET /hasil-pemasangan/{parent_sku}` -> `PageController@installationShow`  (name: `installation.show`)
+- `GET /login` -> `Auth\LoginController@showLoginForm`  (name: `login`)
+- `POST /login` -> `Auth\LoginController@login`  (name: `login.post`)  [Illuminate\Routing\Middleware\ThrottleRequests:20,1]
+- `POST /logout` -> `Auth\LoginController@logout`  (name: `logout`)
+- `GET /masalah-dan-solusi` -> `PageController@problemsSolutions`  (name: `masalah-dan-solusi`)
+- `GET /order/count` -> `OrderController@count`  (name: `order.count`)
+- `GET /order/status` -> `OrderController@statusForm`  (name: `order.status`)
+- `POST /order/status` -> `OrderController@statusLookup`  (name: `order.status.lookup`)  [Illuminate\Routing\Middleware\ThrottleRequests:15,1]
+- `GET /order/{order_number}/confirmation` -> `OrderController@confirmation`  (name: `order.confirmation`)
+- `GET /policy/privacy` -> `PageController@privacy`  (name: `privacy`)
+- `GET /policy/terms` -> `PageController@terms`  (name: `terms`)
+- `GET /product/{parent_sku}` -> `ProductController@show`  (name: `product.show`)
+- `POST /product/{product}/engage` -> `ProductEngagementController@store`  (name: `product.engage`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `GET /products` -> `CatalogController@index`  (name: `catalog.index`)
+- `GET /products/all` -> `CatalogController@all`  (name: `catalog.all`)
+- `GET /products/{category}` -> `CatalogController@categoryShow`  (name: `catalog.category`)
+- `GET /products/{category}/{model}` -> `CatalogController@modelShow`  (name: `catalog.model`)
+- `GET /products/{category}/{model}/{design}` -> `CatalogController@designShow`  (name: `catalog.design`)
+- `GET /promo` -> `CatalogController@promo`  (name: `catalog.promo`)
+- `GET /reviews` -> `PageController@reviews`  (name: `reviews`)
+- `GET /sanctum/csrf-cookie` -> `Laravel\Sanctum\Http\Controllers\CsrfCookieController@show`  (name: `sanctum.csrf-cookie`)
+- `GET /search` -> `Closure`  (name: `search`)
+- `GET /sitemap.xml` -> `SitemapController`  (name: `sitemap`)
+- `GET /storage/{path}` -> `Closure`  (name: `storage.local`)
+- `GET /ulasan` -> `PageController@ulasan`  (name: `ulasan`)
+- `GET /up` -> `Closure`
+- `POST /webhook/shipping/jnt` -> `Webhook\ShippingController@handleJnt`  (name: `webhook.shipping.jnt`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `GET /webhook/whatsapp` -> `Webhook\WhatsAppController@verify`  (name: `webhook.whatsapp.verify`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `POST /webhook/whatsapp` -> `Webhook\WhatsAppController@handle`  (name: `webhook.whatsapp.handle`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `POST /webhook/whatsapp/baileys` -> `Webhook\WhatsAppController@handleBaileys`  (name: `webhook.whatsapp.baileys`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `GET /windows` -> `CatalogController@windows`  (name: `catalog.windows`)
+
+## 2. Admin
+
+- `GET /admin` -> `Admin\DashboardController@index`  (name: `admin.dashboard`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/activity-logs` -> `Admin\ActivityLogController@index`  (name: `admin.activity-logs.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/activity-logs/export` -> `Admin\ActivityLogController@export`  (name: `admin.activity-logs.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/analytics/import-performance` -> `Admin\AnalyticsController@importPerformance`  (name: `admin.analytics.import-performance`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/analytics/store-performance` -> `Admin\AnalyticsController@storePerformance`  (name: `admin.analytics.store-performance`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/analytics/store-performance/export` -> `Admin\AnalyticsController@exportStorePerformance`  (name: `admin.analytics.store-performance.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/announcements` -> `Admin\AnnouncementController@index`  (name: `admin.announcements.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/announcements` -> `Admin\AnnouncementController@store`  (name: `admin.announcements.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/announcements/create` -> `Admin\AnnouncementController@create`  (name: `admin.announcements.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/announcements/{announcement}` -> `Admin\AnnouncementController@update`  (name: `admin.announcements.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/announcements/{announcement}/edit` -> `Admin\AnnouncementController@edit`  (name: `admin.announcements.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/announcements/{announcement}/publish` -> `Admin\AnnouncementController@publish`  (name: `admin.announcements.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/announcements/{announcement}/unpublish` -> `Admin\AnnouncementController@unpublish`  (name: `admin.announcements.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/apa-kata-pelanggan` -> `Admin\TestimonialController@apaKata`  (name: `admin.apa-kata-pelanggan.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/apa-kata-pelanggan/meta` -> `Admin\TestimonialController@updateApaKataMeta`  (name: `admin.apa-kata-pelanggan.meta.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/apa-kata-pelanggan/reorder` -> `Admin\TestimonialController@reorderApaKata`  (name: `admin.apa-kata-pelanggan.reorder`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/attributes/{attribute}` -> `Admin\ProductAttributeController@update`  (name: `admin.attributes.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/banners` -> `Admin\BannerController@index`  (name: `admin.banners.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/banners` -> `Admin\BannerController@store`  (name: `admin.banners.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/banners/auto-promotions` -> `Admin\BannerController@updateAutoPromotions`  (name: `admin.banners.auto-promotions.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/banners/create` -> `Admin\BannerController@create`  (name: `admin.banners.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/banners/{banner}` -> `Admin\BannerController@update`  (name: `admin.banners.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/banners/{banner}/edit` -> `Admin\BannerController@edit`  (name: `admin.banners.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/banners/{banner}/publish` -> `Admin\BannerController@publish`  (name: `admin.banners.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/banners/{banner}/unpublish` -> `Admin\BannerController@unpublish`  (name: `admin.banners.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/beranda` -> `Admin\BerandaController@index`  (name: `admin.beranda.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/beranda` -> `Admin\BerandaController@update`  (name: `admin.beranda.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/beranda/how-to-order` -> `Admin\BerandaController@editHowToOrder`  (name: `admin.beranda.how-to-order.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/beranda/how-to-order` -> `Admin\BerandaController@updateHowToOrder`  (name: `admin.beranda.how-to-order.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/beranda/service-highlights` -> `Admin\BerandaController@editServiceHighlights`  (name: `admin.beranda.service-highlights.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/beranda/service-highlights` -> `Admin\BerandaController@updateServiceHighlights`  (name: `admin.beranda.service-highlights.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/branding` -> `Admin\PageController@updateBranding`  (name: `admin.pages.branding`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/cara-pemesanan` -> `Admin\CaraPemesananController@edit`  (name: `admin.cara-pemesanan.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/cara-pemesanan` -> `Admin\CaraPemesananController@update`  (name: `admin.cara-pemesanan.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/cod-settings` -> `Admin\CodSettingsController@edit`  (name: `admin.cod-settings.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/cod-settings` -> `Admin\CodSettingsController@update`  (name: `admin.cod-settings.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/customers` -> `Admin\CustomerController@index`  (name: `admin.customers.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/customers/export` -> `Admin\CustomerController@export`  (name: `admin.customers.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/customers/{customer}` -> `Admin\CustomerController@show`  (name: `admin.customers.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/customers/{customer}` -> `Admin\CustomerController@update`  (name: `admin.customers.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/customers/{customer}/edit` -> `Admin\CustomerController@edit`  (name: `admin.customers.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/faq` -> `Admin\FaqController@index`  (name: `admin.faq.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/faq` -> `Admin\FaqController@store`  (name: `admin.faq.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/faq/create` -> `Admin\FaqController@create`  (name: `admin.faq.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/faq/meta` -> `Admin\FaqController@updateMeta`  (name: `admin.faq.meta.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/faq/reorder` -> `Admin\FaqController@reorder`  (name: `admin.faq.reorder`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/faq/{faq}` -> `Admin\FaqController@update`  (name: `admin.faq.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `DELETE /admin/faq/{faq}` -> `Admin\FaqController@destroy`  (name: `admin.faq.destroy`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/faq/{faq}/archive` -> `Admin\FaqController@archive`  (name: `admin.faq.archive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/faq/{faq}/edit` -> `Admin\FaqController@edit`  (name: `admin.faq.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/faq/{faq}/unarchive` -> `Admin\FaqController@unarchive`  (name: `admin.faq.unarchive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/flash-sale` -> `Admin\FlashSaleController@index`  (name: `admin.flash-sale.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/flash-sale` -> `Admin\FlashSaleController@store`  (name: `admin.flash-sale.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/flash-sale/bulk-disable` -> `Admin\FlashSaleController@bulkDisable`  (name: `admin.flash-sale.bulk-disable`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/flash-sale/bulk-enable` -> `Admin\FlashSaleController@bulkEnable`  (name: `admin.flash-sale.bulk-enable`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/flash-sale/create` -> `Admin\FlashSaleController@create`  (name: `admin.flash-sale.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/flash-sale/period` -> `Admin\FlashSaleController@updatePeriod`  (name: `admin.flash-sale.period`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/flash-sale/{product}` -> `Admin\FlashSaleController@update`  (name: `admin.flash-sale.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/flash-sale/{product}/disable` -> `Admin\FlashSaleController@disable`  (name: `admin.flash-sale.disable`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/flash-sale/{product}/edit` -> `Admin\FlashSaleController@edit`  (name: `admin.flash-sale.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/flash-sale/{product}/enable` -> `Admin\FlashSaleController@enable`  (name: `admin.flash-sale.enable`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/gallery-items` -> `Admin\GalleryItemController@store`  (name: `admin.gallery-items.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/gallery-items/create` -> `Admin\GalleryItemController@create`  (name: `admin.gallery-items.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/gallery-items/{galleryItem}` -> `Admin\GalleryItemController@update`  (name: `admin.gallery-items.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/gallery-items/{galleryItem}/edit` -> `Admin\GalleryItemController@edit`  (name: `admin.gallery-items.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/gallery-items/{galleryItem}/publish` -> `Admin\GalleryItemController@publish`  (name: `admin.gallery-items.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/gallery-items/{galleryItem}/unpublish` -> `Admin\GalleryItemController@unpublish`  (name: `admin.gallery-items.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/hasil-pemasangan` -> `Admin\TestimonialController@hasilPemasangan`  (name: `admin.hasil-pemasangan.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/hasil-pemasangan/meta` -> `Admin\TestimonialController@updateHasilPemasanganMeta`  (name: `admin.hasil-pemasangan.meta.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/imports` -> `Admin\ImportJobController@index`  (name: `admin.imports.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/imports` -> `Admin\ImportJobController@store`  (name: `admin.imports.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/imports/create` -> `Admin\ImportJobController@create`  (name: `admin.imports.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/imports/{import_job}` -> `Admin\ImportJobController@show`  (name: `admin.imports.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/imports/{import_job}/correction-file` -> `Admin\ImportJobController@downloadCorrectionFile`  (name: `admin.imports.correction-file`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/imports/{import_job}/failed-rows` -> `Admin\ImportJobController@failedRows`  (name: `admin.imports.failed-rows`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/imports/{import_job}/retry` -> `Admin\ImportJobController@retry`  (name: `admin.imports.retry`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/kebijakan-privasi` -> `Admin\KebijakanPrivasiController@edit`  (name: `admin.kebijakan-privasi.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/kebijakan-privasi` -> `Admin\KebijakanPrivasiController@update`  (name: `admin.kebijakan-privasi.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/ketentuan-layanan` -> `Admin\KetentuanLayananController@edit`  (name: `admin.ketentuan-layanan.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/ketentuan-layanan` -> `Admin\KetentuanLayananController@update`  (name: `admin.ketentuan-layanan.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/masalah-solusi` -> `Admin\MasalahSolusiController@index`  (name: `admin.masalah-solusi.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/masalah-solusi` -> `Admin\MasalahSolusiController@store`  (name: `admin.masalah-solusi.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/masalah-solusi/create` -> `Admin\MasalahSolusiController@create`  (name: `admin.masalah-solusi.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/masalah-solusi/meta` -> `Admin\MasalahSolusiController@updateMeta`  (name: `admin.masalah-solusi.meta.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/masalah-solusi/reorder` -> `Admin\MasalahSolusiController@reorder`  (name: `admin.masalah-solusi.reorder`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/masalah-solusi/{masalahSolusi}` -> `Admin\MasalahSolusiController@update`  (name: `admin.masalah-solusi.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `DELETE /admin/masalah-solusi/{masalahSolusi}` -> `Admin\MasalahSolusiController@destroy`  (name: `admin.masalah-solusi.destroy`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/masalah-solusi/{masalahSolusi}/edit` -> `Admin\MasalahSolusiController@edit`  (name: `admin.masalah-solusi.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/media` -> `Admin\ProductMediaController@index`  (name: `admin.media.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/media/{asset}/attach` -> `Admin\ProductMediaController@bulkAttach`  (name: `admin.media.attach`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/media/{media}` -> `Admin\ProductMediaController@update`  (name: `admin.media.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `DELETE /admin/media/{media}` -> `Admin\ProductMediaController@destroy`  (name: `admin.media.destroy`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/media/{media}/archive` -> `Admin\ProductMediaController@archive`  (name: `admin.media.archive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/media/{media}/redownload` -> `Admin\ProductMediaController@redownload`  (name: `admin.media.redownload`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/media/{media}/set-main` -> `Admin\ProductMediaController@setMain`  (name: `admin.media.set-main`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/model-products` -> `Admin\ModelProductController@index`  (name: `admin.model-products.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/model-products` -> `Admin\ModelProductController@store`  (name: `admin.model-products.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/model-products/create` -> `Admin\ModelProductController@create`  (name: `admin.model-products.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/model-products/reorder` -> `Admin\ModelProductController@reorder`  (name: `admin.model-products.reorder`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/model-products/sync` -> `Admin\ModelProductController@sync`  (name: `admin.model-products.sync`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/model-products/{modelProduct}` -> `Admin\ModelProductController@update`  (name: `admin.model-products.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/model-products/{modelProduct}/activate` -> `Admin\ModelProductController@activate`  (name: `admin.model-products.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/model-products/{modelProduct}/deactivate` -> `Admin\ModelProductController@deactivate`  (name: `admin.model-products.deactivate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/model-products/{modelProduct}/edit` -> `Admin\ModelProductController@edit`  (name: `admin.model-products.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/notifications` -> `Admin\NotificationController@index`  (name: `admin.notifications.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/notifications/read-all` -> `Admin\NotificationController@markAllRead`  (name: `admin.notifications.mark-all-read`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/notifications/{notification}/read` -> `Admin\NotificationController@markRead`  (name: `admin.notifications.read`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/orders` -> `Admin\OrderController@index`  (name: `admin.orders.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/orders/export` -> `Admin\OrderController@export`  (name: `admin.orders.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/orders/{order}` -> `Admin\OrderController@show`  (name: `admin.orders.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/orders/{order}/items` -> `Admin\OrderController@updateItems`  (name: `admin.orders.items.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/orders/{order}/payments` -> `Admin\PaymentController@byOrder`  (name: `admin.orders.payments`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/orders/{order}/payments` -> `Admin\PaymentController@store`  (name: `admin.payments.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/orders/{order}/shipping` -> `Admin\OrderController@storeShipping`  (name: `admin.orders.shipping.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/orders/{order}/shipping/refresh` -> `Admin\OrderController@refreshShipping`  (name: `admin.orders.shipping.refresh`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/orders/{order}/status` -> `Admin\OrderController@updateStatus`  (name: `admin.orders.status`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/orders/{order}/whatsapp` -> `Admin\WhatsAppMessageController@byOrder`  (name: `admin.orders.whatsapp`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/pages` -> `Admin\PageController@index`  (name: `admin.pages.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/pages` -> `Admin\PageController@store`  (name: `admin.pages.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/pages/create` -> `Admin\PageController@create`  (name: `admin.pages.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/pages/{page}` -> `Admin\PageController@update`  (name: `admin.pages.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/pages/{page}/edit` -> `Admin\PageController@edit`  (name: `admin.pages.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/payments` -> `Admin\PaymentController@index`  (name: `admin.payments.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/payments/{payment}` -> `Admin\PaymentController@update`  (name: `admin.payments.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products` -> `Admin\ProductController@index`  (name: `admin.products.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products` -> `Admin\ProductController@store`  (name: `admin.products.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products/create` -> `Admin\ProductController@create`  (name: `admin.products.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products/export` -> `Admin\ProductController@export`  (name: `admin.products.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products/{product}` -> `Admin\ProductController@show`  (name: `admin.products.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/products/{product}` -> `Admin\ProductController@update`  (name: `admin.products.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/archive` -> `Admin\ProductController@archive`  (name: `admin.products.archive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products/{product}/attributes` -> `Admin\ProductAttributeController@index`  (name: `admin.products.attributes.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/attributes` -> `Admin\ProductAttributeController@store`  (name: `admin.products.attributes.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/duplicate` -> `Admin\ProductController@duplicate`  (name: `admin.products.duplicate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products/{product}/edit` -> `Admin\ProductController@edit`  (name: `admin.products.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products/{product}/media` -> `Admin\ProductMediaController@byProduct`  (name: `admin.products.media.byProduct`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/media` -> `Admin\ProductMediaController@store`  (name: `admin.products.media.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/publish` -> `Admin\ProductController@publish`  (name: `admin.products.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/unarchive` -> `Admin\ProductController@unarchive`  (name: `admin.products.unarchive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/products/{product}/variants` -> `Admin\ProductVariantController@index`  (name: `admin.products.variants.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/variants` -> `Admin\ProductVariantController@store`  (name: `admin.products.variants.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/products/{product}/variants/bulk` -> `Admin\ProductVariantController@bulkStore`  (name: `admin.products.variants.bulk`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/profile` -> `Admin\ProfileController@edit`  (name: `admin.profile.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/profile` -> `Admin\ProfileController@update`  (name: `admin.profile.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/promotions` -> `Admin\PromotionController@index`  (name: `admin.promotions.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/promotions` -> `Admin\PromotionController@store`  (name: `admin.promotions.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/promotions/create` -> `Admin\PromotionController@create`  (name: `admin.promotions.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/promotions/{promotion}` -> `Admin\PromotionController@update`  (name: `admin.promotions.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/promotions/{promotion}/activate` -> `Admin\PromotionController@activate`  (name: `admin.promotions.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/promotions/{promotion}/duplicate` -> `Admin\PromotionController@duplicate`  (name: `admin.promotions.duplicate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/promotions/{promotion}/edit` -> `Admin\PromotionController@edit`  (name: `admin.promotions.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/promotions/{promotion}/end` -> `Admin\PromotionController@end`  (name: `admin.promotions.end`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/promotions/{promotion}/impact` -> `Admin\PromotionController@impact`  (name: `admin.promotions.impact`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/settings` -> `Admin\SettingsController@index`  (name: `admin.settings.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/settings` -> `Admin\SettingsController@update`  (name: `admin.settings.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/shipping` -> `Admin\ShippingRecordController@index`  (name: `admin.shipping.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@edit`  (name: `admin.shipping-subsidy.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@update`  (name: `admin.shipping-subsidy.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/shipping/{shipping_record}/refresh` -> `Admin\ShippingRecordController@refreshStatus`  (name: `admin.shipping.refresh`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/shipping/{shipping}` -> `Admin\ShippingRecordController@show`  (name: `admin.shipping.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/storefront-platforms` -> `Admin\StorefrontPlatformController@edit`  (name: `admin.storefront-platforms.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/storefront-platforms` -> `Admin\StorefrontPlatformController@update`  (name: `admin.storefront-platforms.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/sub-models` -> `Admin\SubModelController@index`  (name: `admin.sub-models.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/sub-models` -> `Admin\SubModelController@store`  (name: `admin.sub-models.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/sub-models/create` -> `Admin\SubModelController@create`  (name: `admin.sub-models.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/sub-models/reorder` -> `Admin\SubModelController@reorder`  (name: `admin.sub-models.reorder`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/sub-models/{subModel}` -> `Admin\SubModelController@update`  (name: `admin.sub-models.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/sub-models/{subModel}/edit` -> `Admin\SubModelController@edit`  (name: `admin.sub-models.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/sub-models/{subModel}/toggle` -> `Admin\SubModelController@toggle`  (name: `admin.sub-models.toggle`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/tentang-kami` -> `Admin\TentangKamiController@edit`  (name: `admin.tentang-kami.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/tentang-kami` -> `Admin\TentangKamiController@update`  (name: `admin.tentang-kami.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/testimonials` -> `Admin\TestimonialController@index`  (name: `admin.testimonials.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/testimonials` -> `Admin\TestimonialController@store`  (name: `admin.testimonials.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/testimonials/create` -> `Admin\TestimonialController@create`  (name: `admin.testimonials.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/testimonials/{testimonial}` -> `Admin\TestimonialController@update`  (name: `admin.testimonials.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/testimonials/{testimonial}/edit` -> `Admin\TestimonialController@edit`  (name: `admin.testimonials.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/testimonials/{testimonial}/publish` -> `Admin\TestimonialController@publish`  (name: `admin.testimonials.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/testimonials/{testimonial}/unpublish` -> `Admin\TestimonialController@unpublish`  (name: `admin.testimonials.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/users` -> `Admin\UserController@index`  (name: `admin.users.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/users` -> `Admin\UserController@store`  (name: `admin.users.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/users/create` -> `Admin\UserController@create`  (name: `admin.users.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/users/{user}` -> `Admin\UserController@update`  (name: `admin.users.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/users/{user}/activate` -> `Admin\UserController@activate`  (name: `admin.users.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/users/{user}/deactivate` -> `Admin\UserController@deactivate`  (name: `admin.users.deactivate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/users/{user}/edit` -> `Admin\UserController@edit`  (name: `admin.users.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/variants/{variant}` -> `Admin\ProductVariantController@update`  (name: `admin.variants.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/variants/{variant}/archive` -> `Admin\ProductVariantController@archive`  (name: `admin.variants.archive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/variants/{variant}/edit` -> `Admin\ProductVariantController@edit`  (name: `admin.variants.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/vouchers` -> `Admin\VoucherController@index`  (name: `admin.vouchers.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/vouchers` -> `Admin\VoucherController@store`  (name: `admin.vouchers.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/vouchers/create` -> `Admin\VoucherController@create`  (name: `admin.vouchers.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/vouchers/{voucher}` -> `Admin\VoucherController@update`  (name: `admin.vouchers.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/vouchers/{voucher}/edit` -> `Admin\VoucherController@edit`  (name: `admin.vouchers.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/vouchers/{voucher}/publish` -> `Admin\VoucherController@publish`  (name: `admin.vouchers.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/vouchers/{voucher}/unpublish` -> `Admin\VoucherController@unpublish`  (name: `admin.vouchers.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/whatsapp/connection` -> `Admin\WhatsAppTemplateController@connection`  (name: `admin.whatsapp.connection`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/whatsapp/messages` -> `Admin\WhatsAppMessageController@index`  (name: `admin.whatsapp.messages.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/whatsapp/messages/{message}` -> `Admin\WhatsAppMessageController@show`  (name: `admin.whatsapp.messages.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/whatsapp/templates` -> `Admin\WhatsAppTemplateController@index`  (name: `admin.whatsapp.templates.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/whatsapp/templates` -> `Admin\WhatsAppTemplateController@store`  (name: `admin.whatsapp.templates.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/whatsapp/templates/{template}` -> `Admin\WhatsAppTemplateController@update`  (name: `admin.whatsapp.templates.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/whatsapp/templates/{template}/activate` -> `Admin\WhatsAppTemplateController@activate`  (name: `admin.whatsapp.templates.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/whatsapp/templates/{template}/deactivate` -> `Admin\WhatsAppTemplateController@deactivate`  (name: `admin.whatsapp.templates.deactivate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/whatsapp/templates/{template}/edit` -> `Admin\WhatsAppTemplateController@edit`  (name: `admin.whatsapp.templates.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+
+## 3. Auth
+
+- `GET /login` -> `Auth\LoginController@showLoginForm`  (name: `login`)
+- `POST /login` -> `Auth\LoginController@login`  (name: `login.post`)  [Illuminate\Routing\Middleware\ThrottleRequests:20,1]
+- `POST /logout` -> `Auth\LoginController@logout`  (name: `logout`)
+- `GET /sanctum/csrf-cookie` -> `Laravel\Sanctum\Http\Controllers\CsrfCookieController@show`  (name: `sanctum.csrf-cookie`)
+
+## 4. Webhooks
+
+- `POST /webhook/shipping/jnt` -> `Webhook\ShippingController@handleJnt`  (name: `webhook.shipping.jnt`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `GET /webhook/whatsapp` -> `Webhook\WhatsAppController@verify`  (name: `webhook.whatsapp.verify`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `POST /webhook/whatsapp` -> `Webhook\WhatsAppController@handle`  (name: `webhook.whatsapp.handle`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+- `POST /webhook/whatsapp/baileys` -> `Webhook\WhatsAppController@handleBaileys`  (name: `webhook.whatsapp.baileys`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]

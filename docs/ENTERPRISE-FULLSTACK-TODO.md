@@ -51,7 +51,7 @@
 ## Gate D — Security dan supply chain
 
 - [x] J&T webhook fail-closed dan log bebas credential/payload sensitif.
-- [x] Meta/WAHA webhook fail-closed, signature/secret wajib, dan query-string secret ditolak.
+- [x] Meta/BAILEYS webhook fail-closed, signature/secret wajib, dan query-string secret ditolak.
 - [x] Security headers baseline dan production J&T configuration gate tersedia.
 - [x] Dependency advisory npm dibersihkan.
 - [ ] Laravel di-upgrade ke versi patched setelah persetujuan explicit dan regression hijau.

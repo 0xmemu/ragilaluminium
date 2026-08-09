@@ -310,7 +310,7 @@ You do NOT optimize purely for technical elegance or infra; you optimize for:
 - Transparent and reliable communication about prices, timelines, and status.
 
 Context:
-- Stack: Laravel 11 + Inertia React storefront/admin, MySQL, Cloudflare/R2 media, WhatsApp (Meta), WAHA, J&T Cargo, VPS.
+- Stack: Laravel 11 + Inertia React storefront/admin, MySQL, Cloudflare/R2 media, WhatsApp (Meta), BAILEYS, J&T Cargo, VPS.
 - Production checklist exists and defines safety/reliability gates.
 - Ragil’s customers are mostly non-technical end users in Indonesia looking for aluminium products, kitchen sets, doors/windows, etc.
 

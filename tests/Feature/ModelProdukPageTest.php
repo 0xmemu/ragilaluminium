@@ -8,15 +8,17 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
+use Tests\Concerns\CreatesVisibleProducts;
 use Tests\TestCase;
 
 class ModelProdukPageTest extends TestCase
 {
+    use CreatesVisibleProducts;
     use RefreshDatabase;
 
     public function test_products_hub_renders_model_produk_not_sku_catalog(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-MOD-1',
             'name' => 'Jungkit Sample',
             'category_id' => 1,
@@ -39,7 +41,7 @@ class ModelProdukPageTest extends TestCase
 
     public function test_products_hub_lists_each_category_model_pair(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-S-1',
             'name' => 'Window Sliding',
             'category_id' => 1,
@@ -48,7 +50,7 @@ class ModelProdukPageTest extends TestCase
             'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'DOOR-S-1',
             'name' => 'Door Sliding',
             'category_id' => 1,
@@ -73,7 +75,7 @@ class ModelProdukPageTest extends TestCase
 
     public function test_products_with_sort_newest_renders_all_products_sku_catalog(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-ALL-1',
             'name' => 'All Products Sample',
             'category_id' => 1,
@@ -98,7 +100,7 @@ class ModelProdukPageTest extends TestCase
 
     public function test_products_without_sort_defaults_to_popular(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-DEFAULT-POPULAR-1',
             'name' => 'Default Popular Sample',
             'category_id' => 1,
@@ -128,7 +130,7 @@ class ModelProdukPageTest extends TestCase
 
     public function test_products_with_sort_popular_renders_sku_catalog(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-POP-1',
             'name' => 'Popular Sample',
             'category_id' => 1,
@@ -157,7 +159,7 @@ class ModelProdukPageTest extends TestCase
 
     public function test_model_detail_page_renders_from_card_click_route(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-SWING-1',
             'name' => 'Swing Sample',
             'category_id' => 1,
@@ -195,7 +197,7 @@ class ModelProdukPageTest extends TestCase
 
     public function test_model_detail_omits_design_rails_without_products(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-JUNG-ORN-1',
             'name' => 'Jungkit Ornamen Sample',
             'category_id' => 1,
@@ -286,7 +288,7 @@ class ModelProdukPageTest extends TestCase
 
     private function makeHubProduct(string $sku, string $model): Product
     {
-        return Product::create([
+        return $this->createVisibleProduct([
             'parent_sku' => $sku,
             'name' => $model.' Hub',
             'category_id' => 1,

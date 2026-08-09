@@ -49,11 +49,11 @@ class AppServiceProvider extends ServiceProvider
                 );
             }
 
-            if (in_array('waha', $providers, true)
-                && filled(config('services.whatsapp.waha.base_url'))
-                && blank(config('services.whatsapp.waha.webhook_secret'))) {
+            if (in_array('baileys', $providers, true)
+                && filled(config('services.whatsapp.baileys.base_url'))
+                && blank(config('services.whatsapp.baileys.webhook_secret'))) {
                 throw new \RuntimeException(
-                    'WHATSAPP_WAHA_WEBHOOK_SECRET wajib saat provider WAHA aktif di production.'
+                    'WHATSAPP_BAILEYS_WEBHOOK_SECRET wajib saat provider BAILEYS aktif di production.'
                 );
             }
             if (config('app.debug')) {

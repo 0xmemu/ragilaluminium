@@ -3,9 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Product;
-use App\Models\ProductAttribute;
 use App\Models\ProductVariant;
 use App\Support\FlashSalePeriodSettings;
+use App\Models\Promotion;
+use App\Models\PromotionItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class CartPromoPricingTest extends \Tests\TestCase
@@ -32,20 +33,27 @@ class CartPromoPricingTest extends \Tests\TestCase
         ProductVariant::create([
             'product_id' => $product->id,
             'variant_sku' => 'WIN-PROMO-1-V1',
-            'price' => 800000,
+            'price' => 1000000,
             'stock' => 5,
             'status' => 'active',
         ]);
-        ProductAttribute::create([
-            'product_id' => $product->id,
-            'attribute_name' => 'promo_compare_price',
-            'attribute_value' => '1000000',
+        $flash = Promotion::create([
+            'type' => Promotion::TYPE_FLASH_SALE,
+            'name' => 'Flash Sale Juni',
+            'status' => Promotion::STATUS_ACTIVE,
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addDay(),
+            'discount_percent' => 20,
         ]);
-        ProductAttribute::create([
-            'product_id' => $product->id,
-            'attribute_name' => 'promo_flash_sale',
-            'attribute_value' => 'true',
+        PromotionItem::create([
+            'promotion_id' => $flash->id,
+            'target_type' => 'product',
+            'target_id' => (string) $product->id,
         ]);
+
+        // FlashSalePeriodSettings::update() di atas sempat meresolve CampaignService
+        // (liveCache kosong saat itu) -> flush agar kampanye baru terbaca.
+        app(\App\Services\CampaignService::class)->flushCache();
 
         $this->withSession([
             'ragil_cart' => [
@@ -60,6 +68,31 @@ class CartPromoPricingTest extends \Tests\TestCase
                 ],
             ],
         ]);
+
+        $ps = app(\App\Services\PriceService::class);
+        $campaigns = app(\App\Services\CampaignService::class);
+        $now = now();
+        $q = \App\Models\Promotion::query()
+            ->where(function ($query) use ($now) {
+                $query->where('status', \App\Models\Promotion::STATUS_ACTIVE)
+                    ->orWhere(function ($query) use ($now) {
+                        $query->where('status', \App\Models\Promotion::STATUS_SCHEDULED)
+                            ->where('starts_at', '<=', $now);
+                    });
+            })
+            ->where(function ($query) use ($now) {
+                $query->whereNull('ends_at')->orWhere('ends_at', '>', $now);
+            });
+        $row = \Illuminate\Support\Facades\DB::table('promotions')->first();
+        fwrite(STDERR, json_encode([
+            'count' => \Illuminate\Support\Facades\DB::table('promotions')->count(),
+            'row' => $row,
+            'qcount' => $q->count(),
+            'now' => (string) $now,
+            'live' => $campaigns->liveCampaigns()->pluck('name')->all(),
+            'fp' => $campaigns->forProduct($product, $product->activeVariants->first()),
+            'priced' => $ps->forVariant($product->activeVariants->first(), $product),
+        ])."\n");
 
         $response = $this->get('/cart');
         $response->assertOk();

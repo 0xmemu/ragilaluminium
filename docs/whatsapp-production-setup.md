@@ -7,8 +7,8 @@ UI admin: **WhatsApp Otomatis → Koneksi**.
 **Status saat parkir (2026-07):** sandbox / nomor uji Meta (`+1 555…`) sudah punya Phone Number ID + temporary token di `.env` lokal. Pesan uji sering `accepted` di API tetapi tidak muncul di HP — lanjut produksi nomor bisnis + template. **Webhook ditunda** sampai ada URL HTTPS publik. Fokus produk sementara: polish UI storefront/admin.
 
 Mode sekarang mendukung **dua provider**:
-- `WHATSAPP_PROVIDER=meta|waha` → provider aktif.
-- `WHATSAPP_COMPARE_PROVIDER=meta|waha` → provider pembanding opsional.
+- `WHATSAPP_PROVIDER=meta|baileys` → provider aktif.
+- `WHATSAPP_COMPARE_PROVIDER=meta|baileys` → provider pembanding opsional.
 - `WHATSAPP_COMPARE_ALLOWLIST=62812...,62857...` → hanya nomor uji ini yang menerima pesan ganda untuk perbandingan langsung.
 
 ---
@@ -53,7 +53,7 @@ Saat siap webhook:
 | Verifikasi token | sama dengan `WHATSAPP_VERIFY_TOKEN` di `.env` |
 | Sertifikat klien | mati |
 
-Route Ragil sudah ada: `GET/POST /webhook/whatsapp` untuk Meta dan `POST /webhook/whatsapp/waha` untuk WAHA (CSRF exempt).
+Route Ragil sudah ada: `GET/POST /webhook/whatsapp` untuk Meta dan `POST /webhook/whatsapp/baileys` untuk BAILEYS (CSRF exempt).
 
 Kotak oranye “terbitkan aplikasi”: app Development hanya menerima webhook uji dari dashboard. Publish (Live) menyusul bila butuh event produksi penuh; **kirim** template dari nomor bisnis tetap mengutamakan nomor + payment + template approved + token.
 
@@ -73,11 +73,11 @@ Setelah punya ID + token baru: minta agent isi `.env` lokal + `php artisan confi
 
 ### 3.1 Compare mode aman
 
-Untuk membandingkan Meta vs WAHA langsung tanpa spam pelanggan umum:
+Untuk membandingkan Meta vs BAILEYS langsung tanpa spam pelanggan umum:
 
 ```env
 WHATSAPP_PROVIDER=meta
-WHATSAPP_COMPARE_PROVIDER=waha
+WHATSAPP_COMPARE_PROVIDER=baileys
 WHATSAPP_COMPARE_ALLOWLIST=6281234567890,6285711122233
 ```
 

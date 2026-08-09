@@ -68,12 +68,12 @@ return [
             'language' => env('WHATSAPP_LANGUAGE', 'id'),
             'timeout' => (int) env('WHATSAPP_TIMEOUT', 15),
         ],
-        'waha' => [
-            'base_url' => env('WHATSAPP_WAHA_BASE_URL'),
-            'api_key' => env('WHATSAPP_WAHA_API_KEY'),
-            'session' => env('WHATSAPP_WAHA_SESSION', 'default'),
-            'webhook_secret' => env('WHATSAPP_WAHA_WEBHOOK_SECRET'),
-            'timeout' => (int) env('WHATSAPP_WAHA_TIMEOUT', env('WHATSAPP_TIMEOUT', 15)),
+        'baileys' => [
+            'base_url' => env('WHATSAPP_BAILEYS_BASE_URL'),
+            'api_key' => env('WHATSAPP_BAILEYS_API_KEY'),
+            'session' => env('WHATSAPP_BAILEYS_SESSION', 'default'),
+            'webhook_secret' => env('WHATSAPP_BAILEYS_WEBHOOK_SECRET'),
+            'timeout' => (int) env('WHATSAPP_BAILEYS_TIMEOUT', env('WHATSAPP_TIMEOUT', 15)),
         ],
     ],
 

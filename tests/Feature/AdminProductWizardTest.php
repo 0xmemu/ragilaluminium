@@ -12,7 +12,7 @@ class AdminProductWizardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_wizard_creates_a_draft_and_returns_to_variant_step(): void
+    public function test_wizard_creates_an_active_product_and_returns_to_variant_step(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
@@ -33,7 +33,7 @@ class AdminProductWizardTest extends TestCase
             'product' => $product,
             'step' => 'variants',
         ]));
-        $this->assertSame('draft', $product->status);
+        $this->assertSame('active', $product->status);
     }
 
     public function test_wizard_can_create_multiple_variants_in_one_submission(): void

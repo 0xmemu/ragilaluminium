@@ -38,7 +38,7 @@ gates are evidenced:
 
 - at least two supervised connectors, or an explicitly accepted single-VPS
   availability exception;
-- Cloudflare-only origin access and no public application/WAHA/Redis/MySQL port;
+- Cloudflare-only origin access and no public application/BAILEYS/Redis/MySQL port;
 - external checks for DNS, TLS, `/up`, catalog, media, checkout, and webhooks;
 - WAF/rate rules that do not block Meta verification, J&T webhook, or checkout;
 - connector restart/recovery test, monitoring, and documented rollback;
@@ -89,7 +89,7 @@ repository.
 - R2 runtime: bucket-scoped access key/secret; custom public media domain
   preferred over `r2.dev` for production.
 - Preview: dedicated hostname and separate R2 bucket/prefix.
-- Origin: loopback Nginx -> PHP-FPM; queue workers and WAHA remain private.
+- Origin: loopback Nginx -> PHP-FPM; queue workers and BAILEYS remain private.
 - See [production VPS environment contract](../production-vps-env-contract.md)
   for the agent request packet and verification order.
 

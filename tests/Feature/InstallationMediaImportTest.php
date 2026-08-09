@@ -8,6 +8,7 @@ use App\Models\CmsGalleryItem;
 use App\Models\CmsPage;
 use App\Models\ImportJob;
 use App\Models\Product;
+use Tests\Concerns\CreatesVisibleProducts;
 use App\Models\ProductMedia;
 use App\Support\InstallationGallery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +21,7 @@ use Tests\TestCase;
 
 class InstallationMediaImportTest extends TestCase
 {
+    use CreatesVisibleProducts;
     use RefreshDatabase;
 
     public function test_import_creates_catalog_and_installation_media_flags(): void
@@ -89,7 +91,7 @@ class InstallationMediaImportTest extends TestCase
     {
         config(['media.allow_source_url_fallback' => true]);
 
-        $product = Product::create([
+        $product = $this->createVisibleProduct([
             'parent_sku' => 'WIN-REV-1',
             'name' => 'Jendela Review',
             'category_id' => 1,
@@ -202,7 +204,7 @@ class InstallationMediaImportTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $product = Product::create([
+        $product = $this->createVisibleProduct([
             'parent_sku' => 'WIN-MERGE-1',
             'name' => 'Merge Window',
             'category_id' => 1,
@@ -232,7 +234,7 @@ class InstallationMediaImportTest extends TestCase
     {
         config(['media.allow_source_url_fallback' => true]);
 
-        $product = Product::create([
+        $product = $this->createVisibleProduct([
             'parent_sku' => 'WIN-VID-1',
             'name' => 'Jendela Video',
             'category_id' => 1,
@@ -282,7 +284,7 @@ class InstallationMediaImportTest extends TestCase
 
     public function test_model_cards_follow_model_product_list_even_without_installation_media(): void
     {
-        Product::create([
+        $this->createVisibleProduct([
             'parent_sku' => 'WIN-EMPTY-INSTALL',
             'name' => 'Jendela Jungkit Tanpa Dokumentasi',
             'category_id' => 1,

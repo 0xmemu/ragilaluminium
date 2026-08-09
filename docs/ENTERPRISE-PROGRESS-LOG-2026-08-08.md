@@ -56,7 +56,7 @@ TODO utama: `/root/ragilaluminium/docs/ENTERPRISE-FULLSTACK-TODO.md`.
 
 ### Security
 
-- Webhook J&T dan Meta/WAHA fail-closed; signature/secret wajib dan production boot gate ada.
+- Webhook J&T dan Meta/BAILEYS fail-closed; signature/secret wajib dan production boot gate ada.
 - Production perimeter: debug off, HTTPS URL, secure/HTTP-only cookie, trusted proxy allowlist, wildcard proxy dilarang.
 - Header `X-Forwarded-Proto` mentah tidak dipercaya langsung.
 - Redirect SSRF ditutup dengan `withoutRedirecting()` pada dua media download job.

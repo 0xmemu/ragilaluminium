@@ -21,21 +21,21 @@ class WhatsAppWebhookSecurityTest extends TestCase
         $this->postJson('/webhook/whatsapp', ['entry' => []])->assertForbidden();
     }
 
-    public function test_waha_webhook_rejects_missing_secret_by_default(): void
+    public function test_baileys_webhook_rejects_missing_secret_by_default(): void
     {
         config([
             'services.whatsapp.allow_unsigned_webhooks' => false,
-            'services.whatsapp.waha.webhook_secret' => null,
+            'services.whatsapp.baileys.webhook_secret' => null,
         ]);
 
-        $this->postJson('/webhook/whatsapp/waha', ['event' => 'message'])->assertForbidden();
+        $this->postJson('/webhook/whatsapp/baileys', ['event' => 'message'])->assertForbidden();
     }
 
-    public function test_waha_secret_in_query_string_is_not_accepted(): void
+    public function test_baileys_secret_in_query_string_is_not_accepted(): void
     {
-        config(['services.whatsapp.waha.webhook_secret' => 'waha-secret']);
+        config(['services.whatsapp.baileys.webhook_secret' => 'baileys-secret']);
 
-        $this->postJson('/webhook/whatsapp/waha?secret=waha-secret', ['event' => 'message'])
+        $this->postJson('/webhook/whatsapp/baileys?secret=baileys-secret', ['event' => 'message'])
             ->assertForbidden();
     }
 
@@ -83,20 +83,20 @@ class WhatsAppWebhookSecurityTest extends TestCase
         (new AppServiceProvider($this->app))->boot();
     }
 
-    public function test_production_boot_requires_waha_webhook_secret_when_waha_is_configured(): void
+    public function test_production_boot_requires_baileys_webhook_secret_when_baileys_is_configured(): void
     {
         $this->app->detectEnvironment(fn (): string => 'production');
         config([
             'jnt.enabled' => false,
             'services.whatsapp.allow_unsigned_webhooks' => false,
-            'services.whatsapp.default_provider' => 'waha',
+            'services.whatsapp.default_provider' => 'baileys',
             'services.whatsapp.compare_provider' => null,
-            'services.whatsapp.waha.base_url' => 'https://waha.example',
-            'services.whatsapp.waha.webhook_secret' => null,
+            'services.whatsapp.baileys.base_url' => 'https://baileys.example',
+            'services.whatsapp.baileys.webhook_secret' => null,
         ]);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('WHATSAPP_WAHA_WEBHOOK_SECRET');
+        $this->expectExceptionMessage('WHATSAPP_BAILEYS_WEBHOOK_SECRET');
 
         (new AppServiceProvider($this->app))->boot();
     }

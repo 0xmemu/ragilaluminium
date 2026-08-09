@@ -5,6 +5,27 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 
 ---
 
+### 2026-08-09 - Fase 8 QA: rekonsiliasi PHPUnit + regenerasi docs
+
+- PHPUnit HIJAU TOTAL: 258 passed (4050 assertions), 0 failed. 33 baseline fail di-reconcile: kontrak baru (PriceService/ADR-007, kampanye promotions, status active|archived tanpa draft) vs fixture lama; helper `tests/Concerns/CreatesVisibleProducts.php`; config `services.whatsapp.default_provider=meta` (env-independent).
+- Fix bug nyata: `Admin/ProductController@index` `$size` undefined -> 500; `HomepagePromotions.php:105` banner tanpa link produk crash `slides()` -> home tanpa promoSlides (accent pakai `?? 0` guard).
+- HomepagePopularTest di-rewrite ke kontrak Fase 3: slides = [landingSlide + manual banners], automatic dihapus; ticker kini memuat banner manual (`include_homepage_promos`).
+- `database-schema-ragil-aluminium.md` + `api-and-routes-ragil-aluminium.md` diregenerasi 2026-08-09 dari live SQLite + `route:list` (269 routes, 39 tables); versi lama diarsip `.legacy-20260809.md`. Salinan lokal di `D:\website_5.0\_analisa`.
+- Playwright E2E di-skip (keputusan user); audit UX storefront pakai headless Chrome + puppeteer-core (4 viewport, 5 halaman) -> laporan `_analisa/audit-ux-20260809/LAPORAN-AUDIT.md`: 0 gambar broken, 0 overflow; temuan data tes live (produk DBG-1, 50 testimonial "Pelanggan Uji"), media r2.dev dormant proxy (MEDIA_PUBLIC_URL kosong; config cache beku 09:18), tap-target minor.
+- Uji migrasi: `migrate:fresh` pada salinan DB prod -> 52 migrations DONE, 40 tabel, seed OK, idempotent.
+- FIX PROD DOWN: `Class "Redis" not found` -> `apt-get install php8.3-redis` + restart php8.3-fpm (sesi/queue redis).
+
+### 2026-08-08 - SPESIFIKASI-FINAL + Fase 1-6A tuntas (branch feat/admin-ui-redesign)
+
+- SoT = `SPESIFIKASI-FINAL.md` (resolusi 23 keputusan bisnis: PriceService otomatis, kampanye promotions, status produk active|archived tanpa draft, nomor order `RA-{Ymd}-{seq}`, pagination 14, retur `return_completed`).
+- Fase 1-6A selesai: migrations promotions/promotion_items/sub_models/order_number_sequences/admin_notifications, wizard produk, CRUD Promo Toko & Flash Sale (FS > Promo, max 1 aktif), performa toko, notifikasi admin.
+- Snapshot WIP di-commit `d3efb1c` (797 file, CRLF warnings non-fatal).
+
+### 2026-08-08/09 - WhatsApp (Fase 7) di-pause, diambil alih agent lain
+
+- Prod IP 209.23.10.62 diblokir WhatsApp (`405`) di semua engine (GOWS/noweb, Baileys rc.9, 6.7.5 fork-master). Dev 49.51.136.145 jalan (GOWS -> SCAN_QR_CODE). Container BAILEYS prod di-down; sesi dev STOPPED; `.env` masih `WHATSAPP_PROVIDER=baileys`.
+- HMAC webhook benar: header `X-Webhook-Hmac`, default sha512; POST 200 tervalidasi prod & dev->prod hook.
+
 ## How to write
 
 ```text

@@ -2,6 +2,7 @@
 declare module 'ziggy-js' {
   interface RouteList {
     "sanctum.csrf-cookie": [],
+    "health.ready": [],
     "home": [],
     "sitemap": [],
     "about": [],
@@ -63,10 +64,14 @@ declare module 'ziggy-js' {
         }
     ],
     "cart.index": [],
+    "cart.preview": [],
     "cart.count": [],
     "cart.add": [],
     "cart.update": [],
     "cart.remove": [],
+    "cart.restore": [],
+    "cart.select": [],
+    "cart.remove-selected": [],
     "reviews": [],
     "ulasan": [],
     "installation.index": [],
@@ -145,6 +150,20 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.products.publish": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.products.duplicate": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.products.variants.index": [
         {
             "name": "product",
@@ -153,6 +172,13 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.products.variants.store": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.products.variants.bulk": [
         {
             "name": "product",
             "required": true,
@@ -251,6 +277,13 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.media.attach": [
+        {
+            "name": "asset",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.imports.index": [],
     "admin.imports.create": [],
     "admin.imports.store": [],
@@ -292,6 +325,13 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.orders.status": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.orders.items.update": [
         {
             "name": "order",
             "required": true,
@@ -400,6 +440,15 @@ declare module 'ziggy-js' {
     "admin.analytics.import-performance": [],
     "admin.activity-logs.index": [],
     "admin.activity-logs.export": [],
+    "admin.notifications.index": [],
+    "admin.notifications.read": [
+        {
+            "name": "notification",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.notifications.mark-all-read": [],
     "admin.customers.index": [],
     "admin.customers.export": [],
     "admin.customers.show": [
@@ -472,6 +521,37 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.announcements.index": [],
+    "admin.announcements.create": [],
+    "admin.announcements.store": [],
+    "admin.announcements.edit": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.update": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.publish": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.unpublish": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.flash-sale.index": [],
     "admin.flash-sale.create": [],
     "admin.flash-sale.store": [],
@@ -497,6 +577,8 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.flash-sale.bulk-enable": [],
+    "admin.flash-sale.bulk-disable": [],
     "admin.flash-sale.disable": [
         {
             "name": "product",
@@ -545,6 +627,76 @@ declare module 'ziggy-js' {
     "admin.beranda.service-highlights.update": [],
     "admin.beranda.how-to-order.edit": [],
     "admin.beranda.how-to-order.update": [],
+    "admin.sub-models.index": [],
+    "admin.sub-models.create": [],
+    "admin.sub-models.store": [],
+    "admin.sub-models.edit": [
+        {
+            "name": "subModel",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.sub-models.update": [
+        {
+            "name": "subModel",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.sub-models.toggle": [
+        {
+            "name": "subModel",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.sub-models.reorder": [],
+    "admin.promotions.index": [],
+    "admin.promotions.create": [],
+    "admin.promotions.store": [],
+    "admin.promotions.edit": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.update": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.duplicate": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.end": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.activate": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.impact": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.model-products.index": [],
     "admin.model-products.create": [],
     "admin.model-products.store": [],
@@ -656,6 +808,7 @@ declare module 'ziggy-js' {
     "admin.kebijakan-privasi.update": [],
     "admin.apa-kata-pelanggan.index": [],
     "admin.apa-kata-pelanggan.meta.update": [],
+    "admin.apa-kata-pelanggan.reorder": [],
     "admin.hasil-pemasangan.index": [],
     "admin.hasil-pemasangan.meta.update": [],
     "admin.testimonials.index": [],
@@ -756,7 +909,7 @@ declare module 'ziggy-js' {
     "admin.settings.update": [],
     "webhook.whatsapp.verify": [],
     "webhook.whatsapp.handle": [],
-    "webhook.whatsapp.waha": [],
+    "webhook.whatsapp.baileys": [],
     "webhook.shipping.jnt": [],
     "storage.local": [
         {

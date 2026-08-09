@@ -18,13 +18,13 @@ Customer
   -> Tunnel -> loopback Nginx, or Cloudflare proxy -> firewalled Nginx
   -> PHP-FPM -> Laravel 11 / Inertia React
        |          |             |
-       |          |             +-> Meta WhatsApp / optional private WAHA
+       |          |             +-> Meta WhatsApp / optional private BAILEYS
        |          +-> Redis: cache, sessions, queues
        +-> MySQL: system of record
        +-> R2: product/shared media and derivatives
 
 Queue workers: imports, media, default
-Private only: MySQL, Redis, WAHA, PHP-FPM, deployment/admin ports
+Private only: MySQL, Redis, BAILEYS, PHP-FPM, deployment/admin ports
 Public reads: HTTPS storefront, approved webhooks, R2 media domain
 ```
 
@@ -56,7 +56,7 @@ availability or high-volume target. Apply these constraints:
   and alert before disk/inode exhaustion;
 - cap PHP-FPM and queue workers so MySQL/Redis retain memory; run imports in a
   controlled queue window rather than unconstrained concurrency;
-- prefer Meta WhatsApp as the production provider and keep WAHA off unless its
+- prefer Meta WhatsApp as the production provider and keep BAILEYS off unless its
   memory footprint and operational role are explicitly approved;
 - if MySQL and Redis share this VPS, record the resource limit and upgrade
   trigger; managed/separate services are the stronger option;
@@ -78,7 +78,7 @@ database latency/error growth, or a requirement for zero/minimal downtime.
 | Sessions/cache | Preview configuration | `[~]` | Production Redis, secure cookies, invalidation tests |
 | Cloudflare | Preview Tunnel decision documented | `[~]` | Hostname, WAF, origin lock, external checks, recovery test |
 | WhatsApp | Code/webhook tests; provider approval not evidenced | `[!]` if enabled | Meta token/templates/webhook test or explicit disable |
-| WAHA | Preview service exists | `[~]` | Disable or approve as private pinned fallback |
+| BAILEYS | Preview service exists | `[~]` | Disable or approve as private pinned fallback |
 | J&T Cargo | Disabled/sandbox path | `[~]` | Keep disabled or complete production account sign-off |
 | CI/CD | Frontend and PHPUnit checks exist | `[~]` | Required checks, immutable artifact, deploy/rollback |
 | Security | Application baseline exists | `[~]` | IDOR/upload/SSRF review, firewall, least privilege, scans |
@@ -115,7 +115,7 @@ PHP extensions `gd`, `pdo_mysql`, `redis`, `mbstring`, `curl`, `openssl`,
 
 - Use non-root deploy/PHP-FPM/worker identities with least privilege.
 - Enforce SSH key-only access, no root/password login, firewall, and security
-  updates. Do not expose 3306, 6379, WAHA, PHP-FPM, or unrestricted app ports.
+  updates. Do not expose 3306, 6379, BAILEYS, PHP-FPM, or unrestricted app ports.
 - Use Nginx/PHP-FPM on loopback/private origin; never public `artisan serve`.
 - Supervise Nginx, PHP-FPM, queue workers, scheduler, and `cloudflared`.
 - Monitor disk/inode, memory, CPU, PHP-FPM, Redis, MySQL, queues, and TLS.
@@ -143,7 +143,7 @@ Owner: Cloudflare/infrastructure operator. Dependency: VPS and approved domain.
 - Cache only immutable assets/public media. Bypass cache for admin, cart,
   checkout, order lookup, authenticated responses, and webhooks.
 - Test HTTPS redirect, forwarded host/proto, HSTS rollout, upload size,
-  timeout, Meta verification, J&T webhook, and WAHA callback.
+  timeout, Meta verification, J&T webhook, and BAILEYS callback.
 
 Evidence must include external checks, not only localhost:
 
@@ -257,7 +257,7 @@ WhatsApp: approve Meta number, WABA, permanent token, templates/languages,
 app secret, verification, webhook, and test recipient. Send one approved order
 or consultation template and verify one inbound webhook, delivery status,
 deduplication, retry, and provider-outage fallback. Disable compare mode and
-WAHA unless explicitly approved.
+BAILEYS unless explicitly approved.
 
 J&T: keep `JNT_ENABLED=false` until account, sender address, keys, endpoint, and
 sandbox joint-debugging are signed off. If enabled, verify quote/order/track/
@@ -326,7 +326,7 @@ AI is optional. A human operator can follow this sequence:
 
 - SQLite or preview bucket in production;
 - `APP_DEBUG=true`, `MEDIA_ALLOW_SOURCE_FALLBACK=true`, or `QUEUE_CONNECTION=sync`;
-- public MySQL, Redis, WAHA, PHP-FPM, or unrestricted application port;
+- public MySQL, Redis, BAILEYS, PHP-FPM, or unrestricted application port;
 - no verified database restore or no supervised queue worker;
 - missing R2 public domain, webhook verification, provider approval, or secret
   rotation owner;

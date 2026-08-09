@@ -13,7 +13,7 @@ interface ConnectionInfo {
   compare_provider: string | null
   compare_allowlist: string[]
   webhook_path: string
-  waha_webhook_path: string
+  baileys_webhook_path: string
   providers: {
     meta: {
       configured: boolean
@@ -22,7 +22,7 @@ interface ConnectionInfo {
       number_id_set?: boolean
       verify_token_set?: boolean
     }
-    waha: {
+    baileys: {
       configured: boolean
       base_url?: string | null
       token_set: boolean
@@ -43,11 +43,13 @@ export default function WhatsAppConnection({
   title,
   description,
   backUrl,
+  pairingUrl,
   connection,
   stats,
 }: {
   title: string
   description: string
+  pairingUrl: string
   backUrl: string
   connection: ConnectionInfo
   stats: ConnectionStats
@@ -60,12 +62,18 @@ export default function WhatsAppConnection({
     >
       <Head title={`${title} | Admin`} />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Button asChild variant="secondary">
           <Link href={backUrl}>
             <Icon name="arrow-left" className="size-4" aria-hidden="true" />
             Kembali ke WhatsApp Otomatis
           </Link>
+        </Button>
+        <Button asChild variant="primary">
+          <a href={pairingUrl}>
+            <Icon name="phone" className="size-4" aria-hidden="true" />
+            Pairing WhatsApp
+          </a>
         </Button>
       </div>
 
@@ -80,7 +88,7 @@ export default function WhatsAppConnection({
                 {connection.configured ? "Provider aktif siap dipakai" : "Provider aktif belum dikonfigurasi"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Meta resmi dan WAHA bisa hidup berdampingan. Compare mode dibatasi ke nomor allowlist supaya order nyata tidak menerima pesan ganda.
+                Meta resmi dan BAILEYS bisa hidup berdampingan. Compare mode dibatasi ke nomor allowlist supaya order nyata tidak menerima pesan ganda.
               </p>
             </div>
           </div>
@@ -125,30 +133,30 @@ export default function WhatsAppConnection({
 
             <div className="rounded-md border border-border p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold">WAHA</h3>
-                <StatusBadge status={connection.providers.waha.configured ? "active" : "inactive"} />
+                <h3 className="text-sm font-bold">BAILEYS</h3>
+                <StatusBadge status={connection.providers.baileys.configured ? "active" : "inactive"} />
               </div>
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">API key</dt>
-                  <dd className="font-semibold">{connection.providers.waha.api_key_set ? "Terisi" : "Kosong"}</dd>
+                  <dd className="font-semibold">{connection.providers.baileys.api_key_set ? "Terisi" : "Kosong"}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Session</dt>
-                  <dd className="font-mono text-xs font-semibold">{connection.providers.waha.session ?? "default"}</dd>
+                  <dd className="font-mono text-xs font-semibold">{connection.providers.baileys.session ?? "default"}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Webhook secret</dt>
-                  <dd className="font-semibold">{connection.providers.waha.webhook_secret_set ? "Terisi" : "Kosong"}</dd>
+                  <dd className="font-semibold">{connection.providers.baileys.webhook_secret_set ? "Terisi" : "Kosong"}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Webhook</dt>
-                  <dd className="font-mono text-xs font-semibold">{connection.waha_webhook_path}</dd>
+                  <dd className="font-mono text-xs font-semibold">{connection.baileys_webhook_path}</dd>
                 </div>
-                {connection.providers.waha.base_url ? (
+                {connection.providers.baileys.base_url ? (
                   <div className="flex justify-between gap-4">
                     <dt className="text-muted-foreground">Base URL</dt>
-                    <dd className="max-w-[60%] truncate font-mono text-xs">{connection.providers.waha.base_url}</dd>
+                    <dd className="max-w-[60%] truncate font-mono text-xs">{connection.providers.baileys.base_url}</dd>
                   </div>
                 ) : null}
               </dl>

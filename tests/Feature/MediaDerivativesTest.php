@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\DownloadProductMedia;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\ProductMedia;
 use App\Services\MediaDerivativeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -164,10 +165,10 @@ class MediaDerivativesTest extends TestCase
         $this->assertStringContainsString('sample-card.webp', $url);
     }
 
-    public function test_catalog_paginates_twenty_four(): void
+    public function test_catalog_paginates_fourteen(): void
     {
         for ($i = 1; $i <= 30; $i++) {
-            Product::create([
+            $product = Product::create([
                 'parent_sku' => "WIN-P-{$i}",
                 'name' => "Product {$i}",
                 'category_id' => 1,
@@ -176,12 +177,19 @@ class MediaDerivativesTest extends TestCase
                 'design_variant' => 'POLOS',
                 'status' => 'active',
             ]);
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'variant_sku' => "WIN-P-{$i}-V1",
+                'price' => 1000000,
+                'stock' => 5,
+                'status' => 'active',
+            ]);
         }
 
         $response = $this->getJson('/api/catalog/windows');
         $response->assertOk();
-        $this->assertCount(24, $response->json('products'));
-        $this->assertSame(24, $response->json('pagination.per_page'));
+        $this->assertCount(14, $response->json('products'));
+        $this->assertSame(14, $response->json('pagination.per_page'));
     }
 
     protected function makePngBytes(int $w, int $h): string

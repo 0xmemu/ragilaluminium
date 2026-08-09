@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,6 +20,13 @@ class SitemapTest extends TestCase
             'product_category' => 'WINDOW',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        ProductVariant::create([
+            'product_id' => $active->id,
+            'variant_sku' => 'ACTIVE-SKU-V1',
+            'price' => 1000000,
+            'stock' => 5,
             'status' => 'active',
         ]);
         Product::create([

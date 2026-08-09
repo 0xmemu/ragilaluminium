@@ -6,12 +6,14 @@ use App\Models\CmsGalleryItem;
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
+use Tests\Concerns\CreatesVisibleProducts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class ProductReviewsTest extends TestCase
 {
+    use CreatesVisibleProducts;
     use RefreshDatabase;
 
     public function test_pdp_includes_only_published_reviews_for_that_product(): void
@@ -23,7 +25,7 @@ class ProductReviewsTest extends TestCase
             'published' => true,
         ]);
 
-        $product = Product::create([
+        $product = $this->createVisibleProduct([
             'parent_sku' => 'WIN-REV-1',
             'name' => 'Window With Reviews',
             'category_id' => 1,
@@ -33,7 +35,7 @@ class ProductReviewsTest extends TestCase
             'status' => 'active',
         ]);
 
-        $other = Product::create([
+        $other = $this->createVisibleProduct([
             'parent_sku' => 'WIN-REV-2',
             'name' => 'Other Window',
             'category_id' => 1,
@@ -103,7 +105,7 @@ class ProductReviewsTest extends TestCase
             'published' => true,
         ]);
 
-        $product = Product::create([
+        $product = $this->createVisibleProduct([
             'parent_sku' => 'WIN-REV-3',
             'name' => 'Linked',
             'category_id' => 1,

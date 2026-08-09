@@ -366,6 +366,7 @@ class DashboardController extends Controller
             'greetingName' => auth()->user()?->name ?? 'Admin',
             'todayLabel' => now()->locale('id')->translatedFormat('l, d F Y'),
             'generatedAt' => now()->toIso8601String(),
+            'productCount' => Product::visible()->count(),
             'jntReadiness' => $jntReadiness,
             'integrationReadiness' => [
                 [

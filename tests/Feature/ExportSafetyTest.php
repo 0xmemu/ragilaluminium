@@ -35,7 +35,7 @@ class ExportSafetyTest extends TestCase
             ],
         ]));
 
-        $this->assertSame(["'=danger", "'@reason"], $export->headings());
+        $this->assertSame(["'=danger", 'error_reason'], $export->headings());
         $this->assertSame(["'=SUM(A1:A2)", "'@reason"], $export->map($export->collection()->first()));
     }
 }

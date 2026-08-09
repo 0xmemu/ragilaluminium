@@ -105,10 +105,10 @@ The website is the **transaction engine** at the center of an ecosystem:
 ### 2.7 WhatsApp Module
 **Source of truth for messaging logs; notification & communication channel.**
 - Tables: `whatsapp_templates`, `whatsapp_messages`.
-- Uses dual-provider gateway: `meta` resmi and optional `waha`.
+- Uses dual-provider gateway: `meta` resmi and optional `baileys`.
   Templates map internal keys (`order_created`, `payment_confirmed`,
   `order_shipped`, `order_delivered`, `order_issue_followup`) to Meta templates;
-  WAHA sends rendered `body_preview` text for compare/switch mode.
+  BAILEYS sends rendered `body_preview` text for compare/switch mode.
 - Reflects order/payment/shipping state; does **not** own business state or perform
   verification. Logs outbound and inbound messages, linked to `orders` where applicable.
 
@@ -199,8 +199,8 @@ restore stock once, write the status event, then commit cancellation.
 ```
 POST /webhook/whatsapp → WhatsAppController@handle
   → parses payload Meta → whatsapp_messages (inbound, provider=meta)
-POST /webhook/whatsapp/waha → WhatsAppController@handleWaha
-  → parses WAHA events → whatsapp_messages (inbound, provider=waha)
+POST /webhook/whatsapp/baileys → WhatsAppController@handleBaileys
+  → parses BAILEYS events → whatsapp_messages (inbound, provider=baileys)
   → linked to orders where applicable (manual comms: proof, confirmations)
 GET /webhook/whatsapp  → verification handshake (hub.challenge)
 ```
@@ -224,8 +224,8 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
 - **Provider switch:** `WHATSAPP_PROVIDER` selects active provider; optional
   `WHATSAPP_COMPARE_PROVIDER` + `WHATSAPP_COMPARE_ALLOWLIST` duplicate sends only
   to nomor uji for direct comparison.
-- **Inbound:** webhook Meta (`/webhook/whatsapp`) and webhook WAHA
-  (`/webhook/whatsapp/waha`) log customer messages and link them to orders.
+- **Inbound:** webhook Meta (`/webhook/whatsapp`) and webhook BAILEYS
+  (`/webhook/whatsapp/baileys`) log customer messages and link them to orders.
 - **Boundaries:** WhatsApp Module reflects state; it never decides order/payment/
   shipping actions.
 
@@ -308,7 +308,7 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
   category, product detail (`Product::toApiArray()` / `ProductVariant::toApiArray()`),
   search.
 - **Webhooks (CSRF-exempt):** `GET/POST /webhook/whatsapp`,
-  `POST /webhook/whatsapp/waha`, `POST /webhook/shipping/jnt`.
+  `POST /webhook/whatsapp/baileys`, `POST /webhook/shipping/jnt`.
 
 ---
 

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\PerformanceMetric;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\ProductEngagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,7 +17,7 @@ class ProductEngagementTest extends TestCase
 
     private function createVisibleProduct(string $sku = 'WIN-ENG-1'): Product
     {
-        return Product::create([
+        $product = Product::create([
             'parent_sku' => $sku,
             'name' => 'Jendela Engagement',
             'category_id' => 1,
@@ -25,6 +26,15 @@ class ProductEngagementTest extends TestCase
             'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => $sku.'-V1',
+            'price' => 1000000,
+            'stock' => 5,
+            'status' => 'active',
+        ]);
+
+        return $product;
     }
 
     public function test_product_detail_tracks_view_metric(): void

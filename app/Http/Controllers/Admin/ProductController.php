@@ -29,6 +29,8 @@ class ProductController extends Controller
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
         $q = trim((string) $request->input('q', ''));
+        $size = $q !== '' ? $this->parseSizeQuery($q) : null;
+
 
         $products = Product::query()
             ->with(['mainImage', 'activeVariants'])
@@ -44,7 +46,7 @@ class ProductController extends Controller
                         ->orWhere('parent_sku', 'like', "%{$q}%");
                 });
             })
-            ->when($q !== '' && ($size = $this->parseSizeQuery($q)) !== null, function ($query) use ($size) {
+            ->when($size !== null, function ($query) use ($size) {
                 [$a, $b, $depth] = $size;
                 $query->whereHas('activeVariants', function ($variantQuery) use ($a, $b, $depth) {
                     $variantQuery->where(function ($pair) use ($a, $b, $depth) {
@@ -101,7 +103,6 @@ class ProductController extends Controller
         $category = (string) $request->input('product_category', 'all');
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
-        $q = trim((string) $request->input('q', ''));
 
         $query = Product::query()
             ->withCount('variants as variants_count')

@@ -35,7 +35,7 @@ contract.
 - Vite frontend; MySQL is the production database target.
 - SQLite or ephemeral databases are for preview and E2E only.
 - Cloudflare/R2 provides media storage and edge delivery.
-- WhatsApp uses Meta and/or WAHA according to the approved integration mode.
+- WhatsApp uses Meta and/or BAILEYS according to the approved integration mode.
 - J&T Cargo is the shipping provider; Contabo VPS and Docker are the current
   infrastructure context.
 - GitHub Actions is the CI/CD context.
@@ -70,7 +70,7 @@ Inertia/HTTP route
   -> application service or action
   -> domain rules + Eloquent transaction
   -> event / queue job where appropriate
-  -> provider adapter (Meta, WAHA, J&T, R2)
+  -> provider adapter (Meta, BAILEYS, J&T, R2)
 ```
 
 - Controllers translate HTTP input/output; they do not contain long business
@@ -217,7 +217,7 @@ backfill, verify, then contract phases for risky schema changes.
 
 ### 6. External integration gates
 
-For Meta/WhatsApp, WAHA, J&T Cargo, and Cloudflare/R2, define before enabling
+For Meta/WhatsApp, BAILEYS, J&T Cargo, and Cloudflare/R2, define before enabling
 production traffic:
 
 - credential scope, storage location, rotation owner, and expiry handling;
@@ -316,7 +316,7 @@ Never describe a reachable preview URL as production readiness.
   is unresolved.
 - No destructive database command against the application database without the
   explicit same-request user authorization required by `AGENTS.md`.
-- No J&T, WhatsApp, WAHA, or payment production activation without provider
+- No J&T, WhatsApp, BAILEYS, or payment production activation without provider
   gates, safe logging, idempotency, smoke testing, and named authorization.
 - No new public route, schema field, status, role, or JSON shape without its
   canonical documentation and tests.
