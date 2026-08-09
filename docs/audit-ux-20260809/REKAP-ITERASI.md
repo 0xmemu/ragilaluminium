@@ -31,14 +31,30 @@ Komit terkait: `216d234` (polish storefront), `504107a` (dokumentasi pengujian m
 
 ## 2. Rekomendasi iterasi berikutnya
 
-**Prioritas (berdasarkan temuan audit yang belum dikerjakan):**
-1. **Data hygiene (P1)** — bersihkan produk "Debug" dan ~50 testimoni uji di lingkungan produksi. (task_0010, status: menunggu persetujuan user)
-2. **Media delivery (P2)** — r2.dev throttled; evaluasi CDN/cache untuk gambar publik. (task_0011, status: menunggu persetujuan user)
+**Sudah dituntaskan pada iterasi ini (opsional yang disetujui):**
+- Data hygiene P1 (detail di bagian 2A).
+- Media delivery P2 (detail di bagian 2B).
 
 **Tambahan yang disarankan sebelum rilis:**
 3. **QA visual final** — verifikasi manual di browser fisik (mobile & desktop) menggunakan `PENGUJIAN-MANUAL.md`. Tidak dijalankan otomatis karena keputusan tim (tanpa Playwright/audit).
 4. **Rotasi SSH key** — kunci `termius`/`id_zo` bersifat sementara dan **wajib dirotasi sebelum rilis produksi**.
 5. **Screenshot baseline** (opsional) — ambil baseline visual halaman kunci untuk regresi berikutnya.
+
+---
+
+## 2A. Data hygiene (task_0010) — hasil
+- **Produk "Debug" (DBG-1)**: TIDAK ditemukan di DB saat ini (50 produk semuanya asli, SKU Shopee, status aktif). Tidak ada tindakan.
+- **Testimoni "Pelanggan Uji"**: TIDAK ditemukan (50 testimoni memakai nama pelanggan nyata). Tidak ada tindakan.
+- **Customer uji**: ditemukan & DIHAPUS 1 baris (id=1, "Uji Edit", 081234567890). Tidak ada referensi FK (orders kosong).
+- **Media duplikat**: 169 media_assets, semua hash unik (tidak ada duplikat).
+- **Orphaned product_media**: 0. Produk homepage_popular: 0.
+
+## 2B. Media delivery (task_0011) — hasil
+- **Akar masalah**: `.env` `MEDIA_DISK=s3` dengan seluruh kredensial R2 kosong → URL media resolve ke r2.dev (`pub-1fc70757941f423c8041475955b8ec66.r2.dev`) yang throttled/blocked.
+- **Perbaikan (Opsi A)**: ganti `MEDIA_DISK` `s3` → `local` di `.env`. Disk `media` kini memakai `storage/app/public/media` (702 webp lokal, 49MB) dengan URL `APP_URL/storage/media`.
+- **Verifikasi**: `Storage::disk('media')->url()` = `https://ra.333labs.tech/storage/media`; `main_image` API = `https://ra.333labs.tech/storage/media/products/*/*-card.webp`; curl https publik & http 8200 keduanya `200 image/webp` (<0.08s). Tidak ada bocor r2.dev di respons.
+- **nginx**: `location /storage/` (cache 30d immutable) & `/media-cdn/` (proxy ke R2) tetap dipertahankan sebagai fallback legacy.
+- **Catatan**: ini perubahan runtime `.env` (tidak di-commit). Untuk produksi penuh, isi kredensial R2 lalu kembalikan `MEDIA_DISK=s3`; pastikan `MEDIA_PUBLIC_URL` terset sebelum `config:clear`.
 
 ---
 
@@ -52,5 +68,5 @@ Komit terkait: `216d234` (polish storefront), `504107a` (dokumentasi pengujian m
 - task_0007 testing manual storefront — SELESAI (checklist)
 - task_0008 testing manual admin — SELESAI (checklist)
 - task_0009 rekapitulasi — SELESAI (dokumen ini)
-- task_0010 data hygiene P1 — MENUNGGU PERSETUJUAN (opsional)
-- task_0011 media delivery P2 — MENUNGGU PERSETUJUAN (opsional)
+- task_0010 data hygiene P1 — SELESAI (bagian 2A)
+- task_0011 media delivery P2 — SELESAI (bagian 2B)
