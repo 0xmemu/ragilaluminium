@@ -303,3 +303,30 @@ redis-cli dbsize
    TTFB dinamis 0.5–1.0s meski render origin sudah 60–160ms.
 8. WhatsApp: engine (Baileys/BAILEYS) dipanggil internal (`WHATSAPP_ENGINE_URL=http://localhost:PORT`),
    jangan dipublikasikan. Webhook masuk lewat `https://domain/webhook/whatsapp/baileys`.
+
+---
+
+## 11. Cloudflare & CDN — status
+
+### Sudah aktif (ra.333labs.tech)
+
+| Item | Detail |
+|---|---|
+| Tunnel | Container docker  (token ) — jangan start systemd  (token beda, bisa tabrakan) |
+| Cache Rules |  &  → Cache Everything (HIT di edge, tidak menyentuh origin) |
+| Rate Limit | POST  &  → 10 req/10s/IP, block 10 detik (batas plan free: period & timeout hanya boleh 10) |
+| Trusted proxies |  (tunnel lokal) — sudah benar, jangan tambah IP Cloudflare |
+
+### Terblokir / menunggu cutover ke ragilaluminium.com
+
+| Item | Kenapa terblokir | Yang dibutuhkan |
+|---|---|---|
+| R2 custom domain () | Token CF sekarang **tidak punya akses zona ragilaluminium.com** (hanya 333labs.tech, natauma.me, oddityspace.studio) | Token dengan akses zona final + setup custom domain di R2 |
+| Subdomain final (apex, www→redirect, admin, cdn, wa) | Menunggu keputusan domain & cutover | Rancangan DNS sudah ada; terapkan saat cutover |
+| Image pipeline Worker (resize/WebP) | Layak hanya setelah custom domain CDN aktif | Worker di edge CF untuk R2 |
+| Rate limit lebih ketat (period >10s) | Batas plan free | Upgrade plan (Pro) atau terima batas 10s |
+| WAF khusus /admin | Token tidak punya izin rulesets | Token dengan scope Zone → WAF/Cache Rules, atau manual di dashboard |
+
+Catatan:  (nginx → R2) sudah siap sebagai fallback kalau r2.dev diblokir, tapi
+ sengaja **tidak diaktifkan** — merutekan semua gambar lewat origin Dallas
+justru memperlambat. Biarkan delivery utama lewat r2.dev (CDN edge).
