@@ -33,3 +33,14 @@ xlsx/
 
 .venv/
 .waha-sessions
+
+# --- Secret & backup lokal (tidak pernah di-commit) ---
+/cloudflare.env
+/.env.bak-*
+/.env.*.bak
+*.bak-audit
+
+# --- File temp/debug ---
+/_tmp_*
+/smoke_*.php
+/test-results

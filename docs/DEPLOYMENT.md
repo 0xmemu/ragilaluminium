@@ -1,0 +1,302 @@
+# Deployment — Ragil Aluminium
+
+Runbook untuk men-deploy aplikasi ke server produksi dari repo bersih. Target yang
+terverifikasi: **Ubuntu 24.04** (dan kompatibel Debian 12+), Nginx + PHP-FPM + MySQL 8 + Redis,
+ingress Cloudflare Tunnel.
+
+> Prinsip: repo ini harus bisa di-clone ke server baru dan langsung jalan **tanpa debugging**.
+> Semua langkah di bawah sudah diverifikasi pada `ra.333labs.tech` (server 209.23.10.62).
+
+---
+
+## 1. Prasyarat server
+
+- OS: Ubuntu 24.04 / Debian 12+ (4 vCPU / 4–8 GB RAM disarankan)
+- Akses root via SSH
+- Domain + zona Cloudflare (untuk tunnel & HTTPS)
+
+Install paket dasar:
+
+```bash
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq nginx php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring \
+    php8.3-xml php8.3-curl php8.3-zip php8.3-gd php8.3-intl php8.3-bcmath \
+    mysql-server redis-server git curl unzip
+```
+
+Verifikasi:
+
+```bash
+php -v            # PHP 8.3+
+php -m | grep pdo_mysql
+mysql --version   # MySQL 8.x
+redis-cli ping    # PONG
+```
+
+> PHP extension `pdo_mysql` **wajib** — tanpa ini koneksi MySQL gagal.
+> `php8.3-fpm` default memakai `clear_env = no` (sudah benar untuk Laravel; jangan diubah ke `yes`).
+
+---
+
+## 2. Clone repo & install dependencies
+
+```bash
+mkdir -p /var/www && cd /var/www
+git clone <repo-url> ragilaluminium
+cd ragilaluminium
+
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build          # build Vite -> public/build
+```
+
+> Jika `composer`/`npm` belum ada: `apt-get install composer nodejs npm` atau pakai versi
+> yang sesuai (Node 20+, Composer 2).
+
+---
+
+## 3. Konfigurasi environment
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Edit `.env` (nilai minimal yang harus diset):
+
+| Key | Nilai produksi |
+|---|---|
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_URL` | `https://ragilaluminium.com` (domain final) |
+| `APP_KEY` | hasil `key:generate` |
+| `DB_CONNECTION` | `mysql` |
+| `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3306` |
+| `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | sesuai MySQL |
+| `CACHE_STORE` | `redis` |
+| `SESSION_DRIVER` | `redis` |
+| `QUEUE_CONNECTION` | `redis` |
+| `REDIS_HOST` / `REDIS_PORT` | `127.0.0.1` / `6379` |
+| `FORCE_HTTPS` | `true` |
+| `TRUSTED_PROXIES` | `127.0.0.1,::1` (tunnel lokal) |
+| `MEDIA_DISK` | `s3` (jika R2) + isi `AWS_*` / `CLOUDFLARE_R2_*` |
+| `MEDIA_ALLOW_SOURCE_FALLBACK` | `false` (produksi) |
+| `WHATSAPP_ALLOW_UNSIGNED_WEBHOOKS` | `false` |
+
+> `AppServiceProvider` memaksa guard production: APP_DEBUG=false, APP_URL HTTPS,
+> FORCE_HTTPS=true, SESSION_SECURE_COOKIE=true. Kalau app menolak boot, cek 4 hal ini dulu.
+
+---
+
+## 4. Database
+
+```bash
+mysql -uroot << 'EOF'
+CREATE DATABASE IF NOT EXISTS ragil_aluminium CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'ragil'@'localhost' IDENTIFIED BY '<password>';
+GRANT ALL PRIVILEGES ON ragil_aluminium.* TO 'ragil'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+
+php artisan migrate --force
+```
+
+**Migrasi data dari SQLite lama** (jika perlu): lihat `scripts/migrate-sqlite-to-mysql.php` —
+jalankan dari repo dengan `.env` lama (sqlite) di belakang, script menyalin semua tabel
+parent→child ke MySQL. Atau seeder + import manual.
+
+---
+
+## 5. Direktori & permission
+
+```bash
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R ug+rw storage bootstrap/cache
+# Jika repo di /root/... : beri traverse
+chmod o+x /root /root/ragilaluminium 2>/dev/null || true
+```
+
+> `www-data` harus bisa menulis `storage/` dan `bootstrap/cache`. Kalau app 500 dengan
+> "Permission denied" di log — ini penyebabnya.
+
+---
+
+## 6. Nginx
+
+Salin `/etc/nginx/sites-available/ragil` (template di bawah) ke server, lalu:
+
+```bash
+ln -sf /etc/nginx/sites-available/ragil /etc/nginx/sites-enabled/ragil
+rm -f /etc/nginx/sites-enabled/default
+nginx -t && systemctl reload nginx
+```
+
+Template vhost (listen di port yang sama dengan tunnel origin, mis. 8200):
+
+```nginx
+server {
+    listen 8200;
+    listen [::]:8200;
+    server_name ragilaluminium.com _;
+
+    root /var/www/ragilaluminium/public;
+    index index.php;
+
+    charset utf-8;
+    client_max_body_size 64M;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+    gzip_min_length 1024;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location /storage/ {
+        try_files $uri $uri/ =404;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location /build/ {
+        try_files $uri =404;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_read_timeout 300;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+> **Jangan** pakai `php artisan serve` di produksi — itu dev server, single-process dan jauh
+> lebih lambat. Nginx + PHP-FPM adalah syarat performa.
+
+---
+
+## 7. Redis, queue & cache
+
+```bash
+# Aktifkan Redis untuk cache/session/queue
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Worker queue (jalankan sebagai service systemd)
+php artisan queue:work --queue=imports,media,default --tries=3
+```
+
+Contoh unit systemd `ragil-queue.service`:
+
+```ini
+[Unit]
+Description=Ragil Aluminium queue worker
+After=network-online.target mysql.service redis-server.service
+
+[Service]
+User=www-data
+WorkingDirectory=/var/www/ragilaluminium
+ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan queue:work --queue=imports,media,default --tries=3
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl enable --now ragil-queue.service
+```
+
+> Setelah mengubah `.env` atau `config/*.php`: `php artisan config:clear && php artisan config:cache`
+> (jangan lupa, config cache menyimpan nilai lama).
+
+---
+
+## 8. Ingress Cloudflare
+
+Dua opsi:
+
+**A. Cloudflare Tunnel (disarankan, tidak buka port publik):**
+
+```bash
+# Install cloudflared, daftarkan tunnel, simpan token
+docker run -d --name ragil-cloudflared --restart unless-stopped \
+  -v /etc/cloudflared/ragil-preview-token:/etc/cloudflared/token:ro \
+  cloudflare/cloudflared:latest tunnel --no-autoupdate run --token-file /etc/cloudflared/token
+```
+
+Di dashboard Cloudflare: tambahkan public hostname `ragilaluminium.com` → service
+`http://localhost:8200` (port sesuai vhost). DNS record otomatis.
+
+**B. DNS proxy langsung:** A record proxied ke IP server + Nginx listen 80/443 dengan
+sertifikat (Cloudflare Origin CA atau Let's Encrypt). Wajib `TRUSTED_PROXIES` berisi IP
+Cloudflare + `FORCE_HTTPS=true`.
+
+### Cache Rules Cloudflare (dashboard)
+
+- `http.host eq "ragilaluminium.com" and starts_with(http.request.uri.path, "/build/")` → Cache Everything, TTL 30 hari
+- Sama untuk `/storage/`
+- Jangan cache `/admin/*`, `/checkout*`, `/cart*`, `/api/*`, `/webhook/*` (Inertia dinamis)
+
+---
+
+## 9. Smoke test
+
+```bash
+# Origin lokal
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8200/          # 200
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8200/products   # 200
+
+# Via Cloudflare
+curl -s -o /dev/null -w '%{http_code}\n' https://ragilaluminium.com/      # 200
+
+# DB
+mysql -uragil -p<pass> ragil_aluminium -e 'SELECT COUNT(*) FROM products;'
+
+# Cache & queue
+php artisan about
+redis-cli dbsize
+```
+
+---
+
+## 10. Rollback
+
+- **App**: git checkout commit sebelumnya + `php artisan migrate:rollback --step=1` (hati-hati data)
+- **DB**: restore dari backup MySQL (`mysqldump`) atau balik `.env` ke SQLite
+  (backup `.env` disimpan: `.env.bak-sqlite-*`)
+- **DNS**: kembalikan record di Cloudflare / matikan tunnel
+
+---
+
+## Catatan penting (dipelajari dari operasional nyata)
+
+1. **Jangan pernah** menaruh `cloudflare.env` / `.env` di git — sudah di `.gitignore`.
+2. `php artisan serve` **bukan** untuk produksi.
+3. FPM `clear_env` harus `no` — kalau tidak, `APP_ENV` terbaca NULL → Laravel fallback ke
+   `production` + guard error.
+4. Storage & bootstrap/cache harus milik `www-data` — kalau 500 "Permission denied", ini dia.
+5. Ganti `APP_URL` → pastikan `config:cache` ikut diperbarui.
+6. Server produksi sebaiknya di **Indonesia/Singapura** (RTT ~10–50ms). Server di US membuat
+   TTFB dinamis 0.5–1.0s meski render origin sudah 60–160ms.
+7. WhatsApp: engine (Baileys/WAHA) dipanggil internal (`WHATSAPP_ENGINE_URL=http://localhost:PORT`),
+   jangan dipublikasikan. Webhook masuk lewat `https://domain/webhook/whatsapp/waha`.
