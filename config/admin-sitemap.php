@@ -88,10 +88,10 @@ return [
                 ['label' => 'Customer', 'route' => 'admin.customers.index', 'icon' => 'users', 'active' => ['admin.customers.*']],
                 ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*']],
                 [
-                    'label' => 'WhatsApp Otomatis',
-                    'route' => 'admin.whatsapp.messages.index',
+                    'label' => 'WhatsApp',
+                    'route' => 'admin.whatsapp.dashboard',
                     'icon' => 'message-circle',
-                    'active' => ['admin.whatsapp.messages.*', 'admin.whatsapp.connection', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
+                    'active' => ['admin.whatsapp.dashboard', 'admin.whatsapp.messages.*', 'admin.whatsapp.connection', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
                 ],
             ],
         ],
