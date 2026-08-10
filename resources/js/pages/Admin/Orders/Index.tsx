@@ -9,6 +9,11 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
+import {
+  PrintAddressArea,
+  type AddressData,
+  usePrintAddress,
+} from "@/components/shared/print-address"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -50,6 +55,7 @@ interface OrderCard {
   shipping_city?: string | null
   shipping_province?: string | null
   notes?: string | null
+  admin_notes?: string | null
   total_amount: number
   product_count: number
   unit_count: number
@@ -58,6 +64,7 @@ interface OrderCard {
   href: string
   whatsapp_url?: string | null
   primary_action: PrimaryAction | null
+  secondary_action?: PrimaryAction | null
   shipping_track?: {
     shipping_status: string
     carrier_name?: string | null
@@ -186,6 +193,7 @@ function OrderCardRow({
 }) {
   const [expanded, setExpanded] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
+  const { printing, handlePrint } = usePrintAddress()
 
   const visibleItems = expanded ? order.items : order.items.slice(0, 2)
   const hiddenCount = Math.max(order.items_total - visibleItems.length, 0)
@@ -231,6 +239,15 @@ function OrderCardRow({
             {order.customer_name.slice(0, 1).toUpperCase()}
           </span>
           <span className="truncate font-medium text-foreground">{order.customer_name}</span>
+          {order.admin_notes?.trim() ? (
+            <span
+              title={order.admin_notes}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
+            >
+              <Icon name="file-text" className="size-3" aria-hidden="true" />
+              Catatan admin
+            </span>
+          ) : null}
           {order.whatsapp_url ? (
             <a
               href={order.whatsapp_url}
@@ -242,6 +259,15 @@ function OrderCardRow({
               <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
             </a>
           ) : null}
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            aria-label={`Cetak alamat ${order.customer_name}`}
+            title="Cetak alamat"
+          >
+            <Icon name="printer" className="size-3.5" aria-hidden="true" />
+          </button>
           <span className="hidden sm:inline">
             {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
@@ -407,6 +433,18 @@ function OrderCardRow({
             </Button>
           ) : null}
 
+          {order.secondary_action?.next_status ? (
+            <Button
+              variant="secondary"
+              size="xs"
+              className="w-full lg:w-auto"
+              disabled={busy}
+              onClick={() => applyStatus(order.secondary_action!.next_status!)}
+            >
+              {busy ? "Memproses..." : order.secondary_action.label}
+            </Button>
+          ) : null}
+
           {order.whatsapp_url ? (
             <Button asChild variant="secondary" size="xs" className="w-full lg:w-auto">
               <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
@@ -440,6 +478,7 @@ function OrderCardRow({
           ) : null}
         </div>
       </div>
+      {printing ? <PrintAddressArea data={order as AddressData} /> : null}
     </article>
   )
 }

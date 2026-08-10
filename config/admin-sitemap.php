@@ -89,15 +89,9 @@ return [
                 ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*']],
                 [
                     'label' => 'WhatsApp Otomatis',
-                    'route' => 'admin.whatsapp.templates.index',
-                    'icon' => 'message-circle',
-                    'active' => ['admin.whatsapp.templates.*', 'admin.whatsapp.connection'],
-                ],
-                [
-                    'label' => 'Log Pesan WA',
                     'route' => 'admin.whatsapp.messages.index',
-                    'icon' => 'history',
-                    'active' => ['admin.whatsapp.messages.*', 'admin.orders.whatsapp'],
+                    'icon' => 'message-circle',
+                    'active' => ['admin.whatsapp.messages.*', 'admin.whatsapp.connection', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
                 ],
             ],
         ],

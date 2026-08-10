@@ -1,4 +1,5 @@
 import { Head, Link } from "@inertiajs/react"
+import { useEffect, useState } from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
@@ -6,6 +7,11 @@ import { Button } from "@/components/admin/ui/button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatDate } from "@/lib/format"
+
+interface ProviderInfo {
+  configured: boolean
+  base_url?: string | null
+}
 
 interface ConnectionInfo {
   configured: boolean
@@ -44,16 +50,46 @@ export default function WhatsAppConnection({
   description,
   backUrl,
   pairingUrl,
+  statusUrl,
   connection,
   stats,
 }: {
   title: string
   description: string
   pairingUrl: string
+  statusUrl: string
   backUrl: string
   connection: ConnectionInfo
   stats: ConnectionStats
 }) {
+  const baileys = connection.providers.baileys
+  const isBaileysActive = connection.default_provider === "baileys"
+
+  const [liveStatus, setLiveStatus] = useState<string>("unknown")
+  const [liveStatusText, setLiveStatusText] = useState<string>("Mengecek status...")
+
+  useEffect(() => {
+    let active = true
+    const poll = () => {
+      fetch(statusUrl, { headers: { Accept: "application/json" } })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!active) return
+          if (d.status) setLiveStatus(d.status)
+          if (d.statusText) setLiveStatusText(d.statusText)
+        })
+        .catch(() => {})
+    }
+    poll()
+    const t = setInterval(poll, 4000)
+    return () => {
+      active = false
+      clearInterval(t)
+    }
+  }, [statusUrl])
+
+  const liveConnected = liveStatus === "open"
+
   return (
     <AdminLayout
       title={title}
@@ -85,85 +121,53 @@ export default function WhatsAppConnection({
             </span>
             <div>
               <h2 className="text-lg font-bold">
-                {connection.configured ? "Provider aktif siap dipakai" : "Provider aktif belum dikonfigurasi"}
+                {isBaileysActive ? "Gateway Baileys aktif" : "Provider aktif belum disetel"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Meta resmi dan BAILEYS bisa hidup berdampingan. Compare mode dibatasi ke nomor allowlist supaya order nyata tidak menerima pesan ganda.
+                WhatsApp dikirim lewat gateway <b>Baileys</b> yang berjalan di server. Hubungkan nomor
+                lewat tombol <b>Pairing WhatsApp</b> di atas.
               </p>
             </div>
           </div>
 
-          <Alert tone={connection.configured ? "info" : "warning"}>
-            {connection.configured
-              ? `Provider aktif: ${connection.default_provider.toUpperCase()}${connection.compare_provider ? ` · Compare: ${connection.compare_provider.toUpperCase()}` : ""}`
-              : "Set provider aktif di .env. Jika provider aktif belum siap, aplikasi tetap degradasi dengan pencatatan pesan untuk dev/test."}
+          <Alert tone={isBaileysActive ? "info" : "warning"}>
+            {isBaileysActive
+              ? `Provider aktif: ${connection.default_provider.toUpperCase()}. Pesan otomatis toko dikirim lewat gateway Baileys yang sudah terhubung.`
+              : `Provider aktif belum disetel ke Baileys. Pastikan WHATSAPP_PROVIDER=baileys di .env.`}
           </Alert>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-md border border-border p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold">Meta resmi</h3>
-                <StatusBadge status={connection.providers.meta.configured ? "active" : "inactive"} />
-              </div>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">API token</dt>
-                  <dd className="font-semibold">{connection.providers.meta.token_set ? "Terisi" : "Kosong"}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Phone number ID</dt>
-                  <dd className="font-semibold">{connection.providers.meta.number_id_set ? "Terisi" : "Kosong"}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Verify token</dt>
-                  <dd className="font-semibold">{connection.providers.meta.verify_token_set ? "Terisi" : "Kosong"}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Webhook</dt>
-                  <dd className="font-mono text-xs font-semibold">{connection.webhook_path}</dd>
-                </div>
-                {connection.providers.meta.base_url ? (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">Base URL</dt>
-                    <dd className="max-w-[60%] truncate font-mono text-xs">{connection.providers.meta.base_url}</dd>
-                  </div>
-                ) : null}
-              </dl>
+          <div className="rounded-md border border-border p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold">Baileys (gateway)</h3>
+              <StatusBadge status={baileys.configured ? "active" : "inactive"} />
             </div>
-
-            <div className="rounded-md border border-border p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold">BAILEYS</h3>
-                <StatusBadge status={connection.providers.baileys.configured ? "active" : "inactive"} />
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">API key</dt>
+                <dd className="font-semibold">{baileys.api_key_set ? "Terisi" : "Kosong"}</dd>
               </div>
-              <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Session</dt>
+                <dd className="font-mono text-xs font-semibold">{baileys.session ?? "default"}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Webhook secret</dt>
+                <dd className="font-semibold">{baileys.webhook_secret_set ? "Terisi" : "Kosong"}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Webhook</dt>
+                <dd className="font-mono text-xs font-semibold">{connection.baileys_webhook_path}</dd>
+              </div>
+              {baileys.base_url ? (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">API key</dt>
-                  <dd className="font-semibold">{connection.providers.baileys.api_key_set ? "Terisi" : "Kosong"}</dd>
+                  <dt className="text-muted-foreground">Base URL</dt>
+                  <dd className="max-w-[60%] truncate font-mono text-xs">{baileys.base_url}</dd>
                 </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Session</dt>
-                  <dd className="font-mono text-xs font-semibold">{connection.providers.baileys.session ?? "default"}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Webhook secret</dt>
-                  <dd className="font-semibold">{connection.providers.baileys.webhook_secret_set ? "Terisi" : "Kosong"}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Webhook</dt>
-                  <dd className="font-mono text-xs font-semibold">{connection.baileys_webhook_path}</dd>
-                </div>
-                {connection.providers.baileys.base_url ? (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">Base URL</dt>
-                    <dd className="max-w-[60%] truncate font-mono text-xs">{connection.providers.baileys.base_url}</dd>
-                  </div>
-                ) : null}
-              </dl>
-            </div>
+              ) : null}
+            </dl>
           </div>
 
-          <dl className="space-y-3 text-sm border-t border-border pt-4">
+          <dl className="space-y-3 border-t border-border pt-4 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Provider aktif</dt>
               <dd className="font-semibold uppercase">{connection.default_provider}</dd>
@@ -181,106 +185,24 @@ export default function WhatsAppConnection({
           </dl>
 
           <div className="space-y-3 border-t border-border pt-4">
-            <h3 className="text-sm font-bold text-foreground">Cara dapat token dari Meta</h3>
-            <p className="text-sm text-muted-foreground">
-              Tidak ada QR. Token sementara di API Setup (~24 jam) hanya untuk tes{" "}
-              <code className="text-xs">hello_world</code>. Production memakai{" "}
-              <strong className="font-semibold text-foreground">System User token permanen</strong>.
-              Jangan tukar Phone Number ID dengan WABA ID. Panduan lengkap:{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                skills/stage-8-whatsapp-business-integration.md
-              </code>{" "}
-              §2.3 dan{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs">docs/whatsapp-production-setup.md</code>.
-            </p>
+            <h3 className="text-sm font-bold text-foreground">Cara menghubungkan nomor</h3>
             <ol className="list-decimal space-y-2.5 pl-5 text-sm text-muted-foreground">
               <li>
-                Di{" "}
-                <a
-                  href="https://developers.facebook.com/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-primary underline-offset-2 hover:underline"
-                >
-                  developers.facebook.com
-                </a>{" "}
-                → App WhatsApp → API Setup: salin{" "}
-                <strong className="text-foreground">Phone number ID</strong> →{" "}
-                <code className="text-xs">WHATSAPP_BUSINESS_NUMBER_ID</code>.
+                Klik <b>Pairing WhatsApp</b> di atas.
               </li>
               <li>
-                <a
-                  href="https://business.facebook.com/settings"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-primary underline-offset-2 hover:underline"
-                >
-                  Business Settings
-                </a>{" "}
-                → Users → System users → Add (Admin) → Assign assets (App + WABA) → Generate token
-                (Never) dengan <code className="text-xs">whatsapp_business_messaging</code> +{" "}
-                <code className="text-xs">whatsapp_business_management</code> →{" "}
-                <code className="text-xs">WHATSAPP_API_TOKEN</code>.
+                Di HP: buka WhatsApp → <b>Menu</b> → <b>Perangkat Tertaut</b> →{" "}
+                <b>Tautkan Perangkat</b>.
               </li>
               <li>
-                Buat string acak untuk <code className="text-xs">WHATSAPP_VERIFY_TOKEN</code>. Webhook
-                Meta (<code className="text-xs">{connection.webhook_path}</code>) pakai token yang sama —
-                butuh URL HTTPS publik; lokal: tunnel.{" "}
-                <strong className="font-semibold text-foreground">Boleh ditunda</strong> — kirim
-                notifikasi order tidak menunggu webhook.
+                Scan QR yang tampil, atau pilih <i>"Tautkan dengan nomor telepon"</i> lalu masukkan{" "}
+                <b>pairing code</b> 8 digit.
               </li>
               <li>
-                Ajukan template transactional di{" "}
-                <a
-                  href="https://business.facebook.com/wa/manage/home/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-primary underline-offset-2 hover:underline"
-                >
-                  WhatsApp Manager
-                </a>
-                , lalu petakan nama provider di WhatsApp Otomatis → Edit (
-                <code className="text-xs">order_created_cod</code>,{" "}
-                <code className="text-xs">payment_instructions</code>, …).
+                Setelah terhubung, status gateway menjadi <b>Terhubung</b> dan notifikasi order
+                otomatis terkirim.
               </li>
             </ol>
-          </div>
-
-          <div className="space-y-3 border-t border-border pt-4">
-            <h3 className="text-sm font-bold text-foreground">Langkah produksi (nomor nyata)</h3>
-            <p className="text-sm text-muted-foreground">
-              Lewati nomor uji Meta (+1 555…) jika pesan tidak muncul di HP. Ganti ke nomor bisnis +
-              payment method, lalu update Phone Number ID dan token permanen di{" "}
-              <code className="text-xs">.env</code>.
-            </p>
-            <ol className="list-decimal space-y-2.5 pl-5 text-sm text-muted-foreground">
-              <li>
-                <a
-                  href="https://business.facebook.com/wa/manage/phone-numbers/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-primary underline-offset-2 hover:underline"
-                >
-                  Phone numbers
-                </a>
-                : daftar nomor bisnis + pembayaran Meta.
-              </li>
-              <li>
-                Template body <code className="text-xs">{"{{1}} {{2}} {{3}}"}</code> = nomor order,
-                item, total (bahasa <code className="text-xs">id</code>).
-              </li>
-              <li>Uji checkout toko → chat dari nomor bisnis (bukan +1 555).</li>
-            </ol>
-          </div>
-
-          <div className="space-y-3 border-t border-border pt-4">
-            <h3 className="text-sm font-bold text-foreground">Mode banding langsung</h3>
-            <p className="text-sm text-muted-foreground">
-              Gunakan <code className="text-xs">WHATSAPP_PROVIDER</code> untuk provider aktif dan{" "}
-              <code className="text-xs">WHATSAPP_COMPARE_PROVIDER</code> untuk provider pembanding.
-              Batasi pengiriman ganda ke nomor uji melalui{" "}
-              <code className="text-xs">WHATSAPP_COMPARE_ALLOWLIST</code>.
-            </p>
           </div>
         </section>
 
@@ -288,29 +210,21 @@ export default function WhatsAppConnection({
           <h2 className="text-base font-bold">Perangkat & trafik</h2>
           <dl className="space-y-4 text-sm">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
-                Status koneksi
-              </dt>
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Status koneksi</dt>
               <dd className="mt-1 text-lg font-bold">
-                {connection.configured ? "Siap kirim" : "Mode degradasi / belum siap"}
+                {liveConnected ? "Terhubung" : connection.configured ? "Siap kirim" : "Mode degradasi / belum siap"}
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
-                Total pesan terkirim
-              </dt>
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Total pesan terkirim</dt>
               <dd className="mt-1 text-lg font-bold tabular-nums">{stats.sent_count}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
-                Gagal
-              </dt>
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Gagal</dt>
               <dd className="mt-1 text-lg font-bold tabular-nums">{stats.failed_count}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
-                Pengiriman terakhir
-              </dt>
+              <dt className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Pengiriman terakhir</dt>
               <dd className="mt-1 font-semibold">
                 {stats.last_sent_at ? formatDate(stats.last_sent_at) : "Belum ada"}
               </dd>

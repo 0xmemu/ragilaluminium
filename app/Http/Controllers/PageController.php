@@ -118,84 +118,77 @@ class PageController extends Controller
         ]);
     }
 
-    /** Galeri "Apa kata pelanggan kami" — grid screenshot tanpa sort/filter. */
+    /**
+     * Halaman gabungan "Apa kata pelanggan kami" + "Ulasan pelanggan di website".
+     * Satu slug (/reviews) dengan nav/filter model produk ala halaman Model Produk.
+     */
     public function reviews(Request $request): Response
     {
-        $published = CmsTestimonial::query()->published();
+        $modelFilter = (string) $request->input('model', '');
+        $modelCategory = null;
+        $modelCode = null;
+        if ($modelFilter !== '' && str_contains($modelFilter, '|')) {
+            [$modelCategory, $modelCode] = explode('|', $modelFilter, 2);
+            $modelCategory = strtoupper($modelCategory);
+            $modelCode = strtoupper($modelCode);
+        }
 
-        $marketplaceTestimonials = $published
-            ->marketplace()
-            ->withScreenshot()
-            ->orderBy('sort_order')
-            ->orderByDesc('id')
-            ->limit(60)
-            ->get()
-            ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+        // Nav model produk: pasangan kategori+model unik yang punya testimonial terbit.
+        $navSource = CmsTestimonial::query()->published()
+            ->whereHas('product')
+            ->with('product:id,parent_sku,name,short_name,product_category,product_model')
+            ->get();
+
+        $modelNav = $navSource
+            ->groupBy(function (CmsTestimonial $t) {
+                $p = $t->product;
+                return $p ? strtoupper($p->product_category).'|'.strtoupper((string) $p->product_model) : '__none';
+            })
+            ->filter(fn ($group, $key) => $key !== '__none')
+            ->map(function ($group) {
+                $product = $group->first()->product;
+                return [
+                    'value' => strtoupper($product->product_category).'|'.strtoupper((string) $product->product_model),
+                    'label' => CatalogLabels::modelCardTitle($product->product_category, $product->product_model),
+                    'count' => $group->count(),
+                ];
+            })
+            ->values()
+            ->sortBy('label')
             ->values()
             ->all();
 
-        $testimonialMode = 'marketplace';
-        if ($marketplaceTestimonials === []) {
-            $marketplaceTestimonials = CmsTestimonial::query()
-                ->published()
-                ->website()
-                ->withScreenshot()
-                ->with('product:id,parent_sku,name,short_name')
-                ->orderBy('sort_order')
-                ->orderByDesc('id')
-                ->limit(60)
-                ->get()
-                ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
-                ->values()
-                ->all();
-            $testimonialMode = 'website_fallback';
-        }
-
-        return Inertia::render('Public/Reviews', [
-            'pageMeta' => TestimonialPageSettings::forStorefront(),
-            'marketplaceTestimonials' => $marketplaceTestimonials,
-            'testimonialMode' => $testimonialMode,
-            'installationsHref' => route('installation.index'),
-        ]);
-    }
-
-    /** Halaman ulasan pelanggan di website — terpisah dari galeri screenshot. */
-    public function ulasan(Request $request): Response
-    {
-        $sort = (string) $request->input('sort', 'newest');
-
         $published = CmsTestimonial::query()->published();
 
+        if ($modelCategory && $modelCode) {
+            $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
+                $q->where('product_category', $modelCategory)
+                    ->where('product_model', $modelCode);
+            });
+        }
+
+        // Hitung stats dari clone bersih (tanpa orderBy/limit yang melekat pada daftar kartu).
         $websiteTotal = (clone $published)->website()->count();
         $avgRating = (clone $published)->website()->whereNotNull('rating')->avg('rating');
 
-        $applySort = function ($query) use ($sort) {
-            return $query
-                ->when($sort === 'rating_desc', fn ($q) => $q->orderByDesc('rating')->orderByDesc('id'))
-                ->when($sort === 'rating_asc', fn ($q) => $q->orderByRaw('rating is null')->orderBy('rating')->orderByDesc('id'))
-                ->when($sort === 'oldest', fn ($q) => $q->orderBy('sort_order')->orderBy('id'))
-                ->when(
-                    ! in_array($sort, ['rating_desc', 'rating_asc', 'oldest'], true),
-                    fn ($q) => $q->orderBy('sort_order')->orderByDesc('id')
-                );
-        };
-
-        $websiteTestimonials = $applySort(
-            (clone $published)->website()->with('product:id,parent_sku,name,short_name')
-        )
-            ->limit(48)
+        $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->limit(120)
             ->get()
             ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
             ->values()
             ->all();
 
-        return Inertia::render('Public/Ulasan', [
-            'websiteTestimonials' => $websiteTestimonials,
+        return Inertia::render('Public/Reviews', [
+            'pageMeta' => TestimonialPageSettings::forStorefront(),
+            'testimonials' => $testimonials,
+            'modelNav' => $modelNav,
+            'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
             'stats' => [
                 'website_total' => $websiteTotal,
                 'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
             ],
-            'activeSort' => $sort,
             'installationsHref' => route('installation.index'),
         ]);
     }

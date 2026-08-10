@@ -19,14 +19,25 @@ interface ModelProdukProps {
   models: ModelCardData[]
   popularProducts?: ProductCardData[]
   filterDesigns: SelectOption[]
+  filterModels?: SelectOption[]
   activeDesign?: string | null
+  activeCategory?: string | null
 }
+
+const CATEGORY_TABS = [
+  { code: "", label: "Semua Model", slug: undefined },
+  { code: "WINDOW", label: "Jendela", slug: "windows" },
+  { code: "DOOR", label: "Pintu", slug: "doors" },
+  { code: "BOUVEN", label: "Boven", slug: "bouven" },
+] as const
 
 export default function ModelProduk({
   models = [],
   popularProducts = [],
   filterDesigns = [],
+  filterModels = [],
   activeDesign = null,
+  activeCategory = null,
 }: ModelProdukProps) {
   const [design, setDesign] = React.useState<string | null>(activeDesign ?? null)
 
@@ -49,6 +60,18 @@ export default function ModelProduk({
     selectDesign(null)
   }
 
+  function navigate(value: string | null) {
+    router.get(
+      routeUrl("catalog.index"),
+      value
+        ? { category: activeCategory ?? undefined, design: value }
+        : activeCategory
+          ? { category: activeCategory }
+          : {},
+      { preserveState: true, preserveScroll: true, replace: true },
+    )
+  }
+
   const designOptions = React.useMemo(
     () => [
       { value: "", label: "Semua Desain" },
@@ -57,7 +80,20 @@ export default function ModelProduk({
     [filterDesigns],
   )
 
-  return (
+  // Tab model untuk kategori aktif — pola "Boven Swing", "Jendela Sliding", dst.
+  // ala halaman Semua Produk (CatalogNav), menuju halaman detail model terkait.
+  const activeCategoryTab = CATEGORY_TABS.find((tab) => tab.code === activeCategory)
+  const modelTabs = React.useMemo(() => {
+    if (!activeCategory || !filterModels.length) return []
+    return filterModels.map((model) => ({
+      value: model.value,
+      label: `${activeCategoryTab?.label ?? ""} ${model.label}`.trim(),
+      href: routeUrl("catalog.model", {
+        category: activeCategoryTab?.slug,
+        model: model.value.toLowerCase().replace(/_/g, "-"),
+      }),
+    }))
+  }, [activeCategory, filterModels, activeCategoryTab])   return (
     <PublicLayout>
       <Head title="Semua Model Produk">
         <meta
@@ -67,7 +103,7 @@ export default function ModelProduk({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-4 sm:block">
+        <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs
             items={[
               { label: "Home", href: routeUrl("home") },
@@ -76,7 +112,7 @@ export default function ModelProduk({
           />
         </div>
 
-        <div className="container-page pb-4 pt-4">
+        <div className="container-page py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -84,9 +120,9 @@ export default function ModelProduk({
               className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
-              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="flex items-baseline gap-2 text-xl font-bold tracking-tight text-foreground">
+            <h1 className="flex items-baseline gap-2 text-base font-bold tracking-tight text-foreground">
             Semua Model Produk
             <span className="font-normal text-muted-foreground">|</span>
             <span className="text-sm font-normal text-muted-foreground">
@@ -97,13 +133,49 @@ export default function ModelProduk({
         </div>
       </section>
 
+      {/* Navigasi kategori + model ala halaman Semua Produk */}
+      <nav aria-label="Kategori model produk" className="scrollbar-x -mb-px flex gap-1 overflow-x-auto border-b border-border bg-surface">
+        <div className="flex min-w-0 items-end gap-1 px-5 md:px-8 lg:px-12">
+          {CATEGORY_TABS.map((tab) => {
+            const active = (tab.code || null) === (activeCategory || null)
+            return (
+              <Link
+                key={tab.code || "all"}
+                href={routeUrl("catalog.index", {
+                  category: tab.code || undefined,
+                  design: design || undefined,
+                })}
+                aria-current={active ? "page" : undefined}
+                className={
+                  active
+                    ? `relative flex h-12 shrink-0 items-center whitespace-nowrap border-b-2 border-foreground px-0.5 text-sm font-bold text-foreground`
+                    : `relative flex h-12 shrink-0 items-center whitespace-nowrap border-b-2 border-transparent px-0.5 text-sm text-muted-foreground transition hover:text-foreground`
+                }
+              >
+                {tab.label}
+              </Link>
+            )
+          })}
+
+          {modelTabs.map((model) => (
+            <Link
+              key={model.value}
+              href={model.href}
+              className="relative flex h-12 shrink-0 items-center whitespace-nowrap border-b-2 border-transparent px-0.5 text-sm text-muted-foreground transition hover:text-foreground"
+            >
+              {model.label}
+            </Link>
+          ))}
+        </div>
+      </nav>
+
       <div className="container-page flex justify-end py-3 lg:hidden">
         <FilterBerdasarkanControl
           id="model-produk-design"
           variant="plain"
           value={design ?? ""}
           options={designOptions}
-          onChange={(value) => selectDesign(value || null)}
+          onChange={(value) => navigate(value || null)}
           ariaLabel="Filter desain model"
           menuLabel="Desain"
         />
@@ -116,15 +188,15 @@ export default function ModelProduk({
               <ModelProdukListingSidebar
                 filterDesigns={filterDesigns}
                 activeDesign={design}
-                onSelectDesign={selectDesign}
-                onClearDesign={clearDesign}
+                onSelectDesign={navigate}
+                onClearDesign={() => navigate(null)}
               />
             </div>
           </aside>
 
           <div>
             {models.length ? (
-              <ShowcaseCardGrid>
+              <ShowcaseCardGrid className="grid-cols-3 md:grid-cols-3 xl:grid-cols-4">
                 {models.map((model) => (
                   <ModelCard key={`${model.category}-${model.model}`} model={model} />
                 ))}

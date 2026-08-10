@@ -10,11 +10,8 @@ import {
   type CatalogNavFilters,
 } from "@/components/public/catalog-nav"
 import {
-  FlashSaleHero,
-  FlashSaleListingShell,
   FlashSaleListingToolbar,
   FlashModelToggles,
-  PromoFlashSaleSection,
 } from "@/components/public/flash-sale-stage"
 import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
 import { ProductCard } from "@/components/public/product-card"
@@ -51,7 +48,6 @@ interface CatalogProps {
   products: ProductCardData[]
   popularProducts?: ProductCardData[]
   youMightLike?: ProductCardData[]
-  flashSaleSpotlight?: ProductCardData[]
   flashSalePeriod?: FlashSalePeriod | null
   pagination: PaginationData
   filterModels: SelectOption[]
@@ -102,7 +98,6 @@ export default function Catalog({
   products = [],
   popularProducts = [],
   youMightLike = [],
-  flashSaleSpotlight = [],
   flashSalePeriod = null,
   pagination,
   filterModels = [],
@@ -173,6 +168,20 @@ export default function Catalog({
         // Populer adalah urutan kanonis/default; query hanya diperlukan untuk pilihan lain.
         sort: sort === "popular" ? undefined : sort,
       },
+      {
+        preserveScroll: true,
+        preserveState: false,
+        replace: true,
+        onFinish: () => setLoading(false),
+      },
+    )
+  }
+
+  function toggleFlash() {
+    setLoading(true)
+    router.get(
+      basePath,
+      isFlash ? {} : { flash: 1 },
       {
         preserveScroll: true,
         preserveState: false,
@@ -287,9 +296,12 @@ export default function Catalog({
       activeDesign={activeDesign}
       activeFilterCount={activeFilterCount}
       onVisit={(next: Partial<CatalogNavFilters>) => visit(next)}
+      onToggleFlash={() => toggleFlash()}
       sheetOpen={mobileFiltersOpen}
       onSheetOpenChange={setMobileFiltersOpen}
       filterSheet={filterSheetContent}
+      basePath={basePath}
+      isFlash={isFlash}
     />
   )
 
@@ -484,15 +496,9 @@ export default function Catalog({
         />
       </Head>
 
-      {!isFlash && flashSaleSpotlight.length > 0 ? (
-        <PromoFlashSaleSection products={flashSaleSpotlight} period={period} />
-      ) : null}
-
-      {isFlash ? (
-        <FlashSaleHero period={period} />
-      ) : isPromo ? (
+      {isPromo ? (
         <section className="border-b border-border bg-surface">
-          <div className="container-page hidden py-4 sm:block">
+          <div className="container-page hidden py-2 sm:block">
             <Breadcrumbs
               items={[
                 { label: "Home", href: routeUrl("home") },
@@ -506,7 +512,7 @@ export default function Catalog({
             />
           </div>
 
-          <div className="container-page pb-4 pt-4">
+          <div className="container-page py-2">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -514,9 +520,9 @@ export default function Catalog({
                 className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
-                <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="flex items-baseline gap-2 text-xl font-bold tracking-tight text-foreground">
+              <h1 className="flex items-baseline gap-2 text-base font-bold tracking-tight text-foreground">
               {categoryName}
               <span className="font-normal text-muted-foreground">|</span>
               <span className="text-sm font-normal text-muted-foreground">
@@ -537,7 +543,7 @@ export default function Catalog({
         </div>
       ) : null}
 
-      {isFlash ? <FlashSaleListingShell>{listingBody}</FlashSaleListingShell> : listingBody}
+      {listingBody}
 
       {!isFlash && !isPromo && activeSort !== "popular" ? (
         <PalingBanyakDipesanSection products={popularProducts} />

@@ -169,11 +169,13 @@ class ModelProductService
      *
      * @return list<array{title: string, count: string, meta: string, desc: string, subtitle: string, highlights: list<array{icon: string, label: string}>, inspiration_count: int, inspiration_href: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
      */
-    public function storefrontCards(int $limit = 0, ?string $design = null): array
+    public function storefrontCards(int $limit = 0, ?string $design = null, ?string $category = null): array
     {
-        $rows = CmsModelProduct::query()->active()->get();
+        $rows = CmsModelProduct::query()->active()
+            ->when($category, fn ($q) => $q->where('product_category', $category))
+            ->get();
         if ($rows->isEmpty()) {
-            return CatalogTaxonomy::modelCards($limit, $design);
+            return CatalogTaxonomy::modelCards($limit, $design, $category);
         }
 
         $design = CatalogLabels::normalizeDesign($design);
@@ -252,7 +254,7 @@ class ModelProductService
         }
 
         if ($cards === []) {
-            return CatalogTaxonomy::modelCards($limit, $design);
+            return CatalogTaxonomy::modelCards($limit, $design, $category);
         }
 
         // Sortir default "popular": model dengan total penjualan (validOrderItems)

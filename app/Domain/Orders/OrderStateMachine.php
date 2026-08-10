@@ -17,7 +17,9 @@ class OrderStateMachine
         'shipped' => ['delivered', 'issue', 'return_in_process'],
         'delivered' => ['completed', 'issue', 'return_in_process'],
         'issue' => ['processing', 'shipped', 'delivered', 'return_in_process'],
-        'return_in_process' => ['completed', 'issue'],
+        'return_in_process' => ['completed', 'issue', 'return_completed'],
+        // Retur Selesai: terminal — pesanan ditutup sebagai retur (tab "Retur Selesai").
+        'return_completed' => [],
         'completed' => [],
         'cancelled' => [],
     ];

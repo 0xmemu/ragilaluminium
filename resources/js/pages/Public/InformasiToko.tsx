@@ -199,7 +199,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-4 sm:block">
+        <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -207,7 +207,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
             ]}
           />
         </div>
-        <div className="container-page pb-4 pt-4">
+        <div className="container-page py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -215,18 +215,11 @@ export default function InformasiToko({ page }: { page: PageData }) {
               className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
-              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">{heading}</h1>
+            <h1 className="text-base font-bold tracking-tight text-foreground">{heading}</h1>
           </div>
           <BrandWordmark className="[&_img]:h-11 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-12 mt-3" />
-          <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
-            Sejak 2008 memproduksi jendela aluminium
-          </p>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm">
-            Kami berkomitmen menghadirkan produk berkualitas dengan desain modern, tahan lama, dan
-            presisi tinggi untuk setiap kebutuhan Anda.
-          </p>
         </div>
       </section>
 

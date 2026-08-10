@@ -61,6 +61,29 @@ class CatalogLabels
         return self::CATEGORY[strtoupper($code)] ?? $code;
     }
 
+    /**
+     * Normalisasikan nilai query kategori (slug/code) menjadi code enum DB.
+     * Nilai kosong/ALL/null → null (semua kategori). Unknown → null.
+     */
+    public static function normalizeCategory(?string $code): ?string
+    {
+        if ($code === null || $code === '' || $code === 'ALL' || $code === 'all') {
+            return null;
+        }
+
+        $key = strtoupper(trim($code));
+        $map = [
+            'WINDOWS' => 'WINDOW',
+            'JENDELA' => 'WINDOW',
+            'DOORS' => 'DOOR',
+            'PINTU' => 'DOOR',
+            'BOUVEN' => 'BOUVEN',
+            'BOVEN' => 'BOUVEN',
+        ];
+
+        return $map[$key] ?? (isset(self::CATEGORY[$key]) ? $key : null);
+    }
+
     public static function normalizeModel(?string $code): ?string
     {
         if ($code === null || $code === '') {

@@ -54,12 +54,12 @@ class CatalogTaxonomy
      *
      * @return list<array{title: string, count: string, meta: string, desc: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
      */
-    public static function modelCards(int $limit = 0, ?string $design = null): array
+    public static function modelCards(int $limit = 0, ?string $design = null, ?string $category = null): array
     {
         $design = CatalogLabels::normalizeDesign($design);
-        $cacheKey = self::CACHE_KEY.'.modelCards.'.($limit ?: 'all').'.'.($design ?? 'any');
+        $cacheKey = self::CACHE_KEY.'.modelCards.'.($limit ?: 'all').'.'.($design ?? 'any').'.'.($category ?? 'any');
 
-        $cards = Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($limit, $design) {
+        $cards = Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($limit, $design, $category) {
             $rows = self::rows();
             if ($rows->isEmpty()) {
                 return [];
@@ -67,6 +67,10 @@ class CatalogTaxonomy
 
             if ($design) {
                 $rows = $rows->where('design_variant', $design);
+            }
+
+            if ($category) {
+                $rows = $rows->where('product_category', $category);
             }
 
             if ($rows->isEmpty()) {

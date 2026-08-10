@@ -553,6 +553,29 @@
   text-transform: none;
 }
 
+/*
+ * Cetak alamat (admin orders): saat tombol "Cetak" ditekan, komponen
+ * PrintAddressArea me-render #print-address via portal ke <body>; aturan
+ * berikut menyembunyikan seluruh app dan hanya mencetak label alamat itu.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #print-address,
+  #print-address * {
+    visibility: visible;
+  }
+
+  #print-address {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

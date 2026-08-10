@@ -8,6 +8,7 @@ use App\Models\ImportJob;
 use App\Models\MediaAsset;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -411,5 +412,45 @@ class AdminDashboardTest extends TestCase
                 ->where('importMediaSummary.media.shared_assets.ready', 1)
                 ->where('importMediaSummary.media.shared_assets.archived', 1)
             );
+    }
+
+    public function test_dashboard_exposes_visible_product_count(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->createVisibleProduct('RA-PROD-1');
+        $this->createVisibleProduct('RA-PROD-2');
+        $this->createVisibleProduct('RA-PROD-3', 'archived');
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('productCount', 2)
+            );
+    }
+
+    private function createVisibleProduct(string $sku, string $status = 'active'): void
+    {
+        $product = Product::create([
+            'parent_sku' => $sku,
+            'name' => 'Produk '.$sku,
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => $status,
+        ]);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => $sku.'-V1',
+            'price' => 1000000,
+            'stock' => 5,
+            'status' => 'active',
+        ]);
     }
 }

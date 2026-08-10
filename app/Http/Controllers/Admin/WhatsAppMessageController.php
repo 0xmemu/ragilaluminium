@@ -25,6 +25,10 @@ class WhatsAppMessageController extends Controller
         return Inertia::render('Admin/ResourceIndex', [
             'title' => 'Pesan WhatsApp',
             'createHref' => null,
+            'toolbarLinks' => [
+                ['label' => 'Pairing WhatsApp', 'href' => route('admin.whatsapp.pairing')],
+                ['label' => 'Template (Advanced)', 'href' => route('admin.whatsapp.templates.index')],
+            ],
             'columns' => [
                 ['key' => 'id', 'label' => 'ID', 'hrefKey' => 'href'],
                 ['key' => 'provider', 'label' => 'Provider'],

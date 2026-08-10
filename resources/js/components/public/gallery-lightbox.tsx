@@ -124,7 +124,7 @@ export function GalleryLightbox({
             className="absolute left-2 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:left-4"
             aria-label="Sebelumnya"
           >
-            <Icon name="caret-left" className="h-6 w-6" weight="bold" aria-hidden="true" />
+            <Icon name="arrow-left" className="h-6 w-6" weight="bold" aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -135,7 +135,7 @@ export function GalleryLightbox({
             className="absolute right-2 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:right-4"
             aria-label="Berikutnya"
           >
-            <Icon name="caret-right" className="h-6 w-6" weight="bold" aria-hidden="true" />
+            <Icon name="arrow-right" className="h-6 w-6" weight="bold" aria-hidden="true" />
           </button>
           <span className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs tabular-nums text-white/80">
             {index + 1} / {count}

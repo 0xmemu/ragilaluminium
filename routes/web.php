@@ -116,7 +116,11 @@ Route::post('/cart/select', [CartController::class, 'select'])->name('cart.selec
 Route::post('/cart/remove-selected', [CartController::class, 'removeSelected'])->name('cart.remove-selected');
 
 Route::get('/reviews', [PageController::class, 'reviews'])->name('reviews');
-Route::get('/ulasan', [PageController::class, 'ulasan'])->name('ulasan');
+// /ulasan (lama) di-redirect 301 ke /reviews agar hanya satu slug review.
+Route::get('/ulasan', function () {
+    $qs = request()->getQueryString();
+    return redirect(route('reviews').($qs ? '?'.$qs : ''), 301);
+});
 Route::get('/hasil-pemasangan', [PageController::class, 'installations'])->name('installation.index');
 Route::get('/hasil-pemasangan/{category}/{model}', [PageController::class, 'installationModel'])
     ->where([
@@ -213,6 +217,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::put('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
     Route::put('orders/{order}/items', [AdminOrderController::class, 'updateItems'])->name('orders.items.update');
+    Route::put('orders/{order}/admin-notes', [AdminOrderController::class, 'updateAdminNotes'])->name('orders.admin-notes.update');
     Route::post('orders/{order}/shipping', [AdminOrderController::class, 'storeShipping'])->name('orders.shipping.store');
     Route::post('orders/{order}/shipping/refresh', [AdminOrderController::class, 'refreshShipping'])->name('orders.shipping.refresh');
 
@@ -228,6 +233,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('shipping/{shipping_record}/refresh', [ShippingRecordController::class, 'refreshStatus'])->name('shipping.refresh');
 
     // WhatsApp
+    Route::get('whatsapp', [WhatsAppTemplateController::class, 'dashboard'])->name('whatsapp.dashboard');
     Route::get('whatsapp/templates', [WhatsAppTemplateController::class, 'index'])->name('whatsapp.templates.index');
     Route::get('whatsapp/connection', [WhatsAppTemplateController::class, 'connection'])->name('whatsapp.connection');
     Route::post('whatsapp/templates', [WhatsAppTemplateController::class, 'store'])->name('whatsapp.templates.store');
@@ -242,6 +248,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('whatsapp/pairing/status', [WhatsAppPairingController::class, 'status'])->name('whatsapp.pairing.status');
     Route::get('whatsapp/pairing/qr', [WhatsAppPairingController::class, 'qr'])->name('whatsapp.pairing.qr');
     Route::post('whatsapp/pairing/code', [WhatsAppPairingController::class, 'code'])->name('whatsapp.pairing.code');
+    Route::post('whatsapp/pairing/refresh-qr', [WhatsAppPairingController::class, 'refreshQr'])->name('whatsapp.pairing.refresh-qr');
 
 
     // Analytics

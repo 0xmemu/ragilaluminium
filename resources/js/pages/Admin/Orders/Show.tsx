@@ -12,6 +12,10 @@ import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
+import {
+  PrintAddressArea,
+  usePrintAddress,
+} from "@/components/shared/print-address"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
@@ -54,6 +58,7 @@ interface OrderDetail {
   shipping_province?: string | null
   shipping_postal_code?: string | null
   notes?: string | null
+  admin_notes?: string | null
   subtotal_amount: number
   shipping_amount: number
   shipping_subsidy_amount?: number
@@ -213,6 +218,8 @@ interface EditFormData {
   postal_code: string
   notes: string
   edit_note: string
+  /** Error dari server saat edit ditolak (mis. terkunci karena sudah ada resi). */
+  edit?: string
   items: EditLine[]
 }
 
@@ -456,7 +463,9 @@ export default function OrderShow({
   events = [],
   tracking,
   primaryAction,
+  secondaryAction,
   updateStatusUrl,
+  adminNotesUrl,
   shippingActions,
   workflowLinks,
   editPolicy,
@@ -466,7 +475,9 @@ export default function OrderShow({
   events?: OrderEvent[]
   tracking?: TrackingProps
   primaryAction: PrimaryAction | null
+  secondaryAction?: PrimaryAction | null
   updateStatusUrl: string
+  adminNotesUrl?: string
   shippingActions: ShippingActions
   workflowLinks: Array<{ label: string; href: string }>
   editPolicy?: EditPolicy | null
@@ -492,6 +503,22 @@ export default function OrderShow({
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
+  const { printing, handlePrint } = usePrintAddress()
+  const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
+  const [adminNotesBusy, setAdminNotesBusy] = React.useState(false)
+
+  function saveAdminNotes(next: string) {
+    if (!adminNotesUrl) return
+    setAdminNotesBusy(true)
+    router.put(
+      adminNotesUrl,
+      { admin_notes: next },
+      {
+        preserveScroll: true,
+        onFinish: () => setAdminNotesBusy(false),
+      },
+    )
+  }
 
   function updateStatus(next?: string, cancelReason?: string) {
     const nextStatus = next ?? statusForm.data.order_status
@@ -635,6 +662,16 @@ export default function OrderShow({
               <p className="truncate text-xs text-muted-foreground">{primaryAction.hint}</p>
             ) : null}
           </div>
+        ) : null}
+        {secondaryAction?.next_status ? (
+          <Button
+            variant="secondary"
+            disabled={statusBusy}
+            onClick={() => updateStatus(secondaryAction.next_status!)}
+            className="shrink-0"
+          >
+            {statusBusy ? "Memproses..." : secondaryAction.label}
+          </Button>
         ) : null}
         {order.whatsapp_url ? (
           <Button asChild variant="ghost">
@@ -862,14 +899,24 @@ export default function OrderShow({
           <SectionCard
             title="Alamat pengiriman"
             action={
-              <button
-                type="button"
-                onClick={() => copyText(fullAddress(order))}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                <Icon name="copy" className="size-3" aria-hidden="true" />
-                Salin
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => copyText(fullAddress(order))}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  <Icon name="copy" className="size-3" aria-hidden="true" />
+                  Salin
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  <Icon name="printer" className="size-3" aria-hidden="true" />
+                  Cetak
+                </button>
+              </div>
             }
           >
             <p className="text-sm font-semibold">{order.customer_name}</p>
@@ -910,10 +957,49 @@ export default function OrderShow({
 
 
         <aside className="space-y-5">
-          <SectionCard title="Catatan internal">
+          <SectionCard title="Catatan pembeli">
             <p className="whitespace-pre-wrap text-[13px] leading-6 text-muted-foreground">
-              {order.notes?.trim() || "Belum ada catatan."}
+              {order.notes?.trim() || "Tidak ada catatan dari pembeli."}
             </p>
+          </SectionCard>
+
+          <SectionCard
+            title="Catatan internal"
+            description="Hanya terlihat admin — tidak masuk invoice atau WhatsApp."
+          >
+            <div className="space-y-2.5">
+              <Textarea
+                rows={4}
+                value={adminNotes}
+                onChange={(event) => setAdminNotes(event.target.value)}
+                placeholder="Tulis catatan internal untuk pesanan ini…"
+                maxLength={5000}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={adminNotesBusy}
+                  onClick={() => saveAdminNotes(adminNotes)}
+                >
+                  {adminNotesBusy ? "Menyimpan..." : "Simpan catatan"}
+                </Button>
+                {order.admin_notes?.trim() ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={adminNotesBusy}
+                    onClick={() => {
+                      setAdminNotes("")
+                      saveAdminNotes("")
+                    }}
+                  >
+                    Hapus
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </SectionCard>
 
           <section ref={lacakRef} id="lacak-pesanan" className="space-y-4">
@@ -1098,6 +1184,7 @@ export default function OrderShow({
           </SectionCard>
         </aside>
       </div>
+      {printing ? <PrintAddressArea data={order} /> : null}
     </AdminLayout>
   )
 }

@@ -46,7 +46,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className={cn("container-page py-4", isContact && "hidden sm:block")}>
+        <div className={cn("container-page py-2", isContact && "hidden sm:block")}>
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -54,7 +54,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
             ]}
           />
         </div>
-        <div className={cn("container-page", isContact ? "pb-4 pt-4" : isLegal ? "max-w-3xl pb-8 pt-4" : "pb-6 pt-4 lg:pb-8 lg:pt-6")}>
+        <div className="container-page py-2">
           {isContact ? (
             <div className="flex items-center gap-2">
               <button
@@ -63,9 +63,9 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                 className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
-                <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
+              <h1 className="text-base font-bold tracking-tight text-foreground">
                 Hubungi Kami
               </h1>
             </div>
@@ -74,11 +74,6 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
               {heading}
             </p>
           )}
-          {isLegal && page.updated_at_label ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Terakhir diperbarui: {page.updated_at_label}
-            </p>
-          ) : null}
         </div>
       </section>
 

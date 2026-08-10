@@ -116,7 +116,7 @@ export function InstallationLightbox({
                 className="absolute left-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex"
                 aria-label="Media sebelumnya"
               >
-                <Icon name="caret-left" className="size-5" weight="bold" aria-hidden />
+                <Icon name="arrow-left" className="size-5" weight="bold" aria-hidden />
               </button>
               <button
                 type="button"
@@ -124,7 +124,7 @@ export function InstallationLightbox({
                 className="absolute right-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex"
                 aria-label="Media berikutnya"
               >
-                <Icon name="caret-right" className="size-5" weight="bold" aria-hidden />
+                <Icon name="arrow-right" className="size-5" weight="bold" aria-hidden />
               </button>
             </>
           ) : null}

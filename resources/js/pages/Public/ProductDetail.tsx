@@ -122,7 +122,7 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
         aria-label="Lihat semua"
       >
         <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
-          <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+          <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
         <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
           Lihat semua
@@ -504,7 +504,7 @@ export default function ProductDetail({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-4 sm:block">
+        <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -536,7 +536,7 @@ export default function ProductDetail({
                     className="absolute left-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:hidden"
                     aria-label="Kembali"
                   >
-                    <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                    <Icon name="arrow-left" className="size-5" aria-hidden="true" />
                   </button>
 
                   {/* Horizontal strip: semua gambar sejajar — swipe real-time */}
@@ -583,7 +583,7 @@ export default function ProductDetail({
                         aria-label="Lihat foto sebelumnya"
                         className="absolute left-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#525252] text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-[#303030] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-left-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
                       >
-                        <Icon name="caret-left" className="size-6" weight="bold" aria-hidden="true" />
+                        <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
                       </button>
                       <button
                         type="button"
@@ -592,7 +592,7 @@ export default function ProductDetail({
                         aria-label="Lihat foto berikutnya"
                         className="absolute right-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#525252] text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-[#303030] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-right-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
                       >
-                        <Icon name="caret-right" className="size-6" weight="bold" aria-hidden="true" />
+                        <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
                       </button>
                     </>
                   ) : null}
@@ -652,7 +652,7 @@ export default function ProductDetail({
 
           <div className="min-w-0 lg:sticky lg:top-28">
             {/* Nama produk + varian terpilih */}
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-base font-bold tracking-tight text-foreground">
               {title}
               {selectedVariant?.label ? (
                 <span className="ml-1.5 text-sm font-normal text-muted-foreground">

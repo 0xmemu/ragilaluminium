@@ -291,7 +291,7 @@ export default function ResourceIndex({
     <div className="flex flex-wrap items-center gap-2">
       {toolbarLinks.map((link) => (
         <Button key={link.href} asChild variant="secondary">
-          <Link href={link.href}>{link.label}</Link>
+          <a href={link.href}>{link.label}</a>
         </Button>
       ))}
       {createHref ? (

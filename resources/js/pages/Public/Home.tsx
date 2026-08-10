@@ -219,7 +219,7 @@ function MobileSeeMoreSlide({
               : "border-foreground/25 text-foreground hover:border-foreground/40",
           )}
         >
-          <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+          <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
         <span className="max-w-full text-center text-[12px] font-bold leading-tight tracking-tight">
           {label}
@@ -732,7 +732,7 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
                     aria-label="Slide sebelumnya"
                     className="absolute left-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
                   >
-                    <Icon name="caret-left" className="size-6" weight="bold" aria-hidden="true" />
+                    <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
@@ -740,7 +740,7 @@ function HeroPromo({ slides }: { slides: PromoSlide[] }) {
                     aria-label="Slide berikutnya"
                     className="absolute right-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
                   >
-                    <Icon name="caret-right" className="size-6" weight="bold" aria-hidden="true" />
+                    <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
                   </button>
 
                   <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
@@ -1204,7 +1204,7 @@ function KamiBantu() {
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-foreground text-background section-space">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
-        <div className="mx-auto mb-3 max-w-xl text-center md:mb-4">
+        <div className="mx-auto mb-2 max-w-xl text-center md:mb-4">
           <SectionHeading
             size="display"
             fitHeading={false}
@@ -1217,7 +1217,7 @@ function KamiBantu() {
             }
           />
         </div>
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-2 lg:gap-3">
           {HELP_STEPS.map((item, index) => {
             const variant = HELP_CARD_VARIANTS[index % HELP_CARD_VARIANTS.length]
 
@@ -1225,21 +1225,21 @@ function KamiBantu() {
               <article
                 key={item.title}
                 className={cn(
-                  "flex min-h-[13.5rem] flex-col items-start gap-4 rounded-md border border-white/10 p-4 text-left shadow-[0_8px_24px_rgba(10,0,0,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(10,0,0,0.18)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:min-h-[14.5rem] sm:p-5",
+                  "flex min-h-[8.75rem] flex-col items-start gap-1.5 rounded-md border border-white/10 p-2.5 text-left shadow-[0_8px_24px_rgba(10,0,0,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(10,0,0,0.18)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:min-h-[14.5rem] sm:gap-4 sm:p-5",
                   variant.card,
                 )}
               >
-                <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-md sm:size-12", variant.icon)}>
-                  <Icon name={item.icon} className="size-5 sm:size-6" aria-hidden="true" />
+                <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-md sm:size-12", variant.icon)}>
+                  <Icon name={item.icon} className="size-4 sm:size-6" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <span className={cn("text-[11px] font-bold tracking-tight", variant.number)}>
+                  <span className={cn("text-[10px] font-bold tracking-tight sm:text-[11px]", variant.number)}>
                     0{index + 1}
                   </span>
-                  <h3 className={cn("mt-1 text-[14px] font-bold leading-snug tracking-tight", variant.title)}>
+                  <h3 className={cn("mt-0.5 text-[12px] font-bold leading-tight tracking-tight sm:mt-1 sm:leading-snug sm:text-[13px]", variant.title)}>
                     {item.title}
                   </h3>
-                  <p className={cn("mt-2 line-clamp-3 text-xs leading-5 sm:text-sm", variant.description)}>
+                  <p className={cn("mt-1 line-clamp-2 text-[11px] leading-[1.3] sm:mt-2 sm:line-clamp-3 sm:leading-5 sm:text-sm", variant.description)}>
                     {item.description}
                   </p>
                 </div>
@@ -1247,7 +1247,7 @@ function KamiBantu() {
             )
           })}
         </div>
-        <div className="mt-6 flex w-full max-w-xl flex-col items-stretch gap-2 sm:mx-auto sm:flex-row sm:items-center sm:justify-center sm:gap-3">
+        <div className="mt-4 flex w-full max-w-xl flex-col items-stretch gap-2 sm:mx-auto sm:flex-row sm:items-center sm:justify-center sm:gap-3">
           <Button asChild className="min-w-0 flex-1 whitespace-nowrap bg-background px-3 text-xs text-primary hover:bg-background/90 sm:px-6 sm:text-sm">
             <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
           </Button>

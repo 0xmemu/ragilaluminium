@@ -132,7 +132,7 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
         aria-label="Lihat selengkapnya"
       >
         <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
-          <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+          <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
         <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
           selengkapnya
@@ -173,7 +173,7 @@ function DesignProductRail({
             className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
           >
             Lihat selengkapnya
-            <Icon name="caret-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+            <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
           </Link>
         </div>
       </div>
@@ -282,7 +282,7 @@ export default function ModelDetail({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-4 sm:block">
+        <div className="container-page hidden pt-4 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -291,10 +291,23 @@ export default function ModelDetail({
             ]}
           />
         </div>
+        <div className="container-page pb-4 pt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+              aria-label="Kembali"
+            >
+              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="text-base font-bold tracking-tight text-foreground">Model Produk</h1>
+          </div>
+        </div>
       </section>
 
       <section className="pb-8 sm:pb-10">
-        <div className="container-page pt-4 sm:pt-6">
+        <div className="container-page py-2 sm:pt-3">
           <div className="md:grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-start md:gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
             <div className="relative mx-auto aspect-square w-full max-w-[22rem] overflow-hidden bg-surface-muted md:mx-0 md:max-w-none">
               <ResponsiveImage
@@ -308,19 +321,9 @@ export default function ModelDetail({
             </div>
 
             <div className="min-w-0 pt-5 md:pt-0">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.history.back()}
-                  className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
-                  aria-label="Kembali"
-                >
-                  <Icon name="caret-left" className="size-5" aria-hidden="true" />
-                </button>
-                <h1 className="text-lg font-bold leading-tight tracking-tight text-foreground">
-                  {model.title}
-                </h1>
-              </div>
+              <h1 className="text-base font-bold leading-tight tracking-tight text-foreground">
+                {model.title}
+              </h1>
               {model.desc ? (
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-4 sm:text-[15px] sm:leading-7">
                   {model.desc}

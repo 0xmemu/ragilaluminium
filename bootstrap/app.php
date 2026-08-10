@@ -57,6 +57,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'webhook/*',
+            // Admin WhatsApp pairing endpoints (auth+admin protected; proxied to bot with API key).
+            'admin/whatsapp/pairing/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

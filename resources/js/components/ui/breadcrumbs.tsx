@@ -32,7 +32,7 @@ export function Breadcrumbs({ items, className, tone = "default", singleLine = f
         )}
         aria-label="Kembali ke halaman sebelumnya"
       >
-        <Icon name="caret-left" className="size-4" weight="bold" aria-hidden="true" />
+        <Icon name="arrow-left" className="size-5" weight="bold" aria-hidden="true" />
       </button>
     ) : null}
     <ol className={cn("flex items-center gap-2 text-xs font-medium", singleLine ? "flex-nowrap overflow-hidden" : "flex-wrap", tone === "onDark" ? "text-white/55" : "text-muted-foreground")}>

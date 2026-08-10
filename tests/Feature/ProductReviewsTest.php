@@ -141,11 +141,10 @@ class ProductReviewsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('marketplaceTestimonials', 2)
-                ->missing('websiteTestimonials')
+                ->has('testimonials', 2)
                 ->has('pageMeta')
                 ->where('pageMeta.heading', 'Apa kata pelanggan kami')
-                ->missing('installationMeta')
+                ->has('modelNav', 1)
                 ->has('installationsHref')
             );
     }
@@ -269,15 +268,13 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 2,
         ]);
 
-        // /reviews kini murni galeri screenshot marketplace/WA; query ?source= diabaikan.
         $this->get(route('reviews', ['source' => 'marketplace']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('marketplaceTestimonials', 2)
-                ->where('testimonialMode', 'marketplace')
-                ->missing('websiteTestimonials')
-                ->missing('stats')
+                ->has('testimonials', 3)
+                ->where('stats.website_total', 1)
+                ->has('modelNav')
                 ->has('pageMeta')
                 ->has('installationsHref')
             );
@@ -286,13 +283,12 @@ class ProductReviewsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('marketplaceTestimonials', 2)
-                ->where('testimonialMode', 'marketplace')
-                ->missing('websiteTestimonials')
+                ->has('testimonials', 3)
+                ->where('stats.website_total', 1)
             );
     }
 
-    public function test_reviews_page_falls_back_to_published_website_reviews_with_images(): void
+    public function test_reviews_page_lists_published_website_reviews(): void
     {
         $page = CmsPage::create([
             'slug' => 'testimoni',
@@ -324,13 +320,12 @@ class ProductReviewsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('marketplaceTestimonials', 1)
-                ->where('marketplaceTestimonials.0.customer_name', 'Web User')
-                ->where('testimonialMode', 'website_fallback')
+                ->has('testimonials', 2)
+                ->where('stats.website_total', 2)
             );
     }
 
-    public function test_ulasan_page_returns_website_reviews_only(): void
+    public function test_reviews_page_combines_website_and_marketplace_and_filters_by_model(): void
     {
         $page = CmsPage::create([
             'slug' => 'testimoni',
@@ -339,8 +334,12 @@ class ProductReviewsTest extends TestCase
             'published' => true,
         ]);
 
+        $sliding = $this->createVisibleProduct(['product_model' => 'SLIDING']);
+        $swing = $this->createVisibleProduct(['product_model' => 'SWING']);
+
         CmsTestimonial::create([
             'cms_page_id' => $page->id,
+            'product_id' => $sliding->id,
             'customer_name' => 'Shopee User',
             'message' => 'Dari Shopee',
             'image_url' => 'https://cdn.example.com/shopee.jpg',
@@ -351,7 +350,8 @@ class ProductReviewsTest extends TestCase
 
         CmsTestimonial::create([
             'cms_page_id' => $page->id,
-            'customer_name' => 'Web User',
+            'product_id' => $sliding->id,
+            'customer_name' => 'Web Sliding',
             'message' => 'Dari website',
             'rating' => 5,
             'source' => 'website',
@@ -359,37 +359,52 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $this->get(route('ulasan'))
-            ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Public/Ulasan')
-                ->has('websiteTestimonials', 1)
-                ->where('websiteTestimonials.0.customer_name', 'Web User')
-                ->where('stats.website_total', 1)
-                ->where('stats.average_rating', 5)
-                ->where('activeSort', 'newest')
-                ->has('installationsHref')
-            );
-
         CmsTestimonial::create([
             'cms_page_id' => $page->id,
+            'product_id' => $swing->id,
+            'customer_name' => 'Web Swing',
+            'message' => 'Dari website swing',
+            'rating' => 4,
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 2,
+        ]);
+
+        // Draft tidak terbit.
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'product_id' => $swing->id,
             'customer_name' => 'Web Draft',
             'message' => 'Belum terbit',
             'rating' => 1,
             'source' => 'website',
             'published' => false,
-            'sort_order' => 2,
+            'sort_order' => 3,
         ]);
 
-        // Ulasan draft tidak ikut terhitung di stats maupun daftar.
-        $this->get(route('ulasan', ['sort' => 'rating_asc']))
+        // Halaman gabungan: marketplace + website tampil dalam satu slug /reviews.
+        $this->get(route('reviews'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Public/Ulasan')
-                ->has('websiteTestimonials', 1)
-                ->where('stats.website_total', 1)
-                ->where('activeSort', 'rating_asc')
+                ->component('Public/Reviews')
+                ->has('testimonials', 3)
+                ->where('stats.website_total', 2)
+                ->where('stats.average_rating', 4.5)
+                ->has('modelNav')
+                ->has('installationsHref')
             );
+
+        // Filter model produk ala halaman Model Produk.
+        $this->get(route('reviews', ['model' => 'WINDOW|SLIDING']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Reviews')
+                ->has('testimonials', 2)
+                ->where('activeModel', 'WINDOW|SLIDING')
+            );
+
+        // Slug lama /ulasan di-redirect 301 ke /reviews.
+        $this->get('/ulasan')->assertRedirect(route('reviews'));
     }
 
     public function test_home_splits_marketplace_and_website_testimonials(): void

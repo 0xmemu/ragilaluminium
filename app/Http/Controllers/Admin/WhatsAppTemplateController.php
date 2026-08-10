@@ -14,6 +14,79 @@ use Inertia\Response;
 
 class WhatsAppTemplateController extends Controller
 {
+
+    public function dashboard(): Response
+    {
+        $this->ensureAutomationTemplates();
+
+        $templates = WhatsAppTemplate::query()
+            ->whereIn('internal_key', WhatsAppAutomationCatalog::keys())
+            ->get()
+            ->keyBy('internal_key');
+
+        $automations = collect(WhatsAppAutomationCatalog::all())->map(function (array $trigger) use ($templates) {
+            /** @var WhatsAppTemplate $template */
+            $template = $templates->get($trigger['internal_key']);
+
+            return [
+                'id' => $template?->id,
+                'internal_key' => $trigger['internal_key'],
+                'label' => $trigger['label'],
+                'description' => $trigger['description'],
+                'icon' => $trigger['icon'],
+                'status' => $template?->status ?? 'inactive',
+                'provider_template_name' => $template?->provider_template_name ?? '',
+                'language_code' => $template?->language_code ?? '',
+                'editUrl' => $template ? route('admin.whatsapp.templates.edit', $template) : null,
+            ];
+        })->values()->all();
+
+        $connection = app(WhatsAppService::class)->connectionStatus();
+
+        $recentMessages = WhatsAppMessage::query()
+            ->with('order')
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn (WhatsAppMessage $m) => [
+                'id' => $m->id,
+                'provider' => strtoupper((string) $m->provider),
+                'direction' => $m->direction,
+                'phone_number' => $m->phone_number,
+                'status' => $m->status,
+                'content' => mb_substr((string) $m->content_text, 0, 80),
+                'order_number' => $m->order?->order_number ?? '-',
+                'created_at' => optional($m->created_at)?->toDateTimeString(),
+            ]);
+
+        $outbound = WhatsAppMessage::query()->where('direction', 'outbound');
+        $stats = [
+            'sent' => (clone $outbound)->whereIn('status', ['sent', 'delivered', 'read'])->count(),
+            'failed' => (clone $outbound)->where('status', 'failed')->count(),
+            'total' => WhatsAppMessage::query()->count(),
+            'last_sent_at' => (clone $outbound)->whereNotNull('sent_at')->latest('sent_at')->value('sent_at'),
+        ];
+
+        return Inertia::render('Admin/WhatsApp/Dashboard', [
+            'title' => 'WhatsApp',
+            'description' => 'Kelola koneksi, template pesan otomatis, dan log pengiriman WhatsApp dalam satu tempat.',
+            'automations' => $automations,
+            'connection' => array_merge($connection, [
+                'webhook_path' => '/webhook/whatsapp',
+                'baileys_webhook_path' => '/webhook/whatsapp/baileys',
+            ]),
+            'recentMessages' => $recentMessages,
+            'stats' => $stats,
+            'statusUrl' => route('admin.whatsapp.pairing.status'),
+            'qrUrl' => route('admin.whatsapp.pairing.qr'),
+            'refreshQrUrl' => route('admin.whatsapp.pairing.refresh-qr'),
+            'codeUrl' => route('admin.whatsapp.pairing.code'),
+            'templatesUrl' => route('admin.whatsapp.templates.index'),
+            'messagesUrl' => route('admin.whatsapp.messages.index'),
+            'pairingUrl' => route('admin.whatsapp.pairing'),
+        ]);
+    }
+
     public function index(): Response
     {
         $this->ensureAutomationTemplates();
@@ -74,6 +147,7 @@ class WhatsAppTemplateController extends Controller
             'submitUrl' => route('admin.whatsapp.templates.update', $template),
             'backUrl' => route('admin.whatsapp.templates.index'),
             'pairingUrl' => route('admin.whatsapp.pairing'),
+            'statusUrl' => route('admin.whatsapp.pairing.status'),
             'activateUrl' => route('admin.whatsapp.templates.activate', $template),
             'deactivateUrl' => route('admin.whatsapp.templates.deactivate', $template),
         ]);

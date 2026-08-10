@@ -35,6 +35,7 @@ class OrderController extends Controller
         ['key' => 'completed', 'label' => 'Selesai'],
         ['key' => 'cancelled', 'label' => 'Dibatalkan'],
         ['key' => 'return_in_process', 'label' => 'Retur Diproses'],
+        ['key' => 'return_completed', 'label' => 'Retur Selesai'],
         ['key' => 'issue', 'label' => 'Perlu Perhatian'],
     ];
 
@@ -329,6 +330,7 @@ class OrderController extends Controller
                 'shipping_province' => $order->shipping_province,
                 'shipping_postal_code' => $order->shipping_postal_code,
                 'notes' => $order->notes,
+                'admin_notes' => $order->admin_notes,
                 'subtotal_amount' => (float) $order->subtotal_amount,
                 'shipping_amount' => (float) $order->shipping_amount,
                 'shipping_subsidy_amount' => (float) $order->shipping_subsidy_amount,
@@ -376,7 +378,9 @@ class OrderController extends Controller
             'events' => $events,
             'tracking' => OrderTrackingPresenter::forOrder($order, $activeShipping),
             'primaryAction' => $primaryAction,
+            'secondaryAction' => $this->secondaryActionFor($order),
             'updateStatusUrl' => route('admin.orders.status', $order),
+            'adminNotesUrl' => route('admin.orders.admin-notes.update', $order),
             'editPolicy' => $this->orders->editPolicy($order),
             'editUrl' => route('admin.orders.items.update', $order),
             'shippingActions' => [
@@ -667,6 +671,7 @@ class OrderController extends Controller
             'shipping_city' => $order->shipping_city,
             'shipping_province' => $order->shipping_province,
             'notes' => $order->notes,
+            'admin_notes' => $order->admin_notes,
             'total_amount' => (float) $order->total_amount,
             'product_count' => (int) $order->items_count,
             'unit_count' => (int) ($order->units_count ?? 0),
@@ -675,6 +680,7 @@ class OrderController extends Controller
             'href' => route('admin.orders.show', $order),
             'whatsapp_url' => $phone ? 'https://wa.me/'.$phone : null,
             'primary_action' => $this->primaryActionFor($order),
+            'secondary_action' => $this->secondaryActionFor($order),
             'shipping_track' => OrderTrackingPresenter::forOrder($order, $shipping, withTimeline: false),
             'items' => $items->map(fn ($item) => $this->orderItemRow($item))->values()->all(),
             'items_total' => (int) $order->items_count,
@@ -769,11 +775,51 @@ class OrderController extends Controller
             ],
             'return_in_process' => [
                 'label' => 'Selesaikan Retur',
-                'next_status' => 'completed',
+                'next_status' => 'return_completed',
                 'kind' => 'advance_status',
-                'hint' => null,
+                'hint' => 'Menutup retur: kirim notifikasi WhatsApp ke pelanggan.',
             ],
             default => null,
         };
+    }
+
+    /**
+     * Tindakan sekunder yang mengikuti status (spec §Tindakan Pesanan).
+     *
+     * @return array{label: string, next_status: string|null, kind: string, hint: string|null}|null
+     */
+    private function secondaryActionFor(Order $order): ?array
+    {
+        return match ($order->order_status) {
+            // Sampai → Selesaikan Pesanan (primary) + Proses Retur (sekunder).
+            'delivered' => [
+                'label' => 'Proses Retur',
+                'next_status' => 'return_in_process',
+                'kind' => 'start_return',
+                'hint' => 'Menandai pesanan masuk proses retur.',
+            ],
+            default => null,
+        };
+    }
+
+    /**
+     * Simpan catatan internal admin (spec §Catatan Internal Admin):
+     * satu kolom, bisa tambah/ubah/hapus, tidak masuk invoice/WhatsApp.
+     */
+    public function updateAdminNotes(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'admin_notes' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $note = filled($validated['admin_notes'] ?? null)
+            ? trim((string) $validated['admin_notes'])
+            : null;
+
+        $order->update(['admin_notes' => $note]);
+
+        return back()->with('success', $note === null
+            ? 'Catatan internal dihapus.'
+            : 'Catatan internal disimpan.');
     }
 }

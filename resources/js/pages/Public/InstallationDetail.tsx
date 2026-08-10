@@ -72,10 +72,10 @@ export default function InstallationDetail({
       <Head title={docTitle} />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-4 sm:block">
+        <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs items={crumbs} />
         </div>
-        <div className="container-page flex flex-col gap-3 pb-4 pt-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="container-page flex flex-col gap-3 py-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <button
@@ -84,16 +84,12 @@ export default function InstallationDetail({
                 className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                 aria-label="Kembali"
               >
-                <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
+              <h1 className="text-base font-bold tracking-tight text-foreground">
                 {product.name}
               </h1>
             </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-                {countLabel || `${media.length} dokumentasi`} pemasangan untuk produk ini. Ketuk media
-                untuk memperbesar.
-              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {modelHref ? (
@@ -161,7 +157,7 @@ export default function InstallationDetail({
                       className="absolute left-3 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:opacity-90"
                       aria-label="Media sebelumnya"
                     >
-                      <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                      <Icon name="arrow-left" className="size-5" aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -169,7 +165,7 @@ export default function InstallationDetail({
                       className="absolute right-3 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:opacity-90"
                       aria-label="Media berikutnya"
                     >
-                      <Icon name="caret-right" className="size-5" aria-hidden="true" />
+                      <Icon name="arrow-right" className="size-5" aria-hidden="true" />
                     </button>
                   </>
                 ) : null}

@@ -115,7 +115,7 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
         aria-label="Lihat semua"
       >
         <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
-          <Icon name="caret-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+          <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
         <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
           Lihat semua

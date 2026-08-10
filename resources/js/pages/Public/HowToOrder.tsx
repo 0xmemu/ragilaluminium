@@ -54,7 +54,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-4 sm:block">
+        <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -62,7 +62,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
             ]}
           />
         </div>
-        <div className="container-page pb-4 pt-4">
+        <div className="container-page py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -70,9 +70,9 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
               className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
-              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-base font-bold tracking-tight text-foreground">
               {guide.heading}
             </h1>
           </div>

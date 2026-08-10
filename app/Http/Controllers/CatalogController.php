@@ -128,7 +128,7 @@ class CatalogController extends Controller
         $model = CatalogLabels::normalizeModel($request->input('model'));
         $design = CatalogLabels::normalizeDesign($request->input('design'));
         $promoOnly = $mode === 'promo';
-        $flashOnly = $mode === 'flash';
+        $flashOnly = $mode === 'flash' || $request->boolean('flash');
         $flashPeriodLive = FlashSalePeriodSettings::isLive();
 
         $promoAttributes = [
@@ -266,7 +266,7 @@ class CatalogController extends Controller
         }
 
         $basePath = match (true) {
-            $flashOnly => '/flash-sale',
+            $request->routeIs('catalog.flash-sale') => '/flash-sale',
             $promoOnly => '/promo',
             $request->routeIs('catalog.category', 'catalog.design') => '/'.$request->path(),
             $category === 'WINDOW' => '/products/windows',
@@ -398,12 +398,18 @@ class CatalogController extends Controller
     protected function modelsHub(Request $request): Response
     {
         $design = CatalogLabels::normalizeDesign($request->input('design'));
+        $category = CatalogLabels::normalizeCategory($request->input('category'));
 
         return Inertia::render('Public/ModelProduk', [
-            'models' => app(ModelProductService::class)->storefrontCards(0, $design),
+            'models' => app(ModelProductService::class)->storefrontCards(0, $design, $category),
             'popularProducts' => InertiaCatalog::popularProductCards(10),
             'filterDesigns' => CatalogTaxonomy::availableDesignFilters(),
+            'filterModels' => collect(CatalogTaxonomy::models($category))
+                ->map(fn ($model) => ['value' => $model, 'label' => CatalogLabels::model($model) ?: $model])
+                ->values()
+                ->all(),
             'activeDesign' => $design,
+            'activeCategory' => $category,
         ]);
     }
 

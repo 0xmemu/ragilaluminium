@@ -64,7 +64,7 @@ export default function ErrorPage({ status }: { status: number }) {
             className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
             aria-label="Kembali"
           >
-            <Icon name="caret-left" className="size-5" aria-hidden="true" />
+            <Icon name="arrow-left" className="size-5" aria-hidden="true" />
           </button>
           <h1 className="mt-4 max-w-xl font-display text-lg font-bold tracking-tight text-foreground">
           {copy.title}

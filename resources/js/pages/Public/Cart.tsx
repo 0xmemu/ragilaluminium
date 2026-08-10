@@ -55,9 +55,8 @@ export default function Cart({
     ))
   }
 
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(
-    () => new Set(initialItems.map((it) => it.line_id))
-  )
+  const [selectMode, setSelectMode] = React.useState(false)
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const selectForm = useForm({ line_ids: [] as string[] })
   const deleteForm = useForm({ line_ids: [] as string[] })
   const restoreForm = useForm({})
@@ -86,13 +85,27 @@ export default function Cart({
     })
   }
 
-  // Compute selected-only subtotals
-  const selectedItems = cartItems.filter((it) => selectedIds.has(it.line_id))
-  const selectedSubtotal = selectedItems.reduce(
+  function enterSelectMode() {
+    setSelectMode(true)
+    setSelectedIds(new Set())
+    setConfirmDelete(false)
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    setConfirmDelete(false)
+  }
+
+  // Checkout scope: semua item secara default; hanya item terpilih saat mode pilih.
+  const effectiveItems = selectMode
+    ? cartItems.filter((it) => selectedIds.has(it.line_id))
+    : cartItems
+  const selectedSubtotal = effectiveItems.reduce(
     (sum, it) => sum + (typeof it.line_total === "number" ? it.line_total : 0),
     0
   )
-  const selectedCompare = selectedItems.reduce(
+  const selectedCompare = effectiveItems.reduce(
     (sum, it) =>
       sum +
       (typeof it.line_compare_total === "number"
@@ -109,7 +122,8 @@ export default function Cart({
 
   function checkoutSelected(e: React.FormEvent) {
     e.preventDefault()
-    selectForm.setData("line_ids", [...selectedIds])
+    const lineIds = selectMode ? [...selectedIds] : cartItems.map((it) => it.line_id)
+    selectForm.setData("line_ids", lineIds)
     selectForm.post(routeUrl("cart.select"))
   }
 
@@ -134,7 +148,7 @@ export default function Cart({
       <Head title="Keranjang" />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page pb-4 pt-4">
+        <div className="container-page py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -142,9 +156,9 @@ export default function Cart({
               className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
               aria-label="Kembali"
             >
-              <Icon name="caret-left" className="size-5" aria-hidden="true" />
+              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-base font-bold tracking-tight text-foreground">
               Keranjang
             </h1>
           </div>
@@ -174,34 +188,48 @@ export default function Cart({
       <section className={cartItems.length ? "container-page min-w-0 overflow-x-hidden py-4" : "container-page py-4"}>
         {cartItems.length ? (
           <div className="space-y-4">
-            {/* Select all bar */}
+            {/* Select bar */}
             <div className="flex items-center justify-between gap-3 border-b border-border pb-2.5">
               <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    ref={(el) => { if (el) el.indeterminate = someSelected }}
-                    onChange={toggleAll}
-                    className="size-4 cursor-pointer rounded border-border accent-primary"
-                  />
-                  <span className="text-xs font-semibold text-foreground">
-                    {allSelected
-                      ? "Batalkan semua"
-                      : someSelected
-                        ? `${selectedIds.size}/${cartItems.length} dipilih`
-                        : "Pilih semua"}
-                  </span>
-                </label>
-                {selectedIds.size > 0 ? (
+                {selectMode ? (
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => { if (el) el.indeterminate = someSelected }}
+                      onChange={toggleAll}
+                      className="size-4 cursor-pointer rounded border-border accent-primary"
+                    />
+                    <span className="text-xs font-semibold text-foreground">
+                      {allSelected
+                        ? "Batalkan semua"
+                        : someSelected
+                          ? `${selectedIds.size}/${cartItems.length} dipilih`
+                          : "Pilih semua"}
+                    </span>
+                  </label>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="h-7 gap-1 px-2.5 text-[11px]"
+                    onClick={enterSelectMode}
+                  >
+                    <Icon name="check" className="size-3" aria-hidden="true" />
+                    Pilih
+                  </Button>
+                )}
+                {selectMode && selectedIds.size > 0 ? (
                   <span className="text-xs text-muted-foreground">
                     {selectedIds.size} item
                   </span>
                 ) : null}
               </div>
 
-              {selectedIds.size > 0 ? (
-                <form onSubmit={deleteSelected} className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                {selectMode && selectedIds.size > 0 ? (
+                  <form onSubmit={deleteSelected} className="flex items-center gap-2">
                   {confirmDelete ? (
                     <>
                       <span className="text-xs font-semibold text-destructive">
@@ -239,7 +267,20 @@ export default function Cart({
                     </Button>
                   )}
                 </form>
-              ) : null}
+                ) : null}
+                {selectMode ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="h-7 px-2.5 text-[11px]"
+                    onClick={exitSelectMode}
+                    disabled={selectForm.processing || deleteForm.processing}
+                  >
+                    Selesai
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
@@ -249,6 +290,7 @@ export default function Cart({
                     <CartLineItem
                       key={item.line_id}
                       item={item}
+                      selectable={selectMode}
                       selected={selectedIds.has(item.line_id)}
                       onToggle={() => toggleOne(item.line_id)}
                       onQuantityChange={(quantity) => updateLocalQuantity(item.line_id, quantity)}
@@ -269,7 +311,7 @@ export default function Cart({
                   <div className="flex justify-between gap-4">
                     <dt className="text-muted-foreground">
                       Subtotal
-                      {selectedIds.size !== cartItems.length ? (
+                      {selectMode && selectedIds.size !== cartItems.length ? (
                         <span className="ml-1 text-xs">({selectedIds.size} item)</span>
                       ) : null}
                     </dt>
@@ -304,9 +346,13 @@ export default function Cart({
                     type="submit"
                     size="md"
                     className="mt-4 hidden h-10 w-full lg:inline-flex text-sm"
-                    disabled={noneSelected || selectForm.processing}
+                    disabled={(selectMode && noneSelected) || selectForm.processing}
                   >
-                    {noneSelected ? "Pilih item terlebih dahulu" : `Checkout (${selectedIds.size})`}
+                    {selectMode
+                      ? noneSelected
+                        ? "Pilih item terlebih dahulu"
+                        : `Checkout (${selectedIds.size})`
+                      : "Checkout"}
                     <Icon name="arrow-right" className="size-4" aria-hidden="true" />
                   </Button>
                 </form>
@@ -319,7 +365,7 @@ export default function Cart({
             <MobileStickyCta aria-label="Lanjut checkout" spacerClassName="h-[4.5rem]">
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Subtotal {selectedIds.size !== cartItems.length ? `(${selectedIds.size} item)` : ""}
+                  Subtotal {selectMode && selectedIds.size !== cartItems.length ? `(${selectedIds.size} item)` : ""}
                 </span>
                 <span className="tabular-nums text-sm font-bold leading-5">
                   {formatCurrency(selectedSubtotal)}
@@ -330,9 +376,13 @@ export default function Cart({
                   type="submit"
                   size="md"
                   className="h-10 min-h-10 shrink-0 px-5 text-sm"
-                  disabled={noneSelected || selectForm.processing}
+                  disabled={(selectMode && noneSelected) || selectForm.processing}
                 >
-                  {noneSelected ? "Pilih item" : `Checkout (${selectedIds.size})`}
+                  {selectMode
+                    ? noneSelected
+                      ? "Pilih item"
+                      : `Checkout (${selectedIds.size})`
+                    : "Checkout"}
                   <Icon name="arrow-right" className="size-4" aria-hidden="true" />
                 </Button>
               </form>

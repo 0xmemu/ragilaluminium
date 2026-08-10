@@ -14,7 +14,7 @@ function money(value: number | string | null | undefined): number {
   return Number.isFinite(amount) ? amount : 0
 }
 
-export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { item: CartItem; selected: boolean; onToggle: () => void; onQuantityChange: (quantity: number) => void }) {
+export function CartLineItem({ item, selected, onToggle, onQuantityChange, selectable = true }: { item: CartItem; selected: boolean; onToggle: () => void; onQuantityChange: (quantity: number) => void; selectable?: boolean }) {
   const page = usePage<SharedPageProps>()
   const removeForm = useForm({ line_id: item.line_id })
   const [saving, setSaving] = React.useState(false)
@@ -168,15 +168,17 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange }: { i
 
   return (
     <article className="flex min-w-0 items-start gap-3 border-b border-border py-2.5 sm:gap-4 sm:py-3">
-      <label className="flex shrink-0 items-center self-center pt-0">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={onToggle}
-          className="size-4 cursor-pointer rounded border-border text-primary accent-primary focus:ring-1 focus:ring-primary/50"
-          aria-label={`Pilih ${item.name}`}
-        />
-      </label>
+      {selectable ? (
+        <label className="flex shrink-0 items-center self-center pt-0">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggle}
+            className="size-4 cursor-pointer rounded border-border text-primary accent-primary focus:ring-1 focus:ring-primary/50"
+            aria-label={`Pilih ${item.name}`}
+          />
+        </label>
+      ) : null}
       <Link
         href={routeUrl("product.show", { parent_sku: item.parent_sku })}
         className="shrink-0 self-start"

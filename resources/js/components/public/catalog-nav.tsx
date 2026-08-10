@@ -78,6 +78,9 @@ export function CatalogNav({
   sheetOpen,
   onSheetOpenChange,
   filterSheet,
+  basePath,
+  isFlash = false,
+  onToggleFlash,
 }: {
   category: string
   categoryName: string
@@ -93,6 +96,9 @@ export function CatalogNav({
   sheetOpen: boolean
   onSheetOpenChange: (open: boolean) => void
   filterSheet: React.ReactNode
+  basePath: string
+  isFlash?: boolean
+  onToggleFlash: () => void
 }) {
   const activeCategory = CATEGORY_TABS.find((tab) => tab.code === category)
 
@@ -234,12 +240,19 @@ export function CatalogNav({
             {filterSheet}
           </Sheet>
 
-          <Link
-            href={routeUrl("catalog.flash-sale")}
-            className="inline-flex min-h-10 shrink-0 items-center rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30"
+          <button
+            type="button"
+            onClick={onToggleFlash}
+            aria-pressed={isFlash}
+            className={cn(
+              "inline-flex min-h-10 shrink-0 cursor-pointer items-center rounded-md border px-3.5 text-xs font-semibold transition",
+              isFlash
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-[#DEDEDE] bg-background text-foreground hover:border-foreground/30",
+            )}
           >
-            flashsale
-          </Link>
+            Flash Sale
+          </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

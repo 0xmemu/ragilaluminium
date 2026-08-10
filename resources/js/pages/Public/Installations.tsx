@@ -103,7 +103,7 @@ export default function Installations({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-4 sm:block">
+        <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs
             singleLine={!isModelLevel}
             items={
@@ -122,7 +122,7 @@ export default function Installations({
         </div>
 
         {isModelLevel ? (
-          <div className="container-page py-3">
+          <div className="container-page py-2">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <div className="flex items-center gap-2">
                 <button
@@ -131,9 +131,9 @@ export default function Installations({
                   className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
                   aria-label="Kembali"
                 >
-                  <Icon name="caret-left" className="size-5" aria-hidden="true" />
+                  <Icon name="arrow-left" className="size-5" aria-hidden="true" />
                 </button>
-                <h1 className="flex items-baseline gap-2 text-xl font-bold tracking-tight text-foreground">
+                <h1 className="flex items-baseline gap-2 text-base font-bold tracking-tight text-foreground">
                   {heading}
                   <span className="font-normal text-muted-foreground">|</span>
                   <span className="text-xs font-normal text-muted-foreground">{countLabel}</span>

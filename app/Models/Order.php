@@ -38,6 +38,7 @@ class Order extends Model
         'payment_method',
         'cod_flag',
         'notes',
+        'admin_notes',
         'created_by_user_id',
         'updated_by_user_id',
     ];

@@ -34,8 +34,44 @@ class WhatsAppPairingController extends Controller
             'statusUrl' => route('admin.whatsapp.pairing.status'),
             'qrUrl' => route('admin.whatsapp.pairing.qr'),
             'codeUrl' => route('admin.whatsapp.pairing.code'),
+            'refreshQrUrl' => route('admin.whatsapp.pairing.refresh-qr'),
             'provider' => $service->connectionStatus()['default_provider'],
+            'flash' => [
+                'success' => session('whatsapp_success'),
+                'error' => session('whatsapp_error'),
+                'code' => session('whatsapp_code'),
+            ],
         ]);
+    }
+
+    protected function sessionInfo(bool $connected): array
+    {
+        // Only a truly connected (open) gateway has a linked device. A creds file
+        // with a `me.id` does NOT mean the device was linked — requestPairingCode
+        // writes it before pairing completes. So report the number only when open.
+        if (! $connected) {
+            return ['has_session' => false, 'connected_phone' => null, 'session_name' => null];
+        }
+
+        $path = '/opt/baileys-bot/session/creds.json';
+        if (! is_file($path)) {
+            return ['has_session' => false, 'connected_phone' => null, 'session_name' => null];
+        }
+
+        try {
+            $data = json_decode((string) file_get_contents($path), true);
+            $me = $data['me'] ?? null;
+            $id = is_array($me) ? ($me['id'] ?? null) : null;
+            $phone = $id ? (string) preg_replace('/@.+$/', '', (string) $id) : null;
+
+            return [
+                'has_session' => filled($phone),
+                'connected_phone' => $phone,
+                'session_name' => is_array($me) ? ($me['name'] ?? null) : null,
+            ];
+        } catch (\Throwable $e) {
+            return ['has_session' => false, 'connected_phone' => null, 'session_name' => null];
+        }
     }
 
     public function status(): JsonResponse
@@ -51,11 +87,14 @@ class WhatsAppPairingController extends Controller
                 ]);
             }
 
-            return response()->json($response->json() ?? [
+            $payload = $response->json() ?? [
                 'status' => 'unknown',
                 'statusText' => 'Balasan gateway tidak terbaca',
                 'phone' => '',
-            ]);
+            ];
+
+            $connected = (($payload['status'] ?? '') === 'open');
+            return response()->json(array_merge($payload, $this->sessionInfo($connected)));
         } catch (\Throwable $e) {
             return response()->json([
                 'status' => 'unreachable',
@@ -80,7 +119,24 @@ class WhatsAppPairingController extends Controller
         ]);
     }
 
-    public function code(Request $request): JsonResponse
+    public function refreshQr(): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+    {
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders($this->headers())
+                ->post($this->baseUrl().'/api/refresh-qr');
+
+            if ($response->failed()) {
+                return back()->with('whatsapp_error', $response->json('error') ?? 'Gagal membuat QR baru.');
+            }
+
+            return back()->with('whatsapp_success', 'Membuat QR baru... Scan dalam beberapa detik.');
+        } catch (\Throwable $e) {
+            return back()->with('whatsapp_error', 'Gateway tidak dapat dijangkau.');
+        }
+    }
+
+    public function code(Request $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:20'],
@@ -97,18 +153,12 @@ class WhatsAppPairingController extends Controller
                 ->post($this->baseUrl().'/pairing-code', ['phone' => $phone]);
 
             if ($response->failed()) {
-                return response()->json([
-                    'error' => $response->json('error') ?? 'Gagal membuat pairing code.',
-                    'status' => $response->json('status') ?? 'unknown',
-                ], $response->status() >= 400 ? $response->status() : 422);
+                return back()->with('whatsapp_error', $response->json('error') ?? 'Gagal membuat pairing code.');
             }
 
-            return response()->json([
-                'code' => $response->json('code'),
-                'status' => $response->json('status'),
-            ]);
+            return back()->with('whatsapp_code', (string) $response->json('code'));
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'Gateway tidak dapat dijangkau: '.$e->getMessage()], 502);
+            return back()->with('whatsapp_error', 'Gateway tidak dapat dijangkau.');
         }
     }
 }

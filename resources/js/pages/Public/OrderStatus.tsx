@@ -144,16 +144,16 @@ export default function OrderStatus({
         />
       </Head>
 
-      <section className="container-page flex items-center gap-2 pb-4 pt-4 lg:pb-6">
+      <section className="container-page flex items-center gap-2 py-2">
         <button
           type="button"
           onClick={() => window.history.back()}
           className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
           aria-label="Kembali"
         >
-          <Icon name="caret-left" className="size-5" aria-hidden="true" />
+          <Icon name="arrow-left" className="size-5" aria-hidden="true" />
         </button>
-        <h1 className="text-lg font-bold text-foreground">
+        <h1 className="text-base font-bold text-foreground">
           {has_session_orders ? "Pesanan di perangkat ini" : "Cek pesanan"}
         </h1>
       </section>
