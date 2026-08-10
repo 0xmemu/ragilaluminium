@@ -114,9 +114,12 @@ class DashboardController extends Controller
                 'key' => 'confirm_overdue',
                 'label' => 'Perlu Konfirmasi > 24 Jam',
                 'count' => Order::where('order_status', 'pending_payment')
-                    ->where('created_at', '<', now()->subDay())
+                    ->where('updated_at', '<', now()->subDay())
                     ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'pending_payment']),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'pending_payment',
+                    'older_than' => '24h',
+                ]),
             ],
             [
                 'key' => 'processing_overdue',
@@ -124,7 +127,10 @@ class DashboardController extends Controller
                 'count' => Order::where('order_status', 'processing')
                     ->where('updated_at', '<', now()->subDay())
                     ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'processing']),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'processing',
+                    'older_than' => '24h',
+                ]),
             ],
             [
                 'key' => 'delivered_stale',
@@ -132,7 +138,10 @@ class DashboardController extends Controller
                 'count' => Order::where('order_status', 'delivered')
                     ->where('updated_at', '<', now()->subDays(2))
                     ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'delivered']),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'delivered',
+                    'older_than' => '2d',
+                ]),
             ],
             [
                 'key' => 'return_overdue',
@@ -140,7 +149,10 @@ class DashboardController extends Controller
                 'count' => Order::where('order_status', 'return_in_process')
                     ->where('updated_at', '<', now()->subDays(7))
                     ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'return_in_process']),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'return_in_process',
+                    'older_than' => '7d',
+                ]),
             ],
             [
                 'key' => 'issue_orders',
@@ -478,12 +490,6 @@ class DashboardController extends Controller
                     'description' => 'Upload katalog Shopee atau internal',
                     'href' => route('admin.imports.create'),
                     'icon' => 'upload',
-                ],
-                [
-                    'label' => 'Lihat Pending Payment',
-                    'description' => 'Periksa pesanan yang belum dibayar',
-                    'href' => route('admin.orders.index', ['order_status' => 'pending_payment']),
-                    'icon' => 'clock',
                 ],
                 [
                     'label' => 'Kelola Media',

@@ -41,7 +41,7 @@ class WhatsAppTemplateController extends Controller
             ];
         })->values()->all();
 
-        $connection = app(WhatsAppService::class)->connectionStatus();
+        $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
 
         $recentMessages = WhatsAppMessage::query()
             ->with('order')

@@ -92,8 +92,9 @@ export default function ModelProduk({
         category: activeCategoryTab?.slug,
         model: model.value.toLowerCase().replace(/_/g, "-"),
       }),
-    }))
-  }, [activeCategory, filterModels, activeCategoryTab])   return (
+    }))  }, [activeCategory, filterModels, activeCategoryTab])
+
+  return (
     <PublicLayout>
       <Head title="Semua Model Produk">
         <meta

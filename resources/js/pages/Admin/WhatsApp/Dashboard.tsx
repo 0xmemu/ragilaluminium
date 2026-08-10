@@ -153,10 +153,6 @@ export default function WhatsAppDashboard({
             <p className="text-xs uppercase text-muted-foreground">Total pesan</p>
             <p className="text-xl font-bold">{stats.total}</p>
           </div>
-          <div className="rounded-md border border-border p-3">
-            <p className="text-xs uppercase text-muted-foreground">Provider</p>
-            <p className="text-xl font-bold uppercase">{connection.default_provider}</p>
-          </div>
         </div>
       </section>
 

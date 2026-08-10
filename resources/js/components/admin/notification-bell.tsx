@@ -34,7 +34,22 @@ export interface NotificationItem {
   created_at_label?: string | null
 }
 
-export function NotificationBell({ notifications }: { notifications: NotificationItem[] }) {
+export interface ActivityLogItem {
+  id: number
+  event_type: string
+  entity_type: string
+  created_at?: string | null
+  created_at_label?: string | null
+  actor?: string | null
+}
+
+export function NotificationBell({
+  notifications,
+  activityLogs = [],
+}: {
+  notifications: NotificationItem[]
+  activityLogs?: ActivityLogItem[]
+}) {
   const unread = notifications.filter((n) => !n.read_at).length
 
   function markRead(id: number) {
@@ -128,6 +143,41 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
           )}
         </div>
         <DropdownMenuSeparator />
+        {activityLogs.length > 0 ? (
+          <>
+            <DropdownMenuLabel className="flex items-center justify-between">
+              <span className="text-[13px] font-semibold text-foreground">Log Aktivitas</span>
+              <Link
+                href={routeUrl("admin.activity-logs.index")}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Lihat semua
+              </Link>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="max-h-[min(40vh,16rem)] overflow-y-auto">
+              {activityLogs.slice(0, 8).map((l) => (
+                <div key={l.id} className="flex w-full items-start gap-3 border-b border-border/60 px-4 py-2.5 last:border-0">
+                  <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Icon name="history" className="h-3.5 w-3.5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-medium text-foreground">
+                      {l.event_type}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {l.entity_type} · {l.actor || "Sistem"}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground/70">
+                      {l.created_at_label ?? l.created_at}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <div className="px-2 py-1.5">
           <Link
             href={routeUrl("admin.notifications.index")}

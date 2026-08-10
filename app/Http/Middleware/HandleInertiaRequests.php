@@ -130,6 +130,22 @@ class HandleInertiaRequests extends Middleware
                     ])
                     ->all()
                 : [],
+            'adminActivityLogs' => fn () => $request->user()
+                ? \App\Models\EventLog::query()
+                    ->with('createdBy')
+                    ->latest('id')
+                    ->limit(8)
+                    ->get()
+                    ->map(fn ($log) => [
+                        'id' => $log->id,
+                        'event_type' => $log->event_type,
+                        'entity_type' => $log->entity_type,
+                        'created_at' => optional($log->created_at)?->toIso8601String(),
+                        'created_at_label' => optional($log->created_at)?->locale('id')->diffForHumans(),
+                        'actor' => optional($log->createdBy)->name ?? 'Sistem',
+                    ])
+                    ->all()
+                : [],
         ];
     }
 

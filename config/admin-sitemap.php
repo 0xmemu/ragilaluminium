@@ -57,7 +57,6 @@ return [
         'core' => [
             'items' => [
                 ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => ['admin.dashboard']],
-                ['label' => 'Notifikasi', 'route' => 'admin.notifications.index', 'icon' => 'bell', 'active' => ['admin.notifications.*']],
                 ['label' => 'Pesanan', 'route' => 'admin.orders.index', 'icon' => 'clipboard-list', 'active' => ['admin.orders.*']],
                 ['label' => 'Pembayaran', 'route' => 'admin.payments.index', 'icon' => 'hand-coins', 'active' => ['admin.payments.*', 'admin.orders.payments']],
                 ['label' => 'Pengiriman', 'route' => 'admin.shipping.index', 'icon' => 'truck', 'active' => ['admin.shipping.*']],
@@ -67,8 +66,6 @@ return [
             'title' => 'Produk',
             'items' => [
                 ['label' => 'Daftar Produk', 'route' => 'admin.products.index', 'icon' => 'package', 'active' => ['admin.products.*', 'admin.variants.*', 'admin.attributes.*']],
-                ['label' => 'Import', 'route' => 'admin.imports.index', 'icon' => 'upload', 'active' => ['admin.imports.*']],
-                ['label' => 'Media', 'route' => 'admin.media.index', 'icon' => 'images', 'active' => ['admin.media.*']],
             ],
         ],
         'harga_promo' => [
@@ -99,7 +96,6 @@ return [
             'title' => 'Laporan & Monitoring',
             'items' => [
                 ['label' => 'Performa Toko', 'route' => 'admin.analytics.store-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.store-performance', 'admin.analytics.store-performance.*']],
-                ['label' => 'Performa Import', 'route' => 'admin.analytics.import-performance', 'icon' => 'upload', 'active' => ['admin.analytics.import-performance']],
                 ['label' => 'Log Aktivitas', 'route' => 'admin.activity-logs.index', 'icon' => 'history', 'active' => ['admin.activity-logs.*']],
             ],
         ],

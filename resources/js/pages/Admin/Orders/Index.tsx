@@ -99,6 +99,7 @@ interface OrdersIndexProps {
   activeSort: string
   activePaymentStatus?: string
   activeShippingStatus?: string
+  activeOlderThan?: string
   activeDatePreset?: string
   dateFrom?: string
   dateTo?: string
@@ -186,6 +187,7 @@ function OrderCardRow({
     sort: string
     payment_status: string
     shipping_status: string
+    older_than: string
     date_preset: string
     date_from: string
     date_to: string
@@ -210,6 +212,7 @@ function OrderCardRow({
         filter_sort: queryState.sort,
         filter_payment_status: queryState.payment_status,
         filter_shipping_status: queryState.shipping_status,
+        filter_older_than: queryState.older_than,
         filter_date_preset: queryState.date_preset,
         filter_date_from: queryState.date_from,
         filter_date_to: queryState.date_to,
@@ -492,6 +495,7 @@ export default function OrdersIndex({
   activeSort,
   activePaymentStatus = "",
   activeShippingStatus = "",
+  activeOlderThan = "",
   activeDatePreset = "",
   dateFrom = "",
   dateTo = "",
@@ -510,6 +514,7 @@ export default function OrdersIndex({
     sort: activeSort,
     payment_status: activePaymentStatus,
     shipping_status: activeShippingStatus,
+    older_than: activeOlderThan,
     date_preset: activeDatePreset,
     date_from: activeDatePreset === "range" ? dateFrom : "",
     date_to: activeDatePreset === "range" ? dateTo : "",
@@ -523,6 +528,7 @@ export default function OrdersIndex({
       sort: activeSort,
       payment_status: activePaymentStatus,
       shipping_status: activeShippingStatus,
+      older_than: activeOlderThan,
       date_preset: activeDatePreset,
       date_from: activeDatePreset === "range" ? dateFrom : "",
       date_to: activeDatePreset === "range" ? dateTo : "",
@@ -574,7 +580,7 @@ export default function OrdersIndex({
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => visit({ order_status: tab.key })}
+                onClick={() => visit({ order_status: tab.key, older_than: undefined })}
                 className={cn(
                   "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition duration-100",
                   active
@@ -659,6 +665,19 @@ export default function OrdersIndex({
           <option value="in_transit">Dalam perjalanan</option>
           <option value="delivered">Terkirim</option>
           <option value="cancelled">Dibatalkan</option>
+        </Select>
+        <Select
+          value={activeOlderThan || "all"}
+          onChange={(event) =>
+            visit({ older_than: event.target.value === "all" ? undefined : event.target.value })
+          }
+          className="lg:w-40"
+          aria-label="Filter umur status"
+        >
+          <option value="all">Semua umur</option>
+          <option value="24h">Status &gt; 24 jam</option>
+          <option value="2d">Status &gt; 2 hari</option>
+          <option value="7d">Status &gt; 7 hari</option>
         </Select>
         <Select
           value={activeDatePreset || "all"}

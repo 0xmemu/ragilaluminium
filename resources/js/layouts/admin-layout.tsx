@@ -64,8 +64,9 @@ export function AdminLayout({
   description?: string | null
   actions?: React.ReactNode
 }) {
-  const { auth, adminNotifications } = usePage<SharedPageProps>().props
+  const { auth, adminNotifications, adminActivityLogs } = usePage<SharedPageProps>().props
   const notifications = (adminNotifications as NotificationItem[] | undefined) ?? []
+  const activityLogs = (adminActivityLogs as Array<{ id: number; event_type: string; entity_type: string; created_at?: string | null; created_at_label?: string | null; actor?: string | null }> | undefined) ?? []
   const [navigationOpen, setNavigationOpen] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [theme, setTheme] = React.useState<AdminTheme>(() => readAdminTheme())
@@ -138,7 +139,7 @@ export function AdminLayout({
           </button>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <NotificationBell notifications={notifications} />
+            <NotificationBell notifications={notifications} activityLogs={activityLogs} />
 
             <Button
               variant="ghost"

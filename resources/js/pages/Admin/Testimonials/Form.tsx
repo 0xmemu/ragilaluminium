@@ -144,14 +144,6 @@ export default function TestimonialForm({
                   onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
                 />
               </Field>
-              <Field
-                id="testimonial-image"
-                label="URL gambar"
-                error={form.errors.image_url}
-                required={isMarketplace}
-              >
-                <Input type="url" value={form.data.image_url} onChange={(event) => form.setData("image_url", event.target.value)} />
-              </Field>
             </div>
           </div>
 
@@ -175,7 +167,7 @@ export default function TestimonialForm({
             ) : (
               <Field
                 id="testimonial-message"
-                label="Catatan internal (opsional)"
+                label="Deskripsi (opsional)"
                 error={form.errors.message}
                 className="sm:col-span-2"
                 hint="Tidak wajib. Storefront menampilkan screenshot, bukan teks panjang."

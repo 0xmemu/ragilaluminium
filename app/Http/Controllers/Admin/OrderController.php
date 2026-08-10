@@ -25,6 +25,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderController extends Controller
 {
+    /** @var array<string, int> filter umur status (dashboard "Perlu perhatian") */
+    private const OLDER_THAN_HOURS = ['24h' => 24, '2d' => 48, '7d' => 168];
+
     /** @var list<array{key: string, label: string}> */
     private const STATUS_TABS = [
         ['key' => 'all', 'label' => 'Semua'],
@@ -55,6 +58,10 @@ class OrderController extends Controller
         $datePreset = trim((string) $request->input('date_preset', ''));
         $dateFrom = trim((string) $request->input('date_from', ''));
         $dateTo = trim((string) $request->input('date_to', ''));
+        $olderThan = trim((string) $request->input('older_than', ''));
+        if (! array_key_exists($olderThan, self::OLDER_THAN_HOURS)) {
+            $olderThan = '';
+        }
 
         if (! in_array($paymentStatus, ['pending', 'paid', 'refunded'], true)) {
             $paymentStatus = '';
@@ -99,6 +106,10 @@ class OrderController extends Controller
             )
             ->when($paymentStatus !== '', fn ($q) => $q->where('payment_status', $paymentStatus))
             ->when($shippingStatus !== '', fn ($q) => $q->where('shipping_status', $shippingStatus))
+            ->when(
+                $olderThan !== '',
+                fn ($q) => $q->where('updated_at', '<', now()->subHours(self::OLDER_THAN_HOURS[$olderThan]))
+            )
             ->when($datePreset === 'today', fn ($q) => $q->whereDate('created_at', now()->toDateString()))
             ->when($datePreset === '7d', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)->startOfDay()))
             ->when(
@@ -139,6 +150,7 @@ class OrderController extends Controller
             'sort' => $sort === 'oldest' ? 'oldest' : null,
             'payment_status' => $paymentStatus ?: null,
             'shipping_status' => $shippingStatus ?: null,
+            'older_than' => $olderThan ?: null,
             'date_preset' => $datePreset ?: null,
             'date_from' => $datePreset === 'range' && $dateFrom !== '' ? $dateFrom : null,
             'date_to' => $datePreset === 'range' && $dateTo !== '' ? $dateTo : null,
@@ -152,6 +164,7 @@ class OrderController extends Controller
             'activeSort' => $sort === 'oldest' ? 'oldest' : 'newest',
             'activePaymentStatus' => $paymentStatus,
             'activeShippingStatus' => $shippingStatus,
+            'activeOlderThan' => $olderThan,
             'activeDatePreset' => $datePreset,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
@@ -171,6 +184,10 @@ class OrderController extends Controller
         $datePreset = trim((string) $request->input('date_preset', ''));
         $dateFrom = trim((string) $request->input('date_from', ''));
         $dateTo = trim((string) $request->input('date_to', ''));
+        $olderThan = trim((string) $request->input('older_than', ''));
+        if (! array_key_exists($olderThan, self::OLDER_THAN_HOURS)) {
+            $olderThan = '';
+        }
 
         if (! in_array($paymentStatus, ['pending', 'paid', 'refunded'], true)) {
             $paymentStatus = '';
@@ -204,6 +221,10 @@ class OrderController extends Controller
             )
             ->when($paymentStatus !== '', fn ($q) => $q->where('payment_status', $paymentStatus))
             ->when($shippingStatus !== '', fn ($q) => $q->where('shipping_status', $shippingStatus))
+            ->when(
+                $olderThan !== '',
+                fn ($q) => $q->where('updated_at', '<', now()->subHours(self::OLDER_THAN_HOURS[$olderThan]))
+            )
             ->when($datePreset === 'today', fn ($q) => $q->whereDate('created_at', now()->toDateString()))
             ->when($datePreset === '7d', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)->startOfDay()))
             ->when(
@@ -634,6 +655,7 @@ class OrderController extends Controller
                 'sort' => $request->input('filter_sort'),
                 'payment_status' => $request->input('filter_payment_status'),
                 'shipping_status' => $request->input('filter_shipping_status'),
+                'older_than' => $request->input('filter_older_than'),
                 'date_preset' => $request->input('filter_date_preset'),
                 'date_from' => $request->input('filter_date_from'),
                 'date_to' => $request->input('filter_date_to'),
@@ -745,6 +767,12 @@ class OrderController extends Controller
         $isCod = $this->isCod($order);
 
         return match ($order->order_status) {
+            'issue' => [
+                'label' => 'Lanjutkan Proses',
+                'next_status' => 'processing',
+                'kind' => 'advance_status',
+                'hint' => 'Pesanan kembali ke antrean proses untuk dilanjutkan.',
+            ],
             'pending_payment' => [
                 'label' => 'Proses Pesanan',
                 'next_status' => 'processing',
@@ -791,6 +819,13 @@ class OrderController extends Controller
     private function secondaryActionFor(Order $order): ?array
     {
         return match ($order->order_status) {
+            // Perlu Perhatian → Lanjutkan Proses (primary) + Proses Retur (sekunder).
+            'issue' => [
+                'label' => 'Proses Retur',
+                'next_status' => 'return_in_process',
+                'kind' => 'start_return',
+                'hint' => 'Menandai pesanan masuk proses retur.',
+            ],
             // Sampai → Selesaikan Pesanan (primary) + Proses Retur (sekunder).
             'delivered' => [
                 'label' => 'Proses Retur',

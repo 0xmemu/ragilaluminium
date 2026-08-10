@@ -321,12 +321,17 @@ export default function TestimonialsIndex({
       <Head title={`${title} | Admin`} />
 
       {pageMeta && metaUrl ? (
-        <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-          <p className="text-xs font-bold tracking-tight text-muted-foreground">
-            {metaHint ?? "Meta halaman"}
-          </p>
+        <details className="group mb-6 rounded-xl border border-border bg-card shadow-sm">
+          <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5">
+            <div>
+              <p className="text-sm font-bold">Pengaturan tampilan (CMS)</p>
+              <p className="text-xs text-muted-foreground">{metaHint ?? "Meta halaman"}</p>
+            </div>
+            <Icon name="caret-down" className="size-4 text-muted-foreground transition group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="border-t border-border p-5 sm:p-6">
           <form
-            className="mt-4 grid gap-4 sm:grid-cols-2"
+            className="grid gap-4 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault()
               metaForm.put(metaUrl)
@@ -360,7 +365,8 @@ export default function TestimonialsIndex({
               </Button>
             </div>
           </form>
-        </section>
+          </div>
+        </details>
       ) : null}
 
       {showTabs ? (

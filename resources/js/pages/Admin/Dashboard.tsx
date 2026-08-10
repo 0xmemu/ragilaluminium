@@ -15,9 +15,8 @@ import {
   TableRow,
 } from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
-import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatNumber, humanize } from "@/lib/format"
+import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl, withQuery } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -454,7 +453,7 @@ export default function Dashboard({
                 </div>
                 <Sparkline values={omzet.sparkline} />
               </div>
-              <div className="mt-auto grid sm:grid-cols-2 divide-x divide-border border-t border-border">
+              <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
                 <div className="px-5 py-4">
                   <MetricTile
                     label="Jumlah order"
@@ -467,6 +466,20 @@ export default function Dashboard({
                     label="Jumlah unit"
                     value={`${formatNumber(omzet.units)} unit`}
                     delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
+                  />
+                </div>
+                <div className="px-5 py-4">
+                  <MetricTile
+                    label="Belum dibayar"
+                    value={formatCurrency(financial.pending_payment_amount)}
+                    delta={`${formatNumber(financial.pending_payment_orders)} order pending`}
+                  />
+                </div>
+                <div className="px-5 py-4">
+                  <MetricTile
+                    label="Diterima hari ini"
+                    value={formatCurrency(financial.received_today_amount)}
+                    delta={`${formatNumber(financial.received_today_count)} pembayaran`}
                   />
                 </div>
               </div>
@@ -568,39 +581,6 @@ export default function Dashboard({
 
         {hasOrders ? (
           <>
-            <SectionCard
-              title="Ringkasan nilai pesanan"
-              icon="hand-coins"
-              description="Nilai operasional dipisahkan dari omzet agar status pembayaran tetap jelas."
-          action={
-            <Link
-              href={pendingPaymentOrdersHref}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
-            >
-              Lihat belum dibayar
-              <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
-            </Link>
-          }
-        >
-          <div className="grid gap-5 sm:grid-cols-3">
-            <MetricTile
-              label="Belum dibayar"
-              value={formatCurrency(financial.pending_payment_amount)}
-              delta={formatNumber(financial.pending_payment_orders) + " order pending"}
-            />
-            <MetricTile
-              label="Pesanan aktif"
-              value={formatCurrency(financial.active_order_amount)}
-              delta={formatNumber(financial.active_order_count) + " order diproses"}
-            />
-            <MetricTile
-              label="Pembayaran diterima hari ini"
-              value={formatCurrency(financial.received_today_amount)}
-              delta={formatNumber(financial.received_today_count) + " pembayaran selesai"}
-            />
-          </div>
-        </SectionCard>
-
         {/* Row 2 — Status Order */}
         <SectionCard
           title="Status order"
@@ -683,7 +663,7 @@ export default function Dashboard({
             title="Perlu perhatian"
             icon="alert-circle"
             description="Item yang membutuhkan tindak lanjut."
-            className="lg:col-span-5"
+            className="lg:col-span-6"
             contentClassName="p-0"
           >
             {attention.length ? (
@@ -721,7 +701,7 @@ export default function Dashboard({
             title="Produk paling dilihat"
             icon="eye"
             description={topEngagedProducts?.period_label ?? performa.period_label}
-            className="lg:col-span-4"
+            className="lg:col-span-6"
             contentClassName="p-0"
           >
             {topEngagedProducts?.items?.length ? (
@@ -763,38 +743,6 @@ export default function Dashboard({
             )}
           </SectionCard>
 
-          <SectionCard
-            title="Aksi cepat"
-            icon="lightning"
-            description="Jalan pintas ke pekerjaan rutin."
-            className="lg:col-span-3"
-            contentClassName="p-0"
-          >
-            <nav aria-label="Aksi cepat">
-              <ul className="divide-y divide-border">
-                {quickActions.map((action) => (
-                  <li key={action.label}>
-                    <Link
-                      href={action.href}
-                      className="group flex items-center gap-3 px-5 py-3 transition hover:bg-muted/60"
-                    >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition group-hover:bg-accent group-hover:text-accent-foreground">
-                        <Icon name={action.icon} className="size-4" aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
-                        {action.label}
-                      </span>
-                      <Icon
-                        name="chevron-right"
-                        className="size-3.5 shrink-0 text-muted-foreground/60 transition group-hover:text-foreground"
-                        aria-hidden="true"
-                      />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </SectionCard>
         </section>
 
         {/* Row 4 — Pesanan Terbaru */}
@@ -814,16 +762,13 @@ export default function Dashboard({
           {recentOrders.length ? (
             <>
               <div className="hidden overflow-x-auto lg:block">
-                <Table className="min-w-[56rem]">
+                <Table className="min-w-[44rem]">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead>No. order</TableHead>
                       <TableHead>Penerima</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Pengiriman</TableHead>
                       <TableHead>Total</TableHead>
-                      <TableHead>Metode</TableHead>
-                      <TableHead>Produk</TableHead>
                       <TableHead>Diperbarui</TableHead>
                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
@@ -851,41 +796,8 @@ export default function Dashboard({
                         <TableCell>
                           <StatusBadge status={order.order_status} />
                         </TableCell>
-                        <TableCell>
-                          <div className="space-y-1.5">
-                            <ShippingTrackPanel
-                              compact
-                              track={
-                                order.shipping_track ?? {
-                                  shipping_status: order.shipping_status || "pending_pickup",
-                                  waybill_number: order.waybill_number,
-                                  order_status: order.order_status,
-                                }
-                              }
-                            />
-                            <Link href={order.shipping_href} className="text-xs font-medium text-primary hover:underline">
-                              Kelola pengiriman
-                            </Link>
-                          </div>
-                        </TableCell>
                         <TableCell className="tabular-nums font-semibold">
                           {formatCurrency(order.total_amount)}
-                        </TableCell>
-                        <TableCell>
-                          {order.payment_method ? (
-                            <span className="inline-flex rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                              {humanize(order.payment_method)}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                          <div className="mt-1">
-                            <StatusBadge status={order.payment_status} />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {formatNumber(order.product_count)} produk ·{" "}
-                          {formatNumber(order.unit_count)} unit
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -939,35 +851,6 @@ export default function Dashboard({
                         </p>
                       </div>
                       <StatusBadge status={order.order_status} />
-                    </div>
-                    <ShippingTrackPanel
-                      compact
-                      track={
-                        order.shipping_track ?? {
-                          shipping_status: order.shipping_status || "pending_pickup",
-                          waybill_number: order.waybill_number,
-                          order_status: order.order_status,
-                        }
-                      }
-                    />
-                    <Link href={order.shipping_href} className="inline-flex text-xs font-medium text-primary hover:underline">
-                      Kelola pengiriman
-                    </Link>
-                    <div className="grid grid-cols-2 gap-3 rounded-md bg-muted/40 p-3 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Pembayaran</p>
-                        <div className="mt-1"><StatusBadge status={order.payment_status} /></div>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Metode</p>
-                        <p className="mt-1 font-medium text-foreground">{order.payment_method ? humanize(order.payment_method) : "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Produk</p>
-                        <p className="mt-1 font-medium text-foreground">
-                          {formatNumber(order.product_count)} produk · {formatNumber(order.unit_count)} unit
-                        </p>
-                      </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="tabular-nums text-sm font-semibold">
