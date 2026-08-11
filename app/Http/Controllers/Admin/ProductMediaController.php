@@ -11,6 +11,7 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Services\MediaAssetResolver;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -35,7 +36,7 @@ class ProductMediaController extends Controller
             ->when($request->filled('asset_status'), fn ($query) => $query->where('status', $request->query('asset_status')))
             ->when($request->filled('asset_q'), function ($query) use ($request): void {
                 $q = trim((string) $request->query('asset_q'));
-                $query->where(fn ($inner) => $inner->where('label', 'like', "%{$q}%")->orWhere('source_url', 'like', "%{$q}%"));
+                $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'label', $q)->orWhereRaw('source_url LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
             })
             ->latest()
             ->limit(24)
@@ -44,7 +45,7 @@ class ProductMediaController extends Controller
             ->where('status', '!=', 'archived')
             ->when($request->filled('product_q'), function ($query) use ($request): void {
                 $q = trim((string) $request->query('product_q'));
-                $query->where(fn ($inner) => $inner->where('name', 'like', "%{$q}%")->orWhere('parent_sku', 'like', "%{$q}%"));
+                $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'name', $q)->orWhereRaw('parent_sku LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
             })
             ->orderBy('name')
             ->limit(100)
@@ -181,8 +182,8 @@ class ProductMediaController extends Controller
             ->when($request->filled('q'), function ($query) use ($request) {
                 $q = trim((string) $request->query('q'));
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('label', 'like', "%{$q}%")
-                        ->orWhere('source_url', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'label', $q);
+                    LikeSearch::orWhereLike($inner, 'source_url', $q);
                 });
             })
             ->latest()
@@ -268,7 +269,9 @@ class ProductMediaController extends Controller
             'is_installation' => ['boolean'],
             'installation_caption' => ['nullable', 'string', 'max:280'],
             'visibility' => ['required', 'in:visible,archived,hidden'],
-            'upload' => ['nullable', 'file', 'max:51200'],
+            // §6 boundary: batasi jenis file — bukan sekadar ukuran. File arbitrer
+            // tidak boleh masuk R2 (admin-only, tapi mimes menutup celah upload bebas).
+            'upload' => ['nullable', 'file', 'max:51200', 'mimes:jpeg,png,webp,gif,mp4,webm'],
             'product_variant_id' => [
                 'nullable',
                 'integer',

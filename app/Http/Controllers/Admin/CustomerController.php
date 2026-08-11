@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Services\CustomerService;
 use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,11 +30,11 @@ class CustomerController extends Controller
         $query = Customer::query()
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('default_city', 'like', "%{$search}%")
-                        ->orWhere('default_province', 'like', "%{$search}%");
+                    LikeSearch::whereLike($inner, 'name', $search);
+                    LikeSearch::orWhereLike($inner, 'phone', $search);
+                    LikeSearch::orWhereLike($inner, 'email', $search);
+                    LikeSearch::orWhereLike($inner, 'default_city', $search);
+                    LikeSearch::orWhereLike($inner, 'default_province', $search);
                 });
             });
 
@@ -154,8 +155,8 @@ class CustomerController extends Controller
         $query = Customer::query()
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
+                    LikeSearch::whereLike($inner, 'name', $search);
+                    LikeSearch::orWhereLike($inner, 'phone', $search);
                 });
             })
             ->latest('id');

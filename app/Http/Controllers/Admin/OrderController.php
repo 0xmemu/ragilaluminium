@@ -11,6 +11,7 @@ use App\Services\ShippingService;
 use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use App\Support\JntReadiness;
+use App\Support\LikeSearch;
 use App\Support\OrderEventLabels;
 use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
@@ -92,11 +93,11 @@ class OrderController extends Controller
                 function ($q) use ($request) {
                     $term = trim((string) $request->input('q'));
                     $q->where(function ($inner) use ($term) {
-                        $inner->where('order_number', 'like', "%{$term}%")
-                            ->orWhere('customer_phone', 'like', "%{$term}%")
-                            ->orWhere('customer_name', 'like', "%{$term}%")
-                            ->orWhere('shipping_city', 'like', "%{$term}%")
-                            ->orWhere('shipping_province', 'like', "%{$term}%");
+                        LikeSearch::whereLike($inner, 'order_number', $term);
+                        LikeSearch::orWhereLike($inner, 'customer_phone', $term);
+                        LikeSearch::orWhereLike($inner, 'customer_name', $term);
+                        LikeSearch::orWhereLike($inner, 'shipping_city', $term);
+                        LikeSearch::orWhereLike($inner, 'shipping_province', $term);
                     });
                 }
             )
@@ -207,11 +208,11 @@ class OrderController extends Controller
                 function ($q) use ($request) {
                     $term = trim((string) $request->input('q'));
                     $q->where(function ($inner) use ($term) {
-                        $inner->where('order_number', 'like', "%{$term}%")
-                            ->orWhere('customer_phone', 'like', "%{$term}%")
-                            ->orWhere('customer_name', 'like', "%{$term}%")
-                            ->orWhere('shipping_city', 'like', "%{$term}%")
-                            ->orWhere('shipping_province', 'like', "%{$term}%");
+                        LikeSearch::whereLike($inner, 'order_number', $term);
+                        LikeSearch::orWhereLike($inner, 'customer_phone', $term);
+                        LikeSearch::orWhereLike($inner, 'customer_name', $term);
+                        LikeSearch::orWhereLike($inner, 'shipping_city', $term);
+                        LikeSearch::orWhereLike($inner, 'shipping_province', $term);
                     });
                 }
             )

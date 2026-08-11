@@ -106,6 +106,7 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 - `webhook/*` routes are CSRF-exempt (`bootstrap/app.php` `validateCsrfTokens`) — contract, not a bug.
 - `products.design_variant` is a nullable string (sub-models since 2026-08-08); validated against `sub_models`, fallback legacy map in `CatalogLabels::design()`.
 - Excel import must NOT implement `WithEvents` (500s) — route through `App\Jobs\ProcessCatalogImport` (holds only `$jobId`/`$storedPath`).
+- SQLite test quirk: `PerformanceMetric.metric_date` cast `date` tersimpan sebagai `Y-m-d 00:00:00` di SQLite — `whereBetween("metric_date", [..toDateString()..])` TIDAK match row cast; test yang butuh metric harus insert via `DB::table(...)->insert([... "metric_date" => now()->toDateString()])` (sudah dipraktikkan di StorePerformanceContractTest:166). Produksi MySQL aman (kolom date men-trim time). Bukan bug runtime.
 
 ## Current status (2026-08-11)
 

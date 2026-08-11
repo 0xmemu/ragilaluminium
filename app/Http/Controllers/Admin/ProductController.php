@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Support\CatalogLabels;
 use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use App\Support\ShopeeStyleSku;
 use App\Services\ActivityLogService;
 use App\Services\ProductPublicationService;
@@ -41,9 +42,9 @@ class ProductController extends Controller
             ->withSum('activeVariants as stock_total', 'stock')
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', "%{$q}%")
-                        ->orWhere('short_name', 'like', "%{$q}%")
-                        ->orWhere('parent_sku', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'name', $q);
+                    LikeSearch::orWhereLike($inner, 'short_name', $q);
+                    LikeSearch::orWhereLike($inner, 'parent_sku', $q);
                 });
             })
             ->when($size !== null, function ($query) use ($size) {
@@ -110,8 +111,8 @@ class ProductController extends Controller
             ->withSum('activeVariants as stock_total', 'stock')
             ->when($q !== '', function ($builder) use ($q) {
                 $builder->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', "%{$q}%")
-                        ->orWhere('parent_sku', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'name', $q);
+                    LikeSearch::orWhereLike($inner, 'parent_sku', $q);
                 });
             })
             ->when($category !== '' && $category !== 'all', fn ($builder) => $builder->where('product_category', strtoupper($category)))

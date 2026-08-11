@@ -9,6 +9,7 @@ use App\Support\FlashSalePeriodSettings;
 use App\Support\HomepagePromotions;
 use App\Support\HomepagePromotionSettings;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use App\Support\ProductPromotionMetadata;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,9 +58,9 @@ class FlashSaleController extends Controller
             })
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', "%{$q}%")
-                        ->orWhere('short_name', 'like', "%{$q}%")
-                        ->orWhere('parent_sku', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'name', $q);
+                    LikeSearch::orWhereLike($inner, 'short_name', $q);
+                    LikeSearch::orWhereLike($inner, 'parent_sku', $q);
                 });
             })
             ->orderByDesc('updated_at')

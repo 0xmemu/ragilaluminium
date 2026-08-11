@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,7 +17,7 @@ class ShippingRecordController extends Controller
     public function index(Request $request): Response
     {
         $records = ShippingRecord::with('order')
-            ->when($request->filled('q'), fn ($q) => $q->where('waybill_number', 'like', "%{$request->q}%"))
+            ->when($request->filled('q'), fn ($q) => LikeSearch::whereLike($q, 'waybill_number', (string) $request->q))
             ->when($request->filled('carrier_name'), fn ($q) => $q->where('carrier_name', $request->carrier_name))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest()

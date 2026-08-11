@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Announcement;
 use App\Support\AnnouncementSlideSettings;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,8 +24,8 @@ class AnnouncementController extends Controller
         $announcements = Announcement::query()
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('text', 'like', "%{$q}%")
-                        ->orWhere('href', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'text', $q);
+                    LikeSearch::orWhereLike($inner, 'href', $q);
                 });
             })
             ->when($status === 'active', fn ($query) => $query->where('published', true))

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StoreVoucher;
 use App\Services\VoucherService;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -28,8 +29,8 @@ class VoucherController extends Controller
         $vouchers = StoreVoucher::query()
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', "%{$q}%")
-                        ->orWhere('code', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'name', $q);
+                    LikeSearch::orWhereLike($inner, 'code', $q);
                 });
             })
             ->when($status === 'active', fn ($query) => $query->where('published', true))

@@ -186,7 +186,8 @@ class CatalogSearch
      */
     protected static function escapeLikeWildcards(string $value): string
     {
-        return addcslashes($value, '\\%_');
+        // Satu definisi escape: App\Support\LikeSearch.
+        return LikeSearch::escape($value);
     }
 
     /**

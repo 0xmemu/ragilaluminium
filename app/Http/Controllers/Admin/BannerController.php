@@ -7,6 +7,7 @@ use App\Models\CmsBanner;
 use App\Support\HomepagePromotions;
 use App\Support\HomepagePromotionSettings;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,8 +26,8 @@ class BannerController extends Controller
         $banners = CmsBanner::query()
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('title', 'like', "%{$q}%")
-                        ->orWhere('link_url', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'title', $q);
+                    LikeSearch::orWhereLike($inner, 'link_url', $q);
                 });
             })
             ->when($status === 'active', fn ($query) => $query->where('published', true))

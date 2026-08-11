@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\WhatsAppMessage;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +18,7 @@ class WhatsAppMessageController extends Controller
         $messages = WhatsAppMessage::with('order')
             ->when($request->filled('direction'), fn ($q) => $q->where('direction', $request->direction))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->when($request->filled('phone_number'), fn ($q) => $q->where('phone_number', 'like', "%{$request->phone_number}%"))
+            ->when($request->filled('phone_number'), fn ($q) => LikeSearch::whereLike($q, 'phone_number', (string) $request->phone_number))
             ->latest()
             ->paginate(20)
             ->withQueryString();
