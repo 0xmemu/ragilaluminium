@@ -66,13 +66,13 @@ export function FilterSheetContent({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-5 pt-3">
-        <SheetTitle className="font-display text-xl font-bold tracking-tight">{title}</SheetTitle>
+        <SheetTitle className="font-display text-lg font-bold tracking-tight">{title}</SheetTitle>
         {description ? (
           <SheetDescription className="mt-1.5 text-sm text-muted-foreground">
             {description}
           </SheetDescription>
         ) : null}
-        <div className="mt-5">{children}</div>
+        <div className="mt-4">{children}</div>
       </div>
 
       {footer ? (

@@ -67,7 +67,7 @@ export default function UserForm({
 
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           {editing && user ? (
-            <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-border pb-5">
+            <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-border pb-5">
               <StatusBadge status={user.status} />
               <p className="text-xs font-semibold text-muted-foreground">Admin (hak setara)</p>
               {isSelf ? (
@@ -76,7 +76,7 @@ export default function UserForm({
             </div>
           ) : null}
 
-          <div className="grid gap-5">
+          <div className="grid gap-4">
             <Field id="user-name" label="Nama" required error={form.errors.name}>
               <Input
                 value={form.data.name}

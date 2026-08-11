@@ -49,8 +49,9 @@ class WorkflowAuditP2Test extends TestCase
 
         $this->assertContains('admin.payments.index', $coreRoutes);
         $this->assertContains('admin.shipping.index', $coreRoutes);
-        $this->assertContains('admin.whatsapp.messages.index', $komunikasiRoutes);
-        $this->assertContains('admin.analytics.import-performance', $monitoringRoutes);
+        // Menu WhatsApp terpusat di dashboard (active mencakup messages.*, connection, pairing).
+        $this->assertContains('admin.whatsapp.dashboard', $komunikasiRoutes);
+        $this->assertContains('admin.analytics.store-performance', $monitoringRoutes);
     }
 
     public function test_orders_index_filters_payment_shipping_and_date(): void
@@ -150,7 +151,7 @@ class WorkflowAuditP2Test extends TestCase
             ->get(route('admin.media.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/ResourceIndex')
+                ->component('Admin/Media/Index')
                 ->has('rows', 1)
                 ->has('rows.0.actions')
                 ->where('rows.0.actions.0.label', 'Kelola'));

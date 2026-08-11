@@ -7,6 +7,7 @@ import { Icon } from "@/components/shared/icon"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { useRotatingPlaceholder } from "@/hooks/use-rotating-placeholder"
+import { onCartBump, onCartUpdated } from "@/lib/cart-events"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl, withQuery } from "@/lib/routes"
@@ -204,9 +205,13 @@ export function PublicHeader() {
   const [previewItems, setPreviewItems] = React.useState<CartPreviewItem[]>(cartPreview ?? [])
   const [previewLoaded, setPreviewLoaded] = React.useState(Boolean(cartPreview))
   const [previewLoading, setPreviewLoading] = React.useState(false)
+  const [previewError, setPreviewError] = React.useState(false)
+  const previewAbortRef = React.useRef<AbortController | null>(null)
+  const bumpTimerRef = React.useRef<number | null>(null)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [modelsOpen, setModelsOpen] = React.useState(false)
   const [cartPreviewOpen, setCartPreviewOpen] = React.useState(false)
+  const [cartBump, setCartBump] = React.useState(false)
 
   React.useEffect(() => {
     // Inertia replaces shared props after cart mutations; local preview state must follow it.
@@ -217,22 +222,39 @@ export function PublicHeader() {
   }, [cartCount, cartPreview])
 
   React.useEffect(() => {
-    const handleCartUpdated = (event: Event) => {
-      const detail = (event as CustomEvent<{ lineId: string; quantity: number; count: number }>).detail
+    // Animasi badge saat produk "mendarat" di keranjang (lihat FlyingCart).
+    // Timer disimpan di ref — bump beruntun membatalkan timer lama, unmount membersihkannya.
+    const handleCartBump = () => {
+      if (bumpTimerRef.current !== null) window.clearTimeout(bumpTimerRef.current)
+      setCartBump(true)
+      bumpTimerRef.current = window.setTimeout(() => setCartBump(false), 650)
+    }
+
+    const offUpdated = onCartUpdated((detail) => {
       setVisibleCartCount(detail.count)
       setPreviewItems((current) => current.map((item) =>
         item.line_id === detail.lineId ? { ...item, quantity: detail.quantity } : item
       ))
+    })
+    const offBump = onCartBump(handleCartBump)
+    return () => {
+      if (bumpTimerRef.current !== null) window.clearTimeout(bumpTimerRef.current)
+      previewAbortRef.current?.abort()
+      offUpdated()
+      offBump()
     }
-
-    window.addEventListener("cart:updated", handleCartUpdated)
-    return () => window.removeEventListener("cart:updated", handleCartUpdated)
   }, [])
 
   const loadCartPreview = React.useCallback(async () => {
     if (previewLoaded || previewLoading) return
 
+    // §8: batalkan request yang masih berjalan (unmount / panggilan ulang).
+    previewAbortRef.current?.abort()
+    const controller = new AbortController()
+    previewAbortRef.current = controller
+
     setPreviewLoading(true)
+    setPreviewError(false)
     try {
       const response = await fetch(routeUrl("cart.preview"), {
         headers: {
@@ -240,15 +262,19 @@ export function PublicHeader() {
           "X-CSRF-TOKEN": csrf,
           "X-Requested-With": "XMLHttpRequest",
         },
+        signal: controller.signal,
       })
       if (!response.ok) throw new Error("Cart preview failed")
       const result = await response.json() as { items: CartPreviewItem[] }
+      if (controller.signal.aborted) return
       setPreviewItems(result.items ?? [])
       setPreviewLoaded(true)
-    } catch {
-      setPreviewItems([])
+    } catch (_error) {
+      if (controller.signal.aborted) return
+      // §4 escape: gagal memuat ≠ keranjang kosong — tampilkan error + coba lagi.
+      setPreviewError(true)
     } finally {
-      setPreviewLoading(false)
+      if (!controller.signal.aborted) setPreviewLoading(false)
     }
   }, [csrf, previewLoaded, previewLoading])
 
@@ -448,7 +474,7 @@ export function PublicHeader() {
                 )}
                 aria-hidden={!modelsOpen ? "true" : undefined}
               >
-                <p className="mb-5 text-xs font-bold text-muted-foreground">
+                <p className="mb-4 text-xs font-bold text-muted-foreground">
                   Model tersedia
                 </p>
                 {modelGroups.length ? (
@@ -548,12 +574,13 @@ export function PublicHeader() {
           >
             <Link
               href={routeUrl("cart.index")}
+              data-cart-target
               className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-11 lg:h-11 lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
               aria-label={`Keranjang, ${visibleCartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
             >
-              <span className="relative inline-flex size-6 shrink-0 items-center justify-center lg:size-7">
+              <span className={cn("relative inline-flex size-6 shrink-0 items-center justify-center lg:size-7", cartBump && "animate-cart-bump")}>
                 <Icon name="shopping-cart" className="size-7 shrink-0 lg:size-7" aria-hidden="true" />
                 {visibleCartCount > 0 ? (
                   <span className="tabular-nums absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white">
@@ -632,6 +659,23 @@ export function PublicHeader() {
                       </Link>
                     </div>
                   </>
+                ) : previewError ? (
+                  <div className="flex flex-col items-center px-6 py-10 text-center">
+                    <div className="relative flex size-40 items-center justify-center rounded-full bg-muted">
+                      <Icon name="alert-circle" className="size-16 text-muted-foreground" weight="light" aria-hidden="true" />
+                    </div>
+                    <p className="mt-6 text-base font-bold text-foreground">Gagal memuat keranjang.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Cek koneksi Anda, lalu coba lagi.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void loadCartPreview()}
+                      className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-foreground px-6 text-sm font-semibold text-background transition hover:bg-foreground/90"
+                    >
+                      {previewLoading ? "Memuat…" : "Coba lagi"}
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center px-6 py-10 text-center">
                     <div className="relative flex size-40 items-center justify-center rounded-full bg-muted">

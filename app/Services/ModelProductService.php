@@ -279,6 +279,70 @@ class ModelProductService
     }
 
     /**
+     * Menu kategori horizontal beranda — model produk aktif (urut CMS `sort_order`)
+     * beserta sub-model (desain) masing-masing. Routing default dari category/model,
+     * atau `menu_href` kustom bila diisi di admin.
+     *
+     * @return list<array{key:string,label:string,href:string,category:?string,model:?string,subs:list<array{label:string,href:string}>}>
+     */
+    public function storefrontCategoryMenu(): array
+    {
+        $rows = CmsModelProduct::query()->active()->get();
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $stats = $this->statsByCategoryModel($rows);
+        $menu = [];
+
+        foreach ($rows as $row) {
+            if (! $row->product_category || ! $row->product_model) {
+                continue;
+            }
+
+            $key = $this->pairKey($row->product_category, $row->product_model);
+            $designCodes = $stats[$key]['design_codes'] ?? [];
+
+            $categorySlug = match ($row->product_category) {
+                'DOOR' => 'doors',
+                'BOUVEN' => 'bouven',
+                default => 'windows',
+            };
+            $modelSlug = strtolower(str_replace('_', '-', $row->product_model));
+
+            $href = filled($row->menu_href)
+                ? (string) $row->menu_href
+                : route('catalog.model', [
+                    'category' => $categorySlug,
+                    'model' => $modelSlug,
+                ], absolute: false);
+
+            $subs = [];
+            foreach ($designCodes as $code) {
+                $subs[] = [
+                    'label' => CatalogLabels::design($code) ?: $code,
+                    'href' => route('catalog.design', [
+                        'category' => $categorySlug,
+                        'model' => $modelSlug,
+                        'design' => strtolower(str_replace('_', '-', $code)),
+                    ], absolute: false),
+                ];
+            }
+
+            $menu[] = [
+                'key' => $key,
+                'label' => $row->name ?: trim(CatalogLabels::category($row->product_category).' '.CatalogLabels::model($row->product_model)),
+                'href' => $href,
+                'category' => $row->product_category,
+                'model' => $row->product_model,
+                'subs' => $subs,
+            ];
+        }
+
+        return $menu;
+    }
+
+    /**
      * @param  Collection<int, CmsModelProduct>  $items
      * @return array<string, array{active_count:int,archived_count:int,variant_count:int,designs:list<string>}>
      */
@@ -353,6 +417,7 @@ class ModelProductService
                 'archived_count' => $group->where('status', 'archived')->count(),
                 'variant_count' => (int) $group->sum(fn (Product $p) => (int) ($variantCounts[$p->id] ?? 0)),
                 'designs' => $designs,
+                'design_codes' => $group->pluck('design_variant')->filter()->unique()->values()->all(),
             ];
         }
 

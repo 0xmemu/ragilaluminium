@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import type { PublicOrder, SharedPageProps } from "@/types"
+import type { OrderEta, PublicOrder, SharedPageProps } from "@/types"
 
 interface PaymentInstructions {
   bank_name: string
@@ -27,26 +27,34 @@ export default function OrderConfirmation({
   order,
   payment_instructions = null,
   whatsapp_url = null,
+  eta = null,
 }: {
   order: PublicOrder
   payment_instructions?: PaymentInstructions | null
   whatsapp_url?: string | null
+  eta?: OrderEta | null
 }) {
   const { brand } = usePage<SharedPageProps>().props
   const [copied, setCopied] = React.useState(false)
   const [copiedAccount, setCopiedAccount] = React.useState(false)
+  const copiedTimerRef = React.useRef<number | null>(null)
+  const accountTimerRef = React.useRef<number | null>(null)
   const isTransfer = order.payment_method === "transfer"
+
+  // §8: bersihkan timer saat unmount — jangan setState setelah halaman ditutup.
+  React.useEffect(() => () => {
+    if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current)
+    if (accountTimerRef.current !== null) window.clearTimeout(accountTimerRef.current)
+  }, [])
 
   async function copyText(value: string, kind: "order" | "account") {
     try {
       await navigator.clipboard.writeText(value)
-      if (kind === "order") {
-        setCopied(true)
-        window.setTimeout(() => setCopied(false), 1800)
-      } else {
-        setCopiedAccount(true)
-        window.setTimeout(() => setCopiedAccount(false), 1800)
-      }
+      const timerRef = kind === "order" ? copiedTimerRef : accountTimerRef
+      const setCopiedState = kind === "order" ? setCopied : setCopiedAccount
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+      setCopiedState(true)
+      timerRef.current = window.setTimeout(() => setCopiedState(false), 1800)
     } catch {
       // ignore clipboard failures
     }
@@ -74,7 +82,7 @@ export default function OrderConfirmation({
         </div>
       </section>
 
-      <section className="container-page py-4">
+      <section className="container-page py-4 lg:py-6">
         <div className="mx-auto max-w-4xl">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
             <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
@@ -82,7 +90,7 @@ export default function OrderConfirmation({
           <p className="mt-6 text-xs font-bold tracking-tight text-success">
             Terima kasih, {order.customer_name}.
           </p>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
+          <p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">
             Simpan nomor pesanan berikut. Nomor ini dipakai bersama nomor HP atau email untuk
             melihat status pesanan.
           </p>
@@ -122,13 +130,32 @@ export default function OrderConfirmation({
             ))}
           </div>
 
+          {eta ? (
+            <div className="mt-8 rounded-lg border border-border bg-surface p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Icon name="truck" className="size-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground">Estimasi diterima</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Pesanan diperkirakan tiba pada{" "}
+                    <span className="font-semibold text-foreground">{eta.range_label}</span>
+                    {" "}— {eta.production_days} hari produksi + {eta.min_days}–{eta.max_days} hari
+                    pengiriman sejak pesanan dibuat.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {isTransfer && payment_instructions ? (
             <section className="mt-8 rounded-lg border border-border bg-surface p-5 sm:p-7">
               <h2 className="text-xl font-semibold">Instruksi transfer</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Transfer tepat <span className="font-semibold text-foreground">{formatCurrency(order.total_amount)}</span> ke rekening berikut.
               </p>
-              <dl className="mt-5 grid gap-4 sm:grid-cols-3">
+              <dl className="mt-4 grid gap-4 sm:grid-cols-3">
                 <div>
                   <dt className="text-xs text-muted-foreground">Bank</dt>
                   <dd className="mt-1 font-semibold">{payment_instructions.bank_name}</dd>
@@ -154,7 +181,7 @@ export default function OrderConfirmation({
                   </dd>
                 </div>
               </dl>
-              <Alert tone="info" className="mt-5">
+              <Alert tone="info" className="mt-4">
                 {payment_instructions.notes}
               </Alert>
             </section>
@@ -173,11 +200,16 @@ export default function OrderConfirmation({
               <ul className="mt-4 divide-y divide-border border-y border-border">
                 {order.items.map((item, index) => (
                   <li key={`${item.product_name}-${index}`} className="flex justify-between gap-4 py-4 text-sm">
-                    <span>
+                    <span className="min-w-0">
                       <span className="font-semibold">{item.product_name ?? item.name}</span>
                       <span className="tabular-nums mt-1 block text-xs text-muted-foreground">
                         {item.quantity} item
                       </span>
+                      {item.note ? (
+                        <span className="mt-1.5 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
+                          <span className="font-semibold">Catatan:</span> {item.note}
+                        </span>
+                      ) : null}
                     </span>
                     {item.line_total !== undefined ? (
                       <span className="tabular-nums shrink-0 font-semibold">
@@ -192,7 +224,7 @@ export default function OrderConfirmation({
             <aside className="rounded-lg bg-surface-muted p-5">
               <p className="text-sm text-muted-foreground">Total pesanan</p>
               <p className="tabular-nums mt-2 text-2xl font-bold">{formatCurrency(order.total_amount)}</p>
-              <Alert tone="info" className="mt-5 bg-surface">
+              <Alert tone="info" className="mt-4 bg-surface">
                 {isTransfer
                   ? "Setelah transfer, kirim bukti pembayaran via WhatsApp agar pesanan diproses."
                   : "Status berikutnya mengikuti proses pembayaran dan pengiriman."}

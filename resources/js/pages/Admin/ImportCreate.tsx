@@ -57,7 +57,7 @@ export default function ImportCreate({
             </Select>
           </Field>
 
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <Field
               id="import-stock-mode"
               label="Sumber stok"
@@ -105,7 +105,7 @@ export default function ImportCreate({
           </div>
 
           {form.progress ? (
-            <div className="mt-5" role="status">
+            <div className="mt-4" role="status">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Mengunggah</span>
                 <span className="tabular-nums">{form.progress.percentage}%</span>

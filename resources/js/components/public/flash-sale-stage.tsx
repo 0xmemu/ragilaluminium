@@ -322,7 +322,7 @@ export function FlashSaleHero({
 
   return (
     <section className="bg-white">
-      <div className="container-page py-4 lg:py-5">
+      <div className="container-page py-4 lg:py-6">
         <Breadcrumbs
           items={[
             { label: "Home", href: routeUrl("home") },

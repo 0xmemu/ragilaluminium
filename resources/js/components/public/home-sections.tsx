@@ -1,0 +1,530 @@
+import { Link, usePage } from "@inertiajs/react"
+import * as React from "react"
+
+import {
+  InstallationCarousel,
+  ModelCardCarousel,
+  ProductCardCarousel,
+  TestimonialCarousel,
+} from "@/components/public/home-carousels"
+import { Icon } from "@/components/shared/icon"
+import { SectionHeading } from "@/components/shared/section-heading"
+import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
+import type {
+  InstallationItem,
+  ModelCardData,
+  ProductCardData,
+  SharedPageProps,
+  Testimonial,
+} from "@/types"
+
+export interface HowToOrderData {
+  title: string
+  subtitle?: string
+  steps: Array<{ step: string; title: string; description: string }>
+}
+
+function SectionTitle({
+  title,
+  actionHref,
+  actionLabel = "Lihat semua →",
+  tone = "default",
+}: {
+  title: string
+  actionHref?: string
+  actionLabel?: string
+  tone?: "default" | "on-primary"
+}) {
+  const onPrimary = tone === "on-primary"
+
+  return (
+    <SectionHeading
+      align="left"
+      size="default"
+      tone={tone}
+      fitHeading={false}
+      headingClassName="!text-[18px]"
+      className="mb-3 gap-1 sm:mb-4"
+      title={title}
+      action={
+        actionHref ? (
+          <Link
+            href={actionHref}
+            className={cn(
+              "inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition",
+              onPrimary
+                ? "text-white/90 hover:text-white"
+                : "text-foreground/80 hover:text-primary",
+            )}
+          >
+            {actionLabel}
+          </Link>
+        ) : undefined
+      }
+    />
+  )
+}
+
+export function PilihModelProdukSection({ models }: { models: ModelCardData[] }) {
+  const seeMoreHref = routeUrl("catalog.index")
+
+  return (
+    <section id="pilih-model-produk" className="scroll-mt-20 bg-surface section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <SectionTitle
+          title="Pilih model produk"
+          actionHref={seeMoreHref}
+        />
+        {models.length ? (
+          <ModelCardCarousel models={models} seeMoreHref={seeMoreHref} />
+        ) : (
+          <EmptyState
+            title="Model belum tersedia"
+            description="Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih."
+            action={
+              <Button asChild>
+                <Link href={seeMoreHref}>Buka katalog</Link>
+              </Button>
+            }
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function PalingBanyakDipesanSection({ products }: { products: ProductCardData[] }) {
+  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular`
+
+  return (
+    <section id="paling-banyak-dipesan" className="scroll-mt-20 section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <SectionTitle
+          title="Paling banyak dipesan"
+          actionHref={seeMoreHref}
+        />
+        {products.length ? (
+          <ProductCardCarousel products={products} seeMoreHref={seeMoreHref} />
+        ) : (
+          <EmptyState
+            title="Belum ada produk populer"
+            description="Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
+            action={
+              <Button asChild>
+                <Link href={routeUrl("catalog.category", { category: "windows" })}>Jelajahi produk</Link>
+              </Button>
+            }
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+const DEFAULT_ORDER_STEPS = [
+  { step: "01", title: "Pilih model", icon: "package" as const },
+  { step: "02", title: "Pilih ukuran & varian", icon: "ruler" as const },
+  { step: "03", title: "Proses pesanan & konfirmasi WhatsApp", icon: "whatsapp" as const },
+]
+
+const ORDER_STEP_ICONS = ["package", "ruler", "whatsapp"] as const
+
+/** Shared step index chip — filled hitam (Kami bantu); dipakai juga di Cara pesan. */
+function orderStepIcon(title: string, index: number): string {
+  const t = title.toLowerCase()
+  if (t.includes("model")) return "package"
+  if (t.includes("ukuran") || t.includes("varian")) return "ruler"
+  if (t.includes("whatsapp") || t.includes("konfirmasi") || t.includes("proses")) return "whatsapp"
+  if (t.includes("checkout") || t.includes("bayar")) return "credit-card"
+  if (t.includes("lacak") || t.includes("pesanan")) return "clipboard-list"
+  return ORDER_STEP_ICONS[index % ORDER_STEP_ICONS.length] ?? "package"
+}
+
+export function CaraPesanSection({
+  data,
+}: {
+  data?: HowToOrderData
+}) {
+  const title = data?.title || "cara pesan jendela impian anda"
+  const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
+  const stepDescriptions: Record<string, string> = {
+    "Pilih model": "telusuri katalog di website dan pilih model jendela favoritmu",
+    "Pilih ukuran & varian": "tentukan ukuran & varian yang kamu butuhkan, lalu masukkan ke keranjang",
+    "Proses pesanan & konfirmasi WhatsApp": "selesaikan checkout, lalu konfirmasi pesananmu lewat WhatsApp",
+  }
+  const [active, setActive] = React.useState(0)
+  const total = steps.length
+  const surfaceRef = React.useRef<HTMLDivElement>(null)
+  const dragRef = React.useRef<{
+    pointerId: number | null
+    startX: number
+    dragged: boolean
+  }>({ pointerId: null, startX: 0, dragged: false })
+
+  React.useEffect(() => {
+    if (total < 2) return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (media.matches) return
+    const id = window.setInterval(() => {
+      setActive((current) => (current + 1) % total)
+    }, 2000)
+    return () => window.clearInterval(id)
+  }, [total])
+
+  // Swipe kiri/kanan untuk ganti langkah.
+  React.useEffect(() => {
+    const el = surfaceRef.current
+    if (!el || total < 2) return
+
+    const state = dragRef.current
+    let startX = 0
+    let activeDrag = false
+    let dragged = false
+    const usePointer = typeof window.PointerEvent === "function"
+
+    const begin = (clientX: number, pointerId: number | null = null) => {
+      activeDrag = true
+      dragged = false
+      startX = clientX
+      state.pointerId = pointerId
+      state.dragged = false
+    }
+
+    const markDrag = (clientX: number, event?: Event) => {
+      if (!activeDrag) return
+      if (Math.abs(clientX - startX) < 28) return
+      if (!dragged) {
+        dragged = true
+        state.dragged = true
+        if (state.pointerId !== null && event instanceof PointerEvent) {
+          try {
+            el.setPointerCapture(state.pointerId)
+          } catch {
+            // ignore
+          }
+        }
+      }
+      event?.preventDefault()
+    }
+
+    const finish = (clientX: number) => {
+      if (!activeDrag) return
+      const dx = clientX - startX
+      const wasDragged = dragged
+      activeDrag = false
+      dragged = false
+      state.pointerId = null
+      state.dragged = false
+      if (!wasDragged || Math.abs(dx) < 40) return
+      setActive((current) => ((current + (dx < 0 ? 1 : -1)) % total + total) % total)
+    }
+
+    if (usePointer) {
+      const onPointerDown = (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return
+        begin(event.clientX, event.pointerId)
+      }
+      const onPointerMove = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        markDrag(event.clientX, event)
+      }
+      const onPointerUp = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        finish(event.clientX)
+      }
+      el.addEventListener("pointerdown", onPointerDown)
+      el.addEventListener("pointermove", onPointerMove, { passive: false })
+      el.addEventListener("pointerup", onPointerUp)
+      el.addEventListener("pointercancel", onPointerUp)
+      return () => {
+        el.removeEventListener("pointerdown", onPointerDown)
+        el.removeEventListener("pointermove", onPointerMove)
+        el.removeEventListener("pointerup", onPointerUp)
+        el.removeEventListener("pointercancel", onPointerUp)
+      }
+    }
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      begin(event.touches[0].clientX)
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (!activeDrag || event.touches.length !== 1) return
+      markDrag(event.touches[0].clientX, event)
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      finish(event.changedTouches[0]?.clientX ?? startX)
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true })
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    el.addEventListener("touchend", onTouchEnd)
+    el.addEventListener("touchcancel", onTouchEnd)
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart)
+      el.removeEventListener("touchmove", onTouchMove)
+      el.removeEventListener("touchend", onTouchEnd)
+      el.removeEventListener("touchcancel", onTouchEnd)
+    }
+  }, [total])
+
+  return (
+    <section id="cara-pesan" className="scroll-mt-20 bg-surface section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <SectionTitle
+          title={title}
+          actionHref={routeUrl("cara-pemesanan")}
+          actionLabel="Lihat panduan →"
+        />
+
+        <div
+          ref={surfaceRef}
+          className="relative w-full overflow-hidden rounded-xl bg-foreground shadow-[0_2px_16px_rgba(10,0,0,0.12)] [touch-action:pan-y]"
+        >
+          <div
+            className={cn(
+              "flex h-[120px] w-full",
+              !(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) &&
+                "transition-transform duration-200 ease-emphasized",
+            )}
+            style={{ transform: `translateX(-${active * 100}%)` }}
+            aria-live="polite"
+          >
+            {steps.map((item, index) => {
+              const icon = orderStepIcon(item.title, index)
+              const desc =
+                stepDescriptions[item.title] ??
+                ("description" in item ? item.description : undefined)
+              return (
+                <div
+                  key={`${index}-${item.title}`}
+                  className="flex h-full w-full shrink-0 items-center gap-3 px-4 sm:gap-4 sm:px-6"
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white sm:size-10">
+                    <Icon name={icon} className="size-4.5 sm:size-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="mt-0.5 text-[13px] font-bold leading-snug tracking-tight text-white sm:text-sm">
+                      {item.title.toLowerCase()}
+                    </h3>
+                    {desc ? (
+                      <p className="mt-0.5 text-[11px] leading-snug text-white/70 sm:text-xs">
+                        {desc.toLowerCase()}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Dots tipis di kanan bawah */}
+          {total > 1 ? (
+            <div className="absolute bottom-2 right-3 flex items-center gap-1">
+              {steps.map((item, index) => (
+                <button
+                  key={`dot-${index}-${item.title}`}
+                  type="button"
+                  onClick={() => setActive(index)}
+                  aria-label={`Langkah ${index + 1}`}
+                  className={cn(
+                    "h-1 rounded-full transition-all duration-300",
+                    index === active ? "w-4 bg-white" : "w-1 bg-white/40 hover:bg-white/70",
+                  )}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+export function HasilPemasanganSection({
+  items,
+  meta,
+}: {
+  items: InstallationItem[]
+  meta?: { heading?: string; subtitle?: string } | null
+}) {
+  const seeMoreHref = routeUrl("installation.index")
+
+  return (
+    <section id="hasil-pemasangan" className="scroll-mt-20 section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <SectionTitle
+          title={meta?.heading?.trim() || "Hasil pemasangan"}
+          actionHref={seeMoreHref}
+          actionLabel="Lihat semua →"
+        />
+        {items.length ? (
+          <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
+        ) : (
+          <EmptyState
+            icon="image"
+            title="Dokumentasi segera hadir"
+            description="Foto pemasangan sedang dikumpulkan. Sementara itu, chat kami untuk melihat contoh di kota Anda."
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function ApaKataPelangganSection({ testimonials }: { testimonials: Testimonial[] }) {
+  const seeMoreHref = `${routeUrl("reviews")}#apa-kata-pelanggan`
+
+  return (
+    <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <SectionTitle
+          title="Apa kata pelanggan kami"
+          actionHref={seeMoreHref}
+          actionLabel="Lihat semua →"
+        />
+        {testimonials.length ? (
+          <TestimonialCarousel
+            testimonials={testimonials}
+            seeMoreHref={seeMoreHref}
+            variant="screenshot"
+            navLabel="testimoni"
+          />
+        ) : (
+          <EmptyState
+            icon="message-circle"
+            title="Belum ada screenshot"
+            description="Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan."
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: Testimonial[] }) {
+  const seeMoreHref = `${routeUrl("reviews")}#ulasan-website`
+
+  return (
+    <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <SectionTitle
+          title="Ulasan pelanggan di website"
+          actionHref={seeMoreHref}
+          actionLabel="Lihat semua →"
+        />
+        {testimonials.length ? (
+          <TestimonialCarousel
+            testimonials={testimonials}
+            seeMoreHref={seeMoreHref}
+            variant="review"
+            navLabel="ulasan"
+          />
+        ) : (
+          <EmptyState
+            icon="star"
+            title="Belum ada ulasan website"
+            description="Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini."
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+const HELP_STEPS = [
+  {
+    icon: "headset",
+    title: "Konsultasi sebelum produksi",
+    description:
+      "Tim kami bantu memilih model yang pas untuk kebutuhan dan tampilan rumah Anda.",
+  },
+  {
+    icon: "ruler",
+    title: "Kami bantu cek & konfirmasi ukuran sebelum produksi",
+    description:
+      "Ukuran dan opsi dicek ulang bersama Anda sebelum produksi, agar hasilnya pas di lokasi.",
+  },
+  {
+    icon: "package",
+    title: "Packing aman & pengiriman ke seluruh Indonesia",
+    description:
+      "Produk dikemas rapi agar aman sampai di rumah Anda, ke seluruh Indonesia.",
+  },
+  {
+    icon: "whatsapp",
+    title: "Masih ragu? Chat WhatsApp, kami bantu sampai jelas",
+    description:
+      "Tanya apa saja lewat WhatsApp, dari pilihan model sampai panduan pemasangan.",
+  },
+]
+
+export function KamiBantuSection() {
+  const { consultationWhatsApp } = usePage<SharedPageProps>().props
+  const whatsappUrl = consultationWhatsApp?.directUrl ?? null
+
+  return (
+    <section id="kami-bantu" className="scroll-mt-20 bg-muted/30 section-space">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary sm:text-sm">
+            Masih bingung?
+          </p>
+          <SectionHeading
+            size="display"
+            fitHeading={false}
+            headingClassName="!text-[18px]"
+            title={
+              <>
+                Kami bantu dari <span className="text-primary">awal sampai jadi</span>
+              </>
+            }
+          />
+        </div>
+
+        <div className="mx-auto max-w-3xl space-y-3 sm:space-y-4">
+          {HELP_STEPS.map((item) => (
+            <article
+              key={item.title}
+              className="flex flex-row items-center gap-3 rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-md sm:gap-4 sm:p-5"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-12">
+                <Icon name={item.icon} className="size-5 sm:size-6" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground sm:text-base">
+                  {item.title}
+                </h3>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground sm:text-sm">
+                  {item.description}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="mx-auto mt-6 flex w-full max-w-xl flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-center sm:gap-3">
+          <Button asChild className="min-w-0 flex-1 whitespace-nowrap px-3 text-xs sm:px-6 sm:text-sm">
+            <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
+          </Button>
+          <Button asChild variant="secondary" className="min-w-0 flex-1 whitespace-nowrap px-3 text-xs sm:px-6 sm:text-sm">
+            {whatsappUrl ? (
+              <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+                Konsultasi ukuran
+              </a>
+            ) : (
+              <Link href={routeUrl("contact")}>
+                <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+                Konsultasi ukuran
+              </Link>
+            )}
+          </Button>
+        </div>
+      </div>
+    </section>
+  )
+}

@@ -65,7 +65,7 @@ export default function CmsPageForm({
       >
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <FormErrorSummary errors={form.errors} />
-          <div className="mt-1 grid gap-5 sm:grid-cols-2">
+          <div className="mt-1 grid gap-4 sm:grid-cols-2">
             <Field id="cms-title" label="Judul" required error={form.errors.title}>
               <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
             </Field>
@@ -123,11 +123,11 @@ export default function CmsPageForm({
           </p>
           {preview ? (
             <article
-              className="cms-content mt-5 text-sm"
+              className="cms-content mt-4 text-sm"
               dangerouslySetInnerHTML={{ __html: preview }}
             />
           ) : (
-            <p className="mt-5 text-sm text-muted-foreground">Mulai menulis untuk melihat preview.</p>
+            <p className="mt-4 text-sm text-muted-foreground">Mulai menulis untuk melihat preview.</p>
           )}
         </aside>
       </form>

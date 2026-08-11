@@ -1,33 +1,18 @@
-import { Head, router } from "@inertiajs/react"
+import { Head } from "@inertiajs/react"
+import * as React from "react"
 
 import { InstallationCard } from "@/components/public/installation-card"
 import { InstallationFeaturedCard } from "@/components/public/installation-featured-card"
 import { InstallationMediaGallery } from "@/components/public/installation-media-gallery"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
-import {
-  FilterBerdasarkanControl,
-  type FilterBerdasarkanOption,
-} from "@/components/public/filter-berdasarkan-control"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { InstallationItem } from "@/types"
-
-const INSTALLATION_SORT_OPTIONS: FilterBerdasarkanOption[] = [
-  { value: "newest", label: "Urutan model" },
-  { value: "photos", label: "Terbanyak media" },
-]
-
-function categorySlugFromCode(category: string): string {
-  const code = category.toUpperCase()
-  if (code === "DOOR") return "door"
-  if (code === "BOUVEN") return "bouven"
-  if (code === "LAINNYA") return "lainnya"
-  return "window"
-}
 
 export default function Installations({
   pageMeta,
@@ -37,7 +22,6 @@ export default function Installations({
   level = "model",
   modelMeta = null,
   indexHref,
-  activeSort = "newest",
 }: {
   pageMeta?: { title: string; heading: string; subtitle: string } | null
   installations?: InstallationItem[]
@@ -47,7 +31,6 @@ export default function Installations({
   modelMeta?: { category: string; model: string; label: string } | null
   indexHref?: string
   reviewsHref?: string
-  activeSort?: string
 }) {
   const isModelLevel = level !== "product"
   const heading = pageMeta?.heading?.trim() || "Hasil Pemasangan Kami"
@@ -58,42 +41,67 @@ export default function Installations({
       : "Contoh pemasangan untuk produk dalam model ini.")
   const docTitle = pageMeta?.title?.trim() || "Hasil Pemasangan"
   const listingHref = indexHref || routeUrl("installation.index")
-  const sortValue = activeSort || "newest"
   const countLabel = isModelLevel
     ? `${formatNumber(installations.length)} model ditemukan`
     : `${formatNumber(installations.length)} produk ditemukan`
 
-  function visitSort(sort: string) {
-    if (isModelLevel) {
-      router.get(
-        routeUrl("installation.index"),
-        { sort: sort === "newest" ? undefined : sort },
-        { preserveScroll: true, replace: true },
-      )
-      return
-    }
-    if (!modelMeta?.category || !modelMeta?.model) return
-    const modelSlug = modelMeta.model.toLowerCase().replace(/\s+/g, "_")
-    router.get(
-      routeUrl("installation.model", {
-        category: categorySlugFromCode(modelMeta.category),
-        model: modelSlug,
-      }),
-      { sort: sort === "newest" ? undefined : sort },
-      { preserveScroll: true, replace: true },
-    )
-  }
+  // Urutan tampilan diatur admin (tidak ada kontrol urut di halaman pembeli).
+  // Pembeli hanya bisa MENCARI model/produk tertentu via ikon search.
+  const [searchOpen, setSearchOpen] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
-  const sortControl = (
-    <FilterBerdasarkanControl
-      id={isModelLevel ? "installation-index-sort" : "installation-model-sort"}
-      variant="plain"
-      value={sortValue}
-      options={INSTALLATION_SORT_OPTIONS}
-      onChange={visitSort}
-      ariaLabel={isModelLevel ? "Urutkan model hasil pemasangan" : "Urutkan inspirasi pemasangan"}
-      menuLabel="Urutkan"
-    />
+  const needle = searchQuery.trim().toLowerCase()
+  const filteredInstallations = needle
+    ? installations.filter((item) =>
+        [item.label, item.subtitle, item.desc, item.model]
+          .filter(Boolean)
+          .some((text) => String(text).toLowerCase().includes(needle)),
+      )
+    : installations
+  const filteredGallery = needle
+    ? gallery.filter((item) =>
+        [item.caption, item.url]
+          .filter(Boolean)
+          .some((text) => String(text).toLowerCase().includes(needle)),
+      )
+    : gallery
+
+  React.useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus()
+  }, [searchOpen])
+
+  const searchControl = (
+    <div className="relative flex shrink-0 items-center gap-2">
+      {searchOpen ? (
+        <Input
+          ref={searchInputRef}
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setSearchOpen(false)
+              setSearchQuery("")
+            }
+          }}
+          placeholder={isModelLevel ? "Cari model produk…" : "Cari di dokumentasi…"}
+          aria-label="Cari hasil pemasangan"
+          className="h-9 w-40 rounded-full sm:w-56"
+        />
+      ) : null}
+      <button
+        type="button"
+        onClick={() => {
+          setSearchOpen((current) => !current)
+          if (searchOpen) setSearchQuery("")
+        }}
+        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-foreground transition hover:bg-accent"
+        aria-label="Cari hasil pemasangan"
+        aria-expanded={searchOpen}
+      >
+        <Icon name="search" className="size-5" aria-hidden="true" />
+      </button>
+    </div>
   )
 
   return (
@@ -139,7 +147,7 @@ export default function Installations({
                   <span className="text-xs font-normal text-muted-foreground">{countLabel}</span>
                 </h1>
               </div>
-              <div className="flex shrink-0 items-center">{sortControl}</div>
+              <div className="flex shrink-0 items-center">{searchControl}</div>
             </div>
           </div>
         ) : (
@@ -148,12 +156,12 @@ export default function Installations({
 
       </section>
 
-      <section className={isModelLevel ? "pt-4 pb-8 sm:pt-6 sm:pb-10" : "pt-0 pb-8 sm:pb-10"}>
+      <section className={isModelLevel ? "pt-4 pb-4 sm:pt-6 sm:pb-6" : "pt-0 pb-4 sm:pb-6"}>
         {isModelLevel ? (
           <div className="container-page">
-            {installations.length ? (
+            {filteredInstallations.length ? (
               <ShowcaseCardGrid className="gap-2">
-                {installations.map((item) => (
+                {filteredInstallations.map((item) => (
                   <InstallationCard
                     key={item.id}
                     level="model"
@@ -166,9 +174,13 @@ export default function Installations({
               </ShowcaseCardGrid>
             ) : (
               <EmptyState
-                icon="image"
-                title="Belum ada dokumentasi pemasangan"
-                description="Foto hasil pemasangan akan tampil di sini setelah tersedia."
+                icon="search"
+                title={needle ? "Tidak ada hasil pencarian" : "Belum ada dokumentasi pemasangan"}
+                description={
+                  needle
+                    ? `Tidak ada hasil pemasangan untuk “${searchQuery.trim()}”. Coba kata kunci lain.`
+                    : "Foto hasil pemasangan akan tampil di sini setelah tersedia."
+                }
               />
             )}
           </div>
@@ -187,20 +199,24 @@ export default function Installations({
             ) : null}
 
             <div id="inspirasi-pemasangan" className="container-page scroll-mt-24">
-              <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
-                <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
+                <h2 className="text-lg font-bold tracking-tight text-foreground">
                   Inspirasi Pemasangan
                 </h2>
-                {sortControl}
+                {searchControl}
               </div>
 
-              {gallery.length ? (
-                <InstallationMediaGallery items={gallery} title={modelMeta?.label || heading} />
+              {filteredGallery.length ? (
+                <InstallationMediaGallery items={filteredGallery} title={modelMeta?.label || heading} />
               ) : (
                 <EmptyState
-                  icon="image"
-                  title="Belum ada dokumentasi untuk model ini"
-                  description="Foto hasil pemasangan akan tampil di sini setelah tersedia."
+                  icon="search"
+                  title={needle ? "Tidak ada hasil pencarian" : "Belum ada dokumentasi untuk model ini"}
+                  description={
+                    needle
+                      ? `Tidak ada dokumentasi untuk “${searchQuery.trim()}”. Coba kata kunci lain.`
+                      : "Foto hasil pemasangan akan tampil di sini setelah tersedia."
+                  }
                 />
               )}
             </div>

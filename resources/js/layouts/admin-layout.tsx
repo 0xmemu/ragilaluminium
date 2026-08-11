@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { AdminBottomNav } from "@/components/admin/admin-bottom-nav"
 import { AdminCommandSearch } from "@/components/admin/admin-command-search"
+import { ActivityLogBell, type ActivityLogItem } from "@/components/admin/activity-log-bell"
 import { NotificationBell, type NotificationItem } from "@/components/admin/notification-bell"
 import { AdminNavigation } from "@/components/admin/admin-navigation"
 import { Button } from "@/components/admin/ui/button"
@@ -58,15 +59,17 @@ export function AdminLayout({
   title,
   description,
   actions,
+  backUrl,
 }: {
   children: React.ReactNode
   title?: string
   description?: string | null
   actions?: React.ReactNode
+  backUrl?: string | null
 }) {
   const { auth, adminNotifications, adminActivityLogs } = usePage<SharedPageProps>().props
   const notifications = (adminNotifications as NotificationItem[] | undefined) ?? []
-  const activityLogs = (adminActivityLogs as Array<{ id: number; event_type: string; entity_type: string; created_at?: string | null; created_at_label?: string | null; actor?: string | null }> | undefined) ?? []
+  const activityLogs = (adminActivityLogs as ActivityLogItem[] | undefined) ?? []
   const [navigationOpen, setNavigationOpen] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [theme, setTheme] = React.useState<AdminTheme>(() => readAdminTheme())
@@ -139,7 +142,8 @@ export function AdminLayout({
           </button>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <NotificationBell notifications={notifications} activityLogs={activityLogs} />
+            <ActivityLogBell activityLogs={activityLogs} />
+            <NotificationBell notifications={notifications} />
 
             <Button
               variant="ghost"
@@ -217,6 +221,19 @@ export function AdminLayout({
             <div className="px-4 pb-5 pt-6 md:px-6 lg:px-8">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
+                  {title ? (
+                    backUrl ? (
+                      <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                        <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
+                        Kembali
+                      </Link>
+                    ) : (
+                      <button type="button" onClick={() => window.history.back()} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                        <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
+                        Kembali
+                      </button>
+                    )
+                  ) : null}
                   {title ? (
                     <h1 className="text-xl font-semibold tracking-tight text-foreground">
                       {title}

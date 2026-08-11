@@ -28,7 +28,7 @@ export function EmptyState({
       </span>
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       <p className="mt-1.5 max-w-md text-xs leading-5 text-muted-foreground">{description}</p>
-      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </section>
   )
 }

@@ -223,7 +223,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
         </div>
       </section>
 
-      <div className="container-page space-y-6 py-6 sm:py-8 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
+      <div className="container-page space-y-6 py-4 lg:py-6 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
         <div className="space-y-6">
           <section aria-labelledby="why-ragil">
             <h2 id="why-ragil" className="text-base font-bold tracking-tight text-foreground">
@@ -257,7 +257,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
         </div>
       </div>
 
-      <div className="container-page space-y-8 py-6 sm:py-8">
+      <div className="container-page space-y-8 py-4 lg:py-6">
         <section aria-labelledby="store-contact">
           <h2 id="store-contact" className="text-base font-bold tracking-tight text-foreground">
             Informasi Kontak

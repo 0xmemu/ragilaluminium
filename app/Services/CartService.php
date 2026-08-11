@@ -26,7 +26,7 @@ class CartService
         return $cart;
     }
 
-    public function add(string $parentSku, ?string $variantSku, int $quantity): array
+    public function add(string $parentSku, ?string $variantSku, int $quantity, ?string $note = null): array
     {
         $cart = $this->get();
         $lineId = $variantSku ?: $parentSku;
@@ -41,6 +41,9 @@ class CartService
         if (isset($cart[$lineId])) {
             $cart[$lineId]['quantity'] = min($stock, (int) $cart[$lineId]['quantity'] + $quantity);
             $cart[$lineId]['stock'] = $stock;
+            if ($note !== null && trim($note) !== '') {
+                $cart[$lineId]['note'] = trim($note);
+            }
         } else {
             $pricing = $this->priceFor($product, $variant);
 
@@ -60,6 +63,7 @@ class CartService
                 'flash_sale' => $pricing['flash_sale'],
                 'stock' => $stock,
                 'quantity' => min($stock, $quantity),
+                'note' => $note !== null && trim($note) !== '' ? trim($note) : null,
             ];
         }
 
@@ -72,7 +76,7 @@ class CartService
         return $cart;
     }
 
-    public function update(string $lineId, int $quantity): array
+    public function update(string $lineId, int $quantity, ?string $note = null): array
     {
         $cart = $this->get();
 
@@ -89,6 +93,9 @@ class CartService
                 $stock = $product ? $this->stockFor($product, $variant) : max(0, (int) ($cart[$lineId]['stock'] ?? 0));
                 $cart[$lineId]['stock'] = $stock;
                 $cart[$lineId]['quantity'] = min($stock, $quantity);
+                if ($note !== null) {
+                    $cart[$lineId]['note'] = trim($note) !== '' ? trim($note) : null;
+                }
                 if ($cart[$lineId]['quantity'] < 1) {
                     unset($cart[$lineId]);
                 }

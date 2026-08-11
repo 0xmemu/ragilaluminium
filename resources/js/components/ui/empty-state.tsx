@@ -23,7 +23,7 @@ export function EmptyState({
         className,
       )}
     >
-      <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-surface text-primary shadow-sm">
+      <span className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-surface text-primary shadow-sm">
         <Icon name={icon} className="h-5 w-5" aria-hidden="true" />
       </span>
       <h2 className="text-lg font-semibold text-foreground sm:text-xl">{title}</h2>

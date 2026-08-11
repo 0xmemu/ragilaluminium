@@ -8,11 +8,6 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatDate } from "@/lib/format"
 
-interface ProviderInfo {
-  configured: boolean
-  base_url?: string | null
-}
-
 interface ConnectionInfo {
   configured: boolean
   default_provider: string
@@ -66,7 +61,6 @@ export default function WhatsAppConnection({
   const isBaileysActive = connection.default_provider === "baileys"
 
   const [liveStatus, setLiveStatus] = useState<string>("unknown")
-  const [liveStatusText, setLiveStatusText] = useState<string>("Mengecek status...")
 
   useEffect(() => {
     let active = true
@@ -76,7 +70,6 @@ export default function WhatsAppConnection({
         .then((d) => {
           if (!active) return
           if (d.status) setLiveStatus(d.status)
-          if (d.statusText) setLiveStatusText(d.statusText)
         })
         .catch(() => {})
     }

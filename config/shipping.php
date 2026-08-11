@@ -14,4 +14,14 @@ return [
 
     // Berat default per item bila varian tidak punya weight_kg (kg).
     'default_item_weight_kg' => (float) env('SHIPPING_DEFAULT_ITEM_WEIGHT', 1.0),
+
+    /*
+    | Estimasi waktu tiba (OrderEta): hari produksi + rentang pengiriman.
+    | Tampil di checkout, konfirmasi order, status pesanan, dan WA.
+    */
+    'eta' => [
+        'production_days' => (int) env('SHIPPING_ETA_PRODUCTION_DAYS', 1),
+        'delivery_min_days' => (int) env('SHIPPING_ETA_DELIVERY_MIN_DAYS', 2),
+        'delivery_max_days' => (int) env('SHIPPING_ETA_DELIVERY_MAX_DAYS', 5),
+    ],
 ];

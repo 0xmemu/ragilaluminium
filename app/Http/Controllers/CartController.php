@@ -62,16 +62,19 @@ class CartController extends Controller
             'parent_sku' => ['required', 'string'],
             'variant_sku' => ['nullable', 'string'],
             'quantity' => ['required', 'integer', 'min:1'],
+            'note' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $this->cart->add(
             $validated['parent_sku'],
             $validated['variant_sku'] ?? null,
-            $validated['quantity']
+            $validated['quantity'],
+            filled($validated['note'] ?? null) ? trim((string) $validated['note']) : null
         );
 
-        return redirect()->route('cart.index')
-            ->with('success', 'Produk ditambahkan ke keranjang.');
+        // Tetap di halaman produk supaya animasi "produk terbang ke keranjang"
+        // terlihat; badge keranjang diperbarui lewat shared props Inertia.
+        return back()->with('success', 'Produk ditambahkan ke keranjang.');
     }
 
     public function update(Request $request): RedirectResponse|JsonResponse
@@ -79,9 +82,14 @@ class CartController extends Controller
         $validated = $request->validate([
             'line_id' => ['required', 'string'],
             'quantity' => ['required', 'integer', 'min:0'],
+            'note' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $cart = $this->cart->update($validated['line_id'], $validated['quantity']);
+        $cart = $this->cart->update(
+            $validated['line_id'],
+            $validated['quantity'],
+            array_key_exists('note', $validated) ? $validated['note'] : null
+        );
 
         if ($request->expectsJson()) {
             $item = $cart[$validated['line_id']] ?? null;

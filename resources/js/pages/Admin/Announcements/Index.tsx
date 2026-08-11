@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Input } from "@/components/admin/ui/input"
@@ -27,6 +28,8 @@ interface AnnouncementCard {
   edit_href: string
   publish_url: string
   unpublish_url: string
+  delete_url: string
+  slideHref: string
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -63,6 +66,11 @@ function AnnouncementActions({
     router.post(announcement.unpublish_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
   }
 
+  function remove() {
+    setBusyId(announcement.id)
+    router.delete(announcement.delete_url, { preserveScroll: true, onFinish: () => setBusyId(null) })
+  }
+
   return (
     <RowActions>
       <Button asChild variant="secondary" size="xs">
@@ -86,6 +94,18 @@ function AnnouncementActions({
           Aktifkan
         </Button>
       )}
+      <ConfirmAction
+        trigger={
+          <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
+            Hapus
+          </button>
+        }
+        title="Hapus bar promo?"
+        description="Promo akan dihapus permanen dari daftar."
+        confirmLabel="Hapus"
+        processing={busy}
+        onConfirm={remove}
+      />
     </RowActions>
   )
 }
@@ -98,6 +118,8 @@ export default function AnnouncementsIndex({
   announcements,
   pagination,
   createHref,
+  announcementSlide,
+  slideHref,
 }: {
   title: string
   description: string
@@ -106,9 +128,24 @@ export default function AnnouncementsIndex({
   announcements: AnnouncementCard[]
   pagination: PaginationData
   createHref: string
+  announcementSlide?: { enabled: boolean; interval: number }
+  slideHref: string
 }) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
+  const [slideEnabled, setSlideEnabled] = React.useState(announcementSlide?.enabled ?? false)
+  const [slideInterval, setSlideInterval] = React.useState(announcementSlide?.interval ?? 5)
+  const [savingSlide, setSavingSlide] = React.useState(false)
+
+  function saveSlide(event: React.FormEvent) {
+    event.preventDefault()
+    setSavingSlide(true)
+    router.post(
+      slideHref,
+      { enabled: slideEnabled, interval: slideInterval },
+      { preserveScroll: true, onFinish: () => setSavingSlide(false) },
+    )
+  }
 
   function visit(params: Record<string, string | undefined>) {
     const merged = { q: searchQuery, status: activeStatus, ...params }
@@ -125,14 +162,7 @@ export default function AnnouncementsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <Button asChild>
-          <Link href={createHref}>
-            <Icon name="plus" className="size-4" aria-hidden="true" />
-            Tambah Bar Promo
-          </Link>
-        </Button>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -148,44 +178,67 @@ export default function AnnouncementsIndex({
         </p>
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <form
-            className="min-w-0 flex-1"
-            onSubmit={(event) => {
-              event.preventDefault()
-              visit({ q })
-            }}
-          >
+      {/* Baris kontrol seragam: search | filter | actions */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => visit({ q }),
+          placeholder: "Teks atau link promo…",
+        }}
+        actions={
+          <Button asChild>
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Tambah Bar Promo
+            </Link>
+          </Button>
+        }
+        className="mb-6"
+      >
+        <Select
+          value={activeStatus}
+          onChange={(event) => visit({ status: event.target.value })}
+          aria-label="Filter status"
+        >
+          <option value="all">Semua status</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </Select>
+      </ListToolbar>
+
+      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h2 className="text-base font-bold">Slide bar promo</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Aktifkan rotasi otomatis antar beberapa bar promo aktif di header storefront.
+        </p>
+        <form onSubmit={saveSlide} className="mt-4 flex flex-wrap items-end gap-4">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={slideEnabled}
+              onChange={(event) => setSlideEnabled(event.target.checked)}
+            />
+            Aktifkan slide
+          </label>
+          <div className="w-40">
             <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Cari promo
+              Interval (detik)
             </label>
-            <div className="mt-1.5 flex gap-2">
-              <Input
-                value={q}
-                onChange={(event) => setQ(event.target.value)}
-                placeholder="Teks atau link promo"
-              />
-              <Button type="submit" variant="secondary">
-                Cari
-              </Button>
-            </div>
-          </form>
-          <div className="w-full sm:w-48">
-            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Status
-            </label>
-            <Select
+            <Input
+              type="number"
+              min={2}
+              max={30}
+              value={slideInterval}
+              onChange={(event) => setSlideInterval(Number(event.target.value))}
               className="mt-1.5"
-              value={activeStatus}
-              onChange={(event) => visit({ status: event.target.value })}
-            >
-              <option value="all">Semua status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
-            </Select>
+            />
           </div>
-        </div>
+          <Button type="submit" variant="secondary" disabled={savingSlide}>
+            {savingSlide ? "Menyimpan..." : "Simpan"}
+          </Button>
+        </form>
       </section>
 
       {!announcements.length ? (

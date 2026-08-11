@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Support\AnnouncementSlideSettings;
 use App\Support\InertiaAdmin;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -44,6 +45,8 @@ class AnnouncementController extends Controller
                 ->all(),
             'pagination' => InertiaAdmin::pagination($announcements),
             'createHref' => route('admin.announcements.create'),
+            'announcementSlide' => AnnouncementSlideSettings::sharedProps(),
+            'slideHref' => route('admin.announcements.slide'),
         ]);
     }
 
@@ -148,6 +151,28 @@ class AnnouncementController extends Controller
         return $data;
     }
 
+    public function saveSlide(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'enabled' => ['boolean'],
+            'interval' => ['required', 'integer', 'min:2', 'max:30'],
+        ]);
+
+        AnnouncementSlideSettings::save([
+            'enabled' => (bool) ($validated['enabled'] ?? false),
+            'interval' => (int) $validated['interval'],
+        ]);
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Pengaturan bar slide disimpan.');
+    }
+
+    public function destroy(Announcement $announcement): RedirectResponse
+    {
+        $announcement->delete();
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Bar promo dihapus.');
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -166,6 +191,7 @@ class AnnouncementController extends Controller
             'edit_href' => route('admin.announcements.edit', $announcement),
             'publish_url' => route('admin.announcements.publish', $announcement),
             'unpublish_url' => route('admin.announcements.unpublish', $announcement),
+            'delete_url' => route('admin.announcements.destroy', $announcement),
         ];
     }
 }

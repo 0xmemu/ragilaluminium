@@ -164,6 +164,7 @@ class CatalogController extends Controller
             ->withMin('activeVariants as min_height_sort', 'height_cm')
             ->withMin('activeVariants as min_width_sort', 'width_cm')
             ->withSum('validOrderItems as sold_count', 'quantity')
+            ->withSum('activeVariants as stock_sort', 'stock')
             ->when($model, fn ($q) => $q->where('product_model', $model))
             ->when($design, fn ($q) => $q->where('design_variant', $design))
             ->when(
@@ -200,7 +201,9 @@ class CatalogController extends Controller
             ->when($sort === 'newest' || $sort === 'baru', fn ($q) => $q->latest('created_at')->orderByDesc('id'))
             ->when(
                 in_array($sort, ['popular', 'terlaris', 'bestseller'], true),
-                fn ($q) => $q->orderByDesc('sold_count')->orderByDesc('id')
+                // Populer: penjualan dulu, lalu stok terbanyak sebagai tie-breaker
+                // (belum ada pembelian → produk stok tertinggi tampil di depan).
+                fn ($q) => $q->orderByDesc('sold_count')->orderByDesc('stock_sort')->orderByDesc('id')
             )
              ->paginate(14)
             ->withQueryString();
@@ -235,6 +238,20 @@ class CatalogController extends Controller
             && ! ($request->is('api/*') || $request->wantsJson())
         ) {
             $youMightLike = $this->searchYouMightLikeFlashCards(
+                term: trim((string) $request->input('q')),
+                category: $category,
+            );
+        }
+
+        // Pencarian tanpa hasil: tawarkan ukuran terdekat + kategori terkait
+        // + ajakan konsultasi WhatsApp, bukan sekadar "tidak ada hasil".
+        $searchFallback = null;
+        if (
+            $request->filled('q')
+            && $products->isEmpty()
+            && ! ($request->is('api/*') || $request->wantsJson())
+        ) {
+            $searchFallback = $this->searchFallbackFor(
                 term: trim((string) $request->input('q')),
                 category: $category,
             );
@@ -322,12 +339,92 @@ class CatalogController extends Controller
             'activeDesign' => $design,
             'activeSort' => $sort,
             'searchQuery' => trim((string) $request->input('q', '')),
+            'searchFallback' => $searchFallback,
             'priceMin' => $request->filled('price_min') ? (int) $request->input('price_min') : null,
             'priceMax' => $request->filled('price_max') ? (int) $request->input('price_max') : null,
             'basePath' => $basePath,
             'canonicalUrl' => url($isAllProductsListing ? '/products/all' : $basePath),
             'robotsDirective' => ! $request->routeIs('catalog.category', 'catalog.design') && ($request->hasAny(['q', 'model', 'design', 'price_min', 'price_max']) || $request->filled('sort')) ? 'noindex,follow' : 'index,follow',
         ]);
+    }
+
+    /**
+     * Fallback saat pencarian tanpa hasil: ukuran terdekat (dari dimensi varian)
+     * dan model/kategori terkait dari token pencarian.
+     *
+     * @return array{nearby_sizes: list<array<string, mixed>>, related_models: list<array{label: string, href: string}>}|null
+     */
+    protected function searchFallbackFor(string $term, ?string $category): ?array
+    {
+        $nearbySizes = [];
+        $relatedModels = [];
+
+        if (preg_match('/(\d+)\s*[x×]\s*(\d+)/iu', $term, $matches)) {
+            $dims = array_values(array_unique([(float) $matches[1], (float) $matches[2]]));
+
+            $nearby = Product::visible()
+                ->when($category, fn ($q) => $q->where('product_category', $category))
+                ->whereHas('activeVariants', function ($q) use ($dims) {
+                    $q->where(function ($inner) use ($dims) {
+                        foreach ($dims as $dimension) {
+                            $inner->orWhereBetween('height_cm', [$dimension - 15, $dimension + 15])
+                                ->orWhereBetween('width_cm', [$dimension - 15, $dimension + 15]);
+                        }
+                    });
+                })
+                ->with(['mainImage', 'activeVariants', 'attributes'])
+                ->withSum('validOrderItems as sold_count', 'quantity')
+                ->latest('id')
+                ->limit(8)
+                ->get();
+
+            $nearbySizes = InertiaCatalog::productCards($nearby);
+        }
+
+        $tokens = preg_split('/\s+/u', mb_strtolower($term), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $haystacks = array_values(array_unique(array_merge([mb_strtolower($term)], $tokens)));
+        $categorySlug = match (strtoupper((string) $category)) {
+            'DOOR' => 'doors',
+            'BOUVEN' => 'bouven',
+            default => 'window',
+        };
+
+        foreach (CatalogLabels::MODEL_ORDER as $code) {
+            $label = mb_strtolower(CatalogLabels::model($code));
+            $slug = mb_strtolower(str_replace('_', ' ', $code));
+            foreach ($haystacks as $piece) {
+                if ($piece === '') {
+                    continue;
+                }
+                if ($piece === $label || $piece === $slug || str_contains($slug, $piece) || str_contains($piece, $slug)) {
+                    $relatedModels[] = [
+                        'label' => CatalogLabels::model($code) ?: $code,
+                        'href' => route('catalog.model', [
+                            'category' => $categorySlug,
+                            'model' => strtolower(str_replace('_', '-', $code)),
+                        ], absolute: false),
+                    ];
+                    break;
+                }
+            }
+        }
+
+        $relatedModels = array_values(array_unique(array_map(
+            fn (array $row) => $row['label'].'|'.$row['href'],
+            $relatedModels,
+        )));
+        $relatedModels = array_values(array_map(
+            fn (string $key) => ['label' => explode('|', $key)[0], 'href' => explode('|', $key)[1]],
+            $relatedModels,
+        ));
+
+        // Tetap kirim struktur walau keduanya kosong: halaman membutuhkannya
+        // untuk menampilkan kartu "Tidak menemukan ukuran yang sesuai?"
+        // + tombol Konsultasi via WhatsApp.
+        return [
+            'nearby_sizes' => $nearbySizes,
+            'related_models' => $relatedModels,
+        ];
     }
 
     /**
@@ -402,7 +499,6 @@ class CatalogController extends Controller
 
         return Inertia::render('Public/ModelProduk', [
             'models' => app(ModelProductService::class)->storefrontCards(0, $design, $category),
-            'popularProducts' => InertiaCatalog::popularProductCards(10),
             'filterDesigns' => CatalogTaxonomy::availableDesignFilters(),
             'filterModels' => collect(CatalogTaxonomy::models($category))
                 ->map(fn ($model) => ['value' => $model, 'label' => CatalogLabels::model($model) ?: $model])

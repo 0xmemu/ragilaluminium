@@ -15,8 +15,9 @@ class PublicUxBlockersTest extends TestCase
         $this->assertSame('id', config('app.locale'));
 
         $response = $this->from('/checkout')->post('/checkout/validate', []);
+        // Nama wilayah adalah sumber otoritatif (wajib); *_id hanya penanda dropdown (nullable).
         $response->assertSessionHasErrors([
-            'city_id',
+            'city',
             'address_line1',
             'name',
             'phone',

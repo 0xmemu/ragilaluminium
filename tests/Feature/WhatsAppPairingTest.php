@@ -50,14 +50,21 @@ class WhatsAppPairingTest extends TestCase
         }
     }
 
-    public function test_pairing_code_endpoint_returns_json(): void
+    public function test_pairing_code_redirects_with_flash_feedback(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-        $response = $this->actingAs($admin)
-            ->postJson(route('admin.whatsapp.pairing.code'), ['phone' => '6281776370707']);
+        // Endpoint kembali ke halaman pairing dengan flash (kode berhasil ATAU error).
+        // Di lingkungan test gateway tidak terjangkau → diharapkan whatsapp_error.
+        $this->actingAs($admin)
+            ->from(route('admin.whatsapp.pairing'))
+            ->post(route('admin.whatsapp.pairing.code'), ['phone' => '6281776370707'])
+            ->assertRedirect(route('admin.whatsapp.pairing'));
 
-        $this->assertTrue(in_array($response->status(), [200, 422, 423, 500, 502], true));
-        $this->assertIsArray($response->json());
+        $session = session()->all();
+        $this->assertTrue(
+            array_key_exists('whatsapp_code', $session) || array_key_exists('whatsapp_error', $session),
+            'Flash whatsapp_code/whatsapp_error tidak ada di session: '.json_encode($session)
+        );
     }
 }

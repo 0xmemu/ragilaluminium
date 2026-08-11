@@ -129,7 +129,8 @@ class CheckoutFlowTest extends TestCase
                 'postal_code' => '12345',
             ])
             ->assertRedirect('/checkout')
-            ->assertSessionHasErrors(['province', 'city', 'district', 'village', 'province_id', 'city_id', 'district_id', 'village_id']);
+            // Nama wilayah wajib; *_id hanya penanda dropdown (nullable).
+            ->assertSessionHasErrors(['province', 'city', 'district', 'village']);
     }
 
     public function test_checkout_validate_stores_wilayah_names_in_session(): void

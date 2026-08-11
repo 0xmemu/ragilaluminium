@@ -117,7 +117,7 @@ export default function BannerForm({
           </div>
 
           {/* Field informasi promo */}
-          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <Field
               id="title"
               label="Nama / judul promo"

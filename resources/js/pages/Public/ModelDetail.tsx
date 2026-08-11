@@ -10,7 +10,6 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
 import PublicLayout from "@/layouts/public-layout"
-import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { ModelCardData, ProductCardData } from "@/types"
@@ -149,33 +148,26 @@ function DesignProductRail({
 }) {
   const items = (variant.products ?? []).slice(0, 12)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
-  const sizeLabel =
-    variant.size_count > 0
-      ? `${formatNumber(variant.size_count)} Ukuran`
-      : `${formatNumber(variant.count)} produk`
   const headingId = `design-rail-${variant.value}`
 
   if (!items.length) return null
 
   return (
     <section className="min-w-0" aria-labelledby={headingId}>
-      <div className="mb-3 min-w-0 sm:mb-4">
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
         <h3
           id={headingId}
-          className="w-full whitespace-nowrap text-[clamp(1rem,5vw,1.25rem)] font-bold leading-tight tracking-tight text-foreground"
+          className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
         >
           {variant.title}
         </h3>
-        <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
-          <p className="min-w-0 text-sm leading-7 text-muted-foreground">{sizeLabel}</p>
-          <Link
-            href={variant.href}
-            className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
-          >
-            Lihat selengkapnya
-            <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
-          </Link>
-        </div>
+        <Link
+          href={variant.href}
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-foreground/80 transition hover:text-primary"
+        >
+          Lihat semua
+          <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+        </Link>
       </div>
 
       <div className="relative min-w-0">
@@ -240,33 +232,6 @@ export default function ModelDetail({
 
   const modelsHref = hubHref || routeUrl("catalog.index")
 
-  const categoryLabel =
-    model.category?.toUpperCase() === "DOOR"
-      ? "Pintu"
-      : model.category?.toUpperCase() === "BOUVEN"
-        ? "Boven"
-        : "Jendela"
-
-  const specs = [
-    { label: "Kategori", value: categoryLabel },
-    {
-      label: "Model",
-      value: (model.model || "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()),
-    },
-    {
-      label: "Desain",
-      value: model.meta?.trim() || (model.designs?.length ? model.designs.join(", ") : null),
-    },
-    {
-      label: "Produk",
-      value: model.count?.trim()
-        ? model.count.toLowerCase().includes("produk")
-          ? model.count
-          : `${model.count} produk`
-        : null,
-    },
-  ].filter((row) => Boolean(row.value))
-
   const rails = React.useMemo(() => {
     const source = designRails.length ? designRails : designVariants
     return source.filter((rail) => (rail.products?.length ?? 0) > 0)
@@ -306,8 +271,8 @@ export default function ModelDetail({
         </div>
       </section>
 
-      <section className="pb-8 sm:pb-10">
-        <div className="container-page py-2 sm:pt-3">
+      <section className="pb-4 lg:pb-6">
+        <div className="container-page pt-4 pb-2 lg:pt-6">
           <div className="md:grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-start md:gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
             <div className="relative mx-auto aspect-square w-full max-w-[22rem] overflow-hidden bg-surface-muted md:mx-0 md:max-w-none">
               <ResponsiveImage
@@ -332,47 +297,26 @@ export default function ModelDetail({
 
               {highlights.length ? (
                 <ul
-                  className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:grid-cols-3 sm:gap-3"
+                  className="mt-6 grid grid-cols-3 gap-2.5 sm:mt-8 sm:gap-3"
                   aria-label="Keunggulan model"
                 >
                   {highlights.map((item) => (
                     <li
                       key={item.label}
-                      className="flex min-h-[5.5rem] flex-col items-center justify-center gap-2.5 rounded-xl border border-border bg-white px-2.5 py-4 text-center sm:min-h-[6.25rem] sm:gap-3 sm:px-3 sm:py-5"
+                      className="flex min-h-[5rem] flex-col items-center justify-center gap-2 rounded-xl border border-border bg-white px-2 py-3.5 text-center sm:min-h-[6.25rem] sm:gap-3 sm:px-3 sm:py-5"
                     >
                       <Icon
                         name={item.icon}
                         weight="regular"
-                        className="size-7 text-foreground sm:size-8"
+                        className="size-6 text-foreground sm:size-8"
                         aria-hidden="true"
                       />
-                      <span className="text-xs font-medium leading-snug text-foreground/85">
+                      <span className="text-[11px] font-medium leading-snug text-foreground/85 sm:text-xs">
                         {item.label}
                       </span>
                     </li>
                   ))}
                 </ul>
-              ) : null}
-
-              {specs.length ? (
-                <aside className="mt-6 border-t border-border pt-5 sm:mt-8 sm:pt-6">
-                  <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
-                    Spesifikasi Unit
-                  </h2>
-                  <dl className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-3">
-                    {specs.map((row) => (
-                      <div
-                        key={row.label}
-                        className="flex items-baseline justify-between gap-4 text-sm"
-                      >
-                        <dt className="shrink-0 text-muted-foreground">{row.label}</dt>
-                        <dd className="min-w-0 text-right font-semibold text-foreground">
-                          {row.value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </aside>
               ) : null}
             </div>
           </div>
@@ -381,16 +325,20 @@ export default function ModelDetail({
         <div id="produk" className="container-page mt-8 scroll-mt-24 sm:mt-10">
           {rails.length === 1 ? (
             <section aria-labelledby="single-design-heading">
-              <div className="mb-3 sm:mb-4">
+              <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
                 <h2
                   id="single-design-heading"
-                  className="text-[clamp(1rem,5vw,1.25rem)] font-bold leading-tight tracking-tight text-foreground"
+                  className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
                 >
                   {rails[0].title}
                 </h2>
-                <p className="mt-1 text-sm leading-7 text-muted-foreground">
-                  {rails[0].products?.length ?? 0} produk
-                </p>
+                <Link
+                  href={rails[0].href}
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-foreground/80 transition hover:text-primary"
+                >
+                  Lihat semua
+                  <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+                </Link>
               </div>
               <ProductCardGrid>
                 {(products.length ? products : (rails[0].products ?? [])).map((product) => (

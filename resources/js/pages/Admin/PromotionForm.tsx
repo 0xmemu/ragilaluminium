@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
@@ -23,6 +23,7 @@ interface Option {
 }
 
 interface PromotionFormData {
+  id?: number
   type: string
   name: string
   discount_percent: number
@@ -138,7 +139,7 @@ export default function PromotionForm({
             </Field>
             <Field id="promotion-banner" label="Sinkron ke banner beranda">
               <div className="flex h-10 items-center">
-                <Switch checked={form.data.sync_banner} onCheckedChange={(checked) => form.setData("sync_banner", checked)} />
+                <Switch label="Sinkron ke banner beranda" checked={form.data.sync_banner} onCheckedChange={(checked) => form.setData("sync_banner", checked)} />
                 <span className="ml-3 text-sm text-muted-foreground">Tampilkan badge/baris kampanye di beranda</span>
               </div>
             </Field>

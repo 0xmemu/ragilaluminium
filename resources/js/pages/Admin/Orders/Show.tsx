@@ -33,6 +33,7 @@ interface OrderItemRow {
   quantity: number
   unit_price: number
   line_total: number
+  note?: string | null
   image?: string | null
 }
 
@@ -781,8 +782,8 @@ export default function OrderShow({
 
 
       {/* Konten utama + aside */}
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-5">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-4">
           <SectionCard
             title="Isi pesanan"
             contentClassName="p-0"
@@ -819,6 +820,11 @@ export default function OrderShow({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {variationLabel(item) || item.variant_sku || "-"}
                     </p>
+                    {item.note ? (
+                      <p className="mt-1.5 rounded-md bg-accent/60 px-2 py-1 text-xs leading-5 text-accent-foreground">
+                        <span className="font-semibold">Catatan pembeli:</span> {item.note}
+                      </p>
+                    ) : null}
                     <p className="mt-1.5 text-xs text-muted-foreground">
                       {formatNumber(item.quantity)} × {formatCurrency(item.unit_price)}
                     </p>
@@ -956,7 +962,7 @@ export default function OrderShow({
         </div>
 
 
-        <aside className="space-y-5">
+        <aside className="space-y-4">
           <SectionCard title="Catatan pembeli">
             <p className="whitespace-pre-wrap text-[13px] leading-6 text-muted-foreground">
               {order.notes?.trim() || "Tidak ada catatan dari pembeli."}
@@ -1184,7 +1190,21 @@ export default function OrderShow({
           </SectionCard>
         </aside>
       </div>
-      {printing ? <PrintAddressArea data={order} /> : null}
+      {printing ? (
+        <PrintAddressArea
+          data={{
+            ...order,
+            items: order.items.map((item) => ({
+              id: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              note: item.note,
+              variation_label: variationLabel(item),
+            })),
+          }}
+        />
+      ) : null}
     </AdminLayout>
   )
 }

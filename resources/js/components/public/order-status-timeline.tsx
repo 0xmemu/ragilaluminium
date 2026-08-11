@@ -53,7 +53,7 @@ export function OrderStatusTimeline({
             />
           ) : null}
           <Icon name={step.icon} className="h-5 w-5 text-primary" aria-hidden="true" />
-          <p className="mt-5 text-sm font-semibold">{step.label}</p>
+          <p className="mt-4 text-sm font-semibold">{step.label}</p>
           <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
           <div className="mt-4">
             <StatusBadge status={statuses[step.key]} />

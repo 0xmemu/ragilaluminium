@@ -12,6 +12,14 @@ export interface AddressData {
   shipping_city?: string | null
   shipping_province?: string | null
   shipping_postal_code?: string | null
+  items?: Array<{
+    id?: number | string
+    name?: string | null
+    quantity?: number
+    unit_price?: number
+    note?: string | null
+    variation_label?: string | null
+  }>
 }
 
 export function fullAddress(data: AddressData): string {
@@ -78,6 +86,47 @@ export function PrintAddressArea({ data }: { data: AddressData }) {
         <p style={{ marginTop: 14, fontSize: 12, color: "#555" }}>
           Order: {data.order_number}
         </p>
+      ) : null}
+      {data.items && data.items.length ? (
+        <div style={{ marginTop: 18, borderTop: "1px solid #999", paddingTop: 12 }}>
+          <strong style={{ fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "#555" }}>
+            Daftar Produk
+          </strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8, fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th align="left" style={{ padding: "4px 8px 4px 0", borderBottom: "1px solid #ccc", fontWeight: 700 }}>Produk</th>
+                <th align="center" style={{ padding: "4px 8px", borderBottom: "1px solid #ccc", fontWeight: 700 }}>Qty</th>
+                <th align="right" style={{ padding: "4px 0 4px 8px", borderBottom: "1px solid #ccc", fontWeight: 700 }}>Harga</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((item, index) => (
+                <tr key={item.id ?? index} style={{ verticalAlign: "top" }}>
+                  <td style={{ padding: "6px 8px 6px 0", borderBottom: "1px solid #eee" }}>
+                    <span style={{ fontWeight: 600 }}>{item.name || "-"}</span>
+                    {item.variation_label ? (
+                      <span style={{ display: "block", color: "#555" }}>{item.variation_label}</span>
+                    ) : null}
+                    {item.note ? (
+                      <span style={{ display: "block", marginTop: 3, color: "#8a4b00", fontStyle: "italic" }}>
+                        Catatan: {item.note}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td align="center" style={{ padding: "6px 8px", borderBottom: "1px solid #eee", whiteSpace: "nowrap" }}>
+                    {item.quantity ?? "-"}
+                  </td>
+                  <td align="right" style={{ padding: "6px 0 6px 8px", borderBottom: "1px solid #eee", whiteSpace: "nowrap" }}>
+                    {typeof item.unit_price === "number"
+                      ? "Rp " + item.unit_price.toLocaleString("id-ID")
+                      : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </div>,
     document.body,

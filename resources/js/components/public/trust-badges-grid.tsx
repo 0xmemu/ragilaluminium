@@ -24,32 +24,35 @@ const BADGES = [
   },
 ]
 
+/**
+ * Empat keunggulan dalam satu baris (mobile & desktop): ikon kecil di kiri,
+ * teks ringkas di kanan — cukup ringkas agar muat di layar 320px.
+ */
 export function TrustBadgesGrid({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        "grid gap-6 rounded-lg border border-border bg-surface p-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0 lg:p-7",
+        "grid grid-cols-4 gap-x-2 gap-y-3 rounded-lg border border-border bg-surface px-2 py-3 sm:gap-x-3 sm:px-4 sm:py-4",
         className,
       )}
       aria-label="Keunggulan belanja Ragil Aluminium"
     >
-      {BADGES.map((badge, index) => (
+      {BADGES.map((badge) => (
         <div
           key={badge.title}
-          className={cn(
-            "flex flex-col items-center px-4 text-center",
-            index < BADGES.length - 1 && "lg:border-r lg:border-border",
-          )}
+          className="flex min-w-0 items-center gap-1.5 sm:gap-2.5"
         >
-          <span className="inline-flex h-11 w-11 items-center justify-center text-foreground">
-            <Icon name={badge.icon} className="h-10 w-10" weight="regular" aria-hidden="true" />
+          <span className="inline-flex size-5 shrink-0 items-center justify-center text-foreground sm:size-6">
+            <Icon name={badge.icon} className="size-5 sm:size-6" weight="regular" aria-hidden="true" />
           </span>
-          <h3 className="mt-4 text-base font-semibold leading-snug tracking-tight text-foreground">
-            {badge.title}
-          </h3>
-          <p className="mt-1.5 max-w-[14rem] text-xs leading-5 text-muted-foreground">
-            {badge.description}
-          </p>
+          <div className="min-w-0">
+            <h3 className="truncate text-[10px] font-bold leading-tight tracking-tight text-foreground sm:text-xs">
+              {badge.title}
+            </h3>
+            <p className="mt-0.5 hidden leading-4 text-muted-foreground lg:block lg:text-[11px]">
+              {badge.description}
+            </p>
+          </div>
         </div>
       ))}
     </section>

@@ -86,7 +86,7 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
   return (
     <ConfirmAction
       trigger={
-        <button type="button" className={rowActionTextClass} disabled={busy} onClick={fetchImpact}>
+        <button type="button" className={rowActionTextClass} disabled={busy || Boolean(impact?.error)} onClick={fetchImpact}>
           Aktifkan
         </button>
       }
@@ -99,9 +99,8 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
             : "Memuat dampak…"
       }
       confirmLabel="Aktifkan"
-      variant="default"
+      variant="primary"
       processing={busy}
-      disabled={Boolean(impact?.error)}
       onConfirm={() => {
         setBusy(true)
         router.post(row.activate_url, {}, { preserveScroll: true, onFinish: () => setBusy(false) })
@@ -115,7 +114,6 @@ export default function PromotionsIndex({
   description,
   activeType,
   typeOptions,
-  statusOptions,
   rows: initialRows = [],
   createHref,
 }: {
@@ -130,7 +128,11 @@ export default function PromotionsIndex({
   const [rows, setRows] = React.useState(initialRows)
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
-  React.useEffect(() => setRows(initialRows), [initialRows])
+  React.useEffect(() => {
+    // Sync dari props saat Inertia me-render ulang (data tabel bisa berubah dari server).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRows(initialRows)
+  }, [initialRows])
 
   return (
     <AdminLayout title={title} description={description}>
@@ -139,7 +141,7 @@ export default function PromotionsIndex({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {typeOptions.map((option) => (
-              <Button key={option.value} asChild variant={option.value === activeType ? "default" : "secondary"} size="sm">
+              <Button key={option.value} asChild variant={option.value === activeType ? "primary" : "secondary"} size="sm">
                 <Link href={routeUrl("admin.promotions.index", { type: option.value })} preserveScroll>
                   {option.label}
                 </Link>
@@ -227,7 +229,7 @@ export default function PromotionsIndex({
                           Duplikat
                         </button>
                         {canActivate(row.status) ? (
-                          <ActivateAction row={row} busy={busyId === row.id} setBusy={setBusyId} />
+                          <ActivateAction row={row} busy={busyId === row.id} setBusy={(v) => setBusyId(v ? row.id : null)} />
                         ) : null}
                         {canEnd(row.status) ? (
                           <ConfirmAction

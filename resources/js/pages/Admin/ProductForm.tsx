@@ -215,7 +215,7 @@ export default function ProductForm({
         <FormErrorSummary errors={publishForm.errors} />
 
         {activeStep === "identity" ? (
-          <form onSubmit={submitIdentity} className="space-y-6">
+          <form onSubmit={(event) => submitIdentity("active", event)} className="space-y-6">
             <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -225,7 +225,7 @@ export default function ProductForm({
                 {product ? <StatusBadge status={product.status} /> : <StatusBadge status="active" label="Aktif (baru)" />}
               </div>
 
-              <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <Field id="product-parent-sku" label="Parent SKU">
                   <Input value={product?.parent_sku ?? "(otomatis saat disimpan)"} readOnly disabled className="font-mono" />
                 </Field>
@@ -258,7 +258,7 @@ export default function ProductForm({
 
             <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
               <h2 className="text-xl font-semibold">Taksonomi</h2>
-              <div className="mt-5 grid gap-5 sm:grid-cols-3">
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
                 <Field id="product-category" label="Kategori" required error={form.errors.product_category}>
                   <Select value={form.data.product_category} onChange={(event) => form.setData("product_category", event.target.value)}>
                     {options.categories.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -284,14 +284,14 @@ export default function ProductForm({
 
             <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
               <h2 className="text-xl font-semibold">Beranda</h2>
-              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-md bg-surface-muted p-4">
+              <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md bg-surface-muted p-4">
                 <input type="checkbox" checked={form.data.homepage_popular} onChange={(event) => form.setData("homepage_popular", event.target.checked)} className="mt-1 h-4 w-4 accent-primary" />
                 <span>
                   <span className="block text-sm font-semibold">Tampilkan sebagai paling banyak dipesan</span>
                   <span className="mt-1 block text-xs leading-5 text-muted-foreground">Gunakan hanya untuk produk yang memang ingin diprioritaskan.</span>
                 </span>
               </label>
-              <Field id="product-popular-sort" label="Urutan tampilan" error={form.errors.homepage_popular_sort} className="mt-5 max-w-48">
+              <Field id="product-popular-sort" label="Urutan tampilan" error={form.errors.homepage_popular_sort} className="mt-4 max-w-48">
                 <Input type="number" min="0" max="9999" value={form.data.homepage_popular_sort} onChange={(event) => form.setData("homepage_popular_sort", event.target.value)} disabled={!form.data.homepage_popular} />
               </Field>
             </section>
@@ -335,7 +335,7 @@ export default function ProductForm({
               )}
             </section>
 
-            <section className="space-y-5">
+            <section className="space-y-6">
               {variantsForm.data.variants.map((variant, index) => (
                 <article key={index} className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
                   <div className="flex items-center justify-between gap-3">
@@ -344,7 +344,7 @@ export default function ProductForm({
                       <Button type="button" variant="ghost" size="sm" onClick={() => variantsForm.setData("variants", variantsForm.data.variants.filter((_, rowIndex) => rowIndex !== index))}>Hapus baris</Button>
                     ) : null}
                   </div>
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {([
                       ["variation_1_name", "Nama opsi 1"],
                       ["variation_1_option", "Nilai opsi 1"],

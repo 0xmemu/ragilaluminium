@@ -73,7 +73,6 @@ declare module 'ziggy-js' {
     "cart.select": [],
     "cart.remove-selected": [],
     "reviews": [],
-    "ulasan": [],
     "installation.index": [],
     "installation.model": [
         {
@@ -106,6 +105,12 @@ declare module 'ziggy-js' {
     "order.count": [],
     "order.status": [],
     "order.status.lookup": [],
+    "order.cancel": [
+        {
+            "name": "order_number",
+            "required": true
+        }
+    ],
     "login": [],
     "login.post": [],
     "logout": [],
@@ -132,6 +137,30 @@ declare module 'ziggy-js' {
     "admin.products.update": [
         {
             "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.categories.index": [],
+    "admin.categories.create": [],
+    "admin.categories.store": [],
+    "admin.categories.edit": [
+        {
+            "name": "category",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.categories.update": [
+        {
+            "name": "category",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.categories.destroy": [
+        {
+            "name": "category",
             "required": true,
             "binding": "id"
         }
@@ -338,6 +367,13 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.orders.admin-notes.update": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.orders.shipping.store": [
         {
             "name": "order",
@@ -389,6 +425,7 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.whatsapp.dashboard": [],
     "admin.whatsapp.templates.index": [],
     "admin.whatsapp.connection": [],
     "admin.whatsapp.templates.store": [],
@@ -435,6 +472,11 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.whatsapp.pairing": [],
+    "admin.whatsapp.pairing.status": [],
+    "admin.whatsapp.pairing.qr": [],
+    "admin.whatsapp.pairing.code": [],
+    "admin.whatsapp.pairing.refresh-qr": [],
     "admin.analytics.store-performance": [],
     "admin.analytics.store-performance.export": [],
     "admin.analytics.import-performance": [],
@@ -524,6 +566,14 @@ declare module 'ziggy-js' {
     "admin.announcements.index": [],
     "admin.announcements.create": [],
     "admin.announcements.store": [],
+    "admin.announcements.slide": [],
+    "admin.announcements.destroy": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.announcements.edit": [
         {
             "name": "announcement",

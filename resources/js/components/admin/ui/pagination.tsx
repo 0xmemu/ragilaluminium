@@ -38,7 +38,7 @@ export function Pagination({
   return (
     <nav
       className={cn(
-        "mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+        "mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
       aria-label="Paginasi"

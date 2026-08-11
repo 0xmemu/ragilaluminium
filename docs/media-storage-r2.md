@@ -103,10 +103,10 @@ php artisan media:prune-originals --disk
 
 ### D. Checklist go-live singkat
 
-- [ ] Bucket + custom domain / public URL hidup (`curl -I $AWS_URL/...` 200 setelah upload uji)
-- [ ] `MEDIA_DISK=s3` dan `media:disk-check` PASS
+- [x] Bucket `ra-media` + public URL r2.dev hidup (curl 200, 2026-08-11) — custom domain `media.333labs.tech` AKTIF (SSL+DNS, curl 200, 2026-08-11); `AWS_URL=https://media.333labs.tech`; CORS tidak dibutuhkan (upload server-side)
+- [x] `MEDIA_DISK=s3` dan `media:disk-check` PASS (2026-08-11, bucket ra-media)
 - [ ] `MEDIA_ALLOW_SOURCE_FALLBACK=false` (jangan hotlink Shopee)
-- [ ] Worker queue `media` jalan
+- [x] Worker queue `media` jalan (systemd ragil-queue, imports,media,default)
 - [ ] Import sampel → `product_media.status=downloaded` + `derivatives.card` terisi
 - [ ] `MEDIA_KEEP_ORIGINAL=false` (default) — original berat tidak disimpan; prune lokal/R2 bila masih ada JPG lama
 

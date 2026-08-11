@@ -12,6 +12,7 @@ use App\Services\ShippingService;
 use App\Services\VoucherService;
 use App\Support\CodSettings;
 use App\Support\OperationalTelemetry;
+use App\Support\OrderEta;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -62,6 +63,14 @@ class CheckoutController extends Controller
         }
 
         $details = $request->session()->get('checkout_details');
+
+        // Metode pembayaran pilihan pengguna tetap dipertahankan saat validasi alamat
+        // (keputusan #24) — fallback ke COD bila tersedia, lalu transfer.
+        $sessionPayment = (string) $request->session()->get('checkout_payment_method', '');
+        $defaultPayment = in_array($sessionPayment, ['cod', 'transfer'], true)
+            ? $sessionPayment
+            : ($cod['enabled'] && $codAllowed ? 'cod' : 'transfer');
+
         $shippingPreview = null;
         if (is_array($details) && ! empty($details['city'])) {
             $breakdown = $this->shipping->estimateBreakdown(
@@ -90,6 +99,7 @@ class CheckoutController extends Controller
                 'line_compare_total' => isset($item['line_compare_total']) ? (float) $item['line_compare_total'] : null,
                 'line_discount' => (float) ($item['line_discount'] ?? 0),
                 'flash_sale' => (bool) ($item['flash_sale'] ?? false),
+                'note' => $item['note'] ?? null,
             ];
         })->all();
 
@@ -110,6 +120,8 @@ class CheckoutController extends Controller
                 'max_order_amount' => $cod['max_order_amount'],
             ],
             'shipping' => $shippingPreview,
+            'eta' => OrderEta::forOrder(),
+            'defaultPayment' => $defaultPayment,
             'details' => $details,
             'applyVoucherUrl' => route('checkout.voucher.apply'),
             'removeVoucherUrl' => route('checkout.voucher.remove'),
@@ -145,6 +157,12 @@ class CheckoutController extends Controller
         $validated = $request->validated();
 
         $this->prepareCheckoutIdempotencyKey($request, rotateCompleted: true);
+
+        // Simpan pilihan metode pembayaran agar tidak hilang saat redirect balik.
+        $paymentMethod = trim((string) $request->input('payment_method', ''));
+        if (in_array($paymentMethod, ['cod', 'transfer'], true)) {
+            $request->session()->put('checkout_payment_method', $paymentMethod);
+        }
 
         $request->session()->put('checkout_details', $validated);
 
@@ -224,6 +242,7 @@ class CheckoutController extends Controller
 
         $this->cart->clear();
         $request->session()->forget('checkout_details');
+        $request->session()->forget('checkout_payment_method');
         $request->session()->forget(VoucherService::SESSION_KEY);
 
         return redirect()->route('order.confirmation', $order->order_number);

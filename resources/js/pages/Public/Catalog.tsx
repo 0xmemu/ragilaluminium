@@ -58,6 +58,10 @@ interface CatalogProps {
   searchQuery?: string
   priceMin?: number | null
   priceMax?: number | null
+  searchFallback?: {
+    nearby_sizes: ProductCardData[]
+    related_models: Array<{ label: string; href: string }>
+  } | null
   basePath: string
   canonicalUrl: string
   robotsDirective: string
@@ -65,6 +69,72 @@ interface CatalogProps {
 
 interface FilterState extends CatalogListingFilters {
   sort: string
+}
+
+function SearchFallbackEmpty({
+  query,
+  nearbySizes,
+  relatedModels,
+}: {
+  query: string
+  nearbySizes: ProductCardData[]
+  relatedModels: Array<{ label: string; href: string }>
+}) {
+  const { consultationWhatsApp } = usePage<SharedPageProps>().props
+
+  return (
+    <div className="space-y-8">
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <p className="text-sm font-bold text-foreground">Tidak ada hasil untuk “{query}”</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          Tidak menemukan ukuran yang sesuai? Tim kami siap membantu memastikan produk pas dengan
+          kebutuhan Anda.
+        </p>
+        {consultationWhatsApp?.directUrl ? (
+          <Button asChild className="mt-4">
+            <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
+              <Icon name="whatsapp" className="size-4" aria-hidden="true" />
+              Konsultasi via WhatsApp
+            </a>
+          </Button>
+        ) : null}
+      </div>
+
+      {nearbySizes.length ? (
+        <section aria-labelledby="nearby-size-heading">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <h2 id="nearby-size-heading" className="text-base font-bold text-foreground">
+              Ukuran terdekat yang tersedia
+            </h2>
+          </div>
+          <ProductCardGrid>
+            {nearbySizes.map((product, index) => (
+              <ProductCard key={product.id} product={product} priority={index < 4} />
+            ))}
+          </ProductCardGrid>
+        </section>
+      ) : null}
+
+      {relatedModels.length ? (
+        <section aria-labelledby="related-model-heading">
+          <h2 id="related-model-heading" className="text-base font-bold text-foreground">
+            Kategori terkait
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {relatedModels.map((model) => (
+              <Link
+                key={`${model.label}-${model.href}`}
+                href={model.href}
+                className="inline-flex min-h-10 items-center rounded-full border border-border bg-surface px-4 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:text-primary"
+              >
+                {model.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  )
 }
 
 function FilterSheetFooter({
@@ -108,6 +178,7 @@ export default function Catalog({
   searchQuery = "",
   priceMin = null,
   priceMax = null,
+  searchFallback = null,
   basePath,
   canonicalUrl,
   robotsDirective,
@@ -321,7 +392,7 @@ export default function Catalog({
               <div className="mb-4">
                 <h2
                   id="you-might-like-heading"
-                  className="text-lg font-bold tracking-tight text-foreground sm:text-xl"
+                  className="text-lg font-bold tracking-tight text-foreground"
                 >
                   Anda mungkin suka
                 </h2>
@@ -363,6 +434,12 @@ export default function Catalog({
             </>
           ) : null}
         </>
+      ) : searchQuery && searchFallback ? (
+        <SearchFallbackEmpty
+          query={searchQuery}
+          nearbySizes={searchFallback.nearby_sizes}
+          relatedModels={searchFallback.related_models}
+        />
       ) : (
         <EmptyState
           icon="funnel"
@@ -427,7 +504,7 @@ export default function Catalog({
   )
 
   const listingBody = useModelToggles ? (
-    <section className="container-page py-4 lg:py-5">
+    <section className="container-page py-4 lg:py-6">
       {isFlash ? (
         <FlashSaleListingToolbar
           sort={filters.sort || "popular"}
@@ -460,7 +537,7 @@ export default function Catalog({
       {productGallery}
     </section>
   ) : (
-    <section className="container-page py-4 lg:py-5">
+    <section className="container-page py-4 lg:py-6">
       <div className="grid min-w-0 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
         <aside className="hidden lg:block">
           <div className="sticky top-28">

@@ -101,11 +101,14 @@ class WorkflowAuditP1Test extends TestCase
             'status' => 'active',
         ]);
 
-        $this->post(route('cart.add'), [
-            'parent_sku' => 'WIN-STK-1',
-            'variant_sku' => 'WIN-STK-1-V1',
-            'quantity' => 5,
-        ])->assertRedirect(route('cart.index'));
+        // Tetap di halaman produk (bukan ke keranjang) supaya animasi "produk terbang" terlihat.
+        $this->from('/product/WIN-STK-1')
+            ->post(route('cart.add'), [
+                'parent_sku' => 'WIN-STK-1',
+                'variant_sku' => 'WIN-STK-1-V1',
+                'quantity' => 5,
+            ])
+            ->assertRedirect('/product/WIN-STK-1');
 
         $cart = app(CartService::class)->get();
         $this->assertSame(2, (int) $cart['WIN-STK-1-V1']['quantity']);

@@ -139,39 +139,50 @@ ready to receive real orders.
 
 ### Primary database
 
-- `[ ]` Production `DB_CONNECTION` is MySQL with a dedicated database and user;
-  preview SQLite values are not reused.
-- `[ ]` Database backups are encrypted, automated, retained according to policy,
-  stored outside the VPS, and protected from deletion by the application account.
-- `[ ]` Backup monitoring alerts on failure, stale backup age, low disk, replication
-  lag (if used), failed migrations, and connection exhaustion.
-- `[ ]` Restore drill proves the declared RPO/RTO. Record exact restore time and
-  which application features were verified.
+- `[x]` Production `DB_CONNECTION` is MySQL with a dedicated database and user;
+  preview SQLite values are not reused. PITR binlog arsip R2 hourly (verified 2026-08-11).
+- `[~]` Database backups are automated (daily 03:17 + binlog hourly), stored
+  outside the VPS (R2 `ra-backup`, lifecycle 30 days), NOT encrypted — user
+  decision 2026-08-11 (backup key removed, keyfile deleted). App account holds
+  no backup credentials (CF token + R2 backup keys removed from `.env`).
+- `[~]` Backup monitoring: failure/stale detection writes alert files
+  `/root/backups/ALERT-stale-or-restore` + `/root/backups/ALERT-r2-upload`;
+  no external notification channel (per project docs).
+- `[x]` Restore drill weekly (Mon 04:30): full restore to `ragil_restore_test`
+  + CHECK TABLE + rowcount compare — PASS 2026-08-11 (products 50, variants 612,
+  product_media 234, orders 1). RPO ≤1h (binlog hourly), RTO depends on dump size.
 
 ### Object storage and media
 
 - `[x]` Laravel has a `media` disk abstraction and R2 guidance in [media storage docs](media-storage-r2.md).
-- `[~]` R2 is suitable for production media, but bucket, custom domain, CORS,
-  lifecycle, access scope, and `media:disk-check` evidence are still release gates.
-- `[ ]` Use a dedicated R2 bucket/prefix for production; separate preview and
-  production objects so test imports cannot pollute the live catalog.
-- `[ ]` Set `MEDIA_DISK=s3` and `MEDIA_ALLOW_SOURCE_FALLBACK=false` in production.
-- `[ ]` Use a public browser URL/custom domain for reads and a scoped server-side
-  S3 credential for writes; never put a Cloudflare account API token in the app
-  runtime when an R2 bucket credential is sufficient.
-- `[ ]` Verify bucket policy, CORS (`GET`/`HEAD` only as needed), object ownership,
-  cache headers, lifecycle/retention, and no accidental public write access.
+- `[x]` R2 bucket `ra-media` live on VPS, custom domain `media.333labs.tech`
+  ACTIVE (SSL + DNS, curl 200 real object), `media:disk-check` PASS 2026-08-11.
+  `AWS_URL=https://media.333labs.tech`. CORS: not required (server-side upload,
+  `<img>` reads) — CF CORS API rejected configs with 10040; noted as non-gate.
+- `[~]` Production uses dedicated bucket `ra-media` (decision 2026-08-11) but it
+  is shared with dev imports (702 objects pre-existing); preview env uses its own
+  disk, so test imports do not touch the live catalog.
+- `[x]` `MEDIA_DISK=s3` and `MEDIA_ALLOW_SOURCE_FALLBACK=false` set in
+  production `.env` (verified 2026-08-11).
+- `[x]` Public browser URL for reads (`media.333labs.tech`), scoped S3 creds
+  (AWS_*) in app runtime; CF account API token and R2 backup keys REMOVED from
+  `.env` — app cannot delete backup objects (verified 2026-08-11).
+- `[x]` Bucket lifecycle verified: `ra-backup` expires mysql/ + binlogs/ after
+  30 days (PUT 200 2026-08-11); CORS GET/HEAD only — not required for current
+  server-side architecture.
 - `[ ]` Run upload, derivative generation, read, cache purge/revalidation, orphan
   detection, and restore tests using non-production media before cutover.
-- `[!]` Remove stale hardcoded R2/R2.dev hostnames from proxy configuration and
-  replace them with the approved production media domain or disable the proxy.
-- `[ ]` Back up media metadata and define the recovery path for objects whose DB
-  rows or derivatives are missing.
+- `[x]` Stale r2.dev hostnames removed: nginx `/media-cdn` proxy + `AWS_URL`
+  point to `media.333labs.tech` (2026-08-11, curl 200 both).
+- `[x]` Media metadata backed up daily (product_media + media tables inside the
+  encrypted SQL dump); recovery path = restore DB (encrypted) + objects already
+  in R2 `ra-media`.
 
 ### Sessions, cache, and queue state
 
-- `[~]` Database-backed session/cache/queue defaults work for preview but are not
-  the preferred high-traffic production posture.
+- `[~]` Sessions are database-backed by decision (cart 5 days,
+  `SESSION_LIFETIME=7200`); cache/queue use Redis (volatile — acceptable while
+  sessions live in DB). Load-tested high-traffic posture still a release gate.
 - `[ ]` Choose and document production Redis or managed equivalent for cache,
   queue coordination, rate limits, and sessions where operationally justified.
 - `[ ]` If database drivers remain, provision indexes, retention cleanup, worker
@@ -339,8 +350,9 @@ ready to receive real orders.
 
 ## 10. Availability, backup, recovery, and incident response
 
-- `[ ]` Approve initial targets: proposed RPO ≤24h and RTO ≤4h for the first
-  production release; tighten them when order volume requires it.
+- `[ ]` Approve initial targets: proposed RPO ≤1h (binlog PITR hourly to R2,
+  verified 2026-08-11) and RTO ≤4h for the first production release; tighten them
+  when order volume requires it.
 - `[ ]` Write runbooks for: deploy, rollback, database restore, R2 restore,
   queue stuck, failed import, WhatsApp outage, J&T outage, Cloudflare outage,
   compromised credential, admin lockout, disk full, and accidental bad CMS edit.

@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
@@ -294,14 +295,7 @@ export default function FlashSaleIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <Button asChild>
-          <Link href={createHref}>
-            <Icon name="plus" className="size-4" aria-hidden="true" />
-            Tambah Flash Sale
-          </Link>
-        </Button>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -330,24 +324,49 @@ export default function FlashSaleIndex({
         </div>
       </section>
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <form
-          className="min-w-[16rem] flex-1"
-          onSubmit={(event) => {
-            event.preventDefault()
-            visit({ q: q.trim() || undefined })
-          }}
-        >
-          <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="flash-q">
-            Cari produk
-          </label>
-          <Input
-            id="flash-q"
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="Nama atau SKU"
-          />
-        </form>
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => visit({ q: q.trim() || undefined }),
+          placeholder: "Nama atau SKU",
+        }}
+        actions={
+          <>
+            <div className="flex gap-1 rounded-md border border-border p-1">
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex size-9 items-center justify-center rounded",
+                  viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
+                onClick={() => visit({ view: "list" })}
+                aria-label="Tampilan list"
+              >
+                <Icon name="menu" className="size-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex size-9 items-center justify-center rounded",
+                  viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
+                onClick={() => visit({ view: "grid" })}
+                aria-label="Tampilan grid"
+              >
+                <Icon name="layout-grid" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+            <Button asChild>
+              <Link href={createHref}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                Tambah Flash Sale
+              </Link>
+            </Button>
+          </>
+        }
+        className="mb-4"
+      >
         <div className="w-40">
           <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="flash-status">
             Status
@@ -362,31 +381,7 @@ export default function FlashSaleIndex({
             <option value="all">Semua</option>
           </Select>
         </div>
-        <div className="flex gap-1 rounded-md border border-border p-1">
-          <button
-            type="button"
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded",
-              viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-            )}
-            onClick={() => visit({ view: "list" })}
-            aria-label="Tampilan list"
-          >
-            <Icon name="menu" className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded",
-              viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-            )}
-            onClick={() => visit({ view: "grid" })}
-            aria-label="Tampilan grid"
-          >
-            <Icon name="layout-grid" className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
+      </ListToolbar>
 
       {selected.length > 0 ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3">

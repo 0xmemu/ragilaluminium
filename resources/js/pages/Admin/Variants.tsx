@@ -149,7 +149,7 @@ export default function Variants({
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             SKU varian dibuat otomatis (mengikuti prefix parent: WEB… atau SP…). Harga, stok, dan status wajib diisi.
           </p>
-          <form onSubmit={submit} className="mt-5 space-y-4">
+          <form onSubmit={submit} className="mt-4 space-y-4">
             <FormErrorSummary errors={form.errors} />
             <div className="grid sm:grid-cols-2 gap-3">
               <Field id="variant-name-1" label="Nama opsi 1" error={form.errors.variation_1_name}>

@@ -2,6 +2,7 @@ import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Input } from "@/components/admin/ui/input"
@@ -52,8 +53,13 @@ interface OrderCard {
   flow?: "cod" | "transfer"
   customer_name: string
   customer_phone?: string | null
+  shipping_address_line1?: string | null
+  shipping_address_line2?: string | null
+  shipping_village?: string | null
+  shipping_district?: string | null
   shipping_city?: string | null
   shipping_province?: string | null
+  shipping_postal_code?: string | null
   notes?: string | null
   admin_notes?: string | null
   total_amount: number
@@ -265,11 +271,12 @@ function OrderCardRow({
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            className="inline-flex h-8 w-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border text-muted-foreground transition hover:bg-secondary hover:text-foreground"
             aria-label={`Cetak alamat ${order.customer_name}`}
             title="Cetak alamat"
           >
-            <Icon name="printer" className="size-3.5" aria-hidden="true" />
+            <Icon name="printer" className="size-4" aria-hidden="true" />
+            <span className="hidden text-xs font-medium xl:inline">Print</span>
           </button>
           <span className="hidden sm:inline">
             {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
@@ -604,46 +611,56 @@ export default function OrdersIndex({
       </div>
 
 
-      {/* Filter bar */}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <form onSubmit={submitSearch} className="relative min-w-0 flex-1">
-          <Icon
-            name="search"
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="Cari nomor order, nama penerima, no. HP, provinsi, kota…"
-            className="pl-9"
-            data-admin-search
-          />
-        </form>
-        <Select
-          value={activeSort}
-          onChange={(event) => visit({ sort: event.target.value })}
-          className="sm:w-36"
-          aria-label="Urutan"
-        >
-          <option value="newest">Terbaru</option>
-          <option value="oldest">Terlama</option>
-        </Select>
-        <Button asChild variant="secondary">
-          <a href={exportUrl}>
-            <Icon name="download" className="size-3.5" aria-hidden="true" />
-            Export
-          </a>
-        </Button>
-      </div>
-
-      <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
+      {/* Baris kontrol seragam: search | sort/filter | summary | actions */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: submitSearch,
+          placeholder: "Cari nomor order, nama penerima, no. HP, provinsi, kota…",
+        }}
+        sort={
+          <Select
+            value={activeSort}
+            onChange={(event) => visit({ sort: event.target.value })}
+            aria-label="Urutan"
+          >
+            <option value="newest">Terbaru</option>
+            <option value="oldest">Terlama</option>
+          </Select>
+        }
+        summary={
+          <>
+            <span>
+              <span className="tabular-nums font-semibold text-foreground">
+                {formatNumber(summary.count)}
+              </span>{" "}
+              pesanan
+            </span>
+            <span className="tabular-nums">
+              Nilai:{" "}
+              <span className="font-semibold text-foreground">
+                {formatCurrency(summary.total_value)}
+              </span>
+            </span>
+          </>
+        }
+        actions={
+          <Button asChild variant="secondary">
+            <a href={exportUrl}>
+              <Icon name="download" className="size-3.5" aria-hidden="true" />
+              Export
+            </a>
+          </Button>
+        }
+        className="mb-4"
+      >
         <Select
           value={activePaymentStatus || "all"}
           onChange={(event) =>
             visit({ payment_status: event.target.value === "all" ? undefined : event.target.value })
           }
-          className="lg:w-44"
+          className="w-auto"
           aria-label="Filter status pembayaran"
         >
           <option value="all">Semua pembayaran</option>
@@ -656,7 +673,7 @@ export default function OrdersIndex({
           onChange={(event) =>
             visit({ shipping_status: event.target.value === "all" ? undefined : event.target.value })
           }
-          className="lg:w-48"
+          className="w-auto"
           aria-label="Filter status pengiriman"
         >
           <option value="all">Semua pengiriman</option>
@@ -671,7 +688,7 @@ export default function OrdersIndex({
           onChange={(event) =>
             visit({ older_than: event.target.value === "all" ? undefined : event.target.value })
           }
-          className="lg:w-40"
+          className="w-auto"
           aria-label="Filter umur status"
         >
           <option value="all">Semua umur</option>
@@ -697,7 +714,7 @@ export default function OrdersIndex({
             }
             visit({ date_preset: value, date_from: undefined, date_to: undefined })
           }}
-          className="lg:w-44"
+          className="w-auto"
           aria-label="Filter waktu"
         >
           <option value="all">Semua waktu</option>
@@ -727,21 +744,10 @@ export default function OrdersIndex({
             </Button>
           </form>
         ) : null}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span>
-          <span className="tabular-nums font-semibold text-foreground">{formatNumber(summary.count)}</span>{" "}
-          pesanan sesuai filter
-        </span>
-        <span className="tabular-nums">
-          Nilai pesanan:{" "}
-          <span className="font-semibold text-foreground">{formatCurrency(summary.total_value)}</span>
-        </span>
-      </div>
+      </ListToolbar>
 
       {/* Daftar pesanan */}
-      <div className="mt-5">
+      <div className="mt-4">
         {orders.length ? (
           <>
             <p className="mb-2.5 text-xs font-medium text-muted-foreground">
@@ -769,7 +775,7 @@ export default function OrdersIndex({
       </div>
 
       {pagination?.total ? (
-        <p className="mt-5 text-xs text-muted-foreground">
+        <p className="mt-4 text-xs text-muted-foreground">
           Menampilkan{" "}
           <span className="tabular-nums font-semibold text-foreground">
             {(pagination.current_page - 1) * (pagination.per_page ?? 10) + 1}

@@ -3,7 +3,7 @@ import { Link, router } from "@inertiajs/react"
 import { Button } from "@/components/admin/ui/button"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
-import { isRouteActive, routeUrl } from "@/lib/routes"
+import { routeUrl } from "@/lib/routes"
 import type { NotificationItem } from "@/components/admin/notification-bell"
 
 const typeIcons: Record<string, string> = {
@@ -68,7 +68,7 @@ export default function Notifications({
         </div>
         {unread_count > 0 ? (
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             onClick={() =>
               router.post(routeUrl("admin.notifications.mark-all-read"), {}, {

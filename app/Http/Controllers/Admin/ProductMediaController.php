@@ -50,9 +50,9 @@ class ProductMediaController extends Controller
             ->limit(100)
             ->get(['id', 'name', 'parent_sku']);
 
-        return Inertia::render('Admin/ResourceIndex', [
+        return Inertia::render('Admin/Media/Index', [
             'title' => 'Media',
-            'description' => 'Status unduh & kelola foto produk. Bagian dari menu Produk.',
+            'description' => 'Kelola foto & video produk. Bagian dari menu Produk.',
             'createHref' => null,
             'columns' => [
                 ['key' => 'id', 'label' => 'ID'],
@@ -63,6 +63,23 @@ class ProductMediaController extends Controller
                 ['key' => 'visibility', 'label' => 'Visibilitas'],
                 ['key' => 'is_main', 'label' => 'Utama'],
             ],
+            'filters' => [
+                'status' => (string) $request->query('status', ''),
+                'visibility' => (string) $request->query('visibility', ''),
+            ],
+            'statusOptions' => [
+                ['value' => '', 'label' => 'Semua status'],
+                ['value' => 'downloaded', 'label' => 'Downloaded'],
+                ['value' => 'processing', 'label' => 'Processing'],
+                ['value' => 'failed', 'label' => 'Failed'],
+            ],
+            'visibilityOptions' => [
+                ['value' => '', 'label' => 'Semua visibilitas'],
+                ['value' => 'visible', 'label' => 'Visible'],
+                ['value' => 'hidden', 'label' => 'Hidden'],
+                ['value' => 'archived', 'label' => 'Archived'],
+            ],
+            'pagination' => InertiaAdmin::pagination($media),
             'rows' => $media->getCollection()->map(function (ProductMedia $m) {
                 $actions = [];
                 if ($m->product) {
@@ -102,8 +119,12 @@ class ProductMediaController extends Controller
 
                 return [
                     'id' => $m->id,
+                    'thumb_url' => $m->urlFor('thumb') ?? $m->stored_url,
+                    'media_kind' => $m->mediaAsset?->kind ?? (str_starts_with((string) $m->mime_type, 'video/') ? 'video' : 'image'),
                     'product' => $m->product?->parent_sku ?? '-',
+                    'product_name' => $m->product?->name ?? '',
                     'product_href' => $m->product ? route('admin.products.media.byProduct', $m->product) : '',
+                    'manage_href' => $m->product ? route('admin.products.media.byProduct', $m->product) : '',
                     'variant' => $m->productVariant
                         ? $this->variantLabel($m->productVariant)
                         : 'Semua (produk)',

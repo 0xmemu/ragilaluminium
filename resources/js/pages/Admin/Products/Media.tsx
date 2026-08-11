@@ -399,7 +399,7 @@ export default function ProductMediaPage({
             Untuk 4 warna × 3 kaca: pasang gambar/video per kombinasi varian, atau media umum tanpa tautan.
           </p>
           <FormErrorSummary errors={form.errors} className="mt-4" />
-          <div className="mt-5 space-y-4">
+          <div className="mt-4 space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold">Media Library bersama</p>
@@ -548,7 +548,7 @@ export default function ProductMediaPage({
           </div>
           <Button
             type="submit"
-            className="mt-5 w-full"
+            className="mt-4 w-full"
             disabled={form.processing || (!form.data.media_asset_id && !form.data.upload && !form.data.source_url)}
           >
             <Icon name="upload" className="h-4 w-4" aria-hidden="true" />

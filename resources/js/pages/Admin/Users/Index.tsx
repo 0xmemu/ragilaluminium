@@ -4,9 +4,9 @@ import * as React from "react"
 import { RowActions } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -76,38 +76,35 @@ export default function UsersIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <Button asChild>
-          <Link href={createHref}>
-            <Icon name="plus" className="size-4" aria-hidden="true" />
-            Tambah admin
-          </Link>
-        </Button>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      {/* Baris kontrol seragam: search | filter/sort | actions */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari nama, username, atau email",
         }}
+        actions={
+          <Button asChild>
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Tambah admin
+            </Link>
+          </Button>
+        }
+        className="mb-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari nama, username, atau email"
-          className="min-w-[16rem] flex-1"
-        />
         <Select
           value={status}
           onChange={(event) => {
-            const value = event.target.value
-            setStatus(value)
-            apply({ status: value })
+            setStatus(event.target.value)
+            apply({ status: event.target.value })
           }}
-          className="w-40"
+          aria-label="Filter status"
         >
           {statusOptions.map((option) => (
             <option key={option.value || "all-status"} value={option.value}>
@@ -115,23 +112,23 @@ export default function UsersIndex({
             </option>
           ))}
         </Select>
-        <Select
-          value={sort}
-          onChange={(event) => {
-            const value = event.target.value
-            setSort(value)
-            apply({ sort: value })
-          }}
-          className="w-40"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+        sort={
+          <Select
+            value={sort}
+            onChange={(event) => {
+              setSort(event.target.value)
+              apply({ sort: event.target.value })
+            }}
+            aria-label="Urutkan"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
+      </ListToolbar>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (

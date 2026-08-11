@@ -7,9 +7,11 @@ use App\Http\Requests\LookupOrderStatusRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
+use App\Services\OrderService;
 use App\Services\ShippingService;
 use App\Support\BankTransferInstructions;
 use App\Support\ConsultationWhatsApp;
+use App\Support\OrderEta;
 use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +23,10 @@ use Inertia\Response;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly ShippingService $shipping) {}
+    public function __construct(
+        private readonly ShippingService $shipping,
+        private readonly OrderService $orders,
+    ) {}
 
     public function confirmation(Request $request, string $order_number): Response|RedirectResponse
     {
@@ -63,13 +68,52 @@ class OrderController extends Controller
                     'product_name' => $i->product_name,
                     'quantity' => $i->quantity,
                     'line_total' => (float) $i->line_total,
+                    'note' => $i->note ?? null,
                 ])->all(),
             ],
+            'eta' => OrderEta::forOrder($order),
             'payment_instructions' => $isTransfer
                 ? BankTransferInstructions::forStorefront()
                 : null,
             'whatsapp_url' => $whatsappUrl,
         ]);
+    }
+
+    /**
+     * Pembatalan oleh pembeli: hanya saat status masih "menunggu konfirmasi"
+     * (pending_payment). Identitas harus cocok (nomor order + HP/email), sama
+     * seperti pencarian status, agar orang lain tidak bisa membatalkan pesanan.
+     */
+    public function cancel(LookupOrderStatusRequest $request, string $order_number): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $order = $this->findGuestOrder([
+            'order_number' => $order_number,
+            'customer_phone' => $validated['customer_phone'] ?? null,
+            'customer_email' => $validated['customer_email'] ?? null,
+        ]);
+
+        if (! $order) {
+            return back()->withErrors([
+                'cancel' => 'Nomor pesanan dan identitas tidak cocok. Periksa kembali data Anda.',
+            ]);
+        }
+
+        if ($order->order_status !== 'pending_payment') {
+            return back()->withErrors([
+                'cancel' => 'Pesanan sudah diproses dan tidak dapat dibatalkan dari halaman ini.',
+            ]);
+        }
+
+        $changed = $this->orders->cancel($order, null, 'Pembatalan oleh pembeli');
+
+        return back()->with(
+            $changed ? 'success' : 'error',
+            $changed
+                ? 'Pesanan '.$order->order_number.' dibatalkan. Stok dikembalikan ke katalog.'
+                : 'Pesanan sudah dibatalkan sebelumnya.',
+        );
     }
 
     public function statusForm(Request $request): Response
@@ -266,10 +310,13 @@ class OrderController extends Controller
             'shipping_status' => $order->shipping_status,
             'total_amount' => (float) $order->total_amount,
             'customer_name' => $order->customer_name,
+            'customer_phone' => $order->customer_phone,
+            'eta' => OrderEta::forOrder($order),
             'items' => $order->items->map(fn ($i) => [
                 'product_name' => $i->product_name,
                 'quantity' => $i->quantity,
                 'line_total' => isset($i->line_total) ? (float) $i->line_total : null,
+                'note' => $i->note ?? null,
             ])->all(),
             'shipping' => $shipping ? [
                 'carrier_name' => $shipping->carrier_name,

@@ -79,7 +79,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </div>
       </section>
 
-      <section className="py-4">
+      <section className="py-4 lg:py-6">
         <div className="container-page">
           <ol className="grid gap-3 sm:grid-cols-2">
             {guide.steps.map((step, index) => (
@@ -125,7 +125,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       </section>
 
       {guide.info_cards.length ? (
-        <section className="border-t border-border bg-surface py-4">
+        <section className="border-t border-border bg-surface py-4 lg:py-6">
           <div className="container-page">
             <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
               <SectionHeading title="Pembayaran, pengiriman & bantuan" />
@@ -146,7 +146,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       ) : null}
 
       {bodyHtml ? (
-        <section className="py-4 border-t border-border">
+        <section className="py-4 lg:py-6 border-t border-border">
           <div className="container-page">
             <article
               className="cms-content mx-auto max-w-3xl text-xs leading-5 text-muted-foreground"
@@ -155,7 +155,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
           </div>
         </section>
       ) : (
-        <section className="py-4 border-t border-border">
+        <section className="py-4 lg:py-6 border-t border-border">
           <div className="container-page">
             <div className="text-xs leading-5 text-muted-foreground">
               <p>
@@ -168,14 +168,14 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       )}
 
-      <section className="py-4 border-t border-border bg-foreground text-background">
+      <section className="py-4 lg:py-6 border-t border-border bg-foreground text-background">
         <div className="container-page flex flex-col items-center text-center">
           <SectionHeading
             className="text-background [&_h2]:text-background [&_p]:text-background/80"
             title="Siap memesan?"
             description="Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu."
           />
-          <div className="mt-5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
+          <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
             <Button asChild className="bg-white text-primary hover:bg-white/90 sm:min-w-[180px]">
               <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
             </Button>

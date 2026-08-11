@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
@@ -225,47 +226,7 @@ export default function FaqIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <a href={previewUrl} target="_blank" rel="noreferrer">
-              Lihat halaman publik
-            </a>
-          </Button>
-          <Button type="button" variant="secondary" onClick={toggleMeta}>
-            {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
-          </Button>
-          {!isArchivedTab ? (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!rows.length}
-                onClick={() => setReorderMode((value) => !value)}
-              >
-                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-              </Button>
-              {reorderMode ? (
-                <Button
-                  type="button"
-                  disabled={reorderForm.processing}
-                  onClick={() => {
-                    reorderForm.setData("status", status)
-                    reorderForm.put(reorderUrl)
-                  }}
-                >
-                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                </Button>
-              ) : (
-                <Button type="button" onClick={openCreatePanel}>
-                  <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah
-                </Button>
-              )}
-            </>
-          ) : null}
-        </div>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -303,7 +264,7 @@ export default function FaqIndex({
       </div>
 
       {showMeta ? (
-        <section className="mt-5 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <section className="mt-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Judul hero dan status terbit — jarang diubah. Tutup panel ini setelah selesai.
@@ -355,7 +316,7 @@ export default function FaqIndex({
       {showCreate && !isArchivedTab ? (
         <section
           ref={createPanelRef}
-          className="mt-5 rounded-lg border border-primary/25 bg-surface p-5 shadow-sm sm:p-6"
+          className="mt-4 rounded-lg border border-primary/25 bg-surface p-5 shadow-sm sm:p-6"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -417,24 +378,61 @@ export default function FaqIndex({
       ) : null}
 
       {reorderMode ? (
-        <div className="mt-5 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
+        <div className="mt-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
           Geser naik/turun lalu klik Simpan urutan.
         </div>
       ) : null}
 
-      <form
-        className="mt-5 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari pertanyaan atau jawaban",
         }}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary">
+              <a href={previewUrl} target="_blank" rel="noreferrer">
+                Lihat halaman publik
+              </a>
+            </Button>
+            <Button type="button" variant="secondary" onClick={toggleMeta}>
+              {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
+            </Button>
+            {!isArchivedTab ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!rows.length}
+                  onClick={() => setReorderMode((value) => !value)}
+                >
+                  {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
+                </Button>
+                {reorderMode ? (
+                  <Button
+                    type="button"
+                    disabled={reorderForm.processing}
+                    onClick={() => {
+                      reorderForm.setData("status", status)
+                      reorderForm.put(reorderUrl)
+                    }}
+                  >
+                    {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={openCreatePanel}>
+                    <Icon name="plus" className="size-4" aria-hidden="true" />
+                    Tambah
+                  </Button>
+                )}
+              </>
+            ) : null}
+          </div>
+        }
+        className="mt-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari pertanyaan atau jawaban"
-          className="min-w-[16rem] flex-1"
-        />
         <Select
           value={category}
           onChange={(event) => {
@@ -450,8 +448,7 @@ export default function FaqIndex({
             </option>
           ))}
         </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+      </ListToolbar>
 
       <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (

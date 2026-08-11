@@ -6,7 +6,6 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
-import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -38,13 +37,7 @@ interface FaqGuide {
 export default function Faq({ guide }: { guide: FaqGuide }) {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
-  const [activeCategory, setActiveCategory] = React.useState<string>("all")
   const [openId, setOpenId] = React.useState<number | null>(null)
-
-  const visibleGroups =
-    activeCategory === "all"
-      ? guide.groups
-      : guide.groups.filter((group) => group.category === activeCategory)
 
   return (
     <PublicLayout>
@@ -78,47 +71,19 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
         </div>
       </section>
 
-      <section className="py-4">
+      <section className="py-4 lg:py-6">
         <div className="container-page">
-          {guide.categories.length > 1 ? (
-            <div className="mb-4 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveCategory("all")}
-                className={cn(
-                  "min-h-10 rounded-full border px-4 text-sm font-semibold transition-colors",
-                  activeCategory === "all"
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-surface text-foreground hover:border-foreground/40",
-                )}
-              >
-                Semua
-              </button>
-              {guide.categories.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveCategory(tab.key)}
-                  className={cn(
-                    "min-h-10 rounded-full border px-4 text-sm font-semibold transition-colors",
-                    activeCategory === tab.key
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-surface text-foreground hover:border-foreground/40",
-                  )}
+          {guide.groups.length ? (
+            <div className="mx-auto max-w-3xl">
+              {guide.groups.map((group, groupIndex) => (
+                <div
+                  key={group.category}
+                  className={groupIndex > 0 ? "mt-8 border-t border-border pt-6 sm:mt-10 sm:pt-8" : ""}
                 >
-                  {tab.label}
-                  <span className="ml-1.5 tabular-nums opacity-70">({tab.count})</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          {visibleGroups.length ? (
-            <div className="mx-auto grid max-w-3xl gap-4">
-              {visibleGroups.map((group) => (
-                <div key={group.category}>
-                  <h2 className="text-sm font-bold tracking-tight text-foreground sm:text-lg">{group.category}</h2>
-                  <ul className="mt-2 divide-y divide-border border border-border bg-surface">
+                  <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
+                    {group.category}
+                  </h2>
+                  <ul className="mt-3 divide-y divide-border border border-border bg-surface">
                     {group.items.map((item) => {
                       const open = openId === item.id
                       const panelId = `faq-panel-${item.id}`

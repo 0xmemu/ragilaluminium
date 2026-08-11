@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
@@ -148,14 +149,7 @@ export default function BannersIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <Button asChild>
-          <Link href={createHref}>
-            <Icon name="plus" className="size-4" aria-hidden="true" />
-            Tambah Promo
-          </Link>
-        </Button>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -211,73 +205,67 @@ export default function BannersIndex({
         </form>
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <form
-            className="min-w-0 flex-1"
-            onSubmit={(event) => {
-              event.preventDefault()
-              visit({ q })
-            }}
-          >
-            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Cari promo
-            </label>
-            <div className="mt-1.5 flex gap-2">
-              <Input
-                value={q}
-                onChange={(event) => setQ(event.target.value)}
-                placeholder="Judul atau link"
-              />
-              <Button type="submit" variant="secondary">
-                Cari
-              </Button>
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => visit({ q }),
+          placeholder: "Judul atau link",
+        }}
+        actions={
+          <>
+            <div className="flex gap-1 rounded-md border border-border p-1">
+              <button
+                type="button"
+                onClick={() => visit({ view: "grid" })}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold",
+                  viewMode === "grid"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Icon name="layout-grid" className="size-3.5" aria-hidden="true" />
+                Grid
+              </button>
+              <button
+                type="button"
+                onClick={() => visit({ view: "list" })}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold",
+                  viewMode === "list"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Icon name="menu" className="size-3.5" aria-hidden="true" />
+                List
+              </button>
             </div>
-          </form>
-          <div className="w-full sm:w-48">
-            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Status
-            </label>
-            <Select
-              className="mt-1.5"
-              value={activeStatus}
-              onChange={(event) => visit({ status: event.target.value })}
-            >
-              <option value="all">Semua status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
-            </Select>
-          </div>
-          <div className="flex gap-1 rounded-md border border-border p-1">
-            <button
-              type="button"
-              onClick={() => visit({ view: "grid" })}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold",
-                viewMode === "grid"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <Icon name="layout-grid" className="size-3.5" aria-hidden="true" />
-              Grid
-            </button>
-            <button
-              type="button"
-              onClick={() => visit({ view: "list" })}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold",
-                viewMode === "list"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <Icon name="menu" className="size-3.5" aria-hidden="true" />
-              List
-            </button>
-          </div>
+            <Button asChild>
+              <Link href={createHref}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                Tambah Promo
+              </Link>
+            </Button>
+          </>
+        }
+      >
+        <div className="w-full sm:w-48">
+          <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+            Status
+          </label>
+          <Select
+            className="mt-1.5"
+            value={activeStatus}
+            onChange={(event) => visit({ status: event.target.value })}
+          >
+            <option value="all">Semua status</option>
+            <option value="active">Aktif</option>
+            <option value="inactive">Nonaktif</option>
+          </Select>
         </div>
-      </section>
+      </ListToolbar>
 
       {!banners.length ? (
         <EmptyState

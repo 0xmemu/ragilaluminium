@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 
@@ -37,7 +37,6 @@ export default function SubModelForm({
   indexUrl: string
 }) {
   const editing = Boolean(subModel)
-  const [model, setModel] = React.useState(subModel?.product_model ?? productModel)
   const form = useForm<SubModelData>({
     product_model: subModel?.product_model ?? productModel,
     code: subModel?.code ?? "",
@@ -62,14 +61,12 @@ export default function SubModelForm({
       <form onSubmit={submit} className="mx-auto max-w-2xl space-y-6">
         <FormErrorSummary errors={form.errors} />
         <Card>
-          <div className="space-y-5 p-5 sm:p-7">
+          <div className="space-y-4 p-5 sm:p-7">
             <Field id="sub-model-model" label="Model produk" required error={form.errors.product_model}>
               <Select
                 value={form.data.product_model}
                 onChange={(event) => {
-                  const value = event.target.value
-                  setModel(value)
-                  form.setData("product_model", value)
+                  form.setData("product_model", event.target.value)
                 }}
                 disabled={editing}
               >

@@ -22,8 +22,8 @@ class BerandaLayoutAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Beranda/Index')
-                ->has('sections', 2)
-                ->where('sections.0.key', 'banner'));
+                ->has('sections', 3)
+                ->where('sections.0.key', 'category_menu'));
 
         $this->actingAs($admin)
             ->put(route('admin.beranda.update'), [
@@ -36,8 +36,14 @@ class BerandaLayoutAdminTest extends TestCase
 
         $page = CmsPage::query()->where('slug', 'beranda')->first();
         $this->assertNotNull($page);
-        $this->assertFalse((bool) collect($page->content['layout']['sections'])->firstWhere('key', 'banner')['enabled']);
-        $this->assertSame('how_to_order', $page->content['layout']['sections'][0]['key']);
+
+        // Update bersifat merge: semua SECTION_KEYS selalu hadir (default untuk yang
+        // tidak dikirim), toggle banner tersimpan sesuai payload.
+        $sections = collect($page->content['layout']['sections']);
+        $this->assertCount(3, $sections);
+        $this->assertFalse((bool) $sections->firstWhere('key', 'banner')['enabled']);
+        $this->assertTrue((bool) $sections->firstWhere('key', 'category_menu')['enabled']);
+        $this->assertTrue((bool) $sections->firstWhere('key', 'how_to_order')['enabled']);
     }
 
     public function test_admin_can_update_service_highlights_and_how_to_order(): void
@@ -87,6 +93,6 @@ class BerandaLayoutAdminTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Home')
                 ->where('homepageLayout.how_to_order.title', 'Cara pesan dari CMS')
-                ->has('homepageLayout.sections', 2));
+                ->has('homepageLayout.sections', 3));
     }
 }

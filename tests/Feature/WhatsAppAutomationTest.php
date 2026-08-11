@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Events\OrderCreated;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\OrderEta;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
 use App\Services\WhatsAppService;
@@ -182,7 +183,8 @@ class WhatsAppAutomationTest extends TestCase
             'Jl A, Semarang, Jawa Tengah, 50254',
             '-',
             '-',
-            'menyusul',
+            // Variabel {{7}} kini berisi estimasi tiba nyata (produksi + range pengiriman).
+            OrderEta::whatsappLabel($codOrder),
             '100.000',
         ], $codMessage->content_payload['variables']);
 

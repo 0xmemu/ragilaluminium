@@ -728,6 +728,7 @@ class OrderController extends Controller
             'quantity' => (int) $item->quantity,
             'unit_price' => (float) $item->unit_price,
             'line_total' => (float) $item->line_total,
+            'note' => $item->note ?? null,
             'image' => $image,
         ];
     }

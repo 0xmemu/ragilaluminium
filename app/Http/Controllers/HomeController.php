@@ -35,10 +35,12 @@ class HomeController extends Controller
                 ->get();
 
             $modelCards = app(ModelProductService::class)->storefrontCards(8);
+            $categoryMenu = app(ModelProductService::class)->storefrontCategoryMenu();
         } catch (\Throwable) {
             $featuredProducts = collect();
             $popularProductCards = [];
             $modelCards = [];
+            $categoryMenu = [];
         }
 
         try {
@@ -137,6 +139,7 @@ class HomeController extends Controller
             'featuredProducts' => InertiaCatalog::productCards($featuredProducts),
             'popularProducts' => $popularProductCards,
             'modelCards' => $modelCards,
+            'categoryMenu' => $categoryMenu,
             'promoSlides' => $promoSlides,
             'marketplaceTestimonials' => $marketplaceTestimonials,
             'websiteTestimonials' => $websiteTestimonials,

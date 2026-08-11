@@ -149,6 +149,7 @@ export interface SharedPageProps extends Record<string, unknown> {
   brand: Brand
   consultationWhatsApp: ConsultationWhatsAppConfig
   announcements: Announcement[]
+  announcementSlide?: { enabled: boolean; interval: number }
   flashSalePeriod?: FlashSalePeriod | null
   footer: FooterConfig
   platforms: SocialLink[]
@@ -359,6 +360,8 @@ export interface CartItem {
   line_compare_total?: number
   line_discount?: number
   image?: string | null
+  /** Catatan per-produk dari pembeli (keputusan #11). */
+  note?: string | null
 }
 
 export interface CheckoutDetails {
@@ -384,6 +387,17 @@ export interface PublicOrderItem {
   name?: string | null
   quantity: number
   line_total?: number
+  /** Catatan per-produk dari pembeli (keputusan #11). */
+  note?: string | null
+}
+
+export interface OrderEta {
+  production_days: number
+  min_days: number
+  max_days: number
+  range_label: string
+  start_at: string
+  end_at: string
 }
 
 export interface PublicOrderShipping {
@@ -422,6 +436,7 @@ export interface PublicOrder {
   total_amount: number
   customer_name: string
   customer_phone?: string | null
+  eta?: OrderEta | null
   items: PublicOrderItem[]
   shipping?: PublicOrderShipping | null
   tracking?: PublicOrderTracking | null

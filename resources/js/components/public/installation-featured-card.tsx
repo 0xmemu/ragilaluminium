@@ -78,7 +78,7 @@ export function InstallationFeaturedCard({
           {specs.length ? (
             <aside className="mt-6 border-t border-border pt-5 sm:mt-8 sm:pt-6">
               <h3 className="text-base font-bold tracking-tight text-foreground sm:text-lg">Spesifikasi Unit</h3>
-              <dl className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-3">
+              <dl className="mt-4 grid gap-3 sm:mt-4 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-3">
                 {specs.map((row) => (
                   <div key={row.label} className="flex items-baseline justify-between gap-4 text-sm">
                     <dt className="shrink-0 text-muted-foreground">{row.label}</dt>

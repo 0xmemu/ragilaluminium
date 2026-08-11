@@ -61,9 +61,10 @@ function AnnouncementLink({ announcement }: { announcement: Announcement }) {
  * Tidak ada marquee / rotasi otomatis. Ikon X menutup bar sampai konten berubah.
  */
 export function AnnouncementBar({ className }: { className?: string }) {
-  const { announcements } = usePage<SharedPageProps>().props
+  const { announcements, announcementSlide } = usePage<SharedPageProps>().props
   const items = React.useMemo(() => announcements ?? [], [announcements])
-  const active = items[0]
+  const slide = announcementSlide ?? { enabled: false, interval: 5 }
+  const [index, setIndex] = React.useState(0)
 
   const fingerprint = React.useMemo(
     () => items.map((item) => `${item.text}|${item.href}`).join(";;"),
@@ -81,6 +82,19 @@ export function AnnouncementBar({ className }: { className?: string }) {
   // Derived, tanpa effect: bar tertutup hanya jika fingerprint tersimpan == fingerprint saat ini.
   // Kalau admin mengganti teks/link promo, fingerprint berubah → bar otomatis muncul lagi.
   const dismissed = dismissFingerprint !== null && dismissFingerprint === fingerprint
+
+  // Pastikan index valid saat jumlah item berubah.
+  const safeIndex = items.length > 0 ? index % items.length : 0
+  const active = items[safeIndex]
+
+  // Slide otomatis antar beberapa pengumuman (jika diaktifkan admin).
+  React.useEffect(() => {
+    if (!slide.enabled || items.length < 2 || dismissed) return
+    const timer = window.setInterval(() => {
+      setIndex((prev) => (prev + 1) % items.length)
+    }, Math.max(2000, slide.interval * 1000))
+    return () => window.clearInterval(timer)
+  }, [slide.enabled, slide.interval, items.length, dismissed, fingerprint])
 
   if (!active || dismissed) return null
 

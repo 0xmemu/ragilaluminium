@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 
 import { usePage } from "@inertiajs/react"
 import { AnnouncementBar } from "@/components/public/announcement-bar"
+import { FlyingCart } from "@/components/public/flying-cart"
 
 import { MobileBottomNav } from "@/components/public/mobile-bottom-nav"
 import { PublicFooter } from "@/components/public/public-footer"
@@ -26,6 +27,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full overflow-x-hidden outline-none">
         {children}
       </main>
+      <FlyingCart />
       <PublicFooter className="hidden lg:block" />
       {/* Clears fixed MobileBottomNav (no mobile footer per Figma) */}
       <div className="pb-mobile-nav lg:hidden" aria-hidden="true" />

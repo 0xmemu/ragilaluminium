@@ -183,7 +183,7 @@ function MediaBulkAttachPanel({
 
       {selectedAsset ? (
         <form
-          className="mt-5 grid gap-4 rounded-lg border border-primary/30 bg-primary/5 p-4 lg:grid-cols-[minmax(0,1fr)_16rem]"
+          className="mt-4 grid gap-4 rounded-lg border border-primary/30 bg-primary/5 p-4 lg:grid-cols-[minmax(0,1fr)_16rem]"
           onSubmit={(event) => {
             event.preventDefault()
             form.post(selectedAsset.attach_url, { preserveScroll: true, onSuccess: () => form.reset("product_ids") })

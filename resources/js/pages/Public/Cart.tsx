@@ -185,7 +185,7 @@ export default function Cart({
         </div>
       ) : null}
 
-      <section className={cartItems.length ? "container-page min-w-0 overflow-x-hidden py-4" : "container-page py-4"}>
+      <section className={cartItems.length ? "container-page min-w-0 overflow-x-hidden py-4 lg:py-6" : "container-page py-4 lg:py-6"}>
         {cartItems.length ? (
           <div className="space-y-4">
             {/* Select bar */}
@@ -297,12 +297,6 @@ export default function Cart({
                     />
                   ))}
                 </div>
-                <Button asChild variant="link" className="mt-4">
-                  <Link href={routeUrl("catalog.index")}>
-                    <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-                    Lanjut memilih produk
-                  </Link>
-                </Button>
               </div>
 
               <aside className="surface-panel min-w-0 p-5 lg:sticky lg:top-28">

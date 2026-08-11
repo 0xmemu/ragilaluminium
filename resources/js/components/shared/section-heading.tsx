@@ -97,9 +97,10 @@ export function SectionHeading({
           id={id}
           className={cn(
             "min-w-0 flex-1 whitespace-normal text-pretty",
+            // Storefront cap: nama section maks 18px, judul halaman 16px.
             size === "display"
-              ? "text-balance text-[clamp(1rem,5vw,1.875rem)] font-bold tracking-tight"
-              : "text-[clamp(1.125rem,4.5vw,1.5rem)] font-bold tracking-tight",
+              ? "text-balance text-[clamp(1rem,4vw,1.125rem)] font-bold tracking-tight"
+              : "text-[clamp(1.0625rem,3.5vw,1.125rem)] font-bold tracking-tight",
             onPrimary ? "text-white" : "text-foreground",
             align === "center" && size === "display" && "text-center",
             headingClassName,

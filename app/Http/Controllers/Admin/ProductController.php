@@ -94,6 +94,7 @@ class ProductController extends Controller
             'createHref' => route('admin.products.create'),
             'exportUrl' => route('admin.products.export', $request->query()),
             'importHref' => route('admin.imports.index'),
+            'importPerformanceHref' => route('admin.analytics.import-performance'),
             'mediaHref' => route('admin.media.index'),
         ]);
     }
@@ -499,12 +500,11 @@ class ProductController extends Controller
     private function listFilterOptions(): array
     {
         return [
-            'categories' => [
-                ['value' => 'all', 'label' => 'Semua kategori'],
-                ...collect(['WINDOW', 'DOOR', 'BOUVEN'])
-                    ->map(fn (string $value) => ['value' => $value, 'label' => CatalogLabels::category($value)])
-                    ->all(),
-            ],
+            'categories' => array_merge(
+                [['value' => 'all', 'label' => 'Semua kategori']],
+                \App\Models\Category::query()->orderBy('sort_order')->orderBy('id')->get()
+                    ->map(fn (\App\Models\Category $c) => ['value' => $c->code, 'label' => $c->name])->all(),
+            ),
             'models' => [
                 ['value' => 'all', 'label' => 'Semua model'],
                 ...collect(CatalogLabels::modelCodes())
@@ -546,9 +546,8 @@ class ProductController extends Controller
     private function formOptions(): array
     {
         return [
-            'categories' => collect(['WINDOW', 'DOOR', 'BOUVEN'])
-                ->map(fn (string $value) => ['value' => $value, 'label' => CatalogLabels::category($value)])
-                ->all(),
+            'categories' => \App\Models\Category::query()->orderBy('sort_order')->orderBy('id')->get()
+                ->map(fn (\App\Models\Category $c) => ['value' => $c->code, 'label' => $c->name])->all(),
             'models' => collect(CatalogLabels::modelCodes())
                 ->map(fn (string $value) => ['value' => $value, 'label' => CatalogLabels::model($value)])
                 ->all(),

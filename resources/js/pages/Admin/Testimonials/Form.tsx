@@ -147,7 +147,7 @@ export default function TestimonialForm({
             </div>
           </div>
 
-          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <Field id="testimonial-customer" label="Nama pelanggan" required error={form.errors.customer_name}>
               <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
             </Field>

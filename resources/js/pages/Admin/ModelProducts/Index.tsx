@@ -4,9 +4,9 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
@@ -103,38 +103,7 @@ export default function ModelProductsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
-            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
-          </Button>
-          {reorderMode ? (
-            <Button
-              type="button"
-              disabled={reorderForm.processing}
-              onClick={() => reorderForm.put(reorderUrl)}
-            >
-              {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-            </Button>
-          ) : (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => router.post(syncUrl)}
-              >
-                Sinkron dari katalog
-              </Button>
-              <Button asChild>
-                <Link href={createHref}>
-                  <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah model
-                </Link>
-              </Button>
-            </>
-          )}
-        </div>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -144,19 +113,47 @@ export default function ModelProductsIndex({
         </div>
       ) : null}
 
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari nama atau kode model",
         }}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
+              {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
+            </Button>
+            {reorderMode ? (
+              <Button
+                type="button"
+                disabled={reorderForm.processing}
+                onClick={() => reorderForm.put(reorderUrl)}
+              >
+                {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => router.post(syncUrl)}
+                >
+                  Sinkron dari katalog
+                </Button>
+                <Button asChild>
+                  <Link href={createHref}>
+                    <Icon name="plus" className="size-4" aria-hidden="true" />
+                    Tambah model
+                  </Link>
+                </Button>
+              </>
+            )}
+          </div>
+        }
+        className="mb-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari nama atau kode model"
-          className="min-w-[16rem] flex-1"
-        />
         <Select
           value={status}
           onChange={(event) => {
@@ -172,8 +169,7 @@ export default function ModelProductsIndex({
             </option>
           ))}
         </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+      </ListToolbar>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (

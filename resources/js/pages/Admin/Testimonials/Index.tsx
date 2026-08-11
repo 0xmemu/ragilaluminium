@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field } from "@/components/admin/ui/field"
@@ -278,45 +279,7 @@ export default function TestimonialsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          {previewUrl ? (
-            <Button asChild variant="secondary">
-              <a href={previewUrl} target="_blank" rel="noreferrer">
-                Lihat halaman publik
-              </a>
-            </Button>
-          ) : null}
-          {canReorder && reorderUrl ? (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setReorderMode((value) => !value)
-                }}
-              >
-                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-              </Button>
-              {reorderMode ? (
-                <Button
-                  type="button"
-                  disabled={reorderForm.processing}
-                  onClick={() => reorderForm.put(reorderUrl)}
-                >
-                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                </Button>
-              ) : null}
-            </>
-          ) : null}
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              {createLabel}
-            </Link>
-          </Button>
-        </div>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -388,26 +351,58 @@ export default function TestimonialsIndex({
         </div>
       ) : null}
 
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: isApaKata
+            ? "Cari nama atau sumber Shopee/WhatsApp"
+            : tab === "website"
+              ? "Cari nama, komentar, atau sumber"
+              : "Cari label atau URL foto",
         }}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {previewUrl ? (
+              <Button asChild variant="secondary">
+                <a href={previewUrl} target="_blank" rel="noreferrer">
+                  Lihat halaman publik
+                </a>
+              </Button>
+            ) : null}
+            {canReorder && reorderUrl ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setReorderMode((value) => !value)
+                  }}
+                >
+                  {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
+                </Button>
+                {reorderMode ? (
+                  <Button
+                    type="button"
+                    disabled={reorderForm.processing}
+                    onClick={() => reorderForm.put(reorderUrl)}
+                  >
+                    {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
+            <Button asChild>
+              <Link href={createHref}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                {createLabel}
+              </Link>
+            </Button>
+          </div>
+        }
+        className="mb-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder={
-            isApaKata
-              ? "Cari nama atau sumber Shopee/WhatsApp"
-              : tab === "website"
-                ? "Cari nama, komentar, atau sumber"
-                : "Cari label atau URL foto"
-          }
-          className="min-w-[16rem] flex-1"
-          disabled={reorderMode}
-        />
         <Select
           value={published}
           onChange={(event) => {
@@ -442,28 +437,27 @@ export default function TestimonialsIndex({
             ))}
           </Select>
         ) : null}
-        {sortOptions.length > 0 ? (
-          <Select
-            value={sort}
-            onChange={(event) => {
-              const value = event.target.value
-              setSort(value)
-              apply({ sort: value })
-            }}
-            className="w-44"
-            disabled={reorderMode}
-          >
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        ) : null}
-        <Button type="submit" disabled={reorderMode}>
-          Cari
-        </Button>
-      </form>
+        sort={
+          sortOptions.length > 0 ? (
+            <Select
+              value={sort}
+              onChange={(event) => {
+                const value = event.target.value
+                setSort(value)
+                apply({ sort: value })
+              }}
+              className="w-44"
+              disabled={reorderMode}
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          ) : null
+        }
+      </ListToolbar>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {(tab === "website" ? websiteRows.length > 0 : rows.length + importedRows.length > 0) ? (

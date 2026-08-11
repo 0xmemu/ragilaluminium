@@ -96,7 +96,7 @@ export default function StorefrontPlatformsEdit({
 
       <form
         onSubmit={submit}
-        className="mx-auto max-w-2xl space-y-8 rounded-xl border border-border bg-card p-5 shadow-sm"
+        className="mx-auto max-w-2xl space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm"
       >
         <FormErrorSummary errors={form.errors} />
 

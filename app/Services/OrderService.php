@@ -204,6 +204,7 @@ class OrderService
                             'line_subtotal' => $r['lineSubtotal'],
                             'line_discount' => round($r['lineDiscount'], 2),
                             'line_total' => $r['lineSubtotal'],
+                            'note' => $r['item']['note'] ?? null,
                         ]);
                     }
 

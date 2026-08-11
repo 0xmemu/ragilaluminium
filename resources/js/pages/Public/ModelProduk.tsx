@@ -5,19 +5,18 @@ import { ModelProdukListingSidebar } from "@/components/public/catalog-listing-s
 import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
 import { Icon } from "@/components/shared/icon"
 import { ModelCard } from "@/components/public/model-card"
-import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
+import { useSwipeClickSuppression } from "@/hooks/use-swipe-click-suppression"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import type { ModelCardData, ProductCardData, SelectOption } from "@/types"
+import type { ModelCardData, SelectOption } from "@/types"
 
 interface ModelProdukProps {
   models: ModelCardData[]
-  popularProducts?: ProductCardData[]
   filterDesigns: SelectOption[]
   filterModels?: SelectOption[]
   activeDesign?: string | null
@@ -25,7 +24,7 @@ interface ModelProdukProps {
 }
 
 const CATEGORY_TABS = [
-  { code: "", label: "Semua Model", slug: undefined },
+  { code: "", label: "Semua", slug: undefined },
   { code: "WINDOW", label: "Jendela", slug: "windows" },
   { code: "DOOR", label: "Pintu", slug: "doors" },
   { code: "BOUVEN", label: "Boven", slug: "bouven" },
@@ -33,12 +32,14 @@ const CATEGORY_TABS = [
 
 export default function ModelProduk({
   models = [],
-  popularProducts = [],
   filterDesigns = [],
   filterModels = [],
   activeDesign = null,
   activeCategory = null,
 }: ModelProdukProps) {
+  const navRef = React.useRef<HTMLElement>(null)
+  useSwipeClickSuppression(navRef)
+
   const [design, setDesign] = React.useState<string | null>(activeDesign ?? null)
 
   React.useEffect(() => {
@@ -134,40 +135,38 @@ export default function ModelProduk({
         </div>
       </section>
 
-      {/* Navigasi kategori + model ala halaman Semua Produk */}
-      <nav aria-label="Kategori model produk" className="scrollbar-x -mb-px flex gap-1 overflow-x-auto border-b border-border bg-surface">
-        <div className="flex min-w-0 items-end gap-1 px-5 md:px-8 lg:px-12">
-          {CATEGORY_TABS.map((tab) => {
-            const active = (tab.code || null) === (activeCategory || null)
-            return (
-              <Link
-                key={tab.code || "all"}
-                href={routeUrl("catalog.index", {
-                  category: tab.code || undefined,
-                  design: design || undefined,
-                })}
-                aria-current={active ? "page" : undefined}
-                className={
-                  active
-                    ? `relative flex h-12 shrink-0 items-center whitespace-nowrap border-b-2 border-foreground px-0.5 text-sm font-bold text-foreground`
-                    : `relative flex h-12 shrink-0 items-center whitespace-nowrap border-b-2 border-transparent px-0.5 text-sm text-muted-foreground transition hover:text-foreground`
-                }
-              >
-                {tab.label}
-              </Link>
-            )
-          })}
-
-          {modelTabs.map((model) => (
+      {/* Navigasi kategori + model — frame grey (mati) / hitam (dipilih) */}
+      <nav ref={navRef} aria-label="Kategori model produk" className="scrollbar-x flex gap-2 overflow-x-auto border-b border-border bg-surface px-5 py-3 md:px-8 lg:px-12">
+        {CATEGORY_TABS.map((tab) => {
+          const active = (tab.code || null) === (activeCategory || null)
+          return (
             <Link
-              key={model.value}
-              href={model.href}
-              className="relative flex h-12 shrink-0 items-center whitespace-nowrap border-b-2 border-transparent px-0.5 text-sm text-muted-foreground transition hover:text-foreground"
+              key={tab.code || "all"}
+              href={routeUrl("catalog.index", {
+                category: tab.code || undefined,
+                design: design || undefined,
+              })}
+              aria-current={active ? "page" : undefined}
+              className={
+                active
+                  ? "inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-foreground bg-foreground px-3.5 text-[13px] font-semibold text-background shadow-sm"
+                  : "inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-foreground transition hover:border-foreground/50"
+              }
             >
-              {model.label}
+              {tab.label}
             </Link>
-          ))}
-        </div>
+          )
+        })}
+
+        {modelTabs.map((model) => (
+          <Link
+            key={model.value}
+            href={model.href}
+            className="inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground"
+          >
+            {model.label}
+          </Link>
+        ))}
       </nav>
 
       <div className="container-page flex justify-end py-3 lg:hidden">
@@ -182,7 +181,7 @@ export default function ModelProduk({
         />
       </div>
 
-      <section className="container-page py-4 lg:py-5">
+      <section className="container-page py-4 lg:py-6">
         <div className="grid min-w-0 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
           <aside className="hidden lg:block">
             <div className="sticky top-28">
@@ -226,7 +225,6 @@ export default function ModelProduk({
         </div>
       </section>
 
-      <PalingBanyakDipesanSection products={popularProducts} />
     </PublicLayout>
   )
 }

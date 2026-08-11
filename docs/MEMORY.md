@@ -282,3 +282,31 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
   retry_after=1860 di atas timeout 1.800 detik. J&T logs memakai allowlist
   dengan identifier ter-hash dan production boot menolak signing key kosong.
 - ADR: docs/decisions/ADR-004-database-backed-transaction-integrity.md.
+
+### 2026-08-11 - R2 aktif + PITR + session 5 hari + scheduler cron
+- R2 media AKTIF di VPS 209.23.10.62: MEDIA_DISK=s3, bucket `ra-media` (public pub-1fc7....r2.dev), semua 234 product_media + 702 object tampil via R2 (200). Nginx /media-cdn proxy fixed (`proxy_ssl_server_name on`).
+- Custom domain `media.333labs.tech` + CORS + DNS: TERTUNDA — butuh token CF permission Edit (token saat ini read-only). AWS_URL masih r2.dev.
+- Session cart 5 hari: SESSION_LIFETIME=7200 + SESSION_DRIVER=database (tabel sessions) — tahan Redis restart.
+- Cron Laravel terpasang: `* * * * * schedule:run` → queue:monitor + queue:prune-failed aktif.
+- PITR: binlog sudah ON (ROW); script baru `/root/scripts_backup_mysql_binlog.sh` + `/root/scripts_r2_upload_binlog.py` arsip binlog ke ra-backup/binlogs/ tiap jam; RELOAD privilege ditambahkan ke user ragil.
+- .env backup: .env.bak-r2-20260811-094452
+
+### 2026-08-11 - Custom domain media.333labs.tech LIVE + backup hardening
+- AWS_URL=https://media.333labs.tech (custom domain R2, SSL+DNS aktif, curl 200); nginx /media-cdn proxy ikut dialihkan; `.env.pre-customdomain-20260811` + nginx `ragil.pre-customdomain`.
+- CORS R2: API Cloudflare menolak semua body (10040) — TIDAK dibutuhkan (upload server-side, baca via img). Bukan release gate.
+- Backup DIHARDEN: enkripsi AES-256-CBC (keyfile /root/.config/ragilaluminium/backup-key, root 600) untuk dump harian + binlog hourly; kredensial CF/R2-backup DIHAPUS dari .env app (hanya AWS_* ra-media) → app tak bisa hapus arsip; lifecycle R2 ra-backup 30 hari (mysql/ + binlogs/) dipasang (PUT 200); restore drill mingguan (Sen 04:30, DB ragil_restore_test, rowcount vs prod — PASS 50/612/234/1); alert file (`/root/backups/ALERT-*`). .env.pre-hardened-20260811.
+
+### 2026-08-11 - Backup tanpa enkripsi (keputusan user)
+- Enkripsi backup DIHAPUS atas permintaan user (keyfile `/root/.config/ragilaluminium/backup-key` dihapus; tidak diperlukan). Pipeline kembali plaintext: dump harian .sql.gz + binlog .log → R2 ra-backup (lifecycle 30 hari). Semua artefak `.enc` (lokal 0 + R2 8 objek) dibersihkan. Restore drill tetap PASS (14:42:16, 50/612/234/1). Script: scripts_backup_mysql.sh, scripts_r2_upload_backup.py, scripts_r2_upload_binlog.py, scripts_restore_backup.sh, scripts_weekly_restore_test.sh.
+
+### 2026-08-11 - Review design_thinking.md -> F1-F4 (E-channel lengkap)
+- F1: Upload R2 gagal kini = alert file `/root/backups/ALERT-r2-upload` (backup harian & binlog; flush-logs gagal juga ber-alert).
+- F2: `scripts_r2_upload_backup.py` / `scripts_r2_upload_binlog.py` exit 1 saat upload final gagal; loop binlog menangkap status per file (GAGAL=1 → notify + exit 1). Exit code diverifikasi (uji negatif kredensial hilang → exit 1).
+- F3: retry 3x dengan backoff (2s/4s) untuk error 5xx/network; 4xx (auth) tidak di-retry.
+- F4: stale-check binlog: `binlog-last-run` ditulis tiap run; drill mingguan membunyikan alert jika arsip tidak berjalan >27 jam.
+- Catatan 2026-08-11: alert Telegram pernah ditambahkan di luar docs dan TELAH DIHAPUS (user request) — alert = file `/root/backups/ALERT-*` + log saja.
+
+### 2026-08-11 - Catatan sesi refactor dashboard (AGENT review design_thinking)
+- Refactor dashboard (DashboardQueryService + controller thin + types TS) sempat diimplementasikan lalu DI-ROLLBACK penuh karena menyimpang dari kontrak `tests/Feature/AdminDashboardTest.php` (diubah agent lain 15:24, belum commit): quickActions 3 item inline, statusOrder 5 item (bukan 9), performa pakai `StorePerformanceService::build()` period today/yesterday/last_7/last_30/this_month (BUKAN 7d/30d/90d + forPeriod/trend), attention href pakai `older_than=24h/2d/7d`, topEngaged `ProductEngagementService::topProducts($period, 8)`.
+- File asli DashboardController.php (23614 B, git clean) sudah memakai pola modern tsb; refactor saya menyalin payload versi lama karena output `sed` via ssh terlihat terkorupsi (duplikasi baris) — pelajaran: verifikasi isi file dengan dua sumber (scp + baca) sebelum deploy.
+- Final: baseline asli dikembalikan, PHPUnit **277 tests / 4141 assertions OK** (termasuk AdminDashboardTest baru agent lain). File buatan refactor dihapus (DashboardQueryService.php, admin-dashboard.ts); Dashboard.tsx tetap versi asli. Refactor dashboard bisa diulang dengan test tsb sebagai kontrak wajib.

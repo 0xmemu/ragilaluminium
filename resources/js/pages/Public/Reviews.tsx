@@ -59,6 +59,26 @@ export default function Reviews({
     [testimonials],
   )
 
+  // Ulasan website: default "Semua" (terbaru dulu); dropdown bintang 1–5 memfilter.
+  const [starFilter, setStarFilter] = React.useState("")
+  const websiteFiltered = React.useMemo(() => {
+    const sorted = [...website].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+    if (!starFilter) return sorted
+    const target = Number(starFilter)
+    return sorted.filter((testimonial) => (testimonial.rating ?? 0) === target)
+  }, [starFilter, website])
+
+  const starOptions = React.useMemo(
+    () => [
+      { value: "", label: "Semua" },
+      ...([5, 4, 3, 2, 1] as const).map((stars) => ({
+        value: String(stars),
+        label: `Bintang ${stars}`,
+      })),
+    ],
+    [],
+  )
+
   const total = stats?.website_total ?? testimonials.length
   const averageRating = stats?.average_rating ?? null
 
@@ -189,7 +209,7 @@ export default function Reviews({
         />
       </div>
 
-      <section className="container-page py-4">
+      <section className="container-page py-4 lg:py-6">
         <div className="grid min-w-0 gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
           <aside className="hidden lg:block">
             <div className="sticky top-28">
@@ -261,19 +281,34 @@ export default function Reviews({
             </section>
 
             <section id="ulasan-website" className="scroll-mt-20">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-base font-bold text-foreground">
-                  Ulasan pelanggan di website
-                </h2>
-                <span className="tabular-nums text-sm text-muted-foreground">
-                  {formatNumber(website.length)}
-                </span>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-base font-bold text-foreground">
+                    Ulasan pelanggan di website
+                  </h2>
+                  <span className="tabular-nums text-sm text-muted-foreground">
+                    {formatNumber(websiteFiltered.length)}
+                  </span>
+                </div>
+                <FilterBerdasarkanControl
+                  id="reviews-star"
+                  variant="plain"
+                  value={starFilter}
+                  options={starOptions}
+                  onChange={setStarFilter}
+                  ariaLabel="Filter ulasan berdasarkan bintang"
+                  menuLabel="Urutkan / Filter"
+                />
               </div>
               {renderGrid(
-                website,
+                websiteFiltered,
                 "review",
-                "Belum ada ulasan website",
-                "Ulasan dari pembeli website akan tampil di sini.",
+                starFilter
+                  ? `Belum ada ulasan bintang ${starFilter}`
+                  : "Belum ada ulasan website",
+                starFilter
+                  ? "Ulasan dengan rating tersebut belum tersedia. Coba bintang lain atau Semua."
+                  : "Ulasan dari pembeli website akan tampil di sini.",
               )}
             </section>
           </div>

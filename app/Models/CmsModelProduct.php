@@ -17,6 +17,7 @@ class CmsModelProduct extends Model
         'product_model',
         'image_url',
         'description',
+        'menu_href',
         'type',
         'status',
         'sort_order',

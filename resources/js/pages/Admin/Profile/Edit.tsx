@@ -60,7 +60,7 @@ export default function ProfileEdit({
             </p>
           </div>
 
-          <div className="mt-5 grid gap-5">
+          <div className="mt-4 grid gap-4">
             <Field id="profile-name" label="Nama" required error={form.errors.name}>
               <Input
                 value={form.data.name}
@@ -103,7 +103,7 @@ export default function ProfileEdit({
           <p className="mt-1 text-sm text-muted-foreground">
             Kosongkan jika password tidak diubah. Wajib isi password saat ini bila mengganti.
           </p>
-          <div className="mt-5 grid gap-5">
+          <div className="mt-4 grid gap-4">
             <Field id="profile-current-password" label="Password saat ini" error={form.errors.current_password}>
               <Input
                 type="password"

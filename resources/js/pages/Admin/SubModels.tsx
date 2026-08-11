@@ -2,7 +2,6 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { rowActionTextClass } from "@/components/admin/row-actions"
-import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -57,6 +56,8 @@ export default function SubModelsIndex({
   })
 
   React.useEffect(() => {
+    // Sync dari props saat Inertia me-render ulang (reorder bisa di-reset server).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(initialRows)
     reorderForm.setData(
       "rows",
@@ -89,7 +90,7 @@ export default function SubModelsIndex({
               <Button
                 key={option.value}
                 asChild
-                variant={option.value === activeModel ? "default" : "secondary"}
+                variant={option.value === activeModel ? "primary" : "secondary"}
                 size="sm"
               >
                 <Link

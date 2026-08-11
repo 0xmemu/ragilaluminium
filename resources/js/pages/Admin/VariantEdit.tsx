@@ -111,7 +111,7 @@ export default function VariantEdit({
         <FormErrorSummary errors={form.errors} />
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Identitas dan opsi</h2>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <Field
               id="edit-variant-sku"
               label="Variant SKU"
@@ -138,7 +138,7 @@ export default function VariantEdit({
 
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Harga, stok, dan dimensi</h2>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {[
               ["price", "Harga", true],
               ["stock", "Stok", true],
@@ -184,7 +184,7 @@ export default function VariantEdit({
           </p>
 
           {media.length ? (
-            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {media.map((item) => (
                 <li key={item.id} className="overflow-hidden rounded-md border border-border">
                   {item.thumb_url ? (
@@ -279,7 +279,7 @@ export default function VariantEdit({
           </div>
           <Button
             type="submit"
-            className="mt-5"
+            className="mt-4"
             disabled={mediaForm.processing || (!mediaForm.data.upload && !mediaForm.data.source_url)}
           >
             <Icon name="upload" className="h-4 w-4" aria-hidden="true" />

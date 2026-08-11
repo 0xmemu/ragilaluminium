@@ -65,7 +65,7 @@ return [
         'produk' => [
             'title' => 'Produk',
             'items' => [
-                ['label' => 'Daftar Produk', 'route' => 'admin.products.index', 'icon' => 'package', 'active' => ['admin.products.*', 'admin.variants.*', 'admin.attributes.*']],
+                ['label' => 'Kelola Produk', 'route' => 'admin.products.index', 'icon' => 'package', 'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*']],
             ],
         ],
         'harga_promo' => [

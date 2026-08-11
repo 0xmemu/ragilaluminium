@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field } from "@/components/admin/ui/field"
@@ -105,30 +106,7 @@ export default function MasalahSolusiIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <a href={previewUrl} target="_blank" rel="noreferrer">
-              Lihat halaman publik
-            </a>
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
-            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
-          </Button>
-          {reorderMode ? (
-            <Button type="button" disabled={reorderForm.processing} onClick={() => reorderForm.put(reorderUrl)}>
-              {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-            </Button>
-          ) : (
-            <Button asChild>
-              <Link href={createHref}>
-                <Icon name="plus" className="size-4" aria-hidden="true" />
-                Tambah pasangan
-              </Link>
-            </Button>
-          )}
-        </div>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -177,21 +155,39 @@ export default function MasalahSolusiIndex({
         </div>
       ) : null}
 
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari masalah atau solusi",
         }}
-      >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari masalah atau solusi"
-          className="min-w-[16rem] flex-1"
-        />
-        <Button type="submit">Cari</Button>
-      </form>
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary">
+              <a href={previewUrl} target="_blank" rel="noreferrer">
+                Lihat halaman publik
+              </a>
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
+              {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
+            </Button>
+            {reorderMode ? (
+              <Button type="button" disabled={reorderForm.processing} onClick={() => reorderForm.put(reorderUrl)}>
+                {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link href={createHref}>
+                  <Icon name="plus" className="size-4" aria-hidden="true" />
+                  Tambah pasangan
+                </Link>
+              </Button>
+            )}
+          </div>
+        }
+        className="mb-4"
+      />
 
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (

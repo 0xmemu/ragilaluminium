@@ -79,7 +79,7 @@ export function PublicFooter({ className }: { className?: string }) {
           <div className="sm:col-span-2 lg:col-span-3">
             <BrandWordmark compact variant="dark" />
             <p className="mt-4 max-w-sm text-sm leading-6 text-white/80">{brand.tagline}</p>
-            <address className="mt-5 max-w-sm space-y-3 not-italic text-sm leading-6 text-white/80">
+            <address className="mt-4 max-w-sm space-y-3 not-italic text-sm leading-6 text-white/80">
               {brand.address ? (
                 <p className="flex gap-2.5">
                   <Icon name="map-pin" className="mt-0.5 size-4 shrink-0" aria-hidden="true" />

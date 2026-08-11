@@ -869,11 +869,15 @@ class WhatsAppService
                 trim((string) ($item->variation_2_option ?? '')),
             ], fn ($part) => $part !== '');
 
-            if ($attrs !== []) {
-                return $header.' ('.implode(' • ', $attrs).')';
+            $suffix = $attrs !== [] ? ' ('.implode(' • ', $attrs).')' : '';
+
+            // Catatan per-produk ikut dalam konfirmasi order (keputusan #11).
+            $note = trim((string) ($item->note ?? ''));
+            if ($note !== '') {
+                $suffix .= ' [Catatan: '.$note.']';
             }
 
-            return $header;
+            return $header.$suffix;
         })->filter()->values();
 
         // Satu baris per item dipisah " | " — Meta menolak newline di parameter template.
@@ -894,8 +898,7 @@ class WhatsAppService
 
     protected function formatEta(Order $order): string
     {
-        // Belum ada kolom ETA di schema order — placeholder ramah sampai SLA J&T tersimpan.
-        return 'menyusul';
+        return \App\Support\OrderEta::whatsappLabel($order);
     }
 
     protected function formatTotal(Order $order): string

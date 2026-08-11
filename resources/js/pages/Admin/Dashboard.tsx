@@ -360,6 +360,8 @@ export default function Dashboard({
     statusOrder.reduce((sum, item) => sum + item.total, 0) > 0 || omzet.orders > 0
   const visitorsMetric = performa.metrics.find((metric) => metric.key === "visitors")
   const onboardingActions = quickActions.filter((action) => action.label !== "Lihat Pending Payment")
+  const allIntegrationsReady =
+    integrationReadiness.length > 0 && integrationReadiness.every((item) => item.ready && item.verified)
 
   function onPerformaPeriodChange(period: string) {
     router.get(
@@ -383,9 +385,9 @@ export default function Dashboard({
       <Head title="Dashboard | Admin" />
       <h1 className="sr-only">Dashboard</h1>
 
-      <div className="space-y-5">
+      <div className="space-y-4 pt-4">
         {/* Header — sapaan */}
-        <div className="pt-2">
+        <div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-[26px] font-semibold leading-8 tracking-tight text-foreground">
@@ -418,12 +420,12 @@ export default function Dashboard({
         <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           {hasOrders ? (
             <Card className="flex h-full flex-col">
-              <div className="flex flex-wrap items-start justify-between gap-4 p-5 pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-4 p-4 pb-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     Omzet hari ini
                   </p>
-                  <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
+                  <p className="tabular-nums mt-2 text-3xl font-bold tracking-tight text-foreground">
                     {formatCurrency(omzet.revenue)}
                   </p>
                   <div className="mt-2">
@@ -454,28 +456,28 @@ export default function Dashboard({
                 <Sparkline values={omzet.sparkline} />
               </div>
               <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
-                <div className="px-5 py-4">
+                <div className="px-4 py-3">
                   <MetricTile
                     label="Jumlah order"
                     value={`${formatNumber(omzet.orders)} order`}
                     delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" />}
                   />
                 </div>
-                <div className="px-5 py-4">
+                <div className="px-4 py-3">
                   <MetricTile
                     label="Jumlah unit"
                     value={`${formatNumber(omzet.units)} unit`}
                     delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
                   />
                 </div>
-                <div className="px-5 py-4">
+                <div className="px-4 py-3">
                   <MetricTile
                     label="Belum dibayar"
                     value={formatCurrency(financial.pending_payment_amount)}
                     delta={`${formatNumber(financial.pending_payment_orders)} order pending`}
                   />
                 </div>
-                <div className="px-5 py-4">
+                <div className="px-4 py-3">
                   <MetricTile
                     label="Diterima hari ini"
                     value={formatCurrency(financial.received_today_amount)}
@@ -498,7 +500,7 @@ export default function Dashboard({
                     Semua siap dipakai. Lengkapi katalog dan pastikan layanan terkoneksi
                     supaya order pertama bisa masuk dan diproses lancar.
                   </p>
-                  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <DensityChip label="Produk aktif" value={formatNumber(productCount)} />
                     <DensityChip
                       label="Media siap"
@@ -533,7 +535,7 @@ export default function Dashboard({
             </Card>
           )}
 
-          <Card className="flex h-full flex-col p-5">
+          <Card className="flex h-full flex-col p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <h2 className="text-sm font-semibold tracking-tight text-foreground">
@@ -557,7 +559,7 @@ export default function Dashboard({
                 </Link>
               </div>
             </div>
-            <div className="mt-5 grid flex-1 sm:grid-cols-2 gap-x-4 gap-y-5">
+            <div className="mt-4 grid flex-1 sm:grid-cols-2 gap-x-4 gap-y-4">
               {performa.metrics.map((metric) => (
                 <MetricTile
                   key={metric.key}
@@ -567,7 +569,7 @@ export default function Dashboard({
                 />
               ))}
             </div>
-            <div className="mt-5 border-t border-border pt-3">
+            <div className="mt-4 border-t border-border pt-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium text-muted-foreground">Tren omzet</p>
                 <p className="tabular-nums text-xs font-semibold text-foreground">
@@ -623,39 +625,41 @@ export default function Dashboard({
           </>
         ) : null}
 
-        <SectionCard
-          title="Kesiapan layanan"
-          icon="gauge"
-          description="Status konfigurasi yang memengaruhi operasi order, media, dan notifikasi."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {integrationReadiness.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                className="group rounded-md border border-border p-3 transition hover:border-foreground/20 hover:bg-muted/50"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
-                    <Icon name={item.icon} className="size-4" aria-hidden="true" />
-                  </span>
-                  <span
-                    className={
-                      item.verified
-                        ? "rounded-full bg-success/10 px-2 py-1 text-[10px] font-semibold text-success"
-                        : "rounded-full bg-warning/15 px-2 py-1 text-[10px] font-semibold text-warning-foreground"
-                    }
-                  >
-                    {item.verified ? "Terverifikasi" : item.ready ? "Konfigurasi ada" : "Perlu cek"}
-                  </span>
-                </div>
-                <p className="mt-3 text-[13px] font-semibold text-foreground">{item.label}</p>
-                <p className="mt-1 text-xs font-medium text-foreground/80">{item.status_label}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
-              </Link>
-            ))}
-          </div>
-        </SectionCard>
+        {!allIntegrationsReady ? (
+          <SectionCard
+            title="Kesiapan layanan"
+            icon="gauge"
+            description="Status konfigurasi yang memengaruhi operasi order, media, dan notifikasi."
+          >
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+              {integrationReadiness.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className="group rounded-md border border-border p-2.5 transition hover:border-foreground/20 hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
+                      <Icon name={item.icon} className="size-4" aria-hidden="true" />
+                    </span>
+                    <span
+                      className={
+                        item.verified
+                          ? "rounded-full bg-success/10 px-2 py-1 text-[10px] font-semibold text-success"
+                          : "rounded-full bg-warning/15 px-2 py-1 text-[10px] font-semibold text-warning-foreground"
+                      }
+                    >
+                      {item.verified ? "Terverifikasi" : item.ready ? "Konfigurasi ada" : "Perlu cek"}
+                    </span>
+                  </div>
+                  <p className="mt-2.5 text-[13px] font-semibold text-foreground">{item.label}</p>
+                  <p className="mt-0.5 text-xs font-medium text-foreground/80">{item.status_label}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        ) : null}
 
         {/* Row 3 — Perlu Perhatian | Produk Paling Dilihat | Aksi Cepat */}
         <section className="grid items-stretch gap-4 lg:grid-cols-12">

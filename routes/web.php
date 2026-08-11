@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BannerController;
@@ -147,6 +148,10 @@ Route::get('/order/count', [OrderController::class, 'count'])->name('order.count
 Route::get('/order/status', [OrderController::class, 'statusForm'])->name('order.status');
 Route::post('/order/status', [OrderController::class, 'statusLookup'])
     ->middleware('throttle:15,1')->name('order.status.lookup');
+Route::get('/order/status/{order_number}', [OrderController::class, 'statusApi'])
+    ->middleware('throttle:10,1')->name('order.status.api');
+Route::post('/order/{order_number}/cancel', [OrderController::class, 'cancel'])
+    ->middleware('throttle:10,1')->name('order.cancel');
 
 /*
 |--------------------------------------------------------------------------
@@ -173,6 +178,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Catalog - Products
     Route::get('products/export', [AdminProductController::class, 'export'])->name('products.export');
     Route::resource('products', AdminProductController::class)->except(['destroy']);
+    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('categories/create', [CategoryController::class, 'create'])->name('categories.create');
+    Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('categories/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+    Route::put('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
     Route::post('products/{product}/archive', [AdminProductController::class, 'archive'])->name('products.archive');
     Route::post('products/{product}/unarchive', [AdminProductController::class, 'unarchive'])->name('products.unarchive');
     Route::post('products/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
@@ -290,6 +301,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
     Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::post('announcements/slide', [AnnouncementController::class, 'saveSlide'])->name('announcements.slide');
+    Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
     Route::get('announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])->name('announcements.edit');
     Route::put('announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
     Route::post('announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->name('announcements.publish');
@@ -440,3 +453,5 @@ Route::middleware('throttle:120,1')->group(function () {
 Route::post('/webhook/whatsapp/baileys', [WhatsAppController::class, 'handleBaileys'])->name('webhook.whatsapp.baileys');
     Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])->name('webhook.shipping.jnt');
 });
+
+// TEMPORARY ErrorBoundary e2e test route — remove after verification

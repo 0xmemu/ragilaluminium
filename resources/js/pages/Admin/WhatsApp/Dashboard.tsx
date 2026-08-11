@@ -2,7 +2,6 @@ import { Head, Link } from "@inertiajs/react"
 import { useEffect, useState } from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
@@ -55,20 +54,18 @@ export default function WhatsAppDashboard({
   title,
   description,
   automations,
-  connection,
   recentMessages,
   stats,
   statusUrl,
   qrUrl,
   refreshQrUrl,
-  codeUrl,
   templatesUrl,
   messagesUrl,
   pairingUrl,
 }: Props) {
   const [status, setStatus] = useState<string>("connecting")
   const [statusText, setStatusText] = useState<string>("Menghubungkan...")
-  const [qrTs, setQrTs] = useState<number>(Date.now())
+  const [qrTs, setQrTs] = useState<number>(0)
   const [hasSession, setHasSession] = useState<boolean>(false)
   const [connectedPhone, setConnectedPhone] = useState<string>("")
 

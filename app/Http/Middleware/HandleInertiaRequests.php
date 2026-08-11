@@ -104,6 +104,7 @@ class HandleInertiaRequests extends Middleware
                 ),
             ],
             'announcements' => \App\Support\ActiveAnnouncements::items(),
+            'announcementSlide' => \App\Support\AnnouncementSlideSettings::sharedProps(),
             'flashSalePeriod' => fn () => \App\Support\FlashSalePeriodSettings::publicState(),
             'footer' => config('sitemap.footer', []),
             'platforms' => \App\Support\StorefrontPlatformSettings::forStorefront(),

@@ -77,7 +77,7 @@ export default function AnnouncementForm({
         <FormErrorSummary errors={form.errors} />
 
         <section className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <Field
               id="text"
               label="Teks promo"

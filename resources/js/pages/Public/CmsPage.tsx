@@ -77,7 +77,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
         </div>
       </section>
 
-      <section className={cn("container-page", isContact ? "py-4" : "py-6 lg:py-8")}>
+      <section className="container-page py-4 lg:py-6">
         {isLegal ? (
           <div className="mx-auto max-w-3xl border-t border-border pt-8">
             <article className="cms-content" dangerouslySetInnerHTML={{ __html: cleanBody }} />
@@ -132,7 +132,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
               <article className="cms-content" dangerouslySetInnerHTML={{ __html: cleanBody }} />
             </div>
 
-            <aside className="space-y-5 lg:sticky lg:top-28 lg:self-start">
+            <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
               <div className="rounded-lg border border-border bg-surface p-5">
                 <p className="text-lg font-semibold">Butuh bantuan?</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">

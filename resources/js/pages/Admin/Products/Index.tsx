@@ -3,11 +3,11 @@ import * as React from "react"
 
 import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Card } from "@/components/admin/ui/card"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -21,6 +21,7 @@ import {
 } from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
@@ -78,6 +79,7 @@ interface ProductsIndexProps {
   createHref: string
   exportUrl: string
   importHref: string
+  importPerformanceHref: string
   mediaHref: string
 }
 
@@ -302,6 +304,7 @@ export default function ProductsIndex({
   createHref,
   exportUrl,
   importHref,
+  importPerformanceHref,
   mediaHref,
 }: ProductsIndexProps) {
   const [q, setQ] = React.useState(searchQuery)
@@ -330,91 +333,86 @@ export default function ProductsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <a href={exportUrl}>Export CSV</a>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={importHref}>Import</Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={mediaHref}>Media</Link>
-          </Button>
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah produk
-            </Link>
-          </Button>
-        </div>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
-      {/* Toolbar */}
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <form
-          className="relative min-w-0 flex-1"
-          onSubmit={(event) => {
-            event.preventDefault()
-            visit({ q })
-          }}
+      <ManageProductsTabs active="products" />
+
+      {/* Baris kontrol seragam: search | filter | view | actions */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => visit({ q }),
+          placeholder: "Cari nama produk atau parent SKU…",
+        }}
+        summary={
+          <span>
+            <span className="tabular-nums font-semibold text-foreground">
+              {formatNumber(pagination.total)}
+            </span>{" "}
+            produk
+          </span>
+        }
+        actions={
+          <>
+            <Button asChild variant="secondary">
+              <a href={exportUrl}>Export CSV</a>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href={importHref}>Import</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href={importPerformanceHref}>Performa Import</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href={mediaHref}>Media</Link>
+            </Button>
+            <Button asChild>
+              <Link href={createHref}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                Tambah produk
+              </Link>
+            </Button>
+          </>
+        }
+        className="mb-4"
+      >
+        <Select
+          value={filters.product_category}
+          onChange={(event) => visit({ product_category: event.target.value })}
+          aria-label="Filter kategori"
         >
-          <Icon
-            name="search"
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="Cari nama produk atau parent SKU…"
-            className="pl-9"
-            aria-label="Cari produk"
-          />
-        </form>
-
-        <div className="grid sm:grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:items-center">
-          <Select
-            value={filters.product_category}
-            onChange={(event) => visit({ product_category: event.target.value })}
-            className="lg:w-40"
-            aria-label="Filter kategori"
-          >
-            {filterOptions.categories.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={filters.product_model}
-            onChange={(event) => visit({ product_model: event.target.value })}
-            className="lg:w-40"
-            aria-label="Filter model"
-          >
-            {filterOptions.models.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={filters.status}
-            onChange={(event) => visit({ status: event.target.value })}
-            className="lg:w-36"
-            aria-label="Filter status"
-          >
-            {filterOptions.statuses.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        <div className="flex gap-0.5 self-start rounded-lg border border-border bg-muted/70 p-1 lg:self-auto">
+          {filterOptions.categories.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={filters.product_model}
+          onChange={(event) => visit({ product_model: event.target.value })}
+          aria-label="Filter model"
+        >
+          {filterOptions.models.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={filters.status}
+          onChange={(event) => visit({ status: event.target.value })}
+          aria-label="Filter status"
+        >
+          {filterOptions.statuses.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        <div className="flex gap-0.5 rounded-lg border border-border bg-muted/70 p-1">
           {(
             [
               { key: "list", label: "List", icon: "menu" },
@@ -427,7 +425,7 @@ export default function ProductsIndex({
               onClick={() => visit({ view: mode.key })}
               aria-pressed={viewMode === mode.key}
               className={cn(
-                "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition",
+                "inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition",
                 viewMode === mode.key
                   ? "bg-surface text-foreground shadow-soft"
                   : "text-muted-foreground hover:text-foreground",
@@ -438,13 +436,12 @@ export default function ProductsIndex({
             </button>
           ))}
         </div>
-      </div>
-
+      </ListToolbar>
 
       {/* Konten */}
       {!products.length ? (
         <EmptyState
-          className="mt-5"
+          className="mt-4"
           title="Belum ada produk"
           description="Tambah produk baru atau impor katalog dari menu Produk → Import."
           action={
@@ -459,7 +456,7 @@ export default function ProductsIndex({
           }
         />
       ) : viewMode === "grid" ? (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {products.map((product) => (
             <ProductGridCard
               key={product.id}
@@ -470,7 +467,7 @@ export default function ProductsIndex({
           ))}
         </div>
       ) : (
-        <Card className="mt-5 overflow-hidden">
+        <Card className="mt-4 overflow-hidden">
           <div className="overflow-x-auto">
             <Table className="min-w-[56rem]">
               <TableHeader>

@@ -80,15 +80,13 @@ class AdminDashboardTest extends TestCase
                 ->where('integrationReadiness.0.status_label', 'Konfigurasi ada, live check belum dilakukan')
                 ->has('statusOrder', 5)
                 ->has('attention')
-                ->has('quickActions', 4)
+                ->has('quickActions', 3)
                 ->where('quickActions.0.label', 'Tambah Produk')
                 ->where('quickActions.0.href', route('admin.products.create'))
                 ->where('quickActions.1.label', 'Mulai Import')
                 ->where('quickActions.1.href', route('admin.imports.create'))
-                ->where('quickActions.2.label', 'Lihat Pending Payment')
-                ->where('quickActions.2.href', route('admin.orders.index', ['order_status' => 'pending_payment']))
-                ->where('quickActions.3.label', 'Kelola Media')
-                ->where('quickActions.3.href', route('admin.media.index'))
+                ->where('quickActions.2.label', 'Kelola Media')
+                ->where('quickActions.2.href', route('admin.media.index'))
                 ->has('recentOrders')
             );
     }
@@ -131,13 +129,15 @@ class AdminDashboardTest extends TestCase
             );
     }
 
-    public function test_pending_attention_uses_pending_age_not_last_edit_time(): void
+    public function test_pending_attention_uses_last_activity_not_created_at(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
         ]);
 
+        // Overdue berbasis updated_at (konsisten dengan filter older_than di daftar order):
+        // order yang baru di-edit admin TIDAK ikut dihitung, yang tak tersentuh > 24 jam YA.
         $oldPending = $this->makeOrder([
             'order_number' => 'RA-DASH-OLD-PENDING-'.uniqid(),
             'order_status' => 'pending_payment',
@@ -145,7 +145,7 @@ class AdminDashboardTest extends TestCase
         ]);
         $oldPending->forceFill([
             'created_at' => now()->subDays(2),
-            'updated_at' => now(),
+            'updated_at' => now()->subDays(2),
         ])->save();
 
         $newPending = $this->makeOrder([
@@ -160,7 +160,10 @@ class AdminDashboardTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('attention.0.key', 'confirm_overdue')
                 ->where('attention.0.count', 1)
-                ->where('attention.0.href', route('admin.orders.index', ['order_status' => 'pending_payment']))
+                ->where('attention.0.href', route('admin.orders.index', [
+                    'order_status' => 'pending_payment',
+                    'older_than' => '24h',
+                ]))
                 ->where('statusOrder.0.total', 2)
             );
 
@@ -206,7 +209,7 @@ class AdminDashboardTest extends TestCase
             'order_status' => 'pending_payment',
             'payment_status' => 'pending',
         ]);
-        $pending->forceFill(['created_at' => now()->subDays(2), 'updated_at' => now()])->save();
+        $pending->forceFill(['created_at' => now()->subDays(2), 'updated_at' => now()->subDays(2)])->save();
 
         $processing = $this->makeOrder([
             'order_number' => 'RA-DASH-ATTENTION-PROCESSING-'.uniqid(),

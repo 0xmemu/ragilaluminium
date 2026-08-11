@@ -4,8 +4,8 @@ import * as React from "react"
 import { RowActions } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -78,47 +78,45 @@ export default function CustomersIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <Button asChild variant="secondary">
-          <a href={exportUrl}>
-            <Icon name="download" className="size-4" aria-hidden="true" />
-            Unduh CSV
-          </a>
-        </Button>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      {/* Baris kontrol seragam: search | sort | actions */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari nama atau nomor hp pelanggan",
         }}
+        actions={
+          <Button asChild variant="secondary">
+            <a href={exportUrl}>
+              <Icon name="download" className="size-4" aria-hidden="true" />
+              Unduh CSV
+            </a>
+          </Button>
+        }
+        className="mb-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari nama atau nomor hp pelanggan"
-          className="min-w-[16rem] flex-1"
-        />
-        <Select
-          value={sort}
-          onChange={(event) => {
-            const value = event.target.value
-            setSort(value)
-            apply({ sort: value })
-          }}
-          className="w-40"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+        sort={
+          <Select
+            value={sort}
+            onChange={(event) => {
+              setSort(event.target.value)
+              apply({ sort: event.target.value })
+            }}
+            aria-label="Urutkan"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
+      </ListToolbar>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (

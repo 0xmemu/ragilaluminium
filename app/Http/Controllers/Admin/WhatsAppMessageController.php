@@ -38,16 +38,32 @@ class WhatsAppMessageController extends Controller
                 ['key' => 'order_number', 'label' => 'Pesanan'],
                 ['key' => 'created_at', 'label' => 'Waktu'],
             ],
-            'rows' => $messages->getCollection()->map(fn (WhatsAppMessage $m) => [
-                'id' => $m->id,
-                'provider' => strtoupper((string) $m->provider),
-                'direction' => $m->direction,
-                'phone_number' => $m->phone_number,
-                'status' => $m->status,
-                'order_number' => $m->order?->order_number ?? '-',
-                'created_at' => optional($m->created_at)?->toDateTimeString(),
-                'href' => route('admin.whatsapp.messages.show', $m),
-            ])->all(),
+            'rows' => $messages->getCollection()->map(function (WhatsAppMessage $m) {
+                $actions = [];
+                $phone = $m->phone_number;
+                if ($m->status === 'failed' && $phone) {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', (string) $phone);
+                    // Buka chat WA (andal). Pesan diambil dari kolom konten (disalin manual).
+                    $actions[] = [
+                        'label' => 'Buka chat WA',
+                        'method' => 'get',
+                        'href' => 'https://wa.me/'.$cleanPhone,
+                    ];
+                }
+
+                return [
+                    'id' => $m->id,
+                    'provider' => strtoupper((string) $m->provider),
+                    'direction' => $m->direction,
+                    'phone_number' => $m->phone_number,
+                    'status' => $m->status,
+                    'order_number' => $m->order?->order_number ?? '-',
+                    'content_preview' => mb_substr((string) $m->content_text, 0, 120),
+                    'created_at' => optional($m->created_at)?->toDateTimeString(),
+                    'href' => route('admin.whatsapp.messages.show', $m),
+                    'actions' => $actions,
+                ];
+            })->all(),
             'pagination' => InertiaAdmin::pagination($messages),
         ]);
     }

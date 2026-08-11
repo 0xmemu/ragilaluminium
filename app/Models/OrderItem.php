@@ -23,6 +23,7 @@ class OrderItem extends Model
         'line_subtotal',
         'line_discount',
         'line_total',
+        'note',
     ];
 
     protected $casts = [

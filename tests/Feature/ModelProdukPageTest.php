@@ -33,7 +33,7 @@ class ModelProdukPageTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ModelProduk')
                 ->has('models', 1)
-                ->has('popularProducts', 1)
+                ->missing('popularProducts')
                 ->where('models.0.model', 'JUNGKIT')
                 ->where('models.0.category', 'WINDOW')
             );

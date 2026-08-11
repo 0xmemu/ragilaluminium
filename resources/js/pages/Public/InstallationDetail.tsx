@@ -107,7 +107,7 @@ export default function InstallationDetail({
           </div>
       </section>
 
-      <section className="pt-4 pb-8 sm:pt-6 sm:pb-10">
+      <section className="pt-4 pb-4 sm:pt-6 sm:pb-6 lg:pt-6">
         <div className="container-page">
           {active ? (
             <div className="mx-auto max-w-4xl">

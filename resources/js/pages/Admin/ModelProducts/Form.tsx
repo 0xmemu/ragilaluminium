@@ -15,6 +15,7 @@ interface ModelRecord {
   product_model?: string | null
   image_url?: string | null
   description?: string | null
+  menu_href?: string | null
   type: string
   status: string
   sort_order: number
@@ -44,6 +45,7 @@ export default function ModelProductForm({
     product_model: modelProduct?.product_model ?? "",
     image_url: modelProduct?.image_url ?? "",
     description: modelProduct?.description ?? "",
+    menu_href: modelProduct?.menu_href ?? "",
     type: modelProduct?.type ?? types[0] ?? "polos",
     status: modelProduct?.status ?? "draft",
     sort_order: modelProduct?.sort_order ?? 0,
@@ -70,7 +72,7 @@ export default function ModelProductForm({
       >
         <FormErrorSummary errors={form.errors} />
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field id="model-name" label="Nama tampilan" required error={form.errors.name} className="sm:col-span-2">
               <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} />
             </Field>
@@ -136,6 +138,20 @@ export default function ModelProductForm({
                 value={form.data.description}
                 onChange={(event) => form.setData("description", event.target.value)}
                 placeholder="Contoh: Jendela sliding cocok untuk ruangan dengan bukaan lebar…"
+              />
+            </Field>
+            <Field
+              id="model-menu-href"
+              label="URL menu kustom (opsional)"
+              hint="Dipakai di menu kategori beranda. Kosongkan untuk memakai link otomatis ke halaman model."
+              error={form.errors.menu_href}
+              className="sm:col-span-2"
+            >
+              <Input
+                type="url"
+                value={form.data.menu_href}
+                onChange={(event) => form.setData("menu_href", event.target.value)}
+                placeholder="https://… atau /products/…"
               />
             </Field>
             <Field id="model-sort" label="Urutan" error={form.errors.sort_order}>

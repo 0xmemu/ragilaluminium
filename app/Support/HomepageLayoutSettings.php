@@ -16,15 +16,21 @@ class HomepageLayoutSettings
 {
     public const PAGE_SLUG = 'beranda';
 
-    public const SECTION_KEYS = ['banner', 'how_to_order'];
+    public const SECTION_KEYS = ['category_menu', 'banner', 'how_to_order'];
 
     /** @var list<array{key:string,enabled:bool,sort_order:int}> */
     public const DEFAULT_SECTIONS = [
-        ['key' => 'banner', 'enabled' => true, 'sort_order' => 0],
-        ['key' => 'how_to_order', 'enabled' => true, 'sort_order' => 1],
+        ['key' => 'category_menu', 'enabled' => true, 'sort_order' => 0],
+        ['key' => 'banner', 'enabled' => true, 'sort_order' => 1],
+        ['key' => 'how_to_order', 'enabled' => true, 'sort_order' => 2],
     ];
 
     public const SECTION_META = [
+        'category_menu' => [
+            'label' => 'Menu Kategori',
+            'description' => 'Menu kategori horizontal di atas banner. Urutan & isi diatur di Model Produk.',
+            'icon' => 'layout-grid',
+        ],
         'banner' => [
             'label' => 'Banner Utama',
             'description' => 'Kelola slide promo berputar di bagian atas beranda.',
@@ -93,6 +99,7 @@ class HomepageLayoutSettings
             $editHref = match ($section['key']) {
                 'banner' => route('admin.banners.index'),
                 'how_to_order' => route('admin.beranda.how-to-order.edit'),
+                'category_menu' => route('admin.model-products.index'),
                 default => null,
             };
 

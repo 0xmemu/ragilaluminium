@@ -177,7 +177,7 @@ function RichSolutionPanel({
         </div>
 
         {options.length ? (
-          <ol className="mt-5 grid gap-4">
+          <ol className="mt-4 grid gap-4">
             {options.map((option, index) => (
               <li key={option.title} className="flex gap-3">
                 <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -202,7 +202,7 @@ function RichSolutionPanel({
         ) : null}
 
         {content.whatsapp_note ? (
-          <p className="mt-5 border-t border-primary/10 pt-4 text-sm leading-6 text-muted-foreground">
+          <p className="mt-4 border-t border-primary/10 pt-4 text-sm leading-6 text-muted-foreground">
             {whatsappUrl && content.whatsapp_note.includes("WhatsApp") ? (
               <>
                 {content.whatsapp_note.split("WhatsApp")[0]}
@@ -280,7 +280,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
         </div>
       </section>
 
-      <section className="py-4">
+      <section className="py-4 lg:py-6">
         <div className="container-page">
           {items.length ? (
             <ol className="mx-auto grid max-w-3xl gap-3">

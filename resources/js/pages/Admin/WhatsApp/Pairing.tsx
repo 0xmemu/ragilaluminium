@@ -32,7 +32,7 @@ export default function Pairing({
 }: Props) {
   const [status, setStatus] = useState<string>("connecting")
   const [statusText, setStatusText] = useState<string>("Menghubungkan...")
-  const [qrTs, setQrTs] = useState<number>(Date.now())
+  const [qrTs, setQrTs] = useState<number>(0)
   const [hasSession, setHasSession] = useState<boolean>(false)
   const [connectedPhone, setConnectedPhone] = useState<string>("")
   const [sessionName, setSessionName] = useState<string>("")

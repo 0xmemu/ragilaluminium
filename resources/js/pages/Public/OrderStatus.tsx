@@ -1,7 +1,8 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { OrderProgressTracker } from "@/components/public/order-progress-tracker"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -12,14 +13,20 @@ import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
-import type { PublicOrder } from "@/types"
+import type { PublicOrder, SharedPageProps } from "@/types"
+
+const TERMINAL_STATUSES = new Set(["completed", "cancelled", "return_completed"])
 
 function OrderDetail({
   order,
   eyebrow = "Pesanan",
+  onCancel,
+  cancelBusy = false,
 }: {
   order: PublicOrder
   eyebrow?: string
+  onCancel?: () => void
+  cancelBusy?: boolean
 }) {
   return (
     <div className="animate-reveal">
@@ -36,6 +43,62 @@ function OrderDetail({
         <p className="tabular-nums text-xl font-bold sm:text-2xl">
           {formatCurrency(order.total_amount)}
         </p>
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div className="rounded-lg border border-border bg-surface p-5">
+          <p className="text-xs font-bold tracking-tight text-muted-foreground">
+            Status pesanan
+          </p>
+          <OrderProgressTracker order={order} />
+        </div>
+
+        <div className="space-y-4">
+          {order.eta ? (
+            <div className="rounded-lg border border-border bg-surface p-5">
+              <p className="text-xs font-bold tracking-tight text-muted-foreground">
+                Estimasi tiba
+              </p>
+              <p className="mt-2 text-base font-bold text-foreground">{order.eta.range_label}</p>
+              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                {order.eta.production_days} hari produksi + {order.eta.min_days}–
+                {order.eta.max_days} hari pengiriman sejak pesanan dibuat.
+              </p>
+            </div>
+          ) : null}
+
+          {order.tracking?.latest_message ? (
+            <div className="rounded-lg border border-border bg-surface p-5">
+              <p className="text-xs font-bold tracking-tight text-muted-foreground">
+                Kabar terbaru
+              </p>
+              <p className="mt-2 text-sm leading-5 text-foreground">
+                {order.tracking.latest_message}
+              </p>
+            </div>
+          ) : null}
+
+          {onCancel && order.order_status === "pending_payment" ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
+              <p className="text-xs font-bold tracking-tight text-destructive">
+                Batalkan pesanan
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Hanya bisa dibatalkan selama status masih menunggu konfirmasi.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-3 border-destructive/40 text-destructive hover:bg-destructive/10"
+                disabled={cancelBusy}
+                onClick={onCancel}
+              >
+                {cancelBusy ? "Membatalkan..." : "Batalkan pesanan"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-8">
@@ -66,8 +129,15 @@ function OrderDetail({
               key={`${item.product_name}-${index}`}
               className="flex justify-between gap-4 py-4 text-sm"
             >
-              <span className="font-semibold">{item.product_name ?? item.name}</span>
-              <span className="tabular-nums text-muted-foreground">{item.quantity} item</span>
+              <span className="min-w-0">
+                <span className="font-semibold">{item.product_name ?? item.name}</span>
+                {item.note ? (
+                  <span className="mt-1 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
+                    <span className="font-semibold">Catatan:</span> {item.note}
+                  </span>
+                ) : null}
+              </span>
+              <span className="tabular-nums shrink-0 text-muted-foreground">{item.quantity} item</span>
             </li>
           ))}
         </ul>
@@ -95,6 +165,7 @@ export default function OrderStatus({
   has_session_orders?: boolean
   searched?: boolean
 }) {
+  const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
   const sessionList = orders.length ? orders : order ? [order] : []
   const [activeNumber, setActiveNumber] = React.useState(
     () => sessionList[0]?.order_number ?? "",
@@ -120,6 +191,100 @@ export default function OrderStatus({
     customer_phone: "",
     customer_email: "",
   })
+  const cancelForm = useForm({
+    order_number: "",
+    customer_phone: "",
+    customer_email: "",
+  })
+
+  // Data pesanan terbaru hasil polling (fallback ke prop awal).
+  const [liveOrder, setLiveOrder] = React.useState<PublicOrder | null>(null)
+
+  React.useEffect(() => {
+    // Reset data polling saat pindah order.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLiveOrder(null)
+    // Polling hanya untuk order yang sedang tampil dan belum mencapai status terminal.
+    if (!activeOrder || TERMINAL_STATUSES.has(activeOrder.order_status)) return
+
+    let disposed = false
+    let lastFetch = 0
+    let id = 0
+    let onVisibility = () => {}
+
+    // Hentikan polling — dipanggil saat order mencapai status terminal via response.
+    // §3 cardinality: Stream harus berakhir di status terminal, bukan terus berjalan.
+    const stopPolling = () => {
+      if (disposed) return
+      disposed = true
+      window.clearInterval(id)
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+
+    const poll = async () => {
+      if (disposed || cancelForm.processing) return
+
+      const now = Date.now()
+      if (now - lastFetch < 10_000) return
+      lastFetch = now
+
+      try {
+        const url = new URL(routeUrl("order.status.api", {
+          order_number: activeOrder.order_number,
+        }), window.location.origin)
+        if (activeOrder.customer_phone) {
+          url.searchParams.set("customer_phone", activeOrder.customer_phone)
+        }
+        const response = await fetch(url, {
+          headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+        })
+        if (!response.ok) return
+        const fresh = await response.json() as PublicOrder
+        if (disposed) return
+        setLiveOrder(fresh)
+        if (TERMINAL_STATUSES.has(fresh.order_status)) {
+          // Order sudah selesai/dibatalkan — tidak ada gunanya poll lagi.
+          stopPolling()
+        }
+      } catch {
+        // Abaikan kegagalan polling; tick berikutnya akan mencoba lagi.
+      }
+    }
+
+    id = window.setInterval(poll, 30_000)
+    onVisibility = () => {
+      if (!document.hidden) void poll()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+
+    return () => {
+      disposed = true
+      window.clearInterval(id)
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+  }, [activeOrder, cancelForm.processing])
+
+  const shownOrder = liveOrder ?? activeOrder
+
+  function cancelOrder() {
+    if (!activeOrder) return
+    const confirmed = window.confirm(
+      `Batalkan pesanan ${activeOrder.order_number}?\nStok produk akan dikembalikan ke katalog.`,
+    )
+    if (!confirmed) return
+    cancelForm.setData({
+      order_number: activeOrder.order_number,
+      customer_phone: activeOrder.customer_phone ?? "",
+      customer_email: "",
+    })
+    cancelForm.post(routeUrl("order.cancel", { order_number: activeOrder.order_number }), {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Muat ulang agar status & stok tampilan mengikuti pembatalan.
+        router.reload()
+      },
+    })
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -158,7 +323,7 @@ export default function OrderStatus({
         </h1>
       </section>
 
-      <section className="container-page min-w-0 pb-5 lg:pb-8">
+      <section className="container-page min-w-0 pb-4 lg:pb-6">
         {showLookupForm ? (
           <div className="grid min-w-0 gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">
@@ -166,8 +331,8 @@ export default function OrderStatus({
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Gunakan data yang sama dengan saat checkout.
               </p>
-              <FormErrorSummary className="mt-5" errors={form.errors} />
-              <div className="mt-6 space-y-5">
+              <FormErrorSummary className="mt-4" errors={form.errors} />
+              <div className="mt-6 space-y-4">
                 <Field
                   id="order-number"
                   label="Nomor pesanan"
@@ -246,6 +411,9 @@ export default function OrderStatus({
             </form>
 
             <div>
+              {pageErrors.cancel ? (
+                <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
+              ) : null}
               {!searched ? (
                 <div className="flex min-h-[22rem] flex-col justify-center border-y border-border py-10">
                   <span className="flex h-12 w-12 items-center justify-center rounded-md bg-surface-muted text-primary">
@@ -260,7 +428,12 @@ export default function OrderStatus({
                   </p>
                 </div>
               ) : order ? (
-                <OrderDetail order={order} eyebrow="Pesanan ditemukan" />
+                <OrderDetail
+                  order={order}
+                  eyebrow="Pesanan ditemukan"
+                  onCancel={cancelOrder}
+                  cancelBusy={cancelForm.processing}
+                />
               ) : (
                 <EmptyState
                   icon="search"
@@ -282,6 +455,9 @@ export default function OrderStatus({
               sessionList.length > 1 && "lg:grid-cols-[16rem_minmax(0,1fr)]",
             )}
           >
+            {pageErrors.cancel ? (
+              <Alert tone="danger" title={pageErrors.cancel} className="mb-4 lg:col-span-2" />
+            ) : null}
             {sessionList.length > 1 ? (
               <aside className="space-y-2 lg:sticky lg:top-28">
                 <p className="text-xs font-bold tracking-tight text-muted-foreground">
@@ -326,10 +502,12 @@ export default function OrderStatus({
             ) : null}
 
             <div>
-              {activeOrder ? (
+              {shownOrder ? (
                 <OrderDetail
-                  order={activeOrder}
+                  order={shownOrder}
                   eyebrow={sessionList.length > 1 ? "Pesanan dipilih" : "Pesanan perangkat ini"}
+                  onCancel={cancelOrder}
+                  cancelBusy={cancelForm.processing}
                 />
               ) : (
                 <EmptyState
