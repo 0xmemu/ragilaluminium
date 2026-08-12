@@ -321,7 +321,7 @@ export default function ModelDetail({
           </div>
         </div>
 
-        <div id="produk" className="container-page !px-5 md:!px-8 lg:!px-12 scroll-mt-24">
+        <div id="produk" className="container-page !px-5 md:!px-8 lg:!px-12 scroll-mt-24 mt-8 border-t border-border pt-6 sm:mt-10 sm:pt-8">
           {rails.length === 1 ? (
             <section aria-labelledby="single-design-heading">
               <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
