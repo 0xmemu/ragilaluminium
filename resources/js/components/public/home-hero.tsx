@@ -284,8 +284,8 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   return (
-    <section id="promo" className="scroll-mt-20 bg-surface pt-5 pb-4 md:pt-8 md:pb-6 lg:pt-12" aria-label="Promo dan campaign">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+    <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
+      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
         <div
           ref={surfaceRef}
           onMouseEnter={() => setPaused(true)}
