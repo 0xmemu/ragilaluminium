@@ -31,20 +31,6 @@ export interface Announcement {
   href: string
 }
 
-export interface CategoryMenuSub {
-  label: string
-  href: string
-}
-
-export interface CategoryMenuItem {
-  key: string
-  label: string
-  href: string
-  category?: string | null
-  model?: string | null
-  subs: CategoryMenuSub[]
-}
-
 export interface RouteNavItem {
   label: string
   route: string
@@ -163,7 +149,6 @@ export interface SharedPageProps extends Record<string, unknown> {
   brand: Brand
   consultationWhatsApp: ConsultationWhatsAppConfig
   announcements: Announcement[]
-  categoryMenu?: CategoryMenuItem[]
   announcementSlide?: { enabled: boolean; interval: number }
   flashSalePeriod?: FlashSalePeriod | null
   footer: FooterConfig

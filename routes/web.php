@@ -43,7 +43,6 @@ use App\Http\Controllers\Admin\WhatsAppPairingController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
-use App\Http\Controllers\CategoryController as StorefrontCategoryController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\HomeController;
@@ -98,22 +97,11 @@ Route::get('/windows', [CatalogController::class, 'windows'])->name('catalog.win
 Route::get('/doors', [CatalogController::class, 'doors'])->name('catalog.doors');
 Route::get('/bouven', [CatalogController::class, 'bouven'])->name('catalog.bouven');
 
-Route::get('/search', [CatalogController::class, 'search'])->name('search');
+Route::get('/search', function (Request $request) {
+    return redirect()->route('catalog.index', $request->query());
+})->name('search');
 
 Route::get('/product/{parent_sku}', [ProductController::class, 'show'])->name('product.show');
-
-// Storefront: kategori (landing ala homepage, satu template CategoryPage)
-// dan koleksi (listing bertema) — URL konteks yang bisa dibuka langsung.
-Route::get('/categories/{slug}', [StorefrontCategoryController::class, 'show'])
-    ->where('slug', 'window|windows|jendela|door|doors|pintu|bouven|boven')
-    ->name('storefront.category');
-Route::get('/collections/{slug}', [CatalogController::class, 'collectionShow'])
-    ->where('slug', 'promo|flash-sale|flashsale|terlaris|bestseller|populer|terbaru|baru')
-    ->name('storefront.collection');
-
-// Alias produk baru — /products/{parent_sku} (catalog.category/model/design
-// dideklarasikan lebih dulu dengan `where`, jadi tidak bertabrakan).
-Route::get('/products/{parent_sku}', [ProductController::class, 'show'])->name('product.slug');
 Route::post('/product/{product}/engage', [ProductEngagementController::class, 'store'])
     ->middleware('throttle:120,1')
     ->name('product.engage');

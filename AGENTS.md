@@ -110,38 +110,6 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
-### 2026-08-13 — Refactor navigasi & arsitektur halaman: StorefrontLayout + route konteks
-
-**Done (commit batch ini):**
-- Layout shell baru `layouts/storefront-layout.tsx` — SATU layout reusable untuk semua halaman
-  navigasi (Home, CategoryPage, ModelDetail, Catalog, ModelProduk, ProductDetail): promo bar
-  (AnnouncementBar), header + search, kategori menu pill (CategoryMenu), footer, bottom nav
-  selalu konsisten; hanya konten utama yang berubah per route.
-- Route konteks baru di `routes/web.php`:
-  - `GET /categories/{slug}` -> `StorefrontCategoryController@show` (name `storefront.category`) — landing kategori ala homepage.
-  - `GET /collections/{slug}` -> `CatalogController@collectionShow` (name `storefront.collection`) — promo / flash-sale / terlaris / terbaru.
-  - `GET /search` -> `CatalogController@search` (name `search`) — halaman pencarian nyata (bukan redirect closure).
-  - `GET /products/{parent_sku}` -> `ProductController@show` (name `product.slug`) — alias URL produk baru.
-  Semua URL lama tetap 200 (legacy redirect / route lama tidak dihapus).
-- Satu template halaman kategori `pages/Public/CategoryPage.tsx` untuk SEMUA kategori — struktur
-  di-drive config `app/Support/StorefrontCategoryPages.php` (title, description, hero_image,
-  benefits, all_href) + data katalog (model cards, produk terlaris). Tanpa carousel: konten
-  berupa grid model & grid produk (gaya homepage). Tidak ada layout/file terpisah per kategori.
-- Nav aktif: `CategoryMenu` menerima `activeKey` (model spesifik) & `activeCategory` (semua pill
-  satu kategori); dipakai di CategoryPage (kategori), ModelDetail & ProductDetail (model spesifik).
-  Header nav active arrays ikut `storefront.category|collection|product.slug`.
-- CategoryMenu & footer link kategori kini menunjuk `/categories/{slug}`; search header via `/search`.
-  `categoryMenu` dishare global via HandleInertiaRequests (cache 2 menit) agar shell bisa render di semua halaman.
-- Canonical & robots: `/search` -> canonical /search + noindex,follow; `/collections/*` -> canonical basePath.
-
-**File diubah:** layouts/storefront-layout.tsx (baru), pages/Public/CategoryPage.tsx (baru),
-app/Support/StorefrontCategoryPages.php (baru), app/Http/Controllers/CategoryController.php (baru),
-CatalogController (search/collectionShow/basePath/robots/canonical), routes/web.php,
-HandleInertiaRequests (shared categoryMenu), config/sitemap.php (nav aktif + footer),
-category-menu.tsx, public-header.tsx (search via /search), Home/ModelDetail/ModelProduk/Catalog/
-ProductDetail (pakai StorefrontLayout), types/index.ts (CategoryMenuItem + categoryMenu shared),
-ziggy.js (regenerate), docs/api-and-routes-ragil-aluminium.md.
-
 ### 2026-08-12 — "Lihat semua" accent secondary biru (#2563EB)
 
 **Done (commit setelah batch ini):**

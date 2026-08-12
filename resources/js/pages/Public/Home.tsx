@@ -1,6 +1,6 @@
 import { Head } from "@inertiajs/react"
 
-import { type CategoryMenuItem } from "@/components/public/category-menu"
+import { CategoryMenu, type CategoryMenuItem } from "@/components/public/category-menu"
 import { HomeHero } from "@/components/public/home-hero"
 import {
   ApaKataPelangganSection,
@@ -12,7 +12,7 @@ import {
   UlasanPelangganWebsiteSection,
   type HowToOrderData,
 } from "@/components/public/home-sections"
-import StorefrontLayout from "@/layouts/storefront-layout"
+import PublicLayout from "@/layouts/public-layout"
 import type {
   InstallationItem,
   ModelCardData,
@@ -73,6 +73,10 @@ export default function Home({
   function renderManagedSection(key: string) {
     if (!isSectionEnabled(key)) return null
 
+    if (key === "category_menu") {
+      return categoryMenu.length ? <CategoryMenu items={categoryMenu} /> : null
+    }
+
     if (key === "banner") {
       return <HomeHero key="banner" slides={promoSlides} />
     }
@@ -83,7 +87,7 @@ export default function Home({
   const showCaraPesan = isSectionEnabled("how_to_order")
 
   return (
-    <StorefrontLayout>
+    <PublicLayout>
       <Head title="Ragil Aluminium">
         <meta
           name="description"
@@ -93,6 +97,7 @@ export default function Home({
 
       <h1 className="sr-only">Bukaan presisi untuk rumah yang terasa lebih lega.</h1>
 
+      {renderManagedSection("category_menu")}
       {bannerSections.map((section) => renderManagedSection(section.key))}
       <PilihModelProdukSection models={modelCards} />
       <PalingBanyakDipesanSection products={popular} />
@@ -103,6 +108,6 @@ export default function Home({
         <UlasanPelangganWebsiteSection testimonials={websiteItems} />
       ) : null}
       <KamiBantuSection />
-    </StorefrontLayout>
+    </PublicLayout>
   )
 }

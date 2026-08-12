@@ -109,7 +109,6 @@ class HandleInertiaRequests extends Middleware
             'footer' => config('sitemap.footer', []),
             'platforms' => \App\Support\StorefrontPlatformSettings::forStorefront(),
             'nav' => fn () => $this->sharedNavigation($modelMenu),
-            'categoryMenu' => fn () => $this->sharedCategoryMenu(),
             'csrf' => csrf_token(),
             'consultationWhatsApp' => fn () => \App\Support\ConsultationWhatsApp::sharedProps(),
             'adminNotificationCount' => fn () => $request->user()
@@ -157,23 +156,6 @@ class HandleInertiaRequests extends Middleware
      * @param  array<int, array<string, mixed>>  $modelMenu
      * @return array{public: array<string, mixed>, admin: mixed}
      */
-    /**
-     * Menu kategori pill (model produk) untuk shell StorefrontLayout.
-     * Dicache 2 menit — sama seperti model-menu header.
-     *
-     * @return list<array{key:string,label:string,href:string,category:?string,model:?string,subs:list<array{label:string,href:string}>}>
-     */
-    protected function sharedCategoryMenu(): array
-    {
-        try {
-            return Cache::remember('storefront:category-menu:v1', now()->addMinutes(2), function (): array {
-                return app(\App\Services\ModelProductService::class)->storefrontCategoryMenu();
-            });
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
     protected function sharedNavigation(array $modelMenu): array
     {
         $navigation = config('sitemap.navigation', []);

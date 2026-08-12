@@ -102,12 +102,10 @@ function HeaderSearchForm({
     "catalog.windows",
     "catalog.doors",
     "catalog.bouven",
-    "storefront.category",
-    "storefront.collection",
   ])
 
   function searchAll(value: string) {
-    router.get(routeUrl("search"), { q: value })
+    router.get(routeUrl("catalog.all"), { q: value })
   }
 
   function searchInPage(value: string) {

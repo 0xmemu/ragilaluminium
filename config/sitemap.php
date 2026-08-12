@@ -239,7 +239,7 @@ return [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'icon' => 'package',
-                'active' => ['catalog.index', 'catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show', 'product.slug', 'storefront.category', 'storefront.collection'],
+                'active' => ['catalog.index', 'catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Pesanan',
@@ -265,13 +265,13 @@ return [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'icon' => 'package',
-                'active' => ['catalog.index', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show', 'product.slug', 'storefront.category', 'storefront.collection'],
+                'active' => ['catalog.index', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Semua Produk',
                 'route' => 'catalog.all',
                 'icon' => 'grid-2x2',
-                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show', 'product.slug', 'storefront.category', 'storefront.collection'],
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Hasil Pemasangan',
@@ -347,7 +347,7 @@ return [
             [
                 'label' => 'Produk',
                 'route' => 'catalog.all',
-                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show', 'product.slug', 'storefront.category', 'storefront.collection'],
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
             ],
             [
                 'label' => 'Ulasan',
@@ -414,9 +414,9 @@ return [
             'title' => 'Jelajahi Produk',
             'links' => [
                 ['label' => 'Model Produk', 'route' => 'catalog.index'],
-                ['label' => 'Paling Banyak Dipesan', 'route' => 'storefront.collection', 'params' => ['slug' => 'terlaris']],
-                ['label' => 'Jendela', 'route' => 'storefront.category', 'params' => ['slug' => 'windows']],
-                ['label' => 'Boven', 'route' => 'storefront.category', 'params' => ['slug' => 'bouven']],
+                ['label' => 'Paling Banyak Dipesan', 'route' => 'catalog.index', 'params' => ['sort' => 'popular']],
+                ['label' => 'Jendela', 'route' => 'catalog.windows'],
+                ['label' => 'Boven', 'route' => 'catalog.bouven'],
             ],
         ],
         'help' => [

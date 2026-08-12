@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
 import { ProductGridSkeleton } from "@/components/ui/skeleton"
-import StorefrontLayout from "@/layouts/storefront-layout"
+import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl, withQuery } from "@/lib/routes"
 import type {
@@ -557,7 +557,7 @@ export default function Catalog({
   )
 
   return (
-    <StorefrontLayout showCategoryMenu={false}>
+    <PublicLayout>
       <Head title={categoryName}>
         <link rel="canonical" href={canonicalUrl} />
         <meta name="robots" content={robotsDirective} />
@@ -627,6 +627,6 @@ export default function Catalog({
       {!isFlash && !isPromo && activeSort !== "popular" ? (
         <PalingBanyakDipesanSection products={popularProducts} />
       ) : null}
-    </StorefrontLayout>
+    </PublicLayout>
   )
 }

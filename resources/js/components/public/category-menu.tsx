@@ -27,32 +27,26 @@ export interface CategoryMenuItem {
   subs: CategoryMenuSub[]
 }
 
-/** Kategori utama → halaman landing storefront (`/categories/{slug}`). */
 const CATEGORY_LINKS = [
   { label: "Semua Produk", href: "/products/all" },
-  { label: "Jendela", href: "/categories/windows" },
-  { label: "Pintu", href: "/categories/doors" },
-  { label: "Boven", href: "/categories/bouven" },
+  { label: "Jendela", href: "/products/windows" },
+  { label: "Pintu", href: "/products/doors" },
+  { label: "Boven", href: "/products/bouven" },
 ] as const
 
 /**
- * Menu kategori horizontal (shell storefront: home + halaman model/kategori).
- * Pill = model produk saja (Boven Jungkit, Jendela Swing, …); desain
- * (Ornamen/Polos) tidak dibuat link terpisah karena masuk dalam satu model.
+ * Menu kategori horizontal (home + halaman model). Pill = model produk saja
+ * (Boven Jungkit, Jendela Swing, …); desain (Ornamen/Polos) tidak dibuat link
+ * terpisah karena masuk dalam satu model dan tampil bersamaan di halaman model.
  * Gaya pill meniru nav katalog: frame abu-abu saat tidak aktif, hitam saat
  * dipilih. Font 12px, frame padding 12px.
- *
- * State visual: `activeKey` (model spesifik, mis. "WINDOW|SLIDING") atau
- * `activeCategory` (semua pill dalam satu kategori, mis. saat di /categories/windows).
  */
 export function CategoryMenu({
   items,
   activeKey = null,
-  activeCategory = null,
 }: {
   items: CategoryMenuItem[]
   activeKey?: string | null
-  activeCategory?: string | null
 }) {
   const scrollRef = React.useRef<HTMLDivElement>(null)
   useSwipeClickSuppression(scrollRef)
@@ -68,9 +62,7 @@ export function CategoryMenu({
           className="scrollbar-x flex items-center gap-2 overflow-x-auto"
         >
           {items.map((item) => {
-            const active =
-              item.key === activeKey ||
-              (activeCategory != null && item.category === activeCategory)
+            const active = item.key === activeKey
             return (
               <Link
                 key={item.key}

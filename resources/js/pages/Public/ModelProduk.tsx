@@ -10,7 +10,7 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useSwipeClickSuppression } from "@/hooks/use-swipe-click-suppression"
-import StorefrontLayout from "@/layouts/storefront-layout"
+import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl, withQuery } from "@/lib/routes"
 import type { ModelCardData, SelectOption } from "@/types"
@@ -99,7 +99,7 @@ export default function ModelProduk({
   }, [activeCategory, filterModels, activeCategoryTab])
 
   return (
-    <StorefrontLayout showCategoryMenu={false}>
+    <PublicLayout>
       <Head title="Semua Model Produk">
         <meta
           name="description"
@@ -228,6 +228,6 @@ export default function ModelProduk({
         </div>
       </section>
 
-    </StorefrontLayout>
+    </PublicLayout>
   )
 }
