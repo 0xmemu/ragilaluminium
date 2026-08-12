@@ -32,7 +32,7 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
     >
       <div className="flex w-full flex-col justify-center px-4 sm:px-8 lg:px-10">
         {slide.eyebrow ? (
-          <p className="text-xs font-medium tracking-wide text-white/90">
+          <p className="text-xs font-medium text-white/90">
             {slide.eyebrow}
           </p>
         ) : null}
