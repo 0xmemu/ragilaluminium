@@ -319,20 +319,20 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                 <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
               </button>
 
-              <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+              <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1">
                 {Array.from({ length: total }).map((_, index) => (
                   <button
                     type="button"
                     key={index}
                     onClick={() => goTo(index)}
-                    className="relative flex size-8 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
+                    className="relative flex size-6 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
                     aria-label={`Slide ${index + 1}`}
                     aria-current={index === visibleIndex ? "true" : undefined}
                   >
                     <span
                       className={cn(
-                        "h-2 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
-                        index === visibleIndex ? "w-5 bg-foreground" : "w-2 bg-foreground/40",
+                        "h-1.5 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
+                        index === visibleIndex ? "w-3.5 bg-foreground" : "w-1.5 bg-foreground/40",
                       )}
                     />
                   </button>
