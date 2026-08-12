@@ -171,7 +171,7 @@ export function ProductGallery({
 
           {items.length > 1 ? (
             <div
-              className="scrollbar-x mt-2 flex snap-x gap-2 overflow-x-auto px-0 pb-2 sm:mt-3 sm:justify-center"
+              className="scrollbar-x mt-5 flex snap-x gap-2 overflow-x-auto px-0 pb-5 sm:justify-center"
               aria-label="Pilih foto produk"
             >
               {items.map((item, index) => (

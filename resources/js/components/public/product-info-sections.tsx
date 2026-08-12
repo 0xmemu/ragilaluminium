@@ -3,7 +3,6 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
-import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { ProductAttribute, ProductDetailData, Testimonial } from "@/types"
@@ -18,7 +17,7 @@ function StarRow({
   className?: string
 }) {
   return (
-    <span className={cn("inline-flex items-center gap-0.5 text-warning", className)} aria-hidden="true">
+    <span className={cn("inline-flex items-center gap-0.5 text-[#F5A623]", className)} aria-hidden="true">
       {Array.from({ length: 5 }).map((_, index) => (
         <Icon
           key={index}
@@ -97,7 +96,7 @@ export function ProductInfoSections({
     <>
       {/* Informasi Produk */}
       <div className="mt-4 border-t border-border">
-        <AccordionSection title="Informasi produk" defaultOpen>
+        <AccordionSection title="Informasi produk" defaultOpen={false}>
           <div className="space-y-1.5 text-sm leading-6">
             {product.category_label ? (
               <p>
@@ -134,7 +133,7 @@ export function ProductInfoSections({
         </AccordionSection>
 
         {product.description ? (
-          <AccordionSection title="Tentang produk" defaultOpen>
+          <AccordionSection title="Tentang produk" defaultOpen={false}>
             <p className="whitespace-pre-line text-sm leading-6 text-foreground">
               {product.description}
             </p>
@@ -148,9 +147,10 @@ export function ProductInfoSections({
             <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
             <Link
               href={routeUrl("installation.show", { parent_sku: product.parent_sku })}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-foreground/80 transition hover:text-primary"
             >
-              Lihat semua →
+              <span>Lihat semua</span>
+              <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
             </Link>
           </div>
           <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -193,15 +193,12 @@ export function ProductInfoSections({
                   ) : (
                     <span aria-hidden="true" />
                   )}
-                  {review.source ? (
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">{humanize(review.source)}</span>
-                  ) : null}
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Oleh {review.customer_name}
                   {review.location ? ` · ${review.location}` : ""}
                 </p>
-                <p className="mt-2 inline-block max-w-full break-words bg-accent px-1.5 py-0.5 text-xs leading-5 text-accent-foreground">
+                <p className="mt-2 max-w-full break-words text-xs leading-5 text-foreground">
                   {review.message}
                 </p>
               </li>
@@ -216,9 +213,10 @@ export function ProductInfoSections({
         {reviews.length ? (
           <Link
             href={routeUrl("reviews")}
-            className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#0d9488] transition hover:text-[#0f766e]"
           >
-            Lihat semua →
+            <span>Lihat semua ulasan ({reviews.length})</span>
+            <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
           </Link>
         ) : null}
       </section>

@@ -77,7 +77,7 @@ export function ProductBuyBox({
         {averageRating !== null ? (
           <div className="inline-flex shrink-0 items-center gap-0.5 text-xs">
             <span className="font-semibold text-foreground">{ratingLabel}</span>
-            <Icon name="star" weight="fill" className="size-3 text-warning" aria-hidden />
+            <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
             <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
           </div>
         ) : null}

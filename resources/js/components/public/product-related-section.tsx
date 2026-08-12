@@ -67,7 +67,7 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
         <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
           <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
-        <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
+        <span className="max-w-full text-center text-xs font-medium leading-tight tracking-tight">
           Lihat semua
         </span>
       </Link>
@@ -158,15 +158,16 @@ function RelatedCarousel({ products }: { products: ProductCardData[] }) {
  */
 export function ProductRelatedSection({ products }: { products: ProductCardData[] }) {
   return (
-    <section className="border-t border-border">
+    <section className="pt-5 pb-[calc(var(--mobile-sticky-cta-height)+var(--mobile-bottom-nav-height))] lg:pb-5 border-t border-border">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div className="flex items-end justify-between gap-4">
           <h2 className="min-w-0 break-words text-base font-bold text-foreground">Anda mungkin juga suka</h2>
           <Link
             href={routeUrl("catalog.index")}
-            className="inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-light text-foreground/80 transition hover:text-primary"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-foreground/80 transition hover:text-primary"
           >
-            Lihat semua →
+            <span>Lihat semua</span>
+            <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
           </Link>
         </div>
         {products.length ? (
