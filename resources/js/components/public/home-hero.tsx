@@ -11,7 +11,7 @@ import type { PromoSlide } from "@/types"
 // ulang announcement yang sudah ada di bar paling atas). Gaya mengikuti bar promo
 // header: ikon Phosphor + copy marketing.
 const PROMO_ITEMS: { icon: React.ElementType; text: string }[] = [
-  { icon: SealCheck, text: "Bayar di tempat (COD) — aman & mudah" },
+  { icon: SealCheck, text: "Bayar di tempat (COD), aman & mudah" },
   { icon: ShieldCheck, text: "Garansi 100% resmi pabrik" },
   { icon: Truck, text: "Kirim ke seluruh Indonesia" },
   { icon: Tag, text: "Harga pabrik langsung, tanpa perantara" },
