@@ -35,11 +35,11 @@ const CATEGORY_LINKS = [
 ] as const
 
 /**
- * Menu kategori horizontal (home + halaman model). Pill = model produk saja
- * (Boven Jungkit, Jendela Swing, …); desain (Ornamen/Polos) tidak dibuat link
- * terpisah karena masuk dalam satu model dan tampil bersamaan di halaman model.
- * Gaya pill meniru nav katalog: frame abu-abu saat tidak aktif, hitam saat
- * dipilih. Font 12px, frame padding 12px.
+ * Menu kategori horizontal homepage — gaya "segment tab" ala Zalora:
+ * pill abu muda tanpa border, pill aktif hitam + teks putih (cursor-default),
+ * scroll horizontal tanpa scrollbar, rata tengah di layar besar. Pill = model
+ * produk saja (Boven Jungkit, Jendela Swing, …); desain (Ornamen/Polos) tidak
+ * dibuat link terpisah karena masuk dalam satu model.
  */
 export function CategoryMenu({
   items,
@@ -53,15 +53,18 @@ export function CategoryMenu({
 
   if (!items.length) return null
 
+  const pillBase =
+    "mr-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+
   return (
-    <section id="menu-kategori" className="scroll-mt-20 border-b border-border bg-surface">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+    <section id="menu-kategori" className="scroll-mt-20 border-b border-border bg-background">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12 relative py-3">
         <nav
           ref={scrollRef}
           aria-label="Kategori produk"
-          className="scrollbar-x flex items-center gap-2 overflow-x-auto"
+          className="scrollbar-none flex flex-row items-center overflow-x-scroll overscroll-x-contain xl:justify-center"
         >
-          {items.map((item) => {
+          {items.map((item, index) => {
             const active = item.key === activeKey
             return (
               <Link
@@ -69,10 +72,12 @@ export function CategoryMenu({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  pillBase,
+                  // Zalora: pill pertama diberi inset kiri di mobile, hilang di desktop.
+                  index === 0 && "ml-4 xl:ml-0",
                   active
-                    ? "border-foreground bg-foreground text-background shadow-sm"
-                    : "border-border bg-surface text-foreground hover:border-foreground/50",
+                    ? "cursor-default bg-foreground text-background"
+                    : "bg-secondary text-foreground hover:bg-secondary/70",
                 )}
               >
                 {item.label}
@@ -85,7 +90,10 @@ export function CategoryMenu({
               <button
                 type="button"
                 aria-label="Kategori lain"
-                className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg border border-border bg-surface px-3 text-xs font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className={cn(
+                  pillBase,
+                  "cursor-pointer bg-secondary text-muted-foreground hover:text-foreground",
+                )}
               >
                 Kategori
                 <Icon name="chevron-down" className="size-4" aria-hidden="true" />
@@ -108,6 +116,16 @@ export function CategoryMenu({
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
+
+        {/* Edge fade ala Zalora — hanya mobile/tablet, menandakan konten bisa discroll */}
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 w-11 bg-gradient-to-r from-background to-transparent md:hidden"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 w-11 bg-gradient-to-l from-background to-transparent md:hidden"
+          aria-hidden="true"
+        />
       </div>
     </section>
   )

@@ -110,6 +110,21 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
+### 2026-08-13 — Menu kategori homepage gaya segment tab Zalora
+
+**Done (commit batch ini):**
+- CategoryMenu homepage di-restyle mengikuti segment tab Zalora: pill abu muda
+  tanpa border (bg-secondary), pill aktif hitam + teks putih (cursor-default),
+  padding px-4 py-2.5 rounded-lg, mr-2 antar pill, pill pertama inset kiri di
+  mobile (ml-4, hilang di desktop), font text-sm font-medium.
+- Container scroll horizontal tanpa scrollbar (scrollbar-none + overflow-x-scroll
+  + overscroll-x-contain), rata tengah di layar besar (xl:justify-center — dipakai
+  xl bukan md agar 8 pill tidak terpotong sisi kirinya saat overflow).
+- Edge fade kiri/kanan ala Zalora hanya di mobile/tablet (md:hidden, pointer-events-none).
+- Section bg putih (bg-background) + border-b, padding vertikal py-3 (12px).
+
+**File diubah:** resources/js/components/public/category-menu.tsx.
+
 ### 2026-08-12 — "Lihat semua" accent secondary biru (#2563EB)
 
 **Done (commit setelah batch ini):**
