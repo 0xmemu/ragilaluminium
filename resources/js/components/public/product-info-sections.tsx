@@ -1,8 +1,8 @@
 import { Link } from "@inertiajs/react"
 import * as React from "react"
 
+import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { Icon } from "@/components/shared/icon"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -29,6 +29,12 @@ function StarRow({
       ))}
     </span>
   )
+}
+
+/** Semua foto satu ulasan — `images` multi-gambar, fallback ke `image_url`. */
+function reviewImages(review: Testimonial): string[] {
+  const images = (review.images ?? []).filter((url): url is string => Boolean(url))
+  return images.length ? images : review.image_url ? [review.image_url] : []
 }
 
 function AccordionSection({
@@ -90,6 +96,7 @@ export function ProductInfoSections({
   ratedReviews: Testimonial[]
 }) {
   const [previewReview, setPreviewReview] = React.useState<Testimonial | null>(null)
+  const [previewIndex, setPreviewIndex] = React.useState(0)
 
   const visibleAttributes = attributes.filter(
     (a) => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name),
@@ -200,19 +207,40 @@ export function ProductInfoSections({
                 <p className="mt-2 max-w-full break-words text-xs leading-5 text-foreground">
                   {review.message}
                 </p>
-                {review.image_url ? (
+                {reviewImages(review).length ? (
                   <button
                     type="button"
-                    onClick={() => setPreviewReview(review)}
-                    className="group/img relative mt-3 block h-20 w-full overflow-hidden rounded-sm bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    aria-label={`Perbesar foto dari ${review.customer_name}`}
+                    onClick={() => {
+                      setPreviewReview(review)
+                      setPreviewIndex(0)
+                    }}
+                    className="group/img relative mt-3 block h-24 w-full overflow-hidden rounded-sm bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label={`Perbesar foto ulasan ${review.customer_name}`}
                   >
                     <ResponsiveImage
-                      src={review.image_url}
+                      src={reviewImages(review)[0]}
                       alt={`Foto ulasan ${review.customer_name}`}
                       wrapperClassName="size-full bg-surface-muted"
                       className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
                     />
+                    {reviewImages(review).length > 1 ? (
+                      <span
+                        className="absolute bottom-1.5 right-1.5 z-10 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-white"
+                        aria-hidden="true"
+                      >
+                        <Icon name="image" weight="fill" className="size-3" />
+                        {reviewImages(review).length}
+                      </span>
+                    ) : null}
+                    <span
+                      className="absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition duration-300 group-hover/img:bg-black/30"
+                      aria-hidden="true"
+                    >
+                      <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition duration-300 group-hover/img:opacity-100">
+                        <Icon name="expand" weight="bold" className="size-3.5" />
+                        {reviewImages(review).length} foto
+                      </span>
+                    </span>
                   </button>
                 ) : null}
               </li>
@@ -235,26 +263,20 @@ export function ProductInfoSections({
         ) : null}
       </section>
 
-      <Dialog
-        open={previewReview !== null}
-        onOpenChange={(open) => {
-          if (!open) setPreviewReview(null)
-        }}
-      >
-        <DialogContent
-          className="!fixed !inset-0 !left-0 !top-0 z-modal !flex !h-dvh !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !gap-0 !overflow-hidden !rounded-none !border-0 !bg-black/95 !p-0 shadow-none"
-          aria-describedby={undefined}
-        >
-          <DialogTitle className="sr-only">
-            Foto ulasan dari {previewReview?.customer_name ?? "pelanggan"}
-          </DialogTitle>
-          <img
-            src={previewReview?.image_url ?? undefined}
-            alt={`Foto ulasan ${previewReview?.customer_name ?? ""}`}
-            className="mx-auto max-h-[88dvh] w-auto max-w-full object-contain"
-          />
-        </DialogContent>
-      </Dialog>
+      {previewReview ? (
+        <GalleryLightbox
+          items={reviewImages(previewReview).map((src) => ({
+            src,
+            alt: `Foto ulasan ${previewReview.customer_name}`,
+            name: previewReview.customer_name,
+          }))}
+          index={previewIndex}
+          onOpenChange={(open) => {
+            if (!open) setPreviewReview(null)
+          }}
+          onIndexChange={setPreviewIndex}
+        />
+      ) : null}
     </>
   )
 }

@@ -203,6 +203,7 @@ class TestimonialController extends Controller
                 'location' => $testimonial->location,
                 'product_id' => $testimonial->product_id,
                 'image_url' => $testimonial->image_url,
+                'image_urls' => $testimonial->image_urls ?? [],
                 'sort_order' => $testimonial->sort_order,
                 'published' => $testimonial->published,
             ],
@@ -584,6 +585,8 @@ class TestimonialController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'image_url' => ['nullable', 'string', 'max:2048'],
+            'image_urls' => ['nullable', 'array', 'max:20'],
+            'image_urls.*' => ['nullable', 'string', 'max:2048'],
             'image' => ['nullable', 'image', 'max:5120'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'published' => ['boolean'],
@@ -605,6 +608,16 @@ class TestimonialController extends Controller
 
         $validated['image_url'] = $imageUrl;
         unset($validated['image']);
+
+        // Foto tambahan (multi-gambar): URL baris-per-baris dari form admin.
+        $imageUrls = array_values(array_filter(array_map(
+            static fn ($url) => is_string($url) ? trim($url) : '',
+            $validated['image_urls'] ?? [],
+        )));
+        if ($imageUrls !== [] && $imageUrl === null) {
+            $validated['image_url'] = $imageUrls[0];
+        }
+        $validated['image_urls'] = $imageUrls !== [] ? $imageUrls : null;
 
         $isMarketplace = in_array((string) $validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true);
 

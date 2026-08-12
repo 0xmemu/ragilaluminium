@@ -29,6 +29,7 @@ class CmsTestimonial extends Model
         'source',
         'location',
         'image_url',
+        'image_urls',
         'published',
         'sort_order',
     ];
@@ -39,6 +40,7 @@ class CmsTestimonial extends Model
         'rating' => 'integer',
         'product_id' => 'integer',
         'cms_page_id' => 'integer',
+        'image_urls' => 'array',
     ];
 
     public function cmsPage(): BelongsTo
@@ -82,6 +84,24 @@ class CmsTestimonial extends Model
         return self::SOURCE_LABELS[$source] ?? $source;
     }
 
+    /**
+     * Daftar foto ulasan — multi-gambar (image_urls) dengan fallback ke image_url tunggal.
+     *
+     * @return list<string>
+     */
+    public function imagesPayload(): array
+    {
+        $primary = is_string($this->image_url) && $this->image_url !== '' ? $this->image_url : null;
+        $extra = is_array($this->image_urls)
+            ? array_values(array_filter(array_map(
+                fn ($url) => is_string($url) ? trim($url) : '',
+                $this->image_urls,
+            )))
+            : [];
+
+        return array_values(array_unique(array_filter([$primary, ...$extra])));
+    }
+
     /** Public storefront payload (PDP + /reviews + home). */
     public function toPublicArray(): array
     {
@@ -95,6 +115,7 @@ class CmsTestimonial extends Model
             'source' => $this->source,
             'location' => $this->location,
             'image_url' => $this->image_url,
+            'images' => $this->imagesPayload(),
             'product' => $product ? [
                 'id' => $product->id,
                 'parent_sku' => $product->parent_sku,

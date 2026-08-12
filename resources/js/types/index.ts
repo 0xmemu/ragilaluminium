@@ -276,6 +276,8 @@ export interface Testimonial {
   source?: string | null
   location?: string | null
   image_url?: string | null
+  /** Semua foto ulasan (multi-gambar); fallback ke [image_url] bila kosong. */
+  images?: string[] | null
   product?: {
     id: number
     parent_sku: string

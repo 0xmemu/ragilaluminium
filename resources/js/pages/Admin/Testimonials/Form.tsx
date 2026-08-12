@@ -16,6 +16,7 @@ interface TestimonialRecord {
   location?: string | null
   product_id?: number | null
   image_url?: string | null
+  image_urls?: string[] | null
   sort_order: number
   published: boolean
 }
@@ -55,6 +56,7 @@ export default function TestimonialForm({
     location: string
     product_id: string
     image_url: string
+    image_urls: string
     image: File | null
     sort_order: number
     published: boolean
@@ -66,6 +68,7 @@ export default function TestimonialForm({
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
     image_url: testimonial?.image_url ?? "",
+    image_urls: testimonial?.image_urls?.join("\n") ?? "",
     image: null,
     sort_order: testimonial?.sort_order ?? 0,
     published: testimonial?.published ?? false,
@@ -99,12 +102,15 @@ export default function TestimonialForm({
       <form
         onSubmit={(event) => {
           event.preventDefault()
-          if (editing) {
-            form.transform((data) => ({ ...data, _method: "put" }))
-            form.post(submitUrl, { forceFormData: true })
-          } else {
-            form.post(submitUrl, { forceFormData: true })
-          }
+          form.transform((data) => ({
+            ...data,
+            image_urls: data.image_urls
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean),
+            ...(editing ? { _method: "put" } : {}),
+          }))
+          form.post(submitUrl, { forceFormData: true })
         }}
         className="mx-auto max-w-3xl space-y-6"
         encType="multipart/form-data"
@@ -175,6 +181,17 @@ export default function TestimonialForm({
                 <Textarea rows={3} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
               </Field>
             )}
+            {!isMarketplaceIntent ? (
+              <Field
+                id="testimonial-image-urls"
+                label="URL gambar tambahan"
+                error={form.errors.image_urls}
+                className="sm:col-span-2"
+                hint="Opsional. Satu URL per baris — ulasan bisa punya lebih dari satu foto (di storefront bisa digeser saat diperbesar)."
+              >
+                <Textarea rows={3} value={form.data.image_urls} onChange={(event) => form.setData("image_urls", event.target.value)} placeholder="https://contoh.com/foto-2.jpg" />
+              </Field>
+            ) : null}
             {!isMarketplaceIntent ? (
               <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
                 <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
