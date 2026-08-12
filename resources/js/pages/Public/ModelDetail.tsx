@@ -163,7 +163,7 @@ function DesignProductRail({
         </h3>
         <Link
           href={variant.href}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-[#2563EB] transition hover:text-[#1D4ED8]"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-[#F5A623] transition hover:text-[#C77800]"
         >
           Lihat semua
           <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
@@ -333,7 +333,7 @@ export default function ModelDetail({
                 </h2>
                 <Link
                   href={rails[0].href}
-                  className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-[#2563EB] transition hover:text-[#1D4ED8]"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-[#F5A623] transition hover:text-[#C77800]"
                 >
                   Lihat semua
                   <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />

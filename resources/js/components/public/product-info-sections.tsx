@@ -157,7 +157,7 @@ export function ProductInfoSections({
             <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
             <Link
               href={routeUrl("installation.show", { parent_sku: product.parent_sku })}
-              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#2563EB] transition hover:text-[#1D4ED8]"
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#F5A623] transition hover:text-[#C77800]"
             >
               <span>Lihat semua</span>
               <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
@@ -255,7 +255,7 @@ export function ProductInfoSections({
         {reviews.length ? (
           <Link
             href={routeUrl("reviews")}
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#2563EB] transition hover:text-[#1D4ED8]"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#F5A623] transition hover:text-[#C77800]"
           >
             <span>Lihat semua ulasan ({reviews.length})</span>
             <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />

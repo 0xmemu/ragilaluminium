@@ -805,10 +805,10 @@ export function PromoFlashSaleSection({
             <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
               <Link
                 href={routeUrl("catalog.flash-sale")}
-                className="inline-flex flex-col items-center justify-center gap-1 text-[#2563EB] transition hover:text-[#1D4ED8] active:scale-95"
+                className="inline-flex flex-col items-center justify-center gap-1 text-[#F5A623] transition hover:text-[#C77800] active:scale-95"
                 aria-label="Lihat semua"
               >
-                <span className="inline-flex size-11 items-center justify-center rounded-full border border-[#2563EB]/40 bg-white text-[#2563EB] shadow-sm transition hover:border-[#2563EB] sm:size-12">
+                <span className="inline-flex size-11 items-center justify-center rounded-full border border-[#F5A623]/40 bg-white text-[#F5A623] shadow-sm transition hover:border-[#F5A623] sm:size-12">
                   <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
                 </span>
                 <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
