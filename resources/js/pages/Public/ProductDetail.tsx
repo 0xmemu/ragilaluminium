@@ -74,7 +74,7 @@ export default function ProductDetail({
         </div>
       </section>
 
-      <section className="container-page pb-4 pt-4 lg:pb-6 sm:pt-0 lg:pt-6">
+      <section className="container-page pb-4 pt-[6px] lg:pb-6">
         <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
           <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} />
 
