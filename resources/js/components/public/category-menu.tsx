@@ -37,7 +37,7 @@ export function CategoryMenu({
 
   return (
     <section id="menu-kategori" className="scroll-mt-20 border-b border-border bg-surface">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 pt-[6px]">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
         <div
           ref={scrollRef}
           className="scrollbar-x -mx-1 flex items-center gap-2 overflow-x-auto px-1 py-3 sm:gap-2.5"
