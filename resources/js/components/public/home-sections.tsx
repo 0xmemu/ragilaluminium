@@ -488,7 +488,7 @@ export function KamiBantuSection() {
             headingClassName="!text-[18px]"
             title={
               <>
-                Kami bantu dari <span className="text-primary">awal sampai jadi</span>
+                Kami bantu dari <span>awal sampai jadi</span>
               </>
             }
           />
