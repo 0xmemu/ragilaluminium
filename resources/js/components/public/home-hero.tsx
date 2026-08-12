@@ -394,7 +394,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                 <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
               </button>
 
-              <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1">
+              <div className="absolute inset-x-0 bottom-1 flex justify-center gap-0.5">
                 {Array.from({ length: total }).map((_, index) => (
                   <button
                     type="button"
