@@ -50,11 +50,13 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
 }
 
 /**
- * Slider pengumuman diskret di atas banner promo — strip merah full-width
- * (edge-to-edge, tanpa rounded dan tanpa padding horizontal). Satu teks promo
- * tampil penuh selama 3 detik, lalu bergeser vertikal (400ms) ke teks berikutnya.
- * Bukan marquee: tidak ada animasi berjalan terus-menerus. Loop seamless lewat
- * duplikasi item pertama di akhir.
+ * Slider pengumuman horizontal (ticker) di atas banner promo — strip merah
+ * full-width (edge-to-edge, tanpa rounded dan tanpa padding horizontal).
+ *
+ * Satu teks promo rata kiri tampil penuh selama 3 detik, lalu track bergeser ke
+ * kiri (translateX, 400ms) sehingga pesan aktif keluar ke kiri dan pesan
+ * berikutnya masuk dari kanan. Bukan marquee: tidak ada animasi berjalan
+ * terus-menerus. Loop seamless lewat duplikasi item pertama di akhir.
  */
 function PromoSlider() {
   // Item terakhir adalah duplikat item pertama → transisi maju terlihat seamless,
@@ -119,16 +121,16 @@ function PromoSlider() {
       <div
         onTransitionEnd={handleTransitionEnd}
         className={cn(
-          "flex h-full flex-col",
+          "flex h-full flex-row",
           !reduceMotion && !noTransition &&
             "transition-transform duration-[400ms] ease-emphasized",
         )}
-        style={{ transform: `translateY(-${activeIndex * 100}%)` }}
+        style={{ transform: `translateX(-${activeIndex * 100}%)` }}
       >
         {items.map((text, index) => (
           <div
             key={`${text}-${index}`}
-            className="flex h-full items-center justify-center px-4"
+            className="flex h-full w-full shrink-0 basis-full items-center justify-start px-4"
             aria-hidden={index !== activeIndex ? "true" : undefined}
           >
             <span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold tracking-tight">

@@ -110,6 +110,15 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
+### 2026-08-12 — Homepage: bar promo slider vertikal -> horizontal ticker (translateX)
+
+**Done (commit setelah batch ini):**
+- Arah slider bar promo diubah dari vertikal (translateY, rata tengah) menjadi horizontal ticker (translateX, rata kiri): track flex-row, tiap slide w-full basis-full shrink-0, konten justify-start, teks whitespace-nowrap satu baris (bullet + teks sebaris).
+- Pesan aktif keluar ke kiri, pesan berikutnya masuk dari kanan. Tetap 3 detik diam + transisi 400ms (duration-[400ms] ease-emphasized), tanpa marquee infinite.
+- Loop seamless tetap (duplikat item pertama + reset timeout 450ms), tinggi bar tetap h-8, overflow-hidden, pause hover/focus, prefers-reduced-motion nonaktifkan autoplay & transisi.
+
+**File diubah:** resources/js/components/public/home-hero.tsx.
+
 ### 2026-08-12 — Homepage: bar promo merah marquee -> discrete announcement slider
 
 **Done (commit setelah batch ini):**
