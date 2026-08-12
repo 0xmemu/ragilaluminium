@@ -122,6 +122,8 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
   xl bukan md agar 8 pill tidak terpotong sisi kirinya saat overflow).
 - Edge fade kiri/kanan ala Zalora hanya di mobile/tablet (md:hidden, pointer-events-none).
 - Section bg putih (bg-background) + border-b, padding vertikal py-3 (12px).
+- Iterasi berikutnya: wrapper full-bleed tanpa container padding (hanya first:ml-4
+  di mobile), section py-2, pill px-3.5 py-2 — padding lebih ramping (b3c3a8d lanjutan).
 
 **File diubah:** resources/js/components/public/category-menu.tsx.
 

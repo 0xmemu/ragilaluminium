@@ -54,11 +54,11 @@ export function CategoryMenu({
   if (!items.length) return null
 
   const pillBase =
-    "mr-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    "mr-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 
   return (
     <section id="menu-kategori" className="scroll-mt-20 border-b border-border bg-background">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 relative py-3">
+      <div className="relative py-2">
         <nav
           ref={scrollRef}
           aria-label="Kategori produk"
