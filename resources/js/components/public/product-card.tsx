@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react"
-import { Lightning, SealCheck } from "@phosphor-icons/react"
+import { Heart, Lightning, SealCheck } from "@phosphor-icons/react"
 import * as React from "react"
 
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -8,7 +8,10 @@ import { trackProductClick } from "@/lib/product-engage"
 import { cn } from "@/lib/utils"
 import type { ProductCardData, SharedPageProps } from "@/types"
 
-/** Keep compare-price + discount badge on one line; shrink font when the row overflows. */
+/**
+ * Baris compare-price + discount badge wajib satu baris; font menyusut
+ * bila baris meluap (JS meng-override `font-size` inline).
+ */
 function FitOneLine({
   children,
   className,
@@ -42,21 +45,15 @@ function FitOneLine({
   }, [children])
 
   return (
-    <span
-      ref={ref}
-      className={cn(
-        "inline-flex max-w-full flex-nowrap items-center gap-1 whitespace-nowrap text-[13px] leading-4 sm:text-sm sm:leading-4",
-        className,
-      )}
-    >
+    <span ref={ref} className={className}>
       {children}
     </span>
   )
 }
 
-function CodBadge({ className }: { className?: string }) {
+function CodBadge() {
   return (
-    <span className={cn("inline-flex shrink-0 items-center", className)}>
+    <span className="product-card__cod">
       {/* Single composite SVG — avoid layered scale (subpixel breaks thin strokes). ~lightning height. */}
       <img
         src="/images/icons/cod.svg"
@@ -71,6 +68,20 @@ function CodBadge({ className }: { className?: string }) {
   )
 }
 
+/**
+ * Product card — BEM visual system (Zalora-inspired guideline).
+ *
+ * Block: `.product-card` (+ modifier `--discounted/--flash/--unavailable/--model`)
+ * Elements: `__media __link __image __badge __availability __favorite
+ *           __content __title __pricing __price __empty-price __compare
+ *           __original-price __discount __extras __cod __flash-label
+ *           __meta __warranty __sold`
+ *
+ * Seluruh chrome visual hidup di `@layer components` (resources/css/app.css)
+ * berbasis token :root; komponen ini hanya data-driven + state. Interaksi
+ * memakai dua link terpisah (media + body) — pola multi-link standar —
+ * sehingga overlay wishlist tetap sibling link (HTML valid).
+ */
 export function ProductCard({
   product,
   priority = false,
@@ -78,6 +89,8 @@ export function ProductCard({
   emphasis = "default",
   titleStyle = "default",
   imageFit = "cover",
+  isWishlisted = false,
+  onWishlistChange,
 }: {
   product: ProductCardData
   priority?: boolean
@@ -88,6 +101,10 @@ export function ProductCard({
   titleStyle?: "default" | "model"
   /** Override image crop behavior for contexts that must show the whole asset. */
   imageFit?: "cover" | "contain"
+  /** State wishlist — hanya berpengaruh bila `onWishlistChange` disediakan. */
+  isWishlisted?: boolean
+  /** Tanpa handler, tombol wishlist tidak dirender. */
+  onWishlistChange?: (next: boolean) => void
 }) {
   const title = productName(product.name, product.short_name)
   const priceValue =
@@ -113,103 +130,123 @@ export function ProductCard({
   const warrantyLabel = product.warranty_label?.trim() || "Garansi 100%"
   const soldCount = Number(product.sold_count ?? 0)
   const flashEmphasis = emphasis === "flash"
-
   const useModelTitle = titleStyle === "model"
+  const isAvailable = product.isAvailable !== false
   const { csrf } = usePage<SharedPageProps>().props
 
+  const cardClass = cn(
+    "product-card",
+    hasCompare && "product-card--discounted",
+    flashEmphasis && "product-card--flash",
+    !isAvailable && "product-card--unavailable",
+    useModelTitle && "product-card--model",
+    className,
+  )
+  const linkClass = "product-card__link"
+
   return (
-    <article
-      className={cn(
-        "group flex h-full min-w-0 flex-col overflow-hidden border border-transparent bg-white shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
-        useModelTitle && "@container",
-        flashEmphasis && "ring-1 ring-primary/25 shadow-[0_2px_8px_rgba(192,0,0,0.12)]",
-        className,
-      )}
-    >
-      <Link
-        href={product.href}
-        prefetch
-        className="flex min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={() => trackProductClick(product.id, csrf)}
-      >
-        <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-muted/50">
+    <article className={cardClass}>
+      <div className="product-card__media">
+        <Link
+          href={product.href}
+          prefetch
+          className={linkClass}
+          onClick={() => trackProductClick(product.id, csrf)}
+        >
           <ResponsiveImage
             src={product.image}
             alt={title}
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
-            wrapperClassName="aspect-square size-full bg-muted/50"
+            wrapperClassName="size-full bg-muted/50"
             className={cn(
+              "product-card__image",
               imageFit === "contain" ? "!object-contain" : "object-cover",
-              "transition duration-300 group-hover:scale-[1.03]",
             )}
           />
-          {flashEmphasis ? (
-            <span className="absolute left-0 top-0 z-10 inline-flex items-center gap-0.5 bg-primary px-2 py-1 text-[10px] font-extrabold uppercase italic leading-none tracking-tight text-primary-foreground sm:text-[11px]">
-              <Lightning weight="fill" className="size-3 shrink-0" aria-hidden />
-              Flash
-            </span>
-          ) : null}
-        </div>
+        </Link>
 
-        <div
-          className={cn(
-            "relative flex flex-1 flex-col gap-0 p-[5px]",
-          )}
-        >
-          <h3
-            data-slot="product-item-name"
-            className="min-h-8 w-full min-w-0 line-clamp-2 text-[13px] font-light leading-4 text-action text-pretty"
+        {flashEmphasis ? (
+          <span className="product-card__badge">
+            <Lightning weight="fill" className="size-3 shrink-0" aria-hidden />
+            Flash
+          </span>
+        ) : null}
+        {!isAvailable ? (
+          <span className="product-card__availability">Stok habis</span>
+        ) : null}
+        {onWishlistChange ? (
+          <button
+            type="button"
+            className="product-card__favorite"
+            aria-label={
+              isWishlisted ? "Hapus dari wishlist" : "Tambahkan ke wishlist"
+            }
+            aria-pressed={isWishlisted}
+            onClick={() => onWishlistChange(!isWishlisted)}
           >
+            <Heart
+              weight={isWishlisted ? "fill" : "regular"}
+              className="size-4"
+              aria-hidden="true"
+            />
+          </button>
+        ) : null}
+      </div>
+
+      <Link
+        href={product.href}
+        prefetch
+        className={cn(linkClass, "product-card__link--body")}
+        onClick={() => trackProductClick(product.id, csrf)}
+      >
+        <div className="product-card__content">
+          <h3 data-slot="product-item-name" className="product-card__title">
             {title}
           </h3>
 
           {/* Harga bertumpuk: compare + diskon wajib satu baris (mengecil bila sempit). */}
-          <div className="mt-0.5 flex min-w-0 flex-col leading-none">
+          <div className="product-card__pricing">
             {priceValue !== null && Number.isFinite(priceValue) ? (
               <>
-                <span className="tabular-nums text-base font-bold leading-5 text-sale lg:text-xl lg:leading-6">
+                <span className="product-card__price">
                   {formatCurrency(priceValue)}
                 </span>
                 {hasCompare ? (
-                  <div className="mt-0.5 min-w-0 max-w-full overflow-hidden">
-                    <FitOneLine>
-                      <span className="tabular-nums font-light text-muted-foreground line-through">
-                        {formatCurrency(compareValue)}
+                  <FitOneLine className="product-card__compare">
+                    <span className="product-card__original-price">
+                      {formatCurrency(compareValue)}
+                    </span>
+                    {discountPercent !== null && discountPercent > 0 ? (
+                      <span className="product-card__discount">
+                        -{discountPercent}%
                       </span>
-                      {discountPercent !== null && discountPercent > 0 ? (
-                        <span className="shrink-0 bg-red-50 px-1 text-xs font-normal leading-4 text-red-800">
-                          -{discountPercent}%
-                        </span>
-                      ) : null}
-                    </FitOneLine>
-                  </div>
+                    ) : null}
+                  </FitOneLine>
                 ) : null}
               </>
             ) : (
-              <span className="text-sm font-medium leading-5 text-muted-foreground lg:text-base">Lihat harga</span>
+              <span className="product-card__empty-price">Lihat harga</span>
             )}
           </div>
 
-          <div className="mt-1 flex min-h-4 flex-wrap items-center gap-1.5">
+          <div className="product-card__extras">
             {showCod ? <CodBadge /> : null}
             {showFlash ? (
-              <span className="inline-flex shrink-0 items-center">
-                <Lightning weight="fill" className="-mr-px size-3.5 shrink-0 text-sale" aria-hidden />
-                <span className="whitespace-nowrap text-xs font-extrabold italic leading-none tracking-tight text-sale sm:text-sm">
-                  FLASH SALE
-                </span>
+              <span className="product-card__flash-label">
+                <Lightning weight="fill" className="-mr-px size-3.5 shrink-0" aria-hidden />
+                FLASH SALE
               </span>
             ) : null}
           </div>
 
-          <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
-            <span className="inline-flex min-w-0 items-center gap-1 text-xs font-medium leading-none text-warning">
+          <div className="product-card__meta">
+            <span className="product-card__warranty">
               <SealCheck weight="fill" className="size-3.5 shrink-0 lg:size-4" aria-hidden />
               <span className="truncate">{warrantyLabel}</span>
             </span>
             {soldCount > 0 ? (
-              <span className="shrink-0 text-xs font-light leading-none text-muted-foreground">
+              <span className="product-card__sold">
                 {soldCount.toLocaleString("id-ID")} terjual
               </span>
             ) : (

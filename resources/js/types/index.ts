@@ -196,6 +196,10 @@ export interface ProductCardData {
   cod_eligible?: boolean
   warranty_label?: string | null
   sold_count?: number | null
+  /** Kehadiran stok — false memunculkan kartu redup + label "Stok habis". Default true. */
+  isAvailable?: boolean
+  /** State wishlist — hanya berpengaruh bila consumer menyediakan onWishlistChange. */
+  isWishlisted?: boolean
   image?: string | null
   href: string
 }

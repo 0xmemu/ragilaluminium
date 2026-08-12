@@ -292,7 +292,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
           onMouseLeave={() => setPaused(false)}
           onFocusCapture={() => setPaused(true)}
           onBlurCapture={() => setPaused(false)}
-          className="relative w-full overflow-hidden rounded-md bg-surface-muted shadow-[0_2px_16px_hsl(var(--foreground)/0.06)] [touch-action:pan-x_pan-y]"
+          className="relative w-full overflow-hidden rounded-md bg-surface-muted p-3 shadow-[0_2px_16px_hsl(var(--foreground)/0.06)] [touch-action:pan-x_pan-y]"
         >
           <>
             <div

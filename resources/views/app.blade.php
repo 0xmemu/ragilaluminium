@@ -9,6 +9,10 @@
     <meta name="description" content="{{ config('sitemap.brand.name', config('app.name')) }} — jendela & boven aluminium berkualitas untuk rumah dan bangunan Anda. Lihat katalog, harga, dan promo terbaru.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="{{ url()->current() }}">
+    {{-- Preload logo hamburger: Sheet (radix) baru me-mount kontennya saat dibuka, jadi logo
+         light-logo.png di-download terlambat → muncul setelah menu terbuka. Preload di head
+         memastikan logo sudah di cache sebelum interaksi. --}}
+    <link rel="preload" as="image" href="{{ asset('images/brand/light-logo.png') }}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ config('sitemap.brand.name', config('app.name')) }}">
     <meta property="og:title" content="{{ config('sitemap.brand.name', config('app.name')) }}">
