@@ -120,7 +120,7 @@ export function ProductBuyBox({
           {axes.length > 0 || selectedVariant ? (
             <div className="mb-2 flex items-center justify-between gap-3">
               {axes.length > 0 ? (
-                <p className="text-sm font-bold text-foreground">Pilih varian</p>
+                <p className="text-xs font-bold text-foreground">Pilih varian</p>
               ) : null}
               {selectedVariant ? (
                 <p className="min-w-0 truncate text-right text-xs font-light text-muted-foreground">
