@@ -110,6 +110,30 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
+### 2026-08-13 — Layout landing model (pill nav) ala homepage Zalora
+
+**Done (commit batch ini):**
+- Halaman pill nav (Boven Jungkit, Jendela Sliding, dst — route `catalog.model`
+  `/products/{category}/{model}`) kini dirender `pages/Public/ModelLanding.tsx` —
+  SATU template untuk semua model, layout ala homepage Zalora: kartu hero model,
+  card-card promo (carousel minimal), kartu desain (grid), kartu ukuran, dokumentasi
+  (foto/video pemasangan), dan carousel semua produk. Tanpa halaman khusus per model.
+- `CatalogController::modelShow` mengirim data per model: `promos` (produk berdiskon
+  model itu, sortir diskon), `designs` (rail desain Ornamen/Polos/Kombinasi — meta),
+  `sizes` (ukuran unik T×P + harga termurah + link varian via sizeCardsForRail),
+  `documentation` (InstallationGallery::productCardsForModel), `products` (24),
+  `categoryMenu` (pill aktif), `allHref`.
+- Pill kategori menu ditampilkan di atas halaman dengan state aktif (model yang
+  sedang dilihat), sehingga pengguna bisa berpindah antar model.
+- Section bersifat kondisional: promo hanya jika ada produk berdiskon model itu
+  (verifikasi: Jendela Sliding tampil dengan badge -25%/-20%), dokumentasi hanya
+  jika ada media instalasi (DB live masih kosong — akan muncul setelah admin
+  menambah foto/video hasil pemasangan).
+
+**File diubah:** pages/Public/ModelLanding.tsx (baru), app/Http/Controllers/
+CatalogController.php (modelShow → ModelLanding). ModelDetail.tsx lama tetap ada
+di repo (tidak dipakai route ini lagi).
+
 ### 2026-08-12 — "Lihat semua" accent secondary biru (#2563EB)
 
 **Done (commit setelah batch ini):**
