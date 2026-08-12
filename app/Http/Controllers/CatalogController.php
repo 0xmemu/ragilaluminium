@@ -510,9 +510,7 @@ class CatalogController extends Controller
     }
 
     /**
-     * Halaman landing satu model (pill nav) — layout Zalora-like, data per model:
-     * promo, desain, ukuran, dokumentasi, dan seluruh produk model. Satu template
-     * `Public/ModelLanding` untuk SEMUA model; tidak ada halaman khusus per model.
+     * Halaman detail satu model (deskripsi + highlight) + daftar produk nyata model itu.
      */
     public function modelShow(string $category, string $model): Response
     {
@@ -538,68 +536,17 @@ class CatalogController extends Controller
             ->where('product_model', $modelCode)
             ->with(['mainImage', 'activeVariants', 'attributes'])
             ->withSum('validOrderItems as sold_count', 'quantity')
-            ->orderByDesc('sold_count')
-            ->orderByDesc('id')
+            ->latest('id')
             ->limit(48)
             ->get();
 
-        $productCards = InertiaCatalog::productCards($products);
+        $designRails = $this->designRailsForModel($products, $categoryCode, $modelCode);
 
-        // Promo: kartu model ini yang punya diskon aktif (compare price / promo).
-        $promos = collect($productCards)
-            ->filter(fn (array $c) => (int) ($c['discount_percent'] ?? 0) > 0)
-            ->sortByDesc(fn (array $c) => (int) ($c['discount_percent'] ?? 0))
-            ->values()
-            ->take(10)
-            ->all();
-
-        // Desain: meta rail (label, gambar, jumlah, href) — tanpa muatan `products`.
-        $designs = array_map(
-            fn (array $rail) => collect($rail)->except('products')->all(),
-            $this->designRailsForModel($products, $categoryCode, $modelCode),
-        );
-
-        // Ukuran unik model (T×P) + harga termurah + link varian.
-        $sizes = InertiaCatalog::sizeCardsForRail($products, 12);
-
-        // Dokumentasi spesifik model (foto/video pemasangan).
-        $documentation = collect(InstallationGallery::productCardsForModel($categoryCode, $modelCode, 24))
-            ->map(fn (array $item) => [
-                'id' => $item['id'],
-                'image_url' => $item['image_url'] ?? null,
-                'label' => $item['label'],
-                'product_count' => (int) ($item['product_count'] ?? 0),
-                'photo_count' => (int) ($item['photo_count'] ?? 0),
-                'video_count' => (int) ($item['video_count'] ?? 0),
-                'category' => $item['category'] ?? null,
-                'model' => $item['model'] ?? null,
-                'href' => $item['href'] ?? null,
-                'product_sku' => $item['product_sku'] ?? null,
-                'product_href' => $item['product_href'] ?? null,
-            ])
-            ->values()
-            ->all();
-
-        try {
-            $categoryMenu = app(ModelProductService::class)->storefrontCategoryMenu();
-        } catch (\Throwable) {
-            $categoryMenu = [];
-        }
-
-        $allHref = route('catalog.model', [
-            'category' => InstallationGallery::categoryToSlug($categoryCode),
-            'model' => strtolower(str_replace('_', '-', $modelCode)),
-        ], absolute: false);
-
-        return Inertia::render('Public/ModelLanding', [
+        return Inertia::render('Public/ModelDetail', [
             'model' => $card,
-            'promos' => $promos,
-            'designs' => $designs,
-            'sizes' => $sizes,
-            'documentation' => $documentation,
-            'products' => array_slice($productCards, 0, 24),
-            'categoryMenu' => $categoryMenu,
-            'allHref' => $allHref,
+            'products' => InertiaCatalog::productCards($products),
+            'designRails' => $designRails,
+            'hubHref' => route('catalog.index', absolute: false),
         ]);
     }
 
