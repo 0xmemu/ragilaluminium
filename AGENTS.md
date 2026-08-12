@@ -108,6 +108,12 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 - Excel import must NOT implement `WithEvents` (500s) — route through `App\Jobs\ProcessCatalogImport` (holds only `$jobId`/`$storedPath`).
 - SQLite test quirk: `PerformanceMetric.metric_date` cast `date` tersimpan sebagai `Y-m-d 00:00:00` di SQLite — `whereBetween("metric_date", [..toDateString()..])` TIDAK match row cast; test yang butuh metric harus insert via `DB::table(...)->insert([... "metric_date" => now()->toDateString()])` (sudah dipraktikkan di StorePerformanceContractTest:166). Produksi MySQL aman (kolom date men-trim time). Bukan bug runtime.
 
+## Current status (2026-08-12)
+
+- Polish halaman detail produk selesai & ter-commit `e492484`: accordion tertutup default, bintang #F5A623, ulasan tanpa bg & label source, tombol "Lihat semua ulasan" teal, clearance sticky bottom bar di "Anda mungkin juga suka", padding thumbnail 20px, tipografi "lihat semua" seragam. Live di ra.333labs.tech.
+- Perubahan batch ini dikerjakan langsung di repo VPS sesuai WORKFLOW CONTRACT. Working tree masih ada modif agent lain (app.css, home-hero, product-card, types/index, app.blade.php, docs/ZALORA-BEM-VISUAL-SYSTEM.md) — belum di-commit, bukan bagian batch ini.
+- Folder lokal `D:/website_5.0` (admin-orders-work dll) adalah SNAPSHOT LAMA (2026-08-10/11) — JANGAN dijadikan sumber, JANGAN di-scp ke server (akan menurunkan versi). Selalu edit di repo VPS ini.
+
 ## Current status (2026-08-11)
 
 - Phases 1–6A + WhatsApp BAILEYS pairing + QA reconciliation done; PHPUnit 258 green / 4050 assertions (2026-08-09). HEAD `765e50b`.
