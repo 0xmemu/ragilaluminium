@@ -79,8 +79,8 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </div>
       </section>
 
-      <section className="py-4 lg:py-6">
-        <div className="container-page">
+      <section>
+        <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
           <ol className="grid gap-3 sm:grid-cols-2">
             {guide.steps.map((step, index) => (
               <li
@@ -125,8 +125,8 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       </section>
 
       {guide.info_cards.length ? (
-        <section className="border-t border-border bg-surface py-4 lg:py-6">
-          <div className="container-page">
+        <section className="border-t border-border bg-surface">
+          <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
             <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
               <SectionHeading title="Pembayaran, pengiriman & bantuan" />
             </div>
@@ -146,8 +146,8 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       ) : null}
 
       {bodyHtml ? (
-        <section className="py-4 lg:py-6 border-t border-border">
-          <div className="container-page">
+        <section className="border-t border-border">
+          <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
             <article
               className="cms-content mx-auto max-w-3xl text-xs leading-5 text-muted-foreground"
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
@@ -155,8 +155,8 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
           </div>
         </section>
       ) : (
-        <section className="py-4 lg:py-6 border-t border-border">
-          <div className="container-page">
+        <section className="border-t border-border">
+          <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
             <div className="text-xs leading-5 text-muted-foreground">
               <p>
                 <span className="font-bold text-foreground">*Catatan Ukuran Custom:</span> Kami
@@ -168,7 +168,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       )}
 
-      <section className="py-4 lg:py-6 border-t border-border bg-foreground text-background">
+      <section className="border-t border-border bg-foreground text-background">
         <div className="container-page flex flex-col items-center text-center">
           <SectionHeading
             className="text-background [&_h2]:text-background [&_p]:text-background/80"

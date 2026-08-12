@@ -82,7 +82,7 @@ export default function OrderConfirmation({
         </div>
       </section>
 
-      <section className="container-page py-4 lg:py-6">
+      <section className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
         <div className="mx-auto max-w-4xl">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
             <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />

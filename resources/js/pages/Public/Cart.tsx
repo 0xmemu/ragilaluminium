@@ -185,7 +185,7 @@ export default function Cart({
         </div>
       ) : null}
 
-      <section className={cartItems.length ? "container-page min-w-0 overflow-x-hidden py-4 lg:py-6" : "container-page py-4 lg:py-6"}>
+      <section className={cartItems.length ? "container-page min-w-0 overflow-x-hidden !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12" : "container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12"}>
         {cartItems.length ? (
           <div className="space-y-4">
             {/* Select bar */}

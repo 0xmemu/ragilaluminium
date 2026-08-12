@@ -71,8 +71,8 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
         </div>
       </section>
 
-      <section className="py-4 lg:py-6">
-        <div className="container-page">
+      <section>
+        <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
           {guide.groups.length ? (
             <div className="mx-auto max-w-3xl">
               {guide.groups.map((group, groupIndex) => (

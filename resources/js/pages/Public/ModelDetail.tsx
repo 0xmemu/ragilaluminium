@@ -271,7 +271,7 @@ export default function ModelDetail({
       </section>
 
       <section className="pb-4 lg:pb-6">
-        <div className="container-page pt-4 pb-2 lg:pt-6">
+        <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
           <div className="md:grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-start md:gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
             <div className="relative mx-auto aspect-square w-full max-w-[22rem] overflow-hidden bg-surface-muted md:mx-0 md:max-w-none">
               <ResponsiveImage
@@ -321,7 +321,7 @@ export default function ModelDetail({
           </div>
         </div>
 
-        <div id="produk" className="container-page mt-8 scroll-mt-24 sm:mt-10">
+        <div id="produk" className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12 scroll-mt-24">
           {rails.length === 1 ? (
             <section aria-labelledby="single-design-heading">
               <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">

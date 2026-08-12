@@ -273,17 +273,6 @@
     }
   }
 
-  /* Ritme vertikal antar section — rapat untuk strip carousel berurutan. */
-  .section-space {
-    padding-block: 1rem;
-  }
-
-  @media (min-width: 56.25em) {
-    .section-space {
-      padding-block: 1.5rem;
-    }
-  }
-
   .surface-panel {
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);

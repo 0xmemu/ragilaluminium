@@ -82,7 +82,7 @@ export default function Checkout({
     return (
       <PublicLayout>
         <Head title="Checkout" />
-        <section className="container-page py-4 lg:py-6">
+        <section className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
           <EmptyState
             icon="shopping-cart"
             title="Keranjang kosong"
@@ -130,7 +130,7 @@ export default function Checkout({
         </div>
       </section>
 
-      <section className="container-page py-4 lg:py-6">
+      <section className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
         {pageErrors.checkout ? (
           <Alert tone="danger" title={pageErrors.checkout} className="mb-4" />
         ) : null}

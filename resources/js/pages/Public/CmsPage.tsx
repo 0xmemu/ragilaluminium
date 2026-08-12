@@ -77,7 +77,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
         </div>
       </section>
 
-      <section className="container-page py-4 lg:py-6">
+      <section className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
         {isLegal ? (
           <div className="mx-auto max-w-3xl border-t border-border pt-8">
             <article className="cms-content" dangerouslySetInnerHTML={{ __html: cleanBody }} />
