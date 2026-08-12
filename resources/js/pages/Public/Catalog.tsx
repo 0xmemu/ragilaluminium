@@ -591,7 +591,7 @@ export default function Catalog({
             />
           </div>
 
-          <div className="container-page py-2">
+          <div className="container-page">
             <div className="flex items-center gap-2">
               <button
                 type="button"
