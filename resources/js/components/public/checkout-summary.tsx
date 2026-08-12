@@ -97,7 +97,7 @@ export function CheckoutSummary({
                   <span>{item.quantity} item</span>
                   {item.flash_sale ? (
                     <span className="font-extrabold italic tracking-tight text-sale">
-                      FLASH SALE
+                      Flash Sale
                     </span>
                   ) : null}
                   {discountPercent ? (

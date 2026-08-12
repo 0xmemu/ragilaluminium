@@ -24,7 +24,7 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
     >
       <div className="flex w-full flex-col justify-center px-4 sm:px-8 lg:px-10">
         {slide.eyebrow ? (
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/90">
+          <p className="text-xs font-medium tracking-wide text-white/90">
             {slide.eyebrow}
           </p>
         ) : null}
@@ -81,7 +81,7 @@ function HeroSlideContent({
       <div className="absolute inset-0 flex items-center">
         <div className="w-full max-w-[560px] px-5 py-5 text-left text-white sm:px-16 md:px-[72px] lg:px-[88px]">
           {slide.eyebrow ? (
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/75 sm:text-sm">
+            <p className="text-xs font-bold tracking-wide text-white/75 sm:text-sm">
               {slide.eyebrow}
             </p>
           ) : null}

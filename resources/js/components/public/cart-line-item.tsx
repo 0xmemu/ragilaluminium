@@ -183,7 +183,7 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
   const flashSaleBadge = item.flash_sale ? (
     <span className="inline-flex items-center gap-0.5">
       <Icon name="lightning" weight="fill" className="size-3 shrink-0 text-sale" aria-hidden />
-      <span className="text-[11px] font-extrabold italic tracking-tight text-sale">FLASH SALE</span>
+      <span className="text-[11px] font-extrabold italic tracking-tight text-sale">Flash Sale</span>
     </span>
   ) : null
 

@@ -22,7 +22,7 @@ function navHref(item: RouteNavItem): string {
 
 function DrawerSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 text-[0.6875rem] font-bold uppercase tracking-tight text-muted-foreground">
+    <p className="mb-3 text-[0.6875rem] font-bold tracking-tight text-muted-foreground">
       {children}
     </p>
   )

@@ -163,7 +163,7 @@ export function StorefrontPlatforms({
         <div>
           <p
             className={cn(
-              "text-xs font-semibold uppercase tracking-tight",
+              "text-xs font-semibold tracking-tight",
               dark ? "text-white/80" : "text-muted-foreground",
             )}
           >
@@ -183,7 +183,7 @@ export function StorefrontPlatforms({
         <div>
           <p
             className={cn(
-              "text-xs font-semibold uppercase tracking-tight",
+              "text-xs font-semibold tracking-tight",
               dark ? "text-white/80" : "text-muted-foreground",
             )}
           >

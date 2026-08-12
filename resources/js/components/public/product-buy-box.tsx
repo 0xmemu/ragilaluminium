@@ -70,20 +70,11 @@ export function ProductBuyBox({
 
   return (
     <>
-      {/* Nama produk — baris 1 ukuran, baris 2 model (split otomatis). Rating frame rata kanan sejajar baris 1. */}
-      <div className="mt-0.5 flex items-start justify-between gap-3">
-        <h1 className="min-w-0 flex-1 text-base font-bold tracking-tight text-foreground">
-          <span className="block">{titleLine1}</span>
-          {titleLine2 ? <span className="block">{titleLine2}</span> : null}
-        </h1>
-        {averageRating !== null ? (
-          <div className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border px-2.5 py-1 text-xs">
-            <span className="font-semibold text-foreground">{ratingLabel}</span>
-            <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
-            <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
-          </div>
-        ) : null}
-      </div>
+      {/* Nama produk — baris 1 ukuran, baris 2 model (split otomatis), font body */}
+      <h1 className="mt-0.5 text-base font-normal tracking-tight text-foreground">
+        <span className="block">{titleLine1}</span>
+        {titleLine2 ? <span className="block">{titleLine2}</span> : null}
+      </h1>
 
       {/* Harga + promo */}
       <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -107,7 +98,7 @@ export function ProductBuyBox({
         {promo?.flash_sale ? (
           <span className="inline-flex items-center gap-1">
             <Icon name="lightning" weight="fill" className="size-4 shrink-0 text-sale" aria-hidden />
-            <span className="text-base font-extrabold italic leading-5 tracking-tight text-sale">FLASH SALE</span>
+            <span className="text-base font-extrabold italic leading-5 tracking-tight text-sale">Flash Sale</span>
           </span>
         ) : null}
       </div>
@@ -117,6 +108,13 @@ export function ProductBuyBox({
         className="mt-3 space-y-4"
       >
         <div ref={variantSectionRef} className="space-y-4">
+          {averageRating !== null ? (
+            <div className="inline-flex items-center gap-0.5 rounded-full border border-border px-2.5 py-1 text-xs">
+              <span className="font-semibold text-foreground">{ratingLabel}</span>
+              <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
+              <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
+            </div>
+          ) : null}
           {axes.length > 0 || selectedVariant ? (
             <div className="mb-2 flex items-center justify-between gap-3">
               {axes.length > 0 ? (

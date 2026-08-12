@@ -235,7 +235,7 @@ export function ProductCard({
             {showFlash ? (
               <span className="product-card__flash-label">
                 <Lightning weight="fill" className="-mr-px size-3.5 shrink-0" aria-hidden />
-                FLASH SALE
+                Flash Sale
               </span>
             ) : null}
           </div>

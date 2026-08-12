@@ -272,7 +272,7 @@ export function FlashSaleRedBanner({
                 compact ? "text-xl sm:text-3xl" : "text-[1.65rem] sm:text-3xl lg:text-4xl",
               )}
             >
-              FLASH SALE
+              Flash Sale
             </h1>
             {countdownSeconds !== null ? (
               <FlashSaleCountdownClock

@@ -479,7 +479,7 @@ export function KamiBantuSection() {
     <section id="kami-bantu" className="scroll-mt-20 bg-muted/30">
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary sm:text-sm">
+          <p className="text-xs font-bold tracking-wide text-primary sm:text-sm">
             Masih bingung?
           </p>
           <SectionHeading

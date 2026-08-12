@@ -29,7 +29,7 @@ export function IntroCards({ className }: { className?: string }) {
     <div className={cn("grid h-full w-full grid-cols-2 bg-background", className)}>
       {/* Zona kiri — brand statement */}
       <div className="flex min-h-0 flex-col justify-center overflow-hidden px-3 py-0.5 sm:px-8 sm:py-6 lg:px-12">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+        <p className="text-xs font-bold tracking-wide text-primary">
           Ragil Aluminium
         </p>
         <h2 className="mt-0.5 font-display text-xs font-extrabold leading-none tracking-[-0.02em] text-foreground sm:mt-2 sm:leading-snug sm:text-3xl lg:text-4xl">
