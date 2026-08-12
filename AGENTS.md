@@ -110,6 +110,17 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
+### 2026-08-13 — Pill nav rounded-md + hapus dropdown Kategori
+
+**Done (commit batch ini):**
+- Semua pill/tab kategori & model (homepage segment tab, nav katalog CatalogNav,
+  tabs ModelProduk) diubah rounded-lg -> rounded-md.
+- Dropdown "Kategori lain" dihapus dari CategoryMenu (homepage) dan CatalogNav —
+  urutan pill dikelola langsung oleh admin di dashboard, semua pill tetap
+  terlihat via scroll. CATEGORY_LINKS + import dropdown ikut dibersihkan.
+
+**File diubah:** category-menu.tsx, catalog-nav.tsx, pages/Public/ModelProduk.tsx.
+
 ### 2026-08-13 — Menu kategori homepage gaya segment tab Zalora
 
 **Done (commit batch ini):**

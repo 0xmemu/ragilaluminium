@@ -152,8 +152,8 @@ export default function ModelProduk({
               aria-current={active ? "page" : undefined}
               className={
                 active
-                  ? "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-foreground bg-foreground px-3.5 text-[13px] font-semibold text-background shadow-sm"
-                  : "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-foreground transition hover:border-foreground/50"
+                  ? "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md border border-foreground bg-foreground px-3.5 text-[13px] font-semibold text-background shadow-sm"
+                  : "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md border border-border bg-surface px-3.5 text-[13px] font-semibold text-foreground transition hover:border-foreground/50"
               }
             >
               {tab.label}
@@ -165,7 +165,7 @@ export default function ModelProduk({
           <Link
             key={model.value}
             href={model.href}
-            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground"
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md border border-border bg-surface px-3.5 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground"
           >
             {model.label}
           </Link>

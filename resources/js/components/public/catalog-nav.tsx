@@ -185,7 +185,7 @@ export function CatalogNav({
               href={tab.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition",
+                "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md border px-3.5 text-[13px] font-semibold transition",
                 active
                   ? "border-foreground bg-foreground text-background shadow-sm"
                   : "border-border bg-surface text-foreground hover:border-foreground/50",
@@ -204,7 +204,7 @@ export function CatalogNav({
               href={model.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition",
+                "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md border px-3.5 text-[13px] font-semibold transition",
                 active
                   ? "border-foreground bg-foreground text-background shadow-sm"
                   : "border-border bg-surface text-foreground hover:border-foreground/50",
@@ -215,62 +215,6 @@ export function CatalogNav({
           )
         })}
 
-        {/* Item trailing dengan chevron — menampung kategori/model yang belum tampil */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label="Kategori lain"
-              className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              Kategori
-              <Icon name="chevron-down" className="size-4" aria-hidden="true" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={10} className="w-56 p-2">
-            <DropdownMenuLabel>Kategori</DropdownMenuLabel>
-            {CATEGORY_TABS.map((tab) => {
-              const active = tab.code === category
-              return (
-                <DropdownMenuItem
-                  key={tab.code}
-                  asChild
-                  className={cn("min-h-10 rounded-lg px-3 text-sm", active && "font-semibold")}
-                >
-                  <Link href={tab.href} aria-current={active ? "page" : undefined}>
-                    <span className="flex-1">{tab.label}</span>
-                    {active ? (
-                      <Icon name="check" className="h-4 w-4 text-primary" aria-hidden="true" />
-                    ) : null}
-                  </Link>
-                </DropdownMenuItem>
-              )
-            })}
-            {modelTabs.length ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Model</DropdownMenuLabel>
-                {modelTabs.map((model) => {
-                  const active = activeModel === model.value
-                  return (
-                    <DropdownMenuItem
-                      key={model.value}
-                      asChild
-                      className={cn("min-h-10 rounded-lg px-3 text-sm", active && "font-semibold")}
-                    >
-                      <Link href={model.href} aria-current={active ? "page" : undefined}>
-                        <span className="flex-1">{model.label}</span>
-                        {active ? (
-                          <Icon name="check" className="h-4 w-4 text-primary" aria-hidden="true" />
-                        ) : null}
-                      </Link>
-                    </DropdownMenuItem>
-                  )
-                })}
-              </>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </nav>
 
       {/* Baris 3 — Filter bar: Filter, flashsale, Model, Desain */}
