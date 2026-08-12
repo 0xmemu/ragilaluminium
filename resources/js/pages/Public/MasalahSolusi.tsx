@@ -281,7 +281,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       </section>
 
       <section>
-        <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+        <div className="container-page !px-5 md:!px-8 lg:!px-12">
           {items.length ? (
             <ol className="mx-auto grid max-w-3xl gap-3">
               {items.map((item, index) => {

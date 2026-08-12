@@ -180,7 +180,7 @@ export function PalingBanyakDipesanSection({
       id="paling-banyak-dipesan"
       className={cn("scroll-mt-20", className)}
     >
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionHeading
           align="left"
           size="default"

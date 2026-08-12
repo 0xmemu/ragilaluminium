@@ -506,7 +506,7 @@ export default function Catalog({
   )
 
   const listingBody = useModelToggles ? (
-    <section className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+    <section className="container-page !px-5 md:!px-8 lg:!px-12">
       {isFlash ? (
         <FlashSaleListingToolbar
           sort={filters.sort || "popular"}
@@ -539,7 +539,7 @@ export default function Catalog({
       {productGallery}
     </section>
   ) : (
-    <section className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+    <section className="container-page !px-5 md:!px-8 lg:!px-12">
       <div className="grid min-w-0 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
         <aside className="hidden lg:block">
           <div className="sticky top-28">

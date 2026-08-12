@@ -159,7 +159,7 @@ function RelatedCarousel({ products }: { products: ProductCardData[] }) {
 export function ProductRelatedSection({ products }: { products: ProductCardData[] }) {
   return (
     <section className="border-t border-border">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div className="flex items-end justify-between gap-4">
           <h2 className="min-w-0 break-words text-base font-bold text-foreground">Anda mungkin juga suka</h2>
           <Link

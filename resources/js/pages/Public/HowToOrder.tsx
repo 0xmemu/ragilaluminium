@@ -80,7 +80,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       </section>
 
       <section>
-        <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+        <div className="container-page !px-5 md:!px-8 lg:!px-12">
           <ol className="grid gap-3 sm:grid-cols-2">
             {guide.steps.map((step, index) => (
               <li
@@ -126,7 +126,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
 
       {guide.info_cards.length ? (
         <section className="border-t border-border bg-surface">
-          <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+          <div className="container-page !px-5 md:!px-8 lg:!px-12">
             <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
               <SectionHeading title="Pembayaran, pengiriman & bantuan" />
             </div>
@@ -147,7 +147,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
 
       {bodyHtml ? (
         <section className="border-t border-border">
-          <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+          <div className="container-page !px-5 md:!px-8 lg:!px-12">
             <article
               className="cms-content mx-auto max-w-3xl text-xs leading-5 text-muted-foreground"
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
@@ -156,7 +156,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       ) : (
         <section className="border-t border-border">
-          <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+          <div className="container-page !px-5 md:!px-8 lg:!px-12">
             <div className="text-xs leading-5 text-muted-foreground">
               <p>
                 <span className="font-bold text-foreground">*Catatan Ukuran Custom:</span> Kami

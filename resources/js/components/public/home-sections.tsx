@@ -73,7 +73,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
 
   return (
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           title="Pilih model produk"
           actionHref={seeMoreHref}
@@ -101,7 +101,7 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
 
   return (
     <section id="paling-banyak-dipesan" className="scroll-mt-20">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           title="Paling banyak dipesan"
           actionHref={seeMoreHref}
@@ -273,7 +273,7 @@ export function CaraPesanSection({
 
   return (
     <section id="cara-pesan" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           title={title}
           actionHref={routeUrl("cara-pemesanan")}
@@ -364,7 +364,7 @@ export function HasilPemasanganSection({
 
   return (
     <section id="hasil-pemasangan" className="scroll-mt-20">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           actionHref={seeMoreHref}
@@ -389,7 +389,7 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
 
   return (
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           title="Apa kata pelanggan kami"
           actionHref={seeMoreHref}
@@ -419,7 +419,7 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <SectionTitle
           title="Ulasan pelanggan di website"
           actionHref={seeMoreHref}
@@ -477,7 +477,7 @@ export function KamiBantuSection() {
 
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-muted/30">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary sm:text-sm">
             Masih bingung?

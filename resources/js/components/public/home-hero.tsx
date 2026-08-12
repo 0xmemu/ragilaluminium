@@ -285,7 +285,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
 
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
-      <div className="container-page !px-5 py-5 md:!px-8 md:py-8 lg:!px-12 lg:py-12">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div
           ref={surfaceRef}
           onMouseEnter={() => setPaused(true)}
