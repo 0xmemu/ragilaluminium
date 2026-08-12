@@ -110,6 +110,16 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
+### 2026-08-12 — Homepage: strip marquee full-width + timing carousel promo (5s / 350ms)
+
+**Done (commit setelah batch ini):**
+- Strip marquee promo di atas banner -> FULL-WIDTH edge-to-edge: dipindah keluar dari container ber-padding (jadi sibling langsung section, bukan full-bleed hack), hapus rounded-md, tanpa padding/margin horizontal, teks marquee tetap berjalan (announcement-marquee). Tidak menyebabkan horizontal overflow (overflow-hidden).
+- Timing carousel promo: autoplay 5 detik per slide (sebelumnya 6s), perpindahan pakai transform translateX dengan transisi 350ms (duration-[350ms], ease-emphasized = cubic-bezier), loop tak terbatas, tanpa animasi terus-menerus.
+- Timer autoplay di-reset tiap navigasi manual (klik dot/panah) supaya slide tidak langsung berpindah lagi setelah interaksi.
+- Pagination dot aktif -> merah (bg-primary, w-3.5), nonaktif bg-primary/40 (w-1.5) — kontras dengan strip merah/banner. Pause saat hover/focus tetap, hormati prefers-reduced-motion.
+
+**File diubah:** resources/js/components/public/home-hero.tsx.
+
 ### 2026-08-12 — Homepage: navbar kategori model-only, banner 10 slot polos, marquee berjalan
 
 **Done (commit setelah batch ini):**

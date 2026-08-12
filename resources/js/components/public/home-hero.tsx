@@ -50,15 +50,15 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
 }
 
 /**
- * Marquee berjalan di atas banner promo — men-scroll teks pengumuman admin
- * (announcements), fallback ke poin layanan agar selalu terisi.
+ * Marquee berjalan di atas banner promo — strip merah full-width (edge-to-edge,
+ * tanpa rounded dan tanpa padding horizontal). Konten digandakan agar animasi
+ * translate -50% terlihat seamless.
  */
 function PromoMarquee() {
-  // Konten digandakan agar animasi translate -50% terlihat seamless.
   const doubled = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS]
 
   return (
-    <div className="relative overflow-hidden rounded-md bg-primary text-white">
+    <div className="relative w-full overflow-hidden bg-primary text-white">
       <div
         className="announcement-marquee flex w-max items-center py-2"
         style={{ animationDuration: `${Math.max(20, MARQUEE_ITEMS.length * 6)}s` }}
@@ -117,10 +117,13 @@ function HeroSlideContent({
   return <HeroPromoCard slide={slide} />
 }
 
-/** Section banner homepage: marquee berjalan di atas + carousel slot banner. */
+/** Section banner homepage: marquee full-width di atas + carousel slot banner. */
 export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const [paused, setPaused] = React.useState(false)
+  // Reset timer tiap kali user berpindah manual (klik dot/panah), supaya slide
+  // tidak langsung berpindah lagi setelah interaksi.
+  const [interactionKey, setInteractionKey] = React.useState(0)
   // Banyaknya slot selalu ≥ 1 (backend memastikan minimal 10).
   const total = Math.max(slides.length, 1)
   const visibleIndex = Math.min(activeIndex, total - 1)
@@ -131,18 +134,20 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
     dragged: boolean
   }>({ pointerId: null, startX: 0, dragged: false })
 
+  // Autoplay: tiap promo diam 5 detik, lalu bergeser cepat (350ms) ke berikutnya.
   React.useEffect(() => {
     if (total < 2 || paused) return
     const media = window.matchMedia("(prefers-reduced-motion: reduce)")
     if (media.matches) return
     const id = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % total)
-    }, 6000)
+    }, 5000)
     return () => window.clearInterval(id)
-  }, [total, paused])
+  }, [total, paused, interactionKey])
 
   function goTo(index: number) {
     setActiveIndex((index + total) % total)
+    setInteractionKey((key) => key + 1)
   }
 
   // Swipe from middle of promo card / CTA (pointer when available, else touch).
@@ -264,23 +269,24 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
 
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
-        {/* Marquee berjalan di atas banner promo. */}
-        <PromoMarquee />
+      {/* Strip marquee full-width: keluar dari container ber-padding, tanpa rounded. */}
+      <PromoMarquee />
 
+      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
         <div
           ref={surfaceRef}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onFocusCapture={() => setPaused(true)}
           onBlurCapture={() => setPaused(false)}
-          className="relative mt-[10px] w-full overflow-hidden [touch-action:pan-x_pan-y]"
+          className="relative w-full overflow-hidden [touch-action:pan-x_pan-y]"
         >
           <div
             className={cn(
               // Mobile: strip FIX 134px; sm+ mengikuti konten dengan tinggi minimal.
               "flex h-[134px] w-full items-stretch sm:h-auto sm:min-h-[132px] lg:min-h-[148px]",
-              !reduceMotion && "transition-transform duration-500 ease-emphasized",
+              // Perpindahan antar-promo cepat (350ms) dengan transform translateX.
+              !reduceMotion && "transition-transform duration-[350ms] ease-emphasized",
             )}
             style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
           >
@@ -332,7 +338,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                     <span
                       className={cn(
                         "h-1.5 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
-                        index === visibleIndex ? "w-3.5 bg-foreground" : "w-1.5 bg-foreground/40",
+                        index === visibleIndex ? "w-3.5 bg-primary" : "w-1.5 bg-primary/40",
                       )}
                     />
                   </button>
