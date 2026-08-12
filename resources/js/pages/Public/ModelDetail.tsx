@@ -270,10 +270,10 @@ export default function ModelDetail({
         </div>
       </section>
 
-      <section className="pb-4 lg:pb-6">
+      <section className="py-5">
         <div className="container-page !px-5 md:!px-8 lg:!px-12">
           <div className="md:grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-start md:gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
-            <div className="relative mx-auto aspect-square w-full max-w-[22rem] overflow-hidden bg-surface-muted md:mx-0 md:max-w-none">
+            <div className="relative aspect-square w-full overflow-hidden bg-surface-muted">
               <ResponsiveImage
                 src={model.image}
                 alt={model.title}
