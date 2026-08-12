@@ -1,4 +1,5 @@
 import { Link } from "@inertiajs/react"
+import { SealCheck, ShieldCheck, Tag, Truck } from "@phosphor-icons/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
@@ -7,12 +8,13 @@ import { cn } from "@/lib/utils"
 import type { PromoSlide } from "@/types"
 
 // Poin layanan yang ditampilkan satu per satu di slider promo (tidak menampilkan
-// ulang announcement yang sudah ada di bar paling atas).
-const PROMO_ITEMS = [
-  "Bayar di tempat (COD)",
-  "Garansi 100%",
-  "Kirim ke seluruh Indonesia",
-  "Harga pabrik langsung",
+// ulang announcement yang sudah ada di bar paling atas). Gaya mengikuti bar promo
+// header: ikon Phosphor + copy marketing.
+const PROMO_ITEMS: { icon: React.ElementType; text: string }[] = [
+  { icon: SealCheck, text: "Bayar di tempat (COD) — aman & mudah" },
+  { icon: ShieldCheck, text: "Garansi 100% resmi pabrik" },
+  { icon: Truck, text: "Kirim ke seluruh Indonesia" },
+  { icon: Tag, text: "Harga pabrik langsung, tanpa perantara" },
 ]
 
 /** Banner promosi solid — persis contoh: 3 baris teks rata kiri (baris kecil di atas,
@@ -127,15 +129,15 @@ function PromoSlider() {
         )}
         style={{ transform: `translateX(-${activeIndex * 100}%)` }}
       >
-        {items.map((text, index) => (
+        {items.map((item, index) => (
           <div
-            key={`${text}-${index}`}
+            key={`${item.text}-${index}`}
             className="flex h-full w-full shrink-0 basis-full items-center justify-start px-4"
             aria-hidden={index !== activeIndex ? "true" : undefined}
           >
-            <span className="flex items-center gap-2 whitespace-nowrap text-xs font-light tracking-tight">
-              <span className="size-1.5 rounded-full bg-white/70" aria-hidden="true" />
-              {text}
+            <span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold leading-none tracking-tight">
+              <item.icon weight="fill" className="size-3.5 shrink-0 text-white/90" aria-hidden />
+              {item.text}
             </span>
           </div>
         ))}
