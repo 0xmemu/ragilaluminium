@@ -110,8 +110,9 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status (2026-08-12)
 
-- Polish halaman detail produk selesai & ter-commit `e492484`: accordion tertutup default, bintang #F5A623, ulasan tanpa bg & label source, tombol "Lihat semua ulasan" teal, clearance sticky bottom bar di "Anda mungkin juga suka", padding thumbnail 20px, tipografi "lihat semua" seragam. Live di ra.333labs.tech.
-- Perubahan batch ini dikerjakan langsung di repo VPS sesuai WORKFLOW CONTRACT. Working tree masih ada modif agent lain (app.css, home-hero, product-card, types/index, app.blade.php, docs/ZALORA-BEM-VISUAL-SYSTEM.md) — belum di-commit, bukan bagian batch ini.
+- Batch polish detail produk #2 selesai (commit berikutnya): "Anda mungkin juga suka" menjadi GRID rekomendasi (bukan carousel), heading row items-center, clearance sticky bottom = tinggi CTA + 1rem (gap ~19px), ulasan tanpa "Oleh" + render foto ulasan + lightbox, warning "Pilih varian" hanya muncul setelah klik Beli/Keranjang tanpa memilih, chip varian lebih kecil (min-h-8 px-2.5), label "Pilih varian" diganti info varian terpilih + stok, subtitle model di bawah nama produk dihapus (info tetap di accordion "Informasi produk"). Terverifikasi live di ra.333labs.tech.
+- Riwayat: `e492484` polish PDP #1 (accordion default tertutup, bintang #F5A623, ulasan tanpa bg & label source, tombol ulasan teal, tipografi lihat semua seragam); `708c0bd` product card BEM visual system (wishlist, stok habis, flash badge) + 5 file agent lain.
+- Working tree saat ini: 3 file modif batch ini (product-buy-box, product-info-sections, product-related-section) — di-commit bersama update status ini. docs/ZALORA-BEM-VISUAL-SYSTEM.md masih untracked (milik agent lain, belum di-commit).
 - Folder lokal `D:/website_5.0` (admin-orders-work dll) adalah SNAPSHOT LAMA (2026-08-10/11) — JANGAN dijadikan sumber, JANGAN di-scp ke server (akan menurunkan versi). Selalu edit di repo VPS ini.
 
 ## Current status (2026-08-11)

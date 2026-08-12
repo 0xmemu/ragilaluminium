@@ -54,6 +54,13 @@ export function ProductBuyBox({
 
   const ctaDisabled = (selectedVariant?.stock != null && selectedVariant.stock < 1) || form.processing
 
+  // Label varian terpilih dari sumbu yang dipilih, mis. "Putih / Kaca Bening".
+  const selectedVariantLabel =
+    axes
+      .map((axis) => selections[axis.name])
+      .filter(Boolean)
+      .join(" / ") || selectedVariant?.label || ""
+
   return (
     <>
       {/* Nama produk + varian terpilih */}
@@ -66,22 +73,14 @@ export function ProductBuyBox({
         ) : null}
       </h1>
 
-      {/* Model produk + rating — satu baris */}
-      <div className="mt-0.5 flex items-center justify-between gap-2">
-        <Link
-          href={product.model_href ?? routeUrl("catalog.index")}
-          className="inline-block break-words text-xs leading-snug text-muted-foreground hover:text-primary"
-        >
-          {product.subtitle}
-        </Link>
-        {averageRating !== null ? (
-          <div className="inline-flex shrink-0 items-center gap-0.5 text-xs">
-            <span className="font-semibold text-foreground">{ratingLabel}</span>
-            <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
-            <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
-          </div>
-        ) : null}
-      </div>
+      {/* Rating produk */}
+      {averageRating !== null ? (
+        <div className="mt-0.5 inline-flex items-center gap-0.5 text-xs">
+          <span className="font-semibold text-foreground">{ratingLabel}</span>
+          <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
+          <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
+        </div>
+      ) : null}
 
       {/* Harga + promo */}
       <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -115,8 +114,19 @@ export function ProductBuyBox({
         className="mt-3 space-y-4"
       >
         <div ref={variantSectionRef} className="space-y-4">
-          {axes.length > 0 ? (
-            <p className="mb-2 text-xs text-muted-foreground">Pilih varian</p>
+          {selectedVariant ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{selectedVariantLabel}</span>
+              <span className="mx-1">·</span>
+              <span
+                className={cn(
+                  "font-semibold",
+                  selectedVariant.stock > 0 ? "text-success" : "text-destructive",
+                )}
+              >
+                {selectedVariant.stock > 0 ? `Stok ${selectedVariant.stock}` : "Habis"}
+              </span>
+            </p>
           ) : null}
           {axes.map((axis) => (
             <fieldset key={axis.name} className="min-w-0">
@@ -134,7 +144,7 @@ export function ProductBuyBox({
                     key={option}
                     onClick={() => chooseAxis(axis.name, option)}
                     className={cn(
-                      "min-h-11 shrink-0 rounded-full border px-3 text-xs font-semibold transition sm:min-h-8",
+                      "min-h-8 shrink-0 rounded-full border px-2.5 text-xs font-semibold transition",
                       variantError && !selections[axis.name]
                         ? "border-destructive animate-pulse"
                         : selections[axis.name] === option
@@ -151,25 +161,12 @@ export function ProductBuyBox({
           ))}
         </div>
 
-        {selectedVariant ? (
-          <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-            <span className="min-w-0 truncate text-muted-foreground">
-              {selectedVariant.dimension_label ?? selectedVariant.label}
-            </span>
-            <span
-              className={cn(
-                "shrink-0 font-semibold",
-                selectedVariant.stock > 0 ? "text-success" : "text-destructive",
-              )}
-            >
-              {selectedVariant.stock > 0 ? `Stok ${selectedVariant.stock}` : "Habis"}
-            </span>
-          </div>
-        ) : purchase.variants.length ? (
+        {variantError && !selectedVariant && purchase.variants.length ? (
           <Alert className="mt-3" tone="warning" title="Pilih varian" />
-        ) : (
+        ) : null}
+        {!purchase.variants.length ? (
           <Alert className="mt-3" tone="warning" title="Varian belum tersedia" />
-        )}
+        ) : null}
 
         {form.errors.variant_sku || form.errors.parent_sku || form.errors.quantity ? (
           <Alert className="mt-4" tone="danger" title="Produk belum dapat ditambahkan">

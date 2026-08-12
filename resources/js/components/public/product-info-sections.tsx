@@ -2,6 +2,7 @@ import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -88,6 +89,8 @@ export function ProductInfoSections({
   ratingLabel: string | null
   ratedReviews: Testimonial[]
 }) {
+  const [previewReview, setPreviewReview] = React.useState<Testimonial | null>(null)
+
   const visibleAttributes = attributes.filter(
     (a) => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name),
   )
@@ -143,7 +146,7 @@ export function ProductInfoSections({
 
       {installationMedia.length ? (
         <section id="hasil-pemasangan" className="mt-4 scroll-mt-28">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
             <Link
               href={routeUrl("installation.show", { parent_sku: product.parent_sku })}
@@ -187,20 +190,31 @@ export function ProductInfoSections({
           <ul className="mt-4 divide-y divide-border border-t border-border">
             {reviews.slice(0, 2).map((review) => (
               <li key={review.id} className="py-4">
-                <div className="flex items-center justify-between gap-4">
-                  {(review.rating ?? 0) > 0 ? (
-                    <StarRow value={review.rating ?? 0} size="size-3.5" />
-                  ) : (
-                    <span aria-hidden="true" />
-                  )}
-                </div>
+                {(review.rating ?? 0) > 0 ? (
+                  <StarRow value={review.rating ?? 0} size="size-3.5" />
+                ) : null}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Oleh {review.customer_name}
+                  {review.customer_name}
                   {review.location ? ` · ${review.location}` : ""}
                 </p>
                 <p className="mt-2 max-w-full break-words text-xs leading-5 text-foreground">
                   {review.message}
                 </p>
+                {review.image_url ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewReview(review)}
+                    className="group/img relative mt-3 block h-20 w-full overflow-hidden rounded-sm bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label={`Perbesar foto dari ${review.customer_name}`}
+                  >
+                    <ResponsiveImage
+                      src={review.image_url}
+                      alt={`Foto ulasan ${review.customer_name}`}
+                      wrapperClassName="size-full bg-surface-muted"
+                      className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+                    />
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -220,6 +234,27 @@ export function ProductInfoSections({
           </Link>
         ) : null}
       </section>
+
+      <Dialog
+        open={previewReview !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewReview(null)
+        }}
+      >
+        <DialogContent
+          className="!fixed !inset-0 !left-0 !top-0 z-modal !flex !h-dvh !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !gap-0 !overflow-hidden !rounded-none !border-0 !bg-black/95 !p-0 shadow-none"
+          aria-describedby={undefined}
+        >
+          <DialogTitle className="sr-only">
+            Foto ulasan dari {previewReview?.customer_name ?? "pelanggan"}
+          </DialogTitle>
+          <img
+            src={previewReview?.image_url ?? undefined}
+            alt={`Foto ulasan ${previewReview?.customer_name ?? ""}`}
+            className="mx-auto max-h-[88dvh] w-auto max-w-full object-contain"
+          />
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
