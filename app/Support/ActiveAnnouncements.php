@@ -174,7 +174,7 @@ class ActiveAnnouncements
             if (($slide['source'] ?? null) === 'automatic') {
                 continue;
             }
-            if (($slide['layout'] ?? null) === 'landing') {
+            if (($slide['layout'] ?? null) === 'landing' || ($slide['layout'] ?? null) === 'placeholder') {
                 continue;
             }
 

@@ -1,13 +1,21 @@
 import { Link } from "@inertiajs/react"
 import * as React from "react"
 
-import { IntroCards } from "@/components/public/intro-cards"
 import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
 import type { PromoSlide } from "@/types"
 
-/** Banner promo solid — persis contoh: 3 baris teks rata kiri (baris kecil di atas,
+// Poin layanan yang berjalan di marquee (tidak menampilkan ulang announcement
+// yang sudah ada di bar paling atas).
+const MARQUEE_ITEMS = [
+  "Bayar di tempat (COD)",
+  "Garansi 100%",
+  "Kirim ke seluruh Indonesia",
+  "Harga pabrik langsung",
+]
+
+/** Banner promosi solid — persis contoh: 3 baris teks rata kiri (baris kecil di atas,
     headline besar bold di tengah, subteks regular di bawah). Seluruh banner adalah
     link, tanpa tombol / chip / disclaimer. */
 function HeroPromoCard({ slide }: { slide: PromoSlide }) {
@@ -41,6 +49,40 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
   )
 }
 
+/**
+ * Marquee berjalan di atas banner promo — men-scroll teks pengumuman admin
+ * (announcements), fallback ke poin layanan agar selalu terisi.
+ */
+function PromoMarquee() {
+  // Konten digandakan agar animasi translate -50% terlihat seamless.
+  const doubled = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS]
+
+  return (
+    <div className="relative overflow-hidden rounded-md bg-primary text-white">
+      <div
+        className="announcement-marquee flex w-max items-center py-2"
+        style={{ animationDuration: `${Math.max(20, MARQUEE_ITEMS.length * 6)}s` }}
+      >
+        {doubled.map((text, index) => (
+          <span
+            key={`${text}-${index}`}
+            className="mx-4 flex shrink-0 items-center gap-2 whitespace-nowrap text-xs font-semibold tracking-tight"
+          >
+            <span className="size-1.5 rounded-full bg-white/70" aria-hidden="true" />
+            {text}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Konten tiap slide:
+ * - layout "placeholder" → blok polos (slot banner yang belum diisi admin).
+ * - punya gambar → gambar full-bleed (banner buatan admin).
+ * - selain itu → kartu teks solid (fallback).
+ */
 function HeroSlideContent({
   slide,
   priority,
@@ -48,102 +90,39 @@ function HeroSlideContent({
   slide: PromoSlide
   priority: boolean
 }) {
-  const accent = slide.accent
-    ? slide.accent.startsWith("-") || !/\d/.test(slide.accent)
-      ? slide.accent
-      : `-${slide.accent}`
-    : null
-
-  if (slide.layout === "promo_card" || slide.sticker || slide.layout === "landing") {
-    return <HeroPromoCard slide={slide} />
+  if (slide.layout === "placeholder") {
+    return (
+      <div
+        className="flex h-full w-full items-center justify-center bg-secondary"
+        aria-hidden="true"
+      />
+    )
   }
 
-  return (
-    <div className="relative h-full w-full">
-      <ResponsiveImage
-        src={slide.image}
-        alt={slide.image_alt ?? slide.headline}
-        loading={priority ? "eager" : "lazy"}
-        fetchPriority={priority ? "high" : "auto"}
-        wrapperClassName="absolute inset-0"
-        className="object-cover object-center"
-      />
-      {/* Mobile: full-bleed dark scrim so white headline stays readable on bright photos. */}
-      <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/85 via-foreground/50 to-foreground/25 md:hidden"
-        aria-hidden="true"
-      />
-      {/* Desktop: left-edge scrim only — photo remains the dominant plane. */}
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 hidden w-[52%] max-w-[520px] bg-gradient-to-r from-foreground/85 to-transparent md:block"
-        aria-hidden="true"
-      />
-      <div className="absolute inset-0 flex items-center">
-        <div className="w-full max-w-[560px] px-5 py-5 text-left text-white sm:px-16 md:px-[72px] lg:px-[88px]">
-          {slide.eyebrow ? (
-            <p className="text-xs font-bold tracking-wide text-white/75 sm:text-sm">
-              {slide.eyebrow}
-            </p>
-          ) : null}
-          <p className="whitespace-pre-line font-display text-2xl font-bold leading-[1.08] tracking-[-0.02em] sm:text-4xl md:text-[3.25rem]">
-            {slide.headline}
-          </p>
-          {accent ? (
-            <p className="mt-1 font-display text-2xl font-bold leading-[1.1] tracking-tight text-primary sm:text-4xl md:text-[3rem]">
-              {accent}
-            </p>
-          ) : null}
-          {slide.subheadline ? (
-            <p className="mt-2 text-sm font-normal leading-snug text-white/90 sm:mt-3 sm:text-base md:text-lg">
-              {slide.subheadline}
-            </p>
-          ) : null}
-          <Link
-            href={slide.href}
-            className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-foreground px-6 text-sm font-semibold text-white transition hover:bg-foreground/85 sm:mt-6"
-          >
-            Belanja sekarang
-          </Link>
-          {priority ? (
-            <ul
-              className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 sm:mt-7"
-              aria-label="Keunggulan layanan"
-            >
-              <li className="inline-flex items-center gap-1.5">
-                <img
-                  src="/images/icons/cod.svg"
-                  alt=""
-                  className="h-[17px] w-[34px] shrink-0"
-                  aria-hidden="true"
-                />
-                <span className="text-xs font-medium text-white/85">Bayar di tempat</span>
-              </li>
-              <li className="inline-flex items-center gap-1.5">
-                <span className="inline-flex h-[17px] w-[34px] shrink-0 items-center justify-center" aria-hidden="true">
-                  <img src="/images/icons/hero-shield.svg" alt="" className="h-[19px] w-auto" />
-                </span>
-                <span className="text-xs font-medium text-white/85">Garansi 100%</span>
-              </li>
-              <li className="inline-flex items-center gap-1.5">
-                <span className="inline-flex h-[17px] w-[34px] shrink-0 items-center justify-center" aria-hidden="true">
-                  <img src="/images/icons/hero-truck.svg" alt="" className="h-[17px] w-auto" />
-                </span>
-                <span className="text-xs font-medium text-white/85">Kirim ke seluruh Indonesia</span>
-              </li>
-            </ul>
-          ) : null}
-        </div>
+  if (slide.image) {
+    return (
+      <div className="relative h-full w-full">
+        <ResponsiveImage
+          src={slide.image}
+          alt={slide.image_alt ?? slide.headline}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
+          wrapperClassName="absolute inset-0"
+          className="object-cover object-center"
+        />
       </div>
-    </div>
-  )
+    )
+  }
+
+  return <HeroPromoCard slide={slide} />
 }
 
-/** Menu kategori horizontal di atas banner — model produk + sub-model (desain). */
+/** Section banner homepage: marquee berjalan di atas + carousel slot banner. */
 export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const [paused, setPaused] = React.useState(false)
-  // Slide terakhir = banner 2-zona info brand (IntroCards); total selalu ≥ 1.
-  const total = slides.length + 1
+  // Banyaknya slot selalu ≥ 1 (backend memastikan minimal 10).
+  const total = Math.max(slides.length, 1)
   const visibleIndex = Math.min(activeIndex, total - 1)
   const surfaceRef = React.useRef<HTMLDivElement>(null)
   const dragRef = React.useRef<{
@@ -286,92 +265,81 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
       <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+        {/* Marquee berjalan di atas banner promo. */}
+        <PromoMarquee />
+
         <div
           ref={surfaceRef}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onFocusCapture={() => setPaused(true)}
           onBlurCapture={() => setPaused(false)}
-          className="relative w-full overflow-hidden rounded-md bg-surface-muted p-3 shadow-[0_2px_16px_hsl(var(--foreground)/0.06)] [touch-action:pan-x_pan-y]"
+          className="relative mt-[10px] w-full overflow-hidden [touch-action:pan-x_pan-y]"
         >
-          <>
-            <div
-              className={cn(
-                // Mobile: strip seragam 134px seperti banner sebelumnya (lebih tinggi di layar <360px agar teks tidak terpotong); sm+ mengikuti konten tertinggi.
-                // Mobile: strip FIX 134px (sesuai spec 398x134) — tidak diubah-ubah; sm+ mengikuti konten.
-                "flex h-[134px] w-full items-stretch sm:h-auto sm:min-h-[132px] lg:min-h-[148px]",
-                !reduceMotion && "transition-transform duration-500 ease-emphasized",
-              )}
-              style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
-            >
-              {slides.map((slide, index) => {
-                const hidden = index !== visibleIndex
-                return (
-                  <div
-                    key={slide.id}
-                    className="h-full w-full shrink-0 basis-full"
-                    aria-hidden={hidden ? "true" : undefined}
-                    // Hidden carousel slides must not keep focusable CTAs in tab order (axe aria-hidden-focus).
-                    {...(hidden ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>) : {})}
-                  >
-                    <HeroSlideContent slide={slide} priority={index === 0} />
-                  </div>
-                )
-              })}
-              <div
-                className="h-full w-full shrink-0 basis-full"
-                aria-hidden={slides.length !== visibleIndex ? "true" : undefined}
-                {...(slides.length !== visibleIndex
-                  ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>)
-                  : {})}
+          <div
+            className={cn(
+              // Mobile: strip FIX 134px; sm+ mengikuti konten dengan tinggi minimal.
+              "flex h-[134px] w-full items-stretch sm:h-auto sm:min-h-[132px] lg:min-h-[148px]",
+              !reduceMotion && "transition-transform duration-500 ease-emphasized",
+            )}
+            style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
+          >
+            {slides.map((slide, index) => {
+              const hidden = index !== visibleIndex
+              return (
+                <div
+                  key={slide.id}
+                  className="h-full w-full shrink-0 basis-full"
+                  aria-hidden={hidden ? "true" : undefined}
+                  // Hidden carousel slides must not keep focusable CTAs in tab order (axe aria-hidden-focus).
+                  {...(hidden ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>) : {})}
+                >
+                  <HeroSlideContent slide={slide} priority={index === 0} />
+                </div>
+              )
+            })}
+          </div>
+
+          {total > 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => goTo(visibleIndex - 1)}
+                aria-label="Slide sebelumnya"
+                className="absolute left-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
               >
-                {/* Satu banner utuh full-bleed — mengisi slide seperti banner merah. */}
-                <IntroCards className="h-full w-full" />
+                <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => goTo(visibleIndex + 1)}
+                aria-label="Slide berikutnya"
+                className="absolute right-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
+              >
+                <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
+              </button>
+
+              <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                {Array.from({ length: total }).map((_, index) => (
+                  <button
+                    type="button"
+                    key={index}
+                    onClick={() => goTo(index)}
+                    className="relative flex size-8 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
+                    aria-label={`Slide ${index + 1}`}
+                    aria-current={index === visibleIndex ? "true" : undefined}
+                  >
+                    <span
+                      className={cn(
+                        "h-2 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
+                        index === visibleIndex ? "w-5 bg-foreground" : "w-2 bg-foreground/40",
+                      )}
+                    />
+                  </button>
+                ))}
               </div>
-            </div>
-
-              {total > 1 ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => goTo(visibleIndex - 1)}
-                    aria-label="Slide sebelumnya"
-                    className="absolute left-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
-                  >
-                    <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goTo(visibleIndex + 1)}
-                    aria-label="Slide berikutnya"
-                    className="absolute right-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
-                  >
-                    <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
-                  </button>
-
-                  <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
-                    {Array.from({ length: total }).map((_, index) => (
-                      <button
-                        type="button"
-                        key={index}
-                        onClick={() => goTo(index)}
-                        className="relative flex size-8 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
-                        aria-label={`Slide ${index + 1}`}
-                        aria-current={index === visibleIndex ? "true" : undefined}
-                      >
-                        <span
-                          className={cn(
-                            // Ring tipis agar dot tetap terlihat di atas kartu putih (slide intro).
-                            "h-2 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
-                            index === visibleIndex ? "w-5 bg-white" : "w-2 bg-white/50",
-                          )}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : null}
-          </>
+            </>
+          ) : null}
         </div>
       </div>
     </section>

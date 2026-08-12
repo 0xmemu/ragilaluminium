@@ -329,9 +329,14 @@ class ModelProductService
                 ];
             }
 
+            $menuLabel = trim(CatalogLabels::category($row->product_category).' '.CatalogLabels::model($row->product_model));
+            if ($menuLabel === '') {
+                $menuLabel = (string) $row->name;
+            }
+
             $menu[] = [
                 'key' => $key,
-                'label' => $row->name ?: trim(CatalogLabels::category($row->product_category).' '.CatalogLabels::model($row->product_model)),
+                'label' => $menuLabel,
                 'href' => $href,
                 'category' => $row->product_category,
                 'model' => $row->product_model,

@@ -44,10 +44,29 @@ class HomepagePromotions
      */
     public static function slides(): array
     {
-        // Section promo = banner landing (konten dikelola di sini) + banner
-        // manual dari admin (cms_banners). Slide otomatis dari produk dimatikan
-        // agar tidak ada konten lama yang ikut berputar.
-        return [self::landingSlide(), ...self::manualSlides()];
+        // 10 slot banner: banner manual dari admin (cms_banners) tampil lebih
+        // dulu, sisanya placeholder polos sampai total 10. Admin tinggal mengisi
+        // gambar banner sendiri untuk tiap slot.
+        $slides = self::manualSlides();
+        $count = count($slides);
+        for ($i = $count; $i < 10; $i++) {
+            $slides[] = [
+                'id' => -3000 - $i,
+                'source' => 'placeholder',
+                'layout' => 'placeholder',
+                'eyebrow' => null,
+                'headline' => '',
+                'subheadline' => null,
+                'accent' => null,
+                'image' => null,
+                'image_alt' => 'Banner promosi',
+                'href' => route('catalog.index', absolute: false),
+                'disclaimer' => null,
+                'sticker' => false,
+            ];
+        }
+
+        return array_slice($slides, 0, 10);
     }
 
     /**

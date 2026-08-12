@@ -108,7 +108,24 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 - Excel import must NOT implement `WithEvents` (500s) — route through `App\Jobs\ProcessCatalogImport` (holds only `$jobId`/`$storedPath`).
 - SQLite test quirk: `PerformanceMetric.metric_date` cast `date` tersimpan sebagai `Y-m-d 00:00:00` di SQLite — `whereBetween("metric_date", [..toDateString()..])` TIDAK match row cast; test yang butuh metric harus insert via `DB::table(...)->insert([... "metric_date" => now()->toDateString()])` (sudah dipraktikkan di StorePerformanceContractTest:166). Produksi MySQL aman (kolom date men-trim time). Bukan bug runtime.
 
-## Current status (2026-08-12)
+## Current status
+
+### 2026-08-12 — Homepage: navbar kategori model-only, banner 10 slot polos, marquee berjalan
+
+**Done (commit setelah batch ini):**
+- Navbar kategori homepage -> hanya pill model (Boven Jungkit, Boven Sliding, Jendela Swing, dst; 8 model), tanpa link desain Ornamen/Polos (masuk dalam 1 model, tampil bersamaan di halaman model). Label pendek dari CatalogLabels (category + model), bukan nama CMS. Gaya pill = contoh nav katalog: frame abu-abu (border-border bg-surface) / hitam saat aktif (bg-foreground), font 12px, padding frame 12px, plus dropdown "Kategori lain" (kategori + model).
+- Banner promo homepage -> 10 slot polos (placeholder bg-secondary, tanpa konten). Admin tinggal isi gambar banner sendiri via CMS Banner (cms_banners) - slide manual tampil lebih dulu, placeholder mengisi sampai 10. Ukuran = lebar container (padding halaman !px-5 md:!px-8 lg:!px-12 py-[10px]); kartu p-3/rounded lama dihapus.
+- Marquee berjalan (announcement-marquee) di atas banner promo - men-scroll poin layanan (COD, garansi, kirim, harga pabrik). Konten statis, tidak menduplikasi AnnouncementBar.
+- Landing slide teks ("Diskon 20%", IntroCards) dihapus dari carousel hero.
+
+**File diubah:** app/Services/ModelProductService.php, app/Support/HomepagePromotions.php, app/Support/ActiveAnnouncements.php, resources/js/components/public/category-menu.tsx, resources/js/components/public/home-hero.tsx.
+
+**Catatan:** slide placeholder di-skip dari ticker announcement (ActiveAnnouncements). Tombol "Kategori lain" = dropdown; pill model pakai text-xs px-3.
+
+### 2026-08-12 — Sebelumnya
+- PDP: rating ke atas "pilih varian", font nama produk body, sentence case, padding container 10px (revert PDP), ulasan multi-foto + badge + lightbox swipe, varian & stok sebaris rata kanan, label 12px bold.
+- Kontrak workflow (AGENTS.md): edit langsung di repo VPS, commit per batch.
+ (2026-08-12)
 
 - Batch polish detail produk #2 selesai (86a1294): grid rekomendasi, ulasan berfoto + lightbox, warning varian kondisional, chip varian kecil, clearance sticky bottom ~19px.
 - Batch polish #3 selesai (fc9b4ed + 59fbd80): label "Pilih varian" 14px bold + varian&stok sebaris rata kanan (font light), heading "Alasan harus belanja di Ragil Aluminium", rating frame rounded kanan sejajar baris 1, judul split otomatis ukuran/model via regex.
