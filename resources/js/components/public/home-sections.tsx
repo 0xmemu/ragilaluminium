@@ -47,7 +47,7 @@ function SectionTitle({
       tone={tone}
       fitHeading={false}
       headingClassName="!text-[18px]"
-      className="mb-3 gap-1 sm:mb-4"
+      className="gap-1"
       title={title}
       action={
         actionHref ? (
