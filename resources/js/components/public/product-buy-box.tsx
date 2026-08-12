@@ -54,6 +54,13 @@ export function ProductBuyBox({
 
   const ctaDisabled = (selectedVariant?.stock != null && selectedVariant.stock < 1) || form.processing
 
+  // Split nama produk otomatis: baris 1 = ukuran ("Tinggi …cm × Panjang …cm"), baris 2 = model.
+  const dimMatch = title.match(
+    /^(Custom\s+)?(Tinggi\s+[\d.,]+\s*cm\s*[x×]\s*Panjang\s+[\d.,]+\s*cm(?:\s*\(\s*[\d.,]+\s*[x×]\s*[\d.,]+\s*\))?)\s*(.*)$/i,
+  )
+  const titleLine1 = dimMatch ? `${dimMatch[1] ?? ""}${dimMatch[2]}`.trim() : title
+  const titleLine2 = dimMatch?.[3]?.trim() ?? ""
+
   // Label varian terpilih dari sumbu yang dipilih, mis. "Putih / Kaca Bening".
   const selectedVariantLabel =
     axes
@@ -63,24 +70,20 @@ export function ProductBuyBox({
 
   return (
     <>
-      {/* Nama produk + varian terpilih */}
-      <h1 className="text-base font-bold tracking-tight text-foreground">
-        {title}
-        {selectedVariant?.label ? (
-          <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-            {selectedVariant.label}
-          </span>
+      {/* Nama produk — baris 1 ukuran, baris 2 model (split otomatis). Rating frame rata kanan sejajar baris 1. */}
+      <div className="mt-0.5 flex items-start justify-between gap-3">
+        <h1 className="min-w-0 flex-1 text-base font-bold tracking-tight text-foreground">
+          <span className="block">{titleLine1}</span>
+          {titleLine2 ? <span className="block">{titleLine2}</span> : null}
+        </h1>
+        {averageRating !== null ? (
+          <div className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border px-2.5 py-1 text-xs">
+            <span className="font-semibold text-foreground">{ratingLabel}</span>
+            <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
+            <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
+          </div>
         ) : null}
-      </h1>
-
-      {/* Rating produk */}
-      {averageRating !== null ? (
-        <div className="mt-0.5 inline-flex items-center gap-0.5 text-xs">
-          <span className="font-semibold text-foreground">{ratingLabel}</span>
-          <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
-          <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
-        </div>
-      ) : null}
+      </div>
 
       {/* Harga + promo */}
       <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -114,19 +117,8 @@ export function ProductBuyBox({
         className="mt-3 space-y-4"
       >
         <div ref={variantSectionRef} className="space-y-4">
-          {selectedVariant ? (
-            <p className="mb-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{selectedVariantLabel}</span>
-              <span className="mx-1">·</span>
-              <span
-                className={cn(
-                  "font-semibold",
-                  selectedVariant.stock > 0 ? "text-success" : "text-destructive",
-                )}
-              >
-                {selectedVariant.stock > 0 ? `Stok ${selectedVariant.stock}` : "Habis"}
-              </span>
-            </p>
+          {axes.length > 0 ? (
+            <p className="mb-2 text-sm font-bold text-foreground">Pilih varian</p>
           ) : null}
           {axes.map((axis) => (
             <fieldset key={axis.name} className="min-w-0">
@@ -161,6 +153,19 @@ export function ProductBuyBox({
           ))}
         </div>
 
+        {selectedVariant ? (
+          <div className="mt-3 flex items-center justify-between gap-2 text-xs font-light text-muted-foreground">
+            <span className="min-w-0 truncate">{selectedVariantLabel}</span>
+            <span
+              className={cn(
+                "shrink-0 font-light",
+                selectedVariant.stock > 0 ? "text-success" : "text-destructive",
+              )}
+            >
+              {selectedVariant.stock > 0 ? `Stok ${selectedVariant.stock}` : "Habis"}
+            </span>
+          </div>
+        ) : null}
         {variantError && !selectedVariant && purchase.variants.length ? (
           <Alert className="mt-3" tone="warning" title="Pilih varian" />
         ) : null}
@@ -271,7 +276,7 @@ export function ProductBuyBox({
       {/* Benefit belanja */}
       <div className="mt-4">
         <h2 className="truncate text-sm font-bold text-foreground">
-          Alasan belanja di Ragil Aluminium
+          Alasan harus belanja di Ragil Aluminium
         </h2>
         <div className="mt-3 flex gap-2.5">
           {benefits.map((benefit, index) => (
