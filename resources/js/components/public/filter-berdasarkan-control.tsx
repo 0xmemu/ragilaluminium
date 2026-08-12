@@ -59,14 +59,14 @@ export function SortOptionRows({
         "overflow-hidden rounded-xl border border-[#DEDEDE] bg-surface divide-y divide-[#ECECEC]",
         className,
       )}
-      role="listbox"
+      role="group"
       aria-label="Urutkan"
     >
       {options.map((option) => {
         const selected = option.value === value
 
         return (
-          <li key={option.value || "__default"} role="option" aria-selected={selected}>
+          <li key={option.value || "__default"}>
             <button
               type="button"
               onClick={() => onChange(option.value)}

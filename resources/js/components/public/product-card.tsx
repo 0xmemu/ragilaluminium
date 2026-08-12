@@ -56,7 +56,7 @@ function FitOneLine({
 
 function CodBadge({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex shrink-0 items-center", className)} aria-label="COD tersedia">
+    <span className={cn("inline-flex shrink-0 items-center", className)}>
       {/* Single composite SVG — avoid layered scale (subpixel breaks thin strokes). ~lightning height. */}
       <img
         src="/images/icons/cod.svg"

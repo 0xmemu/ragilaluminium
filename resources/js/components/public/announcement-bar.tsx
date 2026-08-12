@@ -90,9 +90,11 @@ export function AnnouncementBar({ className }: { className?: string }) {
   // Slide otomatis antar beberapa pengumuman (jika diaktifkan admin).
   React.useEffect(() => {
     if (!slide.enabled || items.length < 2 || dismissed) return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (media.matches) return
     const timer = window.setInterval(() => {
       setIndex((prev) => (prev + 1) % items.length)
-    }, Math.max(2000, slide.interval * 1000))
+    }, Math.max(4000, slide.interval * 1000))
     return () => window.clearInterval(timer)
   }, [slide.enabled, slide.interval, items.length, dismissed, fingerprint])
 
@@ -116,7 +118,7 @@ export function AnnouncementBar({ className }: { className?: string }) {
         type="button"
         onClick={dismiss}
         aria-label="Tutup bar promo"
-        className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-white/90 transition hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-white/90 transition before:absolute before:-inset-2.5 before:content-[''] hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
       >
         <X weight="bold" className="size-4" aria-hidden />
       </button>

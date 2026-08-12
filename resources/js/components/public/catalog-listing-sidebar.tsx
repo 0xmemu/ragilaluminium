@@ -42,7 +42,7 @@ export function DesignFilterOptions({
   return (
     <fieldset className="space-y-1">
       <legend className="sr-only">Filter desain</legend>
-      <label className="flex min-h-10 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent">
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent">
         <input
           type="radio"
           name={name}
@@ -56,7 +56,7 @@ export function DesignFilterOptions({
       {designs.map((design) => (
         <label
           key={design.value}
-          className="flex min-h-10 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent"
+          className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent"
         >
           <input
             type="radio"
@@ -87,7 +87,7 @@ export function ModelFilterOptions({
   return (
     <fieldset className="space-y-1">
       <legend className="sr-only">Filter model bukaan</legend>
-      <label className="flex min-h-10 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent">
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent">
         <input
           type="radio"
           name={name}
@@ -101,7 +101,7 @@ export function ModelFilterOptions({
       {models.map((model) => (
         <label
           key={model.value}
-          className="flex min-h-10 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent"
+          className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent"
         >
           <input
             type="radio"
@@ -124,7 +124,7 @@ export function CategoryFilterNav({
   currentHref?: string | null
 }) {
   return (
-    <nav aria-label="Kategori produk" className="flex flex-col">
+    <nav aria-label="Kategori" className="flex flex-col">
       {CATALOG_CATEGORY_LINKS.map((link) => {
         const active = currentHref === link.href
 

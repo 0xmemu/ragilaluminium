@@ -1,6 +1,6 @@
 import { Head } from "@inertiajs/react"
 
-import type { CategoryMenuItem } from "@/components/public/category-menu"
+import { CategoryMenu, type CategoryMenuItem } from "@/components/public/category-menu"
 import { HomeHero } from "@/components/public/home-hero"
 import {
   ApaKataPelangganSection,
@@ -45,6 +45,7 @@ export default function Home({
   modelCards = [],
   featuredProducts = [],
   popularProducts = [],
+  categoryMenu = [],
   testimonials = [],
   marketplaceTestimonials,
   websiteTestimonials,
@@ -72,6 +73,10 @@ export default function Home({
   function renderManagedSection(key: string) {
     if (!isSectionEnabled(key)) return null
 
+    if (key === "category_menu") {
+      return categoryMenu.length ? <CategoryMenu items={categoryMenu} /> : null
+    }
+
     if (key === "banner") {
       return <HomeHero key="banner" slides={promoSlides} />
     }
@@ -92,6 +97,7 @@ export default function Home({
 
       <h1 className="sr-only">Bukaan presisi untuk rumah yang terasa lebih lega.</h1>
 
+      {renderManagedSection("category_menu")}
       {bannerSections.map((section) => renderManagedSection(section.key))}
       <PilihModelProdukSection models={modelCards} />
       <PalingBanyakDipesanSection products={popular} />

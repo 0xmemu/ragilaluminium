@@ -28,7 +28,7 @@ function FooterLinks({ column }: { column?: FooterColumn }) {
           <li key={link.label}>
             <Link
               href={footerHref(link)}
-              className="inline-flex min-h-8 items-center text-sm text-white/80 transition hover:text-white"
+              className="inline-flex min-h-8 items-center text-sm text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               {link.label}
             </Link>
@@ -145,7 +145,7 @@ export function PublicFooter({ className }: { className?: string }) {
                 <li key={link.label}>
                   <Link
                     href={footerHref(link)}
-                    className="inline-flex min-h-8 items-center text-white/80 transition hover:text-white"
+                    className="inline-flex min-h-8 items-center text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     {link.label}
                   </Link>

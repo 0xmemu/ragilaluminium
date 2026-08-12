@@ -50,7 +50,7 @@ export function CategoryMenu({
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition",
+                    "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     active
                       ? "border-foreground bg-foreground text-background shadow-sm"
                       : "border-border bg-surface text-foreground hover:border-foreground/50 hover:text-foreground",
@@ -62,7 +62,7 @@ export function CategoryMenu({
                   <Link
                     key={sub.href}
                     href={sub.href}
-                    className="inline-flex min-h-9 shrink-0 items-center whitespace-nowrap px-2.5 text-[12px] font-medium text-muted-foreground transition hover:text-foreground hover:underline"
+                    className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap px-2.5 text-[12px] font-medium text-muted-foreground transition hover:underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     {sub.label}
                   </Link>

@@ -22,6 +22,12 @@ export function FlyingCart() {
       const target = document.querySelector<HTMLElement>("[data-cart-target]")
       if (!detail.image || !target) return
 
+      // Reduced motion: lewati animasi terbang; badge cukup berdenyut.
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        dispatchCartBump()
+        return
+      }
+
       const targetRect = target.getBoundingClientRect()
       setFly({
         image: detail.image,

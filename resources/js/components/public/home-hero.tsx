@@ -100,7 +100,7 @@ function HeroSlideContent({
           ) : null}
           <Link
             href={slide.href}
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-foreground px-6 text-sm font-semibold text-white transition hover:bg-foreground/85 sm:mt-6"
+            className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-foreground px-6 text-sm font-semibold text-white transition hover:bg-foreground/85 sm:mt-6"
           >
             Belanja sekarang
           </Link>
@@ -141,6 +141,7 @@ function HeroSlideContent({
 /** Menu kategori horizontal di atas banner — model produk + sub-model (desain). */
 export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
   // Slide terakhir = banner 2-zona info brand (IntroCards); total selalu ≥ 1.
   const total = slides.length + 1
   const visibleIndex = Math.min(activeIndex, total - 1)
@@ -152,14 +153,14 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   }>({ pointerId: null, startX: 0, dragged: false })
 
   React.useEffect(() => {
-    if (total < 2) return
+    if (total < 2 || paused) return
     const media = window.matchMedia("(prefers-reduced-motion: reduce)")
     if (media.matches) return
     const id = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % total)
     }, 6000)
     return () => window.clearInterval(id)
-  }, [total, visibleIndex])
+  }, [total, paused])
 
   function goTo(index: number) {
     setActiveIndex((index + total) % total)
@@ -287,6 +288,10 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
       <div className="container-page !px-5 md:!px-8 lg:!px-12">
         <div
           ref={surfaceRef}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocusCapture={() => setPaused(true)}
+          onBlurCapture={() => setPaused(false)}
           className="relative w-full overflow-hidden rounded-md bg-surface-muted shadow-[0_2px_16px_hsl(var(--foreground)/0.06)] [touch-action:pan-x_pan-y]"
         >
           <>
@@ -298,7 +303,6 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                 !reduceMotion && "transition-transform duration-500 ease-emphasized",
               )}
               style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
-              aria-live="polite"
             >
               {slides.map((slide, index) => {
                 const hidden = index !== visibleIndex
@@ -351,7 +355,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                         type="button"
                         key={index}
                         onClick={() => goTo(index)}
-                        className="flex size-8 items-center justify-center rounded-full transition-all"
+                        className="relative flex size-8 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
                         aria-label={`Slide ${index + 1}`}
                         aria-current={index === visibleIndex ? "true" : undefined}
                       >

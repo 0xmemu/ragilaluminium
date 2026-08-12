@@ -29,7 +29,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { ProductGridSkeleton } from "@/components/ui/skeleton"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
+import { routeUrl, withQuery } from "@/lib/routes"
 import type {
   FlashSalePeriod,
   Pagination as PaginationData,
@@ -310,7 +310,9 @@ export default function Catalog({
     priceMin: filters.priceMin ? Number(filters.priceMin) : null,
     priceMax: filters.priceMax ? Number(filters.priceMax) : null,
     currentHref: listingAllProducts
-      ? routeUrl("catalog.all")
+      ? activeSort === "popular"
+        ? withQuery(routeUrl("catalog.all"), { sort: "popular" })
+        : routeUrl("catalog.all")
       : basePath,
     consultationSource: "catalog",
     onClearAll: reset,

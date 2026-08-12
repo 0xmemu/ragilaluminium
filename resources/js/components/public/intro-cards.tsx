@@ -6,19 +6,19 @@ const FEATURES = [
     badge: "COD",
     icon: null,
     title: "Bayar Di Tempat",
-    description: "Perlindungan penuh 2 tahun",
+    description: "Bayar di tempat saat barang tiba",
   },
   {
     badge: null,
     icon: "shield-check",
     title: "Garansi Jika Rusak",
-    description: "Insured Nationwide Delivery",
+    description: "Perlindungan penuh 2 tahun",
   },
   {
     badge: null,
     icon: "truck",
     title: "Kirim Ke Seluruh Indonesia",
-    description: "Flexible Corporate Terms",
+    description: "Asuransi pengiriman ke seluruh Indonesia",
   },
 ] as const
 

@@ -17,7 +17,7 @@ import {
 import { Sheet, SheetTrigger } from "@/components/ui/sheet"
 import { useSwipeClickSuppression } from "@/hooks/use-swipe-click-suppression"
 import { formatNumber } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
+import { routeUrl, withQuery } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { SelectOption } from "@/types"
 
@@ -38,10 +38,6 @@ function categorySlug(code: string): string {
   if (code === "WINDOW") return "windows"
   if (code === "DOOR") return "doors"
   return "bouven"
-}
-
-function modelSlug(value: string): string {
-  return value.toLowerCase().replace(/_/g, "-")
 }
 
 function ChevronDownIcon({ className }: { className?: string }) {
@@ -108,15 +104,18 @@ export function CatalogNav({
   const activeCategory = CATEGORY_TABS.find((tab) => tab.code === category)
 
   // Tab model untuk kategori aktif — pola "Boven Swing", "Boven Jungkit", dst.
+  // Filter listing di halaman ini (query model=), tidak pindah ke halaman lain.
   const modelTabs =
     activeCategory && activeCategory.code !== "ALL" && filterModels.length
       ? filterModels.map((model) => ({
           value: model.value,
           label: `${activeCategory.label} ${model.label}`,
-          href: routeUrl("catalog.model", {
-            category: categorySlug(activeCategory.code),
-            model: modelSlug(model.value),
-          }),
+          href: withQuery(
+            routeUrl("catalog.category", {
+              category: categorySlug(activeCategory.code),
+            }),
+            { model: model.value },
+          ),
         }))
       : []
 
@@ -128,7 +127,7 @@ export function CatalogNav({
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+            className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Kembali"
           >
             <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -146,7 +145,7 @@ export function CatalogNav({
             <button
               type="button"
               aria-label="Urutkan produk"
-              className="inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Atur
               <SortArrowsIcon className="size-4" />
@@ -186,7 +185,7 @@ export function CatalogNav({
               href={tab.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition",
+                "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition",
                 active
                   ? "border-foreground bg-foreground text-background shadow-sm"
                   : "border-border bg-surface text-foreground hover:border-foreground/50",
@@ -205,7 +204,7 @@ export function CatalogNav({
               href={model.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition",
+                "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition",
                 active
                   ? "border-foreground bg-foreground text-background shadow-sm"
                   : "border-border bg-surface text-foreground hover:border-foreground/50",
@@ -222,7 +221,7 @@ export function CatalogNav({
             <button
               type="button"
               aria-label="Kategori lain"
-              className="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Kategori
               <Icon name="chevron-down" className="size-4" aria-hidden="true" />
@@ -274,7 +273,7 @@ export function CatalogNav({
         </DropdownMenu>
       </nav>
 
-      {/* Baris 3 — Filter bar: Filter, flashsale, Kategori, Model, Desain */}
+      {/* Baris 3 — Filter bar: Filter, flashsale, Model, Desain */}
       <div className="border-b border-border bg-surface-muted">
         <div ref={filterBarRef} className="scrollbar-x flex items-center gap-2 overflow-x-auto px-5 py-2.5 md:px-8 lg:px-12">
           <Sheet open={sheetOpen} onOpenChange={onSheetOpenChange}>
@@ -282,7 +281,7 @@ export function CatalogNav({
               <button
                 type="button"
                 className={cn(
-                  "inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "lg:hidden inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 )}
               >
                 <Icon name="sliders" className="size-4" aria-hidden="true" />
@@ -302,7 +301,7 @@ export function CatalogNav({
             onClick={onToggleFlash}
             aria-pressed={isFlash}
             className={cn(
-              "inline-flex min-h-10 shrink-0 cursor-pointer items-center rounded-md border px-3.5 text-xs font-semibold transition",
+              "inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-md border px-3.5 text-xs font-semibold transition",
               isFlash
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-[#DEDEDE] bg-background text-foreground hover:border-foreground/30",
@@ -315,38 +314,7 @@ export function CatalogNav({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                Kategori
-                <ChevronDownIcon className="size-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" sideOffset={6} className="w-56 p-2">
-              {CATEGORY_TABS.map((tab) => {
-                const active = tab.code === category
-                return (
-                  <DropdownMenuItem
-                    key={tab.code}
-                    asChild
-                    className={cn("min-h-10 rounded-lg px-3 text-sm", active && "font-semibold")}
-                  >
-                    <Link href={tab.href}>
-                      <span className="flex-1">{tab.label}</span>
-                      {active ? (
-                        <Icon name="check" className="h-4 w-4 text-primary" aria-hidden="true" />
-                      ) : null}
-                    </Link>
-                  </DropdownMenuItem>
-                )
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 Model
                 <ChevronDownIcon className="size-3.5" />
@@ -390,7 +358,7 @@ export function CatalogNav({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#DEDEDE] bg-background px-3.5 text-xs font-semibold text-foreground transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 Desain
                 <ChevronDownIcon className="size-3.5" />

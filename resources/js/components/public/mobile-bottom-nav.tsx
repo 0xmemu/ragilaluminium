@@ -54,7 +54,7 @@ export function MobileBottomNav() {
               href={routeUrl(item.route, item.params)}
               prefetch
               className={cn(
-                "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition",
+                "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 active ? "text-foreground" : "text-muted-foreground active:text-foreground",
               )}
               aria-current={active ? "page" : undefined}

@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { useSwipeClickSuppression } from "@/hooks/use-swipe-click-suppression"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
+import { routeUrl, withQuery } from "@/lib/routes"
 import type { ModelCardData, SelectOption } from "@/types"
 
 interface ModelProdukProps {
@@ -82,18 +82,21 @@ export default function ModelProduk({
   )
 
   // Tab model untuk kategori aktif — pola "Boven Swing", "Jendela Sliding", dst.
-  // ala halaman Semua Produk (CatalogNav), menuju halaman detail model terkait.
+  // Mengarah ke listing produk model terkait (filter query), bukan pindah halaman detail.
   const activeCategoryTab = CATEGORY_TABS.find((tab) => tab.code === activeCategory)
   const modelTabs = React.useMemo(() => {
     if (!activeCategory || !filterModels.length) return []
     return filterModels.map((model) => ({
       value: model.value,
       label: `${activeCategoryTab?.label ?? ""} ${model.label}`.trim(),
-      href: routeUrl("catalog.model", {
-        category: activeCategoryTab?.slug,
-        model: model.value.toLowerCase().replace(/_/g, "-"),
-      }),
-    }))  }, [activeCategory, filterModels, activeCategoryTab])
+      href: withQuery(
+        routeUrl("catalog.category", {
+          category: activeCategoryTab?.slug,
+        }),
+        { model: model.value },
+      ),
+    }))
+  }, [activeCategory, filterModels, activeCategoryTab])
 
   return (
     <PublicLayout>
@@ -149,8 +152,8 @@ export default function ModelProduk({
               aria-current={active ? "page" : undefined}
               className={
                 active
-                  ? "inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-foreground bg-foreground px-3.5 text-[13px] font-semibold text-background shadow-sm"
-                  : "inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-foreground transition hover:border-foreground/50"
+                  ? "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-foreground bg-foreground px-3.5 text-[13px] font-semibold text-background shadow-sm"
+                  : "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-foreground transition hover:border-foreground/50"
               }
             >
               {tab.label}
@@ -162,7 +165,7 @@ export default function ModelProduk({
           <Link
             key={model.value}
             href={model.href}
-            className="inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground"
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-surface px-3.5 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/50 hover:text-foreground"
           >
             {model.label}
           </Link>
@@ -196,7 +199,7 @@ export default function ModelProduk({
 
           <div>
             {models.length ? (
-              <ShowcaseCardGrid className="grid-cols-3 md:grid-cols-3 xl:grid-cols-4">
+              <ShowcaseCardGrid>
                 {models.map((model) => (
                   <ModelCard key={`${model.category}-${model.model}`} model={model} />
                 ))}

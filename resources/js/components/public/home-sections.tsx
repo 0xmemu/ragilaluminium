@@ -54,7 +54,7 @@ function SectionTitle({
           <Link
             href={actionHref}
             className={cn(
-              "inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition",
+              "inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               onPrimary
                 ? "text-white/90 hover:text-white"
                 : "text-foreground/80 hover:text-primary",
@@ -156,6 +156,7 @@ export function CaraPesanSection({
     "Proses pesanan & konfirmasi WhatsApp": "selesaikan checkout, lalu konfirmasi pesananmu lewat WhatsApp",
   }
   const [active, setActive] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
   const total = steps.length
   const surfaceRef = React.useRef<HTMLDivElement>(null)
   const dragRef = React.useRef<{
@@ -165,14 +166,14 @@ export function CaraPesanSection({
   }>({ pointerId: null, startX: 0, dragged: false })
 
   React.useEffect(() => {
-    if (total < 2) return
+    if (total < 2 || paused) return
     const media = window.matchMedia("(prefers-reduced-motion: reduce)")
     if (media.matches) return
     const id = window.setInterval(() => {
       setActive((current) => (current + 1) % total)
-    }, 2000)
+    }, 4000)
     return () => window.clearInterval(id)
-  }, [total])
+  }, [total, paused])
 
   // Swipe kiri/kanan untuk ganti langkah.
   React.useEffect(() => {
@@ -281,6 +282,10 @@ export function CaraPesanSection({
 
         <div
           ref={surfaceRef}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocusCapture={() => setPaused(true)}
+          onBlurCapture={() => setPaused(false)}
           className="relative w-full overflow-hidden rounded-xl bg-foreground shadow-[0_2px_16px_rgba(10,0,0,0.12)] [touch-action:pan-y]"
         >
           <div
@@ -329,11 +334,15 @@ export function CaraPesanSection({
                   type="button"
                   onClick={() => setActive(index)}
                   aria-label={`Langkah ${index + 1}`}
-                  className={cn(
-                    "h-1 rounded-full transition-all duration-300",
-                    index === active ? "w-4 bg-white" : "w-1 bg-white/40 hover:bg-white/70",
-                  )}
-                />
+                  className="relative flex size-8 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
+                >
+                  <span
+                    className={cn(
+                      "h-1 rounded-full transition-all duration-300",
+                      index === active ? "w-4 bg-white" : "w-1 bg-white/40 hover:bg-white/70",
+                    )}
+                  />
+                </button>
               ))}
             </div>
           ) : null}

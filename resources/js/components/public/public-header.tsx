@@ -146,7 +146,7 @@ function HeaderSearchForm({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "h-9 w-full rounded-full border-0 bg-white/10 py-1.5 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-9 md:pl-12 md:pr-5 md:text-base",
+            "h-11 w-full rounded-full border-0 bg-white/10 py-1.5 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-11 md:pl-12 md:pr-5 md:text-base",
             inputClassName,
           )}
           aria-label="Cari produk"
@@ -154,13 +154,12 @@ function HeaderSearchForm({
 
         {showSuggestions ? (
           <div
-            role="listbox"
+            role="group"
             aria-label="Pilihan pencarian"
             className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-white p-1.5 text-foreground shadow-xl"
           >
             <button
               type="button"
-              role="option"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 setFocused(false)
@@ -177,7 +176,6 @@ function HeaderSearchForm({
             {canSearchInPage ? (
               <button
                 type="button"
-                role="option"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
                   setFocused(false)
@@ -489,7 +487,7 @@ export function PublicHeader() {
                               href={model.href}
                               prefetch
                               onClick={closeMenu}
-                              className="inline-flex min-h-9 items-center text-sm font-medium text-muted-foreground transition hover:translate-x-1 hover:text-primary focus-visible:text-primary"
+                              className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition hover:translate-x-1 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:text-primary"
                             >
                               {model.label}
                             </Link>
@@ -609,7 +607,7 @@ export function PublicHeader() {
                       <button
                         type="button"
                         onClick={() => setCartPreviewOpen(false)}
-                        className="inline-flex size-8 items-center justify-center rounded-full text-2xl font-bold leading-none text-white transition-colors hover:bg-white/15 active:bg-white/25"
+                        className="inline-flex size-11 items-center justify-center rounded-full text-2xl font-bold leading-none text-white transition-colors hover:bg-white/15 active:bg-white/25"
                         aria-label="Tutup ringkasan keranjang"
                       >
                         ×

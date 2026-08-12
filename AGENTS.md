@@ -121,3 +121,18 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 - Lead with outcome; keep updates concise; preserve exact commands, paths, errors, and test evidence.
 - Ask questions only when genuinely blocking; otherwise make a safe assumption and state it.
 - Efficiency protocols (Caveman / Compound Engineering loop) are process helpers only — they never override the rules above.
+## WORKFLOW CONTRACT — TANPA KERJA LOKAL/TEMP (disepakati user 2026-08-12)
+
+Berlaku untuk SEMUA agent di repo ini, termasuk agent lain/sebelumnya.
+
+1. **Edit langsung di repo VPS** — satu-satunya sumber kebenaran. Akses via
+   SSH ke /root/ragilaluminium. DILARANG membuat salinan file di mesin lain,
+   folder temp lokal, atau scp bolak-balik: kerja lokal membuat git log repo
+   kehilangan jejak perubahan dan konteks antar agent terputus.
+2. **Commit + push per batch yang selesai** (setelah typecheck + build +
+   verifikasi live). Jangan menumpuk perubahan tanpa commit — git history
+   adalah kontrak antar agent.
+3. Jangan commit: .env.pre-*, .backup-*, *.bak-* (kecuali diminta user).
+4. Sebelum menyentuh file: cek git status — agent lain boleh bekerja di
+   working tree yang sama; report format (SCOPE/ROOT_CAUSE/CHANGE/SPEC_IMPACT/
+   TEST_STATUS) tetap wajib di setiap laporan perubahan.

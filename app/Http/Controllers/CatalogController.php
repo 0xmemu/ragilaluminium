@@ -540,7 +540,6 @@ class CatalogController extends Controller
             ->limit(48)
             ->get();
 
-        $listingHref = (string) ($card['href'] ?? route('catalog.index', absolute: false));
         $designRails = $this->designRailsForModel($products, $categoryCode, $modelCode);
 
         return Inertia::render('Public/ModelDetail', [
@@ -548,7 +547,6 @@ class CatalogController extends Controller
             'products' => InertiaCatalog::productCards($products),
             'designRails' => $designRails,
             'hubHref' => route('catalog.index', absolute: false),
-            'listingHref' => $listingHref,
         ]);
     }
 
