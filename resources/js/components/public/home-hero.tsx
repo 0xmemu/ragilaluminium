@@ -133,7 +133,7 @@ function PromoSlider() {
             className="flex h-full w-full shrink-0 basis-full items-center justify-start px-4"
             aria-hidden={index !== activeIndex ? "true" : undefined}
           >
-            <span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold tracking-tight">
+            <span className="flex items-center gap-2 whitespace-nowrap text-xs font-light tracking-tight">
               <span className="size-1.5 rounded-full bg-white/70" aria-hidden="true" />
               {text}
             </span>
