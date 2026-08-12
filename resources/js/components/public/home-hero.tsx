@@ -406,8 +406,8 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                   >
                     <span
                       className={cn(
-                        "h-1.5 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
-                        index === visibleIndex ? "w-3.5 bg-primary" : "w-1.5 bg-primary/40",
+                        "h-1 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
+                        index === visibleIndex ? "w-4 bg-primary" : "w-1 bg-primary/40",
                       )}
                     />
                   </button>
