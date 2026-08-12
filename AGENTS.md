@@ -110,6 +110,13 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
+### 2026-08-12 — "Lihat semua" accent secondary biru (#2563EB)
+
+**Done (commit setelah batch ini):**
+- Semua elemen ber-maksud "lihat semua" (link teks+panah, pill mobile, "Lihat semua ulasan") di seluruh website diubah warnanya jadi biru slate/navy #2563EB, hover lebih gelap #1D4ED8; panah ikut warna teks (currentColor). Ukuran font/alignment/spacing tidak berubah.
+- File: home-sections (SectionTitle), product-related-section, product-info-sections (2), paling-banyak-dipesan (link + pill), home-carousels (pill), flash-sale-stage (pill), ModelDetail (2).
+- Yang TIDAK diubah: "Lihat semua →" putih di banner flash sale merah (kontras), varian on-primary (bg gelap), tombol filter "Lihat semua model" di sidebar katalog (CTA filter), harga/badge/promo bar.
+
 ### 2026-08-12 — Homepage: bar promo slider vertikal -> horizontal ticker (translateX)
 
 **Done (commit setelah batch ini):**

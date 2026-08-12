@@ -57,7 +57,7 @@ function SectionTitle({
               "inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               onPrimary
                 ? "text-white/90 hover:text-white"
-                : "text-foreground/80 hover:text-primary",
+                : "text-[#2563EB] hover:text-[#1D4ED8]",
             )}
           >
             {actionLabel}

@@ -136,7 +136,7 @@ function MobileSeeMoreSlide({
         href={href}
         className={cn(
           "inline-flex flex-col items-center justify-center gap-1 transition active:scale-95",
-          onPrimary ? "text-white hover:text-white/90" : "text-foreground hover:text-primary",
+          onPrimary ? "text-white hover:text-white/90" : "text-[#2563EB] hover:text-[#1D4ED8]",
         )}
         aria-label={label}
       >
@@ -145,7 +145,7 @@ function MobileSeeMoreSlide({
             "inline-flex size-11 items-center justify-center rounded-full border bg-white shadow-sm transition sm:size-12",
             onPrimary
               ? "border-white/40 text-primary hover:border-white"
-              : "border-foreground/25 text-foreground hover:border-foreground/40",
+              : "border-[#2563EB]/40 text-[#2563EB] hover:border-[#2563EB]",
           )}
         >
           <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
