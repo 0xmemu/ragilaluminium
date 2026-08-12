@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
-import PublicLayout from "@/layouts/public-layout"
+import StorefrontLayout from "@/layouts/storefront-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { ModelCardData, ProductCardData } from "@/types"
@@ -236,8 +236,11 @@ export default function ModelDetail({
     return source.filter((rail) => (rail.products?.length ?? 0) > 0)
   }, [designRails, designVariants])
 
+  const activeKey =
+    model.category && model.model ? `${model.category}|${model.model}` : null
+
   return (
-    <PublicLayout>
+    <StorefrontLayout activeKey={activeKey}>
       <Head title={`${model.title} · Model Produk`}>
         <meta
           name="description"
@@ -369,6 +372,6 @@ export default function ModelDetail({
           )}
         </div>
       </section>
-    </PublicLayout>
+    </StorefrontLayout>
   )
 }

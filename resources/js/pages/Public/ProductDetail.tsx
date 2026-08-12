@@ -7,7 +7,7 @@ import { ProductInfoSections } from "@/components/public/product-info-sections"
 import { ProductRelatedSection } from "@/components/public/product-related-section"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { useProductPurchase } from "@/hooks/use-product-purchase"
-import PublicLayout from "@/layouts/public-layout"
+import StorefrontLayout from "@/layouts/storefront-layout"
 import { routeUrl } from "@/lib/routes"
 import type {
   ProductAttribute,
@@ -51,7 +51,13 @@ export default function ProductDetail({
   const [activeMedia, setActiveMedia] = React.useState<ProductMedia | null>(variantMedia[0] ?? null)
 
   return (
-    <PublicLayout>
+    <StorefrontLayout
+    activeKey={
+      product.product_category && product.product_model
+        ? `${product.product_category}|${product.product_model}`
+        : null
+    }
+  >
       <Head title={title}>
         <meta
           name="description"
@@ -94,6 +100,6 @@ export default function ProductDetail({
       </section>
 
       <ProductRelatedSection products={relatedProducts} />
-    </PublicLayout>
+    </StorefrontLayout>
   )
 }

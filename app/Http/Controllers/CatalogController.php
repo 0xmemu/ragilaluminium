@@ -82,6 +82,35 @@ class CatalogController extends Controller
         return $this->category(null, $request, mode: 'flash');
     }
 
+    /** Halaman pencarian — listing produk dengan query `q` di URL `/search?q=...`. */
+    public function search(Request $request): JsonResponse|Response
+    {
+        return $this->category(null, $request);
+    }
+
+    /**
+     * Halaman koleksi berkonteks — `/collections/{slug}`.
+     * promo → listing promo; flash-sale → listing flash sale;
+     * terlaris → semua produk urut populer; terbaru → semua produk urut terbaru.
+     */
+    public function collectionShow(string $slug, Request $request): JsonResponse|Response
+    {
+        return match (strtolower($slug)) {
+            'promo' => $this->category(null, $request, mode: 'promo'),
+            'flash-sale', 'flashsale' => $this->category(null, $request, mode: 'flash'),
+            'terlaris', 'bestseller', 'populer' => $this->categoryWithSort($request, 'popular'),
+            'terbaru', 'baru' => $this->categoryWithSort($request, 'newest'),
+            default => abort(404),
+        };
+    }
+
+    protected function categoryWithSort(Request $request, string $sort): JsonResponse|Response
+    {
+        $request->merge(['sort' => $sort]);
+
+        return $this->category(null, $request);
+    }
+
     public function windows(Request $request)
     {
         return $this->redirectLegacyCategory('windows', $request);
@@ -283,6 +312,7 @@ class CatalogController extends Controller
         }
 
         $basePath = match (true) {
+            $request->routeIs('storefront.collection', 'search') => '/'.$request->path(),
             $request->routeIs('catalog.flash-sale') => '/flash-sale',
             $promoOnly => '/promo',
             $request->routeIs('catalog.category', 'catalog.design') => '/'.$request->path(),
@@ -343,8 +373,8 @@ class CatalogController extends Controller
             'priceMin' => $request->filled('price_min') ? (int) $request->input('price_min') : null,
             'priceMax' => $request->filled('price_max') ? (int) $request->input('price_max') : null,
             'basePath' => $basePath,
-            'canonicalUrl' => url($isAllProductsListing ? '/products/all' : $basePath),
-            'robotsDirective' => ! $request->routeIs('catalog.category', 'catalog.design') && ($request->hasAny(['q', 'model', 'design', 'price_min', 'price_max']) || $request->filled('sort')) ? 'noindex,follow' : 'index,follow',
+            'canonicalUrl' => url($request->routeIs('search', 'storefront.collection') ? $basePath : ($isAllProductsListing ? '/products/all' : $basePath)),
+            'robotsDirective' => $request->routeIs('search') || (! $request->routeIs('catalog.category', 'catalog.design') && ($request->hasAny(['q', 'model', 'design', 'price_min', 'price_max']) || $request->filled('sort'))) ? 'noindex,follow' : 'index,follow',
         ]);
     }
 
