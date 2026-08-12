@@ -117,8 +117,25 @@ export function ProductBuyBox({
         className="mt-3 space-y-4"
       >
         <div ref={variantSectionRef} className="space-y-4">
-          {axes.length > 0 ? (
-            <p className="mb-2 text-sm font-bold text-foreground">Pilih varian</p>
+          {axes.length > 0 || selectedVariant ? (
+            <div className="mb-2 flex items-center justify-between gap-3">
+              {axes.length > 0 ? (
+                <p className="text-sm font-bold text-foreground">Pilih varian</p>
+              ) : null}
+              {selectedVariant ? (
+                <p className="min-w-0 truncate text-right text-xs font-light text-muted-foreground">
+                  <span>{selectedVariantLabel}</span>
+                  <span className="mx-1">·</span>
+                  <span
+                    className={cn(
+                      selectedVariant.stock > 0 ? "text-success" : "text-destructive",
+                    )}
+                  >
+                    {selectedVariant.stock > 0 ? `Stok ${selectedVariant.stock}` : "Habis"}
+                  </span>
+                </p>
+              ) : null}
+            </div>
           ) : null}
           {axes.map((axis) => (
             <fieldset key={axis.name} className="min-w-0">
@@ -153,19 +170,6 @@ export function ProductBuyBox({
           ))}
         </div>
 
-        {selectedVariant ? (
-          <div className="mt-3 flex items-center justify-between gap-2 text-xs font-light text-muted-foreground">
-            <span className="min-w-0 truncate">{selectedVariantLabel}</span>
-            <span
-              className={cn(
-                "shrink-0 font-light",
-                selectedVariant.stock > 0 ? "text-success" : "text-destructive",
-              )}
-            >
-              {selectedVariant.stock > 0 ? `Stok ${selectedVariant.stock}` : "Habis"}
-            </span>
-          </div>
-        ) : null}
         {variantError && !selectedVariant && purchase.variants.length ? (
           <Alert className="mt-3" tone="warning" title="Pilih varian" />
         ) : null}
