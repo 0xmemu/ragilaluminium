@@ -110,6 +110,16 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 
 ## Current status
 
+### 2026-08-12 — Homepage: bar promo merah marquee -> discrete announcement slider
+
+**Done (commit setelah batch ini):**
+- Bar promo merah di atas banner diganti dari continuous marquee (announcement-marquee) menjadi discrete announcement slider stateful: satu teks promo tampil penuh 3 detik, lalu bergeser vertikal 400ms (translateY, ease-emphasized) ke teks berikutnya. Tidak ada animasi berjalan terus-menerus / CSS animation infinite.
+- Loop seamless: item pertama diduplikasi di akhir track; dari item terakhir maju ke duplikat, lalu reset diam-diam ke index 0 (timeout 450ms + cadangan transitionend) supaya tidak scroll-back terlihat.
+- Tinggi bar tetap sama (h-8 = 32px, sama dengan py-2 + text-xs sebelumnya), tetap full-width edge-to-edge tanpa rounded, overflow-hidden.
+- Pause saat hover/focus; prefers-reduced-motion menonaktifkan autoplay DAN transisi (item pertama tampil statis).
+
+**File diubah:** resources/js/components/public/home-hero.tsx.
+
 ### 2026-08-12 — Homepage: strip marquee full-width + timing carousel promo (5s / 350ms)
 
 **Done (commit setelah batch ini):**

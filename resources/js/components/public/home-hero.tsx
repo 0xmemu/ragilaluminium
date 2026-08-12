@@ -6,9 +6,9 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
 import type { PromoSlide } from "@/types"
 
-// Poin layanan yang berjalan di marquee (tidak menampilkan ulang announcement
-// yang sudah ada di bar paling atas).
-const MARQUEE_ITEMS = [
+// Poin layanan yang ditampilkan satu per satu di slider promo (tidak menampilkan
+// ulang announcement yang sudah ada di bar paling atas).
+const PROMO_ITEMS = [
   "Bayar di tempat (COD)",
   "Garansi 100%",
   "Kirim ke seluruh Indonesia",
@@ -50,27 +50,92 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
 }
 
 /**
- * Marquee berjalan di atas banner promo — strip merah full-width (edge-to-edge,
- * tanpa rounded dan tanpa padding horizontal). Konten digandakan agar animasi
- * translate -50% terlihat seamless.
+ * Slider pengumuman diskret di atas banner promo — strip merah full-width
+ * (edge-to-edge, tanpa rounded dan tanpa padding horizontal). Satu teks promo
+ * tampil penuh selama 3 detik, lalu bergeser vertikal (400ms) ke teks berikutnya.
+ * Bukan marquee: tidak ada animasi berjalan terus-menerus. Loop seamless lewat
+ * duplikasi item pertama di akhir.
  */
-function PromoMarquee() {
-  const doubled = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS]
+function PromoSlider() {
+  // Item terakhir adalah duplikat item pertama → transisi maju terlihat seamless,
+  // lalu reset diam-diam ke index 0.
+  const items = [...PROMO_ITEMS, PROMO_ITEMS[0]]
+  const [activeIndex, setActiveIndex] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
+  const [noTransition, setNoTransition] = React.useState(false)
+
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  // Autoplay: tiap teks diam 3 detik, lalu bergeser ke berikutnya. Nonaktif saat
+  // hover/focus atau prefers-reduced-motion. Dari item terakhir maju ke duplikat
+  // (index items.length-1) supaya transisi maju terlihat seamless.
+  React.useEffect(() => {
+    if (items.length < 2 || paused || reduceMotion) return
+    const id = window.setInterval(() => {
+      setActiveIndex((current) =>
+        current === items.length - 2 ? current + 1 : (current + 1) % items.length,
+      )
+    }, 3000)
+    return () => window.clearInterval(id)
+  }, [items.length, paused, reduceMotion])
+
+  // Saat sampai di duplikat item pertama, reset ke index 0 tanpa transisi
+  // (kontennya identik, jadi tidak terlihat melompat). Pakai timeout 450ms
+  // (> durasi transisi 400ms) supaya reset tetap jalan walau transitionend
+  // tidak terpicu (tab background, transisi terinterupsi).
+  React.useEffect(() => {
+    if (activeIndex !== items.length - 1) return
+    const id = window.setTimeout(() => {
+      setNoTransition(true)
+      setActiveIndex(0)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setNoTransition(false))
+      })
+    }, 450)
+    return () => window.clearTimeout(id)
+  }, [activeIndex, items.length])
+
+  // Cadangan: kalau transitionend tetap terpicu, reset langsung (idempoten).
+  function handleTransitionEnd() {
+    if (activeIndex !== items.length - 1) return
+    setNoTransition(true)
+    setActiveIndex(0)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setNoTransition(false))
+    })
+  }
 
   return (
-    <div className="relative w-full overflow-hidden bg-primary text-white">
+    <div
+      className="relative h-8 w-full overflow-hidden bg-primary text-white"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+      aria-label="Pengumuman promo"
+    >
       <div
-        className="announcement-marquee flex w-max items-center py-2"
-        style={{ animationDuration: `${Math.max(20, MARQUEE_ITEMS.length * 6)}s` }}
+        onTransitionEnd={handleTransitionEnd}
+        className={cn(
+          "flex h-full flex-col",
+          !reduceMotion && !noTransition &&
+            "transition-transform duration-[400ms] ease-emphasized",
+        )}
+        style={{ transform: `translateY(-${activeIndex * 100}%)` }}
       >
-        {doubled.map((text, index) => (
-          <span
+        {items.map((text, index) => (
+          <div
             key={`${text}-${index}`}
-            className="mx-4 flex shrink-0 items-center gap-2 whitespace-nowrap text-xs font-semibold tracking-tight"
+            className="flex h-full items-center justify-center px-4"
+            aria-hidden={index !== activeIndex ? "true" : undefined}
           >
-            <span className="size-1.5 rounded-full bg-white/70" aria-hidden="true" />
-            {text}
-          </span>
+            <span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold tracking-tight">
+              <span className="size-1.5 rounded-full bg-white/70" aria-hidden="true" />
+              {text}
+            </span>
+          </div>
         ))}
       </div>
     </div>
@@ -117,7 +182,7 @@ function HeroSlideContent({
   return <HeroPromoCard slide={slide} />
 }
 
-/** Section banner homepage: marquee full-width di atas + carousel slot banner. */
+/** Section banner homepage: slider promo full-width di atas + carousel slot banner. */
 export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const [paused, setPaused] = React.useState(false)
@@ -269,8 +334,8 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
 
   return (
     <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
-      {/* Strip marquee full-width: keluar dari container ber-padding, tanpa rounded. */}
-      <PromoMarquee />
+      {/* Slider promo full-width: keluar dari container ber-padding, tanpa rounded. */}
+      <PromoSlider />
 
       <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
         <div
