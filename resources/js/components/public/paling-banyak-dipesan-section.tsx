@@ -111,10 +111,10 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
     <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
       <Link
         href={href}
-        className="inline-flex flex-col items-center justify-center gap-1 text-[#F5A623] transition hover:text-[#C77800] active:scale-95"
+        className="inline-flex flex-col items-center justify-center gap-1 text-[#474747] transition hover:text-[#333333] active:scale-95"
         aria-label="Lihat semua"
       >
-        <span className="inline-flex size-11 items-center justify-center rounded-full border border-[#F5A623]/40 bg-white text-[#F5A623] shadow-sm transition hover:border-[#F5A623] sm:size-12">
+        <span className="inline-flex size-11 items-center justify-center rounded-full border border-[#474747]/40 bg-white text-[#474747] shadow-sm transition hover:border-[#474747] sm:size-12">
           <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
         </span>
         <span className="max-w-full text-center text-xs font-medium leading-tight tracking-tight">
@@ -190,7 +190,7 @@ export function PalingBanyakDipesanSection({
           action={
             <Link
               href={seeMoreHref}
-              className="inline-flex shrink-0 items-center gap-1 self-end text-xs font-medium text-[#F5A623] transition hover:text-[#C77800]"
+              className="inline-flex shrink-0 items-center gap-1 self-end text-xs font-medium text-[#474747] transition hover:text-[#333333]"
             >
               <span>Lihat semua</span>
               <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
