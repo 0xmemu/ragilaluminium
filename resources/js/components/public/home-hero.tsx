@@ -52,92 +52,29 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
 }
 
 /**
- * Slider pengumuman horizontal (ticker) di atas banner promo — strip merah
- * full-width (edge-to-edge, tanpa rounded dan tanpa padding horizontal).
- *
- * Satu teks promo rata kiri tampil penuh selama 3 detik, lalu track bergeser ke
- * kiri (translateX, 400ms) sehingga pesan aktif keluar ke kiri dan pesan
- * berikutnya masuk dari kanan. Bukan marquee: tidak ada animasi berjalan
- * terus-menerus. Loop seamless lewat duplikasi item pertama di akhir.
+ * Strip promo merah di atas banner — full-width (edge-to-edge, tanpa rounded dan
+ * tanpa padding horizontal). Menampilkan beberapa promo sekaligus per slide
+ * (3–4 per baris, rata tengah) sehingga bar terisi penuh tanpa ruang kosong.
  */
 function PromoSlider() {
-  // Item terakhir adalah duplikat item pertama → transisi maju terlihat seamless,
-  // lalu reset diam-diam ke index 0.
-  const items = [...PROMO_ITEMS, PROMO_ITEMS[0]]
-  const [activeIndex, setActiveIndex] = React.useState(0)
-  const [paused, setPaused] = React.useState(false)
-  const [noTransition, setNoTransition] = React.useState(false)
+  const items = PROMO_ITEMS
 
-  const reduceMotion =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-
-  // Autoplay: tiap teks diam 3 detik, lalu bergeser ke berikutnya. Nonaktif saat
-  // hover/focus atau prefers-reduced-motion. Dari item terakhir maju ke duplikat
-  // (index items.length-1) supaya transisi maju terlihat seamless.
-  React.useEffect(() => {
-    if (items.length < 2 || paused || reduceMotion) return
-    const id = window.setInterval(() => {
-      setActiveIndex((current) =>
-        current === items.length - 2 ? current + 1 : (current + 1) % items.length,
-      )
-    }, 3000)
-    return () => window.clearInterval(id)
-  }, [items.length, paused, reduceMotion])
-
-  // Saat sampai di duplikat item pertama, reset ke index 0 tanpa transisi
-  // (kontennya identik, jadi tidak terlihat melompat). Pakai timeout 450ms
-  // (> durasi transisi 400ms) supaya reset tetap jalan walau transitionend
-  // tidak terpicu (tab background, transisi terinterupsi).
-  React.useEffect(() => {
-    if (activeIndex !== items.length - 1) return
-    const id = window.setTimeout(() => {
-      setNoTransition(true)
-      setActiveIndex(0)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setNoTransition(false))
-      })
-    }, 450)
-    return () => window.clearTimeout(id)
-  }, [activeIndex, items.length])
-
-  // Cadangan: kalau transitionend tetap terpicu, reset langsung (idempoten).
-  function handleTransitionEnd() {
-    if (activeIndex !== items.length - 1) return
-    setNoTransition(true)
-    setActiveIndex(0)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setNoTransition(false))
-    })
-  }
+  // Semua promo tampil sekaligus dalam satu baris (tanpa rotasi otomatis).
 
   return (
     <div
       className="relative h-8 w-full overflow-hidden bg-primary text-white"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={() => setPaused(false)}
       aria-label="Pengumuman promo"
     >
-      <div
-        onTransitionEnd={handleTransitionEnd}
-        className={cn(
-          "flex h-full flex-row",
-          !reduceMotion && !noTransition &&
-            "transition-transform duration-[400ms] ease-emphasized",
-        )}
-        style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-      >
+      <div className="flex h-full w-full flex-row items-stretch">
         {items.map((item, index) => (
           <div
             key={`${item.text}-${index}`}
-            className="flex h-full w-full shrink-0 basis-full items-center justify-center px-4"
-            aria-hidden={index !== activeIndex ? "true" : undefined}
+            className="flex min-w-0 flex-1 basis-0 items-center justify-center px-2 sm:px-4"
           >
-            <span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold leading-none tracking-tight">
+            <span className="flex min-w-0 items-center justify-center gap-1.5 text-xs font-semibold leading-none tracking-tight sm:gap-2">
               <item.icon weight="fill" className="size-3.5 shrink-0 text-white/90" aria-hidden />
-              {item.text}
+              <span className="truncate">{item.text}</span>
             </span>
           </div>
         ))}

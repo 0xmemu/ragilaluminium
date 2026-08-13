@@ -239,3 +239,9 @@ Berlaku untuk SEMUA agent di repo ini, termasuk agent lain/sebelumnya.
 4. Sebelum menyentuh file: cek git status — agent lain boleh bekerja di
    working tree yang sama; report format (SCOPE/ROOT_CAUSE/CHANGE/SPEC_IMPACT/
    TEST_STATUS) tetap wajib di setiap laporan perubahan.
+5. **Instruksi ambigu → TANYA DULU, jangan tebak** (disepakati user 2026-08-13):
+   kalau instruksi kurang jelas, menyebut elemen UI yang bisa menunjuk ke
+   beberapa komponen (mis. "bar merah", "pill", "tombol lihat semua"), atau
+   target/perilaku yang kamu ragukan — tanyakan ke user SEBELUM mengubah kode
+   atau data. Jangan berasumsi lalu mengubah komponen yang salah; konfirmasi
+   singkat (1 kalimat) dengan menyebutkan target yang kamu pahami.
