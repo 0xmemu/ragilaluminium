@@ -20,7 +20,7 @@ class HomepageLayoutSettings
 
     /** @var list<array{key:string,enabled:bool,sort_order:int}> */
     public const DEFAULT_SECTIONS = [
-        ['key' => 'category_menu', 'enabled' => true, 'sort_order' => 0],
+        ['key' => 'category_menu', 'enabled' => false, 'sort_order' => 0],
         ['key' => 'banner', 'enabled' => true, 'sort_order' => 1],
         ['key' => 'how_to_order', 'enabled' => true, 'sort_order' => 2],
     ];

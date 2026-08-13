@@ -1,6 +1,5 @@
 import { Head } from "@inertiajs/react"
 
-import { CategoryMenu, type CategoryMenuItem } from "@/components/public/category-menu"
 import { HomeHero } from "@/components/public/home-hero"
 import {
   ApaKataPelangganSection,
@@ -31,7 +30,6 @@ interface HomeProps {
   modelCards: ModelCardData[]
   featuredProducts: ProductCardData[]
   popularProducts: ProductCardData[]
-  categoryMenu?: CategoryMenuItem[]
   testimonials?: Testimonial[]
   marketplaceTestimonials?: Testimonial[]
   websiteTestimonials?: Testimonial[]
@@ -45,7 +43,6 @@ export default function Home({
   modelCards = [],
   featuredProducts = [],
   popularProducts = [],
-  categoryMenu = [],
   testimonials = [],
   marketplaceTestimonials,
   websiteTestimonials,
@@ -72,10 +69,6 @@ export default function Home({
 
   function renderManagedSection(key: string) {
     if (!isSectionEnabled(key)) return null
-
-    if (key === "category_menu") {
-      return categoryMenu.length ? <CategoryMenu items={categoryMenu} /> : null
-    }
 
     if (key === "banner") {
       return <HomeHero key="banner" slides={promoSlides} />
