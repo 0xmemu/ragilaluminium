@@ -53,31 +53,113 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
 
 /**
  * Strip promo merah di atas banner — full-width (edge-to-edge, tanpa rounded dan
- * tanpa padding horizontal). Menampilkan beberapa promo sekaligus per slide
- * (3–4 per baris, rata tengah) sehingga bar terisi penuh tanpa ruang kosong.
+ * tanpa padding horizontal). Desktop: semua promo tampil sekaligus dalam satu
+ * baris (3–4 per slide). Mobile: maksimal 2 promo per slide, slide berganti
+ * otomatis untuk menampilkan sisanya.
  */
 function PromoSlider() {
   const items = PROMO_ITEMS
+  const [mobileIndex, setMobileIndex] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
 
-  // Semua promo tampil sekaligus dalam satu baris (tanpa rotasi otomatis).
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  // Mobile: 2 promo per slide.
+  const perSlide = 2
+  const mobileSlides = Array.from(
+    { length: Math.ceil(items.length / perSlide) },
+    (_, i) => items.slice(i * perSlide, i * perSlide + perSlide),
+  )
+
+  // Autoplay mobile: tiap slide diam 4 detik, lalu bergeser ke berikutnya.
+  React.useEffect(() => {
+    if (mobileSlides.length < 2 || paused || reduceMotion) return
+    const id = window.setInterval(() => {
+      setMobileIndex((current) => (current + 1) % mobileSlides.length)
+    }, 4000)
+    return () => window.clearInterval(id)
+  }, [mobileSlides.length, paused, reduceMotion])
+
+  const safeMobileIndex = mobileIndex % mobileSlides.length
 
   return (
     <div
       className="relative h-8 w-full overflow-hidden bg-primary text-white"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
       aria-label="Pengumuman promo"
     >
-      <div className="flex h-full w-full flex-row items-stretch">
+      {/* Desktop: semua promo sekaligus dalam satu baris (4 kolom). */}
+      <div className="hidden h-full w-full flex-row items-stretch sm:flex">
         {items.map((item, index) => (
           <div
             key={`${item.text}-${index}`}
-            className="flex min-w-0 flex-1 basis-0 items-center justify-center px-2 sm:px-4"
+            className="flex min-w-0 flex-1 basis-0 items-center justify-center px-4"
           >
-            <span className="flex min-w-0 items-center justify-center gap-1.5 text-xs font-semibold leading-none tracking-tight sm:gap-2">
+            <span className="flex min-w-0 items-center justify-center gap-2 text-xs font-semibold leading-none tracking-tight">
               <item.icon weight="fill" className="size-3.5 shrink-0 text-white/90" aria-hidden />
               <span className="truncate">{item.text}</span>
             </span>
           </div>
         ))}
+      </div>
+
+      {/* Mobile: 2 promo per slide, slide berganti otomatis. */}
+      <div className="flex h-full w-full flex-col sm:hidden">
+        <div
+          className={cn(
+            "flex h-full w-full flex-row items-stretch",
+            !reduceMotion && "transition-transform duration-[400ms] ease-emphasized",
+          )}
+          style={{ transform: `translateX(-${safeMobileIndex * 100}%)` }}
+        >
+          {mobileSlides.map((slide, slideIndex) => (
+            <div
+              key={slideIndex}
+              className="flex h-full w-full shrink-0 basis-full"
+              aria-hidden={slideIndex !== safeMobileIndex ? "true" : undefined}
+            >
+              {slide.map((item) => (
+                <div
+                  key={item.text}
+                  className="flex min-w-0 flex-1 basis-0 items-center justify-center px-2"
+                >
+                  <span className="flex min-w-0 items-center justify-center gap-1.5 text-xs font-semibold leading-none tracking-tight">
+                    <item.icon weight="fill" className="size-3.5 shrink-0 text-white/90" aria-hidden />
+                    <span className="truncate">{item.text}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Dots — hanya di mobile kalau lebih dari satu slide */}
+        {mobileSlides.length > 1 ? (
+          <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 pb-px">
+            {mobileSlides.map((_, dotIndex) => (
+              <button
+                key={dotIndex}
+                type="button"
+                onClick={() => setMobileIndex(dotIndex)}
+                aria-label={`Slide ${dotIndex + 1}`}
+                aria-current={dotIndex === safeMobileIndex ? "true" : undefined}
+                className="relative flex size-3 items-center justify-center before:absolute before:-inset-2 before:content-['']"
+              >
+                <span
+                  className={cn(
+                    "h-1 rounded-full transition-all",
+                    dotIndex === safeMobileIndex ? "w-2.5 bg-white" : "w-1 bg-white/50",
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   )
