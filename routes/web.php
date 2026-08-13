@@ -85,13 +85,6 @@ Route::get('/products/{category}/{model}', [CatalogController::class, 'modelShow
     ])
     ->name('catalog.model');
 
-// Landing pill segment tab (layout ala homepage Zalora) — bukan halaman detail model.
-Route::get('/model/{category}/{model}', [CatalogController::class, 'modelLanding'])
-    ->where([
-        'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu',
-        'model' => '[A-Za-z0-9_-]+',
-    ])
-    ->name('storefront.model');
 Route::get('/products/{category}/{model}/{design}', [CatalogController::class, 'designShow'])
     ->where([
         'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu',

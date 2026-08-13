@@ -312,7 +312,7 @@ class ModelProductService
 
             $href = filled($row->menu_href)
                 ? (string) $row->menu_href
-                : route('storefront.model', [
+                : route('catalog.model', [
                     'category' => $categorySlug,
                     'model' => $modelSlug,
                 ], absolute: false);

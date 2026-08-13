@@ -206,16 +206,18 @@ Marketplace `.agents/skills/` = technique helpers only; never override schema / 
 - VPS 209.23.10.62 runs an opencode binary that **crashes (CPU lacks AVX)** — run opencode on a capable machine; the repo is only reachable via SSH from here.
 - Production cutover NOT started; release governed by `docs/FULL-STACK-PRODUCTION-CHECKLIST.md` (no cutover while any `[!]` open).
 
-## Storefront model landing (2026-08-13)
+## Landing pill segment tab — DISABLED (2026-08-13)
 
-- Segment tab kategori (pill model) mengarah ke `GET /model/{category}/{model}`
-  (route `storefront.model`) → `Public/ModelLanding.tsx`: segment tab tetap tampil
-  dengan pill aktif, isi halaman berganti per model (promo, lingkaran desain,
-  ukuran, dokumentasi, grid produk + tombol "Pesan" WhatsApp).
-- Halaman detail "Model Produk" tetap di `/products/{category}/{model}`
-  (`catalog.model` → `Public/ModelDetail.tsx`) untuk akses langsung/SEO.
-- Default `menu_href` pill di `ModelProductService::storefrontCategoryMenu()`
-  memakai `storefront.model`; override `menu_href` admin tetap dihormati.
+- Fitur landing berbasis pill segment tab (`SegmentLanding.tsx`, route
+  `/segment`, serta pendahulunya `ModelLanding.tsx` / route `/model/...`)
+  **dimatikan** — akan didesain ulang di masa depan.
+- Kode lengkap semua iterasi tersimpan aman di git history:
+  - `9af09e5` model landing ala Zalora (route `/model/...`)
+  - `6e58213` segment landing dinamis satu template (route `/segment`)
+  - `c1b1746` slider promo segment ala "cara pesan jendela anda"
+- Pill segment tab homepage saat ini kembali mengarah ke halaman model produk
+  (`/products/{category}/{model}` → `Public/ModelDetail.tsx`), seperti sebelum
+  fitur landing dibuat. Override `menu_href` admin tetap dihormati.
 
 ## Communication
 
