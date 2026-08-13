@@ -132,7 +132,7 @@ function PromoSlider() {
         {items.map((item, index) => (
           <div
             key={`${item.text}-${index}`}
-            className="flex h-full w-full shrink-0 basis-full items-center justify-start px-4"
+            className="flex h-full w-full shrink-0 basis-full items-center justify-center px-4"
             aria-hidden={index !== activeIndex ? "true" : undefined}
           >
             <span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold leading-none tracking-tight">

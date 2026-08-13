@@ -47,19 +47,17 @@ export function ModelCard({
           />
         </div>
 
-        <div className="flex min-h-[5.75rem] shrink-0 flex-col gap-1 bg-white p-[5px] @[16rem]:min-h-[6.5rem] @[20rem]:min-h-[7rem] @[20rem]:gap-1.5">
+        <div className="flex shrink-0 flex-col gap-1 bg-white p-[5px] @[20rem]:gap-1.5">
           <h3 className="line-clamp-2 shrink-0 text-[13px] font-medium leading-snug text-foreground">
             {model.title}
           </h3>
 
           <p className="shrink-0 truncate text-xs font-light leading-snug @[16rem]:text-xs @[22rem]:text-[13px]">
             <span className="text-primary">{countLabel}</span>
-            {model.meta ? (
-              <span className="text-foreground">
-                {" | "}
-                {model.meta}
-              </span>
-            ) : null}
+            <span className="text-foreground">
+              {" | "}
+              {model.designs.length > 0 ? `${model.designs.length} model produk` : "Model katalog"}
+            </span>
           </p>
 
           {showDesc && model.desc ? (
