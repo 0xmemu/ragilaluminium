@@ -350,7 +350,7 @@ export default function ModelDetail({
               </ProductCardGrid>
             </section>
           ) : rails.length ? (
-            <div className="flex flex-col gap-8 sm:gap-10">
+            <div className="flex flex-col gap-5 sm:gap-6">
               {rails.map((variant) => (
                 <DesignProductRail key={variant.value} variant={variant} />
               ))}
