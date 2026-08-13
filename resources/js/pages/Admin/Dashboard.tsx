@@ -425,7 +425,7 @@ export default function Dashboard({
                   <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     Omzet hari ini
                   </p>
-                  <p className="tabular-nums mt-2 text-3xl font-bold tracking-tight text-foreground">
+                  <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
                     {formatCurrency(omzet.revenue)}
                   </p>
                   <div className="mt-2">
@@ -646,10 +646,12 @@ export default function Dashboard({
                       className={
                         item.verified
                           ? "rounded-full bg-success/10 px-2 py-1 text-[10px] font-semibold text-success"
-                          : "rounded-full bg-warning/15 px-2 py-1 text-[10px] font-semibold text-warning-foreground"
+                          : item.ready
+                            ? "rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground"
+                            : "rounded-full bg-warning/15 px-2 py-1 text-[10px] font-semibold text-warning-foreground"
                       }
                     >
-                      {item.verified ? "Terverifikasi" : item.ready ? "Konfigurasi ada" : "Perlu cek"}
+                      {item.verified ? "Terverifikasi" : item.ready ? "Terkonfigurasi" : "Perlu cek"}
                     </span>
                   </div>
                   <p className="mt-2.5 text-[13px] font-semibold text-foreground">{item.label}</p>
@@ -741,9 +743,14 @@ export default function Dashboard({
                 ))}
               </ul>
             ) : (
-              <p className="px-5 py-6 text-xs text-muted-foreground">
-                Belum ada data kunjungan produk.
-              </p>
+              <div className="flex items-center gap-3 px-5 py-6">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+                  <Icon name="eye" className="size-4" aria-hidden="true" />
+                </span>
+                <p className="text-[13px] text-muted-foreground">
+                  Belum ada data kunjungan produk.
+                </p>
+              </div>
             )}
           </SectionCard>
 
@@ -752,6 +759,7 @@ export default function Dashboard({
         {/* Row 4 — Pesanan Terbaru */}
         <SectionCard
           title="Pesanan terbaru"
+          description="Order terakhir yang masuk untuk tindak lanjut cepat."
           action={
             <Link
               href={routeUrl("admin.orders.index")}
