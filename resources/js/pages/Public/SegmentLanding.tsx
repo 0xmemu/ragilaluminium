@@ -9,7 +9,9 @@ import { ProductCard } from "@/components/public/product-card"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
+import { formatCurrency, productName } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 import PublicLayout from "@/layouts/public-layout"
 import type { InstallationItem, ModelCardData, ProductCardData, SharedPageProps } from "@/types"
 
@@ -96,6 +98,207 @@ function DesignCard({ design }: { design: SegmentDesign }) {
         </span>
       </div>
     </Link>
+  )
+}
+
+/**
+ * Slider promo khusus segment — layout ala "Cara pesan jendela Anda" /
+ * banner promosi: kartu gelap rounded dengan gambar produk, nama, harga diskon,
+ * auto-rotate 4 detik, swipe, dots tipis di kanan bawah. Konten = produk
+ * berdiskon dari segment yang sedang aktif.
+ */
+function SegmentPromoSlider({ promos }: { promos: ProductCardData[] }) {
+  const [activeIndex, setActiveIndex] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
+  const total = promos.length
+
+  const reduceMotion =
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  // Autoplay: tiap promo diam 4 detik, lalu bergeser cepat ke berikutnya.
+  React.useEffect(() => {
+    if (total < 2 || paused || reduceMotion) return
+    const id = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % total)
+    }, 4000)
+    return () => window.clearInterval(id)
+  }, [total, paused, reduceMotion])
+
+  // Swipe kiri/kanan untuk ganti promo (pointer dulu, lalu touch).
+  const surfaceRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const el = surfaceRef.current
+    if (!el || total < 2) return
+
+    let startX = 0
+    let active = false
+    let dragged = false
+    const usePointer = typeof window.PointerEvent === "function"
+
+    const begin = (clientX: number, pointerId: number | null = null) => {
+      active = true
+      dragged = false
+      startX = clientX
+    }
+    const markDrag = (clientX: number, event?: Event) => {
+      if (!active) return
+      if (Math.abs(clientX - startX) < 28) return
+      if (!dragged) {
+        dragged = true
+        event?.preventDefault()
+      }
+    }
+    const finish = (clientX: number) => {
+      if (!active) return
+      const dx = clientX - startX
+      const wasDragged = dragged
+      active = false
+      dragged = false
+      if (!wasDragged || Math.abs(dx) < 40) return
+      setActiveIndex((current) => ((current + (dx < 0 ? 1 : -1)) % total + total) % total)
+    }
+
+    if (usePointer) {
+      const onPointerDown = (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return
+        begin(event.clientX)
+      }
+      const onPointerMove = (event: PointerEvent) => markDrag(event.clientX, event)
+      const onPointerUp = (event: PointerEvent) => finish(event.clientX)
+      el.addEventListener("pointerdown", onPointerDown)
+      el.addEventListener("pointermove", onPointerMove, { passive: false })
+      el.addEventListener("pointerup", onPointerUp)
+      el.addEventListener("pointercancel", onPointerUp)
+      return () => {
+        el.removeEventListener("pointerdown", onPointerDown)
+        el.removeEventListener("pointermove", onPointerMove)
+        el.removeEventListener("pointerup", onPointerUp)
+        el.removeEventListener("pointercancel", onPointerUp)
+      }
+    }
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      begin(event.touches[0].clientX)
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (!active || event.touches.length !== 1) return
+      markDrag(event.touches[0].clientX, event)
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      finish(event.changedTouches[0]?.clientX ?? startX)
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true })
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    el.addEventListener("touchend", onTouchEnd)
+    el.addEventListener("touchcancel", onTouchEnd)
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart)
+      el.removeEventListener("touchmove", onTouchMove)
+      el.removeEventListener("touchend", onTouchEnd)
+      el.removeEventListener("touchcancel", onTouchEnd)
+    }
+  }, [total])
+
+  if (!total) return null
+
+  return (
+    <div
+      ref={surfaceRef}
+      className="relative w-full touch-pan-y select-none overflow-hidden rounded-2xl bg-foreground shadow-[0_2px_16px_rgba(10,0,0,0.14)]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+      aria-label="Promo khusus segment"
+    >
+      <div
+        className={cn(
+          "flex h-[168px] w-full sm:h-[184px]",
+          !reduceMotion && "transition-transform duration-500 ease-emphasized",
+        )}
+        style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        aria-live="polite"
+      >
+        {promos.map((promo) => {
+          const price = Number(promo.min_price ?? 0)
+          const compare = Number(promo.compare_price ?? 0)
+          const discount = Number(promo.discount_percent ?? 0)
+          return (
+            <div
+              key={promo.card_key ?? promo.id}
+              className="flex h-full w-full shrink-0 items-center gap-4 px-5 sm:gap-5 sm:px-8"
+            >
+              <Link
+                href={promo.href}
+                prefetch
+                className="block size-20 shrink-0 overflow-hidden rounded-xl border border-white/15 bg-white/10 shadow-[0_1px_6px_rgba(0,0,0,0.25)] sm:size-24"
+                aria-label={promo.name}
+              >
+                <ResponsiveImage
+                  src={promo.image}
+                  alt={promo.name}
+                  wrapperClassName="size-full bg-white/10"
+                  className="object-cover"
+                />
+              </Link>
+
+              <div className="min-w-0 flex-1">
+                {discount > 0 ? (
+                  <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">
+                    Diskon {discount}%
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold text-white/90">
+                    Promo
+                  </span>
+                )}
+                <h3 className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-snug text-white sm:text-sm">
+                  {productName(promo.name, promo.short_name)}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-sm font-bold tabular-nums text-primary sm:text-base">
+                    {formatCurrency(price)}
+                  </span>
+                  {compare && compare > price ? (
+                    <span className="text-[11px] text-white/50 line-through">{formatCurrency(compare)}</span>
+                  ) : null}
+                </div>
+                <Link
+                  href={promo.href}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-white/90 transition hover:text-white"
+                >
+                  Lihat produk
+                  <Icon name="arrow-right" className="size-3.5" weight="bold" aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Dots tipis di kanan bawah — ala Cara pesan */}
+      {total > 1 ? (
+        <div className="absolute bottom-2 right-3 flex items-center gap-1">
+          {promos.map((promo, index) => (
+            <button
+              key={`dot-${index}-${promo.id}`}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              aria-label={`Promo ${index + 1}`}
+              className="relative flex size-8 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
+            >
+              <span
+                className={cn(
+                  "h-1 rounded-full transition-all duration-300",
+                  index === activeIndex ? "w-4 bg-white" : "w-1 bg-white/40 hover:bg-white/70",
+                )}
+              />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -258,11 +461,11 @@ export default function SegmentLanding({
         </section>
       ) : null}
 
-      {/* 5. Promosi khusus segment */}
+      {/* 5. Promosi khusus segment — slider banner ala Cara pesan */}
       {promos.length ? (
         <section aria-labelledby="segment-promo-heading" className={`${CONTAINER} py-[10px]`}>
-          <SectionHeader id="segment-promo-heading" title={`Promo ${shortTitle}`} actionHref={allHref} />
-          <ProductCardCarousel products={promos} seeMoreHref={allHref} />
+          <SectionHeader id="segment-promo-heading" title={`Promo khusus ${shortTitle.toLowerCase()}`} actionHref={allHref} />
+          <SegmentPromoSlider promos={promos} />
         </section>
       ) : null}
 
