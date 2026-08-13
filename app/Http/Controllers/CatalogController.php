@@ -551,45 +551,20 @@ class CatalogController extends Controller
     }
 
     /**
-     * Landing segment pill — SATU template dinamis. Segment diselesaikan dari
-     * ?segment={slug} (contoh: boven-jungkit, jendela-sliding); default segment
-     * pertama. Data diambil dari sumber yang sudah ada (produk, kategori, model,
-     * hasil pemasangan) — tanpa duplikasi data produk. Pindah pill = partial
-     * reload di halaman yang sama, bukan pindah ke halaman detail model.
+     * Halaman landing satu model — tujuan pill segment tab (layout ala homepage
+     * Zalora): segment tab tetap tampil dengan pill aktif, isi halaman berganti
+     * per model (promo, desain, ukuran, dokumentasi, seluruh produk). Halaman
+     * detail "Model Produk" (ModelDetail) tetap di /products/... untuk akses
+     * langsung/SEO.
      */
-    public function segmentLanding(Request $request): Response
+    public function modelLanding(string $category, string $model): Response
     {
-        try {
-            $categoryMenu = app(ModelProductService::class)->storefrontCategoryMenu();
-        } catch (\Throwable) {
-            $categoryMenu = [];
-        }
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        $modelCode = InstallationGallery::modelFromSlug($model);
 
-        $segmentSlug = strtolower(trim((string) $request->query('segment')));
-        $selected = null;
-        foreach ($categoryMenu as $item) {
-            $categorySlug = match (strtoupper((string) ($item['category'] ?? ''))) {
-                'DOOR' => 'doors',
-                'BOUVEN' => 'bouven',
-                default => 'windows',
-            };
-            $modelSlug = strtolower(str_replace('_', '-', (string) ($item['model'] ?? '')));
-            if (($categorySlug.'-'.$modelSlug) === $segmentSlug) {
-                $selected = $item;
-                break;
-            }
-        }
-
-        // Default: segment pertama dari menu kategori.
-        if ($selected === null) {
-            $selected = $categoryMenu[0] ?? null;
-        }
-        if ($selected === null) {
+        if ($categoryCode === null || $categoryCode === 'LAINNYA' || $modelCode === '') {
             abort(404);
         }
-
-        $categoryCode = strtoupper((string) ($selected['category'] ?? ''));
-        $modelCode = strtoupper((string) ($selected['model'] ?? ''));
 
         $card = collect(app(ModelProductService::class)->storefrontCards())
             ->first(function (array $item) use ($categoryCode, $modelCode) {
@@ -613,7 +588,7 @@ class CatalogController extends Controller
 
         $productCards = InertiaCatalog::productCards($products);
 
-        // Promosi khusus segment — kartu berdiskon aktif.
+        // Promo: kartu model ini yang punya diskon aktif (compare price / promo).
         $promos = collect($productCards)
             ->filter(fn (array $c) => (int) ($c['discount_percent'] ?? 0) > 0)
             ->sortByDesc(fn (array $c) => (int) ($c['discount_percent'] ?? 0))
@@ -621,19 +596,16 @@ class CatalogController extends Controller
             ->take(10)
             ->all();
 
-        // Submodel/desain segment (Ornamen, Polos, Kombinasi, ...).
+        // Desain: meta rail (label, gambar, jumlah, href) — tanpa muatan `products`.
         $designs = array_map(
             fn (array $rail) => collect($rail)->except('products')->all(),
             $this->designRailsForModel($products, $categoryCode, $modelCode),
         );
 
-        // Paling banyak dipesan — produk segment terlaris.
-        $bestSellers = array_slice($productCards, 0, 10);
+        // Ukuran unik model (T×P) + harga termurah + link varian.
+        $sizes = InertiaCatalog::sizeCardsForRail($products, 12);
 
-        // Seluruh produk segment (grid).
-        $products = array_slice($productCards, 0, 24);
-
-        // Galeri foto/video hasil pemasangan segment.
+        // Dokumentasi spesifik model (foto/video pemasangan).
         $documentation = collect(InstallationGallery::productCardsForModel($categoryCode, $modelCode, 24))
             ->map(fn (array $item) => [
                 'id' => $item['id'],
@@ -651,16 +623,11 @@ class CatalogController extends Controller
             ->values()
             ->all();
 
-        // Model terkait — sesama kategori diutamakan, lalu model lain.
-        $relatedModels = collect(app(ModelProductService::class)->storefrontCards())
-            ->reject(function (array $item) use ($categoryCode, $modelCode) {
-                return strtoupper((string) ($item['category'] ?? '')) === $categoryCode
-                    && strtoupper((string) ($item['model'] ?? '')) === $modelCode;
-            })
-            ->sortByDesc(fn (array $item) => (int) (strtoupper((string) ($item['category'] ?? '')) === $categoryCode))
-            ->values()
-            ->take(6)
-            ->all();
+        try {
+            $categoryMenu = app(ModelProductService::class)->storefrontCategoryMenu();
+        } catch (\Throwable) {
+            $categoryMenu = [];
+        }
 
         $categorySlug = match ($categoryCode) {
             'DOOR' => 'doors',
@@ -668,19 +635,18 @@ class CatalogController extends Controller
             default => 'windows',
         };
 
-        // "Lihat semua" -> listing katalog kategori yang difilter model.
-        $allHref = route('catalog.category', ['category' => $categorySlug], absolute: false)
-            .'?model='.urlencode($modelCode);
+        $allHref = route('catalog.model', [
+            'category' => $categorySlug,
+            'model' => strtolower(str_replace('_', '-', $modelCode)),
+        ], absolute: false);
 
-        return Inertia::render('Public/SegmentLanding', [
-            'segment' => $segmentSlug,
+        return Inertia::render('Public/ModelLanding', [
             'model' => $card,
             'promos' => $promos,
             'designs' => $designs,
-            'bestSellers' => $bestSellers,
-            'products' => $products,
+            'sizes' => $sizes,
             'documentation' => $documentation,
-            'relatedModels' => $relatedModels,
+            'products' => array_slice($productCards, 0, 24),
             'categoryMenu' => $categoryMenu,
             'allHref' => $allHref,
         ]);
