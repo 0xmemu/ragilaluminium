@@ -55,7 +55,7 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
  * Strip promo merah di atas banner — full-width (edge-to-edge, tanpa rounded dan
  * tanpa padding horizontal). Desktop: semua promo tampil sekaligus dalam satu
  * baris (3–4 per slide). Mobile: maksimal 2 promo per slide, slide berganti
- * otomatis untuk menampilkan sisanya.
+ * otomatis untuk menampilkan sisanya (tanpa pagination dots).
  */
 function PromoSlider() {
   const items = PROMO_ITEMS
@@ -138,28 +138,6 @@ function PromoSlider() {
           ))}
         </div>
 
-        {/* Dots — hanya di mobile kalau lebih dari satu slide */}
-        {mobileSlides.length > 1 ? (
-          <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 pb-px">
-            {mobileSlides.map((_, dotIndex) => (
-              <button
-                key={dotIndex}
-                type="button"
-                onClick={() => setMobileIndex(dotIndex)}
-                aria-label={`Slide ${dotIndex + 1}`}
-                aria-current={dotIndex === safeMobileIndex ? "true" : undefined}
-                className="relative flex size-3 items-center justify-center before:absolute before:-inset-2 before:content-['']"
-              >
-                <span
-                  className={cn(
-                    "h-1 rounded-full transition-all",
-                    dotIndex === safeMobileIndex ? "w-2.5 bg-white" : "w-1 bg-white/50",
-                  )}
-                />
-              </button>
-            ))}
-          </div>
-        ) : null}
       </div>
     </div>
   )
