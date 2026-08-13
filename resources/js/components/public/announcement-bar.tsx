@@ -11,6 +11,9 @@ import type { Announcement, SharedPageProps } from "@/types"
  */
 const DISMISS_KEY = "ra.announcement.dismissed.v1"
 
+/** Jumlah promo yang ditampilkan sekaligus per slide. */
+const ITEMS_PER_ROW = 4
+
 function AnnouncementMark({ text }: { text: string }) {
   const lower = text.toLowerCase()
   if (lower.includes("flash sale") || lower.includes("flashsale")) {
@@ -44,7 +47,7 @@ function AnnouncementText({ text }: { text: string }) {
   )
 }
 
-function AnnouncementLink({ announcement }: { announcement: Announcement }) {
+function AnnouncementItem({ announcement }: { announcement: Announcement }) {
   return (
     <Link
       href={announcement.href}
@@ -57,8 +60,10 @@ function AnnouncementLink({ announcement }: { announcement: Announcement }) {
 }
 
 /**
- * Bar promo statis: menampilkan satu pengumuman teratas (prioritas admin).
- * Tidak ada marquee / rotasi otomatis. Ikon X menutup bar sampai konten berubah.
+ * Bar promo merah: menampilkan beberapa promo sekaligus per slide
+ * (3–4 promo per baris, dikelompokkan). Kalau promo lebih dari satu baris,
+ * slide berganti kelompok setiap beberapa detik. Ikon X menutup seluruh bar
+ * sampai konten berubah.
  */
 export function AnnouncementBar({ className }: { className?: string }) {
   const { announcements, announcementSlide } = usePage<SharedPageProps>().props
@@ -80,25 +85,34 @@ export function AnnouncementBar({ className }: { className?: string }) {
   })
 
   // Derived, tanpa effect: bar tertutup hanya jika fingerprint tersimpan == fingerprint saat ini.
-  // Kalau admin mengganti teks/link promo, fingerprint berubah → bar otomatis muncul lagi.
   const dismissed = dismissFingerprint !== null && dismissFingerprint === fingerprint
 
-  // Pastikan index valid saat jumlah item berubah.
-  const safeIndex = items.length > 0 ? index % items.length : 0
-  const active = items[safeIndex]
+  if (!items.length || dismissed) return null
 
-  // Slide otomatis antar beberapa pengumuman (jika diaktifkan admin).
+  // Kelompokkan promo per slide: 3–4 promo per baris.
+  const perRow = ITEMS_PER_ROW
+  const totalRows = Math.ceil(items.length / perRow)
+
+  const chunk = (list: Announcement[], size: number): Announcement[][] =>
+    Array.from({ length: Math.ceil(list.length / size) }, (_, i) =>
+      list.slice(i * size, i * size + size),
+    )
+
+  const rows = chunk(items, perRow)
+
+  // Slide otomatis antar kelompok promo (jika lebih dari satu kelompok).
+  const reduceMotion =
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
   React.useEffect(() => {
-    if (!slide.enabled || items.length < 2 || dismissed) return
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
-    if (media.matches) return
+    if (totalRows < 2 || dismissed || reduceMotion) return
     const timer = window.setInterval(() => {
-      setIndex((prev) => (prev + 1) % items.length)
+      setIndex((prev) => (prev + 1) % totalRows)
     }, Math.max(4000, slide.interval * 1000))
     return () => window.clearInterval(timer)
-  }, [slide.enabled, slide.interval, items.length, dismissed, fingerprint])
+  }, [totalRows, dismissed, reduceMotion, slide.interval])
 
-  if (!active || dismissed) return null
+  const safeIndex = totalRows > 0 ? index % totalRows : 0
 
   function dismiss() {
     setDismissFingerprint(fingerprint)
@@ -111,8 +125,52 @@ export function AnnouncementBar({ className }: { className?: string }) {
 
   return (
     <div className={cn("relative bg-primary text-white", className)}>
-      <div className="mx-auto flex min-h-8 w-full max-w-[80rem] items-center justify-center px-9 py-1.5 sm:px-10">
-        <AnnouncementLink announcement={active} />
+      <div className="relative mx-auto flex min-h-8 w-full max-w-[80rem] items-stretch overflow-hidden px-9 sm:px-10">
+        {/* Track: slide bergeser horizontal per kelompok promo */}
+        <div
+          className={cn(
+            "flex h-full w-full",
+            !reduceMotion && "transition-transform duration-[400ms] ease-emphasized",
+          )}
+          style={{ transform: `translateX(-${safeIndex * 100}%)` }}
+        >
+          {rows.map((row, rowIndex) => (
+            <div
+              key={`d${rowIndex}`}
+              className="grid h-full w-full shrink-0 basis-full grid-cols-4 items-stretch"
+              aria-hidden={rowIndex !== safeIndex ? "true" : undefined}
+            >
+              {row.map((item) => (
+                <div key={item.text + item.href} className="flex min-w-0 items-center justify-center px-2 sm:px-3">
+                  <AnnouncementItem announcement={item} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Dots — hanya kalau promo lebih dari satu kelompok */}
+        {totalRows > 1 ? (
+          <div className="absolute inset-x-0 -bottom-1 flex justify-center gap-1.5">
+            {Array.from({ length: totalRows }).map((_, dotIndex) => (
+              <button
+                key={dotIndex}
+                type="button"
+                onClick={() => setIndex(dotIndex)}
+                aria-label={`Slide ${dotIndex + 1}`}
+                aria-current={dotIndex === safeIndex ? "true" : undefined}
+                className="relative flex size-4 items-center justify-center before:absolute before:-inset-2 before:content-['']"
+              >
+                <span
+                  className={cn(
+                    "h-1 rounded-full transition-all",
+                    dotIndex === safeIndex ? "w-3 bg-white" : "w-1 bg-white/50",
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <button
         type="button"
