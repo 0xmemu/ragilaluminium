@@ -312,10 +312,7 @@ class ModelProductService
 
             $href = filled($row->menu_href)
                 ? (string) $row->menu_href
-                : route('storefront.model', [
-                    'category' => $categorySlug,
-                    'model' => $modelSlug,
-                ], absolute: false);
+                : route('storefront.segment', ['segment' => $categorySlug.'-'.$modelSlug], absolute: false);
 
             $subs = [];
             foreach ($designCodes as $code) {
