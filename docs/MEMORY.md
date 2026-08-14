@@ -638,3 +638,16 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
   Beranda Pembeli -> Banner Utama -> Edit konten (HomepageLayoutSettings:100).
 - GOTCHA: live build bisa tertinggal dari working tree (Beranda/Index.tsx diedit
   setelah build) — verifikasi UI selalu via admin-preview/curl, bukan grep source.
+
+### 2026-08-15 — Menu Pesanan (deep-dive #2): tombol salin produk + riwayat lengkap
+- G1 (spek: ukuran & nama produk wajib dicopy-paste): tombol salin (ikon copy)
+  per item produk di Daftar Pesanan (Index.tsx, helper copyItemText) dan
+  Detail Pesanan (Show.tsx, pakai copyText existing).
+- G2 (spek: default sebagian riwayat + tombol expand): tombol
+  "Tampilkan Riwayat Lengkap" / "Sembunyikan riwayat" di Detail untuk
+  Log perubahan status (events) dan Riwayat WA otomatis (whatsapp_messages)
+  — expand di halaman yang sama via state showAllEvents/showAllWa.
+- Verifikasi: typecheck/lint/build PASS; live via CDP — button salin ada di
+  list (label "Salin ukuran & nama: <name>"), order RA-260810-0001 punya tombol
+  expand, klik → li bertambah & jadi "Sembunyikan riwayat"; 0 console error.
+- Commit 9153e51 (branch feat/admin-ui-redesign), pre-push hook build sukses.
