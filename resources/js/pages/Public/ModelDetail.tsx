@@ -156,49 +156,62 @@ function DesignProductRail({
         </Link>
       </div>
 
-      <div className="relative min-w-0">
-        <CarouselNavButton
-          side="left"
-          label={`Geser mundur ${variant.label}`}
-          trackId={trackId}
-          enabled={canGoBack}
-          onClick={() => move(-1)}
-        />
-        <CarouselNavButton
-          side="right"
-          label={`Geser maju ${variant.label}`}
-          trackId={trackId}
-          enabled={canGoNext}
-          onClick={() => move(1)}
-        />
-
-        <div
-          id={trackId}
-          ref={trackRef}
-          className={carouselTrackClass}
-          data-dragging="false"
-          style={{
-            transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
-            transition: reveal.pull ? "none" : "transform 360ms ease-out",
-          }}
-          onPointerDown={reveal.onPointerDown}
-          onPointerMove={reveal.onPointerMove}
-          onPointerUp={reveal.onPointerUp}
-          onPointerCancel={reveal.onPointerUp}
-        >
+      {items.length < 3 ? (
+        /* Sub-model dengan produk < 3 → grid produk, bukan carousel. */
+        <ProductCardGrid>
           {items.map((product) => (
-            <div
+            <ProductCard
               key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
-              className={carouselCardClass}
-            >
-              <ProductCard product={product} titleStyle="model" />
-            </div>
+              product={product}
+              titleStyle="model"
+            />
           ))}
+        </ProductCardGrid>
+      ) : (
+        <div className="relative min-w-0">
+          <CarouselNavButton
+            side="left"
+            label={`Geser mundur ${variant.label}`}
+            trackId={trackId}
+            enabled={canGoBack}
+            onClick={() => move(-1)}
+          />
+          <CarouselNavButton
+            side="right"
+            label={`Geser maju ${variant.label}`}
+            trackId={trackId}
+            enabled={canGoNext}
+            onClick={() => move(1)}
+          />
+
+          <div
+            id={trackId}
+            ref={trackRef}
+            className={carouselTrackClass}
+            data-dragging="false"
+            style={{
+              transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+              transition: reveal.pull ? "none" : "transform 360ms ease-out",
+            }}
+            onPointerDown={reveal.onPointerDown}
+            onPointerMove={reveal.onPointerMove}
+            onPointerUp={reveal.onPointerUp}
+            onPointerCancel={reveal.onPointerUp}
+          >
+            {items.map((product) => (
+              <div
+                key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
+                className={carouselCardClass}
+              >
+                <ProductCard product={product} titleStyle="model" />
+              </div>
+            ))}
+          </div>
+          {items.length > 0 ? (
+            <MobileEndActionReveal href={variant.href} pull={reveal.pull} revealed={reveal.revealed} />
+          ) : null}
         </div>
-        {items.length > 0 ? (
-          <MobileEndActionReveal href={variant.href} pull={reveal.pull} revealed={reveal.revealed} />
-        ) : null}
-      </div>
+      )}
     </section>
   )
 }
