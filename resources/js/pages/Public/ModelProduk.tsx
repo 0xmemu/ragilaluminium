@@ -74,20 +74,20 @@ function ModelCategoryCard({ model }: { model: ModelCardData }) {
 /** Tombol "Urutkan" + menu urutan: default urutan admin, terbaru, terlama. */
 function SortMenu({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = React.useState(false)
-  const selected =
-    SORT_OPTIONS.find((option) => (option.value || "admin") === value) ?? SORT_OPTIONS[0]
+  const hasSelection = value === "latest" || value === "oldest"
+  const selectedLabel = SORT_OPTIONS.find((option) => option.value === value)?.label
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`Urutkan model produk (${selected.label})`}
+          aria-label="Urutkan model produk"
           aria-haspopup="listbox"
           aria-expanded={open}
           className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md px-1 text-xs font-medium text-[#333333] transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <span className="truncate">{selected.label}</span>
+          <span className="truncate">{hasSelection ? selectedLabel : "Urutkan"}</span>
           <SortArrowsIcon className="size-3.5 shrink-0" />
         </button>
       </DropdownMenuTrigger>
@@ -97,7 +97,9 @@ function SortMenu({ value, onChange }: { value: string; onChange: (value: string
       >
         <DropdownMenuLabel className="px-2 pb-1.5 pt-0.5">Urutkan</DropdownMenuLabel>
         {SORT_OPTIONS.map((option) => {
-          const selected = (option.value || "admin") === value
+          // Default (urutan admin) sengaja tanpa opsi terpilih; checkmark hanya
+          // untuk Terbaru/Terlama.
+          const selected = option.value !== "" && option.value === value
           return (
             <DropdownMenuItem
               key={option.value || "default"}
