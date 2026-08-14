@@ -156,7 +156,7 @@ export default function Installations({
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
               </button>
               <h1 className="text-base font-bold tracking-tight text-[#333333]">
-                Hasil Pemasangan {modelMeta?.label || heading}
+                Hasil Pemasangan Produk
               </h1>
             </div>
           </div>
