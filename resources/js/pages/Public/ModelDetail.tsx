@@ -1,6 +1,10 @@
 import { Head, Link } from "@inertiajs/react"
 import * as React from "react"
 
+import {
+  MobileEndActionReveal,
+  useEndActionReveal,
+} from "@/components/public/home-carousels"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
@@ -122,23 +126,6 @@ function CarouselNavButton({
   )
 }
 
-function MobileSeeMoreSlide({ href }: { href: string }) {
-  return (
-    <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
-      <Link
-        href={href}
-        className="inline-flex flex-col items-center justify-center gap-1 text-[#2563EB] transition hover:text-[#1D4ED8] active:scale-95"
-        aria-label="Lihat Semua"
-      >
-        <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
-        <span className="max-w-full text-center text-[12px] font-bold leading-tight tracking-tight">
-          Lihat Semua
-        </span>
-      </Link>
-    </div>
-  )
-}
-
 function DesignProductRail({
   variant,
 }: {
@@ -146,6 +133,7 @@ function DesignProductRail({
 }) {
   const items = (variant.products ?? []).slice(0, 12)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const reveal = useEndActionReveal(trackRef)
   const headingId = `design-rail-${variant.value}`
 
   if (!items.length) return null
@@ -189,6 +177,14 @@ function DesignProductRail({
           ref={trackRef}
           className={carouselTrackClass}
           data-dragging="false"
+          style={{
+            transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+            transition: reveal.pull ? "none" : "transform 360ms ease-out",
+          }}
+          onPointerDown={reveal.onPointerDown}
+          onPointerMove={reveal.onPointerMove}
+          onPointerUp={reveal.onPointerUp}
+          onPointerCancel={reveal.onPointerUp}
         >
           {items.map((product) => (
             <div
@@ -198,8 +194,10 @@ function DesignProductRail({
               <ProductCard product={product} titleStyle="model" />
             </div>
           ))}
-          <MobileSeeMoreSlide href={variant.href} />
         </div>
+        {items.length > 0 ? (
+          <MobileEndActionReveal href={variant.href} pull={reveal.pull} revealed={reveal.revealed} />
+        ) : null}
       </div>
     </section>
   )
