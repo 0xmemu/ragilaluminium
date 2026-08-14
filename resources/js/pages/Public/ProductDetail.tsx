@@ -47,6 +47,25 @@ export default function ProductDetail({
   const purchase = useProductPurchase({ product, attributes, variants, media, reviews, promo })
   const { title, variantMedia, productSchema, averageRating, ratingLabel, ratedReviews } = purchase
 
+  const shareUrl = React.useMemo(() => {
+    if (typeof window === "undefined") {
+      return routeUrl("product.show", { parent_sku: product.parent_sku })
+    }
+
+    const url = new URL(window.location.href)
+    if (purchase.selectedVariant?.variant_sku) {
+      url.searchParams.set("variant", purchase.selectedVariant.variant_sku)
+    }
+    return url.toString()
+  }, [product.parent_sku, purchase.selectedVariant?.variant_sku])
+
+  const socialImage = variantMedia.find((item) => item.url)?.url ?? null
+  const socialImageUrl = React.useMemo(() => {
+    if (!socialImage) return null
+    if (typeof window === "undefined") return socialImage
+    return new URL(socialImage, window.location.origin).toString()
+  }, [socialImage])
+
   // Media yang sedang dilihat di galeri — dipakai gambar "produk terbang" saat add-to-cart.
   const [activeMedia, setActiveMedia] = React.useState<ProductMedia | null>(variantMedia[0] ?? null)
 
@@ -57,6 +76,22 @@ export default function ProductDetail({
           name="description"
           content={(product.description ?? product.subtitle ?? title).slice(0, 155)}
         />
+        <meta head-key="product-og-type" property="og:type" content="product" />
+        <meta head-key="product-og-title" property="og:title" content={title} />
+        <meta
+          head-key="product-og-description"
+          property="og:description"
+          content={(product.description ?? product.subtitle ?? title).slice(0, 200)}
+        />
+        <meta head-key="product-og-url" property="og:url" content={shareUrl} />
+        {socialImageUrl ? (
+          <meta head-key="product-og-image" property="og:image" content={socialImageUrl} />
+        ) : null}
+        <meta head-key="product-twitter-card" name="twitter:card" content="summary_large_image" />
+        <meta head-key="product-twitter-title" name="twitter:title" content={title} />
+        {socialImageUrl ? (
+          <meta head-key="product-twitter-image" name="twitter:image" content={socialImageUrl} />
+        ) : null}
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
       </Head>
 
@@ -79,7 +114,12 @@ export default function ProductDetail({
           <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} />
 
           <div className="min-w-0 lg:sticky lg:top-28">
-            <ProductBuyBox product={product} purchase={purchase} activeMedia={activeMedia} />
+            <ProductBuyBox
+              product={product}
+              purchase={purchase}
+              activeMedia={activeMedia}
+              shareUrl={shareUrl}
+            />
             <ProductInfoSections
               product={product}
               attributes={attributes}
