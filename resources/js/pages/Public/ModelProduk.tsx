@@ -165,9 +165,9 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
         </div>
       </section>
 
-      <section className="border-b border-[#dee3e0] bg-white">
+      <section className="bg-white">
         <div className="container-page">
-          <div className="flex items-center gap-2 pt-3 sm:pt-5">
+          <div className="flex items-center gap-2 border-b border-[#dee3e0] pt-3 pb-2 sm:pt-5 sm:pb-3">
             <button
               type="button"
               onClick={() => window.history.back()}
@@ -186,7 +186,7 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
             </Link>
           </div>
 
-          <div className="flex items-center justify-between gap-4 pb-3 pt-1 sm:pb-4">
+          <div className="flex items-center justify-between gap-4 pb-3 pt-2.5 sm:pb-4">
             <p className="text-xs text-[#666666] sm:text-sm">
               {formatNumber(totalCount)} model produk ditemukan
             </p>
