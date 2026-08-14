@@ -145,7 +145,21 @@ export default function Installations({
             </div>
           </div>
         ) : (
-          <h1 className="sr-only">{modelMeta?.label || heading}</h1>
+          <div className="container-page py-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                aria-label="Kembali"
+              >
+                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+              </button>
+              <h1 className="text-base font-bold tracking-tight text-[#333333]">
+                {modelMeta?.label || heading}
+              </h1>
+            </div>
+          </div>
         )}
 
       </section>

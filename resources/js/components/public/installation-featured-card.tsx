@@ -1,7 +1,6 @@
 import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
-import { formatNumber } from "@/lib/format"
 import type { InstallationItem } from "@/types"
 
 /**
@@ -17,45 +16,6 @@ export function InstallationFeaturedCard({
   const title = item.label?.trim() || "Hasil pemasangan"
   const image = item.image ?? item.image_url ?? null
   const highlights = (item.highlights ?? []).slice(0, 3)
-  const photoCount = Math.max(0, Number(item.photo_count ?? 0))
-  const videoCount = Math.max(0, Number(item.video_count ?? 0))
-  const mediaCount = photoCount + videoCount
-
-  const categoryLabel =
-    item.category?.toUpperCase() === "DOOR"
-      ? "Pintu"
-      : item.category?.toUpperCase() === "BOUVEN"
-        ? "Boven"
-        : item.category?.toUpperCase() === "LAINNYA"
-          ? "Lainnya"
-          : item.category
-            ? "Jendela"
-            : null
-
-  const specs = [
-    categoryLabel ? { label: "Kategori", value: categoryLabel } : null,
-    item.model
-      ? {
-          label: "Model",
-          value: item.model.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()),
-        }
-      : null,
-    Number(item.product_count ?? 0) > 0
-      ? { label: "Produk", value: `${formatNumber(item.product_count)} produk` }
-      : null,
-    mediaCount > 0
-      ? {
-          label: "Media",
-          value:
-            videoCount > 0 && photoCount > 0
-              ? `${formatNumber(photoCount)} foto � ${formatNumber(videoCount)} video`
-              : videoCount > 0
-                ? `${formatNumber(videoCount)} video`
-                : `${formatNumber(photoCount)} foto`,
-        }
-      : null,
-  ].filter((row): row is { label: string; value: string } => Boolean(row?.value))
-
   return (
     <article className={cn("w-full", className)}>
       <div className="md:grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-start md:gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
@@ -75,20 +35,7 @@ export function InstallationFeaturedCard({
               ))}
             </ul>
           ) : null}
-          {specs.length ? (
-            <aside className="mt-6 border-t border-border pt-5 sm:mt-8 sm:pt-6">
-              <h3 className="text-base font-bold tracking-tight text-foreground sm:text-lg">Spesifikasi Unit</h3>
-              <dl className="mt-4 grid gap-3 sm:mt-4 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-3">
-                {specs.map((row) => (
-                  <div key={row.label} className="flex items-baseline justify-between gap-4 text-sm">
-                    <dt className="shrink-0 text-muted-foreground">{row.label}</dt>
-                    <dd className="min-w-0 text-right font-semibold text-foreground">{row.value}</dd>
                   </div>
-                ))}
-              </dl>
-            </aside>
-          ) : null}
-        </div>
       </div>
     </article>
   )
