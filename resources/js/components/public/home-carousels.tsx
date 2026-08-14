@@ -2,7 +2,7 @@ import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { InstallationCard } from "@/components/public/installation-card"
-import { ModelCard } from "@/components/public/model-card"
+import { ModelCategoryCard } from "@/components/public/model-category-card"
 import { ProductCard } from "@/components/public/product-card"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import { Icon } from "@/components/shared/icon"
@@ -273,7 +273,7 @@ export function ModelCardCarousel({
       >
         {items.map((model) => (
           <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
-            <ModelCard model={model} showDesc={false} />
+            <ModelCategoryCard model={model} />
           </div>
         ))}
       </div>
