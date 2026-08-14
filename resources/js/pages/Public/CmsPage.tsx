@@ -46,7 +46,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className={cn("container-page py-2", isContact && "hidden sm:block")}>
+        <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
@@ -120,7 +120,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                     </Button>
                   ) : null}
                   <Button asChild variant="secondary">
-                    <a href={`mailto:${brand.email}`}>Kirim email</a>
+                    <a href={`mailto:${brand.email}`}>Kirim Email</a>
                   </Button>
                 </div>
               </div>
@@ -150,7 +150,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
                     href={routeUrl("contact")}
                     className="flex min-h-11 items-center justify-between text-sm font-semibold hover:text-primary"
                   >
-                    Hubungi kami
+                    Hubungi Kami
                     <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </div>
