@@ -256,7 +256,7 @@
      lebar datang dari sisa ruang max-width, bukan padding. */
   .container-page {
     width: 100%;
-    max-width: 112rem;
+    max-width: 80rem;
     margin-inline: auto;
     padding-inline: 1.25rem;
   }
@@ -271,6 +271,40 @@
     .container-page {
       padding-inline: 3rem;
     }
+  }
+
+  @media (min-width: 80rem) {
+    .container-page {
+      padding-inline: 0;
+    }
+  }
+
+  .public-title-case article {
+    border-radius: 5px !important;
+  }
+
+  .public-title-case article:has(img) {
+    overflow: visible;
+  }
+
+  .public-title-case .product-card,
+  .public-title-case .testimonial-card {
+    border-radius: 5px !important;
+  }
+
+  .public-title-case .product-card__media,
+  .public-title-case .testimonial-card--with-image > button {
+    border-radius: 0;
+  }
+
+  .public-title-case .product-card__content,
+  .public-title-case article:has(img) > a:last-child > div:last-child {
+    border-radius: 0 0 5px 5px;
+  }
+
+  .public-title-case .testimonial-card--with-image > :first-child,
+  .public-title-case .testimonial-card--with-image > button:last-of-type {
+    border-radius: 0;
   }
 
   .surface-panel {
@@ -327,9 +361,30 @@
       0 2px 8px rgb(192 0 0 / 0.12);
   }
 
-  /* Modifier: judul tipografi model (container query, carousel Home). */
+  /* Modifier: judul tipografi model (container query, carousel Home).
+     Versi desain baru — flat ala kartu model (tanpa shadow/lift),
+     border #dee3e0, judul semibold, padding body 10px. */
   .product-card--model {
     container-type: inline-size;
+    border-color: #dee3e0;
+    box-shadow: none;
+  }
+
+  .product-card--model:hover {
+    transform: none;
+    border-color: #b9c2bd;
+    box-shadow: none;
+  }
+
+  .product-card--model .product-card__content {
+    padding: 10px;
+  }
+
+  .product-card--model .product-card__title {
+    color: #333333;
+    font-weight: 600;
+    line-height: 1.3;
+    min-height: 0;
   }
 
   /* Modifier: stok habis — kartu redup, tidak interaktif. */
