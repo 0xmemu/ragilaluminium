@@ -200,6 +200,14 @@ function OrderCardRow({
   }
 }) {
   const [expanded, setExpanded] = React.useState(false)
+
+  async function copyItemText(value: string) {
+    try {
+      await navigator.clipboard.writeText(value)
+    } catch {
+      // ignore
+    }
+  }
   const [busy, setBusy] = React.useState(false)
   const { printing, handlePrint } = usePrintAddress()
 
@@ -317,9 +325,20 @@ function OrderCardRow({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-[13px] font-medium leading-5 text-foreground">
-                    {item.name}
-                  </p>
+                  <div className="flex items-start gap-1.5">
+                    <p className="line-clamp-2 flex-1 text-[13px] font-medium leading-5 text-foreground">
+                      {item.name}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => copyItemText(item.name)}
+                      className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      aria-label={`Salin ukuran & nama: ${item.name}`}
+                      title="Salin ukuran & nama produk"
+                    >
+                      <Icon name="copy" className="size-3" aria-hidden="true" />
+                    </button>
+                  </div>
                   <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                     {variationLabel(item) || item.variant_sku || "-"}
                   </p>

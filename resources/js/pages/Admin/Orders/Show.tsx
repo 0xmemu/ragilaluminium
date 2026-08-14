@@ -504,6 +504,8 @@ export default function OrderShow({
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
+  const [showAllEvents, setShowAllEvents] = React.useState(false)
+  const [showAllWa, setShowAllWa] = React.useState(false)
   const { printing, handlePrint } = usePrintAddress()
   const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
   const [adminNotesBusy, setAdminNotesBusy] = React.useState(false)
@@ -725,8 +727,9 @@ export default function OrderShow({
         </SectionCard>
         <SectionCard title="Log perubahan status">
           {events.length ? (
+            <>
             <ul className="space-y-2.5 text-[13px]">
-              {events.slice(0, 4).map((event, index) => (
+              {(showAllEvents ? events : events.slice(0, 4)).map((event, index) => (
                 <li
                   key={`${event.event_type}-${index}`}
                   className="border-b border-border pb-2.5 last:border-0 last:pb-0"
@@ -742,15 +745,27 @@ export default function OrderShow({
                   </p>
                 </li>
               ))}
+            
             </ul>
+            {events.length > 4 ? (
+              <button
+                type="button"
+                onClick={() => setShowAllEvents((v) => !v)}
+                className="mt-3 text-xs font-medium text-primary hover:underline"
+              >
+                {showAllEvents ? "Sembunyikan riwayat" : "Tampilkan riwayat lengkap"}
+              </button>
+            ) : null}
+            </>
           ) : (
             <p className="text-xs text-muted-foreground">Belum ada log status.</p>
           )}
         </SectionCard>
         <SectionCard title="Riwayat WA otomatis">
           {order.whatsapp_messages.length ? (
+            <>
             <ul className="space-y-2.5 text-[13px]">
-              {order.whatsapp_messages.slice(0, 4).map((message) => (
+              {(showAllWa ? order.whatsapp_messages : order.whatsapp_messages.slice(0, 4)).map((message) => (
                 <li
                   key={message.id}
                   className="border-b border-border pb-2.5 last:border-0 last:pb-0"
@@ -767,7 +782,18 @@ export default function OrderShow({
                   </p>
                 </li>
               ))}
+            
             </ul>
+            {order.whatsapp_messages.length > 4 ? (
+              <button
+                type="button"
+                onClick={() => setShowAllWa((v) => !v)}
+                className="mt-3 text-xs font-medium text-primary hover:underline"
+              >
+                {showAllWa ? "Sembunyikan riwayat" : "Tampilkan riwayat lengkap"}
+              </button>
+            ) : null}
+            </>
           ) : (
             <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
           )}
@@ -816,7 +842,18 @@ export default function OrderShow({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-5">{item.name}</p>
+                    <div className="flex items-start gap-1.5">
+                      <p className="text-sm font-medium leading-5">{item.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => copyText(item.name)}
+                        className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label={`Salin ukuran & nama: ${item.name}`}
+                        title="Salin ukuran & nama produk"
+                      >
+                        <Icon name="copy" className="size-3" aria-hidden="true" />
+                      </button>
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {variationLabel(item) || item.variant_sku || "-"}
                     </p>
