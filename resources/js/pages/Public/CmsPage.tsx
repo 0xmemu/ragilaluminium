@@ -70,9 +70,19 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
               </h1>
             </div>
           ) : (
-            <p className={cn("max-w-3xl font-bold leading-snug tracking-tight text-foreground", isLegal ? "text-lg" : "text-lg")}>
-              {heading}
-            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                aria-label="Kembali"
+              >
+                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+              </button>
+              <p className={cn("max-w-3xl font-bold leading-snug tracking-tight text-foreground", isLegal ? "text-lg" : "text-lg")}>
+                {heading}
+              </p>
+            </div>
           )}
         </div>
       </section>
