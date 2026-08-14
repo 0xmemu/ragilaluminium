@@ -159,7 +159,7 @@ function HeroSlideContent({
   if (slide.layout === "placeholder") {
     return (
       <div
-        className="flex h-full w-full items-center justify-center bg-secondary"
+        className="flex h-full w-full items-center justify-center rounded-[5px] bg-secondary pt-5"
         aria-hidden="true"
       />
     )
