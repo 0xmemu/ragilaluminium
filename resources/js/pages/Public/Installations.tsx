@@ -10,7 +10,6 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
-import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { InstallationItem } from "@/types"
 
@@ -41,9 +40,6 @@ export default function Installations({
       : "Contoh pemasangan untuk produk dalam model ini.")
   const docTitle = pageMeta?.title?.trim() || "Hasil Pemasangan"
   const listingHref = indexHref || routeUrl("installation.index")
-  const countLabel = isModelLevel
-    ? `${formatNumber(installations.length)} model ditemukan`
-    : `${formatNumber(installations.length)} produk ditemukan`
 
   // Urutan tampilan diatur admin (tidak ada kontrol urut di halaman pembeli).
   // Pembeli hanya bisa MENCARI model/produk tertentu via ikon search.
@@ -95,7 +91,7 @@ export default function Installations({
           setSearchOpen((current) => !current)
           if (searchOpen) setSearchQuery("")
         }}
-        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-foreground transition hover:bg-accent"
+        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[#333333] transition hover:bg-muted/50"
         aria-label="Cari hasil pemasangan"
         aria-expanded={searchOpen}
       >
@@ -110,7 +106,7 @@ export default function Installations({
         <meta name="description" content={subtitle} />
       </Head>
 
-      <section className="border-b border-border bg-surface">
+      <section className="border-b border-[#dee3e0] bg-white">
         <div className="container-page hidden py-2 sm:block">
           <Breadcrumbs
             singleLine={!isModelLevel}
@@ -141,10 +137,8 @@ export default function Installations({
                 >
                   <Icon name="arrow-left" className="size-5" aria-hidden="true" />
                 </button>
-                <h1 className="flex items-baseline gap-2 text-base font-bold tracking-tight text-foreground">
+                <h1 className="text-base font-bold tracking-tight text-[#333333]">
                   {heading}
-                  <span className="font-normal text-muted-foreground">|</span>
-                  <span className="text-xs font-normal text-muted-foreground">{countLabel}</span>
                 </h1>
               </div>
               <div className="flex shrink-0 items-center">{searchControl}</div>
@@ -164,7 +158,6 @@ export default function Installations({
                 {filteredInstallations.map((item) => (
                   <InstallationCard
                     key={item.id}
-                    level="model"
                     item={{
                       ...item,
                       image: item.image ?? item.image_url,

@@ -28,7 +28,7 @@ const carouselTrackClass =
 const carouselCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
 
-function useHorizontalCarousel(itemCount: number) {
+function useHorizontalCarousel(itemCount: number, scrollFactor = 0.85) {
   const trackRef = React.useRef<HTMLDivElement>(null)
   const trackId = React.useId()
   const [canGoBack, setCanGoBack] = React.useState(false)
@@ -71,7 +71,7 @@ function useHorizontalCarousel(itemCount: number) {
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     track.scrollBy({
-      left: direction * track.clientWidth * 0.85,
+      left: direction * track.clientWidth * scrollFactor,
       behavior: reduceMotion ? "auto" : "smooth",
     })
   }
@@ -116,45 +116,132 @@ function CarouselNavButton({
   )
 }
 
-/** Trailing mobile CTA — ikon chevron + label di bawahnya. */
-function MobileSeeMoreSlide({
+export function useEndActionReveal(trackRef: React.RefObject<HTMLDivElement | null>) {
+  const [pull, setPull] = React.useState(0)
+  const [revealed, setRevealed] = React.useState(false)
+  const pullRef = React.useRef(0)
+  const gesture = React.useRef<{ startX: number; atEnd: boolean } | null>(null)
+
+  const atEnd = React.useCallback(() => {
+    const track = trackRef.current
+    return !!track && track.scrollLeft + track.clientWidth >= track.scrollWidth - 2
+  }, [trackRef])
+
+  React.useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    const onScroll = () => {
+      if (!atEnd()) {
+        setRevealed(false)
+        setPull(0)
+      }
+    }
+    let touchStartX = 0
+    let touchAtEnd = false
+    const onTouchStart = (event: TouchEvent) => {
+      touchStartX = event.touches[0]?.clientX ?? 0
+      touchAtEnd = atEnd()
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0]
+      if (!touch || !touchAtEnd) return
+      const delta = touch.clientX - touchStartX
+      if (delta >= 0) return
+      event.preventDefault()
+      const nextPull = Math.min(-delta * 0.42, 84)
+      pullRef.current = nextPull
+      setPull(nextPull)
+    }
+    const onTouchEnd = () => {
+      if (pullRef.current >= 52) setRevealed(true)
+      pullRef.current = 0
+      setPull(0)
+      touchAtEnd = false
+    }
+    track.addEventListener("scroll", onScroll, { passive: true })
+    track.addEventListener("touchstart", onTouchStart, { passive: true })
+    track.addEventListener("touchmove", onTouchMove, { passive: false })
+    track.addEventListener("touchend", onTouchEnd)
+    track.addEventListener("touchcancel", onTouchEnd)
+    return () => {
+      track.removeEventListener("scroll", onScroll)
+      track.removeEventListener("touchstart", onTouchStart)
+      track.removeEventListener("touchmove", onTouchMove)
+      track.removeEventListener("touchend", onTouchEnd)
+      track.removeEventListener("touchcancel", onTouchEnd)
+    }
+  }, [atEnd, trackRef])
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return
+    gesture.current = { startX: event.clientX, atEnd: atEnd() }
+  }
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return
+    const current = gesture.current
+    if (!current) return
+    const delta = event.clientX - current.startX
+    if ((current.atEnd || atEnd()) && delta < 0) {
+      event.preventDefault()
+      setPull(Math.min(-delta * 0.42, 84))
+    }
+    if (revealed && delta > 10) setRevealed(false)
+  }
+
+  const onPointerUp = () => {
+    if (pull >= 52) setRevealed(true)
+    setPull(0)
+    gesture.current = null
+  }
+
+  const onTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0]
+    if (touch) gesture.current = { startX: touch.clientX, atEnd: atEnd() }
+  }
+
+  const onTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    const current = gesture.current
+    const touch = event.touches[0]
+    if (!current || !touch) return
+    const delta = touch.clientX - current.startX
+    if ((current.atEnd || atEnd()) && delta < 0) {
+      event.preventDefault()
+      setPull(Math.min(-delta * 0.42, 84))
+    }
+    if (revealed && delta > 10) setRevealed(false)
+  }
+
+  return { pull, revealed, onPointerDown, onPointerMove, onPointerUp, onTouchStart, onTouchMove }
+}
+
+export function MobileEndActionReveal({
   href,
-  label = "Lihat semua",
-  tone = "default",
+  pull,
+  revealed,
 }: {
   href: string
-  label?: string
-  tone?: "default" | "on-primary"
-  /** @deprecated slot selalu sempit; prop diabaikan agar call site lama aman */
-  wide?: boolean
+  pull: number
+  revealed: boolean
 }) {
-  const onPrimary = tone === "on-primary"
+  const offset = revealed ? 0 : Math.max(0, 76 - pull)
+  const opacity = revealed ? 1 : Math.min(1, pull / 52)
 
   return (
-    <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
-      <Link
-        href={href}
-        className={cn(
-          "inline-flex flex-col items-center justify-center gap-1 transition active:scale-95",
-          onPrimary ? "text-white hover:text-white/90" : "text-[#474747] hover:text-[#333333]",
-        )}
-        aria-label={label}
-      >
-        <span
-          className={cn(
-            "inline-flex size-11 items-center justify-center rounded-full border bg-white shadow-sm transition sm:size-12",
-            onPrimary
-              ? "border-white/40 text-primary hover:border-white"
-              : "border-[#474747]/40 text-[#474747] hover:border-[#474747]",
-          )}
-        >
-          <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
-        </span>
-        <span className="max-w-full text-center text-[12px] font-bold leading-tight tracking-tight">
-          {label}
-        </span>
-      </Link>
-    </div>
+    <Link
+      href={href}
+      aria-label="Lihat Semua"
+      className="absolute right-0 top-0 bottom-3 z-10 flex w-[4.75rem] flex-col items-center justify-center gap-1 text-[#2563EB] transition-[transform,opacity] duration-[360ms] ease-out md:hidden sm:w-20"
+      style={{
+        transform: `translateX(${offset}px)`,
+        opacity,
+        pointerEvents: revealed ? "auto" : "none",
+        transitionDuration: pull ? "0ms" : "360ms",
+      }}
+    >
+      <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+      <span className="max-w-full text-center text-[12px] font-bold leading-tight tracking-tight">Lihat Semua</span>
+    </Link>
   )
 }
 
@@ -167,17 +254,32 @@ export function ModelCardCarousel({
 }) {
   const items = models.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const reveal = useEndActionReveal(trackRef)
 
   return (
     <div className="relative min-w-0 px-1">
-      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
+      <div
+        ref={trackRef}
+        id={trackId}
+        className={carouselTrackClass}
+        style={{
+          transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+          transition: reveal.pull ? "none" : "transform 360ms ease-out",
+        }}
+        onPointerDown={reveal.onPointerDown}
+        onPointerMove={reveal.onPointerMove}
+        onPointerUp={reveal.onPointerUp}
+        onPointerCancel={reveal.onPointerUp}
+      >
         {items.map((model) => (
           <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
             <ModelCard model={model} showDesc={false} />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
       </div>
+      {items.length > 0 ? (
+        <MobileEndActionReveal href={seeMoreHref} pull={reveal.pull} revealed={reveal.revealed} />
+      ) : null}
       <CarouselNavButton
         trackId={trackId}
         side="left"
@@ -207,6 +309,7 @@ export function ProductCardCarousel({
 }) {
   const items = products.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const reveal = useEndActionReveal(trackRef)
   const onPrimary = tone === "on-primary"
 
   return (
@@ -218,6 +321,14 @@ export function ProductCardCarousel({
           carouselTrackClass,
           onPrimary && "items-stretch pb-1 md:pb-1",
         )}
+        style={{
+          transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+          transition: reveal.pull ? "none" : "transform 360ms ease-out",
+        }}
+        onPointerDown={reveal.onPointerDown}
+        onPointerMove={reveal.onPointerMove}
+        onPointerUp={reveal.onPointerUp}
+        onPointerCancel={reveal.onPointerUp}
       >
         {items.map((product, index) => (
           <div key={product.id} className={cn(carouselCardClass, onPrimary && "flex")}>
@@ -229,8 +340,11 @@ export function ProductCardCarousel({
             />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} tone={tone} /> : null}
+        
       </div>
+      {items.length > 0 ? (
+        <MobileEndActionReveal href={seeMoreHref} pull={reveal.pull} revealed={reveal.revealed} />
+      ) : null}
       <CarouselNavButton
         trackId={trackId}
         side="left"
@@ -258,17 +372,33 @@ export function InstallationCarousel({
 }) {
   const slides = items.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(slides.length)
+  const reveal = useEndActionReveal(trackRef)
 
   return (
     <div className="relative min-w-0 px-1">
-      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-start")}>
+      <div
+        ref={trackRef}
+        id={trackId}
+        className={cn(carouselTrackClass, "items-start")}
+        style={{
+          transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+          transition: reveal.pull ? "none" : "transform 360ms ease-out",
+        }}
+        onPointerDown={reveal.onPointerDown}
+        onPointerMove={reveal.onPointerMove}
+        onPointerUp={reveal.onPointerUp}
+        onPointerCancel={reveal.onPointerUp}
+      >
         {slides.map((item) => (
           <div key={item.id} className={carouselCardClass}>
-            <InstallationCard item={item} level="model" />
+            <InstallationCard item={item} />
           </div>
         ))}
-        {slides.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
+        
       </div>
+      {slides.length > 0 ? (
+        <MobileEndActionReveal href={seeMoreHref} pull={reveal.pull} revealed={reveal.revealed} />
+      ) : null}
       <CarouselNavButton
         trackId={trackId}
         side="left"
@@ -300,13 +430,29 @@ export function TestimonialCarousel({
 }) {
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const reveal = useEndActionReveal(trackRef)
   const anchor = variant === "screenshot" ? "apa-kata-pelanggan" : "ulasan-website"
 
   return (
     <div className="relative min-w-0 px-1">
-      <div ref={trackRef} id={trackId} className={cn(carouselTrackClass, "items-stretch")}>
+      <div
+        ref={trackRef}
+        id={trackId}
+        className={cn(carouselTrackClass, "items-stretch")}
+        style={{
+          transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+          transition: reveal.pull ? "none" : "transform 360ms ease-out",
+        }}
+        onPointerDown={reveal.onPointerDown}
+        onPointerMove={reveal.onPointerMove}
+        onPointerUp={reveal.onPointerUp}
+        onPointerCancel={reveal.onPointerUp}
+      >
         {items.map((testimonial) => (
-          <div key={testimonial.id} className={carouselCardClass}>
+          <div
+            key={testimonial.id}
+            className={carouselCardClass}
+          >
             <TestimonialCard
               testimonial={testimonial}
               compact
@@ -315,8 +461,11 @@ export function TestimonialCarousel({
             />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
+        
       </div>
+      {items.length > 0 ? (
+        <MobileEndActionReveal href={seeMoreHref} pull={reveal.pull} revealed={reveal.revealed} />
+      ) : null}
       <CarouselNavButton
         trackId={trackId}
         side="left"
