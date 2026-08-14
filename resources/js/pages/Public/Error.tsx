@@ -2,7 +2,6 @@ import { Head, Link } from "@inertiajs/react"
 
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Button } from "@/components/ui/button"
-import { Icon } from "@/components/shared/icon"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 
@@ -57,19 +56,9 @@ export default function ErrorPage({ status }: { status: number }) {
         <p className="mt-8 font-display text-6xl font-bold tracking-tight text-foreground/15 sm:text-7xl">
           {status}
         </p>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
-            aria-label="Kembali"
-          >
-            <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-          </button>
-          <h1 className="mt-4 max-w-xl font-display text-lg font-bold tracking-tight text-foreground">
+        <h1 className="mt-4 max-w-xl font-display text-lg font-bold tracking-tight text-foreground">
           {copy.title}
         </h1>
-        </div>
         <p className="mt-3 max-w-lg text-lg leading-7 text-muted-foreground">{copy.body}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button asChild className="rounded-full px-7">
