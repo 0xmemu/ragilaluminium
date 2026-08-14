@@ -25,6 +25,7 @@ export function ModelCategoryCard({ model }: { model: ModelCardData }) {
           <ResponsiveImage
             src={model.image}
             alt={model.title}
+            wrapperClassName="absolute inset-0"
             className="transition-transform duration-300 group-hover:scale-[1.03]"
           />
           <span className="absolute bottom-2 left-2 rounded-[4px] bg-[#c20000] px-2 py-1.5 text-[10px] font-semibold leading-none text-white shadow-sm">

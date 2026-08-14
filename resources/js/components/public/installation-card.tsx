@@ -33,6 +33,7 @@ export function InstallationCard({
         <ResponsiveImage
           src={image}
           alt={title}
+          wrapperClassName="absolute inset-0"
           className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
         {productCount > 0 ? (
