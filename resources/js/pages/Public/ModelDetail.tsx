@@ -127,14 +127,12 @@ function MobileSeeMoreSlide({ href }: { href: string }) {
     <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
       <Link
         href={href}
-        className="inline-flex flex-col items-center justify-center gap-1 text-foreground transition hover:text-primary active:scale-95"
-        aria-label="Lihat selengkapnya"
+        className="inline-flex flex-col items-center justify-center gap-1 text-[#2563EB] transition hover:text-[#1D4ED8] active:scale-95"
+        aria-label="Lihat Semua"
       >
-        <span className="inline-flex size-11 items-center justify-center rounded-full border border-foreground/25 bg-white text-foreground shadow-sm transition hover:border-foreground/40 sm:size-12">
-          <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
-        </span>
-        <span className="max-w-full text-center text-xs font-medium leading-tight tracking-tight">
-          selengkapnya
+        <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
+        <span className="max-w-full text-center text-[12px] font-bold leading-tight tracking-tight">
+          Lihat Semua
         </span>
       </Link>
     </div>
@@ -165,7 +163,7 @@ function DesignProductRail({
           href={variant.href}
           className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-[#474747] transition hover:text-[#333333]"
         >
-          Lihat semua
+          Lihat Semua
           <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
         </Link>
       </div>
@@ -335,7 +333,7 @@ export default function ModelDetail({
                   href={rails[0].href}
                   className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-[#474747] transition hover:text-[#333333]"
                 >
-                  Lihat semua
+                  Lihat Semua
                   <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
                 </Link>
               </div>
@@ -362,7 +360,7 @@ export default function ModelDetail({
               description="Model ini belum punya produk aktif di katalog."
               action={
                 <Button asChild>
-                  <Link href={modelsHref}>Kembali ke model</Link>
+                  <Link href={modelsHref}>Kembali Ke Model</Link>
                 </Button>
               }
             />
