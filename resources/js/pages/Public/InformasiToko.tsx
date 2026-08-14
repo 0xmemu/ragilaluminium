@@ -219,9 +219,12 @@ export default function InformasiToko({ page }: { page: PageData }) {
             </button>
             <h1 className="text-base font-bold tracking-tight text-foreground">{heading}</h1>
           </div>
-          <BrandWordmark className="[&_img]:h-11 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-12 mt-3" />
         </div>
       </section>
+
+      <div className="container-page pt-4 !px-5 md:!px-8 lg:!px-12">
+        <BrandWordmark className="[&_img]:h-12 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-14" />
+      </div>
 
       <div className="container-page space-y-6 !px-5 md:!px-8 lg:!px-12 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
         <div className="space-y-6">
@@ -287,7 +290,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
                   ) : null}
                   {brand.email ? (
                     <Button asChild variant="secondary">
-                      <a href={`mailto:${brand.email}`}>Kirim email</a>
+                      <a href={`mailto:${brand.email}`}>Kirim Email</a>
                     </Button>
                   ) : null}
                 </div>
