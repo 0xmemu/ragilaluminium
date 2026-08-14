@@ -1,8 +1,9 @@
 import {
   Archive,
   ArrowLeft,
-  Bell,
   ArrowRight,
+  ArrowUpRight,
+  Bell,
   ArrowsClockwise,
   ArrowsOutSimple,
   CaretDown,
@@ -88,6 +89,7 @@ const iconRegistry: Record<string, ComponentType<IconProps>> = {
   "alert-circle": WarningCircle,
   "arrow-left": ArrowLeft,
   "arrow-right": ArrowRight,
+  "arrow-up-right": ArrowUpRight,
   "caret-down": CaretDown,
   "caret-left": CaretLeft,
   "caret-right": CaretRight,
@@ -134,6 +136,8 @@ const iconRegistry: Record<string, ComponentType<IconProps>> = {
   images: ImageSquare,
   info: Info,
   lightning: Lightning,
+  zap: Lightning,
+  bolt: Lightning,
   "layout-grid": GridFour,
   "layout-dashboard": Gauge,
   lock: LockKey,
@@ -199,3 +203,4 @@ export function Icon({ name, weight = "regular", ...props }: RagilIconProps) {
 export function hasIcon(name: string): boolean {
   return name in iconRegistry
 }
+

@@ -169,7 +169,7 @@ class ModelProductService
      *
      * @return list<array{title: string, count: string, meta: string, desc: string, subtitle: string, highlights: list<array{icon: string, label: string}>, inspiration_count: int, inspiration_href: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
      */
-    public function storefrontCards(int $limit = 0, ?string $design = null, ?string $category = null): array
+    public function storefrontCards(int $limit = 0, ?string $design = null, ?string $category = null, string $sort = 'popular'): array
     {
         $rows = CmsModelProduct::query()->active()
             ->when($category, fn ($q) => $q->where('product_category', $category))
@@ -246,6 +246,7 @@ class ModelProductService
                 'category' => $row->product_category,
                 'designs' => $designs,
                 'popularity' => $popularity[$key] ?? 0,
+                'created_at' => $row->created_at?->timestamp ?? 0,
             ];
 
             if ($limit > 0 && count($cards) >= $limit) {
@@ -257,16 +258,29 @@ class ModelProductService
             return CatalogTaxonomy::modelCards($limit, $design, $category);
         }
 
-        // Sortir default "popular": model dengan total penjualan (validOrderItems)
-        // tertinggi di depan, sehingga model produk yang laris tampil lebih dulu.
-        usort(
-            $cards,
-            fn (array $a, array $b): int => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0)
-                ?: strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
-        );
+        // Urutan kartu model:
+        // - 'admin'   : urutan manual admin (sort_order CMS) — baris sudah urut dari scopeActive().
+        // - 'popular' : total penjualan (validOrderItems) tertinggi di depan (default lama).
+        // - 'latest' / 'oldest' : urutan pembuatan kartu model (created_at) — halaman Semua Model Produk.
+        switch ($sort) {
+            case 'admin':
+                break;
+            case 'latest':
+                usort($cards, fn (array $a, array $b): int => ($b['created_at'] ?? 0) <=> ($a['created_at'] ?? 0));
+                break;
+            case 'oldest':
+                usort($cards, fn (array $a, array $b): int => ($a['created_at'] ?? 0) <=> ($b['created_at'] ?? 0));
+                break;
+            default:
+                usort(
+                    $cards,
+                    fn (array $a, array $b): int => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0)
+                        ?: strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
+                );
+        }
 
         foreach ($cards as &$card) {
-            unset($card['popularity']);
+            unset($card['popularity'], $card['created_at']);
         }
         unset($card);
 

@@ -27,8 +27,10 @@ class CatalogController extends Controller
         }
 
         // /products?sort=popular|…|q|model → daftar produk (card-produk).
+        // /products?sort=latest|oldest → hub Semua Model Produk (urutan kartu model).
         // /products (hub) → Semua Model Produk (card-model-produk).
-        $listing = $request->filled('sort')
+        $hubSort = (string) $request->input('sort', '');
+        $listing = ($request->filled('sort') && ! in_array($hubSort, ['latest', 'oldest'], true))
             || $request->filled('q')
             || $request->filled('model')
             || $request->filled('price_min')
@@ -497,15 +499,14 @@ class CatalogController extends Controller
         $design = CatalogLabels::normalizeDesign($request->input('design'));
         $category = CatalogLabels::normalizeCategory($request->input('category'));
 
+        $sort = (string) $request->input('sort', 'admin');
+        if (! in_array($sort, ['admin', 'latest', 'oldest'], true)) {
+            $sort = 'admin';
+        }
+
         return Inertia::render('Public/ModelProduk', [
-            'models' => app(ModelProductService::class)->storefrontCards(0, $design, $category),
-            'filterDesigns' => CatalogTaxonomy::availableDesignFilters(),
-            'filterModels' => collect(CatalogTaxonomy::models($category))
-                ->map(fn ($model) => ['value' => $model, 'label' => CatalogLabels::model($model) ?: $model])
-                ->values()
-                ->all(),
-            'activeDesign' => $design,
-            'activeCategory' => $category,
+            'models' => app(ModelProductService::class)->storefrontCards(0, $design, $category, $sort),
+            'activeSort' => $sort,
         ]);
     }
 

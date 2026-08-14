@@ -3,7 +3,7 @@
 **Generated 2026-08-09 from `php artisan route:list` (production).**
 Canonical route map; do not add ad-hoc endpoints outside the documented modules.
 
-Total: 269 routes.
+Total: 271 routes.
 
 ## 1. Public Storefront
 
@@ -54,7 +54,7 @@ Total: 269 routes.
 - `GET /policy/terms` -> `PageController@terms`  (name: `terms`)
 - `GET /product/{parent_sku}` -> `ProductController@show`  (name: `product.show`)
 - `POST /product/{product}/engage` -> `ProductEngagementController@store`  (name: `product.engage`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
-- `GET /products` -> `CatalogController@index`  (name: `catalog.index`)
+- `GET /products` -> `CatalogController@index`  (name: `catalog.index`)  — hub "Semua Model Produk" (kartu kategori x model). Query `sort=latest|oldest` mengubah urutan kartu (default: urutan manual admin `sort_order` CMS); nilai sort lain dialihkan ke `catalog.all`.
 - `GET /products/all` -> `CatalogController@all`  (name: `catalog.all`)
 - `GET /products/{category}` -> `CatalogController@categoryShow`  (name: `catalog.category`)
 - `GET /products/{category}/{model}` -> `CatalogController@modelShow`  (name: `catalog.model`)
@@ -279,6 +279,7 @@ Total: 269 routes.
 - `POST /admin/whatsapp/templates/{template}/activate` -> `Admin\WhatsAppTemplateController@activate`  (name: `admin.whatsapp.templates.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/whatsapp/templates/{template}/deactivate` -> `Admin\WhatsAppTemplateController@deactivate`  (name: `admin.whatsapp.templates.deactivate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/whatsapp/templates/{template}/edit` -> `Admin\WhatsAppTemplateController@edit`  (name: `admin.whatsapp.templates.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/{any}` -> `Closure` (catch-all: URL admin tak dikenal -> `abort(404)` -> render `Admin/Error`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 
 ## 3. Auth
 
@@ -293,3 +294,7 @@ Total: 269 routes.
 - `GET /webhook/whatsapp` -> `Webhook\WhatsAppController@verify`  (name: `webhook.whatsapp.verify`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 - `POST /webhook/whatsapp` -> `Webhook\WhatsAppController@handle`  (name: `webhook.whatsapp.handle`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 - `POST /webhook/whatsapp/baileys` -> `Webhook\WhatsAppController@handleBaileys`  (name: `webhook.whatsapp.baileys`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+
+## 5. Fallback
+
+- `GET {fallbackPlaceholder}` -> `Closure` (fallback: URL publik tak dikenal -> `abort(404)` -> render `Public/Error`)  [web]
