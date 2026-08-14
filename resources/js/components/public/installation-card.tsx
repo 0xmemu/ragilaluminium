@@ -29,7 +29,7 @@ export function InstallationCard({
 
   const body = (
     <>
-      <div className="relative h-[187px] w-full shrink-0 overflow-hidden bg-[#f7f8f8]">
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-[#f7f8f8]">
         <ResponsiveImage
           src={image}
           alt={title}
