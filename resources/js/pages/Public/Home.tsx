@@ -4,6 +4,7 @@ import { HomeHero } from "@/components/public/home-hero"
 import {
   ApaKataPelangganSection,
   CaraPesanSection,
+  ClosingCTASection,
   HasilPemasanganSection,
   KamiBantuSection,
   PalingBanyakDipesanSection,
@@ -101,6 +102,7 @@ export default function Home({
         <UlasanPelangganWebsiteSection testimonials={websiteItems} />
       ) : null}
       <KamiBantuSection />
+      <ClosingCTASection />
     </PublicLayout>
   )
 }

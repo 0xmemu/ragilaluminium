@@ -10,6 +10,7 @@ use App\Models\ProductMedia;
 use App\Support\InertiaAdmin;
 use App\Support\InstallationPageSettings;
 use App\Support\TestimonialPageSettings;
+use App\Support\MediaNamer;
 use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -600,7 +601,9 @@ class TestimonialController extends Controller
 
         $imageUrl = filled($validated['image_url'] ?? null) ? trim((string) $validated['image_url']) : null;
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('testimonials', 'media');
+            $file = $request->file('image');
+            $name = MediaNamer::onDisk('testimonial', $file->getClientOriginalExtension() ?: 'jpg', 'media', 'testimonials');
+            $path = $file->storeAs('testimonials', $name, 'media');
             $imageUrl = Storage::disk('media')->url($path);
         } elseif ($imageUrl === null && $existing !== null && ! $request->exists('image_url')) {
             $imageUrl = $existing->image_url;

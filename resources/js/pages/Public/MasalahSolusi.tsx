@@ -361,7 +361,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                     Konsultasi WhatsApp
                   </a>
                 ) : (
-                  <Link href={routeUrl("contact")}>Hubungi kami</Link>
+                  <Link href={routeUrl("contact")}>Hubungi Kami</Link>
                 )}
               </Button>
             </div>

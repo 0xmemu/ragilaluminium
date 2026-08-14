@@ -7,6 +7,7 @@ import { FlyingCart } from "@/components/public/flying-cart"
 import { MobileBottomNav } from "@/components/public/mobile-bottom-nav"
 import { PublicFooter } from "@/components/public/public-footer"
 import { PublicHeader } from "@/components/public/public-header"
+import { PromoSlider } from "@/components/public/home-hero"
 import { FlashMessages } from "@/components/shared/flash-messages"
 
 export function PublicLayout({ children }: { children: ReactNode }) {
@@ -22,6 +23,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         Lewati ke konten utama
       </a>
       {isHome ? <AnnouncementBar /> : null}
+      {isHome ? <PromoSlider /> : null}
       <PublicHeader />
       <FlashMessages />
       <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full overflow-x-hidden outline-none">

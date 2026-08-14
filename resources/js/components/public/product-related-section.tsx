@@ -29,7 +29,7 @@ export function ProductRelatedSection({ products }: { products: ProductCardData[
             href={routeUrl("catalog.index")}
             className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#474747] transition hover:text-[#333333]"
           >
-            <span>Lihat semua</span>
+            <span>Lihat Semua</span>
             <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
           </Link>
         </div>

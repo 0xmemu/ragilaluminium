@@ -10,6 +10,7 @@ class CmsGalleryItem extends Model
     protected $fillable = [
         'cms_page_id',
         'image_url',
+        'media_asset_id',
         'label',
         'published',
         'sort_order',
@@ -20,5 +21,10 @@ class CmsGalleryItem extends Model
     public function cmsPage(): BelongsTo
     {
         return $this->belongsTo(CmsPage::class);
+    }
+
+    public function mediaAsset(): BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class);
     }
 }

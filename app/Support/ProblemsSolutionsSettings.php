@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CmsPage;
 use App\Models\CmsProblemSolution;
 use Illuminate\Http\Request;
+use App\Support\MediaNamer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -384,7 +385,8 @@ class ProblemsSolutionsSettings
 
     public static function storeMedia(UploadedFile $file): string
     {
-        $path = $file->store(self::MEDIA_DIRECTORY, 'media');
+        $name = MediaNamer::onDisk('masalah-solusi', $file->getClientOriginalExtension() ?: 'jpg', 'media', self::MEDIA_DIRECTORY);
+        $path = $file->storeAs(self::MEDIA_DIRECTORY, $name, 'media');
 
         return Storage::disk('media')->url($path);
     }

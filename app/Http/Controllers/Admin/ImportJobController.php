@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessCatalogImport;
+use App\Support\MediaNamer;
 use App\Models\ImportJob;
 use App\Services\ActivityLogService;
 use App\Support\ExportSafety;
@@ -107,7 +108,8 @@ class ImportJobController extends Controller
 
         $file = $request->file('file');
         $fileName = $file->getClientOriginalName();
-        $storedPath = $file->storeAs('catalog', date('Y-m-d-').uniqid().'-'.$fileName, 'imports');
+        $name = MediaNamer::onDisk('import', $file->getClientOriginalExtension() ?: 'xlsx', 'imports', 'catalog');
+        $storedPath = $file->storeAs('catalog', $name, 'imports');
 
         $job = ImportJob::create([
             'type' => $validated['type'],

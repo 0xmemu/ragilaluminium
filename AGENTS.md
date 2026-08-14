@@ -30,39 +30,39 @@ queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, 
 
 ---
 
-## AGENT REPORT FORMAT — MUST FOLLOW
+## AGENT REPORT FORMAT — FLEKSIBEL & KONTEKSTUAL
 
-Every time you change code or fix an error, report using EXACTLY this structure. Do NOT add extra narrative or steps.
+Laporan menyesuaikan jenis pekerjaan, bukan template kaku. Tujuan: komunikasi
+padat, jujur, dan kaya konteks. Lead with outcome: mulai dari hasil, lalu alasan
+dan bukti. Narasi proses internal boleh ringkas; yang tidak boleh hilang: apa
+yang berubah, kenapa, dan bagaimana terverifikasi.
 
-1) SCOPE:
-   - One short line.
-   - Example: "Admin product create form"
-              "API /api/products detail WIN-JUNG-001"
+### Seksi (pilih yang relevan — tidak harus semua)
 
-2) ROOT_CAUSE:
-   - One line, directly stating the real cause.
-   - Example: "Null product_media->url caused blade error"
-              "variants relation not loaded, property access in loop"
+| Seksi | Kapan dipakai |
+|-------|---------------|
+| **Konteks & Lingkup** | Selalu (ringkas): apa yang dikerjakan, di area mana, kenapa |
+| **Akar Masalah** | Wajib untuk bug/error: penyebab nyata, satu kalimat langsung |
+| **Perubahan** | Selalu: file + inti perubahan; sedetail yang dibutuhkan kasus |
+| **Dampak Spesifikasi & Docs** | Hanya jika schema/route/JSON/enum/status berubah → wajib update dokumen kanonik & sebutkan. Jika tidak berubah → cukup tulis "Spec tidak berubah" |
+| **Verifikasi / Pengujian** | Selalu: perintah + hasil nyata (jumlah test, status curl/HTTP, screenshot). Sebutkan juga yang gagal/belum dicek bila relevan |
+| **Keputusan & Trade-off** | Opsional: asumsi, alternatif yang ditolak, hal yang sengaja tidak dikerjakan |
+| **Tindak Lanjut** | Opsional: yang masih terbuka / rekomendasi agent berikutnya |
 
-3) CHANGE:
-   - Maximum two lines.
-   - Name the files and what you changed.
-   - Example: "Added null-check in resources/views/admin/products/create.blade.php"
-              "Loaded variants relation in ProductController@show before rendering"
+### Panduan per jenis pekerjaan
 
-4) SPEC_IMPACT:
-   - Choose ONE of these and write it exactly:
-     - "SPEC_UNCHANGED" → schema, routes, and JSON contracts are all unchanged.
-     - "SPEC_CHANGED_AND_DOCS_UPDATED" → spec changed AND docs have been updated.
+- **Bug fix / error** → Konteks → Akar Masalah → Perubahan → Verifikasi (+ Dampak Spec bila route/schema berubah).
+- **Fitur / perubahan UI fungsional** → Konteks → Perubahan (per area) → Dampak Spec & Docs → Verifikasi → Tindak Lanjut.
+- **Refactor / pemeliharaan** → Konteks → Perubahan → Verifikasi (regresi).
+- **Docs / riset / investigasi** → naratif bebas, tutup dengan kesimpulan + rekomendasi.
+- **Operasional / infra (VPS, queue, backup, deploy)** → Konteks → Langkah → Verifikasi → Status & risiko.
 
-5) TEST_STATUS:
-   - One line about tests or manual checks.
-   - Example: "Smoke test admin create product: PASS"
-              "Route /api/products/WIN-JUNG-001: 200 OK, payload matches api-and-routes spec"
+### Aturan minimum
 
-Extra rules:
-- Do NOT describe internal process (e.g. "let me check the log").
-- Focus only on: scope, root cause, concrete code changes, impact on spec, and test status.
+- Wajib di setiap laporan: apa yang diubah + kenapa + bagaimana diverifikasi.
+- Bug → Akar Masalah wajib. Perubahan spec → update docs kanonik wajib; kalau
+  tidak diupdate, nyatakan alasannya eksplisit.
+- Jangan menyembunyikan hal penting demi singkat; hindari boilerplate.
 
 ---
 
@@ -237,11 +237,54 @@ Berlaku untuk SEMUA agent di repo ini, termasuk agent lain/sebelumnya.
    adalah kontrak antar agent.
 3. Jangan commit: .env.pre-*, .backup-*, *.bak-* (kecuali diminta user).
 4. Sebelum menyentuh file: cek git status — agent lain boleh bekerja di
-   working tree yang sama; report format (SCOPE/ROOT_CAUSE/CHANGE/SPEC_IMPACT/
-   TEST_STATUS) tetap wajib di setiap laporan perubahan.
+   working tree yang sama; report format fleksibel (lihat AGENTS.md) tetap
+   wajib di setiap laporan perubahan.
 5. **Instruksi ambigu → TANYA DULU, jangan tebak** (disepakati user 2026-08-13):
    kalau instruksi kurang jelas, menyebut elemen UI yang bisa menunjuk ke
    beberapa komponen (mis. "bar merah", "pill", "tombol lihat semua"), atau
    target/perilaku yang kamu ragukan — tanyakan ke user SEBELUM mengubah kode
    atau data. Jangan berasumsi lalu mengubah komponen yang salah; konfirmasi
    singkat (1 kalimat) dengan menyebutkan target yang kamu pahami.
+## ADMIN TESTING WORKFLOW (2026-08-14 — biar tidak terhambat hal remeh)
+
+- **Akun tes admin (dev-only):** `dev.agent@ragilaluminium.test` — password ada di
+  `docs/MEMORY.md` (entri 2026-08-14). Pakai akun ini untuk SEMUA verifikasi/otomasi UI
+  admin. **DILARANG mengubah password `qa.admin@example.com`** (akun QA asli, password
+  tidak diketahui). Jika terlanjur berubah, recovery dari backup harian:
+  `zcat /root/backups/ragil/ragil_aluminium-<tanggal>.sql.gz | grep "INSERT INTO \`users\`" | grep qa.admin@example.com`
+  (ambil hash asli di baris itu, restore via tinker).
+- **Preview/verifikasi halaman admin:** `scripts/admin-preview.cjs` — jalankan di mesin
+  lokal (butuh Chrome/Edge + Node >= 22, TANPA dependensi). Login otomatis pakai akun tes,
+  render halaman, dump DOM + console errors + screenshot:
+  `node scripts/admin-preview.cjs --url=/admin --find="Kelola banner" --mode=dump`
+  `node scripts/admin-preview.cjs --url=/admin/banners --mode=shot --out=x.png`
+  (Ambil file via `ssh 209.23.10.62 "cat /root/ragilaluminium/scripts/admin-preview.cjs"`.)
+- **Jalur admin yang valid:** dashboard = `/admin` — **BUKAN `/admin/dashboard`** (URL itu
+  tidak ada route-nya; kini dirender sebagai 404 ber-brand `Admin/Error` tanpa crash React,
+  tapi tetap jangan dipakai untuk verifikasi dashboard).
+  Banner promo: `/admin/banners` (+ `/admin/banners/create`). Sidebar admin juga punya
+  menu "Promo Toko" dan "Bar Promo".
+- **Shared working tree aktif:** agent lain sedang mengerjakan homepage publik (file
+  `resources/js/components/public/*`, `app.css`, dll.) dan melakukan rebuild berkala —
+  nama asset hashed berubah tiap build. Selalu `git status` dulu dan verifikasi live via
+  tool di atas, jangan berasumsi dari kondisi sebelumnya.
+
+### 2026-08-15 — Banner Promo: menu sidebar sendiri + label jelas (anti-bingung)
+
+- Sidebar admin kini punya item **"Banner Promo"** di grup Harga & Promo
+  (config/admin-sitemap.php) — pintu masuk langsung ke `/admin/banners`,
+  tidak perlu lagi lewat dashboard/beranda.
+- Label di halaman banner diubah agar tidak tertukar dengan kampanye Promo Toko:
+  "Tambah Promo" -> "Tambah Banner", judul halaman "Banner Promo" (Index.tsx,
+  Form.tsx, BannerController@index).
+- **Peta akses banner** (semua menuju `/admin/banners`):
+  1. Sidebar -> Harga & Promo -> **Banner Promo** (paling langsung)
+  2. Dashboard -> scroll bawah -> section "Promo & flash sale aktif" -> "Kelola banner"
+  3. Pengaturan Website -> Beranda Pembeli -> section "Banner Utama" -> "Edit konten"
+     (HomepageLayoutSettings SECTION_META `banner` -> route admin.banners.index)
+- **GOTCHA (penyebab kebingungan 2026-08-15): build live BISA tertinggal dari
+  working tree.** File `resources/js/pages/Admin/Beranda/Index.tsx` diedit agent
+  lain (18:57) SETELAH build terakhir (17:38) — hasilnya: source code grep bilang
+  Beranda tidak punya banner, padahal LIVE masih punya section "Banner Utama".
+  Aturan baru: **untuk memastikan kondisi UI, selalu verifikasi LIVE dulu
+  (admin-preview.cjs / curl), jangan hanya percaya grep source.**

@@ -30,7 +30,7 @@ export interface HowToOrderData {
 function SectionTitle({
   title,
   actionHref,
-  actionLabel = "Lihat semua →",
+  actionLabel = "Lihat Semua →",
   tone = "default",
 }: {
   title: string
@@ -75,7 +75,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
-          title="Pilih model produk"
+          title="Pilih Model Produk"
           actionHref={seeMoreHref}
         />
         {models.length ? (
@@ -86,7 +86,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
             description="Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih."
             action={
               <Button asChild>
-                <Link href={seeMoreHref}>Buka katalog</Link>
+                <Link href={seeMoreHref}>Buka Katalog</Link>
               </Button>
             }
           />
@@ -114,7 +114,7 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
             description="Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
             action={
               <Button asChild>
-                <Link href={routeUrl("catalog.category", { category: "windows" })}>Jelajahi produk</Link>
+                <Link href={routeUrl("catalog.category", { category: "windows" })}>Jelajahi Produk</Link>
               </Button>
             }
           />
@@ -157,6 +157,14 @@ export function CaraPesanSection({
   }
   const [active, setActive] = React.useState(0)
   const [paused, setPaused] = React.useState(false)
+  const [isDesktop, setIsDesktop] = React.useState(false)
+  React.useEffect(() => {
+    const query = window.matchMedia("(min-width: 768px)")
+    const update = () => setIsDesktop(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [])
   const total = steps.length
   const surfaceRef = React.useRef<HTMLDivElement>(null)
   const dragRef = React.useRef<{
@@ -166,14 +174,14 @@ export function CaraPesanSection({
   }>({ pointerId: null, startX: 0, dragged: false })
 
   React.useEffect(() => {
-    if (total < 2 || paused) return
+    if (total < 2 || paused || isDesktop) return
     const media = window.matchMedia("(prefers-reduced-motion: reduce)")
     if (media.matches) return
     const id = window.setInterval(() => {
       setActive((current) => (current + 1) % total)
     }, 4000)
     return () => window.clearInterval(id)
-  }, [total, paused])
+  }, [total, paused, isDesktop])
 
   // Swipe kiri/kanan untuk ganti langkah.
   React.useEffect(() => {
@@ -277,7 +285,7 @@ export function CaraPesanSection({
         <SectionTitle
           title={title}
           actionHref={routeUrl("cara-pemesanan")}
-          actionLabel="Lihat panduan →"
+          actionLabel="Lihat Panduan →"
         />
 
         <div
@@ -291,10 +299,10 @@ export function CaraPesanSection({
           <div
             className={cn(
               "flex h-[120px] w-full",
-              !(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) &&
+              !isDesktop && !(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) &&
                 "transition-transform duration-200 ease-emphasized",
             )}
-            style={{ transform: `translateX(-${active * 100}%)` }}
+            style={{ transform: isDesktop ? "translateX(0)" : `translateX(-${active * 100}%)` }}
             aria-live="polite"
           >
             {steps.map((item, index) => {
@@ -305,7 +313,7 @@ export function CaraPesanSection({
               return (
                 <div
                   key={`${index}-${item.title}`}
-                  className="flex h-full w-full shrink-0 items-center gap-3 px-4 sm:gap-4 sm:px-6"
+                  className="flex h-full w-full shrink-0 items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:w-1/3 lg:basis-1/3"
                 >
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white sm:size-10">
                     <Icon name={icon} className="size-4.5 sm:size-5" aria-hidden="true" />
@@ -327,7 +335,7 @@ export function CaraPesanSection({
 
           {/* Dots tipis di kanan bawah */}
           {total > 1 ? (
-            <div className="absolute bottom-2 right-3 flex items-center gap-1">
+            <div className="absolute bottom-2 right-3 flex items-center gap-1 lg:hidden">
               {steps.map((item, index) => (
                 <button
                   key={`dot-${index}-${item.title}`}
@@ -368,7 +376,7 @@ export function HasilPemasanganSection({
         <SectionTitle
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           actionHref={seeMoreHref}
-          actionLabel="Lihat semua →"
+          actionLabel="Lihat Semua →"
         />
         {items.length ? (
           <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
@@ -393,7 +401,7 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
         <SectionTitle
           title="Apa kata pelanggan kami"
           actionHref={seeMoreHref}
-          actionLabel="Lihat semua →"
+          actionLabel="Lihat Semua →"
         />
         {testimonials.length ? (
           <TestimonialCarousel
@@ -423,7 +431,7 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
         <SectionTitle
           title="Ulasan pelanggan di website"
           actionHref={seeMoreHref}
-          actionLabel="Lihat semua →"
+          actionLabel="Lihat Semua →"
         />
         {testimonials.length ? (
           <TestimonialCarousel
@@ -471,16 +479,42 @@ const HELP_STEPS = [
   },
 ]
 
-export function KamiBantuSection() {
+export function ClosingCTASection() {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
-  const whatsappUrl = consultationWhatsApp?.directUrl ?? null
+  const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
 
+  return (
+    <section id="closing-cta" className="scroll-mt-20 bg-[#1a1e1c] text-background">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12 flex flex-col items-center py-7 text-center">
+        <div className="flex flex-col items-center gap-1 text-center">
+          <p className="text-xs font-semibold tracking-tight text-white">Pakai produk berkualitas</p>
+          <h2 className="text-balance text-[22px] font-bold leading-[1.5] tracking-tight text-background sm:text-3xl">
+            Tingkatkan kualitas bangunan Anda bersama kami
+          </h2>
+        </div>
+        <div className="mt-10 flex w-full max-w-xl flex-nowrap items-center justify-center gap-2 sm:gap-3">
+          <Button asChild className="h-9 min-w-0 flex-1 whitespace-nowrap bg-background px-3 text-xs text-primary hover:bg-background/90 sm:px-6 sm:text-sm">
+            <Link href={routeUrl("catalog.index")}>Pilih Model Produk</Link>
+          </Button>
+          <Button asChild variant="secondary" className="h-9 min-w-0 flex-1 whitespace-nowrap border border-white/40 bg-transparent px-3 text-xs text-white hover:bg-white/10 sm:px-6 sm:text-sm">
+            <a href={whatsappUrl} target="_blank" rel="noreferrer">
+              <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+              Konsultasi ukuran
+            </a>
+          </Button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function KamiBantuSection() {
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-muted/30">
       <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
           <p className="text-xs font-bold text-primary sm:text-sm">
-            Masih bingung?
+            Masih Bingung?
           </p>
           <SectionHeading
             size="display"
@@ -494,7 +528,7 @@ export function KamiBantuSection() {
           />
         </div>
 
-        <div className="mx-auto max-w-3xl space-y-3 sm:space-y-4">
+        <div className="mx-auto max-w-3xl space-y-3 sm:space-y-4 lg:max-w-none lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {HELP_STEPS.map((item) => (
             <article
               key={item.title}
@@ -515,24 +549,6 @@ export function KamiBantuSection() {
           ))}
         </div>
 
-        <div className="mx-auto mt-6 flex w-full max-w-xl flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-center sm:gap-3">
-          <Button asChild className="min-w-0 flex-1 whitespace-nowrap px-3 text-xs sm:px-6 sm:text-sm">
-            <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
-          </Button>
-          <Button asChild variant="secondary" className="min-w-0 flex-1 whitespace-nowrap px-3 text-xs sm:px-6 sm:text-sm">
-            {whatsappUrl ? (
-              <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                Konsultasi ukuran
-              </a>
-            ) : (
-              <Link href={routeUrl("contact")}>
-                <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                Konsultasi ukuran
-              </Link>
-            )}
-          </Button>
-        </div>
       </div>
     </section>
   )

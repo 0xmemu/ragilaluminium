@@ -143,7 +143,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                     Chat WhatsApp
                   </a>
                 ) : (
-                  <Link href={routeUrl("contact")}>Hubungi kami</Link>
+                  <Link href={routeUrl("contact")}>Hubungi Kami</Link>
                 )}
               </Button>
             </div>

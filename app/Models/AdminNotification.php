@@ -16,6 +16,8 @@ class AdminNotification extends Model
 
     protected $fillable = [
         'type',
+        'related_type',
+        'related_id',
         'title',
         'body',
         'order_id',
@@ -25,6 +27,7 @@ class AdminNotification extends Model
 
     protected $casts = [
         'order_id' => 'integer',
+        'related_id' => 'integer',
         'read_at' => 'datetime',
     ];
 

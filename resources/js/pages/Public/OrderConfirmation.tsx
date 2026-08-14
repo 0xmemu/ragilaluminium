@@ -237,13 +237,13 @@ export default function OrderConfirmation({
               <Button asChild size="lg">
                 <a href={whatsapp_url} target="_blank" rel="noreferrer">
                   <Icon name="whatsapp" className="h-5 w-5" aria-hidden="true" />
-                  {isTransfer ? "Kirim bukti via WhatsApp" : "Chat WhatsApp"}
+                  {isTransfer ? "Kirim Bukti Via WhatsApp" : "Chat WhatsApp"}
                 </a>
               </Button>
             ) : null}
             <Button asChild size="lg" variant={whatsapp_url ? "secondary" : undefined}>
               <Link href={routeUrl("order.status")}>
-                Cek status pesanan
+                Cek Status Pesanan
                 <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
               </Link>
             </Button>

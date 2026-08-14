@@ -159,7 +159,7 @@ export function ProductInfoSections({
               href={routeUrl("installation.show", { parent_sku: product.parent_sku })}
               className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#474747] transition hover:text-[#333333]"
             >
-              <span>Lihat semua</span>
+              <span>Lihat Semua</span>
               <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
             </Link>
           </div>
@@ -257,7 +257,7 @@ export function ProductInfoSections({
             href={routeUrl("reviews")}
             className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#474747] transition hover:text-[#333333]"
           >
-            <span>Lihat semua ulasan ({reviews.length})</span>
+            <span>Lihat Semua Ulasan ({reviews.length})</span>
             <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
           </Link>
         ) : null}

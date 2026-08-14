@@ -83,7 +83,7 @@ class HomepagePromotions
     private static function manualSlides(): array
     {
         /** @var Collection<int, CmsBanner> $banners */
-        $banners = CmsBanner::published()->orderBy('sort_order')->orderBy('id')->get();
+        $banners = CmsBanner::published()->with('mediaAsset')->orderBy('sort_order')->orderBy('id')->get();
         if ($banners->isEmpty()) {
             return [];
         }
@@ -107,7 +107,10 @@ class HomepagePromotions
             $promo = $product ? ProductPromotionMetadata::forProduct($product) : null;
             $copy = self::copy($banner->title, $product, $promo);
 
-            $image = $product?->mainImage?->localUrlFor('pdp')
+            $image = $banner->mediaAsset?->localUrlFor('pdp')
+                ?: $banner->mediaAsset?->localUrlFor('card')
+                ?: $banner->mediaAsset?->localUrlFor('thumb')
+                ?: $product?->mainImage?->localUrlFor('pdp')
                 ?: $product?->mainImage?->localUrlFor('card')
                 ?: $product?->mainImage?->urlFor('pdp')
                 ?: $product?->mainImage?->urlFor('card')

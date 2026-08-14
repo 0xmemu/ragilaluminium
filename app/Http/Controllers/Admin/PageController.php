@@ -7,6 +7,7 @@ use App\Models\CmsPage;
 use App\Support\HomepageLayoutSettings;
 use App\Support\HomepagePromotionSettings;
 use App\Support\InertiaAdmin;
+use App\Support\MediaNamer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -113,11 +114,16 @@ class PageController extends Controller
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
             $file->move(public_path('images'), 'site-logo.png');
+            $version = MediaNamer::local('logo', $file->getClientOriginalExtension() ?: 'png', public_path('images'));
+            copy(public_path('images/site-logo.png'), public_path('images/'.$version));
         }
 
         if ($request->hasFile('favicon')) {
             $file = $request->file('favicon');
+            $ext = $file->getClientOriginalExtension() ?: 'ico';
             $file->move(public_path('images'), 'site-favicon.ico');
+            $version = MediaNamer::local('favicon', $ext, public_path('images'));
+            copy(public_path('images/site-favicon.ico'), public_path('images/'.$version));
         }
 
         return redirect()->route('admin.pages.index')->with('success', 'Branding berhasil diperbarui!');

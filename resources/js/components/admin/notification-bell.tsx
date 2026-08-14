@@ -15,12 +15,16 @@ const typeIcons: Record<string, string> = {
   order_created: "bell",
   order_delivered: "check-circle",
   order_cancelled: "x",
+  media_failed: "warning",
+  media_cleanup: "bell",
 }
 
 const typeColors: Record<string, string> = {
   order_created: "bg-primary/10 text-primary",
   order_delivered: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   order_cancelled: "bg-destructive/10 text-destructive",
+  media_failed: "bg-destructive/10 text-destructive",
+  media_cleanup: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
 }
 
 export interface NotificationItem {

@@ -89,7 +89,7 @@ export default function Checkout({
             description="Tambahkan produk dan varian terlebih dahulu sebelum membuka checkout."
             action={
               <Button asChild>
-                <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
+                <Link href={routeUrl("catalog.index")}>Pilih Model Produk</Link>
               </Button>
             }
           />

@@ -2,9 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Models\MediaProcessingLog;
 use App\Models\ProductMedia;
 use App\Services\MediaDerivativeService;
 use App\Support\UrlGuard;
+use App\Support\MediaFailureNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -70,7 +72,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
         }
 
         $media->update(['status' => 'downloading']);
-
+        MediaProcessingLog::record($media, 'processing', 'Mengunduh media produk dari URL sumber.');
         $tmp = null;
 
         try {
@@ -147,6 +149,11 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
             }
 
             $media->update($payload);
+            MediaProcessingLog::record(
+                $media,
+                'success',
+                empty($built) ? 'Media tersimpan tanpa derivatif WebP (periksa format).' : 'Media berhasil diunduh dan derivatif WebP siap.',
+            );
         } catch (\Throwable $e) {
             $this->fail($media, $e->getMessage());
             throw $e;
@@ -160,6 +167,8 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
     protected function fail(ProductMedia $media, string $reason): void
     {
         $media->update(['status' => 'failed', 'error_reason' => Str::limit($reason, 500)]);
+        MediaProcessingLog::record($media, 'failed', Str::limit($reason, 500));
+        MediaFailureNotifier::notify($media, $reason);
     }
 
     protected function extensionFor(string $url, ?string $mime): string

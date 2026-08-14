@@ -101,6 +101,13 @@ The website is the **transaction engine** at the center of an ecosystem:
   one asset, and exposes derived URLs from the configured media disk. Frontend
   respects attachment and asset visibility. Uses archive-style flags instead of
   deleting media.
+- **Direct upload (admin, produk):** browser meminta presigned PUT URL
+  (`POST /admin/media/presign`, validasi mime/ukuran di server), mengunggah file
+  **langsung ke R2** (bucket CORS mengizinkan PUT dari `ra.333labs.tech`), lalu
+  `POST /admin/media/finalize` membuat `media_assets` + `product_media` dan
+  mengantrekan `ProcessUploadedMediaAsset` (queue `media`) untuk derivatif WebP
+  thumb/card/pdp async. File besar tidak pernah menetap di VPS; banner tetap
+  stream langsung ke R2 tanpa presign (tidak perlu diproses).
 
 ### 2.7 WhatsApp Module
 **Source of truth for messaging logs; notification & communication channel.**

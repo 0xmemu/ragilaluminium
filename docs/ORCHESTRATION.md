@@ -13,7 +13,7 @@ Tidak ada `.claude/`, hooks, atau `run.sh`. Loop agent = baca dokumen ini → sk
 AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
         →  skill tracks (domain + technique)
         →  code
-        →  SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS
+        →  laporan kontekstual (format fleksibel AGENTS.md)
         ⇢  docs/MEMORY.md (milestone saja)
 ```
 
@@ -224,7 +224,7 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 8. Jalankan fase **work**: ubah code; jangan invent field/route/JSON di luar schema & API docs.
    - **UI/fitur:** analisis aksi di layar → sambungkan ke backend yang ada → verifikasi fungsional (lihat `ragil-ui-functional-integration`). Dilarang selesai sebagai mockup.
 9. Jalankan fase **review**: cek diff, kontrak, keamanan, regression, dan test evidence.
-10. Laporkan SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS.
+10. Laporkan dengan format kontekstual AGENTS.md (pilih seksi sesuai jenis pekerjaan).
 11. Jalankan fase **compound**: hanya catat keputusan, gotcha, atau milestone reusable di `docs/MEMORY.md`.
 
 ---

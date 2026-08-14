@@ -66,7 +66,7 @@ export function OrderStatusTimeline({
 
 export function OrderStatusTimelineLink({
   href,
-  label = "Cek status lengkap",
+  label = "Cek Status Lengkap",
 }: {
   href: string
   label?: string

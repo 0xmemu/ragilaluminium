@@ -74,6 +74,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 return $response;
             }
 
+            // HandleInertiaRequests (grup web) TIDAK berjalan untuk URL yang tidak
+            // cocok route mana pun -> shared props (auth/nav/ziggy/flash) hilang dari
+            // payload sehingga halaman error React crash/blank. Register ulang manual.
+            if (! Inertia::getShared('auth')) {
+                $inertiaMiddleware = app(HandleInertiaRequests::class);
+                Inertia::version($inertiaMiddleware->version($request));
+                Inertia::share($inertiaMiddleware->share($request));
+            }
+
             $page = $request->is('admin', 'admin/*')
                 ? 'Admin/Error'
                 : 'Public/Error';

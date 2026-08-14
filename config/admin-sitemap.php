@@ -66,12 +66,15 @@ return [
             'title' => 'Produk',
             'items' => [
                 ['label' => 'Kelola Produk', 'route' => 'admin.products.index', 'icon' => 'package', 'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*']],
+                ['label' => 'Media Library', 'route' => 'admin.media.library', 'icon' => 'image', 'active' => ['admin.media.library']],
+                ['label' => 'Riwayat Media', 'route' => 'admin.media.history', 'icon' => 'history', 'active' => ['admin.media.history']],
             ],
         ],
         'harga_promo' => [
             'title' => 'Harga & Promo',
             'items' => [
-                ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'icon' => 'ticket', 'active' => ['admin.promotions.*', 'admin.banners.*']],
+                ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'icon' => 'ticket', 'active' => ['admin.promotions.*']],
+                ['label' => 'Banner Promo', 'route' => 'admin.banners.index', 'icon' => 'images', 'active' => ['admin.banners.*']],
                 ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'icon' => 'megaphone', 'active' => ['admin.announcements.*']],
                 ['label' => 'Flash Sale', 'route' => 'admin.promotions.index?type=flash_sale', 'icon' => 'lightning', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
                 ['label' => 'Voucher Toko', 'route' => 'admin.vouchers.index', 'icon' => 'voucher', 'active' => ['admin.vouchers.*']],
@@ -108,10 +111,8 @@ return [
                 ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
                 ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],
-                ['label' => 'Informasi Toko', 'route' => 'admin.tentang-kami.edit', 'icon' => 'store', 'active' => ['admin.tentang-kami.*']],
+                ['label' => 'Dokumen Halaman', 'route' => 'admin.documents.index', 'icon' => 'file-text', 'active' => ['admin.documents.*', 'admin.tentang-kami.*', 'admin.ketentuan-layanan.*', 'admin.kebijakan-privasi.*']],
                 ['label' => 'Marketplace & Media Sosial', 'route' => 'admin.storefront-platforms.edit', 'icon' => 'storefront', 'active' => ['admin.storefront-platforms.*']],
-                ['label' => 'Ketentuan Layanan', 'route' => 'admin.ketentuan-layanan.edit', 'icon' => 'gavel', 'active' => ['admin.ketentuan-layanan.*']],
-                ['label' => 'Kebijakan Privasi', 'route' => 'admin.kebijakan-privasi.edit', 'icon' => 'lock', 'active' => ['admin.kebijakan-privasi.*']],
                 ['label' => 'Apa Kata Pelanggan Kami', 'route' => 'admin.apa-kata-pelanggan.index', 'icon' => 'badge-check', 'active' => ['admin.apa-kata-pelanggan.*']],
                 ['label' => 'Hasil Pemasangan Kami', 'route' => 'admin.hasil-pemasangan.index', 'icon' => 'images', 'active' => ['admin.hasil-pemasangan.*']],
             ],

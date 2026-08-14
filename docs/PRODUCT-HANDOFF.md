@@ -579,7 +579,7 @@ Admin sidebar structure/labels: `config/admin-sitemap.php` + `docs/sitemap/admin
 - Expose navigation to `planned` pages (Retur publik). Detail galeri Hasil Pemasangan sudah live (`installation.show`). **Masalah & Solusi sudah live** (`/masalah-dan-solusi` + admin editor).
 - Switch customer-facing copy away from Bahasa Indonesia.
 
-**Follow the report format** in `AGENTS.md` (SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS) when you make changes.
+**Follow the report format** in `AGENTS.md` (flexible & contextual — pick the sections that fit the work type) when you make changes.
 
 ---
 

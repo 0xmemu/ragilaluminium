@@ -170,7 +170,7 @@ export function AppliedFiltersCard({
           onClick={onClearAll}
           className="text-sm font-semibold text-primary hover:underline"
         >
-          Hapus semua
+          Hapus Semua
         </button>
       </div>
       <ul className="mt-4 flex flex-wrap gap-2">

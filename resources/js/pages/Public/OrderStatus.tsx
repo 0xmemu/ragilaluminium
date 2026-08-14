@@ -81,7 +81,7 @@ function OrderDetail({
           {onCancel && order.order_status === "pending_payment" ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
               <p className="text-xs font-bold tracking-tight text-destructive">
-                Batalkan pesanan
+                Batalkan Pesanan
               </p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Hanya bisa dibatalkan selama status masih menunggu konfirmasi.
@@ -94,7 +94,7 @@ function OrderDetail({
                 disabled={cancelBusy}
                 onClick={onCancel}
               >
-                {cancelBusy ? "Membatalkan..." : "Batalkan pesanan"}
+                {cancelBusy ? "Membatalkan..." : "Batalkan Pesanan"}
               </Button>
             </div>
           ) : null}
@@ -148,7 +148,7 @@ function OrderDetail({
         Ragil.
       </Alert>
       <Button asChild variant="secondary" className="mt-4">
-        <Link href={routeUrl("contact")}>Hubungi kami</Link>
+        <Link href={routeUrl("contact")}>Hubungi Kami</Link>
       </Button>
     </div>
   )
@@ -269,7 +269,7 @@ export default function OrderStatus({
   function cancelOrder() {
     if (!activeOrder) return
     const confirmed = window.confirm(
-      `Batalkan pesanan ${activeOrder.order_number}?\nStok produk akan dikembalikan ke katalog.`,
+      `Batalkan Pesanan ${activeOrder.order_number}?\nStok produk akan dikembalikan ke katalog.`,
     )
     if (!confirmed) return
     cancelForm.setData({
@@ -305,7 +305,7 @@ export default function OrderStatus({
       <Head title="Pesanan">
         <meta
           name="description"
-          content="Cek status pesanan dari perangkat ini, atau masukkan nomor pesanan beserta HP/email checkout."
+          content="Cek Status Pesanan dari perangkat ini, atau masukkan nomor pesanan beserta HP/email checkout."
         />
       </Head>
 
@@ -406,7 +406,7 @@ export default function OrderStatus({
               </div>
               <Button type="submit" size="lg" className="mt-6 w-full" disabled={form.processing}>
                 <Icon name="search" className="h-5 w-5" aria-hidden="true" />
-                {form.processing ? "Mencocokkan..." : "Lihat pesanan"}
+                {form.processing ? "Mencocokkan..." : "Lihat Pesanan"}
               </Button>
             </form>
 

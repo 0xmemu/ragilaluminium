@@ -133,3 +133,12 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 
 - **Order Management Flow**: `Dashboard (Needs Attention)` -> `Orders List` -> `Order Detail` -> (Tab Pembayaran / Tab Pengiriman / Tab WA Logs).
 - **Catalog Update Flow**: `Dashboard (Import Alerts)` -> `Produk → Import` -> `Failed Rows` -> (Perbaikan Data Excel) -> `Produk → Daftar Produk` -> `Product Detail (Variants & Media)`.
+
+---
+
+## Error Handling (404)
+
+URL `/admin/*` yang tidak dikenal (mis. `/admin/dashboard`) tidak punya route → catch-all
+`admin/{any}` (auth+admin) memanggil `abort(404)` → exceptions handler merender `Admin/Error`
+(ber-brand, tombol "Ke Dashboard" / "Daftar pesanan") dengan status HTTP 404. Admin yang
+belum login diarahkan ke `/login`. Bukan menu navigasi — tidak masuk sidebar.

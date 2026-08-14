@@ -1,7 +1,7 @@
-import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { ProductCard } from "@/components/public/product-card"
+import { MobileEndActionReveal, useEndActionReveal } from "@/components/public/home-carousels"
 import { Icon } from "@/components/shared/icon"
 import { SectionHeading } from "@/components/shared/section-heading"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
@@ -106,25 +106,6 @@ function CarouselNavButton({
   )
 }
 
-function MobileSeeMoreSlide({ href }: { href: string }) {
-  return (
-    <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
-      <Link
-        href={href}
-        className="inline-flex flex-col items-center justify-center gap-1 text-[#474747] transition hover:text-[#333333] active:scale-95"
-        aria-label="Lihat semua"
-      >
-        <span className="inline-flex size-11 items-center justify-center rounded-full border border-[#474747]/40 bg-white text-[#474747] shadow-sm transition hover:border-[#474747] sm:size-12">
-          <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
-        </span>
-        <span className="max-w-full text-center text-xs font-medium leading-tight tracking-tight">
-          Lihat semua
-        </span>
-      </Link>
-    </div>
-  )
-}
-
 function ProductCardCarousel({
   products,
   seeMoreHref,
@@ -134,17 +115,33 @@ function ProductCardCarousel({
 }) {
   const items = products.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const reveal = useEndActionReveal(trackRef)
 
   return (
     <div className="relative min-w-0 px-1">
-      <div ref={trackRef} id={trackId} className={carouselTrackClass}>
+      <div
+        ref={trackRef}
+        id={trackId}
+        className={carouselTrackClass}
+        style={{
+          transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+          transition: reveal.pull ? "none" : "transform 360ms ease-out",
+        }}
+        onPointerDown={reveal.onPointerDown}
+        onPointerMove={reveal.onPointerMove}
+        onPointerUp={reveal.onPointerUp}
+        onPointerCancel={reveal.onPointerUp}
+      >
         {items.map((product, index) => (
           <div key={product.id} className={carouselCardClass}>
             <ProductCard product={product} priority={index < 4} titleStyle="model" />
           </div>
         ))}
-        {items.length > 0 ? <MobileSeeMoreSlide href={seeMoreHref} /> : null}
+        
       </div>
+      {items.length > 0 ? (
+        <MobileEndActionReveal href={seeMoreHref} pull={reveal.pull} revealed={reveal.revealed} />
+      ) : null}
       <CarouselNavButton
         trackId={trackId}
         side="left"
@@ -188,13 +185,13 @@ export function PalingBanyakDipesanSection({
           eyebrow="Untuk inspirasi Anda"
           title="Paling banyak dipesan"
           action={
-            <Link
+            <a
               href={seeMoreHref}
               className="inline-flex shrink-0 items-center gap-1 self-end text-xs font-medium text-[#474747] transition hover:text-[#333333]"
             >
-              <span>Lihat semua</span>
+              <span>Lihat Semua</span>
               <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
-            </Link>
+            </a>
           }
         />
         <ProductCardCarousel products={products} seeMoreHref={seeMoreHref} />

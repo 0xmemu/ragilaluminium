@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\PageController as AdminPageController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ProductAttributeController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\MediaUploadController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\SubModelController;
@@ -203,16 +204,30 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('products/{product}/attributes', [ProductAttributeController::class, 'store'])->name('products.attributes.store');
     Route::put('attributes/{attribute}', [ProductAttributeController::class, 'update'])->name('attributes.update');
 
+    // Media (upload langsung browser -> R2 via presigned PUT + finalize)
+    Route::post('media/presign', [MediaUploadController::class, 'presign'])->name('media.presign');
+    Route::post('media/finalize', [MediaUploadController::class, 'finalize'])->name('media.finalize');
+
     // Media
+    Route::get('media/library', [ProductMediaController::class, 'library'])->name('media.library');
+    Route::get('media/history', [ProductMediaController::class, 'history'])->name('media.history');
+    Route::post('media/logs/{log}/retry', [ProductMediaController::class, 'retryLog'])->name('media.logs.retry');
+    Route::delete('media/logs/{log}', [ProductMediaController::class, 'destroyLog'])->name('media.logs.destroy');
+    Route::post('media/logs/prune', [ProductMediaController::class, 'pruneLogs'])->name('media.logs.prune');
+    Route::get('media/status', [ProductMediaController::class, 'status'])->name('media.status');
     Route::get('media', [ProductMediaController::class, 'index'])->name('media.index');
     Route::get('products/{product}/media', [ProductMediaController::class, 'byProduct'])->name('products.media.byProduct');
     Route::post('products/{product}/media', [ProductMediaController::class, 'store'])->name('products.media.store');
+    Route::post('products/{product}/media/bulk', [ProductMediaController::class, 'bulkProductMedia'])->name('products.media.bulk');
     Route::put('media/{media}', [ProductMediaController::class, 'update'])->name('media.update');
     Route::post('media/{media}/set-main', [ProductMediaController::class, 'setMain'])->name('media.set-main');
     Route::post('media/{media}/archive', [ProductMediaController::class, 'archive'])->name('media.archive');
+    Route::post('media/{media}/restore', [ProductMediaController::class, 'restore'])->name('media.restore');
     Route::post('media/{media}/redownload', [ProductMediaController::class, 'redownload'])->name('media.redownload');
     Route::delete('media/{media}', [ProductMediaController::class, 'destroy'])->name('media.destroy');
     Route::post('media/{asset}/attach', [ProductMediaController::class, 'bulkAttach'])->name('media.attach');
+    Route::post('media/bulk-action', [ProductMediaController::class, 'bulkAction'])->name('media.bulk-action');
+    Route::get('media/products/search', [ProductMediaController::class, 'searchProducts'])->name('media.products.search');
 
     // Imports
     Route::get('imports', [ImportJobController::class, 'index'])->name('imports.index');
@@ -297,6 +312,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('banners/{banner}', [BannerController::class, 'update'])->name('banners.update');
     Route::post('banners/{banner}/publish', [BannerController::class, 'publish'])->name('banners.publish');
     Route::post('banners/{banner}/unpublish', [BannerController::class, 'unpublish'])->name('banners.unpublish');
+    Route::delete('banners/{banner}', [BannerController::class, 'destroy'])->name('banners.destroy');
 
     // Bar promo (announcement ticker)
     Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
@@ -402,6 +418,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('kebijakan-privasi', [KebijakanPrivasiController::class, 'edit'])->name('kebijakan-privasi.edit');
     Route::put('kebijakan-privasi', [KebijakanPrivasiController::class, 'update'])->name('kebijakan-privasi.update');
+    Route::get('documents', ['App\\Http\\Controllers\\Admin\\DocumentPagesController', 'index'])->name('documents.index');
+    Route::put('documents', ['App\\Http\\Controllers\\Admin\\DocumentPagesController', 'update'])->name('documents.update');
 
     Route::get('apa-kata-pelanggan', [TestimonialController::class, 'apaKata'])->name('apa-kata-pelanggan.index');
     Route::put('apa-kata-pelanggan/meta', [TestimonialController::class, 'updateApaKataMeta'])->name('apa-kata-pelanggan.meta.update');
@@ -440,6 +458,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Settings
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+
+    // Catch-all: URL admin yang tidak dikenal -> abort 404 agar exceptions->respond
+    // merender Admin/Error. Middleware auth+admin tetap berjalan (shared props lengkap,
+    // admin yang belum login diarahkan ke /login) sehingga tidak ada error page polos
+    // maupun crash React (auth hilang).
+    Route::get('{any}', fn () => abort(404))->where('any', '.*');
 });
 
 /*
@@ -456,3 +480,13 @@ Route::post('/webhook/whatsapp/baileys', [WhatsAppController::class, 'handleBail
 });
 
 // TEMPORARY ErrorBoundary e2e test route — remove after verification
+
+/*
+|--------------------------------------------------------------------------
+| Fallback URL tidak dikenal (404 ber-brand)
+|--------------------------------------------------------------------------
+*/
+
+// Route::fallback ikut grup middleware web -> shared props Inertia lengkap saat
+// abort(404), sehingga exceptions->respond merender Public/Error tanpa crash.
+Route::fallback(fn () => abort(404));

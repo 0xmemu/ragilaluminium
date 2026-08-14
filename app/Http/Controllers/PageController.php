@@ -200,7 +200,9 @@ class PageController extends Controller
             $sort = 'newest';
         }
 
-        $installations = collect(InstallationGallery::modelCards(48))
+        $modelCards = collect(InstallationGallery::modelCards(48));
+        $hasModelMedia = $modelCards->contains(fn (array $item) => filled($item['image_url'] ?? null));
+        $installations = ($hasModelMedia ? $modelCards : collect(InstallationGallery::productCards(48)))
             ->map(fn (array $item) => $this->installationCardPayload($item))
             ->all();
         $installations = $sort === "newest" ? array_values($installations) : $this->sortInstallationProducts($installations, $sort);

@@ -5,16 +5,17 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
 import type { PromoSlide } from "@/types"
 
 // Poin layanan yang ditampilkan satu per satu di slider promo (tidak menampilkan
 // ulang announcement yang sudah ada di bar paling atas). Gaya mengikuti bar promo
 // header: ikon Phosphor + copy marketing.
 const PROMO_ITEMS: { icon: React.ElementType; text: string }[] = [
-  { icon: SealCheck, text: "Bayar di tempat (COD), aman & mudah" },
-  { icon: ShieldCheck, text: "Garansi 100% resmi pabrik" },
-  { icon: Truck, text: "Kirim ke seluruh Indonesia" },
-  { icon: Tag, text: "Harga pabrik langsung, tanpa perantara" },
+  { icon: SealCheck, text: "Bayar Di Tempat (COD), Aman & Mudah" },
+  { icon: ShieldCheck, text: "Garansi 100% Resmi Pabrik" },
+  { icon: Truck, text: "Kirim Ke Seluruh Indonesia" },
+  { icon: Tag, text: "Harga Pabrik Langsung, Tanpa Perantara" },
 ]
 
 /** Banner promosi solid — persis contoh: 3 baris teks rata kiri (baris kecil di atas,
@@ -57,36 +58,38 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
  * baris (3–4 per slide). Mobile: maksimal 2 promo per slide, slide berganti
  * otomatis untuk menampilkan sisanya (tanpa pagination dots).
  */
-function PromoSlider() {
+export function PromoSlider() {
   const items = PROMO_ITEMS
-  const [mobileIndex, setMobileIndex] = React.useState(0)
+  const [desktopIndex, setDesktopIndex] = React.useState(0)
   const [paused, setPaused] = React.useState(false)
 
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
-  // Mobile: 2 promo per slide.
-  const perSlide = 2
-  const mobileSlides = Array.from(
-    { length: Math.ceil(items.length / perSlide) },
-    (_, i) => items.slice(i * perSlide, i * perSlide + perSlide),
-  )
+  const safeDesktopIndex = desktopIndex % items.length
+  const renderPromoText = (text: string) =>
+    text.split(/(\d+%)/g).map((part, index) =>
+      /\d+%/.test(part) ? (
+        <span key={`${part}-${index}`} className="inline-flex rounded-full bg-white px-1.5 text-primary">
+          {part}
+        </span>
+      ) : (
+        part
+      ),
+    )
 
-  // Autoplay mobile: tiap slide diam 4 detik, lalu bergeser ke berikutnya.
   React.useEffect(() => {
-    if (mobileSlides.length < 2 || paused || reduceMotion) return
+    if (items.length < 2 || paused || reduceMotion) return
     const id = window.setInterval(() => {
-      setMobileIndex((current) => (current + 1) % mobileSlides.length)
-    }, 4000)
+      setDesktopIndex((current) => (current + 1) % items.length)
+    }, 5000)
     return () => window.clearInterval(id)
-  }, [mobileSlides.length, paused, reduceMotion])
-
-  const safeMobileIndex = mobileIndex % mobileSlides.length
+  }, [items.length, paused, reduceMotion])
 
   return (
     <div
-      className="relative h-8 w-full overflow-hidden bg-primary text-white"
+      className="relative h-8 w-full overflow-hidden bg-primary text-primary-foreground"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -94,50 +97,29 @@ function PromoSlider() {
       aria-label="Pengumuman promo"
     >
       {/* Desktop: semua promo sekaligus dalam satu baris (4 kolom). */}
-      <div className="hidden h-full w-full flex-row items-stretch sm:flex">
-        {items.map((item, index) => (
-          <div
-            key={`${item.text}-${index}`}
-            className="flex min-w-0 flex-1 basis-0 items-center justify-center px-4"
-          >
-            <span className="flex min-w-0 items-center justify-center gap-2 text-xs font-semibold leading-none tracking-tight">
-              <item.icon weight="fill" className="size-3.5 shrink-0 text-white/90" aria-hidden />
-              <span className="truncate">{item.text}</span>
-            </span>
-          </div>
-        ))}
+      <div className="hidden h-8 w-full items-center justify-center sm:flex" style={{ background: "none" }}>
+        <div
+          key={`${items[safeDesktopIndex].text}-${safeDesktopIndex}`}
+          className="flex min-w-max items-center justify-center px-4 transition-opacity duration-300"
+        >
+          <span className="flex min-w-0 items-center justify-center gap-2 text-xs font-semibold leading-none tracking-tight">
+            {React.createElement(items[safeDesktopIndex].icon, { weight: "fill", className: "size-3.5 shrink-0 text-primary-foreground/90", "aria-hidden": true })}
+            <span className="whitespace-nowrap text-primary-foreground">{renderPromoText(items[safeDesktopIndex].text)}</span>
+          </span>
+        </div>
       </div>
 
-      {/* Mobile: 2 promo per slide, slide berganti otomatis. */}
-      <div className="flex h-full w-full flex-col sm:hidden">
+      {/* Mobile memakai promo yang sama dengan desktop, satu teks per slide. */}
+      <div className="flex h-8 w-full items-center justify-center sm:hidden" style={{ background: "none" }}>
         <div
-          className={cn(
-            "flex h-full w-full flex-row items-stretch",
-            !reduceMotion && "transition-transform duration-[400ms] ease-emphasized",
-          )}
-          style={{ transform: `translateX(-${safeMobileIndex * 100}%)` }}
+          key={`mobile-${items[safeDesktopIndex].text}-${safeDesktopIndex}`}
+          className="flex min-w-max items-center justify-center px-2 transition-opacity duration-300"
         >
-          {mobileSlides.map((slide, slideIndex) => (
-            <div
-              key={slideIndex}
-              className="flex h-full w-full shrink-0 basis-full"
-              aria-hidden={slideIndex !== safeMobileIndex ? "true" : undefined}
-            >
-              {slide.map((item) => (
-                <div
-                  key={item.text}
-                  className="flex min-w-0 flex-1 basis-0 items-center justify-center px-2"
-                >
-                  <span className="flex min-w-0 items-center justify-center gap-1.5 text-xs font-semibold leading-none tracking-tight">
-                    <item.icon weight="fill" className="size-3.5 shrink-0 text-white/90" aria-hidden />
-                    <span className="truncate">{item.text}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          ))}
+          <span className="flex min-w-0 items-center justify-center gap-1.5 text-xs font-semibold leading-none tracking-tight">
+            {React.createElement(items[safeDesktopIndex].icon, { weight: "fill", className: "size-3.5 shrink-0 text-primary-foreground/90", "aria-hidden": true })}
+            <span className="whitespace-nowrap text-primary-foreground">{renderPromoText(items[safeDesktopIndex].text)}</span>
+          </span>
         </div>
-
       </div>
     </div>
   )
@@ -167,7 +149,7 @@ function HeroSlideContent({
 
   if (slide.image) {
     return (
-      <div className="relative h-full w-full">
+      <div className="relative h-full w-full overflow-hidden rounded-[5px]">
         <ResponsiveImage
           src={slide.image}
           alt={slide.image_alt ?? slide.headline}
@@ -190,8 +172,26 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   // Reset timer tiap kali user berpindah manual (klik dot/panah), supaya slide
   // tidak langsung berpindah lagi setelah interaksi.
   const [interactionKey, setInteractionKey] = React.useState(0)
-  // Banyaknya slot selalu ≥ 1 (backend memastikan minimal 10).
-  const total = Math.max(slides.length, 1)
+  // Banner sepenuhnya dari backend (promoSlides = HomepagePromotions::slides():
+  // banner CMS manual + slot placeholder sampai 10). Fallback polos hanya dipakai
+  // bila backend tidak mengirim slide sama sekali.
+  // Rasio banner PATEN: 1024/426 (±2.4:1) — standar design system & hint form
+  // admin. Tinggi otomatis = lebar ÷ rasio, jadi proporsional di semua layar.
+
+  const fallbackSlide: PromoSlide = {
+    id: -2,
+    headline: "",
+    layout: "placeholder",
+    href: routeUrl("catalog.index"),
+  }
+  const bannerSlides = slides.length > 0 ? slides : [fallbackSlide]
+  // Carousel hanya menampilkan banner asli (konten/gambar); slot placeholder
+  // hanya jadi fallback saat belum ada banner sama sekali. Dengan begitu
+  // urutannya: banner 1 → … → banner terakhir → kembali ke banner 1.
+  const realSlides = bannerSlides.filter((slide) => slide.layout !== "placeholder")
+  const carouselSlides = realSlides.length > 0 ? realSlides : bannerSlides
+  const total = carouselSlides.length
+  const dotCount = total
   const visibleIndex = Math.min(activeIndex, total - 1)
   const surfaceRef = React.useRef<HTMLDivElement>(null)
   const dragRef = React.useRef<{
@@ -334,10 +334,8 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   return (
-    <section id="promo" className="scroll-mt-20 bg-surface" aria-label="Promo dan campaign">
+    <section id="promo" className="scroll-mt-20 bg-surface lg:pt-2" aria-label="Promo dan campaign">
       {/* Slider promo full-width: keluar dari container ber-padding, tanpa rounded. */}
-      <PromoSlider />
-
       <div className="container-page !px-5 md:!px-8 lg:!px-12 py-4">
         <div
           ref={surfaceRef}
@@ -349,14 +347,14 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
         >
           <div
             className={cn(
-              // Mobile: strip FIX 134px; sm+ mengikuti konten dengan tinggi minimal.
-              "flex h-[134px] w-full items-stretch sm:h-auto sm:min-h-[132px] lg:min-h-[148px]",
+              // Rasio paten 1024/426 (±2.4:1): tinggi otomatis = lebar / rasio.
+              "flex aspect-[1024/426] w-full items-stretch",
               // Perpindahan antar-promo cepat (350ms) dengan transform translateX.
               !reduceMotion && "transition-transform duration-[350ms] ease-emphasized",
             )}
             style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
           >
-            {slides.map((slide, index) => {
+            {carouselSlides.map((slide, index) => {
               const hidden = index !== visibleIndex
               return (
                 <div
@@ -392,7 +390,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
               </button>
 
               <div className="absolute inset-x-0 bottom-1 flex justify-center gap-0.5">
-                {Array.from({ length: total }).map((_, index) => (
+                {Array.from({ length: dotCount }).map((_, index) => (
                   <button
                     type="button"
                     key={index}
@@ -404,7 +402,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                     <span
                       className={cn(
                         "h-1 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
-                        index === visibleIndex ? "w-4 bg-primary" : "w-1 bg-primary/40",
+                        index === visibleIndex ? "w-4 bg-white mix-blend-difference opacity-80" : "w-1 bg-white mix-blend-difference opacity-80",
                       )}
                     />
                   </button>

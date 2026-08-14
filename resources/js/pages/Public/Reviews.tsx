@@ -50,10 +50,10 @@ export default function Reviews({
     "Screenshot percakapan Shopee/WhatsApp dan ulasan pelanggan di website."
   const docTitle = pageMeta?.title?.trim() || heading
 
-  const marketplace = React.useMemo(
-    () => testimonials.filter((t) => t.source !== "website"),
-    [testimonials],
-  )
+  const marketplace = React.useMemo(() => {
+    const marketplaceItems = testimonials.filter((t) => t.source !== "website")
+    return marketplaceItems.length ? marketplaceItems : testimonials
+  }, [testimonials])
   const website = React.useMemo(
     () => testimonials.filter((t) => t.source === "website"),
     [testimonials],

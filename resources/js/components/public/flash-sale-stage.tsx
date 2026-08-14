@@ -293,7 +293,7 @@ export function FlashSaleRedBanner({
             href={routeUrl("catalog.flash-sale")}
             className="inline-flex h-8 shrink-0 items-center gap-1 text-xs font-light text-white/90 transition hover:text-white"
           >
-            Lihat semua →
+            Lihat Semua →
           </Link>
         </div>
 
@@ -806,13 +806,13 @@ export function PromoFlashSaleSection({
               <Link
                 href={routeUrl("catalog.flash-sale")}
                 className="inline-flex flex-col items-center justify-center gap-1 text-[#474747] transition hover:text-[#333333] active:scale-95"
-                aria-label="Lihat semua"
+                aria-label="Lihat Semua"
               >
                 <span className="inline-flex size-11 items-center justify-center rounded-full border border-[#474747]/40 bg-white text-[#474747] shadow-sm transition hover:border-[#474747] sm:size-12">
                   <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
                 </span>
                 <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
-                  Lihat semua
+                  Lihat Semua
                 </span>
               </Link>
             </div>

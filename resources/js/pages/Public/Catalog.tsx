@@ -381,7 +381,7 @@ export default function Catalog({
   const showYouMightLike = Boolean(searchQuery?.trim()) && youMightLike.length > 0
 
   const productGallery = (
-    <div aria-busy={loading}>
+    <div aria-busy={loading} className="pt-4">
       <div className="sr-only" role="status" aria-live="polite">
         {loading ? "Memuat produk" : "Daftar produk selesai dimuat"}
       </div>

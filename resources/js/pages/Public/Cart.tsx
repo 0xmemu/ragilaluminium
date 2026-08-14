@@ -202,7 +202,7 @@ export default function Cart({
                     />
                     <span className="text-xs font-semibold text-foreground">
                       {allSelected
-                        ? "Batalkan semua"
+                        ? "Batalkan Semua"
                         : someSelected
                           ? `${selectedIds.size}/${cartItems.length} dipilih`
                           : "Pilih semua"}
@@ -390,7 +390,7 @@ export default function Cart({
             action={
               <Button asChild size="md">
                 <Link href={routeUrl("catalog.index")}>
-                  Pilih model produk
+                  Pilih Model Produk
                   <Icon name="arrow-right" className="size-4" aria-hidden="true" />
                 </Link>
               </Button>

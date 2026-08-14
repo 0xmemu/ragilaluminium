@@ -3,6 +3,61 @@
 Cross-session shift log. **Update only on milestones** (section ship, big SoT change, baseline commit).  
 Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 
+### 2026-08-14 — Media: restore archive + bulk produk media (double-confirm) + GC pending
+
+- Media Library: action restore (visibility -> visible) di bulk-action + filter Visibilitas
+  (Aktif/Diarsipkan) di library(); base query hanya mengecualikan archived saat tanpa filter
+  visibility (bug: filter archived tak pernah cocok sebelum diperbaiki).
+- Halaman media produk (/admin/products/{id}/media): checkbox per row + bulk bar Arsipkan/Hapus
+  via POST products/{product}/media/bulk (bulkProductMedia): archive semua; delete hanya row
+  status failed (tanpa shared asset) -> file + row dihapus, lainnya di-archive.
+  Hapus pakai double-konfirmasi: dialog wajib ketik "HAPUS" (tombol disabled sampai cocok).
+- Pulihkan per-item: route POST media/{media}/restore + tombol Pulihkan (ConfirmAction) pada row
+  visibility=archived di halaman media produk (terverifikasi: row 444 archived -> visible).
+- Command media:prune-pending (opsi --hours, default 24; --dry-run): hapus objek pending/ yang
+  tidak pernah difinalisasi + buat AdminNotification tipe media_cleanup dengan rincian
+  (jumlah, MB, contoh file) -> jadwal harian 03:00 di routes/console.php.
+  Terverifikasi: 2 objek pending -> dihapus, notifikasi muncul di /admin/notifications.
+
+### 2026-08-14 — Media Library: seleksi massal, upload langsung, pencarian produk
+
+- Seleksi multi-asset (checkbox per kartu + pilih semua halaman) + bulk bar Arsipkan/Hapus;
+  endpoint POST admin.media.bulk-action: delete hanya aset tak terpakai (file R2 + row dihapus),
+  aset yang dipakai produk/banner/galeri otomatis di-archive. Terverifikasi: 184/185 unused -> GONE,
+  186 ter-attach -> archived.
+- Tombol "Upload media" di library: presign -> PUT R2 (progress) -> finalize tanpa product_id
+  (product_id nullable) -> redirect ke library; label auto media_{n}_{date}. Terverifikasi: asset 187
+  ready + pdp/card/thumb WebP.
+- Panel attach ganti dropdown 200 produk jadi pencarian live (debounce 300ms) via GET
+  admin.media.products.search (name/parent_sku LIKE, limit 20). Terverifikasi: ketik "jendela" -> 20
+  hasil -> attach ke produk 63 (row 440).
+
+### 2026-08-14 — Admin: tombol hapus banner + Media Library global
+
+- BannerController@destroy + route admin.banners.destroy: hapus banner + cleanup asset media & objek R2
+  (asset dipakai entitas lain -> archived, bukan dihapus); tombol Hapus + konfirmasi di Index.tsx (grid & list).
+- Halaman /admin/media/library (ProductMediaController@library) + menu sitemap "Media Library":
+  browse semua shared asset, filter konteks (hasil-pemasangan/banner/media), pencarian label/source_url
+  (LikeSearch ESCAPE), attach lintas produk (bulkAttach) tanpa buka halaman media produk.
+- Fix bug: konstanta BS (korupsi escape `\`) di library() menyebabkan 500 saat filter q; diperbaiki ke
+  ESCAPE `'\'` — php -l bersih, verifikasi e2e: hapus banner (UI+DB+R2) & attach library (row ProductMedia).
+
+### 2026-08-14 — Kontrak laporan: format kaku → fleksibel & kontekstual
+
+- AGENTS.md: "AGENT REPORT FORMAT — MUST FOLLOW" (SCOPE/ROOT_CAUSE/CHANGE/SPEC_IMPACT/
+  TEST_STATUS) diganti format fleksibel & kontekstual: seksi dipilih sesuai jenis pekerjaan
+  (Konteks, Akar Masalah, Perubahan, Dampak Spec & Docs, Verifikasi, Keputusan/Trade-off,
+  Tindak Lanjut) + panduan per jenis pekerjaan + aturan minimum (apa yang berubah / kenapa /
+  bagaimana diverifikasi). Bug → Akar Masalah wajib; perubahan spec → update docs kanonik wajib.
+- Sinkron: docs/ORCHESTRATION.md (diagram alur + langkah 10) dan docs/PRODUCT-HANDOFF.md
+  (ikuti format AGENTS.md). Snapshot lokal D:/website_5.0/AGENTS.md masih menyebut format lama
+  — bukan SoT, sengaja tidak diedit.
+
+### 2026-08-13 — Baileys long-session hardening
+
+- Gateway `/opt/baileys-bot/index.js` diselaraskan dengan pola OpenClaw: frame activity, Baileys keepalive, atomic creds persistence, backup recovery, dan reconnect cooldown.
+- Kontrak HTTP/webhook dipertahankan; verifikasi akhir membutuhkan pairing sukses lalu restart service tanpa scan ulang.
+
 ---
 
 ### 2026-08-09 - Fase 8 QA: rekonsiliasi PHPUnit + regenerasi docs
@@ -311,3 +366,275 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 - File asli DashboardController.php (23614 B, git clean) sudah memakai pola modern tsb; refactor saya menyalin payload versi lama karena output `sed` via ssh terlihat terkorupsi (duplikasi baris) — pelajaran: verifikasi isi file dengan dua sumber (scp + baca) sebelum deploy.
 - Final: baseline asli dikembalikan, PHPUnit **277 tests / 4141 assertions OK** (termasuk AdminDashboardTest baru agent lain). File buatan refactor dihapus (DashboardQueryService.php, admin-dashboard.ts); Dashboard.tsx tetap versi asli. Refactor dashboard bisa diulang dengan test tsb sebagai kontrak wajib.
 - 2026-08-11 quirk terverifikasi (SQLite test): `PerformanceMetric.metric_date` cast `date` → tersimpan `Y-m-d 00:00:00`; `StorePerformanceService::visitorsBetween()` (dan series visitors) memakai `whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])` → row cast tidak ter-match (visitors 0 di SQLite). Uji empiris :memory: : row Eloquent-cast (nilai 5) tak terhitung, hanya row raw `Y-m-d` (nilai 9) yang match (sum 9). Produksi MySQL aman (kolom date men-trim). Kontrak test sudah memakai `DB::table()->insert()` dengan plain date (StorePerformanceContractTest:166). Dicatat di AGENTS.md gotchas.
+
+### 2026-08-14 - Admin workflow: akun tes + admin-preview tool + verifikasi dashboard
+- **Akun tes admin baru (id=12):** `dev.agent@ragilaluminium.test` / password `OiDrA_7nbIXjgX2K`
+  (role=admin, status=active). Dipakai untuk semua verifikasi UI admin. QA admin
+  (`qa.admin@example.com`) TIDAK disentuh lagi (password-nya sudah dikembalikan ke hash
+  asli dari backup `ragil_aluminium-20260813-031701.sql.gz` setelah terlanjur diubah saat
+  debugging banner).
+- **Tool baru:** `scripts/admin-preview.cjs` (repo VPS, jalankan lokal): login otomatis
+  akun tes + render halaman admin + dump DOM/console errors + screenshot, Node >= 22
+  tanpa dependensi (WebSocket global + CDP). Contoh:
+  `node scripts/admin-preview.cjs --url=/admin --find="Kelola banner" --mode=dump`
+  Opsi: `--mode=dump|shot|both`, `--out=x.png`, `--wait=ms`, `--eval=<expr>`, `--find=a,b`.
+  Tahan MSYS path-mangling (Git Bash) dan salah-tab CDP.
+- **Dashboard admin = `/admin`** (BUKAN `/admin/dashboard` — URL itu bukan route; sejak
+  2026-08-14 dirender sebagai 404 ber-brand `Admin/Error` via catch-all `admin/{any}` +
+  fallback publik (tanpa crash React), tapi tetap jangan dipakai untuk verifikasi dashboard).
+- **Verifikasi live 2026-08-14:** `/admin` render OK, "Kelola banner" ADA di section
+  "Promo & flash sale aktif" (link ke `/admin/banners`); `/admin/banners`,
+  `/admin/products`, `/admin/promotions` semua render OK (0 console error). Sidebar admin
+  juga punya menu "Promo Toko" dan "Bar Promo".
+- **Kondisi environment:** working tree dipakai agent lain (public homepage edits +
+  rebuild 05:46/06:19/06:3x — asset hashed berubah tiap build); `routes/web.php` diubah
+  agent lain (tambah routes documents). Selalu `git status` + verifikasi live.
+
+### 2026-08-14 - Standar gambar banner promo (rasio dinamis, tanpa crop)
+- **Standar baru (FINAL, setelah iterasi):** rasio layout banner PATEN `1024/426`
+  (±2.4:1) via `aspect-[1024/426]` di `HomeHero` — tinggi otomatis = lebar ÷ rasio,
+  proporsional di semua viewport. Gambar `object-cover`; admin menyiapkan canvas 2,4:1
+  (2048×852 px) agar tidak ter-crop. (Pendekatan rasio-mengikuti-gambar via onImageLoad
+  sempat dipakai lalu dihapus karena tinggi jadi tidak menentu: mobile 120px vs desktop 406px.)
+- Fallback sebelum gambar termuat / saat semua slide placeholder = `1024/426` (±2.4:1),
+  konsisten dengan canvas rekomendasi 2048×852 px di `frontend/docs/DESIGN-SYSTEM.md`.
+- Hint form `/admin/banners` (Form.tsx) diperbarui: admin cukup upload 1 gambar (rasio
+  ~2,4:1 disarankan); tidak perlu versi mobile terpisah, tinggi menyesuaikan otomatis.
+- Verifikasi live: banner contoh (rasio 2.92:1) → mobile 350×120 / sm 600×206 / desktop
+  1184×406, `imgFitsExactly=true` semua viewport, 0 error; fallback tanpa gambar = 2.40:1.
+- Ukuran fixed px lama (134/132/148 → 176/200) dihapus karena menyebabkan crop
+  (`object-cover` memotong gambar dengan rasio beda). Belum di-commit (WIP agent lain).
+
+
+### 2026-08-14 — Direct upload produk media: browser → R2 (presigned) + WebP async
+
+- **Masalah:** upload gambar produk selalu lewat VPS (temp → proses WebP → R2),
+  lambat untuk file besar dan membebani server; request sinkron menunggu proses.
+- **Solusi:** alur upload langsung `browser → R2` untuk media produk:
+  - `MediaUploadController@presign` — validasi mime/ukuran → presigned PUT URL ke
+    `pending/{uuid}.{ext}` (15 menit).
+  - Browser PUT langsung ke R2 (progress via XHR) — bucket CORS dikonfigurasi
+    (`AllowedOrigins: https://ra.333labs.tech`, `AllowedMethods: GET/PUT/HEAD`,
+    `AllowedHeaders: Content-Type`) via S3 API.
+  - `MediaUploadController@finalize` — verifikasi objek, buat `MediaAsset` +
+    attach `ProductMedia`, dispatch `ProcessUploadedMediaAsset` (queue `media`).
+  - `ProcessUploadedMediaAsset` — WebP derivatif thumb/card/pdp async, pindah
+    objek `pending/` → `media-assets/{sha256}/`, status `ready`; dedup checksum
+    tetap berlaku.
+  - Frontend `Admin/Products/Media.tsx`: pilih file → presign → PUT + progress
+    bar → finalize via Inertia. Alur lama (URL sumber / library attach) tetap ada.
+- **Verifikasi:** typecheck/build PASS; e2e Playwright login admin → upload
+  `b1.png` ke produk 51 → presign + PUT R2 + finalize + flash sukses + asset
+  `ready` dengan pdp.webp; artefak uji dihapus (produk 51 kembali ke 1 media).
+- **Catatan:** perubahan belum di-commit (working tree berisi WIP agent lain).
+
+
+### 2026-08-14 — Banner promo ikut alur media produk: presigned upload + WebP derivatif
+
+- **Tujuan:** banner promo diperlakukan sama seperti gambar produk — upload
+  langsung browser → R2 (presigned PUT) + derivatif WebP async, sehingga landing
+  page lebih cepat (banner pdp.webp maks 1400px vs PNG upload 1 MB+).
+- **Perubahan:**
+  - Migration: `cms_banners.media_asset_id` (FK nullable → media_assets).
+  - `BannerController` (store/update): terima `object_key` hasil presign →
+    buat `MediaAsset` (pending) + dispatch `ProcessUploadedMediaAsset` →
+    `image_url` = URL object pending (fallback sementara) + `media_asset_id`;
+    saat ganti gambar, asset lama di-archive. Alur legacy (file langsung / link
+    produk) tetap ada. Form admin dapat prop `presignUrl`.
+  - `ProcessUploadedMediaAsset`: setelah selesai, update `cms_banners.image_url`
+    ke derivatif pdp WebP; saat dedup, arahkan banner ke asset canonical.
+  - `HomepagePromotions::manualSlides()`: image di-resolve dari
+    `banner->mediaAsset` (pdp/card/thumb) dulu — asset banner upload menang atas
+    foto produk; fallback lama tetap untuk banner legacy (tanpa asset).
+  - `Admin/Banners/Form.tsx`: presign → PUT R2 dengan progress bar → submit
+    `object_key`; tombol menampilkan % upload.
+- **Verifikasi (e2e Playwright + DB):** create banner via UI → presign + PUT R2 +
+  redirect + flash; edit ganti gambar → asset baru ready + asset lama archived +
+  `image_url` jadi `media-assets/{sha}/pdp.webp`; landing payload menyajikan
+  derivatif WebP; b2.png 1,65 MB → pdp.webp 56 KB (~97% lebih ringan). Artefak
+  uji dihapus. Worker queue di-restart untuk memuat kode job baru.
+- **Catatan:** belum di-commit (working tree berisi WIP agent lain).
+
+
+### 2026-08-14 — Auto-renaming media: pola {context}_{nomor}_{tanggal}
+
+- **Tujuan:** semua file media yang di-upload diberi nama otomatis
+  `{context}_{nomor}_{tanggal}.{ext}` (mis. `banner_1_20260814.png`,
+  `logo_2_20260814.png`) — bukan nama asli acak / uuid — agar mudah dikenali di
+  penyimpanan.
+- **Helper baru `app/Support/MediaNamer.php`:**
+  - `asset()` — alur presigned (MediaAsset): nomor monotonik dari label asset
+    sejenis di DB (tidak reset saat pending dibersihkan).
+  - `onDisk()` — file langsung di disk R2/local: nomor dari file sejenis di
+    folder tujuan; `local()` — direktori lokal via glob().
+- **Penerapan:**
+  - `MediaUploadController` (presign): context opsional (`banner`/`media`) →
+    object pending `pending/{context}_{n}_{date}.{ext}`; finalize set `label`
+    dari nama key. Frontend Media.tsx & Form banner mengirim context.
+  - `BannerController`: label asset banner; legacy upload → `banners/banner_{n}_{date}.*`.
+  - `TestimonialController` → `testimonials/testimonial_{n}_{date}.*`;
+    `ProblemsSolutionsSettings` → `masalah-solusi/masalah-solusi_{n}_{date}.*`.
+  - `PageController` (branding): logo → `images/logo_{n}_{date}.png` dan
+    favicon → `images/favicon_{n}_{date}.ico` (salinan versi; `site-logo.png` /
+    `site-favicon.ico` tetap sebagai file aktif yang direferensikan app).
+- **Verifikasi:** tinker — semua varian menghasilkan nama sesuai pola;
+  e2e Playwright — PUT ke R2 bernama `banner_1_20260814.png`, asset label
+  `banner_1_20260814`; build/typecheck/lint PASS. Artefak uji dihapus.
+- **Catatan:** nomor unik per konteks; file checksum-based
+  (`media-assets/{sha}`) tetap dipakai sebagai penyimpanan internal (dedup).
+
+
+### 2026-08-14 — Renaming diperluas: hasil pemasangan (produk & gallery) + file import
+
+- **Tujuan:** pola {context}_{nomor}_{tanggal} juga berlaku untuk media galeri
+  hasil pemasangan dan lampiran file import; nama hasil pemasangan menyesuaikan
+  otomatis berdasarkan produk/entitas yang ditambah.
+- **Perubahan:**
+  - `Admin/Products/Media.tsx`: saat checkbox "Hasil pemasangan" aktif, context
+    upload = `hasil-pemasangan-{parent_sku}` (mis. `hasil-pemasangan-sp58155312043_1_20260814`),
+    selain itu `media`.
+  - Gallery item (`cms_gallery_items`): migration `media_asset_id` (FK nullable);
+    `GalleryItemController` terima `object_key` → buat MediaAsset + dispatch job +
+    arsip asset lama saat ganti gambar; `GalleryForm.tsx` dapat upload langsung
+    (presign + PUT + progress) dengan context dari **label item** (fallback
+    `hasil-pemasangan`); job `ProcessUploadedMediaAsset` kini update
+    `cms_gallery_items.image_url` ke derivatif WebP (sukses & dedup).
+  - `ImportJobController`: file lampiran import disimpan sebagai
+    `catalog/import_{n}_{date}.{ext}` (disk imports) via MediaNamer::onDisk.
+- **Verifikasi:** e2e Playwright — gallery item "Pemasangan Verifikasi" → PUT R2
+  `pemasangan-verifikasi_1_20260814.png`, asset ready, `image_url` auto-jadi
+  `media-assets/{sha}/pdp.webp` (worker di-restart agar memuat kode job baru);
+  import rename tinker → `import_1_20260814.xlsx`; build/typecheck/lint PASS.
+  Artefak uji dihapus.
+- **Catatan:** belum di-commit (working tree berisi WIP agent lain).
+
+
+### 2026-08-14 — Filter/pencarian label di Media Library (panel produk)
+
+- **Tujuan:** asset bernama `hasil-pemasangan-*` (dan konteks lain) mudah
+  ditemukan di panel "Media Library bersama" (`Admin/Products/Media`).
+- **Perubahan (`Admin/Products/Media.tsx`):**
+  - Chip preset konteks: Semua / Hasil pemasangan (`hasil-pemasangan`) /
+    Banner (`banner`) / Media (`media`) — klik langsung filter (router.get q=…).
+  - Pencarian label/URL live dengan debounce 350ms (tanpa harus klik Cari);
+    dropdown jenis & status langsung terapkan saat berubah.
+  - Refactor `runSearch()` (useCallback) dengan override q/kind/status agar
+    chip/select memakai nilai baru tanpa menunggu state.
+- **Verifikasi:** e2e Playwright — chip tampil, klik "Hasil pemasangan" →
+  URL `q=hasil-pemasangan` dan asset berlabel hasil-pemasangan-* muncul di
+  library; ketik di input → debounce menerapkan q; 0 error console.
+  typecheck/eslint/build PASS. Asset uji dibersihkan.
+
+## Milestone: Live status upload + notifikasi browser (2026-08-14)
+- **Endpoint** `GET admin.media.status` (`ProductMediaController@status`, route `media.status`) —
+  polling batch status ProductMedia (kind=product) / MediaAsset (kind=asset), validasi ids max 100,
+  balikan status + error_reason + thumb_url (via `urlFor('thumb')`).
+- **Media produk** (`Admin/Products/Media.tsx`) & **Media Library** (`Admin/Media/Library.tsx`):
+  polling otomatis tiap 3 dtk hanya saat ada row/asset berstatus pending; badge
+  `pending → ready` (atau `failed` + reason) berubah otomatis tanpa reload; thumb
+  di-update dari respon poll; toast muncul saat ada yang selesai + notifikasi browser
+  (judul "Media siap", body "N media siap digunakan").
+- **Catatan e2e:** file PNG uji identik memicu dedup (asset baru langsung archived) —
+  gunakan file unik per run; 404 chunk saat build menimpa file = transien (Cloudflare cache).
+- **Verifikasi:** badge Menunggu→Ready auto tanpa reload (URL tetap), 3 poll sukses, notice
+  muncul, 0 error console; `urlFor('thumb')` valid utk asset ready. Asset uji dibersihkan.
+
+## Milestone: Suara notifikasi + badge counter media siap (2026-08-14)
+- **`resources/js/lib/media-live.ts`** (baru, shared): `playReadySound()` — chime dua nada
+  A5→D6 via Web Audio API (tanpa file aset, try/catch utk autoplay block); counter
+  "media siap" di sessionStorage (`ragil.media.readyCount`) + event bus
+  `ragil:media-ready` (CustomEvent) + `getReadyCount/addReadyCount/clearReadyCount/onReadyCountChange`.
+- **Media.tsx & Library.tsx** — saat polling deteksi newlyReady: selain toast + Notification,
+  kini memanggil `playReadySound()` + `addReadyCount(n)`.
+- **AdminNavigation.tsx** — badge counter bulat (primary, "99+" cap) di item sidebar
+  "Media Library" (`admin.media.library`); subscribe event bus; auto-clear (`clearReadyCount`)
+  saat item diklik.
+- **Verifikasi:** e2e Playwright — upload via UI library → sessionStorage count 0→1, badge "1"
+  muncul di sidebar, klik Media Library → count 0 & badge hilang; AudioContext state "running"
+  tanpa error; 0 error console di load library. Asset uji dibersihkan.
+
+## Milestone: Halaman riwayat pemrosesan media (2026-08-14)
+- **Tabel `media_processing_logs`** (migration 2026_08_14_000500) — log transisi status
+  polimorfik (loggable = MediaAsset | ProductMedia), kolom entity_label (denormalisasi),
+  event (queued|processing|success|failed|dedup|downloaded), message, created_at;
+  index (loggable_type,loggable_id), event, created_at.
+- **Model `MediaProcessingLog`** + `MediaProcessingLog::record($loggable, $event, $message)`.
+- **Tracer di job**: ProcessUploadedMediaAsset (processing/success/failed/dedup),
+  DownloadMediaAsset & DownloadProductMedia (processing/success/failed/dedup),
+  MediaUploadController@finalize (queued).
+- **Halaman `Admin/Media/History`** — `/admin/media/history` (route `admin.media.history`,
+  menu sitemap "Riwayat Media" di grup Produk): tabel log (waktu, label media + tipe/id,
+  badge status, pesan detail), chip filter status (Semua/Gagal/Siap/Diproses/Antre/Duplikat),
+  pencarian label/pesan, filter rentang tanggal, pagination 30/halaman.
+- **Verifikasi:** e2e — upload nyata via UI library → log queued→processing→success tercatat;
+  seed failed+dedup tampil di tabel; klik chip Gagal → URL `?event=failed` dan hanya log
+  failed yang tampil; menu sidebar tampil; 0 error console (404 = transien saat build).
+  Data uji dibersihkan. Worker queue di-restart untuk memuat job versi baru.
+
+## Milestone: Tombol retry di Riwayat Media (2026-08-14)
+- **`ProductMediaController@retryLog(MediaProcessingLog $log)`** + route `POST media/logs/{log}/retry`
+  (`admin.media.logs.retry`) — retry dari baris log gagal: set status pending + error_reason null,
+  catat log `queued` baru, lalu dispatch job sesuai entitas:
+  MediaAsset dengan source_url → `DownloadMediaAsset`; MediaAsset dengan object_key →
+  `ProcessUploadedMediaAsset`; ProductMedia → `DownloadMediaAsset` (jika punya media_asset_id) /
+  `DownloadProductMedia`.
+- **History.tsx** — kolom Aksi (desktop) + tombol di card (mobile): tombol **"Coba lagi"** (ikon refresh)
+  hanya muncul di baris `event=failed` (prop `retry_url` diisi backend); klik → router.post preserveScroll.
+- **Verifikasi:** e2e — baris failed `retry_test_asset` tampil, tombol Coba lagi ada (2 baris failed),
+  klik → flash "Pemrosesan media dijadwalkan ulang", URL tetap; DB: log baru `queued` + `processing`
+  tercatat (job nyata jalan; asset kembali failed karena object_key uji palsu — loop lengkap terverifikasi).
+
+## Milestone: Notifikasi admin otomatis saat media gagal (2026-08-14)
+- **Migration** `2026_08_14_000600` — kolom `related_type`/`related_id` di `admin_notifications`
+  (index gabungan) agar notifikasi bisa dikaitkan ke entitas media.
+- **`App\Support\MediaFailureNotifier::notify($loggable, $reason)`** — buat notifikasi tipe
+  `media_failed` (title "Media gagal diproses", body "label: alasan", href → riwayat media
+  filter failed). **Dedupe**: jika sudah ada notifikasi media_failed BELUM dibaca utk entitas
+  yang sama → update body lama, tidak menumpuk (retry tidak spam).
+- **Hook di semua titik gagal**: ProcessUploadedMediaAsset (4 titik: file tak ditemukan, ukuran,
+  mime, catch), DownloadMediaAsset (failAsset), DownloadProductMedia (fail()).
+- **notification-bell.tsx** — ikon `warning` (merah/destructive) untuk `media_failed`;
+  `media_cleanup` diwarnai amber.
+- **Verifikasi:** e2e — dispatch job gagal nyata (object_key palsu) → asset `failed` +
+  notifikasi `media_failed` tercipta otomatis (body berisi label + alasan, href riwayat);
+  dispatch ulang → count tetap 1 (dedupe); badge unread "1" di bell + dropdown menampilkan
+  notifikasi lengkap; 0 error console. Data uji dibersihkan.
+
+## Milestone: Live polling di halaman Riwayat Media (2026-08-14)
+- **History.tsx** — polling tiap 3 dtk saat ada baris `queued`/`processing`: endpoint
+  `admin.media.status` dipanggil per kind (asset/product) dengan **id dedupe** (baris queued
+  + processing utk entitas sama → 1 id; tanpa dedupe → 422 `distinct`).
+  Update via **overrides per log id** (state `liveOverrides`, hanya di-set dari callback async —
+  bebas warning `set-state-in-effect`): hanya baris non-terminal **terbaru per entitas** yang
+  diubah (ready/downloaded → `success` "Derivatif WebP siap…", failed → `failed` + error_reason
+  + retry_url); baris historis ("Antre" lama) tetap.
+- **UI**: indikator **"Live"** (dot hijau ping + label) di kanan filter bar saat ada baris
+  non-terminal; polling berhenti otomatis saat semua terminal.
+- **Verifikasi:** e2e — buka riwayat asset dengan baris Diproses → **berubah jadi Siap tanpa
+  reload** (URL tetap), indikator Live tampil, 0 error 422; build/tsc/eslint PASS.
+
+## Milestone: Hapus & auto-prune log riwayat media (2026-08-14)
+- **`ProductMediaController@destroyLog`** + route `DELETE media/logs/{log}`
+  (`admin.media.logs.destroy`) — hapus permanen satu baris log; `delete_url` di-prop per baris.
+- **`ProductMediaController@pruneLogs`** + route `POST media/logs/prune`
+  (`admin.media.logs.prune`) — hapus log lebih tua dari N hari (validasi 1–365,
+  default `config('media.log_retention_days', 30)`); flash jumlah terhapus.
+- **`App\Console\Commands\PruneMediaLogs`** (`media:prune-logs {--days=30} {--dry-run}`) —
+  auto-prune harian 03:30 (routes/console.php, tanpa overlapping).
+- **config/media.php** — `log_retention_days` (env MEDIA_LOG_RETENTION_DAYS, default 30).
+- **History.tsx** — tombol hapus per baris (ikon trash, ConfirmAction) di kolom Aksi
+  desktop & card mobile; tombol **"Bersihkan log lama (N)"** di toolbar (hanya muncul
+  jika ada log > retention) → ConfirmAction → prune.
+- **Verifikasi:** e2e — tombol Bersihkan log lama (1) tampil, hapus per baris (dialog
+  konfirmasi + flash sukses), prune via UI (flash) → DB 0 log; dry-run command benar
+  (1 log 40 hari terdeteksi); schedule 03:30 tampil di schedule:list; build/tsc/eslint PASS.
+
+### 2026-08-15 — Banner Promo: menu sidebar sendiri + label jelas
+- Sidebar admin: item baru "Banner Promo" (grup Harga & Promo) -> admin.banners.index;
+  'admin.banners.*' dipisah dari active Promo Toko.
+- Label banner diubah: "Tambah Promo" -> "Tambah Banner", judul "Banner Promo"
+  (Index.tsx/Form.tsx/BannerController@index).
+- Peta akses banner: sidebar Banner Promo | dashboard "Kelola banner" (bawah) |
+  Beranda Pembeli -> Banner Utama -> Edit konten (HomepageLayoutSettings:100).
+- GOTCHA: live build bisa tertinggal dari working tree (Beranda/Index.tsx diedit
+  setelah build) — verifikasi UI selalu via admin-preview/curl, bukan grep source.

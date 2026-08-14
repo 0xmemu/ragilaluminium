@@ -55,9 +55,11 @@ class HandleInertiaRequests extends Middleware
                     : null,
             ],
             'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
-                'status' => fn () => $request->session()->get('status'),
+                // Guard hasSession: saat URL tidak dikenal, middleware web (StartSession)
+                // tidak berjalan sehingga $request->session() akan throw. Flash cukup null.
+                'success' => fn () => $request->hasSession() ? $request->session()->get('success') : null,
+                'error' => fn () => $request->hasSession() ? $request->session()->get('error') : null,
+                'status' => fn () => $request->hasSession() ? $request->session()->get('status') : null,
             ],
             'cartCount' => $cartCount,
             'brand' => [

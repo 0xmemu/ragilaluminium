@@ -20,7 +20,6 @@ const BENEFIT_TINTS = ["bg-[#fdf2f2]", "bg-[#eef4ef]", "bg-[#eef2f6]"] as const
  * Semua state & aksi datang dari `useProductPurchase` (§5 R — page tipis, section props-only).
  */
 export function ProductBuyBox({
-  product,
   purchase,
   activeMedia,
 }: {

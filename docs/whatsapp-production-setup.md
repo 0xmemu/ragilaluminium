@@ -11,6 +11,23 @@ Mode sekarang mendukung **dua provider**:
 - `WHATSAPP_COMPARE_PROVIDER=meta|baileys` → provider pembanding opsional.
 - `WHATSAPP_COMPARE_ALLOWLIST=62812...,62857...` → hanya nomor uji ini yang menerima pesan ganda untuk perbandingan langsung.
 
+### Baileys long-session gateway
+
+Gateway Baileys berjalan sebagai service Node terpisah di
+`/opt/baileys-bot/index.js` dengan auth state di
+`/opt/baileys-bot/session`. Session normal disimpan sebagai multi-file auth dan
+`creds.json` ditulis secara serialized/atomic dengan backup recovery.
+
+- Reconnect jaringan/408/515 memakai credential yang tersimpan; tidak meminta
+  QR baru.
+- Liveness memakai protocol-frame activity dan keepalive Baileys, bukan
+  `sock.ws.ping()` mentah.
+- Idle chat tidak dianggap putus; QR ulang hanya diperlukan bila WhatsApp
+  benar-benar mengirim status logout/401 atau auth state sengaja dihapus lewat
+  force connect/disconnect.
+- Validasi runtime: setelah pairing berhasil, restart `baileys-bot` dan
+  pastikan status kembali `open` tanpa scan ulang.
+
 ---
 
 ## 1. Yang sudah vs belum

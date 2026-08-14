@@ -3,9 +3,11 @@
 namespace App\Jobs;
 
 use App\Models\MediaAsset;
+use App\Models\MediaProcessingLog;
 use App\Models\ProductMedia;
 use App\Services\MediaDerivativeService;
 use App\Support\UrlGuard;
+use App\Support\MediaFailureNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,6 +47,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
         }
 
         $asset->update(['status' => 'downloading', 'error_reason' => null]);
+        MediaProcessingLog::record($asset, 'processing', 'Mengunduh media dari URL sumber.');
         $tmp = null;
 
         try {
@@ -123,6 +126,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
                         });
                     $asset->update(['status' => 'archived', 'error_reason' => null]);
                 });
+                MediaProcessingLog::record($asset, 'dedup', 'File identik dengan aset lain; diarsipkan dan attachment dialihkan.');
 
                 return;
             }
@@ -159,6 +163,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
                 'status' => 'downloaded',
                 'error_reason' => null,
             ]);
+            MediaProcessingLog::record($asset, 'success', 'Media berhasil diunduh dan derivatif WebP siap.');
         } catch (\Throwable $e) {
             $this->failAsset($asset, $e->getMessage());
             throw $e;
@@ -175,6 +180,8 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
             'status' => 'failed',
             'error_reason' => Str::limit($reason, 500),
         ]);
+        MediaProcessingLog::record($asset, 'failed', Str::limit($reason, 500));
+        MediaFailureNotifier::notify($asset, $reason);
         ProductMedia::where('media_asset_id', $asset->id)->update([
             'status' => 'failed',
             'error_reason' => Str::limit($reason, 500),

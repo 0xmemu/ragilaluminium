@@ -30,14 +30,10 @@ export function Pagination({ pagination }: { pagination?: PaginationData | null 
 
   return (
     <nav
-      className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between"
+      className="mt-5 flex items-center justify-center gap-2 border-t border-border pt-4"
       aria-label="Paginasi"
     >
-      <p className="text-sm text-muted-foreground">
-        Halaman <span className="font-semibold text-foreground">{pagination.current_page}</span> dari{" "}
-        <span className="font-semibold text-foreground">{pagination.last_page}</span>
-      </p>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         {pagination.links.map((link, index) => {
           const { kind, text } = parsePaginationLink(link.label)
           const isNav = kind === "previous" || kind === "next"
@@ -49,9 +45,9 @@ export function Pagination({ pagination }: { pagination?: PaginationData | null 
             <>
               <span className="sr-only">{text}</span>
               {kind === "previous" ? (
-                <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
+                <Icon name="arrow-left" className="h-3.5 w-3.5" aria-hidden="true" />
               ) : (
-                <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
+                <Icon name="arrow-right" className="h-3.5 w-3.5" aria-hidden="true" />
               )}
             </>
           ) : (
@@ -59,15 +55,15 @@ export function Pagination({ pagination }: { pagination?: PaginationData | null 
           )
 
           const classes = cn(
-            "inline-flex items-center justify-center text-sm font-semibold transition",
+            "inline-flex items-center justify-center text-xs transition",
             isEllipsis
-              ? "min-h-11 w-8 px-0 text-muted-foreground"
+              ? "h-8 w-8 px-0 text-muted-foreground font-medium"
               : cn(
-                  "h-11 w-11 shrink-0 rounded-full border",
+                  "h-8 w-8 shrink-0 rounded-full border",
                   link.active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-surface text-foreground hover:border-foreground/20 hover:bg-accent",
-                  !link.url && "cursor-not-allowed opacity-45",
+                    ? "border-primary bg-primary text-primary-foreground font-semibold shadow-sm"
+                    : "border-border bg-surface text-foreground font-medium hover:border-foreground/30 hover:bg-accent",
+                  !link.url && "cursor-not-allowed opacity-40",
                 ),
           )
 
@@ -97,3 +93,4 @@ export function Pagination({ pagination }: { pagination?: PaginationData | null 
     </nav>
   )
 }
+

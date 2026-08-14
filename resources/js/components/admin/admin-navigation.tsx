@@ -1,8 +1,10 @@
 import { Link, usePage } from "@inertiajs/react"
+import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
+import { clearReadyCount, getReadyCount, onReadyCountChange } from "@/lib/media-live"
 import type { SharedPageProps } from "@/types"
 
 function AdminBrand() {
@@ -41,6 +43,9 @@ function AdminBrand() {
 export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const { nav } = usePage<SharedPageProps>().props
   const groups = Object.entries(nav?.admin ?? {})
+  const [mediaReadyCount, setMediaReadyCount] = React.useState<number>(() => getReadyCount())
+
+  React.useEffect(() => onReadyCountChange(setMediaReadyCount), [])
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -62,11 +67,15 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = isRouteActive(item.active ?? [item.route])
+                const isMediaLibrary = item.route === "admin.media.library"
                 return (
                   <li key={`${item.label}-${item.route}`}>
                     <Link
                       href={routeUrl(item.route, item.params)}
-                      onClick={onNavigate}
+                      onClick={() => {
+                        if (isMediaLibrary) clearReadyCount()
+                        onNavigate?.()
+                      }}
                       className={cn(
                         "group/item flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition duration-100",
                         active
@@ -87,6 +96,11 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
                         aria-hidden="true"
                       />
                       <span className="truncate">{item.label}</span>
+                      {isMediaLibrary && mediaReadyCount > 0 ? (
+                        <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-none text-primary-foreground">
+                          {mediaReadyCount > 99 ? "99+" : mediaReadyCount}
+                        </span>
+                      ) : null}
                     </Link>
                   </li>
                 )

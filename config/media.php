@@ -47,4 +47,7 @@ return [
 
     // Public path under /public used when no stored media (relative to app URL via asset()).
     'placeholder' => env('MEDIA_PLACEHOLDER', 'images/home/product-flash.png'),
+
+    // Retensi log riwayat pemrosesan media (hari) — otomatis dipangkas oleh media:prune-logs
+    'log_retention_days' => (int) env('MEDIA_LOG_RETENTION_DAYS', 30),
 ];

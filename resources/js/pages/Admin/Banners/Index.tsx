@@ -29,6 +29,7 @@ interface BannerCard {
   edit_href: string
   publish_url: string
   unpublish_url: string
+  destroy_url: string
 }
 
 interface AutoPromotionsProps {
@@ -95,6 +96,21 @@ function BannerActions({
           Aktifkan
         </Button>
       )}
+      <ConfirmAction
+        trigger={
+          <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
+            Hapus
+          </button>
+        }
+        title="Hapus promo toko?"
+        description="Banner dihapus permanen beserta file media terkait di penyimpanan."
+        confirmLabel="Hapus permanen"
+        processing={busy}
+        onConfirm={() => {
+          setBusyId(banner.id)
+          router.delete(banner.destroy_url, { preserveScroll: true, onFinish: () => setBusyId(null) })
+        }}
+      />
     </RowActions>
   )
 }
@@ -245,7 +261,7 @@ export default function BannersIndex({
             <Button asChild>
               <Link href={createHref}>
                 <Icon name="plus" className="size-4" aria-hidden="true" />
-                Tambah Promo
+                Tambah Banner
               </Link>
             </Button>
           </>
@@ -270,7 +286,7 @@ export default function BannersIndex({
       {!banners.length ? (
         <EmptyState
           className="mt-6"
-          title="Belum ada promo manual"
+          title="Belum ada banner"
           description={
             autoForm.data.enabled
               ? "Tambah slide promo beranda, atau matikan mode otomatis untuk menyiapkan mode manual penuh."
@@ -278,7 +294,7 @@ export default function BannersIndex({
           }
           action={
             <Button asChild>
-              <Link href={createHref}>Tambah Promo</Link>
+              <Link href={createHref}>Tambah Banner</Link>
             </Button>
           }
         />

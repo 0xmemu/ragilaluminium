@@ -250,7 +250,7 @@ export function CheckoutAddressForm({
               </Button>
             ) : null}
             <Button type="submit" disabled={detailForm.processing}>
-              {detailForm.processing ? "Memvalidasi..." : "Lanjut ke pembayaran"}
+              {detailForm.processing ? "Memvalidasi..." : "Lanjut Ke Pembayaran"}
             </Button>
           </div>
         </form>

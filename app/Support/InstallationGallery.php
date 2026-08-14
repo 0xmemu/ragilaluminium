@@ -10,22 +10,17 @@ use Illuminate\Support\Collection;
 
 /**
  * Public Hasil Pemasangan hierarchy:
- * 1) /hasil-pemasangan — kartu per model (total produk / foto / video)
- * 2) /hasil-pemasangan/{category}/{model} — kartu produk dalam model
- * 3) /hasil-pemasangan/{parent_sku} — galeri foto satu produk
+ * 1) /hasil-pemasangan ??? kartu per model (total produk / foto / video)
+ * 2) /hasil-pemasangan/{category}/{model} ??? kartu produk dalam model
+ * 3) /hasil-pemasangan/{parent_sku} ??? galeri foto satu produk
  */
 class InstallationGallery
 {
     /**
-     * One card per catalog model that has installation media.
+     * One card per catalog model that has installation media or catalog products.
+     * The order follows the active CMS model list.
      *
-     * @return list<array{id: string, image_url: string, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
-     */
-    /**
-     * One card per catalog model that has installation media.
-     * The order follows the same active CMS model list as /products.
-     *
-     * @return list<array{id: string, image_url: string, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
+     * @return list<array{id: string, image_url: string|null, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
      */
     public static function modelCards(int $limit = 24): array
     {
@@ -35,8 +30,6 @@ class InstallationGallery
                 .'|'.strtoupper((string) $item->product->product_model)
         );
 
-        // Model Produk adalah source of truth untuk urutan dan kelengkapan daftar.
-        // Model tanpa dokumentasi tetap tampil tanpa meminjam gambar model lain.
         $catalogModels = app(ModelProductService::class)->storefrontCards();
         $cards = [];
 
@@ -57,16 +50,18 @@ class InstallationGallery
                 ? self::countMedia($group)
                 : ['photo_count' => 0, 'video_count' => 0, 'cover' => null];
 
+            $cover = $stats['cover'] ?? ($catalogModel['image'] ?? null);
+
             $cards[] = [
                 'id' => 'model-'.$category.'-'.$model,
-                'image_url' => $stats['cover'],
+                'image_url' => $cover,
                 'label' => (string) ($catalogModel['title'] ?? CatalogLabels::modelCardTitle($category, $model)),
                 'product_count' => max(0, (int) ($catalogModel['count'] ?? 0)),
-                'photo_count' => $stats['photo_count'],
+                'photo_count' => $stats['photo_count'] > 0 ? $stats['photo_count'] : max(0, (int) ($catalogModel['count'] ?? 0)),
                 'video_count' => $stats['video_count'],
                 'category' => $category,
                 'model' => $model,
-                'source' => $group->isNotEmpty() ? 'import' : 'empty',
+                'source' => $group->isNotEmpty() ? 'import' : 'catalog',
                 'product_sku' => null,
                 'href' => route('installation.model', [
                     'category' => self::categoryToSlug($category),
@@ -96,7 +91,38 @@ class InstallationGallery
             ->filter(fn (ProductMedia $item) => strtoupper((string) $item->product->product_category) === $category
                 && strtoupper((string) $item->product->product_model) === $model);
 
-        return self::productCardsFromMedia($media, $limit);
+        if ($media->isNotEmpty()) {
+            return self::productCardsFromMedia($media, $limit);
+        }
+
+        // Fallback: Product cards in this model from catalog
+        return Product::visible()
+            ->where('product_category', $category)
+            ->where('product_model', $model)
+            ->with(['mainImage', 'media'])
+            ->limit($limit)
+            ->get()
+            ->map(function (Product $product) use ($category, $model) {
+                $cover = $product->mainImage?->urlFor('card')
+                    ?? $product->mainImage?->urlFor('thumb')
+                    ?? ($product->media->first()?->urlFor('card'));
+
+                return [
+                    'id' => 'product-'.$product->id,
+                    'image_url' => $cover,
+                    'label' => self::productInstallationLabel($product),
+                    'product_count' => 1,
+                    'photo_count' => max(1, $product->media->count()),
+                    'video_count' => 0,
+                    'category' => $category,
+                    'model' => $model,
+                    'source' => 'catalog',
+                    'product_sku' => $product->parent_sku,
+                    'href' => route('installation.show', ['parent_sku' => $product->parent_sku], absolute: false),
+                    'product_href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -129,37 +155,30 @@ class InstallationGallery
                     'model' => null,
                     'source' => 'manual',
                     'product_sku' => null,
-                    'href' => route('installation.index', absolute: false),
+                    'href' => $item->image_url,
+                    'product_href' => null,
                 ])
                 ->all();
 
             $cards = array_merge($cards, $manual);
         }
 
-        return array_values($cards);
+        return $cards;
     }
 
     /**
-     * @deprecated Prefer modelCards() for listing pages.
+     * Homepage carousel items: Kartu per model produk (bukan per produk / ukuran).
      *
-     * @return list<array<string, mixed>>
-     */
-    public static function items(int $limit = 24): array
-    {
-        return self::productCards($limit);
-    }
-
-    /**
-     * Home strip: model cards.
-     *
-     * @return list<array{id: string, image: string, label: string, product_count: int, photo_count: int, video_count: int, category: string|null, model: string|null, href: string|null, product_sku: string|null}>
+     * @return list<array{id: string, image: string|null, label: string, product_count: int, photo_count: int, video_count: int, category: string|null, model: string|null, href: string, product_sku: null}>
      */
     public static function forHome(int $limit = 8): array
     {
-        return collect(self::modelCards($limit))
+        $models = collect(self::modelCards($limit));
+
+        return $models
             ->map(fn (array $item) => [
                 'id' => $item['id'],
-                'image' => $item['image_url'],
+                'image' => $item['image_url'] ?? $item['image'] ?? null,
                 'label' => $item['label'],
                 'product_count' => $item['product_count'],
                 'photo_count' => $item['photo_count'],
@@ -181,156 +200,110 @@ class InstallationGallery
     {
         $media = ProductMedia::query()
             ->where('product_id', $product->id)
-            ->installation()
             ->visible()
             ->orderBy('position')
             ->orderBy('id')
-            ->get()
-            ->map(function (ProductMedia $item) {
-                $isVideo = self::isVideoMedia($item);
-                $url = $item->urlFor('pdp')
-                    ?? $item->urlFor('card')
-                    ?? $item->urlFor('thumb');
-                if (! filled($url)) {
-                    return null;
-                }
+            ->get();
 
-                $thumb = $isVideo
-                    ? ($item->urlFor('thumb') ?? $item->urlFor('card'))
-                    : ($item->urlFor('thumb') ?? $item->urlFor('card') ?? $url);
-
-                return [
-                    'id' => $item->id,
-                    'url' => $url,
-                    'thumb' => $thumb,
-                    'is_video' => $isVideo,
-                ];
-            })
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($media === []) {
+        if ($media->isEmpty()) {
             return null;
         }
 
-        $title = trim((string) ($product->short_name ?: $product->name ?: $product->parent_sku));
+        $items = $media->map(function (ProductMedia $m) {
+            $url = $m->urlFor('card') ?? $m->urlFor('thumb') ?? '';
+
+            return [
+                'id' => $m->id,
+                'url' => $url,
+                'thumb' => $m->urlFor('thumb') ?? $url,
+                'is_video' => self::isVideoMedia($m),
+            ];
+        })
+            ->filter(fn (array $i) => filled($i['url']))
+            ->values()
+            ->all();
+
+        if ($items === []) {
+            return null;
+        }
 
         return [
             'product' => [
                 'id' => $product->id,
-                'parent_sku' => $product->parent_sku,
-                'name' => $title !== '' ? $title : $product->parent_sku,
+                'parent_sku' => (string) $product->parent_sku,
+                'name' => (string) ($product->name ?: $product->parent_sku),
                 'href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
                 'category' => $product->product_category ? strtoupper((string) $product->product_category) : null,
                 'model' => $product->product_model ? strtoupper((string) $product->product_model) : null,
             ],
-            'media' => $media,
+            'media' => $items,
         ];
     }
 
     /**
-     * Media-first gallery for one installation model. Product identity is intentionally
-     * not exposed as a card; the model page is an installation inspiration gallery.
+     * All media items for a model (photo + video grid on model page).
      *
-     * @return list<array{id: int, url: string, thumb: string|null, is_video: bool, caption: string|null}>
+     * @return list<array{id: int, url: string, thumb: string, is_video: bool, product_sku: string, product_name: string}>
      */
-    public static function mediaForModel(string $category, string $model, int $limit = 96): array
+    public static function mediaForModel(string $category, string $model, int $limit = 60): array
     {
         $category = strtoupper(trim($category));
         $model = strtoupper(trim($model));
 
-        return self::installationMediaWithProduct()
-            ->filter(fn (ProductMedia $item) => strtoupper((string) $item->product->product_category) === $category
-                && strtoupper((string) $item->product->product_model) === $model)
-            ->sortBy([
-                ['position', 'asc'],
-                ['id', 'desc'],
-            ])
-            ->map(function (ProductMedia $item) {
-                $isVideo = self::isVideoMedia($item);
-                $url = $item->urlFor('pdp')
-                    ?? $item->urlFor('card')
-                    ?? $item->urlFor('thumb');
-
-                if (! filled($url)) {
-                    return null;
-                }
+        return ProductMedia::query()
+            ->visible()
+            ->whereHas('product', fn ($q) => $q->visible()
+                ->where('product_category', $category)
+                ->where('product_model', $model))
+            ->with(['product:id,parent_sku,name'])
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(function (ProductMedia $m) {
+                $url = $m->urlFor('card') ?? $m->urlFor('thumb') ?? '';
 
                 return [
-                    'id' => $item->id,
+                    'id' => $m->id,
                     'url' => $url,
-                    'thumb' => $isVideo
-                        ? ($item->urlFor('thumb') ?? $item->urlFor('card'))
-                        : ($item->urlFor('thumb') ?? $item->urlFor('card') ?? $url),
-                    'is_video' => $isVideo,
-                    'caption' => filled($item->installation_caption) ? trim((string) $item->installation_caption) : null,
+                    'thumb' => $m->urlFor('thumb') ?? $url,
+                    'is_video' => self::isVideoMedia($m),
+                    'product_sku' => (string) ($m->product?->parent_sku ?? ''),
+                    'product_name' => (string) ($m->product?->name ?? ''),
                 ];
             })
-            ->filter()
-            ->take(max(1, $limit))
+            ->filter(fn (array $i) => filled($i['url']))
             ->values()
             ->all();
     }
 
     public static function categoryToSlug(string $category): string
     {
-        return match (strtoupper($category)) {
-            'DOOR' => 'door',
+        return match (strtoupper(trim($category))) {
+            'DOOR' => 'doors',
             'BOUVEN' => 'bouven',
-            'LAINNYA' => 'lainnya',
-            default => 'window',
+            default => 'windows',
         };
     }
 
     public static function categoryFromSlug(string $slug): ?string
     {
         return match (strtolower(trim($slug))) {
-            'door', 'doors', 'pintu' => 'DOOR',
+            'doors', 'door', 'pintu' => 'DOOR',
             'bouven', 'boven' => 'BOUVEN',
-            'window', 'windows', 'jendela' => 'WINDOW',
-            'lainnya', 'manual', 'other' => 'LAINNYA',
+            'windows', 'window', 'jendela' => 'WINDOW',
+            'lainnya', 'manual' => 'LAINNYA',
             default => null,
         };
     }
 
     public static function modelToSlug(string $model): string
     {
-        return strtolower(str_replace(' ', '_', trim($model)));
+        return strtolower(str_replace('_', '-', trim($model)));
     }
 
     public static function modelFromSlug(string $slug): string
     {
         return strtoupper(str_replace('-', '_', trim($slug)));
-    }
-
-    public static function modelHref(?string $category, ?string $model): ?string
-    {
-        if (! filled($category) || ! filled($model)) {
-            return null;
-        }
-
-        return route('installation.model', [
-            'category' => self::categoryToSlug($category),
-            'model' => self::modelToSlug($model),
-        ], absolute: false);
-    }
-
-    /**
-     * @return list<int>
-     */
-    public static function parseSlots(?string $raw): array
-    {
-        if (! filled($raw)) {
-            return [];
-        }
-
-        return Collection::make(preg_split('/[,\s]+/', (string) $raw) ?: [])
-            ->map(fn ($v) => (int) $v)
-            ->filter(fn (int $n) => $n >= 1 && $n <= 9)
-            ->unique()
-            ->values()
-            ->all();
     }
 
     /**
@@ -339,7 +312,6 @@ class InstallationGallery
     protected static function installationMediaWithProduct(): Collection
     {
         return ProductMedia::query()
-            ->installation()
             ->visible()
             ->with(['product:id,parent_sku,name,short_name,product_category,product_model,status'])
             ->orderByDesc('id')
@@ -447,75 +419,6 @@ class InstallationGallery
     }
 
     /**
-     * @param  list<string|int>  $keys
-     * @return list<string>
-     */
-    protected static function orderedPairKeys(array $keys): array
-    {
-        $categoryOrder = ['WINDOW', 'DOOR', 'BOUVEN'];
-        $modelOrder = CatalogLabels::MODEL_ORDER;
-
-        usort($keys, function ($a, $b) use ($categoryOrder, $modelOrder) {
-            [$catA, $modelA] = array_pad(explode('|', (string) $a, 2), 2, '');
-            [$catB, $modelB] = array_pad(explode('|', (string) $b, 2), 2, '');
-
-            $catAIdx = array_search($catA, $categoryOrder, true);
-            $catBIdx = array_search($catB, $categoryOrder, true);
-            $catCmp = ($catAIdx === false ? 99 : $catAIdx) <=> ($catBIdx === false ? 99 : $catBIdx);
-            if ($catCmp !== 0) {
-                return $catCmp;
-            }
-
-            $modelAIdx = array_search($modelA, $modelOrder, true);
-            $modelBIdx = array_search($modelB, $modelOrder, true);
-
-            return ($modelAIdx === false ? 99 : $modelAIdx) <=> ($modelBIdx === false ? 99 : $modelBIdx);
-        });
-
-        return array_values(array_map('strval', $keys));
-    }
-
-    /**
-     * @return list<array{id: string, image_url: string, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
-     */
-    protected static function manualModelFallback(int $limit): array
-    {
-        if ($limit < 1) {
-            return [];
-        }
-
-        $items = CmsGalleryItem::query()
-            ->where('published', true)
-            ->whereNotNull('image_url')
-            ->where('image_url', '!=', '')
-            ->orderBy('sort_order')
-            ->orderByDesc('id')
-            ->limit(48)
-            ->get();
-
-        if ($items->isEmpty()) {
-            return [];
-        }
-
-        return [[
-            'id' => 'model-manual-lainnya',
-            'image_url' => (string) $items->first()->image_url,
-            'label' => 'Dokumentasi lainnya',
-            'product_count' => $items->count(),
-            'photo_count' => $items->count(),
-            'video_count' => 0,
-            'category' => 'LAINNYA',
-            'model' => 'MANUAL',
-            'source' => 'manual',
-            'product_sku' => null,
-            'href' => route('installation.model', [
-                'category' => 'lainnya',
-                'model' => 'manual',
-            ], absolute: false),
-        ]];
-    }
-
-    /**
      * @return list<array{id: string, image_url: string, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
      */
     public static function manualProductCards(int $limit = 48): array
@@ -556,7 +459,7 @@ class InstallationGallery
         return (bool) preg_match('/\.(mp4|webm|mov|m4v)(\?|$)/i', $path);
     }
 
-    /** Label kartu produk di hasil pemasangan — ukuran + identitas model, bukan short_name saja. */
+    /** Label kartu produk di hasil pemasangan: ukuran + identitas model. */
     protected static function productInstallationLabel(Product $product): string
     {
         $size = trim((string) ($product->short_name ?: ''));
@@ -567,7 +470,7 @@ class InstallationGallery
         ));
 
         if ($size !== '' && $line !== '') {
-            return $line.' · '.$size;
+            return $line.' - '.$size;
         }
 
         if ($size !== '') {
@@ -579,3 +482,4 @@ class InstallationGallery
         return $name !== '' ? $name : 'Hasil pemasangan';
     }
 }
+
