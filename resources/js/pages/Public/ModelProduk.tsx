@@ -25,7 +25,6 @@ interface ModelProdukProps {
 }
 
 const SORT_OPTIONS = [
-  { value: "", label: "Urutan Admin" },
   { value: "latest", label: "Terbaru" },
   { value: "oldest", label: "Terlama" },
 ] as const
@@ -74,8 +73,8 @@ function ModelCategoryCard({ model }: { model: ModelCardData }) {
 /** Tombol "Urutkan" + menu urutan: default urutan admin, terbaru, terlama. */
 function SortMenu({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = React.useState(false)
-  const hasSelection = value === "latest" || value === "oldest"
   const selectedLabel = SORT_OPTIONS.find((option) => option.value === value)?.label
+  const hasSelection = selectedLabel !== undefined
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -99,7 +98,7 @@ function SortMenu({ value, onChange }: { value: string; onChange: (value: string
         {SORT_OPTIONS.map((option) => {
           // Default (urutan admin) sengaja tanpa opsi terpilih; checkmark hanya
           // untuk Terbaru/Terlama.
-          const selected = option.value !== "" && option.value === value
+          const selected = option.value === value
           return (
             <DropdownMenuItem
               key={option.value || "default"}
