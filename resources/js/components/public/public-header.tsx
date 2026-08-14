@@ -139,6 +139,7 @@ function HeaderSearchForm({
         <input
           name="q"
           type="search"
+          data-site-search
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setFocused(true)}
@@ -146,7 +147,7 @@ function HeaderSearchForm({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "h-11 w-full rounded-full border-0 bg-white/10 py-1.5 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-11 md:pl-12 md:pr-5 md:text-base",
+            "h-9 w-full rounded-full border-0 bg-white/10 py-1 pl-8 pr-3 text-sm text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-9 md:pl-12 md:pr-5 md:text-base",
             inputClassName,
           )}
           aria-label="Cari produk"

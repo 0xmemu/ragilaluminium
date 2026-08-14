@@ -16,6 +16,7 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
+import { focusSiteSearch } from "@/lib/site-search"
 import { cn } from "@/lib/utils"
 import type { ModelCardData } from "@/types"
 
@@ -177,13 +178,14 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
             <h1 className="text-base font-bold tracking-tight text-[#333333]">Semua Model Produk</h1>
-            <Link
-              href={routeUrl("catalog.all")}
-              className="-mr-2 ml-auto flex size-11 shrink-0 items-center justify-center rounded-md transition hover:bg-muted/50 sm:-mr-1"
+            <button
+              type="button"
+              onClick={focusSiteSearch}
+              className="-mr-2 ml-auto flex size-11 shrink-0 items-center justify-center rounded-md transition hover:bg-muted/50 sm:-mr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label="Cari produk"
             >
               <Icon name="search" className="size-5" aria-hidden="true" />
-            </Link>
+            </button>
           </div>
 
           <div className="flex items-center justify-between gap-4 pb-3 pt-2.5 sm:pb-4">
