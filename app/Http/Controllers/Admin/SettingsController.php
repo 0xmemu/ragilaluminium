@@ -29,6 +29,7 @@ class SettingsController extends Controller
                 ['label' => 'J&T Missing', 'value' => $jnt['missing'] !== [] ? implode(', ', $jnt['missing']) : '-'],
                 ['label' => 'Filesystem Default', 'value' => config('filesystems.default')],
                 ['label' => 'Media Disk', 'value' => config('filesystems.disks.media.driver', env('MEDIA_DISK'))],
+                ['label' => 'Queue Connection', 'value' => config('queue.default', 'sync')],
             ],
             'sections' => [],
         ]);
