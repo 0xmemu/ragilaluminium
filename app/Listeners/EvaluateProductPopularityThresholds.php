@@ -16,6 +16,10 @@ class EvaluateProductPopularityThresholds
 
     public function handle(OrderProcessingStarted|ShippingStatusUpdated $event): void
     {
+        if (! Product::popularityBoostTableAvailable()) {
+            return;
+        }
+
         $productIds = $event->order->items()->pluck('product_id');
 
         if ($productIds->isEmpty()) {

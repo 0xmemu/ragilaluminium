@@ -22,7 +22,7 @@ class ProductPopularityService
     {
         return $query
             ->withPopularityScore()
-            ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC');
+            ->orderByRaw(Product::popularityScoreSql().' DESC');
     }
 
     /**
@@ -201,6 +201,18 @@ class ProductPopularityService
      */
     public function inheritedTestimonials(Product $target): Collection
     {
+        if (! Product::popularityBoostTableAvailable()) {
+            return CmsTestimonial::query()
+                ->published()
+                ->website()
+                ->where('product_id', $target->id)
+                ->with('product:id,parent_sku,name,short_name')
+                ->orderBy('sort_order')
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get();
+        }
+
         $sourceIds = ProductPopularityBoost::query()
             ->enabled()
             ->where('target_product_id', $target->id)

@@ -205,7 +205,7 @@ class CatalogController extends Controller
                 in_array($sort, ['popular', 'terlaris', 'bestseller'], true),
                 // Populer: penjualan dulu, lalu stok terbanyak sebagai tie-breaker
                 // (belum ada pembelian → produk stok tertinggi tampil di depan).
-                fn ($q) => $q->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')->orderByDesc('stock_sort')->orderByDesc('id')
+                fn ($q) => $q->orderByRaw(Product::popularityScoreSql().' DESC')->orderByDesc('stock_sort')->orderByDesc('id')
             )
              ->paginate(14)
             ->withQueryString();

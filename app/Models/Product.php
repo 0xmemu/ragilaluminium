@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class Product extends Model
 {
@@ -131,6 +132,23 @@ class Product extends Model
     }
 
     /** Rank by valid website sales plus an explicit popularity seed. */
+    public static function popularitySeedColumnAvailable(): bool
+    {
+        return Schema::hasColumn("products", "popularity_seed");
+    }
+
+    public static function popularityBoostTableAvailable(): bool
+    {
+        return Schema::hasTable("product_popularity_boosts");
+    }
+
+    public static function popularityScoreSql(): string
+    {
+        return self::popularitySeedColumnAvailable()
+            ? "COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)"
+            : "COALESCE(sold_count, 0)";
+    }
+
     public function scopeWithPopularityScore(Builder $query): Builder
     {
         return $query->withSum('validOrderItems as sold_count', 'quantity');
@@ -140,7 +158,7 @@ class Product extends Model
     {
         return $query
             ->withPopularityScore()
-            ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC');
+            ->orderByRaw(Product::popularityScoreSql().' DESC');
     }
 
     /** Rank by website sales plus popularity seed (catalog / related products). */

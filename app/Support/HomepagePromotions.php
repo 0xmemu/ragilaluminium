@@ -193,7 +193,7 @@ class HomepagePromotions
             })
             ->orderByDesc('homepage_popular')
             ->orderBy('homepage_popular_sort')
-            ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')
+            ->orderByRaw(Product::popularityScoreSql().' DESC')
             ->orderByDesc('id')
             ->limit(24)
             ->get()

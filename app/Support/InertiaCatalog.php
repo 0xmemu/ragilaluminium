@@ -309,7 +309,7 @@ class InertiaCatalog
                             }
                         });
                 })
-                ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')
+                ->orderByRaw(Product::popularityScoreSql().' DESC')
                 ->orderByDesc('id')
                 ->limit($limit)
                 ->get();
@@ -318,7 +318,7 @@ class InertiaCatalog
                 ->whereIn('id', $flashIds)
                 ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
                 ->withPopularityScore()
-                ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')
+                ->orderByRaw(Product::popularityScoreSql().' DESC')
                 ->orderByDesc('id')
                 ->limit($limit)
                 ->get();
