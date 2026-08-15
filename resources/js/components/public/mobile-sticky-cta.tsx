@@ -21,7 +21,7 @@ export function MobileStickyCta({
   return (
     <>
       <div
-        className={cn("lg:hidden", spacerClassName ?? "h-[4.5rem]")}
+        className={cn("lg:hidden", spacerClassName ?? "h-[calc(var(--mobile-sticky-cta-height)+0.5rem)]")}
         aria-hidden="true"
       />
       <div

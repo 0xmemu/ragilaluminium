@@ -356,7 +356,7 @@ export default function Cart({
 
             <TrustBadgesGrid />
 
-            <MobileStickyCta aria-label="Lanjut checkout" spacerClassName="h-[4.5rem]">
+            <MobileStickyCta aria-label="Lanjut checkout" spacerClassName="h-[calc(var(--mobile-sticky-cta-height)+0.5rem)]">
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="text-xs font-medium text-muted-foreground">
                   Subtotal {selectMode && selectedIds.size !== cartItems.length ? `(${selectedIds.size} item)` : ""}

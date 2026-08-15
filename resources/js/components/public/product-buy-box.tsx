@@ -251,7 +251,14 @@ export function ProductBuyBox({
           >
             <Icon name="credit-card" className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate">
-              {form.processing && submitIntent === "checkout" ? "..." : "Beli Sekarang"}
+              {form.processing && submitIntent === "checkout" ? (
+                "..."
+              ) : (
+                <>
+                  <span className="min-[360px]:hidden">Beli</span>
+                  <span className="hidden min-[360px]:inline">Beli Sekarang</span>
+                </>
+              )}
             </span>
           </Button>
           <Button

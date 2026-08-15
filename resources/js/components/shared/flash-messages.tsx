@@ -41,7 +41,7 @@ function FlashMessagesInner({
 
   return (
     <div
-      className="container-page fixed left-1/2 top-20 z-toast -translate-x-1/2 space-y-2"
+      className="fixed inset-x-3 bottom-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+0.75rem)] z-toast mx-auto flex w-auto max-w-lg flex-col space-y-2 lg:container-page lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-20 lg:w-full lg:-translate-x-1/2"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -49,7 +49,7 @@ function FlashMessagesInner({
         <Alert
           tone="success"
           title={success ?? undefined}
-          className="ml-auto max-w-xl bg-surface shadow-float"
+          className="ml-auto w-full max-w-xl bg-surface shadow-float"
           onDismiss={() => setDismissed((prev) => ({ ...prev, success: true }))}
         />
       ) : null}
@@ -57,7 +57,7 @@ function FlashMessagesInner({
         <Alert
           tone="info"
           title={status ?? undefined}
-          className="ml-auto max-w-xl bg-surface shadow-float"
+          className="ml-auto w-full max-w-xl bg-surface shadow-float"
           onDismiss={() => setDismissed((prev) => ({ ...prev, status: true }))}
         />
       ) : null}
@@ -65,7 +65,7 @@ function FlashMessagesInner({
         <Alert
           tone="danger"
           title={error ?? undefined}
-          className="ml-auto max-w-xl bg-surface shadow-float"
+          className="ml-auto w-full max-w-xl bg-surface shadow-float"
           onDismiss={() => setDismissed((prev) => ({ ...prev, error: true }))}
         />
       ) : null}
