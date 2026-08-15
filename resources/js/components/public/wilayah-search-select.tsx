@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils"
 export interface WilayahOption {
   id: string
   name: string
+  postal_code?: string | null
+  postcode?: string | null
 }
 
 interface WilayahSearchSelectProps {

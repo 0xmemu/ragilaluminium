@@ -200,13 +200,15 @@ export function CheckoutAddressForm({
             id="checkout-postal-code"
             label="Kode pos"
             required
-            hint="Tidak tahu kode pos? Gunakan “Pilih lewat peta” di bawah."
+            hint="Kode pos terisi otomatis dari data desa/kelurahan. Jika belum terdaftar, gunakan fallback peta."
             error={detailForm.errors.postal_code}
           >
             <div className="flex flex-wrap items-end gap-2">
               <Input
                 value={detailForm.data.postal_code}
-                onChange={(event) => detailForm.setData("postal_code", event.target.value)}
+                readOnly
+                aria-readonly="true"
+                placeholder="Otomatis dari desa/kelurahan"
                 autoComplete="postal-code"
                 inputMode="numeric"
                 className="max-w-48 rounded-md"
@@ -219,7 +221,7 @@ export function CheckoutAddressForm({
                 onClick={() => setMapPickerOpen(true)}
               >
                 <Icon name="map-pin" className="size-4" aria-hidden="true" />
-                Pilih lewat peta
+                Pilih titik di Maps (opsional)
               </Button>
             </div>
           </Field>

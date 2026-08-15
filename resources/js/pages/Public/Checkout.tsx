@@ -42,6 +42,7 @@ interface CheckoutProps {
   details?: CheckoutDetails | null
   applyVoucherUrl: string
   removeVoucherUrl: string
+  shippingQuoteUrl?: string | null
 }
 
 /**
@@ -71,6 +72,7 @@ export default function Checkout({
   details,
   applyVoucherUrl,
   removeVoucherUrl,
+  shippingQuoteUrl = null,
 }: CheckoutProps) {
   const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
   const [checkoutItems, setCheckoutItems] = React.useState(items)
@@ -96,6 +98,7 @@ export default function Checkout({
     voucherDiscount: voucher_discount,
     applyVoucherUrl,
     removeVoucherUrl,
+    shippingQuoteUrl,
   })
 
   if (!items.length) {

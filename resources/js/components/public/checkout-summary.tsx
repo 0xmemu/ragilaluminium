@@ -27,6 +27,9 @@ export interface CheckoutShipping {
   subsidy: number
   net: number
   applied: boolean
+  status?: string
+  provisional?: boolean
+  message?: string | null
 }
 
 /**
@@ -67,7 +70,11 @@ export function CheckoutSummary({
     voucherForm,
     applyVoucher,
     removeVoucher,
+    shippingQuote,
+    shippingQuoteLoading,
+    shippingQuoteAttempted,
   } = c
+  const effectiveShipping = shippingQuote ?? (!shippingQuoteAttempted ? shipping : null)
   const hasDiscount = discountTotal > 0
 
   return (
@@ -256,40 +263,57 @@ export function CheckoutSummary({
             <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
           </div>
         ) : null}
-        {shipping ? (
+        {shippingQuoteLoading ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
+            <dd className="text-right font-semibold shrink-0">Menghitung ongkir...</dd>
+          </div>
+        ) : effectiveShipping?.provisional ? (
+          <div className="space-y-1.5">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground min-w-0 break-words">Estimasi ongkir sementara</dt>
+              <dd className="tabular-nums font-bold">{formatCurrency(9999)}</dd>
+            </div>
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              Sementara. Konfirmasi pesanan untuk konfirmasi admin.
+            </p>
+          </div>
+        ) : effectiveShipping ? (
           <>
-            {shipping.applied && shipping.subsidy > 0 ? (
+            {effectiveShipping.applied && effectiveShipping.subsidy > 0 ? (
               <>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground min-w-0 break-words">Ongkir asli (tarif kurir)</dt>
                   <dd className="tabular-nums text-muted-foreground line-through">
-                    {formatCurrency(shipping.gross)}
+                    {formatCurrency(effectiveShipping.gross)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground min-w-0 break-words">Subsidi ongkir</dt>
                   <dd className="tabular-nums font-semibold text-sale">
-                    −{formatCurrency(shipping.subsidy)}
+                    -{formatCurrency(effectiveShipping.subsidy)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground min-w-0 break-words">Ongkir dibayar</dt>
                   <dd className="tabular-nums font-bold text-foreground">
-                    {formatCurrency(shipping.net)}
+                    {formatCurrency(effectiveShipping.net)}
                   </dd>
                 </div>
               </>
             ) : (
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
-                <dd className="tabular-nums font-semibold">{formatCurrency(shipping.net)}</dd>
+                <dd className="tabular-nums font-semibold">{formatCurrency(effectiveShipping.net)}</dd>
               </div>
             )}
           </>
         ) : (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
-            <dd className="text-right font-semibold shrink-0">Dihitung dari alamat</dd>
+            <dd className="text-right font-semibold shrink-0">
+              {shippingQuoteAttempted ? "Dihitung saat konfirmasi" : "Menunggu alamat lengkap"}
+            </dd>
           </div>
         )}
 

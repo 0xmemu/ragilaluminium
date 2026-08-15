@@ -23,14 +23,25 @@ export interface CheckoutVoucher {
   vouchers?: Array<{ code: string; name: string; discount: number; stackable?: boolean }>
 }
 
+export interface CheckoutShippingQuote {
+  gross: number
+  subsidy: number
+  net: number
+  applied: boolean
+  status: string
+  provisional: boolean
+  message?: string | null
+}
+
 export interface UseCheckoutOptions {
   details?: CheckoutDetails | null
   cod?: CheckoutCodConfig
   defaultPayment?: string | null
   voucher?: CheckoutVoucher | null
   voucherDiscount?: number
-  applyVoucherUrl: string
-  removeVoucherUrl: string
+  applyVoucherUrl?: string | null
+  removeVoucherUrl?: string | null
+  shippingQuoteUrl?: string | null
 }
 
 const emptyDetails: CheckoutDetails = {
@@ -83,8 +94,9 @@ export function useCheckout({
   defaultPayment = null,
   voucher = null,
   voucherDiscount = 0,
-  applyVoucherUrl,
-  removeVoucherUrl,
+  applyVoucherUrl = routeUrl("checkout.voucher.apply"),
+  removeVoucherUrl = routeUrl("checkout.voucher.remove"),
+  shippingQuoteUrl = null,
 }: UseCheckoutOptions) {
   const [editingDetails, setEditingDetails] = React.useState(!details)
   const detailForm = useForm<CheckoutDetails>({ ...emptyDetails, ...(details ?? {}) })
@@ -106,12 +118,12 @@ export function useCheckout({
       return
     }
     voucherForm.setData("code", code)
-    voucherForm.post(applyVoucherUrl, { preserveScroll: true })
+    voucherForm.post(applyVoucherUrl || routeUrl("checkout.voucher.apply"), { preserveScroll: true })
   }
 
   function removeVoucher(code?: string) {
     voucherForm.setData("code", code ?? "")
-    voucherForm.post(removeVoucherUrl, { preserveScroll: true })
+    voucherForm.post(removeVoucherUrl || routeUrl("checkout.voucher.remove"), { preserveScroll: true })
   }
 
   const [provinces, setProvinces] = React.useState<WilayahOption[]>([])
@@ -125,6 +137,10 @@ export function useCheckout({
   const [wilayahError, setWilayahError] = React.useState<string | null>(null)
   const [wilayahRetry, setWilayahRetry] = React.useState(0)
   const [mapPickerOpen, setMapPickerOpen] = React.useState(false)
+  const [shippingQuote, setShippingQuote] = React.useState<CheckoutShippingQuote | null>(null)
+  const [shippingQuoteLoading, setShippingQuoteLoading] = React.useState(false)
+  const [shippingQuoteAttempted, setShippingQuoteAttempted] = React.useState(false)
+  const shippingQuoteAbortRef = React.useRef<AbortController | null>(null)
 
   function applyPickedLocation(picked: {
     display_name: string
@@ -273,6 +289,135 @@ export function useCheckout({
     }
   }, [detailForm.data.district_id])
 
+  React.useEffect(() => {
+    const data = detailForm.data
+    const complete = Boolean(
+      data.province_id &&
+        data.city_id &&
+        data.district_id &&
+        data.village_id &&
+        data.postal_code &&
+        data.address_line1?.trim(),
+    )
+    let timer: ReturnType<typeof setTimeout> | null = null
+    shippingQuoteAbortRef.current?.abort()
+
+    if (!complete) {
+      // Quote state follows address completeness; this reset is intentional.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShippingQuote(null)
+      setShippingQuoteLoading(false)
+      setShippingQuoteAttempted(false)
+      return () => {
+        if (timer) clearTimeout(timer)
+      }
+    }
+
+    const controller = new AbortController()
+    shippingQuoteAbortRef.current = controller
+    setShippingQuoteAttempted(true)
+    setShippingQuoteLoading(true)
+    timer = setTimeout(async () => {
+      try {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? ""
+        const response = await fetch(
+          shippingQuoteUrl || routeUrl("checkout.shipping-quote", undefined, "/checkout/shipping-quote"),
+          {
+            method: "POST",
+            credentials: "same-origin",
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "X-Requested-With": "XMLHttpRequest",
+              ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
+            },
+            body: JSON.stringify({
+              province_id: data.province_id,
+              province: data.province,
+              city_id: data.city_id,
+              city: data.city,
+              district_id: data.district_id,
+              district: data.district,
+              village_id: data.village_id,
+              village: data.village,
+              postal_code: data.postal_code,
+              address_line1: data.address_line1,
+            }),
+          },
+        )
+        if (!response.ok) {
+          setShippingQuote(null)
+          return
+        }
+        const payload = (await response.json()) as Record<string, unknown>
+        const source = (payload.data ?? payload.quote ?? payload.shipping_quote ?? payload.shipping ?? payload) as Record<string, unknown>
+        const status = String(source.status ?? source.state ?? "confirmed")
+        const provisional = Boolean(
+          source.provisional ??
+            source.is_provisional ??
+            source.manual_review ??
+            ["provisional", "manual_review", "estimate", "fallback"].includes(status.toLowerCase()),
+        )
+        const number = (value: unknown) => {
+          const parsed = Number(value)
+          return Number.isFinite(parsed) ? parsed : null
+        }
+        if (provisional) {
+          setShippingQuote({
+            gross: 9999,
+            subsidy: 0,
+            net: 9999,
+            applied: false,
+            status,
+            provisional: true,
+            message: typeof source.message === "string" ? source.message : null,
+          })
+          return
+        }
+        const net = number(source.net ?? source.shipping_amount ?? source.amount ?? source.cost ?? source.total)
+        if (net === null) {
+          setShippingQuote(null)
+          return
+        }
+        const gross = number(source.gross ?? source.original ?? source.base) ?? net
+        const subsidy = number(source.subsidy ?? source.discount) ?? Math.max(0, gross - net)
+        setShippingQuote({
+          gross,
+          subsidy,
+          net,
+          applied: Boolean(source.applied),
+          status,
+          provisional: false,
+          message: typeof source.message === "string" ? source.message : null,
+        })
+      } catch (error) {
+        if ((error as Error)?.name !== "AbortError") setShippingQuote(null)
+      } finally {
+        if (!controller.signal.aborted) setShippingQuoteLoading(false)
+      }
+    }, 350)
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      controller.abort()
+      if (shippingQuoteAbortRef.current === controller) shippingQuoteAbortRef.current = null
+    }
+  }, [
+    detailForm.data.address_line1,
+    detailForm.data.city,
+    detailForm.data.city_id,
+    detailForm.data.district,
+    detailForm.data.district_id,
+    detailForm.data.postal_code,
+    detailForm.data.province,
+    detailForm.data.province_id,
+    detailForm.data.village,
+    detailForm.data.village_id,
+    detailForm.data,
+    shippingQuoteUrl,
+  ])
+
   function selectProvince(option: WilayahOption | null) {
     detailForm.setData({
       ...detailForm.data,
@@ -284,6 +429,7 @@ export function useCheckout({
       district: "",
       village_id: "",
       village: "",
+      postal_code: "",
     })
     setRegencies([])
     setDistricts([])
@@ -299,6 +445,7 @@ export function useCheckout({
       district: "",
       village_id: "",
       village: "",
+      postal_code: "",
     })
     setDistricts([])
     setVillages([])
@@ -311,6 +458,7 @@ export function useCheckout({
       district: option?.name ?? "",
       village_id: "",
       village: "",
+      postal_code: "",
     })
     setVillages([])
   }
@@ -320,6 +468,7 @@ export function useCheckout({
       ...detailForm.data,
       village_id: option?.id ?? "",
       village: option?.name ?? "",
+      postal_code: option?.postal_code ?? option?.postcode ?? "",
     })
   }
 
@@ -382,6 +531,9 @@ export function useCheckout({
     setWilayahRetry,
     mapPickerOpen,
     setMapPickerOpen,
+    shippingQuote,
+    shippingQuoteLoading,
+    shippingQuoteAttempted,
     applyPickedLocation,
     selectProvince,
     selectCity,
