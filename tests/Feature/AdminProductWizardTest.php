@@ -12,7 +12,7 @@ class AdminProductWizardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_wizard_creates_an_active_product_and_returns_to_variant_step(): void
+    public function test_wizard_creates_an_archived_product_and_returns_to_variant_step(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
@@ -33,7 +33,7 @@ class AdminProductWizardTest extends TestCase
             'product' => $product,
             'step' => 'variants',
         ]));
-        $this->assertSame('active', $product->status);
+        $this->assertSame('archived', $product->status);
     }
 
     public function test_wizard_can_create_multiple_variants_in_one_submission(): void
@@ -46,7 +46,7 @@ class AdminProductWizardTest extends TestCase
             'product_category' => 'DOOR',
             'product_model' => 'SWING',
             'design_variant' => 'POLOS',
-            'status' => 'draft',
+            'status' => 'archived',
         ]);
 
         $response = $this->actingAs($admin)->post(route('admin.products.variants.bulk', $product), [
@@ -74,13 +74,13 @@ class AdminProductWizardTest extends TestCase
             'product_category' => 'WINDOW',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
-            'status' => 'draft',
+            'status' => 'archived',
         ]);
 
         $this->actingAs($admin)
             ->post(route('admin.products.publish', $product))
-            ->assertSessionHasErrors(['product']);
+            ->assertSessionHasErrors(['variants']);
 
-        $this->assertSame('draft', $product->fresh()->status);
+        $this->assertSame('archived', $product->fresh()->status);
     }
 }

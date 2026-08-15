@@ -400,3 +400,14 @@ Sebelum mengembangkan atau mengubah modul operasional di Admin UI, agents must:
 - [ ] Mencatat perubahan kritis ke Log Aktivitas sehingga monitoring dan audit dapat dilakukan.  
 
 Setiap perubahan pada Admin UI operasional yang tidak sesuai dengan kontrak ini harus dikoreksi agar selaras dengan desain Ragil Aluminium dan modul backend yang sudah ditetapkan.
+
+
+### 3.3 Product workflow decisions (2026-08-15)
+
+- Daftar Produk menggunakan satu mode list lengkap; tidak ada toggle grid. Klik nama/row mengarah langsung ke Edit. Route Show tetap kompatibel untuk deep-link lama, tetapi bukan bagian dari alur kerja utama.
+- Filter kategori, model, dan status dipertahankan. Pencarian ukuran admin menggunakan urutan exact tinggi×panjang dan tidak mencocokkan orientasi terbalik.
+- Kolom Terjual berasal dari jumlah kuantitas order_items pada order website berstatus processing, shipped, delivered, atau completed.
+- Produk baru selalu dibuat sebagai arsip. Aktivasi hanya lewat checklist publish: varian aktif, harga manual setiap varian, foto utama siap, relasi foto ke minimal satu grup varian, spesifikasi, penjelasan, dan berat + packing P/L/T (>0) setiap varian aktif.
+- Harga setiap kombinasi varian tetap diinput manual; sistem tidak menghitung harga antar-varian.
+- Stok adalah angka visual, bukan batas ketersediaan produksi. Saat menambah varian, toggle stok acak default ON menghasilkan angka 7005.000; OFF menampilkan input stok manual. Nilai stok existing tidak diacak ulang saat edit, dan admin tetap dapat mengoreksi stok melalui pengelolaan varian.
+- Pengelompokan foto harus fleksibel (warna, motif, tipe kaca, atau atribut lain). Relasi yang tersedia saat ini adalah attachment media ke product_variant; label grup dan snapshot spesifikasi deterministik memerlukan kontrak/schema lanjutan sebelum dipaksakan.

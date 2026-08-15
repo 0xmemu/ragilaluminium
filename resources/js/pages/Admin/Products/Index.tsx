@@ -47,6 +47,7 @@ interface ProductCard {
   stock_total: number
   variants_count: number
   active_variants_count: number
+  sold_count: number
   image?: string | null
   updated_at: string | null
   href: string
@@ -62,7 +63,6 @@ interface ProductCard {
 interface ProductsIndexProps {
   title: string
   description: string
-  viewMode: "list" | "grid"
   searchQuery: string
   filters: {
     product_category: string
@@ -202,6 +202,7 @@ function ProductListRow({
       </TableCell>
       <TableCell className="whitespace-nowrap">{product.product_category_label}</TableCell>
       <TableCell className="whitespace-nowrap">{product.product_model_label}</TableCell>
+      <TableCell className="whitespace-nowrap">{product.design_variant_label || "-"}</TableCell>
       <TableCell>
         <StatusBadge status={product.status} />
       </TableCell>
@@ -210,6 +211,7 @@ function ProductListRow({
       </TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.stock_total)}</TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.variants_count)}</TableCell>
+      <TableCell className="tabular-nums">{formatNumber(product.sold_count)}</TableCell>
       <TableCell className="w-[1%] whitespace-nowrap text-right">
         <ProductRowActions
           product={product}
@@ -222,80 +224,10 @@ function ProductListRow({
   )
 }
 
-function ProductGridCard({
-  product,
-  busyId,
-  setBusyId,
-}: {
-  product: ProductCard
-  busyId: number | null
-  setBusyId: (id: number | null) => void
-}) {
-  const busy = busyId === product.id
-  const actions = useProductActions(setBusyId)
-
-  return (
-    <Card className="overflow-hidden">
-      <Link href={product.href} className="block aspect-[4/3] bg-muted">
-        {product.image ? (
-          <img src={product.image} alt="" className="size-full object-cover" />
-        ) : (
-          <div className="flex size-full items-center justify-center text-muted-foreground">
-            <Icon name="image" className="size-8" aria-hidden="true" />
-          </div>
-        )}
-      </Link>
-      <div className="space-y-3 p-4">
-        <div>
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <Link
-              href={product.href}
-              className="line-clamp-2 text-[13px] font-medium leading-5 hover:text-primary"
-            >
-              {product.name}
-            </Link>
-            <StatusBadge status={product.status} />
-          </div>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">{product.parent_sku}</p>
-        </div>
-        <dl className="grid sm:grid-cols-2 gap-x-3 gap-y-2 text-xs">
-          <div>
-            <dt className="text-muted-foreground">Kategori</dt>
-            <dd className="mt-0.5 font-medium">{product.product_category_label}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Model</dt>
-            <dd className="mt-0.5 font-medium">{product.product_model_label}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Harga</dt>
-            <dd className="tabular-nums mt-0.5 font-medium">
-              {product.min_price !== null ? formatCurrency(product.min_price) : "-"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Stok</dt>
-            <dd className="tabular-nums mt-0.5 font-medium">{formatNumber(product.stock_total)}</dd>
-          </div>
-        </dl>
-        <div className="border-t border-border pt-3">
-          <ProductRowActions
-            product={product}
-            busy={busy}
-            onArchive={() => actions.archive(product)}
-            onUnarchive={() => actions.unarchive(product)}
-            dense
-          />
-        </div>
-      </div>
-    </Card>
-  )
-}
 
 export default function ProductsIndex({
   title,
   description,
-  viewMode,
   searchQuery,
   filters,
   filterOptions,
@@ -313,7 +245,6 @@ export default function ProductsIndex({
   function visit(params: Record<string, string | undefined>) {
     const next: Record<string, string> = {}
     const merged = {
-      view: viewMode,
       q: searchQuery,
       product_category: filters.product_category,
       product_model: filters.product_model,
@@ -322,7 +253,6 @@ export default function ProductsIndex({
     }
     Object.entries(merged).forEach(([key, value]) => {
       if (!value || value === "all") return
-      if (key === "view" && value === "list") return
       if (key === "q" && !value.trim()) return
       next[key] = value
     })
@@ -339,7 +269,7 @@ export default function ProductsIndex({
 
       <ManageProductsTabs active="products" />
 
-      {/* Baris kontrol seragam: search | filter | view | actions */}
+      {/* Pencarian, filter kategori/model/status, dan aksi katalog */}
       <ListToolbar
         search={{
           value: q,
@@ -412,30 +342,6 @@ export default function ProductsIndex({
             </option>
           ))}
         </Select>
-        <div className="flex gap-0.5 rounded-lg border border-border bg-muted/70 p-1">
-          {(
-            [
-              { key: "list", label: "List", icon: "menu" },
-              { key: "grid", label: "Grid", icon: "layout-grid" },
-            ] as const
-          ).map((mode) => (
-            <button
-              key={mode.key}
-              type="button"
-              onClick={() => visit({ view: mode.key })}
-              aria-pressed={viewMode === mode.key}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition",
-                viewMode === mode.key
-                  ? "bg-surface text-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon name={mode.icon} className="size-3.5" aria-hidden="true" />
-              {mode.label}
-            </button>
-          ))}
-        </div>
       </ListToolbar>
 
       {/* Konten */}
@@ -455,30 +361,21 @@ export default function ProductsIndex({
             </div>
           }
         />
-      ) : viewMode === "grid" ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {products.map((product) => (
-            <ProductGridCard
-              key={product.id}
-              product={product}
-              busyId={busyId}
-              setBusyId={setBusyId}
-            />
-          ))}
-        </div>
       ) : (
         <Card className="mt-4 overflow-hidden">
           <div className="overflow-x-auto">
-            <Table className="min-w-[56rem]">
+            <Table className="min-w-[68rem]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Produk</TableHead>
                   <TableHead>Kategori</TableHead>
                   <TableHead>Model</TableHead>
+                  <TableHead>Desain</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Harga</TableHead>
                   <TableHead>Stok</TableHead>
                   <TableHead>Varian</TableHead>
+                  <TableHead>Terjual</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>

@@ -30,6 +30,7 @@ class AdminProductStockInputTest extends TestCase
             'homepage_popular' => false,
             'homepage_popular_sort' => 0,
             'create_initial_variant' => true,
+            'randomize_stock' => false,
             'initial_price' => 1500000,
             'initial_stock' => 5000,
         ]);

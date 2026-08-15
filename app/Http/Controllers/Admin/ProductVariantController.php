@@ -76,6 +76,7 @@ class ProductVariantController extends Controller
     public function bulkStore(Request $request, Product $product): RedirectResponse
     {
         $validated = $request->validate([
+            'randomize_stock' => ['sometimes', 'boolean'],
             'wizard_step' => ['nullable', 'in:variants,media,review'],
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.variation_1_name' => ['nullable', 'string', 'max:255'],
@@ -83,7 +84,7 @@ class ProductVariantController extends Controller
             'variants.*.variation_2_name' => ['nullable', 'string', 'max:255'],
             'variants.*.variation_2_option' => ['nullable', 'string', 'max:255'],
             'variants.*.price' => ['required', 'numeric', 'min:0'],
-            'variants.*.stock' => ['required', 'integer', 'min:0'],
+            'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.weight_kg' => ['nullable', 'numeric', 'min:0'],
             'variants.*.width_cm' => ['nullable', 'numeric', 'min:0'],
             'variants.*.height_cm' => ['nullable', 'numeric', 'min:0'],
@@ -91,10 +92,12 @@ class ProductVariantController extends Controller
             'variants.*.status' => ['required', 'in:active,inactive,archived'],
         ]);
 
-        DB::transaction(function () use ($validated, $product, $request): void {
+        $randomizeStock = ! $request->has('randomize_stock') || $request->boolean('randomize_stock');
+        DB::transaction(function () use ($validated, $product, $request, $randomizeStock): void {
             foreach ($validated['variants'] as $row) {
                 ProductVariant::create([
                     ...$row,
+                    'stock' => $randomizeStock ? random_int(700, 5000) : (int) ($row['stock'] ?? 0),
                     'product_id' => $product->id,
                     'variant_sku' => ShopeeStyleSku::nextVariantSku($product),
                     'created_by_user_id' => $request->user()->id,

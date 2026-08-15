@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductAttribute;
 use App\Models\ProductVariant;
+use App\Models\ProductMedia;
 use App\Support\CatalogLabels;
 use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
@@ -25,7 +26,7 @@ class ProductController extends Controller
 {
     public function index(Request $request): Response
     {
-        $view = $request->input('view') === 'grid' ? 'grid' : 'list';
+        $view = 'list';
         $category = (string) $request->input('product_category', 'all');
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
@@ -39,8 +40,9 @@ class ProductController extends Controller
                 'variants as variants_count',
                 'activeVariants as active_variants_count',
             ])
+            ->withSum('validOrderItems as sold_count', 'quantity')
             ->withSum('activeVariants as stock_total', 'stock')
-            ->when($q !== '', function ($query) use ($q) {
+            ->when($q !== '' && $size === null, function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
                     LikeSearch::whereLike($inner, 'name', $q);
                     LikeSearch::orWhereLike($inner, 'short_name', $q);
@@ -51,12 +53,12 @@ class ProductController extends Controller
                 [$a, $b, $depth] = $size;
                 $query->whereHas('activeVariants', function ($variantQuery) use ($a, $b, $depth) {
                     $variantQuery->where(function ($pair) use ($a, $b, $depth) {
-                        $pair->where('width_cm', $a)->where('height_cm', $b);
+                        $pair->where('height_cm', $a)->where('width_cm', $b);
                         if ($depth !== null) {
                             $pair->where('depth_cm', $depth);
                         }
                     })->orWhere(function ($pair) use ($a, $b, $depth) {
-                        $pair->where('width_cm', $b)->where('height_cm', $a);
+                        $pair->where('height_cm', $b)->where('width_cm', $a);
                         if ($depth !== null) {
                             $pair->where('depth_cm', $depth);
                         }
@@ -82,7 +84,6 @@ class ProductController extends Controller
         return Inertia::render('Admin/Products/Index', [
             'title' => 'Daftar Produk',
             'description' => 'Kelola katalog produk, status, serta Import & Media dari menu Produk.',
-            'viewMode' => $view,
             'searchQuery' => $q,
             'filters' => [
                 'product_category' => $category === '' ? 'all' : $category,
@@ -105,9 +106,11 @@ class ProductController extends Controller
         $category = (string) $request->input('product_category', 'all');
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
+        $q = trim((string) $request->input('q', ''));
 
         $query = Product::query()
             ->withCount('variants as variants_count')
+            ->withSum('validOrderItems as sold_count', 'quantity')
             ->withSum('activeVariants as stock_total', 'stock')
             ->when($q !== '', function ($builder) use ($q) {
                 $builder->where(function ($inner) use ($q) {
@@ -139,6 +142,7 @@ class ProductController extends Controller
                 'min_price',
                 'stock_total',
                 'variants_count',
+                'sold_count',
                 'updated_at',
             ]);
 
@@ -154,6 +158,7 @@ class ProductController extends Controller
                         $product->min_price,
                         $product->stock_total,
                         $product->variants_count,
+                        $product->sold_count,
                         optional($product->updated_at)?->toDateTimeString(),
                     ]);
                 }
@@ -190,15 +195,17 @@ class ProductController extends Controller
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'create_initial_variant' => ['sometimes', 'boolean'],
             'initial_price' => ['nullable', 'required_if:create_initial_variant,true', 'numeric', 'min:0'],
+            'randomize_stock' => ['sometimes', 'boolean'],
             'initial_stock' => ['nullable', 'required_if:create_initial_variant,true', 'integer', 'min:0'],
         ]);
         $wizard = $request->input('workflow') === 'wizard';
         $createInitialVariant = $request->boolean('create_initial_variant');
         $initialVariant = [
             'price' => $validated['initial_price'] ?? null,
-            'stock' => $validated['initial_stock'] ?? null,
+            'stock' => (! $request->has('randomize_stock') || $request->boolean('randomize_stock')) ? random_int(700, 5000) : (int) ($validated['initial_stock'] ?? 0),
         ];
         unset(
+            $validated['randomize_stock'],
             $validated['create_initial_variant'],
             $validated['initial_price'],
             $validated['initial_stock'],
@@ -212,6 +219,7 @@ class ProductController extends Controller
         DB::transaction(function () use ($validated, $createInitialVariant, $initialVariant, $request, &$product): void {
             $product = Product::create([
                 ...$validated,
+                'status' => 'archived',
                 'parent_sku' => ShopeeStyleSku::nextParentSku(),
             ]);
 
@@ -232,7 +240,7 @@ class ProductController extends Controller
             return redirect()->route('admin.products.edit', [
                 'product' => $product,
                 'step' => 'variants',
-            ])->with('success', 'Draft produk dibuat. Lanjutkan dengan varian.');
+            ])->with('success', 'Produk disimpan sebagai arsip. Lengkapi checklist sebelum diaktifkan.');
         }
 
         return redirect()->route('admin.products.index')
@@ -292,7 +300,7 @@ class ProductController extends Controller
 
     public function edit(Product $product): Response
     {
-        $product->load(['variants', 'media']);
+        $product->load(['variants', 'attributes', 'media']);
 
         return Inertia::render('Admin/ProductForm', [
             'product' => [
@@ -327,20 +335,12 @@ class ProductController extends Controller
                 'stock' => (int) $variant->stock,
                 'status' => $variant->status,
             ])->values()->all(),
-            'completion' => [
-                'active_variants' => $product->variants->where('status', 'active')->count(),
-                'main_image_ready' => $product->media->contains(fn ($media) =>
-                    $media->is_main_image
-                    && $media->show_in_catalog
-                    && $media->visibility === 'visible'
-                    && $media->status === 'downloaded'
-                ),
-            ],
+            'completion' => app(ProductPublicationService::class)->completion($product),
             'options' => $this->formOptions(),
         ]);
     }
 
-    public function update(Request $request, Product $product): RedirectResponse
+    public function update(Request $request, Product $product, ProductPublicationService $publication): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
@@ -355,12 +355,17 @@ class ProductController extends Controller
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'wizard_step' => ['nullable', 'in:identity,variants,media,review'],
         ]);
+        $requestedStatus = $validated['status'];
         $wizardStep = $validated['wizard_step'] ?? null;
         unset($validated['wizard_step']);
+        $validated['status'] = 'archived';
         $validated['homepage_popular'] = $request->boolean('homepage_popular');
         $validated['homepage_popular_sort'] = (int) ($validated['homepage_popular_sort'] ?? 0);
         $validated['updated_by_user_id'] = $request->user()->id;
         $product->update($validated);
+        if ($requestedStatus === 'active' && $wizardStep === null) {
+            $publication->publish($product->fresh(), (int) $request->user()->id);
+        }
 
         if ($wizardStep !== null) {
             return redirect()->route('admin.products.edit', [
@@ -372,30 +377,38 @@ class ProductController extends Controller
         return redirect()->route('admin.products.index')
             ->with('success', 'Produk berhasil diperbarui.');
     }
-
     public function duplicate(Request $request, Product $product): RedirectResponse
     {
+        $product->load(['variants', 'attributes', 'media']);
         $copy = null;
 
         DB::transaction(function () use ($request, $product, &$copy): void {
+            $name = $product->name.' (Salinan)';
+            $suffix = 2;
+            while (Product::query()->where('name', $name)->exists()) {
+                $name = $product->name.' (Salinan '.$suffix.')';
+                $suffix++;
+            }
+
             $copy = Product::create([
                 'parent_sku' => ShopeeStyleSku::nextParentSku(),
-                'name' => $product->name.' (Salinan)',
+                'name' => $name,
                 'short_name' => $product->short_name,
                 'description' => $product->description,
                 'category_id' => $product->category_id,
                 'product_category' => $product->product_category,
                 'product_model' => $product->product_model,
                 'design_variant' => $product->design_variant,
-                'status' => 'active',
+                'status' => 'archived',
                 'homepage_popular' => false,
                 'homepage_popular_sort' => 0,
                 'created_by_user_id' => $request->user()->id,
                 'updated_by_user_id' => $request->user()->id,
             ]);
 
+            $variantMap = [];
             foreach ($product->variants as $variant) {
-                ProductVariant::create([
+                $newVariant = ProductVariant::create([
                     'product_id' => $copy->id,
                     'variant_sku' => ShopeeStyleSku::nextVariantSku($copy),
                     'variation_1_name' => $variant->variation_1_name,
@@ -403,27 +416,37 @@ class ProductController extends Controller
                     'variation_2_name' => $variant->variation_2_name,
                     'variation_2_option' => $variant->variation_2_option,
                     'price' => $variant->price,
-                    'stock' => 0,
+                    'stock' => $variant->stock,
                     'weight_kg' => $variant->weight_kg,
                     'width_cm' => $variant->width_cm,
                     'height_cm' => $variant->height_cm,
                     'depth_cm' => $variant->depth_cm,
-                    'status' => 'active',
+                    'status' => $variant->status,
                     'created_by_user_id' => $request->user()->id,
                     'updated_by_user_id' => $request->user()->id,
                 ]);
+                $variantMap[$variant->id] = $newVariant->id;
             }
 
             foreach ($product->attributes as $attribute) {
                 ProductAttribute::create([
                     'product_id' => $copy->id,
-                    'product_variant_id' => $attribute->product_variant_id,
+                    'product_variant_id' => $variantMap[$attribute->product_variant_id] ?? null,
                     'attribute_name' => $attribute->attribute_name,
                     'attribute_value' => $attribute->attribute_value,
                     'source' => $attribute->source,
                     'created_by_user_id' => $request->user()->id,
                     'updated_by_user_id' => $request->user()->id,
                 ]);
+            }
+
+            foreach ($product->media as $media) {
+                $mediaCopy = $media->replicate();
+                $mediaCopy->product_id = $copy->id;
+                $mediaCopy->product_variant_id = $variantMap[$media->product_variant_id] ?? null;
+                $mediaCopy->created_by_user_id = $request->user()->id;
+                $mediaCopy->updated_by_user_id = $request->user()->id;
+                $mediaCopy->save();
             }
         });
 
@@ -441,7 +464,7 @@ class ProductController extends Controller
     {
         $publication->publish($product, (int) $request->user()->id);
 
-        return redirect()->route('admin.products.show', $product)
+        return redirect()->route('admin.products.edit', ['product' => $product, 'step' => 'review'])
             ->with('success', 'Produk dipublikasikan.');
     }
 
@@ -453,9 +476,9 @@ class ProductController extends Controller
             ->with('success', 'Produk diarsipkan.');
     }
 
-    public function unarchive(Product $product): RedirectResponse
+    public function unarchive(Request $request, Product $product, ProductPublicationService $publication): RedirectResponse
     {
-        $product->update(['status' => 'active']);
+        $publication->publish($product, (int) $request->user()->id);
 
         return redirect()->route('admin.products.index')
             ->with('success', 'Produk dipulihkan.');
@@ -484,9 +507,10 @@ class ProductController extends Controller
             'stock_total' => (int) ($product->stock_total ?? 0),
             'variants_count' => (int) ($product->variants_count ?? 0),
             'active_variants_count' => (int) ($product->active_variants_count ?? 0),
+            'sold_count' => (int) ($product->sold_count ?? 0),
             'image' => $product->mainImage?->urlFor('card'),
             'updated_at' => optional($product->updated_at)?->toIso8601String(),
-            'href' => route('admin.products.show', $product),
+            'href' => route('admin.products.edit', $product),
             'edit_href' => route('admin.products.edit', $product),
             'variants_href' => route('admin.products.variants.index', $product),
             'media_href' => route('admin.products.media.byProduct', $product),
@@ -521,7 +545,7 @@ class ProductController extends Controller
     }
 
     /**
-     * Parser pencarian ukuran: "100x50", "T100xP50", "Tinggi 100 Panjang 50".
+     * Parser pencarian ukuran admin: tinggi×panjang exact, misalnya 100x50, tidak pernah membalik orientasi.
      *
      * @return array{0: float, 1: float, 2: float|null}|null
      */

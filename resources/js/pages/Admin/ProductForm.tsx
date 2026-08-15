@@ -20,7 +20,7 @@ interface VariantDraft {
   variation_2_name: string
   variation_2_option: string
   price: string
-  stock: string
+  stock?: string | number
   weight_kg: string
   width_cm: string
   height_cm: string
@@ -84,7 +84,7 @@ export default function ProductForm({
   mediaHref,
   wizardStep = "identity",
   variants = [],
-  completion = { active_variants: 0, main_image_ready: false },
+  completion = { active_variants: false, prices: false, main_image_ready: false, photo_coverage: false, specifications: false, explanation: false, shipping_data: false },
   options,
 }: {
   product: ProductRecord | null
@@ -94,7 +94,7 @@ export default function ProductForm({
   mediaHref?: string
   wizardStep?: WizardStep
   variants?: VariantRecord[]
-  completion?: { active_variants: number; main_image_ready: boolean }
+  completion?: { active_variants: boolean; prices: boolean; main_image_ready: boolean; photo_coverage: boolean; specifications: boolean; explanation: boolean; shipping_data: boolean }
   options: {
     categories: SelectOption[]
     models: SelectOption[]
@@ -114,12 +114,13 @@ export default function ProductForm({
     product_category: product?.product_category ?? options.categories[0]?.value ?? "WINDOW",
     product_model: product?.product_model ?? options.models[0]?.value ?? "SLIDING",
     design_variant: product?.design_variant ?? options.designs[0]?.value ?? "POLOS",
-    status: product?.status ?? "active",
+    status: product?.status ?? "archived",
     homepage_popular: product?.homepage_popular ?? false,
     homepage_popular_sort: product?.homepage_popular_sort ?? 0,
   })
-  const variantsForm = useForm<{ wizard_step: WizardStep; variants: VariantDraft[] }>({
+  const variantsForm = useForm<{ wizard_step: WizardStep; randomize_stock: boolean; variants: VariantDraft[] }>({
     wizard_step: "media",
+    randomize_stock: true,
     variants: [emptyVariant()],
   })
   const publishForm = useForm({})
@@ -173,7 +174,7 @@ export default function ProductForm({
       description={
         editing
           ? `Lengkapi ${product?.parent_sku} dari satu alur kerja.`
-          : "Buat produk baru, tambahkan varian, lalu siapkan media. Produk langsung tampil saat aktif."
+          : "Buat produk baru, tambahkan varian, lalu siapkan media. Produk baru tersimpan sebagai arsip dan hanya dapat diaktifkan setelah checklist lengkap."
       }
       actions={
         <Button asChild variant="secondary">
@@ -222,7 +223,7 @@ export default function ProductForm({
                   <h2 className="text-xl font-semibold">Identitas produk</h2>
                   <p className="mt-1 text-sm text-muted-foreground">Informasi yang dipakai admin dan katalog publik.</p>
                 </div>
-                {product ? <StatusBadge status={product.status} /> : <StatusBadge status="active" label="Aktif (baru)" />}
+                {product ? <StatusBadge status={product.status} /> : <StatusBadge status="archived" label="Arsip (baru)" />}
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -243,7 +244,7 @@ export default function ProductForm({
                 <Field id="product-short-name" label="Nama pendek" error={form.errors.short_name}>
                   <Input value={form.data.short_name} onChange={(event) => form.setData("short_name", event.target.value)} />
                 </Field>
-                <Field id="product-status" label="Status" hint="Produk baru langsung tampil di katalog (aktif). Arsipkan bila belum ingin dijual." error={form.errors.status}>
+                <Field id="product-status" label="Status" hint="Produk baru selalu arsip sampai foto, varian + harga, spesifikasi, penjelasan, dan data pengiriman lengkap." error={form.errors.status}>
                   <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
                     {options.statuses.map((option) => (
                       <option key={option.value} value={option.value}>{option.label === "active" ? "Aktif" : "Diarsipkan"}</option>
@@ -314,6 +315,7 @@ export default function ProductForm({
                 <h2 className="text-xl font-semibold">Varian, harga, dan stok</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Tambahkan beberapa ukuran sekaligus. SKU dibuat otomatis.</p>
               </div>
+              <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-muted p-4"><input type="checkbox" checked={variantsForm.data.randomize_stock} onChange={(event) => variantsForm.setData("randomize_stock", event.target.checked)} className="mt-1 h-4 w-4 accent-primary" /><span><span className="block text-sm font-semibold">Acak stok awal per varian</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Saat aktif, sistem menghasilkan stok visual acak 700–5.000. Jika mati, isi stok awal manual.</span></span></label>
               {variants.length ? (
                 <div className="divide-y divide-border">
                   {variants.map((variant) => (
@@ -351,7 +353,6 @@ export default function ProductForm({
                       ["variation_2_name", "Nama opsi 2"],
                       ["variation_2_option", "Nilai opsi 2"],
                       ["price", "Harga"],
-                      ["stock", "Stok"],
                       ["weight_kg", "Berat (kg)"],
                       ["width_cm", "Lebar (cm)"],
                       ["height_cm", "Tinggi (cm)"],
@@ -362,6 +363,7 @@ export default function ProductForm({
                       </Field>
                     ))}
                   </div>
+                    {!variantsForm.data.randomize_stock ? <Field key="manual-stock" id={"wizard-variant-stock-" + index} label="Stok awal manual" error={variantsForm.errors["variants." + index + ".stock"]}><Input type="number" min="0" step="1" value={variant.stock ?? ""} onChange={(event) => updateVariant(index, "stock", event.target.value)} /></Field> : null}
                 </article>
               ))}
               <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-6">
@@ -383,7 +385,7 @@ export default function ProductForm({
               </div>
               <div className="rounded-lg border border-border bg-surface-muted p-4">
                 <p className="text-xs text-muted-foreground">Varian aktif</p>
-                <p className="mt-2 text-sm font-semibold tabular-nums">{completion.active_variants}</p>
+                <p className="mt-2 text-sm font-semibold tabular-nums">{completion.active_variants ? "Ada" : "Belum ada"}</p>
               </div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -396,11 +398,16 @@ export default function ProductForm({
         {activeStep === "review" && product ? (
           <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
             <h2 className="text-xl font-semibold">Review sebelum publish</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Periksa blocker berikut. Draft tetap dapat disimpan tanpa publish.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Periksa blocker berikut. Produk tetap arsip sampai semua checklist siap.</p>
             <div className="mt-6 space-y-3">
               <ReviewRow label="Identitas produk" ready={Boolean(product.name)} />
-              <ReviewRow label="Minimal satu varian aktif" ready={completion.active_variants > 0} detail={`${completion.active_variants} varian aktif`} />
+              <ReviewRow label="Minimal satu varian aktif" ready={completion.active_variants} detail={`${completion.active_variants ? "Ada" : "Belum ada"} varian aktif`} />
               <ReviewRow label="Gambar utama katalog sudah siap" ready={completion.main_image_ready} />
+              <ReviewRow label="Foto pada grup varian lengkap" ready={completion.photo_coverage} />
+              <ReviewRow label="Semua varian memiliki harga manual" ready={completion.prices} />
+              <ReviewRow label="Spesifikasi produk" ready={completion.specifications} />
+              <ReviewRow label="Penjelasan produk" ready={completion.explanation} />
+              <ReviewRow label="Data pengiriman tiap varian" ready={completion.shipping_data} />
             </div>
             <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-6">
               <Button asChild variant="secondary"><Link href={routeUrl("admin.products.edit", { product: product.id, step: "media" })}>Kembali ke media</Link></Button>
