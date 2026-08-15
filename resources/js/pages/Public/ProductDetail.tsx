@@ -49,7 +49,12 @@ export default function ProductDetail({
 
   const shareUrl = React.useMemo(() => {
     if (typeof window === "undefined") {
-      return routeUrl("product.show", { parent_sku: product.parent_sku })
+      const base = routeUrl("product.show", { parent_sku: product.parent_sku })
+      const variantSku = purchase.selectedVariant?.variant_sku
+      const separator = base.includes("?") ? "&" : "?"
+      return variantSku
+        ? base + separator + "variant=" + encodeURIComponent(variantSku)
+        : base
     }
 
     const url = new URL(window.location.href)

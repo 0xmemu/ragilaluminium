@@ -294,10 +294,10 @@ export function useCheckout({
   React.useEffect(() => {
     const data = detailForm.data
     const complete = Boolean(
-      data.province_id &&
-        data.city_id &&
-        data.district_id &&
-        data.village_id &&
+      data.province?.trim() &&
+        data.city?.trim() &&
+        data.district?.trim() &&
+        data.village?.trim() &&
         data.postal_code &&
         data.address_line1?.trim(),
     )
