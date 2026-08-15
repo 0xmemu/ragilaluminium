@@ -52,6 +52,88 @@ class ShippingService
         ];
     }
 
+    /**
+     * Customer-facing quote contract. This endpoint is isolated from the
+     * legacy checkout estimator until the storefront consumes quote state.
+     *
+     * @return array<string, mixed>
+     */
+    public function quote(
+        float $weightKg,
+        string $destinationCity,
+        ?string $destinationProvince = null,
+        ?string $postalCode = null,
+        ?string $destinationArea = null,
+    ): array {
+        $weightKg = max($weightKg, 1.0);
+
+        if (! $this->jnt->isEnabled()) {
+            $applied = ShippingSubsidySettings::apply($this->localEstimate($weightKg), 'jnt');
+
+            return [
+                ...$applied,
+                'carrier' => 'jnt',
+                'state' => 'fallback',
+                'is_final' => false,
+                'rough_estimate' => (float) $applied['net'],
+                'manual_review' => false,
+                'message' => 'Estimasi ongkir sementara berdasarkan rumus lokal.',
+            ];
+        }
+
+        try {
+            $resp = $this->jnt->tariff([
+                'paymentType' => config('jnt.defaults.payment_type'),
+                'expressType' => config('jnt.defaults.express_type'),
+                'deliveryType' => config('jnt.defaults.delivery_type'),
+                'goodsType' => config('jnt.defaults.goods_type'),
+                'weight' => (string) $weightKg,
+                'totalQuantity' => 1,
+                'sendProv' => config('jnt.sender.prov'),
+                'sendCity' => config('jnt.sender.city'),
+                'sendArea' => config('jnt.sender.area'),
+                'receiveProv' => $destinationProvince,
+                'receiveCity' => $destinationCity,
+                'receiveArea' => $destinationArea ?? $destinationCity,
+            ]);
+
+            if ($resp->ok) {
+                $cost = $resp->get('estimateSumFreight')
+                    ?? $resp->get('estimateCustomerCost')
+                    ?? $resp->get('totalFreight');
+                if (is_numeric($cost)) {
+                    $applied = ShippingSubsidySettings::apply(round((float) $cost, 2), 'jnt');
+
+                    return [
+                        ...$applied,
+                        'carrier' => 'jnt',
+                        'state' => 'ready',
+                        'is_final' => true,
+                        'rough_estimate' => (float) $applied['net'],
+                        'manual_review' => false,
+                        'message' => 'Tarif ongkir J&T berhasil dihitung.',
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            Log::channel('jnt')->warning('JNT tariff unavailable; using provisional local estimate', [
+                'exception_class' => $e::class,
+            ]);
+        }
+
+        $provisional = ShippingSubsidySettings::apply($this->localEstimate($weightKg), 'jnt');
+
+        return [
+            ...$provisional,
+            'carrier' => 'jnt',
+            'state' => 'manual_review',
+            'is_final' => false,
+            'rough_estimate' => (float) $provisional['net'],
+            'manual_review' => true,
+            'message' => 'Estimasi sementara berdasarkan area akan dikonfirmasi admin.',
+        ];
+    }
+
     protected function estimateGrossCost(
         float $weightKg,
         string $destinationCity,

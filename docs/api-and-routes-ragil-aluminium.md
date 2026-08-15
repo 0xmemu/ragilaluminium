@@ -315,3 +315,10 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 
 - GET /admin/imports/internal-template -> Admin\\ImportJobController@downloadInternalTemplate (name: admin.imports.internal-template) [Authenticate|EnsureUserIsAdmin]
 - POST /admin/imports/preview -> Admin\\ImportJobController@previewInternal (name: admin.imports.preview) [Authenticate|EnsureUserIsAdmin]
+
+## Postal & Shipping Quote Contracts
+
+- `POST /api/shipping/quote` -> `ShippingQuoteController@store` [throttled]
+  - input: `weight_kg`, `destination_city`, optional province/area/postal/village/district identifiers
+  - output state: `ready` (live J&T, final), `fallback` (local formula while J&T is not ready), or `manual_review` (provider unavailable; provisional estimate only)
+- Postal validation uses the active versioned dataset. If no dataset is active, validation reports unavailable and does not invalidate legacy checkout data. Active data rejects a postal code that does not match the selected village/district.

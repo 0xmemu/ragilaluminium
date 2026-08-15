@@ -779,3 +779,31 @@ Template internal mengekspor satu baris per varian dan wajib membawa pasangan
 parent_sku + variant_sku. Endpoint preview hanya menghitung diff (maksimal 1.000
 baris) dan tidak menulis data. Preset Shopee adalah adapter opsional, bukan kontrak
 template internal.
+
+## 14. Postal Dataset & Mapping
+
+### 14.1 `postal_datasets`
+
+Versioned import metadata for postal references. The active dataset is selected by `status=active`; older versions remain `retired` and are never rewritten.
+
+- `id` (INTEGER), PK
+- `source`, `version`, source/reference URLs, publication/retrieval timestamps
+- `checksum_sha256`, nullable
+- `status` (staged|active|retired)
+- `row_count`, `notes`, timestamps
+
+UQ: `source + version`; IDX: active status/retrieval time.
+
+### 14.2 `postal_code_mappings`
+
+Village/kelurahan postal mappings imported into a dataset version.
+
+- `id` (INTEGER), PK
+- `postal_dataset_id` (INTEGER), FK -> postal_datasets.id
+- `province_id/name`, `regency_id/name`, `district_id/name`, `village_id/name`
+- `postal_code` (VARCHAR(5))
+- `source_row`, nullable; timestamps
+
+UQ: `postal_dataset_id + village_id + village_name + postal_code`; IDX: dataset/postal and dataset/village.
+
+Import baseline: data.go.id “Kode Pos Desa Kelurahan di Indonesia”; Pos Indonesia is retained as a verification reference. Import command: `php artisan postal:import {path} --version=... --activate`. Existing orders retain their postal snapshot and are not rewritten.

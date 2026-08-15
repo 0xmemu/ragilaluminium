@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CatalogController;
+use App\Http\Controllers\ShippingQuoteController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReadinessController;
@@ -39,4 +40,5 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/wilayah/regencies/{provinceId}', [WilayahController::class, 'regencies']);
     Route::get('/wilayah/districts/{regencyId}', [WilayahController::class, 'districts']);
     Route::get('/wilayah/villages/{districtId}', [WilayahController::class, 'villages']);
+    Route::post('/shipping/quote', [ShippingQuoteController::class, 'store']);
 });

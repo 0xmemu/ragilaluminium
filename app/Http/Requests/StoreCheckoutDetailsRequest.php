@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Support\PostalCodeRepository;
+use Illuminate\Validation\Validator;
 
 /**
  * Rules moved 1:1 from CheckoutController@validateDetails — no behavior change.
@@ -37,5 +39,29 @@ class StoreCheckoutDetailsRequest extends FormRequest
             'address_line2' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:20'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->has('postal_code')) {
+                return;
+            }
+
+            $result = app(PostalCodeRepository::class)->validate(
+                $this->input('postal_code'),
+                $this->input('village_id'),
+                $this->input('village'),
+                $this->input('district_id'),
+                $this->input('district'),
+            );
+
+            if ($result['status'] === 'invalid') {
+                $validator->errors()->add(
+                    'postal_code',
+                    'Kode pos tidak cocok dengan desa/kelurahan yang dipilih.',
+                );
+            }
+        });
     }
 }
