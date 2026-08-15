@@ -18,6 +18,7 @@ Total: 271 routes.
 - `GET /api/wilayah/provinces` -> `WilayahController@provinces`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - `GET /api/wilayah/regencies/{provinceId}` -> `WilayahController@regencies`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - `GET /api/wilayah/villages/{districtId}` -> `WilayahController@villages`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+- Wilayah village payload items expose id, name, and nullable postal_code; the active versioned postal dataset populates postal_code when available.
 - `GET /bouven` -> `CatalogController@bouven`  (name: `catalog.bouven`)
 - `GET /cara-pemesanan` -> `PageController@howToOrder`  (name: `cara-pemesanan`)
 - `GET /cart` -> `CartController@index`  (name: `cart.index`)

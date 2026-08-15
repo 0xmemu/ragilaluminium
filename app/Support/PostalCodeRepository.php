@@ -69,6 +69,28 @@ class PostalCodeRepository
             ->first();
     }
 
+    /**
+     * Return the current postal code per village for the dependent wilayah
+     * selector. A missing dataset is a valid pre-import state; the selector
+     * then leaves postal_code empty so Maps/manual fallback can be used.
+     *
+     * @return array<string, string>
+     */
+    public function postalCodesForDistrict(string $districtId): array
+    {
+        $dataset = $this->activeDataset();
+        if ($dataset === null) {
+            return [];
+        }
+
+        return PostalCodeMapping::query()
+            ->where('postal_dataset_id', $dataset->id)
+            ->where('district_id', $districtId)
+            ->pluck('postal_code', 'village_id')
+            ->map(static fn ($postal): string => (string) $postal)
+            ->all();
+    }
+
     public function normalizePostalCode(?string $postalCode): ?string
     {
         $value = preg_replace('/\D+/', '', (string) $postalCode) ?? '';

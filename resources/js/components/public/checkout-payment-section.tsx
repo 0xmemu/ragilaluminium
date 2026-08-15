@@ -114,21 +114,19 @@ export function CheckoutPaymentSection({
           <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
         </Button>
 
-        <MobileStickyCta aria-label="Buat pesanan" spacerClassName="h-[4.5rem]">
-          <Button
-            type="submit"
-            size="lg"
-            className="h-11 min-h-11 w-full"
-            disabled={!details || editingDetails || paymentForm.processing}
-          >
-            {paymentForm.processing
-              ? "Membuat pesanan..."
-              : !details
-                ? "Lengkapi alamat dulu"
-                : "Buat pesanan"}
-            <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-          </Button>
-        </MobileStickyCta>
+        {details && !editingDetails ? (
+          <MobileStickyCta aria-label="Buat pesanan" spacerClassName="h-[4.5rem]">
+            <Button
+              type="submit"
+              size="lg"
+              className="h-11 min-h-11 w-full"
+              disabled={paymentForm.processing}
+            >
+              {paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
+              <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </MobileStickyCta>
+        ) : null}
       </form>
     </section>
   )

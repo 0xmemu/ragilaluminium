@@ -81,6 +81,7 @@ class CheckoutController extends Controller
                 (string) $details['city'],
                 $details['province'] ?? null,
                 $details['postal_code'] ?? null,
+                $details['district'] ?? null,
             );
             $shippingPreview = [
                 'gross' => $breakdown['gross'],
@@ -250,6 +251,7 @@ class CheckoutController extends Controller
             $details['city'],
             $details['province'] ?? null,
             $details['postal_code'] ?? null,
+            $details['district'] ?? null,
         );
 
         $sessionVoucher = $request->session()->get(VoucherService::SESSION_KEY);

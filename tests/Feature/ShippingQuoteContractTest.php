@@ -10,6 +10,7 @@ use App\Services\Shipping\JntCargoClient;
 use App\Services\Shipping\JntResponse;
 use App\Services\ShippingService;
 use App\Support\ShippingQuoteManualReviewNotifier;
+use App\Support\CodSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -34,6 +35,26 @@ class ShippingQuoteContractTest extends TestCase
             ->assertJsonPath('data.state', 'fallback')
             ->assertJsonPath('data.is_final', false)
             ->assertJsonPath('data.manual_review', false)
+            ->assertJsonPath('data.net', 19000);
+    }
+
+    public function test_quote_endpoint_keeps_local_estimate_when_postal_is_unmapped(): void
+    {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(false);
+            $mock->shouldNotReceive('tariff');
+        });
+
+        $this->postJson('/api/shipping/quote', [
+            'weight_kg' => 2,
+            'destination_city' => 'KABUPATEN BANJARNEGARA',
+            'destination_province' => 'JAWA TENGAH',
+            'destination_area' => 'MANDIRAJA',
+            'village_name' => 'MANDIRAJA KULON',
+            'postal_code' => '53473',
+        ])->assertOk()
+            ->assertJsonPath('data.state', 'fallback')
+            ->assertJsonPath('data.is_final', false)
             ->assertJsonPath('data.net', 19000);
     }
 
@@ -72,6 +93,66 @@ class ShippingQuoteContractTest extends TestCase
         $this->assertTrue($quote['is_final']);
         $this->assertFalse($quote['manual_review']);
         $this->assertSame(42000.0, $quote['net']);
+    }
+
+    public function test_checkout_creates_cod_order_when_quote_requires_manual_review(): void
+    {
+        CodSettings::update(['enabled' => true, 'fee_type' => 'percent', 'fee_value' => 0]);
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('tariff')->andThrow(new \RuntimeException('provider unavailable'));
+        });
+
+        $product = Product::create([
+            'parent_sku' => 'QUOTE-COD-1',
+            'name' => 'Window COD',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'QUOTE-COD-1-V1',
+            'price' => 100000,
+            'stock' => 2,
+            'status' => 'active',
+        ]);
+
+        $this->withSession([
+            'ragil_cart' => [
+                $variant->variant_sku => [
+                    'line_id' => $variant->variant_sku,
+                    'parent_sku' => $product->parent_sku,
+                    'variant_sku' => $variant->variant_sku,
+                    'name' => $product->name,
+                    'unit_price' => 100000,
+                    'quantity' => 1,
+                ],
+            ],
+            'checkout_details' => [
+                'name' => 'Budi',
+                'phone' => '0812',
+                'province' => 'JAWA TENGAH',
+                'city' => 'KABUPATEN BANJARNEGARA',
+                'district' => 'MANDIRAJA',
+                'village' => 'MANDIRAJA KULON',
+                'address_line1' => 'Jl A',
+                'postal_code' => '53473',
+            ],
+        ]);
+
+        $this->post('/checkout/place-order', ['payment_method' => 'cod'])
+            ->assertRedirectContains('/order/RA-');
+
+        $order = Order::latest('id')->firstOrFail();
+        $this->assertTrue((bool) $order->cod_flag);
+        $this->assertDatabaseHas('admin_notifications', [
+            'type' => 'shipping_quote_manual_review',
+            'related_type' => Order::class,
+            'related_id' => $order->id,
+        ]);
     }
 
     public function test_manual_review_notification_is_deduplicated_per_order(): void

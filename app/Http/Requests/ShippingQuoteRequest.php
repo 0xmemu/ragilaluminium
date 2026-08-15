@@ -26,27 +26,4 @@ class ShippingQuoteRequest extends FormRequest
         ];
     }
 
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
-    {
-        $validator->after(function (\Illuminate\Validation\Validator $validator): void {
-            if ($validator->errors()->has('postal_code') || ! filled($this->input('postal_code'))) {
-                return;
-            }
-
-            $result = app(\App\Support\PostalCodeRepository::class)->validate(
-                $this->input('postal_code'),
-                $this->input('village_id'),
-                $this->input('village_name'),
-                $this->input('district_id'),
-                $this->input('district_name'),
-            );
-
-            if ($result['status'] === 'invalid') {
-                $validator->errors()->add(
-                    'postal_code',
-                    'Kode pos tidak cocok dengan desa/kelurahan yang dipilih.',
-                );
-            }
-        });
-    }
 }

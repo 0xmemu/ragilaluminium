@@ -200,14 +200,15 @@ export function CheckoutAddressForm({
             id="checkout-postal-code"
             label="Kode pos"
             required
-            hint="Kode pos terisi otomatis dari data desa/kelurahan. Jika belum terdaftar, gunakan fallback peta."
+            hint="Kode pos terisi otomatis dari data desa/kelurahan. Jika belum tersedia, isi 5 digit kode pos atau gunakan fallback peta."
             error={detailForm.errors.postal_code}
           >
             <div className="flex flex-wrap items-end gap-2">
               <Input
                 value={detailForm.data.postal_code}
-                readOnly
-                aria-readonly="true"
+                readOnly={Boolean(detailForm.data.postal_code)}
+                aria-readonly={detailForm.data.postal_code ? "true" : undefined}
+                onChange={(event) => detailForm.setData("postal_code", event.target.value)}
                 placeholder="Otomatis dari desa/kelurahan"
                 autoComplete="postal-code"
                 inputMode="numeric"

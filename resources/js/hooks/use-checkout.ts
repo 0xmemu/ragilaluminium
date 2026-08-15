@@ -293,12 +293,14 @@ export function useCheckout({
 
   React.useEffect(() => {
     const data = detailForm.data
+    // A postal mapping may be temporarily unavailable before the versioned
+    // dataset is imported. Geographic names are still sufficient to request
+    // a local/J&T quote; checkout submission keeps postal_code required.
     const complete = Boolean(
       data.province?.trim() &&
         data.city?.trim() &&
         data.district?.trim() &&
         data.village?.trim() &&
-        data.postal_code &&
         data.address_line1?.trim(),
     )
     let timer: ReturnType<typeof setTimeout> | null = null

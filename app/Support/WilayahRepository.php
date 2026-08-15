@@ -54,6 +54,7 @@ class WilayahRepository
         }
 
         $rows = [];
+        $postalCodes = app(PostalCodeRepository::class)->postalCodesForDistrict($districtId);
         $handle = fopen($path, 'r');
         if ($handle === false) {
             return [];
@@ -70,6 +71,7 @@ class WilayahRepository
                 $rows[] = [
                     'id' => (string) $cols[0],
                     'name' => (string) $cols[2],
+                    'postal_code' => $postalCodes[(string) $cols[0]] ?? null,
                 ];
             }
         } finally {
