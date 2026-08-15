@@ -389,6 +389,7 @@ export interface CheckoutDetails {
 export interface PublicOrderItem {
   product_name?: string | null
   name?: string | null
+  product_id?: number | null
   quantity: number
   line_total?: number
   /** Catatan per-produk dari pembeli (keputusan #11). */
@@ -431,6 +432,18 @@ export interface PublicOrderTracking {
   timeline?: Array<{ message: string; at?: string | null; source?: string }>
 }
 
+export interface PublicOrderReview {
+  id: number
+  product_id?: number | null
+  rating: number
+  message: string
+  media_items?: Array<{ type: "image" | "video"; url: string; source?: string }>
+  moderation_status: string
+  published: boolean
+  verified_purchase: boolean
+  customer_authored: boolean
+}
+
 export interface PublicOrder {
   order_number: string
   order_status: string
@@ -442,6 +455,7 @@ export interface PublicOrder {
   customer_phone?: string | null
   eta?: OrderEta | null
   items: PublicOrderItem[]
+  reviews?: PublicOrderReview[]
   shipping?: PublicOrderShipping | null
   tracking?: PublicOrderTracking | null
 }

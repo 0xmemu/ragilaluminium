@@ -5,6 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { OrderProgressTracker } from "@/components/public/order-progress-tracker"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import { Alert } from "@/components/ui/alert"
+import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
@@ -221,6 +222,14 @@ function OrderDetail({
           ))}
         </ul>
       </section>
+
+      <CustomerReviewForm
+        orderNumber={order.order_number}
+        customerPhone={order.customer_phone ?? ""}
+        orderStatus={order.order_status}
+        items={order.items}
+        reviews={order.reviews}
+      />
 
       <Alert tone="info" className="mt-8">
         Pesanan tersimpan di browser ini. Gunakan browser yang sama untuk memantau status berikutnya.

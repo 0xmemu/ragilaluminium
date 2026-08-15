@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LookupOrderStatusApiRequest;
 use App\Http\Requests\LookupOrderStatusRequest;
+use App\Models\CmsTestimonial;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
@@ -66,6 +67,7 @@ class OrderController extends Controller
                 'customer_phone' => $order->customer_phone,
                 'items' => $order->items->map(fn ($i) => [
                     'product_name' => $i->product_name,
+                    'product_id' => $i->product_id ? (int) $i->product_id : null,
                     'quantity' => $i->quantity,
                     'line_total' => (float) $i->line_total,
                     'note' => $i->note ?? null,
@@ -158,7 +160,7 @@ class OrderController extends Controller
             $order->refresh()->load('items', 'shippingRecords');
         }
 
-        $payload = $order ? $this->publicOrderPayload($order) : null;
+        $payload = $order ? $this->publicOrderPayload($order, true) : null;
         $orders = $order
             ? $this->sessionOrdersPayload($request)
             : [];
@@ -187,7 +189,7 @@ class OrderController extends Controller
         $this->refreshShippingFromCarrier($order);
         $order->refresh()->load('items', 'shippingRecords');
 
-        return response()->json($this->publicOrderPayload($order));
+        return response()->json($this->publicOrderPayload($order, true));
     }
 
     /**
@@ -281,7 +283,7 @@ class OrderController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function publicOrderPayload(Order $order): array
+    private function publicOrderPayload(Order $order, bool $includeReviewMeta = false): array
     {
         $shipping = $order->shippingRecords
             ->filter(fn (ShippingRecord $row) => filled($row->waybill_number))
@@ -306,10 +308,12 @@ class OrderController extends Controller
             'eta' => OrderEta::forOrder($order),
             'items' => $order->items->map(fn ($i) => [
                 'product_name' => $i->product_name,
+                    'product_id' => $i->product_id ? (int) $i->product_id : null,
                 'quantity' => $i->quantity,
                 'line_total' => isset($i->line_total) ? (float) $i->line_total : null,
                 'note' => $i->note ?? null,
             ])->all(),
+            'reviews' => $includeReviewMeta ? CmsTestimonial::query()->where('order_id', $order->id)->get(['id', 'order_id', 'product_id', 'rating', 'message', 'media_items', 'moderation_status', 'published', 'verified_at', 'author_type'])->map(fn (CmsTestimonial $review) => ['id' => $review->id, 'product_id' => $review->product_id ? (int) $review->product_id : null, 'rating' => (int) $review->rating, 'message' => (string) $review->message, 'media_items' => $review->mediaPayload(), 'moderation_status' => $review->moderation_status, 'published' => (bool) $review->published, 'verified_purchase' => $review->verified_at !== null, 'customer_authored' => $review->isCustomerAuthored()])->values()->all() : [],
             'shipping' => $shipping ? [
                 'carrier_name' => $shipping->carrier_name,
                 'waybill_number' => $shipping->waybill_number,
