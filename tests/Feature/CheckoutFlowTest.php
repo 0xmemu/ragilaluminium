@@ -67,7 +67,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'status' => 'pending']);
     }
 
-    public function test_checkout_persists_address_line2_and_notes_to_order(): void
+    public function test_checkout_persists_address_line2_and_item_note_to_order(): void
     {
         $product = Product::create([
             'parent_sku' => 'WIN-ORD-2', 'name' => 'Window', 'category_id' => 1,
@@ -81,14 +81,13 @@ class CheckoutFlowTest extends TestCase
         $this->withSession(['ragil_cart' => [
             'WIN-ORD-2-V1' => [
                 'line_id' => 'WIN-ORD-2-V1', 'parent_sku' => 'WIN-ORD-2', 'variant_sku' => 'WIN-ORD-2-V1',
-                'name' => 'Window', 'unit_price' => 1000000, 'quantity' => 1,
+                'name' => 'Window', 'unit_price' => 1000000, 'quantity' => 1, 'note' => 'Hubungi sebelum pengiriman',
             ],
         ]]);
 
         $this->post('/checkout/validate', [
             'name' => 'Budi',
             'phone' => '0812',
-            'email' => 'budi@example.com',
             'address_line1' => 'Jl A No 1',
             'address_line2' => 'Dekat gerbang utama',
             'province' => 'JAWA BARAT',
@@ -100,7 +99,6 @@ class CheckoutFlowTest extends TestCase
             'district_id' => '3273010',
             'village_id' => '3273010001',
             'postal_code' => '40132',
-            'notes' => 'Hubungi sebelum pengiriman',
         ])->assertRedirect();
 
         $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
@@ -109,7 +107,7 @@ class CheckoutFlowTest extends TestCase
         $order = Order::latest()->first();
         $this->assertNotNull($order);
         $this->assertSame('Dekat gerbang utama', $order->shipping_address_line2);
-        $this->assertSame('Hubungi sebelum pengiriman', $order->notes);
+        $this->assertDatabaseHas('order_items', ['order_id' => $order->id]);
     }
 
     public function test_checkout_validate_requires_wilayah_fields(): void

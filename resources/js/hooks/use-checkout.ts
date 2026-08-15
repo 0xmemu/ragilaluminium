@@ -34,7 +34,6 @@ export interface UseCheckoutOptions {
 const emptyDetails: CheckoutDetails = {
   name: "",
   phone: "",
-  email: "",
   province: "",
   city: "",
   district: "",
@@ -46,7 +45,6 @@ const emptyDetails: CheckoutDetails = {
   address_line1: "",
   address_line2: "",
   postal_code: "",
-  notes: "",
 }
 
 export async function fetchWilayah(path: string, signal?: AbortSignal): Promise<WilayahOption[]> {

@@ -141,14 +141,25 @@ class CartService
 
     public function selectLines(array $lineIds): void
     {
-        $this->session->put(self::SESSION_KEY . '_selected', $lineIds);
+        $cartKeys = array_keys($this->get());
+        $selected = array_values(array_intersect($cartKeys, array_values(array_unique(array_map(
+            static fn ($lineId): string => (string) $lineId,
+            $lineIds,
+        )))));
+
+        $this->session->put(self::SESSION_KEY . '_selected', $selected);
     }
 
     public function getSelectedLines(): array
     {
-        return $this->session->get(self::SESSION_KEY . '_selected', []);
-    }
+        $selected = $this->session->get(self::SESSION_KEY . '_selected', []);
 
+        if (! is_array($selected)) {
+            return [];
+        }
+
+        return array_values(array_intersect(array_keys($this->get()), $selected));
+    }
     public function clearSelectedLines(): void
     {
         $this->session->forget(self::SESSION_KEY . '_selected');
@@ -157,6 +168,7 @@ class CartService
     public function clear(): void
     {
         $this->session->forget(self::SESSION_KEY);
+        $this->clearSelectedLines();
     }
 
     public function count(): int

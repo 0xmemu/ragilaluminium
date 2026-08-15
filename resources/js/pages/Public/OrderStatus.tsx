@@ -185,16 +185,13 @@ export default function OrderStatus({
   const activeOrder =
     sessionList.find((row) => row.order_number === activeNumber) ?? sessionList[0] ?? null
 
-  const [identityMode, setIdentityMode] = React.useState<"phone" | "email">("phone")
   const form = useForm({
     order_number: "",
     customer_phone: "",
-    customer_email: "",
   })
   const cancelForm = useForm({
     order_number: "",
     customer_phone: "",
-    customer_email: "",
   })
 
   // Data pesanan terbaru hasil polling (fallback ke prop awal).
@@ -275,7 +272,6 @@ export default function OrderStatus({
     cancelForm.setData({
       order_number: activeOrder.order_number,
       customer_phone: activeOrder.customer_phone ?? "",
-      customer_email: "",
     })
     cancelForm.post(routeUrl("order.cancel", { order_number: activeOrder.order_number }), {
       preserveScroll: true,
@@ -288,11 +284,6 @@ export default function OrderStatus({
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form.transform((data) => ({
-      order_number: data.order_number,
-      customer_phone: identityMode === "phone" ? data.customer_phone : "",
-      customer_email: identityMode === "email" ? data.customer_email : "",
-    }))
     form.post(routeUrl("order.status.lookup"), {
       preserveScroll: true,
     })
@@ -305,7 +296,7 @@ export default function OrderStatus({
       <Head title="Pesanan">
         <meta
           name="description"
-          content="Cek Status Pesanan dari perangkat ini, atau masukkan nomor pesanan beserta HP/email checkout."
+          content="Cek Status Pesanan dari perangkat ini, atau masukkan nomor pesanan beserta nomor HP checkout."
         />
       </Head>
 
@@ -348,61 +339,20 @@ export default function OrderStatus({
                   />
                 </Field>
 
-                <div>
-                  <p className="text-sm font-semibold">Cocokkan dengan</p>
-                  <div className="mt-2 grid grid-cols-2 rounded-md border border-border bg-surface-muted p-1">
-                    {[
-                      ["phone", "Nomor HP"],
-                      ["email", "Email"],
-                    ].map(([value, label]) => (
-                      <button
-                        type="button"
-                        key={value}
-                        onClick={() => setIdentityMode(value as "phone" | "email")}
-                        className={cn(
-                          "min-h-10 rounded-sm px-3 text-xs font-semibold transition",
-                          identityMode === value
-                            ? "bg-surface text-foreground shadow-sm"
-                            : "text-muted-foreground",
-                        )}
-                        aria-pressed={identityMode === value}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {identityMode === "phone" ? (
-                  <Field
-                    id="customer-phone"
-                    label="Nomor HP/WhatsApp"
-                    required
-                    error={form.errors.customer_phone}
-                  >
-                    <Input
-                      type="tel"
-                      inputMode="tel"
-                      value={form.data.customer_phone}
-                      onChange={(event) => form.setData("customer_phone", event.target.value)}
-                      autoComplete="tel"
-                    />
-                  </Field>
-                ) : (
-                  <Field
-                    id="customer-email"
-                    label="Email"
-                    required
-                    error={form.errors.customer_email}
-                  >
-                    <Input
-                      type="email"
-                      value={form.data.customer_email}
-                      onChange={(event) => form.setData("customer_email", event.target.value)}
-                      autoComplete="email"
-                    />
-                  </Field>
-                )}
+                <Field
+                  id="customer-phone"
+                  label="Nomor HP/WhatsApp"
+                  required
+                  error={form.errors.customer_phone}
+                >
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    value={form.data.customer_phone}
+                    onChange={(event) => form.setData("customer_phone", event.target.value)}
+                    autoComplete="tel"
+                  />
+                </Field>
               </div>
               <Button type="submit" size="lg" className="mt-6 w-full" disabled={form.processing}>
                 <Icon name="search" className="h-5 w-5" aria-hidden="true" />
@@ -424,7 +374,7 @@ export default function OrderStatus({
                   </h2>
                   <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
                     Setelah checkout di perangkat yang sama, pesanan biasanya tampil otomatis.
-                    Jika daftar kosong, isi formulir di samping dengan nomor pesanan dan HP/email.
+                    Jika daftar kosong, isi formulir di samping dengan nomor pesanan dan nomor HP.
                   </p>
                 </div>
               ) : order ? (

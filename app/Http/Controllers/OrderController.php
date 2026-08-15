@@ -81,7 +81,7 @@ class OrderController extends Controller
 
     /**
      * Pembatalan oleh pembeli: hanya saat status masih "menunggu konfirmasi"
-     * (pending_payment). Identitas harus cocok (nomor order + HP/email), sama
+     * (pending_payment). Identitas harus cocok (nomor order + HP), sama
      * seperti pencarian status, agar orang lain tidak bisa membatalkan pesanan.
      */
     public function cancel(LookupOrderStatusRequest $request, string $order_number): RedirectResponse
@@ -91,7 +91,6 @@ class OrderController extends Controller
         $order = $this->findGuestOrder([
             'order_number' => $order_number,
             'customer_phone' => $validated['customer_phone'] ?? null,
-            'customer_email' => $validated['customer_email'] ?? null,
         ]);
 
         if (! $order) {
@@ -179,7 +178,6 @@ class OrderController extends Controller
         $order = $this->findGuestOrder([
             'order_number' => $order_number,
             'customer_phone' => $validated['customer_phone'] ?? null,
-            'customer_email' => $validated['customer_email'] ?? null,
         ]);
 
         if (! $order) {
@@ -243,9 +241,6 @@ class OrderController extends Controller
         return $payloads;
     }
 
-    /**
-     * @param  array{order_number: string, customer_phone?: string|null, customer_email?: string|null}  $validated
-     */
     private function findGuestOrder(array $validated): ?Order
     {
         $query = Order::where('order_number', $validated['order_number']);
@@ -254,9 +249,6 @@ class OrderController extends Controller
             $query->where('customer_phone', PhoneNumber::normalize($validated['customer_phone']));
         }
 
-        if (! empty($validated['customer_email'])) {
-            $query->where('customer_email', $validated['customer_email']);
-        }
 
         return $query->with('items', 'shippingRecords')->first();
     }

@@ -482,7 +482,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 
 **Checkout (`GET /checkout`)**
 - Consumes: cart summary, prior validated details (session `checkout_details`), shipping estimate.
-- Fields: `name`, `phone`, `email` (optional), `province`, `city`, `district`, `village` (selected wilayah names), `province_id` / `city_id` / `district_id` / `village_id` (session helpers), `address_line1` (alamat lengkap, manual), `address_line2` (patokan, optional manual), `postal_code` (manual), `payment_method` (`cod` / `transfer` only on public checkout; opsi lain diproses manual via WhatsApp/admin), `notes` (optional). Order snapshot also stores `shipping_district` / `shipping_village`.
+- Fields: `name`, `phone`, `province`, `city`, `district`, `village` (selected wilayah names), `province_id` / `city_id` / `district_id` / `village_id` (session helpers), `address_line1` (alamat lengkap, manual), `address_line2` (patokan, optional manual), `postal_code` (manual), per-item `note` (optional), `payment_method` (`cod` / `transfer` only on public checkout; opsi lain diproses manual via WhatsApp/admin). Order snapshot also stores `shipping_district` / `shipping_village`.
 - Actions: `POST /checkout/validate` (validate + shipping estimate), `POST /checkout/place-order` (throttled). Wilayah options: `GET /api/wilayah/provinces|regencies/{id}|districts/{id}|villages/{id}` (`?q=` filter). On success → redirect to confirmation.
 - States: validation errors per field, shipping-estimate failure fallback, Loading, empty-cart guard.
 
@@ -492,7 +492,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 
 **Order status (`GET /order/status`, `POST /order/status`)**
 - Session first: if `confirmed_orders` exists, show those orders + J&T status (no form).
-- Fallback form fields: `order_number` + `customer_phone` or `customer_email` (only when session empty).
+- Fallback form fields: `order_number` + `customer_phone` (only when session empty).
 - Consumes: order tri-status (order/payment/shipping), tracking info (waybill/tracking_url if any).
 - Actions: open session orders; submit lookup when session hilang (throttled 15/min); successful lookup re-seeds session.
 - States: not found / mismatch, Loading, Error.

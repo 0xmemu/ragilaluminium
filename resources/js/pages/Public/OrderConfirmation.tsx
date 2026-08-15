@@ -91,7 +91,7 @@ export default function OrderConfirmation({
             Terima kasih, {order.customer_name}.
           </p>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">
-            Simpan nomor pesanan berikut. Nomor ini dipakai bersama nomor HP atau email untuk
+            Simpan nomor pesanan berikut. Nomor ini dipakai bersama nomor HP untuk
             melihat status pesanan.
           </p>
 

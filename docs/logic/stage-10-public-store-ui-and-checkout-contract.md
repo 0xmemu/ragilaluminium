@@ -208,7 +208,7 @@ Empty state:
 Checkout forms gather data required for order creation:
 
 - Customer details:
-  - name, phone (WhatsApp), email (optional).  
+  - name, phone (WhatsApp).
   - shipping address: **pilih** province → city/kabupaten → district (kecamatan) → village (desa/kelurahan) dari data wilayah lokal; **isi manual** address detail (`address_line1`), patokan (`address_line2`, opsional), dan kode pos.  
 
 - Order summary:
@@ -287,7 +287,7 @@ UI must:
   **Status pengiriman** is a section *inside* that page after an order is available — not a separate top-level nav item.
 - **Session first (no login):** if the browser still has temporary `confirmed_orders` from checkout, open those orders automatically (with J&T refresh when a waybill exists). Do **not** show the lookup form.
 - **Lookup form only as fallback** when session/cache is empty (data sementara hilang):
-  - order ID + WhatsApp/phone or email.  
+  - order ID + WhatsApp/phone.
 - on successful guest lookup:
   - refresh J&T Cargo track for the order’s waybill when present, then show updated `shipping_status`;
   - re-seed `confirmed_orders` so subsequent visits on the same browser skip the form.
@@ -307,7 +307,7 @@ UI must:
 Security:
 
 - do not expose other customers’ orders.  
-- require matching phone/email (or active session order numbers from this browser’s checkout) to access tracking data.
+- require matching phone (or active session order numbers from this browser checkout) to access tracking data.
 
 ---
 
@@ -374,3 +374,26 @@ Before implementing or modifying public store UI or checkout, agents must:
 - [ ] Apply performance & security practices from Stage 7 (pagination, caching, rate limits, HTTPS) to public APIs and interactions.  
 
 Any public store implementation that diverges from this Stage 10 contract or from DESIGN must be reviewed and aligned before deployment.
+
+
+
+
+### 4.3 Cart selection semantics (locked)
+
+- When selection mode is off, Checkout includes every cart line, even if no checkbox is visible or no item was checked.
+- When selection mode is on, only checked line IDs are carried into checkout.
+- An active selection mode with zero checked lines is rejected; the customer must choose at least one item.
+- The backend intersects submitted line IDs with the current session cart and rejects an empty effective selection. Stale selection state is cleared after an order is created.
+- Voucher preview, subtotal, stock validation, and order creation use the same effective line set.
+
+### 5.3 Per-item product notes
+
+- The note form appears before the shipping-address section on checkout.
+- Each cart line has its own optional note (maximum 2,000 characters); there is no global checkout/address note.
+- Notes are persisted to the session cart through POST /cart/update and copied to order_items.note at order creation.
+- address_line2 remains only for location detail/patokan/RT/RW, not a customer order note.
+
+### 6.3 Order-status identity
+
+- Guest status lookup and customer cancellation use order number plus WhatsApp/phone.
+- Email is not collected at checkout and is not a fallback identity for public order status.

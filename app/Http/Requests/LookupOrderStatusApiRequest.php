@@ -20,8 +20,7 @@ class LookupOrderStatusApiRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_phone' => ['required_without:customer_email', 'nullable', 'string'],
-            'customer_email' => ['required_without:customer_phone', 'nullable', 'email'],
+            'customer_phone' => ['required', 'string'],
         ];
     }
 }

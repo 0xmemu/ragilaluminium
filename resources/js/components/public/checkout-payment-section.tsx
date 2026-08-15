@@ -29,7 +29,7 @@ export function CheckoutPaymentSection({
 
   return (
     <section className="surface-panel min-w-0 p-5 sm:p-7">
-      <p className="font-mono text-xs font-semibold text-primary">02</p>
+      <p className="font-mono text-xs font-semibold text-primary">03</p>
       <h2 className="mt-2 text-lg font-semibold">Metode pembayaran</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         Pilih metode sekarang — pilihan tersimpan otomatis dan dipakai saat pesanan dibuat.

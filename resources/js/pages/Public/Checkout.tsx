@@ -2,6 +2,7 @@ import { Head, Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { CheckoutAddressForm } from "@/components/public/checkout-address-form"
+import { CheckoutItemNotes } from "@/components/public/checkout-item-notes"
 import { CheckoutPaymentSection } from "@/components/public/checkout-payment-section"
 import { CheckoutSummary, type CheckoutItem } from "@/components/public/checkout-summary"
 import { LocationPickerModal } from "@/components/public/location-picker"
@@ -67,6 +68,20 @@ export default function Checkout({
   removeVoucherUrl,
 }: CheckoutProps) {
   const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
+  const [checkoutItems, setCheckoutItems] = React.useState(items)
+
+  React.useEffect(() => {
+    // Sync server-provided lines after voucher/address redirects.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCheckoutItems(items)
+  }, [items])
+
+  function updateCheckoutNote(lineId: string, note: string) {
+    setCheckoutItems((current) => current.map((item) =>
+      item.line_id === lineId ? { ...item, note } : item,
+    ))
+  }
+
 
   const c = useCheckout({
     details,
@@ -117,13 +132,17 @@ export default function Checkout({
               Proses pesanan
             </h1>
           </div>
-          <ol className="mt-4 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border">
+          <ol className="mt-4 grid max-w-2xl grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
             <li className="bg-surface p-4">
               <p className="font-mono text-[11px] text-primary">01</p>
+              <p className="mt-1 text-sm font-semibold">Catatan produk</p>
+            </li>
+            <li className="bg-surface p-4">
+              <p className="font-mono text-[11px] text-primary">02</p>
               <p className="mt-1 text-sm font-semibold">Detail pengiriman</p>
             </li>
             <li className={cn("p-4", details ? "bg-surface" : "bg-surface-muted")}>
-              <p className="font-mono text-[11px] text-primary">02</p>
+              <p className="font-mono text-[11px] text-primary">03</p>
               <p className="mt-1 text-sm font-semibold">Pembayaran dan konfirmasi</p>
             </li>
           </ol>
@@ -136,6 +155,7 @@ export default function Checkout({
         ) : null}
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
           <div className="min-w-0 space-y-4">
+            <CheckoutItemNotes items={checkoutItems} onChange={updateCheckoutNote} />
             <CheckoutAddressForm details={details ?? null} c={c} />
             <CheckoutPaymentSection
               details={details ?? null}
@@ -147,7 +167,7 @@ export default function Checkout({
           </div>
 
           <CheckoutSummary
-            items={items}
+            items={checkoutItems}
             subtotal={subtotal}
             discountTotal={discount_total}
             voucher={voucher}

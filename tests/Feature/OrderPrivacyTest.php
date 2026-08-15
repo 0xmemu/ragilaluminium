@@ -31,7 +31,7 @@ class OrderPrivacyTest extends \Tests\TestCase
         $this->makeOrder();
 
         $this->post('/order/status', ['order_number' => 'RA-PRIV-1'])
-            ->assertSessionHasErrors(['customer_phone', 'customer_email']);
+            ->assertSessionHasErrors(['customer_phone']);
     }
 
     public function test_status_lookup_matches_with_normalized_phone(): void

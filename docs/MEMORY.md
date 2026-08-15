@@ -651,3 +651,56 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
   list (label "Salin ukuran & nama: <name>"), order RA-260810-0001 punya tombol
   expand, klik → li bertambah & jadi "Sembunyikan riwayat"; 0 console error.
 - Commit 9153e51 (branch feat/admin-ui-redesign), pre-push hook build sukses.
+
+### 2026-08-15 — Context ledger: Admin IA + search behavior (diskusi owner)
+
+- Admin IA: Dashboard tanpa hamburger; Performa Toko menjadi menu utama; Log Aktivitas masuk Akun & Sistem; Import Performance berada di Produk → Import; filter payment/shipping/tanggal/umur tetap tersedia sebagai Filter Lanjutan.
+- Search publik/admin harus pintar tanpa AI: normalisasi query, intent berbasis aturan, sinonim manual, ranking explainable, hasil exact dipisah dari rekomendasi, dan saran “Mungkin yang Anda maksud” tanpa mengganti query diam-diam.
+- Dimensi memakai standar tinggi × panjang; konsep rekomendasi ukuran terbalik belum disetujui. Arah yang dibahas: rekomendasi berdasarkan kemiripan/range (mis. 210×60), dengan tier dan ambang yang masih terbuka. Query umum seperti “model minimalis” dan atribut seperti “abu doff” harus diperlakukan sebagai intent ambigu/komposit, bukan dipaksa menjadi model exact.
+
+### 2026-08-15 — Context ledger: Search clarification (diskusi owner)
+
+- Variant warna yang valid hanya mengikuti katalog: putih, hitam, coklat, dan serat kayu; search tidak boleh membuat atribut seperti “abu doff” seolah-olah variant tersedia.
+- Typo dengan koreksi deterministik ber-confidence tinggi dinormalisasi langsung ke istilah katalog (contoh “slidding” → “sliding”); tidak perlu menampilkan kotak saran, tetapi query raw tetap dicatat untuk analitik.
+- Query ambigu seperti “minimalis” atau “modern” tidak dipaksa menjadi nama model; sistem menyarankan istilah/query yang benar-benar ada di katalog aktif, berdasarkan model produk, model bukaan, ukuran, kategori, warna, atau atribut yang tersedia.
+
+### 2026-08-15 — Context ledger: Share Produk (konteks dibuka)
+
+- VPS belum memiliki fitur Share Produk khusus; yang tersedia baru helper umum URL WhatsApp. Konteks share produk dibuka sebagai fitur vital, belum ada keputusan implementasi yang dikunci.
+- Kandidat rancangan awal: ikon di PDP, native share bila tersedia, WhatsApp dan salin link sebagai fallback, URL variant-aware, serta metadata Open Graph untuk preview sosial. Detail perilaku masih menunggu diskusi owner.
+
+### 2026-08-15 — Context ledger: Share Produk WhatsApp scheme (diskusi owner)
+
+- Pesan pada Share Produk adalah skema share-to-contact: user membagikan link ke pasangan/keluarga/customer melalui native share atau WhatsApp tanpa nomor tujuan tetap.
+- Ini berbeda dari CTA “Konsultasi via WhatsApp” yang membuka chat ke nomor bisnis Ragil Aluminium, dan berbeda dari notifikasi WhatsApp otomatis untuk order.
+
+### 2026-08-15 — Context ledger: Share Produk closed
+
+- Share Produk ditutup sebagai baseline: share-to-contact melalui native share/WhatsApp/copy link; link dapat mempertahankan variant aktif; metadata preview sosial; terpisah dari Konsultasi WhatsApp dan notifikasi order.
+- Belum ada kode aplikasi yang diubah; implementasi dapat dikerjakan sebagai pekerjaan terpisah setelah prioritas workflow berikutnya dipilih.
+
+### 2026-08-15 — Context ledger: Checkout & Alamat (konteks dibuka)
+
+- Markdown: guest checkout; nama/HP/provinsi/kabupaten/kecamatan/desa/detail alamat; kode pos otomatis; ongkir otomatis; transfer/COD; status awal Menunggu Konfirmasi; WhatsApp konfirmasi; edit order sebelum proses; log perubahan; catatan internal.
+- VPS saat ini: cart selected-lines dan guest checkout sudah berjalan; estimasi ongkir menampilkan gross/subsidi/net; payment COD/transfer; idempotency dan session order sudah ada; postal_code masih wajib diinput manual.
+- Open decisions: sumber data wilayah→kode pos dan fallback; apakah field email di checkout dihapus atau tetap opsional; perilaku saat estimasi ongkir gagal; kapan instruksi transfer ditampilkan.
+
+### 2026-08-15 — Context ledger: Checkout corrections (diskusi owner)
+
+- Cart: bila mode seleksi tidak aktif atau checkout tidak memakai checkbox, semua item cart masuk checkout; bila mode seleksi aktif, hanya item terpilih yang masuk.
+- Catatan bukan bagian alamat/order global; catatan diisi per item produk, pada tahap checkout sebelum alamat.
+- Email dihapus sepenuhnya dari checkout dan tidak dipakai sebagai fallback status order.
+- ETA yang tampil = estimasi sistem + 1 hari. Status COD tidak tersedia dijelaskan saat user memilih metode COD, bukan sebagai gangguan awal.
+- Wilayah dropdown saat ini berasal dari CSV lokal storage/app/wilayah/*.csv; map picker memakai Nominatim/OpenStreetMap dan dapat mengisi postcode. CSV lokal belum menyimpan kode pos, sehingga perlu sumber/mapping postcode; titik peta menjadi fallback tanpa input postal manual.
+
+
+
+
+### 2026-08-15 - Checkout/Cart implementation batch (agent checkout_shipping)
+
+- Cart checkout semantics are enforced end-to-end: all cart lines when selection is off, selected lines only when selection is active, empty active selection rejected, submitted IDs intersected with the live session cart, and selected state cleared after order creation.
+- Voucher preview and place-order empty-cart guards use the same effective line set.
+- Checkout has a dedicated per-item product-note section before the address form. Notes persist through POST /cart/update and remain mapped to order_items.note; the global checkout/address note field was removed.
+- Public checkout no longer collects email. Public order lookup, cancellation, and API fallback now require order number plus phone only; legacy nullable email columns remain for historical data and admin compatibility.
+- Canonical docs updated: docs/logic/stage-10-public-store-ui-and-checkout-contract.md and docs/PRODUCT-HANDOFF.md.
+- No database migration or new route was added.

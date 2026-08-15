@@ -373,7 +373,6 @@ export interface CartItem {
 export interface CheckoutDetails {
   name: string
   phone: string
-  email?: string | null
   province: string
   city: string
   district: string
@@ -385,7 +384,6 @@ export interface CheckoutDetails {
   address_line1: string
   address_line2?: string | null
   postal_code: string
-  notes?: string | null
 }
 
 export interface PublicOrderItem {

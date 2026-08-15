@@ -34,8 +34,7 @@ class CheckoutController extends Controller
     {
         $this->prepareCheckoutIdempotencyKey($request);
 
-        $selected = $this->cart->getSelectedLines();
-        $priced = $this->cart->pricedLines($selected ?: null);
+        $priced = $this->cart->pricedLines($this->selectedCheckoutLineIds($request));
         $applied = $request->session()->get(VoucherService::SESSION_KEY);
         $voucherDiscount = 0.0;
         $voucherPayload = null;
@@ -132,7 +131,7 @@ class CheckoutController extends Controller
     {
         $validated = $request->validated();
 
-        $priced = $this->cart->pricedLines();
+        $priced = $this->cart->pricedLines($this->selectedCheckoutLineIds($request));
 
         try {
             $applied = $this->vouchers->applyCode($validated['code'], (float) $priced['subtotal']);
@@ -196,7 +195,7 @@ class CheckoutController extends Controller
                 ->withErrors(['checkout' => 'Mohon lengkapi detail pengiriman terlebih dahulu.']);
         }
 
-        if (empty($this->cart->get($this->cart->getSelectedLines() ?: null))) {
+        if (empty($this->cart->get($this->selectedCheckoutLineIds($request)))) {
             OperationalTelemetry::checkoutOutcome('empty_cart', $validated['payment_method']);
 
             return redirect()->route('cart.index')
@@ -260,6 +259,17 @@ class CheckoutController extends Controller
         }
 
         return $key;
+    }
+
+    /**
+     * An empty selection means selection mode is off: all cart lines are in
+     * checkout. A non-empty selection is the explicit subset chosen in Cart.
+     */
+    private function selectedCheckoutLineIds(Request $request): ?array
+    {
+        $selected = $this->cart->getSelectedLines();
+
+        return $selected !== [] ? $selected : null;
     }
 
     private function rememberConfirmedOrder(Request $request, Order $order): void

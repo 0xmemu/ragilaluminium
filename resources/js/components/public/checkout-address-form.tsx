@@ -47,7 +47,7 @@ export function CheckoutAddressForm({
     <section className="surface-panel min-w-0 p-5 sm:p-7">
       <div className="flex items-start justify-between gap-4 min-w-0">
         <div>
-          <p className="font-mono text-xs font-semibold text-primary">01</p>
+          <p className="font-mono text-xs font-semibold text-primary">02</p>
           <h2 className="mt-2 text-lg font-semibold">Detail pengiriman</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Data ini dipakai untuk pesanan, pengiriman, dan pengecekan status.
@@ -101,19 +101,6 @@ export function CheckoutAddressForm({
               />
             </Field>
           </div>
-          <Field
-            id="checkout-email"
-            label="Email"
-            hint="Opsional. Dapat dipakai untuk mengecek status pesanan."
-            error={detailForm.errors.email}
-          >
-            <Input
-              type="email"
-              value={detailForm.data.email ?? ""}
-              onChange={(event) => detailForm.setData("email", event.target.value)}
-              autoComplete="email"
-            />
-          </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {wilayahError ? (
@@ -235,13 +222,6 @@ export function CheckoutAddressForm({
                 Pilih lewat peta
               </Button>
             </div>
-          </Field>
-          <Field id="checkout-notes" label="Catatan pesanan" error={detailForm.errors.notes}>
-            <Textarea
-              value={detailForm.data.notes ?? ""}
-              onChange={(event) => detailForm.setData("notes", event.target.value)}
-              placeholder="Contoh: waktu penerimaan atau catatan akses lokasi"
-            />
           </Field>
           <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-5">
             {details ? (

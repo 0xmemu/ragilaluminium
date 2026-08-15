@@ -22,7 +22,6 @@ class StoreCheckoutDetailsRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
-            'email' => ['nullable', 'email'],
             'province' => ['required', 'string', 'max:100'],
             'city' => ['required', 'string', 'max:100'],
             'district' => ['required', 'string', 'max:100'],
@@ -37,7 +36,6 @@ class StoreCheckoutDetailsRequest extends FormRequest
             'address_line1' => ['required', 'string', 'max:255'],
             'address_line2' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:20'],
-            'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

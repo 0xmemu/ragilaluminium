@@ -121,11 +121,23 @@ class CartController extends Controller
     public function select(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'line_ids' => ['required', 'array'],
+            'line_ids' => ['present', 'array'],
             'line_ids.*' => ['string'],
         ]);
 
+        if ($validated['line_ids'] === []) {
+            return back()->withErrors([
+                'line_ids' => 'Pilih setidaknya satu item untuk checkout.',
+            ]);
+        }
+
         $this->cart->selectLines($validated['line_ids']);
+
+        if ($this->cart->getSelectedLines() === []) {
+            return back()->withErrors([
+                'line_ids' => 'Item cart yang dipilih sudah tidak tersedia.',
+            ]);
+        }
 
         return redirect()->route('checkout.index');
     }
