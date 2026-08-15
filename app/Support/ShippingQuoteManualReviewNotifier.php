@@ -17,7 +17,11 @@ class ShippingQuoteManualReviewNotifier
             ->latest('id')
             ->first();
 
-        $body = 'Ongkir provisional Rp '.number_format((float) ($quote['rough_estimate'] ?? 9999), 0, ',', '.')
+        $amount = $quote['estimated_amount'] ?? $quote['rough_estimate'] ?? $quote['net'] ?? null;
+        $amountLabel = is_numeric($amount)
+            ? 'Rp '.number_format((float) $amount, 0, ',', '.')
+            : 'nominal belum tersedia';
+        $body = 'Ongkir provisional '.$amountLabel
             .' perlu diverifikasi manual sebelum diproses.';
 
         if ($existing) {

@@ -21,10 +21,6 @@ class ShippingQuoteController extends Controller
                 $validated['destination_province'] ?? null,
                 $validated['postal_code'] ?? null,
                 $validated['destination_area'] ?? null,
-                $validated['village_id'] ?? null,
-                $validated['village_name'] ?? null,
-                $validated['district_id'] ?? null,
-                $validated['district_name'] ?? null,
             ),
         ]);
     }
