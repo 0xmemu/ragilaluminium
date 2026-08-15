@@ -5,6 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { OrderProgressTracker } from "@/components/public/order-progress-tracker"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import { Alert } from "@/components/ui/alert"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -131,6 +132,15 @@ function OrderDetail({
             Status pesanan & pengiriman
           </p>
           <OrderProgressTracker order={order} />
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-muted-foreground">Status pengiriman</span>
+              <StatusBadge status={order.shipping_status} />
+            </div>
+            {order.tracking?.latest_message ? (
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{order.tracking.latest_message}</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-4">
