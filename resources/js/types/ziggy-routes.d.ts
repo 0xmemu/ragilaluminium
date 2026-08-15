@@ -667,6 +667,20 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.vouchers.duplicate": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.vouchers.end": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.cod-settings.edit": [],
     "admin.cod-settings.update": [],
     "admin.shipping-subsidy.edit": [],

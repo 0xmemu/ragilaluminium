@@ -33,7 +33,7 @@ class OrderService
      * (harga di session tidak dipercaya). Stok dikunci & dikurangi dalam
      * transaksi untuk mencegah race/oversell. FK product_id dijamin valid.
      *
-     * @param  array{code?: string, discount?: float}|null  $voucher
+     * @param  array{code?: string, codes?: list<string>, discount?: float}|null  $voucher
      */
     public function createFromCart(
         array $customer,
@@ -129,8 +129,9 @@ class OrderService
 
                     $voucherCode = null;
                     $voucherDiscount = 0.0;
-                    if (! empty($voucher['code'])) {
-                        $applied = $this->vouchers->applyCode((string) $voucher['code'], $subtotal);
+                    $voucherCodes = $this->vouchers->codesFromPayload($voucher);
+                    if ($voucherCodes !== []) {
+                        $applied = $this->vouchers->applyCodes($voucherCodes, $subtotal);
                         $voucherCode = $applied['code'];
                         $voucherDiscount = $applied['discount'];
                     }
@@ -549,7 +550,10 @@ class OrderService
             $voucherDiscount = 0.0;
             if (filled($locked->voucher_code)) {
                 try {
-                    $applied = $this->vouchers->applyCode((string) $locked->voucher_code, $subtotal);
+                    $voucherCodes = $this->vouchers->normalizeCodes(
+                        preg_split('/\s*,\s*/', (string) $locked->voucher_code) ?: [],
+                    );
+                    $applied = $this->vouchers->applyCodes($voucherCodes, $subtotal);
                     $voucherCode = $applied['code'];
                     $voucherDiscount = $applied['discount'];
                 } catch (\DomainException $e) {

@@ -15,7 +15,7 @@ class StoreVoucherTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_create_and_exclusively_publish_voucher(): void
+    public function test_admin_can_create_and_publish_multiple_vouchers(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
@@ -52,8 +52,93 @@ class StoreVoucherTest extends TestCase
         ]);
         $this->assertDatabaseHas('store_vouchers', [
             'id' => $first->id,
-            'published' => false,
+            'published' => true,
         ]);
+    }
+
+    public function test_multiple_vouchers_stack_only_when_each_voucher_allows_it(): void
+    {
+        StoreVoucher::create([
+            'name' => 'Stack sepuluh',
+            'code' => 'STACK10',
+            'discount_type' => 'percent',
+            'discount_value' => 10,
+            'stackable' => true,
+            'published' => true,
+        ]);
+        StoreVoucher::create([
+            'name' => 'Stack lima',
+            'code' => 'STACK5',
+            'discount_type' => 'percent',
+            'discount_value' => 5,
+            'stackable' => true,
+            'published' => true,
+        ]);
+        StoreVoucher::create([
+            'name' => 'Tidak stack',
+            'code' => 'NOSTACK',
+            'discount_type' => 'fixed',
+            'discount_value' => 10000,
+            'stackable' => false,
+            'published' => true,
+        ]);
+
+        $applied = app(VoucherService::class)->applyCodes(['STACK10', 'STACK5'], 1000000);
+
+        $this->assertSame(['STACK10', 'STACK5'], $applied['codes']);
+        $this->assertSame(145000.0, (float) $applied['discount']);
+        $this->assertCount(2, $applied['vouchers']);
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('tidak dapat digabung');
+        app(VoucherService::class)->applyCodes(['STACK10', 'NOSTACK'], 1000000);
+    }
+
+    public function test_voucher_uses_effective_price_after_product_promotion(): void
+    {
+        StoreVoucher::create([
+            'name' => 'Harga efektif',
+            'code' => 'EFFECTIVE10',
+            'discount_type' => 'percent',
+            'discount_value' => 10,
+            'published' => true,
+        ]);
+
+        $applied = app(VoucherService::class)->applyCodes(['EFFECTIVE10'], 800000);
+
+        $this->assertSame(80000.0, (float) $applied['discount']);
+    }
+
+    public function test_admin_can_duplicate_and_end_voucher(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $voucher = StoreVoucher::create([
+            'name' => 'Voucher Asli',
+            'code' => 'ASLI10',
+            'discount_type' => 'percent',
+            'discount_value' => 10,
+            'min_purchase' => 500000,
+            'stackable' => true,
+            'published' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.vouchers.duplicate', $voucher))
+            ->assertRedirect();
+
+        $copy = StoreVoucher::query()->where('code', 'ASLI10_COPY')->first();
+        $this->assertNotNull($copy);
+        $this->assertFalse((bool) $copy->published);
+        $this->assertTrue((bool) $copy->stackable);
+        $this->assertSame(500000.0, (float) $copy->min_purchase);
+
+        $this->actingAs($admin)
+            ->post(route('admin.vouchers.end', $voucher))
+            ->assertRedirect();
+
+        $voucher->refresh();
+        $this->assertFalse((bool) $voucher->published);
+        $this->assertNotNull($voucher->ends_at);
     }
 
     public function test_checkout_can_apply_voucher_and_reduce_order_total(): void

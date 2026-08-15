@@ -14,6 +14,7 @@ interface VoucherFormData {
   discount_type: "percent" | "fixed"
   discount_value: number
   min_purchase: number
+  stackable: boolean
   starts_at: string | null
   ends_at: string | null
   published: boolean
@@ -45,6 +46,7 @@ export default function VoucherForm({
     discount_type: voucher?.discount_type ?? ("percent" as "percent" | "fixed"),
     discount_value: voucher?.discount_value ?? 10,
     min_purchase: voucher?.min_purchase ?? 0,
+    stackable: voucher?.stackable ?? false,
     starts_at: toLocalInput(voucher?.starts_at),
     ends_at: toLocalInput(voucher?.ends_at),
     publish_now: voucher?.published ?? false,
@@ -184,10 +186,22 @@ export default function VoucherForm({
             <input
               type="checkbox"
               className="size-4 rounded border-border"
+              checked={form.data.stackable}
+              onChange={(event) => form.setData("stackable", event.target.checked)}
+            />
+            Boleh digabung dengan voucher lain
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Kode hanya bisa ditumpuk jika semua voucher yang dipakai mengizinkan stacking.
+          </p>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-border"
               checked={form.data.publish_now}
               onChange={(event) => form.setData("publish_now", event.target.checked)}
             />
-            Aktifkan sekarang (nonaktifkan voucher aktif lain)
+            Aktifkan sekarang
           </label>
         </section>
 

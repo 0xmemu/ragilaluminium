@@ -222,7 +222,8 @@ Indexes:
 - `code` (`VARCHAR`), NN, UQ
 - `discount_type` (`VARCHAR`), NN, default 'percent'
 - `discount_value` (`NUMERIC`), NN
-- `min_purchase` (`NUMERIC`), NN, default '0'
+- `min_purchase` (`NUMERIC`), NN, default '0' (0 = tanpa minimum)
+- `stackable` (`TINYINT(1)`), NN, default '0' (boleh ditumpuk dengan voucher lain)
 - `starts_at` (`DATETIME`), nullable
 - `ends_at` (`DATETIME`), nullable
 - `published` (`TINYINT(1)`), NN, default '0'

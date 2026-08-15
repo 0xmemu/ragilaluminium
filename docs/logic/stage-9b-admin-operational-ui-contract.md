@@ -22,7 +22,7 @@ Based on the current admin UI design: [file:586]
 - **Harga & Promo**:
   - Promo Toko
   - Flash Sale
-  - Voucher Toko (`admin.vouchers.*` → tabel `store_vouchers`; publish eksklusif 1 aktif; apply di checkout)
+  - Voucher Toko (`admin.vouchers.*` → tabel `store_vouchers`; CRUD/status/duplikasi/akhiri; stacking per voucher; apply di checkout)
   - Bayar COD / Biaya COD (`admin.cod-settings.*` → `cms_pages.checkout.content.cod`; fee masuk `orders.cod_fee_amount`)
   - Subsidi Ongkir (`admin.shipping-subsidy.*` → `cms_pages.checkout.content.shipping_subsidy`; net ongkir + `orders.shipping_subsidy_amount`)
 - **Komunikasi**:

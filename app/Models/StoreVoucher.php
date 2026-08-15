@@ -15,6 +15,7 @@ class StoreVoucher extends Model
         'discount_type',
         'discount_value',
         'min_purchase',
+        'stackable',
         'starts_at',
         'ends_at',
         'published',
@@ -25,6 +26,7 @@ class StoreVoucher extends Model
     protected $casts = [
         'discount_value' => 'decimal:2',
         'min_purchase' => 'decimal:2',
+        'stackable' => 'boolean',
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'published' => 'boolean',

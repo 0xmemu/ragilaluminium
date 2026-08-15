@@ -42,7 +42,7 @@ class VoucherController extends Controller
 
         return Inertia::render('Admin/Vouchers/Index', [
             'title' => 'Voucher Toko',
-            'description' => 'Kelola kode voucher checkout. Hanya satu voucher yang boleh aktif (published) dalam satu waktu.',
+            'description' => 'Kelola kode voucher checkout. Voucher aktif dapat dipakai bersama sesuai pengaturan stacking.',
             'viewMode' => $view,
             'searchQuery' => $q,
             'activeStatus' => in_array($status, ['active', 'inactive', 'all'], true) ? $status : 'all',
@@ -129,6 +129,42 @@ class VoucherController extends Controller
         return redirect()->back()->with('success', 'Voucher dinonaktifkan.');
     }
 
+    public function duplicate(Request $request, StoreVoucher $voucher): RedirectResponse
+    {
+        $baseCode = Str::upper($voucher->code).'_COPY';
+        $code = $baseCode;
+        $suffix = 2;
+        while (StoreVoucher::query()->where('code', $code)->exists()) {
+            $code = $baseCode.'_'.$suffix++;
+        }
+
+        StoreVoucher::create([
+            'name' => $voucher->name.' (Salinan)',
+            'code' => $code,
+            'discount_type' => $voucher->discount_type,
+            'discount_value' => $voucher->discount_value,
+            'min_purchase' => $voucher->min_purchase,
+            'stackable' => $voucher->stackable,
+            'starts_at' => $voucher->starts_at,
+            'ends_at' => $voucher->ends_at,
+            'published' => false,
+            'created_by_user_id' => $request->user()->id,
+            'updated_by_user_id' => $request->user()->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Voucher diduplikasi sebagai '.$code.'.');
+    }
+
+    public function end(StoreVoucher $voucher): RedirectResponse
+    {
+        $voucher->update([
+            'published' => false,
+            'ends_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Voucher diakhiri dan dinonaktifkan.');
+    }
+
     /** @return array<string, mixed> */
     private function validateVoucher(Request $request, ?StoreVoucher $existing = null): array
     {
@@ -149,6 +185,7 @@ class VoucherController extends Controller
                 Rule::when($request->input('discount_type') === 'percent', ['max:100']),
             ],
             'min_purchase' => ['nullable', 'numeric', 'min:0'],
+            'stackable' => ['sometimes', 'boolean'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'publish_now' => ['sometimes', 'boolean'],
@@ -156,6 +193,7 @@ class VoucherController extends Controller
 
         unset($validated['publish_now']);
         $validated['min_purchase'] = (float) ($validated['min_purchase'] ?? 0);
+        $validated['stackable'] = $request->boolean('stackable');
 
         return $validated;
     }
@@ -173,7 +211,10 @@ class VoucherController extends Controller
             'starts_at' => optional($voucher->starts_at)?->toIso8601String(),
             'ends_at' => optional($voucher->ends_at)?->toIso8601String(),
             'published' => (bool) $voucher->published,
+            'stackable' => (bool) $voucher->stackable,
             'runnable' => $voucher->isCurrentlyRunnable(),
+            'duplicate_url' => route('admin.vouchers.duplicate', $voucher),
+            'end_url' => route('admin.vouchers.end', $voucher),
             'updated_at' => optional($voucher->updated_at)?->toIso8601String(),
             'edit_href' => route('admin.vouchers.edit', $voucher),
             'publish_url' => route('admin.vouchers.publish', $voucher),

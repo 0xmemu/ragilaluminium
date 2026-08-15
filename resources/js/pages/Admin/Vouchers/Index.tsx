@@ -22,6 +22,7 @@ interface VoucherCard {
   discount_type: "percent" | "fixed"
   discount_value: number
   min_purchase: number
+  stackable: boolean
   starts_at: string | null
   ends_at: string | null
   published: boolean
@@ -30,6 +31,8 @@ interface VoucherCard {
   edit_href: string
   publish_url: string
   unpublish_url: string
+  duplicate_url: string
+  end_url: string
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -73,11 +76,29 @@ function VoucherActions({
     router.post(voucher.unpublish_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
   }
 
+  function duplicate() {
+    setBusyId(voucher.id)
+    router.post(voucher.duplicate_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+  }
+
+  function end() {
+    setBusyId(voucher.id)
+    router.post(voucher.end_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+  }
+
   return (
     <RowActions>
       <Button asChild variant="secondary" size="xs">
         <Link href={voucher.edit_href}>Edit</Link>
       </Button>
+      <button
+        type="button"
+        className={rowActionTextClass}
+        disabled={busy}
+        onClick={duplicate}
+      >
+        Duplikasi
+      </button>
       {voucher.published ? (
         <ConfirmAction
           trigger={
@@ -99,12 +120,26 @@ function VoucherActions({
             </button>
           }
           title="Aktifkan voucher ini?"
-          description="Voucher lain yang sedang aktif akan dinonaktifkan otomatis."
+          description="Voucher ini akan tersedia untuk dipakai pelanggan."
           confirmLabel="Aktifkan"
           processing={busy}
           onConfirm={publish}
         />
       )}
+      {voucher.published || voucher.runnable ? (
+        <ConfirmAction
+          trigger={
+            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
+              Akhiri
+            </button>
+          }
+          title="Akhiri voucher?"
+          description="Voucher langsung dinonaktifkan dan periode berakhir sekarang."
+          confirmLabel="Akhiri"
+          processing={busy}
+          onConfirm={end}
+        />
+      ) : null}
     </RowActions>
   )
 }
@@ -159,7 +194,7 @@ export default function VouchersIndex({
       <Head title={`${title} | Admin`} />
 
       <section className="mb-4 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
-        Hanya <span className="font-semibold text-foreground">1 voucher</span> yang boleh aktif sekaligus.
+        Voucher aktif dapat dipakai bersamaan jika masing-masing mengizinkan stacking.
         Aktif sekarang: <span className="font-semibold tabular-nums text-foreground">{summary.active_count}</span> /{" "}
         {summary.total_count} total.
       </section>
@@ -246,6 +281,9 @@ export default function VouchersIndex({
               <p className="mt-3 text-xs text-muted-foreground">
                 {formatDateTime(voucher.starts_at)} s/d {formatDateTime(voucher.ends_at)}
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Minimum {formatCurrency(voucher.min_purchase)}
+              </p>
               <div className="mt-3">
                 <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
               </div>
@@ -270,6 +308,9 @@ export default function VouchersIndex({
                   <td className="px-3 py-3">
                     <p className="font-semibold">{voucher.name}</p>
                     <p className="font-mono text-[11px] text-muted-foreground">{voucher.code}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Min {formatCurrency(voucher.min_purchase)}
+                    </p>
                   </td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">
                     <div>{formatDateTime(voucher.starts_at)}</div>

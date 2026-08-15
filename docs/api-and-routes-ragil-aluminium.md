@@ -273,6 +273,8 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `GET /admin/vouchers/{voucher}/edit` -> `Admin\VoucherController@edit`  (name: `admin.vouchers.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/vouchers/{voucher}/publish` -> `Admin\VoucherController@publish`  (name: `admin.vouchers.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/vouchers/{voucher}/unpublish` -> `Admin\VoucherController@unpublish`  (name: `admin.vouchers.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/vouchers/{voucher}/duplicate` -> `Admin\VoucherController@duplicate`  (name: `admin.vouchers.duplicate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/vouchers/{voucher}/end` -> `Admin\VoucherController@end`  (name: `admin.vouchers.end`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/whatsapp/connection` -> `Admin\WhatsAppTemplateController@connection`  (name: `admin.whatsapp.connection`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/whatsapp/messages` -> `Admin\WhatsAppMessageController@index`  (name: `admin.whatsapp.messages.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/whatsapp/messages/{message}` -> `Admin\WhatsAppMessageController@show`  (name: `admin.whatsapp.messages.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

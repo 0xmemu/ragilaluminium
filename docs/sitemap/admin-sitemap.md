@@ -102,7 +102,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Flash Sale** (Tipe: `Operational` & `Content`)
   - Menandai produk peserta Flash Sale via `product_attributes` (`promo_flash_sale`, `promo_compare_price`). Route: `admin.flash-sale.*`.
 - **Voucher Toko** (Tipe: `Operational`)
-  - CRUD kode voucher checkout (`store_vouchers`). Route: `admin.vouchers.*`. Hanya satu voucher `published` sekaligus.
+  - CRUD/status/duplikasi/akhiri kode voucher checkout (`store_vouchers`). Route: `admin.vouchers.*`. Beberapa voucher dapat aktif; stacking dikonfigurasi per voucher.
 - **Biaya COD** (Tipe: `Settings`)
   - Toggle COD + handling fee + limit belanja. Route: `admin.cod-settings.*` → `cms_pages.checkout.content.cod`.
 - **Subsidi Ongkir** (Tipe: `Settings`)

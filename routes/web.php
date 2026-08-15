@@ -353,6 +353,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('vouchers/{voucher}', [VoucherController::class, 'update'])->name('vouchers.update');
     Route::post('vouchers/{voucher}/publish', [VoucherController::class, 'publish'])->name('vouchers.publish');
     Route::post('vouchers/{voucher}/unpublish', [VoucherController::class, 'unpublish'])->name('vouchers.unpublish');
+    Route::post('vouchers/{voucher}/duplicate', [VoucherController::class, 'duplicate'])->name('vouchers.duplicate');
+    Route::post('vouchers/{voucher}/end', [VoucherController::class, 'end'])->name('vouchers.end');
 
     Route::get('cod-settings', [CodSettingsController::class, 'edit'])->name('cod-settings.edit');
     Route::put('cod-settings', [CodSettingsController::class, 'update'])->name('cod-settings.update');

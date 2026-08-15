@@ -19,6 +19,8 @@ export interface CheckoutVoucher {
   code: string
   name: string
   discount: number
+  stackable?: boolean
+  vouchers?: Array<{ code: string; name: string; discount: number; stackable?: boolean }>
 }
 
 export interface UseCheckoutOptions {
@@ -107,7 +109,8 @@ export function useCheckout({
     voucherForm.post(applyVoucherUrl, { preserveScroll: true })
   }
 
-  function removeVoucher() {
+  function removeVoucher(code?: string) {
+    voucherForm.setData("code", code ?? "")
     voucherForm.post(removeVoucherUrl, { preserveScroll: true })
   }
 

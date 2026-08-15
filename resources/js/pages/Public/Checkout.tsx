@@ -28,7 +28,12 @@ interface CheckoutProps {
   subtotal: number
   compare_subtotal?: number
   discount_total?: number
-  voucher?: { code: string; name: string; discount: number } | null
+  voucher?: {
+    code: string
+    name: string
+    discount: number
+    vouchers?: Array<{ code: string; name: string; discount: number; stackable?: boolean }>
+  } | null
   voucher_discount?: number
   cod?: CheckoutCodConfig
   shipping?: CheckoutShipping | null

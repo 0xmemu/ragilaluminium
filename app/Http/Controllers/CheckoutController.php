@@ -39,9 +39,12 @@ class CheckoutController extends Controller
         $voucherDiscount = 0.0;
         $voucherPayload = null;
 
-        if (is_array($applied) && ! empty($applied['code'])) {
+        if (is_array($applied)) {
             try {
-                $fresh = $this->vouchers->applyCode((string) $applied['code'], (float) $priced['subtotal']);
+                $fresh = $this->vouchers->applyCodes(
+                    $this->vouchers->codesFromPayload($applied),
+                    (float) $priced['subtotal'],
+                );
                 $voucherDiscount = $fresh['discount'];
                 $voucherPayload = $fresh;
                 $request->session()->put(VoucherService::SESSION_KEY, $fresh);
@@ -133,8 +136,12 @@ class CheckoutController extends Controller
 
         $priced = $this->cart->pricedLines($this->selectedCheckoutLineIds($request));
 
+        $current = $request->session()->get(VoucherService::SESSION_KEY);
+        $codes = $this->vouchers->codesFromPayload($current);
+        $codes[] = (string) $validated['code'];
+
         try {
-            $applied = $this->vouchers->applyCode($validated['code'], (float) $priced['subtotal']);
+            $applied = $this->vouchers->applyCodes($codes, (float) $priced['subtotal']);
         } catch (\DomainException $e) {
             return redirect()->route('checkout.index')->withErrors(['voucher' => $e->getMessage()]);
         }
@@ -146,7 +153,30 @@ class CheckoutController extends Controller
 
     public function removeVoucher(Request $request): RedirectResponse
     {
-        $request->session()->forget(VoucherService::SESSION_KEY);
+        $current = $request->session()->get(VoucherService::SESSION_KEY);
+        $removeCode = strtoupper(trim((string) $request->input('code', '')));
+        $codes = $this->vouchers->codesFromPayload($current);
+
+        if ($removeCode === '') {
+            $request->session()->forget(VoucherService::SESSION_KEY);
+
+            return redirect()->route('checkout.index')->with('success', 'Voucher dihapus.');
+        }
+
+        $remaining = array_values(array_filter($codes, fn (string $code): bool => $code !== $removeCode));
+        if ($remaining === []) {
+            $request->session()->forget(VoucherService::SESSION_KEY);
+
+            return redirect()->route('checkout.index')->with('success', 'Voucher dihapus.');
+        }
+
+        try {
+            $priced = $this->cart->pricedLines($this->selectedCheckoutLineIds($request));
+            $fresh = $this->vouchers->applyCodes($remaining, (float) $priced['subtotal']);
+            $request->session()->put(VoucherService::SESSION_KEY, $fresh);
+        } catch (\DomainException) {
+            $request->session()->forget(VoucherService::SESSION_KEY);
+        }
 
         return redirect()->route('checkout.index')->with('success', 'Voucher dihapus.');
     }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { formatCurrency } from "@/lib/format"
-import type { CheckoutCodConfig, CheckoutController } from "@/hooks/use-checkout"
+import type { CheckoutCodConfig, CheckoutController, CheckoutVoucher } from "@/hooks/use-checkout"
 import type { OrderEta } from "@/types"
 
 export interface CheckoutItem {
@@ -48,7 +48,7 @@ export function CheckoutSummary({
   items: CheckoutItem[]
   subtotal: number
   discountTotal: number
-  voucher?: { code: string; name: string; discount: number } | null
+  voucher?: CheckoutVoucher | null
   voucherDiscount: number
   cod: CheckoutCodConfig
   shipping?: CheckoutShipping | null
@@ -141,23 +141,35 @@ export function CheckoutSummary({
       <div className="mt-4 border-t border-border pt-4">
         {hasVoucher ? (
           <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="inline-flex items-center gap-2 text-sm font-semibold">
-                  <Icon name="ticket" className="size-4 shrink-0 text-primary" weight="bold" aria-hidden="true" />
-                  Voucher {voucher?.code}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{voucher?.name}</p>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold">
+              <Icon name="ticket" className="size-4 shrink-0 text-primary" weight="bold" aria-hidden="true" />
+              Voucher diterapkan
+            </p>
+            {(voucher?.vouchers ?? (voucher ? [voucher] : [])).map((item) => (
+              <div key={item.code} className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs font-semibold">{item.code}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {item.name} · Hemat {formatCurrency(item.discount)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-destructive hover:underline"
+                  onClick={() => removeVoucher(item.code)}
+                  disabled={voucherForm.processing}
+                >
+                  Hapus
+                </button>
               </div>
-              <button
-                type="button"
-                className="text-xs font-semibold text-destructive hover:underline"
-                onClick={removeVoucher}
-                disabled={voucherForm.processing}
-              >
-                Hapus
-              </button>
-            </div>
+            ))}
+            <button
+              type="button"
+              className="text-xs font-semibold text-primary hover:underline"
+              onClick={() => setVoucherOpen(true)}
+            >
+              Tambah voucher
+            </button>
           </div>
         ) : !voucherOpen ? (
           <button
