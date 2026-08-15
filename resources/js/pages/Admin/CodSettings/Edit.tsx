@@ -4,13 +4,12 @@ import * as React from "react"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
-import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface CodSettingsData {
   enabled: boolean
-  fee_type: "percent" | "fixed"
+  fee_type: "percent"
   fee_value: number
   max_order_amount: number | null
 }
@@ -81,21 +80,10 @@ export default function CodSettingsEdit({
             Ditambahkan ke total tagihan saat pelanggan memilih COD. Dihitung dari subtotal setelah voucher.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="fee_type" label="Jenis biaya" error={form.errors.fee_type}>
-              <Select
-                id="fee_type"
-                value={form.data.fee_type}
-                onChange={(event) =>
-                  form.setData("fee_type", event.target.value as "percent" | "fixed")
-                }
-              >
-                <option value="percent">Persentase (%)</option>
-                <option value="fixed">Nominal tetap (Rp)</option>
-              </Select>
-            </Field>
+            <p className="text-sm text-muted-foreground">Biaya COD dihitung sebagai persentase dari subtotal setelah voucher.</p>
             <Field
               id="fee_value"
-              label={form.data.fee_type === "percent" ? "Nilai biaya (%)" : "Nilai biaya (Rp)"}
+              label="Nilai biaya (%)"
               error={form.errors.fee_value}
             >
               <Input
@@ -103,7 +91,6 @@ export default function CodSettingsEdit({
                 type="number"
                 min={0}
                 step="0.01"
-                max={form.data.fee_type === "percent" ? 100 : undefined}
                 value={form.data.fee_value}
                 onChange={(event) => form.setData("fee_value", Number(event.target.value))}
                 required

@@ -28,7 +28,7 @@ class CodSettingsController extends Controller
     {
         $validated = $request->validate([
             'enabled' => ['required', 'boolean'],
-            'fee_type' => ['required', 'in:percent,fixed'],
+            'fee_type' => ['required', 'in:percent'],
             'fee_value' => [
                 'required',
                 'numeric',

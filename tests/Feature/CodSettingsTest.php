@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Order;
+use App\Models\EventLog;
+use App\Services\PaymentService;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -161,5 +163,39 @@ class CodSettingsTest extends TestCase
             ->post(route('checkout.place-order'), ['payment_method' => 'cod'])
             ->assertRedirect(route('checkout.index'))
             ->assertSessionHasErrors('payment_method');
+    }
+
+    public function test_cod_is_settled_by_system_when_order_is_completed(): void
+    {
+        $order = Order::create([
+            'order_number' => 'RA-20260815-9001',
+            'customer_name' => 'Budi',
+            'customer_phone' => '081234567890',
+            'shipping_address_line1' => 'Jl. Contoh 1',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'order_status' => 'completed',
+            'payment_status' => 'pending',
+            'shipping_status' => 'delivered',
+            'subtotal_amount' => 1000000,
+            'shipping_amount' => 100000,
+            'total_amount' => 1100000,
+            'payment_method' => 'cod',
+            'cod_flag' => true,
+        ]);
+
+        $payment = app(PaymentService::class)->completeCodAtCompletion($order);
+
+        $this->assertSame('completed', $payment->status);
+        $this->assertEquals(1100000.0, (float) $payment->amount);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertDatabaseHas('event_logs', [
+            'event_type' => 'system/cod_completion',
+            'entity_type' => 'order',
+            'entity_id' => $order->id,
+            'created_by_user_id' => null,
+        ]);
+        $this->assertSame(1, EventLog::query()->where('event_type', 'system/cod_completion')->count());
     }
 }

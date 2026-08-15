@@ -9,7 +9,7 @@ export interface CheckoutCodConfig {
   enabled: boolean
   allowed: boolean
   block_reason?: string | null
-  fee_type: "percent" | "fixed"
+  fee_type: "percent"
   fee_value: number
   fee_amount: number
   max_order_amount?: number | null

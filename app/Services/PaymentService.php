@@ -186,4 +186,78 @@ class PaymentService
 
         return $payment->fresh();
     }
+
+    /**
+     * Settle COD exactly when fulfillment reaches completed.
+     *
+     * This is deliberately system-owned: no admin user is required and the
+     * audit event remains idempotent under repeated status requests.
+     */
+    public function completeCodAtCompletion(Order $order): Payment
+    {
+        $payment = DB::transaction(function () use ($order): Payment {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->order_status !== 'completed') {
+                throw new DomainException('COD hanya dapat diselesaikan saat pesanan completed.');
+            }
+
+            if ($lockedOrder->payment_status === 'paid') {
+                return $lockedOrder->payments()
+                    ->where('payment_method', 'cod')
+                    ->where('status', 'completed')
+                    ->latest('id')
+                    ->firstOrFail();
+            }
+
+            $payment = $lockedOrder->payments()
+                ->where('payment_method', 'cod')
+                ->whereIn('status', ['pending', 'completed'])
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+
+            if (! $payment) {
+                $payment = Payment::create([
+                    'order_id' => $lockedOrder->id,
+                    'payment_method' => 'cod',
+                    'amount' => $lockedOrder->total_amount,
+                    'status' => 'pending',
+                ]);
+            }
+
+            $payment->update([
+                'amount' => $lockedOrder->total_amount,
+                'status' => 'completed',
+                'paid_at' => $payment->paid_at ?? now(),
+                'created_by_user_id' => null,
+                'updated_by_user_id' => null,
+            ]);
+
+            $lockedOrder->update([
+                'payment_status' => 'paid',
+                'updated_by_user_id' => null,
+            ]);
+
+            EventLog::create([
+                'event_type' => 'system/cod_completion',
+                'entity_type' => 'order',
+                'entity_id' => $lockedOrder->id,
+                'payload' => [
+                    'payment_id' => $payment->id,
+                    'payment_method' => 'cod',
+                    'amount' => (float) $lockedOrder->total_amount,
+                    'total_amount' => (float) $lockedOrder->total_amount,
+                    'source' => 'order_completed',
+                ],
+                'created_by_user_id' => null,
+                'created_at' => now(),
+            ]);
+
+            return $payment->fresh();
+        });
+
+        PaymentConfirmed::dispatch($order->fresh(), $payment->fresh());
+
+        return $payment;
+    }
 }

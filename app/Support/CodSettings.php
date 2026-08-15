@@ -9,7 +9,7 @@ use App\Models\CmsPage;
  *
  * content.cod = {
  *   enabled: bool,
- *   fee_type: percent|fixed,
+ *   fee_type: percent,
  *   fee_value: number,
  *   max_order_amount: number|null  // 0/null = no limit
  * }
@@ -33,7 +33,7 @@ class CodSettings
         $page = self::page();
         $stored = is_array($page?->content['cod'] ?? null) ? $page->content['cod'] : [];
 
-        $feeType = ($stored['fee_type'] ?? self::DEFAULTS['fee_type']) === 'fixed' ? 'fixed' : 'percent';
+        $feeType = 'percent';
         $max = $stored['max_order_amount'] ?? null;
         $maxOrder = $max === null || $max === '' ? null : max(0, (float) $max);
 
@@ -64,7 +64,7 @@ class CodSettings
             $merged['enabled'] = (bool) $settings['enabled'];
         }
         if (array_key_exists('fee_type', $settings)) {
-            $merged['fee_type'] = $settings['fee_type'] === 'fixed' ? 'fixed' : 'percent';
+            $merged['fee_type'] = 'percent';
         }
         if (array_key_exists('fee_value', $settings)) {
             $value = max(0, (float) $settings['fee_value']);
@@ -102,9 +102,6 @@ class CodSettings
         }
 
         $base = max(0, $subtotalAfterVoucher);
-        if ($settings['fee_type'] === 'fixed') {
-            return round((float) $settings['fee_value'], 2);
-        }
 
         $percent = max(0, min(100, (float) $settings['fee_value']));
 

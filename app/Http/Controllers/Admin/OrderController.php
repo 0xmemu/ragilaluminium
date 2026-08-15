@@ -762,11 +762,6 @@ class OrderController extends Controller
                 ->with('success', 'Pesanan COD diproses. Pelanggan mendapat notifikasi WhatsApp.');
         }
 
-        // COD: lunas saat sampai / selesai.
-        if ($isCod && $order->payment_status !== 'paid' && in_array($to, ['delivered', 'completed'], true)) {
-            $this->payments->completePendingForOrder($order, $userId, 'cod');
-            $order->refresh();
-        }
 
         if ($order->order_status !== $to) {
             try {
@@ -781,6 +776,13 @@ class OrderController extends Controller
                 return $this->statusRedirect($request, $order->fresh())
                     ->withErrors(['order_status' => $exception->getMessage()]);
             }
+        }
+
+        // COD dibayar otomatis tepat setelah status order menjadi completed.
+        // Audit memakai event sistem agar tidak bergantung pada admin.
+        if ($isCod && $to === 'completed' && $order->payment_status !== 'paid') {
+            $this->payments->completeCodAtCompletion($order);
+            $order->refresh();
         }
 
         // Spec ??H: pesan WA otomatis saat retur masuk (issue) dan retur selesai (return_completed).
