@@ -71,7 +71,7 @@ CRUD Promo Toko + Flash Sale (controller, routes, sidebar, halaman Vue) + integr
 - `OrderService::generateOrderNumber()` → `RA-{ymd}-{seq4}` (contoh `RA-260808-0001`); key per hari `order-{Ymd}` → nomor reset setiap hari, tidak pernah dipakai ulang.
 
 ### Edit pesanan (Keputusan #7 & #23)
-- `OrderService::editPolicy(Order)`: **MK** bebas tanpa catatan; **processing** wajib catatan; **terkunci** bila status cancelled ATAU sudah ada resi (`shipping_records.waybill_number` non-cancelled); mengembalikan `allowed`/`require_note`/`reason`.
+- `OrderService::editPolicy(Order)`: hanya **Menunggu Konfirmasi** (`pending_payment`) yang boleh diedit; setelah konfirmasi, order terkunci untuk menjaga fulfillment. Mengembalikan `allowed`/`require_note`/`reason`.
 - `OrderService::editOrder(Order, data, actorUserId, note)`: transaksi + lockForUpdate; update qty baris lama / tambah baris baru (via `item_id` atau `parent_sku`+`variant_sku`) / hapus baris (stok dikembalikan); stok decrement = delta qty per baris; voucher di-recalc (di-drop bila tak valid, tercatat); fee COD dihitung ulang; ongkir via `ShippingService::estimateBreakdown` + `cartWeightForLines()`; harga satuan tidak diubah (harga beli saat order dibuat); persist order + log `EventLog order.edited` (note/changes/subtotal/shipping/voucher/cod_fee/total/voucher_dropped).
 - `WhatsAppService`: `sendOrderConfirmation()` dibuat publik (dipakai checkout & kirim ulang); `notifyOrderEdited()` (try/catch aman, log warning bila gagal).
 - `Admin\OrderController`: + `updateItems()` (validasi lengkap, cek `editPolicy`, catch DomainException, kirim ulang WA, redirect sukses); payload `admin/orders/{order}` + `editPolicy` + `editUrl`; constructor + `WhatsAppService`.

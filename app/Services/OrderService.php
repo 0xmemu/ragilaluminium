@@ -405,22 +405,14 @@ class OrderService
      */
     public function editPolicy(Order $order): array
     {
-        if ($order->order_status === 'cancelled') {
-            return ['allowed' => false, 'require_note' => false, 'reason' => 'Pesanan dibatalkan dan tidak dapat diubah.'];
+        if ($order->order_status !== 'pending_payment') {
+            return ['allowed' => false, 'require_note' => false, 'reason' => 'Pesanan hanya dapat diedit saat Menunggu Konfirmasi.'];
         }
-
-        if ($this->hasWaybill($order)) {
-            return ['allowed' => false, 'require_note' => false, 'reason' => 'Pesanan sudah memiliki resi pengiriman dan terkunci.'];
-        }
-
-        $requireNote = $order->order_status === 'processing';
 
         return [
             'allowed' => true,
-            'require_note' => $requireNote,
-            'reason' => $requireNote
-                ? 'Pesanan Diproses: perubahan dicatat di riwayat dan konfirmasi dikirim ulang ke pelanggan.'
-                : null,
+            'require_note' => false,
+            'reason' => null,
         ];
     }
 

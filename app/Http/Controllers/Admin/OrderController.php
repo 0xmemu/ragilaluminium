@@ -535,8 +535,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Edit isi pesanan (keputusan #7/#23): MK bebas, Diproses dgn catatan,
-     * terkunci setelah resi. Hitung ulang harga/ongkir/total, kirim ulang WA
+     * Edit isi pesanan hanya saat Menunggu Konfirmasi. Hitung ulang harga/ongkir/total, kirim ulang WA
      * konfirmasi, catat log order.edited.
      */
     public function updateItems(Request $request, Order $order): RedirectResponse
