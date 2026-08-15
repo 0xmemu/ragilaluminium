@@ -366,7 +366,7 @@ export default function StorePerformance({
         ))}
       </div>
 
-      <div className="mt-6 grid gap-6 xl:sm:grid-cols-2">
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           <header className="border-b border-border px-4 py-3">
             <h3 className="text-base font-bold">Penjualan produk</h3>

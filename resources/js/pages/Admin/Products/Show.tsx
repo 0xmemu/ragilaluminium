@@ -55,7 +55,7 @@ export default function ProductShow({
             {fields.map((field, index) => (
               <div
                 key={`${field.label}-${index}`}
-                className="min-h-24 border-b border-border p-5 odd:sm:border-r"
+                className="min-h-24 border-b border-border p-5 sm:odd:border-r"
               >
                 <dt className="text-xs font-semibold text-muted-foreground">{field.label}</dt>
                 <dd className="mt-2 text-sm font-semibold leading-6">
