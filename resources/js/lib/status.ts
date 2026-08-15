@@ -27,6 +27,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   delivered: { label: "Sampai", tone: "success" },
   issue: { label: "Perlu perhatian", tone: "danger" },
   return_in_process: { label: "Retur diproses", tone: "warning" },
+  return_completed: { label: "Retur selesai", tone: "neutral" },
   cancelled: { label: "Dibatalkan", tone: "danger" },
   paid: { label: "Lunas", tone: "success" },
   refunded: { label: "Dikembalikan", tone: "neutral" },

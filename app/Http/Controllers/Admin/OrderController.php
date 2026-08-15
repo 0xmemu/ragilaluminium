@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EventLog;
 use App\Models\Order;
+use App\Models\OrderReturnCase;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
@@ -291,6 +292,7 @@ class OrderController extends Controller
             'payments',
             'shippingRecords' => fn ($q) => $q->latest('id'),
             'whatsappMessages' => fn ($q) => $q->latest()->limit(10),
+            'returnCases.items.orderItem',
         ]);
 
         $events = EventLog::query()
@@ -389,12 +391,29 @@ class OrderController extends Controller
                     'direction' => $m->direction,
                     'status' => $m->status,
                     'internal_template_key' => $m->internal_template_key,
-                    'label' => OrderEventLabels::whatsappTemplate(
-                        $m->internal_template_key ?: $m->direction
-                    ),
+                    'label' => OrderEventLabels::whatsappTemplate($m->internal_template_key ?: $m->direction),
                     'phone_number' => $m->phone_number,
                     'sent_at' => optional($m->sent_at)?->toIso8601String(),
                     'received_at' => optional($m->received_at)?->toIso8601String(),
+                ])->values()->all(),
+                'return_cases' => $order->returnCases->map(fn ($case) => [
+                    'id' => $case->id,
+                    'status' => $case->status,
+                    'reason' => $case->reason,
+                    'resolution_type' => $case->resolution_type,
+                    'customer_notes' => $case->customer_notes,
+                    'admin_notes' => $case->admin_notes,
+                    'refund_amount' => (float) $case->refund_amount,
+                    'replacement_amount' => (float) $case->replacement_amount,
+                    'additional_shipping_amount' => (float) $case->additional_shipping_amount,
+                    'completed_at' => optional($case->completed_at)?->toIso8601String(),
+                    'items' => $case->items->map(fn ($item) => [
+                        'id' => $item->id,
+                        'order_item_id' => $item->order_item_id,
+                        'name' => $item->orderItem?->name,
+                        'requested_quantity' => (int) $item->requested_quantity,
+                        'returned_quantity' => (int) $item->returned_quantity,
+                    ])->values()->all(),
                 ])->values()->all(),
             ],
             'events' => $events,
@@ -405,6 +424,7 @@ class OrderController extends Controller
             'adminNotesUrl' => route('admin.orders.admin-notes.update', $order),
             'editPolicy' => $this->orders->editPolicy($order),
             'editUrl' => route('admin.orders.items.update', $order),
+            'returnUrl' => route('admin.orders.returns.store', $order),
             'shippingActions' => [
                 'createUrl' => route('admin.orders.shipping.store', $order),
                 'refreshUrl' => route('admin.orders.shipping.refresh', $order),
@@ -549,6 +569,145 @@ class OrderController extends Controller
             ->with('success', 'Pesanan diperbarui. Harga dihitung ulang dan konfirmasi dikirim ulang ke pelanggan.');
     }
 
+    public function createReturn(Request $request, Order $order): RedirectResponse
+    {
+        $allowedStatuses = ['delivered', 'completed'];
+        if (! in_array($order->order_status, $allowedStatuses, true)) {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['return' => 'Retur hanya dapat dicatat setelah pesanan berstatus Sampai atau Selesai.']);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:120'],
+            'customer_notes' => ['required', 'string', 'max:5000'],
+            'admin_notes' => ['nullable', 'string', 'max:5000'],
+            'resolution_type' => ['nullable', 'in:refund,replacement,reship,compensation,no_compensation'],
+            'refund_amount' => ['nullable', 'numeric', 'min:0'],
+            'replacement_amount' => ['nullable', 'numeric', 'min:0'],
+            'additional_shipping_amount' => ['nullable', 'numeric', 'min:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.order_item_id' => ['required', 'integer'],
+            'items.*.requested_quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $order->load('items');
+        $itemsById = $order->items->keyBy('id');
+        foreach ($validated['items'] as $row) {
+            $item = $itemsById->get((int) $row['order_item_id']);
+            if (! $item || (int) $row['requested_quantity'] > (int) $item->quantity) {
+                return redirect()->route('admin.orders.show', $order)
+                    ->withErrors(['items' => 'Jumlah retur tidak boleh melebihi jumlah pada pesanan.'])
+                    ->withInput();
+            }
+        }
+
+        $case = DB::transaction(function () use ($order, $validated, $request, $itemsById): OrderReturnCase {
+            $case = OrderReturnCase::create([
+                'order_id' => $order->id,
+                'status' => 'open',
+                'reason' => trim($validated['reason']),
+                'customer_notes' => trim($validated['customer_notes']),
+                'admin_notes' => filled($validated['admin_notes'] ?? null) ? trim($validated['admin_notes']) : null,
+                'resolution_type' => $validated['resolution_type'] ?? null,
+                'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
+                'replacement_amount' => (float) ($validated['replacement_amount'] ?? 0),
+                'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
+                'created_by_user_id' => $request->user()->id,
+                'updated_by_user_id' => $request->user()->id,
+            ]);
+
+            foreach ($validated['items'] as $row) {
+                $item = $itemsById->get((int) $row['order_item_id']);
+                $case->items()->create([
+                    'order_item_id' => $item->id,
+                    'requested_quantity' => (int) $row['requested_quantity'],
+                    'returned_quantity' => 0,
+                ]);
+            }
+
+            $this->orders->transition(
+                $order,
+                'return_in_process',
+                $request->user()->id,
+                'admin_return',
+                ['return_case_id' => $case->id, 'reason' => $case->reason],
+            );
+
+            return $case;
+        });
+
+        $this->whatsapp->sendTemplateMessage(
+            $order->customer_phone,
+            'order_issue_followup',
+            [$order->customer_name ?: 'Kak', $order->order_number],
+            $order->id,
+        );
+
+        return redirect()->route('admin.orders.show', $order)
+            ->with('success', 'Kasus retur dicatat dan status pesanan menjadi Retur Diproses.');
+    }
+
+    public function completeReturn(Request $request, Order $order, OrderReturnCase $returnCase): RedirectResponse
+    {
+        if ((int) $returnCase->order_id !== (int) $order->id || $order->order_status !== 'return_in_process') {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['return' => 'Kasus retur tidak cocok dengan status pesanan.']);
+        }
+
+        $validated = $request->validate([
+            'resolution_type' => ['required', 'in:refund,replacement,reship,compensation,no_compensation'],
+            'admin_notes' => ['required', 'string', 'max:5000'],
+            'refund_amount' => ['nullable', 'numeric', 'min:0'],
+            'replacement_amount' => ['nullable', 'numeric', 'min:0'],
+            'additional_shipping_amount' => ['nullable', 'numeric', 'min:0'],
+            'returned_items' => ['nullable', 'array'],
+            'returned_items.*.id' => ['required', 'integer'],
+            'returned_items.*.returned_quantity' => ['required', 'integer', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($request, $order, $returnCase, $validated): void {
+            $returnCase->update([
+                'status' => 'completed',
+                'resolution_type' => $validated['resolution_type'],
+                'admin_notes' => trim($validated['admin_notes']),
+                'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
+                'replacement_amount' => (float) ($validated['replacement_amount'] ?? 0),
+                'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
+                'completed_at' => now(),
+                'updated_by_user_id' => $request->user()->id,
+            ]);
+
+            foreach ($validated['returned_items'] ?? [] as $row) {
+                $returnCase->items()->whereKey((int) $row['id'])->update([
+                    'returned_quantity' => (int) $row['returned_quantity'],
+                ]);
+            }
+
+            $this->orders->transition(
+                $order,
+                'return_completed',
+                $request->user()->id,
+                'admin_return',
+                [
+                    'return_case_id' => $returnCase->id,
+                    'resolution_type' => $validated['resolution_type'],
+                    'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
+                ],
+            );
+        });
+
+        $this->whatsapp->sendTemplateMessage(
+            $order->customer_phone,
+            'order_returned',
+            [$order->customer_name ?: 'Kak', $order->order_number, '-'],
+            $order->id,
+        );
+
+        return redirect()->route('admin.orders.show', $order)
+            ->with('success', 'Kasus retur selesai dan tercatat dalam riwayat order.');
+    }
+
+
     public function updateStatus(Request $request, Order $order): RedirectResponse
     {
         $validated = $request->validate([
@@ -558,6 +717,9 @@ class OrderController extends Controller
 
         $from = $order->order_status;
         $to = $validated['order_status'];
+        if ($to === 'return_in_process') {
+            return $this->statusRedirect($request, $order)->withErrors(['order_status' => 'Retur wajib dicatat melalui form retur admin agar alasan, item, dan catatan terdokumentasi.']);
+        }
         $userId = $request->user()->id;
         $isCod = $this->isCod($order);
         $cancelReason = filled($validated['cancel_reason'] ?? null)
@@ -823,17 +985,26 @@ class OrderController extends Controller
         return match ($order->order_status) {
             // Perlu Perhatian → Lanjutkan Proses (primary) + Proses Retur (sekunder).
             'issue' => [
-                'label' => 'Proses Retur',
-                'next_status' => 'return_in_process',
+                'label' => 'Catat Retur',
+                'next_status' => null,
                 'kind' => 'start_return',
-                'hint' => 'Menandai pesanan masuk proses retur.',
+                'hint' => 'Buka form retur admin dan lengkapi alasan serta item yang dikembalikan.',
+                'href' => route('admin.orders.show', $order).'#return-case',
             ],
             // Sampai → Selesaikan Pesanan (primary) + Proses Retur (sekunder).
-            'delivered' => [
-                'label' => 'Proses Retur',
-                'next_status' => 'return_in_process',
+            'completed' => [
+                'label' => 'Catat Retur',
+                'next_status' => null,
                 'kind' => 'start_return',
-                'hint' => 'Menandai pesanan masuk proses retur.',
+                'hint' => 'Buka form retur admin dan lengkapi alasan serta item yang dikembalikan.',
+                'href' => route('admin.orders.show', $order).'#return-case',
+            ],
+            'delivered' => [
+                'label' => 'Catat Retur',
+                'next_status' => null,
+                'kind' => 'start_return',
+                'hint' => 'Buka form retur admin dan lengkapi alasan serta item yang dikembalikan.',
+                'href' => route('admin.orders.show', $order).'#return-case',
             ],
             default => null,
         };

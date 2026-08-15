@@ -725,3 +725,8 @@ Indexes:
 - `id` (`INTEGER`), PK, NN
 - `migration` (`VARCHAR`), NN
 - `batch` (`INTEGER`), NN
+
+
+## Return case ledger (2026-08-15)
+
+order_return_cases stores the admin-managed return record independently from orders.order_status: reason, customer/admin notes, resolution type, refund/replacement/additional shipping amounts, actors, and completion timestamp. order_return_items stores requested and returned quantities by order_item_id. Source order and order item history remain immutable; return_in_process and return_completed are audit status milestones only.

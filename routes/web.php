@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\PageController as AdminPageController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ProductAttributeController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\ProductPopularityBoostController;
 use App\Http\Controllers\Admin\MediaUploadController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
@@ -190,6 +191,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('products/{product}/unarchive', [AdminProductController::class, 'unarchive'])->name('products.unarchive');
     Route::post('products/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
     Route::post('products/{product}/duplicate', [AdminProductController::class, 'duplicate'])->name('products.duplicate');
+    Route::get('products/popularity-boosts', [ProductPopularityBoostController::class, 'index'])->name('products.popularity-boosts.index');
+    Route::post('products/popularity-boosts', [ProductPopularityBoostController::class, 'store'])->name('products.popularity-boosts.store');
+    Route::post('products/popularity-boosts/{boost}/disable', [ProductPopularityBoostController::class, 'disable'])->name('products.popularity-boosts.disable');
+    Route::post('products/popularity-boosts/{boost}/enable', [ProductPopularityBoostController::class, 'enable'])->name('products.popularity-boosts.enable');
 
     // Variants
     Route::get('products/{product}/variants', [ProductVariantController::class, 'index'])->name('products.variants.index');
@@ -243,6 +248,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('orders/export', [AdminOrderController::class, 'export'])->name('orders.export');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::put('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+    Route::post('orders/{order}/returns', [AdminOrderController::class, 'createReturn'])->name('orders.returns.store');
+    Route::post('orders/{order}/returns/{returnCase}/complete', [AdminOrderController::class, 'completeReturn'])->name('orders.returns.complete');
     Route::put('orders/{order}/items', [AdminOrderController::class, 'updateItems'])->name('orders.items.update');
     Route::put('orders/{order}/admin-notes', [AdminOrderController::class, 'updateAdminNotes'])->name('orders.admin-notes.update');
     Route::post('orders/{order}/shipping', [AdminOrderController::class, 'storeShipping'])->name('orders.shipping.store');

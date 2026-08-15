@@ -108,6 +108,7 @@ interface PrimaryAction {
   next_status: string | null
   kind?: string
   hint?: string | null
+  href?: string
 }
 
 interface EditPolicy {
@@ -459,6 +460,138 @@ function OrderEditPanel({
   )
 }
 
+
+interface ReturnCaseItem {
+  id: number
+  order_item_id: number
+  name?: string | null
+  requested_quantity: number
+  returned_quantity: number
+}
+
+interface ReturnCase {
+  id: number
+  status: string
+  reason: string
+  resolution_type?: string | null
+  customer_notes?: string | null
+  admin_notes?: string | null
+  refund_amount: number
+  replacement_amount: number
+  additional_shipping_amount: number
+  completed_at?: string | null
+  items: ReturnCaseItem[]
+}
+
+function ReturnCasePanel({
+  order,
+  cases,
+  returnUrl,
+}: {
+  order: OrderDetail
+  cases: ReturnCase[]
+  returnUrl: string
+}) {
+  const form = useForm({
+    reason: "rusak",
+    customer_notes: "",
+    admin_notes: "",
+    resolution_type: "",
+    refund_amount: "0",
+    replacement_amount: "0",
+    additional_shipping_amount: "0",
+    items: order.items.map((item) => ({ order_item_id: item.id, requested_quantity: item.quantity })),
+  })
+  const [completion, setCompletion] = React.useState<Record<number, { resolution_type: string; admin_notes: string }>>({})
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault()
+    form.post(returnUrl, { preserveScroll: true })
+  }
+
+  return (
+    <div id="return-case"><SectionCard title="Retur & penyelesaian">
+      <div className="space-y-4">
+        {cases.map((item) => (
+          <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold">Kasus #{item.id} · {item.reason}</span>
+              <StatusBadge status={item.status} />
+            </div>
+            {item.customer_notes ? <p className="mt-2 text-xs text-muted-foreground">{item.customer_notes}</p> : null}
+            {item.admin_notes ? <p className="mt-1 text-xs text-muted-foreground">Catatan admin: {item.admin_notes}</p> : null}
+            {item.status === "open" ? (
+              <form
+                className="mt-3 space-y-3 border-t border-border pt-3"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const data = completion[item.id] ?? { resolution_type: "no_compensation", admin_notes: "" }
+                  router.post(routeUrl("admin.orders.returns.complete", { order: order.id, returnCase: item.id }), data, { preserveScroll: true })
+                }}
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field id={`return-resolution-${item.id}`} label="Resolusi" required>
+                    <Select
+                      value={(completion[item.id] ?? { resolution_type: "no_compensation" }).resolution_type}
+                      onChange={(event) => setCompletion((current) => ({ ...current, [item.id]: { ...(current[item.id] ?? { admin_notes: "" }), resolution_type: event.target.value } }))}
+                    >
+                      <option value="no_compensation">Tidak ada kompensasi</option>
+                      <option value="refund">Refund</option>
+                      <option value="replacement">Penggantian barang</option>
+                      <option value="reship">Kirim ulang</option>
+                      <option value="compensation">Kompensasi</option>
+                    </Select>
+                  </Field>
+                  <Field id={`return-completion-note-${item.id}`} label="Catatan penyelesaian" required>
+                    <Textarea
+                      rows={2}
+                      value={(completion[item.id] ?? { admin_notes: "" }).admin_notes}
+                      onChange={(event) => setCompletion((current) => ({ ...current, [item.id]: { ...(current[item.id] ?? { resolution_type: "no_compensation" }), admin_notes: event.target.value } }))}
+                    />
+                  </Field>
+                </div>
+                <Button type="submit" size="sm">Tandai retur selesai</Button>
+              </form>
+            ) : null}
+          </div>
+        ))}
+        {order.order_status === "delivered" || order.order_status === "completed" ? (
+          <form className="space-y-3 border-t border-border pt-4" onSubmit={submit}>
+            <p className="text-xs text-muted-foreground">Isi admin. Customer mengirim kronologi/foto melalui WhatsApp; tidak ada form retur publik.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field id="return-reason" label="Alasan retur" required error={form.errors.reason}>
+                <Select value={form.data.reason} onChange={(event) => form.setData("reason", event.target.value)}>
+                  <option value="rusak">Rusak/pecah</option>
+                  <option value="salah_ukuran">Salah ukuran</option>
+                  <option value="salah_produk">Salah produk</option>
+                  <option value="kurang">Barang kurang</option>
+                  <option value="lainnya">Lainnya</option>
+                </Select>
+              </Field>
+              <Field id="return-customer-notes" label="Kronologi pelanggan" required error={form.errors.customer_notes}>
+                <Textarea rows={2} value={form.data.customer_notes} onChange={(event) => form.setData("customer_notes", event.target.value)} />
+              </Field>
+            </div>
+            <Field id="return-admin-notes" label="Catatan admin (opsional)" error={form.errors.admin_notes}>
+              <Textarea rows={2} value={form.data.admin_notes} onChange={(event) => form.setData("admin_notes", event.target.value)} placeholder="Bukti unboxing/foto dikirim via WhatsApp, hasil inspeksi, dll." />
+            </Field>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold">Item yang diretur</p>
+              {form.data.items.map((row, index) => (
+                <div key={row.order_item_id} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="min-w-0 flex-1 truncate">{order.items[index]?.name ?? `Item #${row.order_item_id}`}</span>
+                  <Input className="w-24" type="number" min="1" max={order.items[index]?.quantity ?? 1} value={String(row.requested_quantity)} onChange={(event) => form.setData("items", form.data.items.map((line, i) => i === index ? { ...line, requested_quantity: Number(event.target.value) || 1 } : line))} />
+                </div>
+              ))}
+            </div>
+            <Button type="submit" disabled={form.processing}>{form.processing ? "Menyimpan..." : "Catat retur"}</Button>
+          </form>
+        ) : null}
+      </div>
+    </SectionCard></div>
+  )
+}
+
 export default function OrderShow({
   order,
   events = [],
@@ -471,6 +604,8 @@ export default function OrderShow({
   workflowLinks,
   editPolicy,
   editUrl,
+  returnCases = [],
+  returnUrl,
 }: {
   order: OrderDetail
   events?: OrderEvent[]
@@ -483,6 +618,8 @@ export default function OrderShow({
   workflowLinks: Array<{ label: string; href: string }>
   editPolicy?: EditPolicy | null
   editUrl?: string
+  returnCases?: ReturnCase[]
+  returnUrl: string
 }) {
   const isCod = order.flow === "cod" || order.cod_flag
   const lacakRef = React.useRef<HTMLElement | null>(null)
@@ -666,6 +803,9 @@ export default function OrderShow({
             ) : null}
           </div>
         ) : null}
+        {secondaryAction?.href ? (
+          <Button asChild variant="secondary" className="shrink-0"><a href={secondaryAction.href}>{secondaryAction.label}</a></Button>
+        ) : null}
         {secondaryAction?.next_status ? (
           <Button
             variant="secondary"
@@ -804,8 +944,10 @@ export default function OrderShow({
         <p className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
           {order.flow_hint}
         </p>
+
       ) : null}
 
+      <ReturnCasePanel order={order} cases={returnCases} returnUrl={returnUrl} />
 
       {/* Konten utama + aside */}
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">

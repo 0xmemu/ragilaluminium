@@ -14,13 +14,13 @@ class OrderStateMachine
     private const ORDER_TRANSITIONS = [
         'pending_payment' => ['processing', 'issue', 'cancelled'],
         'processing' => ['shipped', 'issue', 'cancelled'],
-        'shipped' => ['delivered', 'issue', 'return_in_process'],
+        'shipped' => ['delivered', 'issue'],
         'delivered' => ['completed', 'issue', 'return_in_process'],
-        'issue' => ['processing', 'shipped', 'delivered', 'return_in_process'],
+        'issue' => ['processing', 'shipped', 'delivered'],
         'return_in_process' => ['completed', 'issue', 'return_completed'],
         // Retur Selesai: terminal — pesanan ditutup sebagai retur (tab "Retur Selesai").
         'return_completed' => [],
-        'completed' => [],
+        'completed' => ['return_in_process'],
         'cancelled' => [],
     ];
 

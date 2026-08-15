@@ -152,11 +152,11 @@ class OrderStateMachineTest extends TestCase
         $this->assertSame('delivered', $order->fresh()->order_status);
     }
 
-    public function test_completed_and_cancelled_orders_are_terminal(): void
+    public function test_completed_orders_can_enter_return_but_cancelled_is_terminal(): void
     {
         $states = app(OrderStateMachine::class);
 
-        $this->assertFalse($states->canTransition('completed', 'issue'));
+        $this->assertTrue($states->canTransition('completed', 'return_in_process'));
         $this->assertFalse($states->canTransition('cancelled', 'processing'));
     }
 }

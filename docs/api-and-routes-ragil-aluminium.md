@@ -301,3 +301,10 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 ## 5. Fallback
 
 - `GET {fallbackPlaceholder}` -> `Closure` (fallback: URL publik tak dikenal -> `abort(404)` -> render `Public/Error`)  [web]
+
+
+## Admin order returns (2026-08-15)
+
+- POST /admin/orders/{order}/returns"éİyø§yÔ admin-only create return case. Valid only when order status is delivered or completed; requires reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions order to return_in_process, and records audit/WhatsApp follow-up.
+- POST /admin/orders/{order}/returns/{returnCase}/complete ºw^~)Şt admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
+- Direct PUT /admin/orders/{order}/status to return_in_process is rejected so undocumented returns cannot bypass the case form.

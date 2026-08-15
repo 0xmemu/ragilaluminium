@@ -363,7 +363,7 @@ export default function ProductForm({
                       </Field>
                     ))}
                   </div>
-                    {!variantsForm.data.randomize_stock ? <Field key="manual-stock" id={"wizard-variant-stock-" + index} label="Stok awal manual" error={variantsForm.errors["variants." + index + ".stock"]}><Input type="number" min="0" step="1" value={variant.stock ?? ""} onChange={(event) => updateVariant(index, "stock", event.target.value)} /></Field> : null}
+                    {!variantsForm.data.randomize_stock ? <Field key="manual-stock" id={"wizard-variant-stock-" + index} label="Stok awal manual" error={(variantsForm.errors as Record<string, string | undefined>)["variants." + index + ".stock"]}><Input type="number" min="0" step="1" value={variant.stock ?? ""} onChange={(event) => updateVariant(index, "stock", event.target.value)} /></Field> : null}
                 </article>
               ))}
               <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-6">

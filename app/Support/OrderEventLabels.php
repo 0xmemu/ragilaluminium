@@ -18,6 +18,7 @@ class OrderEventLabels
         'completed' => 'Selesai',
         'issue' => 'Kendala',
         'return_in_process' => 'Retur diproses',
+        'return_completed' => 'Retur selesai',
         'cancelled' => 'Dibatalkan',
     ];
 

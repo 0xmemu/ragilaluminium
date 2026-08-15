@@ -149,6 +149,7 @@ class OrderTrackingPresenter
             'cancelled' => 'Pesanan dibatalkan.',
             'issue' => 'Ada kendala pada pesanan. Tim akan menghubungi Anda.',
             'return_in_process' => 'Retur pesanan sedang diproses.',
+            'return_completed' => 'Retur pesanan selesai dan telah dicatat oleh admin.',
             default => OrderEventLabels::eventType('order_status_changed', $payload),
         };
     }
