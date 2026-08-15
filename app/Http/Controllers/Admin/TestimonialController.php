@@ -210,6 +210,7 @@ class TestimonialController extends Controller
                 'image_urls' => $testimonial->image_urls ?? [],
                 'sort_order' => $testimonial->sort_order,
                 'published' => $testimonial->published,
+                'moderation_status' => $testimonial->moderation_status ?: 'approved',
             ],
             'products' => $this->productOptions(),
             'sources' => array_values($sources),
@@ -217,6 +218,7 @@ class TestimonialController extends Controller
             'intent' => $intent,
             'submitUrl' => route('admin.testimonials.update', $testimonial),
             'indexUrl' => $indexUrl,
+            'moderateUrl' => route('admin.testimonials.moderate', $testimonial),
         ]);
     }
 

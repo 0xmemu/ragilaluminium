@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, Link, router, useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
@@ -21,6 +21,7 @@ interface TestimonialRecord {
   published: boolean
   author_type?: string
   order_id?: number | null
+  moderation_status?: string
 }
 
 const DEFAULT_SOURCE_LABELS: Record<string, string> = {
@@ -38,6 +39,7 @@ export default function TestimonialForm({
   intent = "website",
   submitUrl,
   indexUrl,
+  moderateUrl = null,
   reviewMode = false,
   verifiedOrders = [],
 }: {
@@ -48,6 +50,7 @@ export default function TestimonialForm({
   intent?: "marketplace" | "website" | "admin-order"
   submitUrl: string
   indexUrl: string
+  moderateUrl?: string | null
   reviewMode?: boolean
   verifiedOrders?: Array<{ id: number; label: string; status: string }>
 }) {
@@ -68,6 +71,7 @@ export default function TestimonialForm({
     published: boolean
     author_type: string
     order_id: number | null
+    moderation_status: string
   }>({
     customer_name: testimonial?.customer_name ?? "",
     message: testimonial?.message ?? "",
@@ -82,6 +86,7 @@ export default function TestimonialForm({
     published: testimonial?.published ?? false,
     author_type: reviewMode ? "admin" : "customer",
     order_id: testimonial?.order_id ?? null,
+    moderation_status: testimonial?.moderation_status ?? "approved",
   })
 
   const isMarketplace = ["shopee", "whatsapp"].includes(form.data.source) || isMarketplaceIntent
@@ -180,6 +185,19 @@ export default function TestimonialForm({
                 </Select>
               </Field>
             ) : null}
+
+            {editing && moderateUrl ? (
+              <div className="sm:col-span-2 rounded-lg border border-border bg-muted/20 p-3">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <Field id="testimonial-moderation" label="Status moderasi" error={form.errors.moderation_status} hint="Teks pelanggan tetap immutable; rejected otomatis disembunyikan.">
+                    <Select value={form.data.moderation_status} onChange={(event) => form.setData("moderation_status", event.target.value)}>
+                      <option value="pending">Menunggu moderasi</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option>
+                    </Select>
+                  </Field>
+                  <Button type="button" variant="secondary" disabled={form.processing} onClick={() => router.post(moderateUrl, { moderation_status: form.data.moderation_status }, { preserveScroll: true })}>Simpan moderasi</Button>
+                </div>
+              </div>
+            ) : null}
             {!isMarketplaceIntent ? (
               <Field
                 id="testimonial-message"
@@ -201,6 +219,7 @@ export default function TestimonialForm({
                 <Textarea rows={3} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
               </Field>
             )}
+
             {!isMarketplaceIntent ? (
               <Field
                 id="testimonial-image-urls"
@@ -212,6 +231,7 @@ export default function TestimonialForm({
                 <Textarea rows={3} value={form.data.image_urls} onChange={(event) => form.setData("image_urls", event.target.value)} placeholder="https://contoh.com/foto-2.jpg" />
               </Field>
             ) : null}
+
             {!isMarketplaceIntent ? (
               <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
                 <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
@@ -239,6 +259,7 @@ export default function TestimonialForm({
                 ))}
               </Select>
             </Field>
+
             {!isMarketplaceIntent ? (
               <Field id="testimonial-product" label="Produk terkait" error={form.errors.product_id} className="sm:col-span-2">
                 <Select value={form.data.product_id} onChange={(event) => form.setData("product_id", event.target.value)}>
@@ -249,6 +270,7 @@ export default function TestimonialForm({
                 </Select>
               </Field>
             ) : null}
+
             {!isMarketplaceIntent ? (
               <Field id="testimonial-sort" label="Urutan" error={form.errors.sort_order}>
                 <Input
