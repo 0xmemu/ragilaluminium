@@ -57,7 +57,7 @@ class InstallationGallery
                 'image_url' => $cover,
                 'label' => (string) ($catalogModel['title'] ?? CatalogLabels::modelCardTitle($category, $model)),
                 'product_count' => max(0, (int) ($catalogModel['count'] ?? 0)),
-                'photo_count' => $stats['photo_count'] > 0 ? $stats['photo_count'] : max(0, (int) ($catalogModel['count'] ?? 0)),
+                'photo_count' => (int) $stats['photo_count'],
                 'video_count' => $stats['video_count'],
                 'category' => $category,
                 'model' => $model,
@@ -112,7 +112,7 @@ class InstallationGallery
                     'image_url' => $cover,
                     'label' => self::productInstallationLabel($product),
                     'product_count' => 1,
-                    'photo_count' => max(1, $product->media->count()),
+                    'photo_count' => (int) $product->media->count(),
                     'video_count' => 0,
                     'category' => $category,
                     'model' => $model,
@@ -164,6 +164,16 @@ class InstallationGallery
         }
 
         return $cards;
+    }
+
+    /**
+     * @deprecated Prefer modelCards() for listing pages.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function items(int $limit = 24): array
+    {
+        return self::productCards($limit);
     }
 
     /**
@@ -281,7 +291,7 @@ class InstallationGallery
         return match (strtoupper(trim($category))) {
             'DOOR' => 'doors',
             'BOUVEN' => 'bouven',
-            default => 'windows',
+            default => 'window',
         };
     }
 
@@ -296,6 +306,18 @@ class InstallationGallery
         };
     }
 
+    public static function modelHref(?string $category, ?string $model): ?string
+    {
+        if (! filled($category) || ! filled($model)) {
+            return null;
+        }
+
+        return route('installation.model', [
+            'category' => self::categoryToSlug($category),
+            'model' => self::modelToSlug($model),
+        ], absolute: false);
+    }
+
     public static function modelToSlug(string $model): string
     {
         return strtolower(str_replace('_', '-', trim($model)));
@@ -304,6 +326,25 @@ class InstallationGallery
     public static function modelFromSlug(string $slug): string
     {
         return strtoupper(str_replace('-', '_', trim($slug)));
+    }
+
+    /**
+     * Parse catalog installation slot list such as 1,3,5.
+     *
+     * @return list<int>
+     */
+    public static function parseSlots(?string $raw): array
+    {
+        if (! filled($raw)) {
+            return [];
+        }
+
+        return Collection::make(preg_split('/[,\\s]+/', (string) $raw) ?: [])
+            ->map(fn ($value) => (int) $value)
+            ->filter(fn (int $number): bool => $number >= 1 && $number <= 9)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

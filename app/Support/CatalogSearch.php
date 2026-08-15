@@ -36,13 +36,14 @@ class CatalogSearch
         // terbalik (50x100) supaya pencarian dimensi menemukan produk yang
         // namanya ditulis "Tinggi 100 x Panjang 50 cm".
         $sizePatterns = self::sizeLikePatterns($term);
+        $dimensionPairs = self::dimensionPairs($term);
 
         // Term ukuran murni ("100x50") TIDAK boleh memakai pola literal `%term%`
         // karena memicu digit-substring: "%50x100%" cocok dengan suffix
         // "(150x100)". Untuk size term, hanya pola terjangkarkan yang dipakai.
         $isSizeTerm = preg_match('/^\d+\s*[x×]\s*\d+$/iu', trim($term)) === 1;
 
-        return $query->where(function ($inner) use ($term, $sizePatterns, $modelCodes, $categoryCodes, $hasTaxonomyCombo, $isSizeTerm) {
+        return $query->where(function ($inner) use ($term, $sizePatterns, $dimensionPairs, $modelCodes, $categoryCodes, $hasTaxonomyCombo, $isSizeTerm) {
             // LIKE selalu pakai ESCAPE eksplisit: tanpa itu, backslash-escape (`\%`)
             // hanya default di MySQL — SQLite/PostgreSQL memperlakukan `\` sebagai
             // karakter literal sehingga pola yang sudah di-escape jadi salah.
@@ -77,13 +78,19 @@ class CatalogSearch
                 });
             });
 
-            $inner->orWhereHas('activeVariants', function ($vq) use ($term, $sizePatterns) {
-                $vq->where(function ($variant) use ($term, $sizePatterns) {
+            $inner->orWhereHas('activeVariants', function ($vq) use ($term, $sizePatterns, $dimensionPairs) {
+                $vq->where(function ($variant) use ($term, $sizePatterns, $dimensionPairs) {
                     $patterns = $sizePatterns !== [] ? $sizePatterns : ['%'.$term.'%'];
                     foreach ($patterns as $pattern) {
                         self::likeClause($variant, 'variant_sku', $pattern, true);
                         self::likeClause($variant, 'variation_1_option', $pattern, true);
                         self::likeClause($variant, 'variation_2_option', $pattern, true);
+                    }
+
+                    foreach ($dimensionPairs as [$height, $width]) {
+                        $variant->orWhere(function ($dimensions) use ($height, $width) {
+                            $dimensions->where('height_cm', $height)->where('width_cm', $width);
+                        });
                     }
                 });
             });
@@ -103,6 +110,26 @@ class CatalogSearch
                 }
             }
         });
+    }
+
+    /**
+     * @return list<array{0: float, 1: float}>
+     */
+    protected static function dimensionPairs(string $term): array
+    {
+        if (! preg_match('/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/iu', trim($term), $matches)) {
+            return [];
+        }
+
+        $height = (float) $matches[1];
+        $width = (float) $matches[2];
+        $pairs = [[$height, $width]];
+
+        if ($height !== $width) {
+            $pairs[] = [$width, $height];
+        }
+
+        return $pairs;
     }
 
     /**
