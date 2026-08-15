@@ -672,6 +672,12 @@ Indexes:
 - `payload` (`TEXT`), nullable
 - `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
 - `created_at` (`DATETIME`), NN
+- `source` (`VARCHAR`), NN, default system
+- `before` (`TEXT`), nullable JSON snapshot
+- `after` (`TEXT`), nullable JSON snapshot
+- `reason` (`TEXT`), nullable
+- `reference_type` (`VARCHAR`), nullable
+- `reference_id` (`VARCHAR`), nullable
 
 Indexes:
 - `idx_event_logs_event_type` (IDX on `event_type`)
@@ -814,3 +820,38 @@ Village/kelurahan postal mappings imported into a dataset version.
 UQ: `postal_dataset_id + village_id + village_name + postal_code`; IDX: dataset/postal and dataset/village.
 
 Import baseline: data.go.id “Kode Pos Desa Kelurahan di Indonesia”; Pos Indonesia is retained as a verification reference. Import command: `php artisan postal:import {path} --version=... --activate`. Existing orders retain their postal snapshot and are not rewritten.
+
+## 15. Operational settings & audit contract (2026-08-15)
+
+### 15.1 `operational_setting_versions`
+
+Append-only version snapshots for business-operational settings. The latest version
+per `setting_key` is effective; prior versions are retained and immutable.
+
+- `id` (`INTEGER`), PK
+- `setting_key` (`VARCHAR`), NN: `cod`, `shipping_subsidy`, `stock_randomization`, or `eta`
+- `version` (`INTEGER`), NN; unique with `setting_key`
+- `value` (`TEXT`), NN JSON snapshot
+- `actor_id` (`INTEGER`), nullable, FK -> users.id
+- `source` (`VARCHAR`), NN, default `system`
+- `reason` (`TEXT`), nullable
+- `reference_type` / `reference_id`, nullable
+- `created_at` (`DATETIME`), NN
+
+COD snapshots are percentage-only and retain the maximum order amount. Shipping
+subsidy snapshots retain percent/fixed rules and carrier selection. Stock
+randomization defaults to enabled with a configurable range (default 700–5000);
+existing stock is never re-randomized on edit. ETA snapshots include a display
+buffer (default one day). Provider credentials/readiness are intentionally absent
+from this contract.
+
+### 15.2 Immutable activity metadata
+
+`event_logs` remains the single Log Aktivitas stream (including settings and
+auth/login/password events). Audit records use `source`, `before`, `after`,
+`reason`, and `reference_*` metadata. Event logs and operational setting versions
+are append-only; update/delete attempts are rejected at the model layer.
+
+WhatsApp automation is independent of the web-admin session: server-side credentials,
+queued jobs, retries, webhooks, reconnect handling, and delivery audit continue
+without a logged-in admin and are not reset by login rotation or logout.
