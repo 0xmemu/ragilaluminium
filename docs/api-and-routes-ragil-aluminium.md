@@ -258,9 +258,9 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 - `GET /admin/testimonials/{testimonial}/edit` -> `Admin\TestimonialController@edit`  (name: `admin.testimonials.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/testimonials/{testimonial}/publish` -> `Admin\TestimonialController@publish`  (name: `admin.testimonials.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/testimonials/{testimonial}/unpublish` -> `Admin\TestimonialController@unpublish`  (name: `admin.testimonials.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
--  ->  (name: ); verified delivered/completed order tanpa duplikasi
--  ->  (name: ); status moderasi dan audit
--  ->  (name: ); tambah foto/video tanpa mengubah teks pelanggan
+- `POST /admin/testimonials/admin-review` -> `Admin\TestimonialController@storeAdminReview` (name: `admin.testimonials.admin-review.store`); verified delivered/completed order tanpa duplikasi
+- `POST /admin/testimonials/{testimonial}/moderate` -> `Admin\TestimonialController@moderate` (name: `admin.testimonials.moderate`); status moderasi dan audit
+- `POST /admin/testimonials/{testimonial}/media` -> `Admin\TestimonialController@addMedia` (name: `admin.testimonials.media`); tambah foto/video tanpa mengubah teks pelanggan
 - `GET /admin/users` -> `Admin\UserController@index`  (name: `admin.users.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/users` -> `Admin\UserController@store`  (name: `admin.users.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/users/create` -> `Admin\UserController@create`  (name: `admin.users.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
