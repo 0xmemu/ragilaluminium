@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AdminNotification;
 use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\Shipping\JntCargoClient;
 use App\Services\Shipping\JntResponse;
 use App\Services\ShippingService;
@@ -97,6 +99,67 @@ class ShippingQuoteContractTest extends TestCase
         $this->assertSame(1, AdminNotification::where('type', 'shipping_quote_manual_review')
             ->where('related_id', $order->id)
             ->whereNull('read_at')
+            ->count());
+    }
+
+    public function test_checkout_creates_manual_review_notification_for_provisional_quote(): void
+    {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('tariff')->andThrow(new \RuntimeException('provider unavailable'));
+        });
+
+        $product = Product::create([
+            'parent_sku' => 'QUOTE-TEST-1',
+            'name' => 'Window',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'QUOTE-TEST-1-V1',
+            'price' => 100000,
+            'stock' => 2,
+            'status' => 'active',
+        ]);
+
+        $this->withSession([
+            'ragil_cart' => [
+                $variant->variant_sku => [
+                    'line_id' => $variant->variant_sku,
+                    'parent_sku' => $product->parent_sku,
+                    'variant_sku' => $variant->variant_sku,
+                    'name' => $product->name,
+                    'unit_price' => 100000,
+                    'quantity' => 1,
+                ],
+            ],
+            'checkout_details' => [
+                'name' => 'Budi',
+                'phone' => '0812',
+                'province' => 'JAWA BARAT',
+                'city' => 'KOTA BANDUNG',
+                'district' => 'COBLONG',
+                'village' => 'LEBAK GEDE',
+                'address_line1' => 'Jl A',
+                'postal_code' => '40132',
+            ],
+        ]);
+
+        $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
+            ->assertRedirectContains('/order/RA-');
+
+        $order = Order::latest('id')->firstOrFail();
+        $this->assertDatabaseHas('admin_notifications', [
+            'type' => 'shipping_quote_manual_review',
+            'related_type' => Order::class,
+            'related_id' => $order->id,
+        ]);
+        $this->assertSame(1, AdminNotification::where('type', 'shipping_quote_manual_review')
+            ->where('related_id', $order->id)
             ->count());
     }
 }

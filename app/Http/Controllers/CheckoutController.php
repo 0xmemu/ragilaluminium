@@ -13,6 +13,7 @@ use App\Services\VoucherService;
 use App\Support\CodSettings;
 use App\Support\OperationalTelemetry;
 use App\Support\OrderEta;
+use App\Support\ShippingQuoteManualReviewNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -86,6 +87,11 @@ class CheckoutController extends Controller
                 'subsidy' => $breakdown['subsidy'],
                 'net' => $breakdown['net'],
                 'applied' => $breakdown['applied'],
+                'state' => $breakdown['state'],
+                'is_final' => $breakdown['is_final'],
+                'rough_estimate' => $breakdown['rough_estimate'],
+                'manual_review' => $breakdown['manual_review'],
+                'message' => $breakdown['message'],
             ];
         }
 
@@ -266,6 +272,10 @@ class CheckoutController extends Controller
         }
 
         OperationalTelemetry::checkoutOutcome('order_created', $validated['payment_method']);
+
+        if (($shipping['manual_review'] ?? false) === true) {
+            ShippingQuoteManualReviewNotifier::notify($order, $shipping);
+        }
 
         $this->rememberConfirmedOrder($request, $order);
 

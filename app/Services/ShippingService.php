@@ -43,18 +43,12 @@ class ShippingService
         ?string $postalCode = null,
         ?string $destinationArea = null,
     ): array {
-        $gross = $this->estimateGrossCost($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea);
-        $applied = ShippingSubsidySettings::apply($gross, 'jnt');
-
-        return [
-            ...$applied,
-            'carrier' => 'jnt',
-        ];
+        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea);
     }
 
     /**
-     * Customer-facing quote contract. This endpoint is isolated from the
-     * legacy checkout estimator until the storefront consumes quote state.
+     * Customer-facing quote contract shared by checkout and the quote endpoint.
+     * Provisional states never pretend to be a final carrier tariff.
      *
      * @return array<string, mixed>
      */
