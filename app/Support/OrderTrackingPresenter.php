@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\ShippingRecord;
+use App\Models\ShippingTrackingEvent;
 
 /**
  * Payload lacak pesanan (header resi, milestone, timeline) dari order + event_logs.
@@ -31,7 +32,14 @@ class OrderTrackingPresenter
             ->limit($limit)
             ->get();
 
-        $entries = $logs->map(function (EventLog $log) {
+        $tracking = ShippingTrackingEvent::query()
+            ->where('order_id', $order->id)
+            ->latest('occurred_at')
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        $entries = $logs->map(function (EventLog $log): array {
             $payload = is_array($log->payload) ? $log->payload : [];
 
             return [
@@ -39,7 +47,16 @@ class OrderTrackingPresenter
                 'at' => optional($log->created_at)?->toIso8601String(),
                 'source' => (string) $log->event_type,
             ];
-        })->values()->all();
+        })->merge($tracking->map(function (ShippingTrackingEvent $event): array {
+            return [
+                'message' => self::timelineMessage('shipping.status_updated', [
+                    'raw' => $event->description ?: $event->provider_status,
+                    'to' => $event->normalized_status,
+                ]),
+                'at' => optional($event->occurred_at)?->toIso8601String(),
+                'source' => 'tracking:'.$event->source,
+            ];
+        }))->sortByDesc(fn (array $entry): string => (string) ($entry['at'] ?? ''))->take($limit)->values()->all();
 
         if ($entries !== []) {
             return $entries;
@@ -67,11 +84,7 @@ class OrderTrackingPresenter
             $latest = $snippet[0] ?? null;
         }
 
-        $paid = $order->payment_status === 'paid'
-            || (
-                ($order->cod_flag || $order->payment_method === 'cod')
-                && in_array($order->order_status, ['delivered', 'completed'], true)
-            );
+        $paid = $order->payment_status === 'paid';
 
         return [
             'shipping_status' => (string) $order->shipping_status,

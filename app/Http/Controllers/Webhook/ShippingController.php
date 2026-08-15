@@ -83,7 +83,7 @@ class ShippingController extends Controller
         }
 
         if ($scanType !== '' || $scanTypeCode !== null) {
-            $this->shipping->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode);
+            $this->shipping->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode, 'webhook');
         }
 
         return $this->ack(true);

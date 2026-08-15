@@ -7,6 +7,7 @@ use App\Events\ShippingStatusUpdated;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\ShippingRecord;
+use App\Models\ShippingTrackingEvent;
 use App\Services\Shipping\JntCargoClient;
 use App\Services\Shipping\JntResponse;
 use App\Support\ShippingSubsidySettings;
@@ -223,7 +224,7 @@ class ShippingService
         [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractLatestTrace($resp);
 
         if ($scanType !== null) {
-            $this->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode);
+            $this->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode, 'poll');
         }
     }
 
@@ -244,7 +245,7 @@ class ShippingService
         ]);
 
         if ($resp->ok) {
-            $this->applyCarrierUpdate($record, '104', $reason);
+            $this->applyCarrierUpdate($record, '104', $reason, null, null, null, 'manual');
         }
 
         return $resp->ok;
@@ -262,26 +263,55 @@ class ShippingService
         ?string $trackingUrl = null,
         ?string $occurredAt = null,
         ?string $scanTypeCode = null,
+        string $source = 'manual',
     ): void {
         $mapped = $this->mapCarrierStatus($rawStatus, $scanTypeCode);
-
-        if ($mapped === null) {
-            // Status tak dikenal: simpan mentahnya untuk audit, jangan cascade.
-            $record->update([
-                'status_raw' => $statusRaw ?? $rawStatus,
-                'last_status_at' => now(),
-                'tracking_url' => $trackingUrl ?? $record->tracking_url,
-            ]);
-
-            return;
-        }
-
+        $providerStatus = $statusRaw ?? $rawStatus;
         $eventTime = $this->carrierEventTime($occurredAt);
+        $eventHash = hash('sha256', implode('|', [
+            (string) $record->waybill_number,
+            (string) ($rawStatus ?? ''),
+            (string) ($scanTypeCode ?? ''),
+            (string) ($statusRaw ?? ''),
+            (string) ($occurredAt ?? ''),
+        ]));
 
-        DB::transaction(function () use ($record, $mapped, $statusRaw, $rawStatus, $trackingUrl, $eventTime) {
+        DB::transaction(function () use (
+            $record,
+            $mapped,
+            $providerStatus,
+            $rawStatus,
+            $trackingUrl,
+            $eventTime,
+            $eventHash,
+            $source,
+        ): void {
             $record = ShippingRecord::query()->lockForUpdate()->findOrFail($record->id);
-            $previous = $record->status;
 
+            try {
+                ShippingTrackingEvent::firstOrCreate(
+                    [
+                        'shipping_record_id' => $record->id,
+                        'event_hash' => $eventHash,
+                    ],
+                    [
+                        'order_id' => $record->order_id,
+                        'provider' => 'jnt',
+                        'waybill_number' => $record->waybill_number,
+                        'provider_status' => $providerStatus,
+                        'normalized_status' => $mapped,
+                        'source' => in_array($source, ['webhook', 'poll', 'manual'], true) ? $source : 'manual',
+                        'description' => $providerStatus,
+                        'occurred_at' => $eventTime,
+                    ],
+                );
+            } catch (\Illuminate\Database\QueryException $exception) {
+                if (! str_contains($exception->getMessage(), 'uniq_shipping_tracking_event')) {
+                    throw $exception;
+                }
+            }
+
+            $previous = $record->status;
             if ($record->last_status_at !== null && $eventTime->lt($record->last_status_at)) {
                 Log::warning('carrier_update_ignored_stale', [
                     'shipping_record_id' => $record->id,
@@ -294,9 +324,19 @@ class ShippingService
                 return;
             }
 
+            if ($mapped === null) {
+                $record->update([
+                    'status_raw' => $providerStatus,
+                    'last_status_at' => $eventTime,
+                    'tracking_url' => $trackingUrl ?? $record->tracking_url,
+                ]);
+
+                return;
+            }
+
             if (! $this->states->canTransitionShipping($previous, $mapped)) {
                 $record->update([
-                    'status_raw' => $statusRaw ?? $rawStatus,
+                    'status_raw' => $providerStatus,
                     'last_status_at' => $eventTime,
                     'tracking_url' => $trackingUrl ?? $record->tracking_url,
                 ]);
@@ -311,7 +351,7 @@ class ShippingService
 
             $record->update([
                 'status' => $mapped,
-                'status_raw' => $statusRaw ?? $rawStatus,
+                'status_raw' => $providerStatus,
                 'last_status_at' => $eventTime,
                 'tracking_url' => $trackingUrl ?? $record->tracking_url,
             ]);
@@ -327,7 +367,7 @@ class ShippingService
                     'waybill' => $record->waybill_number,
                     'from' => $previous,
                     'to' => $mapped,
-                    'raw' => $statusRaw ?? $rawStatus,
+                    'raw' => $providerStatus,
                 ]);
 
                 if ($order) {
