@@ -112,6 +112,11 @@ class HandleInertiaRequests extends Middleware
             'platforms' => \App\Support\StorefrontPlatformSettings::forStorefront(),
             'nav' => fn () => $this->sharedNavigation($modelMenu),
             'csrf' => csrf_token(),
+            'googleMaps' => [
+                'enabled' => filled(config('services.google_maps.server_key')),
+                'browser_key' => config('services.google_maps.browser_key'),
+                'geocode_url' => url('/api/maps/geocode'),
+            ],
             'consultationWhatsApp' => fn () => \App\Support\ConsultationWhatsApp::sharedProps(),
             'adminNotificationCount' => fn () => $request->user()
                 ? (int) \App\Models\AdminNotification::unread()->count()

@@ -1,3 +1,4 @@
+import { usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
@@ -9,13 +10,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 import type { WilayahOption } from "@/components/public/wilayah-search-select"
+import type { SharedPageProps } from "@/types"
 
 export interface PickedLocation {
   display_name: string
   lat: number
   lon: number
+  postal_code?: string | null
   province?: string
   city?: string
   district?: string
@@ -26,26 +28,22 @@ export interface PickedLocation {
   village_id?: string
 }
 
-interface NominatimAddress {
-  road?: string
-  suburb?: string
-  village?: string
-  town?: string
-  city?: string
-  municipality?: string
-  county?: string
-  state?: string
-  postcode?: string
-}
-
-interface NominatimResult {
-  lat: string
-  lon: string
+interface GoogleLocationResult {
+  place_id?: string
   display_name: string
-  address?: NominatimAddress
+  lat: number
+  lon: number
+  postal_code?: string | null
+  province?: string | null
+  city?: string | null
+  district?: string | null
+  village?: string | null
 }
 
-const NOMINATIM = "https://nominatim.openstreetmap.org"
+interface GoogleMapsResponse {
+  state: "ready" | "not_found" | "unavailable"
+  results?: GoogleLocationResult[]
+}
 
 function normName(value: string): string {
   return value
@@ -55,7 +53,7 @@ function normName(value: string): string {
     .trim()
 }
 
-function matchOption(options: WilayahOption[], name?: string): WilayahOption | undefined {
+function matchOption(options: WilayahOption[], name?: string | null): WilayahOption | undefined {
   if (!name) return undefined
   const needle = normName(name)
   if (!needle) return undefined
@@ -68,10 +66,10 @@ function matchOption(options: WilayahOption[], name?: string): WilayahOption | u
   )
 }
 
-function embedUrl(lat: number, lon: number): string {
-  const dLat = 0.004
-  const dLon = 0.006
-  return `${NOMINATIM.replace("nominatim", "www.openstreetmap")}/export/embed.html?bbox=${lon - dLon}%2C${lat - dLat}%2C${lon + dLon}%2C${lat + dLat}&layer=mapnik&marker=${lat}%2C${lon}`
+function embedUrl(lat: number, lon: number, browserKey?: string | null): string | null {
+  if (!browserKey) return null
+  return "https://www.google.com/maps/embed/v1/view?key=" +
+    encodeURIComponent(browserKey) + "&center=" + lat + "," + lon + "&zoom=16"
 }
 
 export function LocationPickerModal({
@@ -91,15 +89,13 @@ export function LocationPickerModal({
   villages: WilayahOption[]
   onApply: (location: PickedLocation) => void
 }) {
+  const { googleMaps } = usePage<SharedPageProps>().props
   const [query, setQuery] = React.useState("")
-  const [results, setResults] = React.useState<NominatimResult[]>([])
+  const [results, setResults] = React.useState<GoogleLocationResult[]>([])
   const [searching, setSearching] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [selected, setSelected] = React.useState<NominatimResult | null>(null)
+  const [selected, setSelected] = React.useState<GoogleLocationResult | null>(null)
   const [resolving, setResolving] = React.useState(false)
-
-  // AbortController per operasi: membatalkan request lama saat pencarian baru
-  // dimulai atau modal ditutup â€” mencegah response lama menimpa hasil baru (race).
   const searchAbortRef = React.useRef<AbortController | null>(null)
   const reverseAbortRef = React.useRef<AbortController | null>(null)
 
@@ -108,34 +104,43 @@ export function LocationPickerModal({
     reverseAbortRef.current?.abort()
   }
 
+  async function request(params: string, signal: AbortSignal): Promise<GoogleMapsResponse> {
+    const response = await fetch(
+      (googleMaps?.geocode_url ?? "/api/maps/geocode") + "?" + params,
+      { headers: { Accept: "application/json" }, signal },
+    )
+    const payload = (await response.json()) as GoogleMapsResponse
+    if (!response.ok && payload.state !== "unavailable") {
+      throw new Error("maps request failed")
+    }
+    return payload
+  }
+
   async function search(event: React.FormEvent) {
     event.preventDefault()
     const value = query.trim()
     if (value.length < 3) {
-      setError("Ketik minimal 3 huruf untuk mencari lokasi (misal nama kecamatan atau kota).")
+      setError("Ketik minimal 3 huruf untuk mencari lokasi.")
       return
     }
 
-    // Batalkan pencarian sebelumnya yang masih berjalan.
     searchAbortRef.current?.abort()
     const controller = new AbortController()
     searchAbortRef.current = controller
-
     setSearching(true)
     setError(null)
     try {
-      const response = await fetch(
-        `${NOMINATIM}/search?format=jsonv2&countrycodes=id&limit=6&accept-language=id&q=${encodeURIComponent(value)}`,
-        { signal: controller.signal },
-      )
-      if (!response.ok) throw new Error(`nominatim ${response.status}`)
-      const payload = (await response.json()) as NominatimResult[]
-      setResults(Array.isArray(payload) ? payload : [])
-      if (!payload.length) setError("Lokasi tidak ditemukan. Coba kata kunci lain.")
-    } catch (error) {
-      // Abort (pencarian baru / modal ditutup) bukan kegagalan â€” jangan tampilkan error.
-      if ((error as Error)?.name !== "AbortError") {
-        setError("Pencarian lokasi gagal. Periksa koneksi lalu coba lagi.")
+      const payload = await request("query=" + encodeURIComponent(value), controller.signal)
+      const nextResults = payload.state === "ready" ? payload.results ?? [] : []
+      setResults(nextResults)
+      if (payload.state === "unavailable") {
+        setError("Maps sedang tidak tersedia. Pilih desa/kelurahan dari daftar wilayah.")
+      } else if (!nextResults.length) {
+        setError("Lokasi tidak ditemukan. Coba kata kunci lain.")
+      }
+    } catch (requestError) {
+      if ((requestError as Error)?.name !== "AbortError") {
+        setError("Maps sedang tidak tersedia. Pilih desa/kelurahan dari daftar wilayah.")
         setResults([])
       }
     } finally {
@@ -143,41 +148,38 @@ export function LocationPickerModal({
     }
   }
 
-  async function pick(result: NominatimResult) {
-    // Batalkan reverse yang masih berjalan dari pilihan sebelumnya.
+  async function pick(result: GoogleLocationResult) {
     reverseAbortRef.current?.abort()
     const controller = new AbortController()
     reverseAbortRef.current = controller
-
     setSelected(result)
     setResolving(true)
     setError(null)
     try {
-      const response = await fetch(
-        `${NOMINATIM}/reverse?format=jsonv2&lat=${result.lat}&lon=${result.lon}&accept-language=id`,
-        { signal: controller.signal },
+      const payload = await request(
+        "lat=" + encodeURIComponent(String(result.lat)) +
+          "&lon=" + encodeURIComponent(String(result.lon)),
+        controller.signal,
       )
-      if (!response.ok) throw new Error(`nominatim ${response.status}`)
-      const payload = (await response.json()) as { address?: NominatimAddress }
-      const address = payload.address ?? {}
-      const cityName =
-        address.city || address.municipality || address.town || address.county || ""
-      const provinceName = address.state || ""
+      const resolved = payload.state === "ready" ? payload.results?.[0] : null
+      if (!resolved) {
+        setError("Detail lokasi dari Google Maps belum tersedia. Coba titik lain.")
+        return
+      }
 
-      // ID wilayah diisi bila nama cocok dengan daftar Kemendagri yang dimuat.
-      const province = matchOption(provinces, provinceName)
-      const regency = matchOption(regencies, cityName)
-      const district = matchOption(districts, address.county || address.suburb || "")
-      const village = matchOption(villages, address.village || address.suburb || "")
-
+      const province = matchOption(provinces, resolved.province)
+      const regency = matchOption(regencies, resolved.city)
+      const district = matchOption(districts, resolved.district)
+      const village = matchOption(villages, resolved.village)
       onApply({
-        display_name: result.display_name,
-        lat: Number(result.lat),
-        lon: Number(result.lon),
-        province: province?.name ?? provinceName,
-        city: regency?.name ?? cityName,
-        district: district?.name ?? address.county ?? address.suburb,
-        village: village?.name ?? address.village ?? address.suburb ?? address.town,
+        display_name: resolved.display_name,
+        lat: resolved.lat,
+        lon: resolved.lon,
+        postal_code: resolved.postal_code ?? null,
+        province: province?.name ?? resolved.province ?? undefined,
+        city: regency?.name ?? resolved.city ?? undefined,
+        district: district?.name ?? resolved.district ?? undefined,
+        village: village?.name ?? resolved.village ?? undefined,
         province_id: province?.id,
         city_id: regency?.id,
         district_id: district?.id,
@@ -187,9 +189,9 @@ export function LocationPickerModal({
       setQuery("")
       setResults([])
       onOpenChange(false)
-    } catch (error) {
-      if ((error as Error)?.name !== "AbortError") {
-        setError("Gagal mengambil detail lokasi. Coba lagi.")
+    } catch (requestError) {
+      if ((requestError as Error)?.name !== "AbortError") {
+        setError("Detail lokasi dari Google Maps gagal diambil. Coba lagi.")
       }
     } finally {
       if (!controller.signal.aborted) setResolving(false)
@@ -198,27 +200,26 @@ export function LocationPickerModal({
 
   React.useEffect(() => {
     if (!open) {
-      // Modal ditutup: batalkan semua request yang masih berjalan.
       abortInFlight()
-      // Reset state pencarian saat modal ditutup â€” bukan derived state.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery("")
       setResults([])
       setSelected(null)
       setError(null)
     }
-    // Unmount saat request berjalan: batalkan agar tidak ada setState setelah unmount.
     return () => abortInFlight()
   }, [open])
+
+  const preview = selected ? embedUrl(selected.lat, selected.lon, googleMaps?.browser_key) : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <div>
-          <DialogTitle>Pilih lokasi di peta</DialogTitle>
+          <DialogTitle>Pilih lokasi di Google Maps</DialogTitle>
           <DialogDescription className="mt-2">
-            Gunakan peta hanya untuk membantu memilih titik dan alamat. Kode pos tidak diambil dari
-            peta; sistem tetap memakai data desa/kelurahan yang tervalidasi.
+            Google Maps hanya membantu menemukan titik dan alamat. Kode pos yang tersedia akan
+            diambil dari address components Google, lalu diperiksa kembali terhadap desa/kelurahan.
           </DialogDescription>
         </div>
 
@@ -226,7 +227,7 @@ export function LocationPickerModal({
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari nama jalan, kecamatan, atau kotaâ€¦"
+            placeholder="Cari nama jalan, kecamatan, atau kotk§uçâçf"
             aria-label="Cari lokasi"
             className="min-h-11 flex-1"
           />
@@ -241,7 +242,7 @@ export function LocationPickerModal({
         {results.length ? (
           <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
             {results.map((result) => (
-              <li key={`${result.lat}-${result.lon}`}>
+              <li key={result.place_id ?? String(result.lat) + "-" + String(result.lon)}>
                 <button
                   type="button"
                   onClick={() => void pick(result)}
@@ -258,28 +259,33 @@ export function LocationPickerModal({
 
         {selected ? (
           <div className="space-y-2">
-            <iframe
-              title="Pratinjau peta lokasi"
-              src={embedUrl(Number(selected.lat), Number(selected.lon))}
-              className="h-56 w-full rounded-lg border border-border"
-              loading="lazy"
-            />
+            {preview ? (
+              <iframe
+                title="Pratinjau Google Maps"
+                src={preview}
+                className="h-56 w-full rounded-lg border border-border"
+                loading="lazy"
+              />
+            ) : (
+              <a
+                href={"https://www.google.com/maps/search/?api=1&query=" + selected.lat + "," + selected.lon}
+                target="_blank"
+                rel="noreferrer"
+                className="block rounded-lg border border-border bg-surface-muted p-4 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                Buka titik ini di Google Maps
+              </a>
+            )}
             <p className="text-xs text-muted-foreground">{selected.display_name}</p>
           </div>
         ) : null}
 
         <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
           <p className="text-[11px] leading-4 text-muted-foreground">
-            Peta hanya fallback lokasi. Periksa kembali desa/kelurahan dan kode pos dari data
-            wilayah sebelum lanjut.
+            Jika Maps tidak tersedia, gunakan daftar desa/kelurahan. Jangan mengganti kode pos
+            otomatis dengan data peta yang belum terverifikasi.
           </p>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className={cn("shrink-0")}
-            onClick={() => onOpenChange(false)}
-          >
+          <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => onOpenChange(false)}>
             Tutup
           </Button>
         </div>

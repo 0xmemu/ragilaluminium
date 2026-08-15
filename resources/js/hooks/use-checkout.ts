@@ -153,6 +153,7 @@ export function useCheckout({
 
   function applyPickedLocation(picked: {
     display_name: string
+    postal_code?: string | null
     province?: string
     city?: string
     district?: string
@@ -172,7 +173,7 @@ export function useCheckout({
       city_id: picked.city_id ?? "",
       district_id: picked.district_id ?? "",
       village_id: picked.village_id ?? "",
-      postal_code: current.postal_code,
+      postal_code: picked.postal_code ?? current.postal_code,
     }))
   }
 

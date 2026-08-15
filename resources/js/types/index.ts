@@ -26,6 +26,12 @@ export interface Brand {
   years_experience_label?: string
 }
 
+export interface GoogleMapsConfig {
+  enabled: boolean
+  browser_key?: string | null
+  geocode_url: string
+}
+
 export interface Announcement {
   text: string
   href: string
@@ -147,6 +153,7 @@ export interface SharedPageProps extends Record<string, unknown> {
   cartCount: number
   cartPreview?: CartPreviewItem[]
   brand: Brand
+  googleMaps?: GoogleMapsConfig
   consultationWhatsApp: ConsultationWhatsAppConfig
   announcements: Announcement[]
   announcementSlide?: { enabled: boolean; interval: number }

@@ -91,4 +91,16 @@ return [
         ],
     ],
 
+    'google_maps' => [
+        'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
+        'browser_key' => env('GOOGLE_MAPS_BROWSER_KEY'),
+        'geocode_url' => env(
+            'GOOGLE_MAPS_GEOCODE_URL',
+            'https://maps.googleapis.com/maps/api/geocode/json',
+        ),
+        'language' => env('GOOGLE_MAPS_LANGUAGE', 'id'),
+        'region' => env('GOOGLE_MAPS_REGION', 'id'),
+        'timeout' => (int) env('GOOGLE_MAPS_TIMEOUT', 8),
+    ],
+
 ];
