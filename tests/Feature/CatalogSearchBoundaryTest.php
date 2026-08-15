@@ -104,6 +104,29 @@ class CatalogSearchBoundaryTest extends TestCase
         $this->assertNotContains('D3', $hits);
     }
 
+    public function test_dimension_search_does_not_match_substring_sizes(): void
+    {
+        // Regresi: pola lama "%W%x%H%" mencocokkan digit-substring — query "100x50"
+        // ikut menampilkan "Tinggi 150 cm x Panjang 100 cm" karena "150"
+        // mengandung "50". Ukuran lain (termasuk yang "mengandung" angka query)
+        // TIDAK boleh tampil; hanya pasangan persis atau pasangan terbalik.
+        $this->makeProduct('S1', 'Tinggi 100 cm x Panjang 50 cm Jendela Sliding');
+        $this->makeProduct('S2', 'Tinggi 50 cm x Panjang 100 cm Boven Jungkit');
+        $this->makeProduct('S3', 'Custom Tinggi 150 cm x Panjang 100 cm (150x100) Jendela Swing');
+        $this->makeProduct('S5', 'Tinggi 250 cm x Panjang 50 cm Pintu Swing');
+        $this->makeProduct('S6', 'Tinggi 100cm x Panjang 50cm Jendela Polos');
+        $this->makeProduct('S7', 'Tinggi 50 cm x Panjang 200 cm (50x200) Boven Sliding');
+
+        $hits = $this->searchSkus('100x50');
+
+        $this->assertContains('S1', $hits);
+        $this->assertContains('S2', $hits);
+        $this->assertContains('S6', $hits);
+        $this->assertNotContains('S3', $hits);
+        $this->assertNotContains('S5', $hits);
+        $this->assertNotContains('S7', $hits);
+    }
+
     public function test_taxonomy_combo_requires_both_model_and_category(): void
     {
         $this->makeProduct('C1', 'Sliding Kaca Mati', ['product_model' => 'SLIDING']);

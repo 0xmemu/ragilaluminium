@@ -98,8 +98,17 @@ class CatalogSearch
 
     /**
      * Size queries like "60x120" / "60 x 120" / "60×120" share one match set.
-     * Pasangan terbalik (120x60) ikut dicari, dan pola longgar "%W%x%H%"
-     * menangkap penulisan panjang seperti "Tinggi 100 x Panjang 50 cm".
+     *
+     * Pola lama `%W%x%H%` menghasilkan false positive substring digit:
+     * "100x50" ikut mencocokkan "Tinggi 150 cm x Panjang 100 cm" karena
+     * "150" mengandung "50". Sekarang pola dijangkarkan pada struktur nama
+     * katalog ("Tinggi ... Panjang ..." atau suffix "(W x H)") dan angka
+     * dipisah spasi pada bentuk bebas, sehingga ukuran lain tidak tampil.
+     * Pasangan terbalik (120x60) tetap dicari oleh desain (§6 deliberate,
+     * lihat CatalogSearchBoundaryTest::test_dimension_search_matches_reversed_pair).
+     *
+     * CATATAN: tidak boleh pakai karakter class LIKE `[^0-9]` — test suite
+     * berjalan di SQLite yang tidak mendukungnya (hanya `%` dan `_`).
      *
      * @return list<string>
      */
@@ -114,12 +123,20 @@ class CatalogSearch
             }
 
             foreach ($pairs as [$width, $height]) {
-                $patterns[] = '%'.$width.'x'.$height.'%';
-                $patterns[] = '%'.$width.' x '.$height.'%';
-                $patterns[] = '%'.$width.'×'.$height.'%';
-                $patterns[] = '%'.$width.' × '.$height.'%';
-                // Angka sama walau ada kata di antaranya ("Tinggi 100 x Panjang 50 cm").
-                $patterns[] = '%'.$width.'%x%'.$height.'%';
+                // Bentuk panjang katalog: "Tinggi 100 cm x Panjang 50 cm"
+                // dan varian × tanpa spasi ("Tinggi 100cm × Panjang 50cm").
+                $patterns[] = '%Tinggi '.$width.'%x%Panjang '.$height.'%';
+                $patterns[] = '%Tinggi '.$width.'%×%Panjang '.$height.'%';
+                // Bentuk bebas berjarak: "Jendela Jungkit 50 x 100 cm".
+                // Spasi mengapit angka supaya "150" tidak menangkap "50".
+                $patterns[] = '% '.$width.' %x% '.$height.' %';
+                $patterns[] = '% '.$width.' %×% '.$height.' %';
+                // Suffix terstruktur pada nama: "(100x50)", "(100 x 50)",
+                // "(100×50)", "(100 × 50)".
+                $patterns[] = '%('.$width.'x'.$height.')%';
+                $patterns[] = '%('.$width.' x '.$height.')%';
+                $patterns[] = '%('.$width.'×'.$height.')%';
+                $patterns[] = '%('.$width.' × '.$height.')%';
             }
         }
 
