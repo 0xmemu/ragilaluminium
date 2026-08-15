@@ -51,16 +51,18 @@ async function expectOrderPersisted(orderNumber: string) {
   const db = new DatabaseSync(join(process.cwd(), "database/e2e.sqlite"), { readOnly: true })
   try {
     const row = db
-      .prepare("SELECT shipping_address_line2, notes FROM orders WHERE order_number = ?")
+      .prepare(
+        "SELECT orders.shipping_address_line2, order_items.note FROM orders JOIN order_items ON order_items.order_id = orders.id WHERE orders.order_number = ?",
+      )
       .get(orderNumber) as
-      | { shipping_address_line2: string | null; notes: string | null }
+      | { shipping_address_line2: string | null; note: string | null }
       | undefined
 
     expect(row, `order ${orderNumber} should exist in e2e.sqlite`).toBeDefined()
     expect(row?.shipping_address_line2, "address_line2 harus tersimpan di order").toBe(
       E2E_ADDRESS_LINE2,
     )
-    expect(row?.notes, "notes harus tersimpan di order").toBe(E2E_ORDER_NOTES)
+    expect(row?.note, "catatan produk harus tersimpan di order item").toBe(E2E_ORDER_NOTES)
   } finally {
     db.close()
   }
@@ -75,7 +77,7 @@ async function openCheckoutFromProduct(page: import("@playwright/test").Page) {
         ? [{ id: "city-1", name: "Kabupaten Banjarnegara" }]
         : path.endsWith("/districts/city-1")
           ? [{ id: "district-1", name: "Mandiraja" }]
-          : [{ id: "village-1", name: "Mandiraja Wetan" }]
+          : [{ id: "village-1", name: "Mandiraja Wetan", postal_code: "40123" }]
 
     await route.fulfill({
       status: 200,
@@ -86,8 +88,8 @@ async function openCheckoutFromProduct(page: import("@playwright/test").Page) {
   await page.goto("/product/DEVPREVIEW-001")
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
   const variantGroups = page.getByRole("group")
-  await variantGroups.nth(0).getByRole("button", { name: "Silver", exact: true }).click()
-  await variantGroups.nth(1).getByRole("button", { name: "Bening", exact: true }).click()
+  await variantGroups.nth(0).getByRole("button", { name: "Coklat", exact: true }).click()
+  await variantGroups.nth(1).getByRole("button", { name: "Rayban", exact: true }).click()
   await expect(page.getByText(/Stok \d+/)).toBeVisible()
 
   await page
@@ -111,15 +113,15 @@ async function chooseFirstWilayahOption(
 async function fillCheckoutDetails(page: import("@playwright/test").Page) {
   await page.getByLabel("Nama lengkap").fill("Pelanggan E2E")
   await page.getByLabel("Nomor HP/WhatsApp").fill("081234567890")
-  await page.getByLabel("Email").fill("e2e@example.com")
   await chooseFirstWilayahOption(page, "checkout-province")
   await chooseFirstWilayahOption(page, "checkout-city")
   await chooseFirstWilayahOption(page, "checkout-district")
   await chooseFirstWilayahOption(page, "checkout-village")
   await page.getByLabel("Alamat lengkap").fill("Jalan E2E Nomor 10")
   await page.getByLabel("Patokan atau detail tambahan").fill(E2E_ADDRESS_LINE2)
-  await page.getByLabel("Kode pos").fill("40123")
-  await page.getByLabel("Catatan pesanan").fill(E2E_ORDER_NOTES)
+  await expect(page.getByPlaceholder("Otomatis dari desa/kelurahan")).toHaveAttribute("readonly", "")
+  await page.getByPlaceholder("Catatan untuk produk ini (opsional)").first().fill(E2E_ORDER_NOTES)
+  await page.waitForTimeout(800)
 }
 
 test("storefront shell is useful with a seeded catalog", async ({ page }, testInfo) => {
@@ -131,7 +133,7 @@ test("storefront shell is useful with a seeded catalog", async ({ page }, testIn
       level: 1,
       name: "Bukaan presisi untuk rumah yang terasa lebih lega.",
     }),
-  ).toBeVisible()
+  ).toHaveText("Bukaan presisi untuk rumah yang terasa lebih lega.")
   await expect(page.getByRole("link", { name: "Pilih model produk" })).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
@@ -178,8 +180,8 @@ test("order lookup exposes its privacy fields", async ({ page }) => {
   await expect(page.getByLabel("Nomor pesanan")).toBeVisible()
   await expect(page.getByLabel("Nomor HP/WhatsApp")).toBeVisible()
 
-  await page.getByRole("button", { name: "Email" }).click()
-  await expect(page.getByLabel("Email")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Email" })).toHaveCount(0)
+  await expect(page.getByLabel("Email")).toHaveCount(0)
 
   await expectNoHorizontalOverflow(page)
   await expectNoSeriousAccessibilityViolations(page)
@@ -213,11 +215,11 @@ test("customer can complete guest checkout and look up the order", async ({ page
   expect(placeOrderRequests).toBe(1)
 
   await expect(page.getByRole("heading", { level: 1, name: "Pesanan berhasil" })).toBeVisible()
-  const orderNumber = (await page.getByText(/^RA-\d{6}-[A-Z0-9]{6}$/).textContent())?.trim()
-  expect(orderNumber).toMatch(/^RA-\d{6}-[A-Z0-9]{6}$/)
+  const orderNumber = (await page.getByText(/^RA-\d{6}-\d{4}$/).textContent())?.trim()
+  expect(orderNumber).toMatch(/^RA-\d{6}-\d{4}$/)
 
-  // address_line2 ("Patokan atau detail tambahan") dan notes ("Catatan pesanan")
-  // yang dikirim lewat form harus benar-benar tersimpan di record order.
+  // address_line2 ("Patokan atau detail tambahan") and product note from
+  // the form must persist on the order/order item records.
   await expectOrderPersisted(orderNumber!)
 
   await page.goto("/order/status")
@@ -279,7 +281,8 @@ test("checkout keeps the customer on the form when required details are missing"
   await expect(page.getByLabel("Nama lengkap")).toHaveValue("")
   await expect(page.getByRole("button", { name: "Lanjut ke pembayaran" })).toBeVisible()
   await expect(page.getByRole("heading", { level: 2, name: "Metode pembayaran" })).toBeVisible()
-  await expect(page.locator('input[name="payment_method"]').first()).toBeDisabled()
+  await expect(page.locator('input[name="payment_method"]').first()).toBeEnabled()
+  await expect(page.getByRole("button", { name: "Lengkapi alamat dulu" })).toBeDisabled()
 })
 
 test("admin login remains keyboard-accessible", async ({ page }) => {

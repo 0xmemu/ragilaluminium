@@ -7,7 +7,7 @@ const serverHost =
     ? execFileSync("wsl", ["hostname", "-I"], { encoding: "utf8" }).trim().split(/\s+/)[0]
     : "127.0.0.1")
 const baseURL = `http://${serverHost}:8010`
-const laravelCommand = `export APP_ENV=testing APP_URL=${baseURL} APP_KEY=base64:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI= APP_DEBUG=false DB_CONNECTION=sqlite DB_DATABASE=database/e2e.sqlite CACHE_STORE=array SESSION_DRIVER=cookie QUEUE_CONNECTION=sync MAIL_MAILER=array; touch database/e2e.sqlite; php artisan migrate:fresh --seed --force; php artisan db:seed --class=DevPreviewCatalogSeeder --force; php artisan serve --host=0.0.0.0 --port=8010`
+const laravelCommand = `export APP_ENV=testing APP_URL=${baseURL} APP_KEY=base64:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI= APP_DEBUG=false FORCE_HTTPS=0 SESSION_SECURE_COOKIE=0 APP_CONFIG_CACHE=/tmp/ragil-e2e-config.php DB_CONNECTION=sqlite DB_DATABASE=database/e2e.sqlite CACHE_STORE=array SESSION_DRIVER=cookie QUEUE_CONNECTION=sync MAIL_MAILER=array; touch database/e2e.sqlite; php artisan migrate:fresh --seed --force; php artisan db:seed --class=DevPreviewCatalogSeeder --force; php artisan serve --host=0.0.0.0 --port=8010`
 const webServerCommand =
   process.platform === "win32"
     ? `wsl bash -lc "${laravelCommand}"`
