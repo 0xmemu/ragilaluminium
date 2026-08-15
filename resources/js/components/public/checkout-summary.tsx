@@ -266,7 +266,7 @@ export function CheckoutSummary({
         {shippingQuoteLoading ? (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
-            <dd className="text-right font-semibold shrink-0">Menghitung ongkir...</dd>
+            <dd className="shrink-0 text-right font-semibold">Menghitung ongkir…</dd>
           </div>
         ) : effectiveShipping?.provisional ? (
           <div className="space-y-1.5">
@@ -275,7 +275,7 @@ export function CheckoutSummary({
               <dd className="tabular-nums font-bold">{formatCurrency(effectiveShipping.net)}</dd>
             </div>
             <p className="text-[11px] leading-4 text-muted-foreground">
-              Sementara. Konfirmasi pesanan untuk konfirmasi admin.
+              Estimasi sementara. Ongkir final dikonfirmasi admin setelah pesanan masuk.
             </p>
           </div>
         ) : effectiveShipping ? (
@@ -312,7 +312,7 @@ export function CheckoutSummary({
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
             <dd className="text-right font-semibold shrink-0">
-              {shippingQuoteAttempted ? "Dihitung saat konfirmasi" : "Menunggu alamat lengkap"}
+              {shippingQuoteAttempted ? "Dihitung saat konfirmasi" : "Lengkapi alamat untuk menghitung"}
             </dd>
           </div>
         )}

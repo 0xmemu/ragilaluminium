@@ -91,16 +91,16 @@ export default function InstallationDetail({
               </h1>
             </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 sm:justify-end">
               {modelHref ? (
-                <Button asChild variant="secondary">
+                <Button asChild variant="secondary" className="w-full sm:w-auto">
                   <Link href={modelHref}>Produk model ini</Link>
                 </Button>
               ) : null}
-              <Button asChild variant="secondary">
+              <Button asChild variant="secondary" className="w-full sm:w-auto">
                 <Link href={indexHref}>Semua model</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link href={product.href}>Lihat produk</Link>
               </Button>
             </div>

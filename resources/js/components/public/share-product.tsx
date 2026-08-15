@@ -82,7 +82,7 @@ export function ShareProduct({ title, url }: ShareProductProps) {
         <button
           type="button"
           className={cn(
-            "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground transition",
+            "inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground transition",
             "hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           )}
           aria-label="Bagikan produk"
@@ -97,6 +97,7 @@ export function ShareProduct({ title, url }: ShareProductProps) {
         <DropdownMenuSeparator />
         {canNativeShare ? (
           <DropdownMenuItem
+            className="min-h-11"
             onSelect={(event) => {
               event.preventDefault()
               void shareFromDevice()
@@ -106,7 +107,7 @@ export function ShareProduct({ title, url }: ShareProductProps) {
             Bagikan dari perangkat
           </DropdownMenuItem>
         ) : null}
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="min-h-11">
           <a
             href={whatsappShareUrl(title, url)}
             target="_blank"
@@ -118,6 +119,7 @@ export function ShareProduct({ title, url }: ShareProductProps) {
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem
+          className="min-h-11"
           onSelect={(event) => {
             event.preventDefault()
             void copyProductLink()

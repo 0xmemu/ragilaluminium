@@ -160,11 +160,11 @@ export function CustomerReviewForm({
   return (
     <section className="mt-8 rounded-lg border border-border bg-surface p-5 sm:p-6" aria-labelledby="customer-review-heading">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h3 id="customer-review-heading" className="text-lg font-semibold">
             {currentReview ? "Ulasan Anda" : "Bagikan pengalaman Anda"}
           </h3>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          <p className="mt-1 max-w-prose text-sm leading-6 text-muted-foreground">
             Hanya pembelian terverifikasi yang dapat mengirim ulasan.
           </p>
         </div>
@@ -249,7 +249,7 @@ export function CustomerReviewForm({
               placeholder="Tautan foto/video, satu tautan per baris"
             />
             <span className="mt-1 block text-xs font-normal text-muted-foreground">
-              Maksimal 10 tautan. Unggah media melalui kanal yang disediakan toko, lalu tempel tautannya di sini.
+              Tempel satu tautan per baris, maksimal 10 tautan.
             </span>
           </label>
 
