@@ -37,13 +37,20 @@ class CatalogSearch
         // namanya ditulis "Tinggi 100 x Panjang 50 cm".
         $sizePatterns = self::sizeLikePatterns($term);
 
-        return $query->where(function ($inner) use ($term, $sizePatterns, $modelCodes, $categoryCodes, $hasTaxonomyCombo) {
+        // Term ukuran murni ("100x50") TIDAK boleh memakai pola literal `%term%`
+        // karena memicu digit-substring: "%50x100%" cocok dengan suffix
+        // "(150x100)". Untuk size term, hanya pola terjangkarkan yang dipakai.
+        $isSizeTerm = preg_match('/^\d+\s*[x×]\s*\d+$/iu', trim($term)) === 1;
+
+        return $query->where(function ($inner) use ($term, $sizePatterns, $modelCodes, $categoryCodes, $hasTaxonomyCombo, $isSizeTerm) {
             // LIKE selalu pakai ESCAPE eksplisit: tanpa itu, backslash-escape (`\%`)
             // hanya default di MySQL — SQLite/PostgreSQL memperlakukan `\` sebagai
             // karakter literal sehingga pola yang sudah di-escape jadi salah.
-            self::likeClause($inner, 'name', "%{$term}%");
-            self::likeClause($inner, 'parent_sku', "%{$term}%", true);
-            self::likeClause($inner, 'short_name', "%{$term}%", true);
+            if (! $isSizeTerm) {
+                self::likeClause($inner, 'name', "%{$term}%");
+                self::likeClause($inner, 'parent_sku', "%{$term}%", true);
+                self::likeClause($inner, 'short_name', "%{$term}%", true);
+            }
             self::likeClause(
                 $inner,
                 'product_model',
@@ -59,9 +66,11 @@ class CatalogSearch
                 }
             }
 
-            $inner->orWhereHas('attributes', function ($qa) use ($term, $sizePatterns) {
-                $qa->where(function ($attr) use ($term, $sizePatterns) {
-                    self::likeClause($attr, 'attribute_value', "%{$term}%");
+            $inner->orWhereHas('attributes', function ($qa) use ($term, $sizePatterns, $isSizeTerm) {
+                $qa->where(function ($attr) use ($term, $sizePatterns, $isSizeTerm) {
+                    if (! $isSizeTerm) {
+                        self::likeClause($attr, 'attribute_value', "%{$term}%");
+                    }
                     foreach ($sizePatterns as $pattern) {
                         self::likeClause($attr, 'attribute_value', $pattern, true);
                     }
@@ -114,7 +123,7 @@ class CatalogSearch
      */
     protected static function sizeLikePatterns(string $term): array
     {
-        $patterns = ['%'.$term.'%'];
+        $patterns = [];
 
         if (preg_match('/(\d+)\s*[x×]\s*(\d+)/iu', trim($term), $matches)) {
             $pairs = [[$matches[1], $matches[2]]];

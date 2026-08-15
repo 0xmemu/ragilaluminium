@@ -125,6 +125,13 @@ class CatalogSearchBoundaryTest extends TestCase
         $this->assertNotContains('S3', $hits);
         $this->assertNotContains('S5', $hits);
         $this->assertNotContains('S7', $hits);
+
+        // Pola literal lama "%50x100%" cocok dengan suffix "(150x100)" —
+        // digit-substring juga berlaku pada pola literal. Guard isSizeTerm
+        // harus menonaktifkan literal untuk size term murni.
+        $hitsRev = $this->searchSkus('50x100');
+        $this->assertContains('S2', $hitsRev);
+        $this->assertNotContains('S3', $hitsRev);
     }
 
     public function test_taxonomy_combo_requires_both_model_and_category(): void
