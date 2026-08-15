@@ -1020,7 +1020,7 @@ export default function OrderShow({
                 onCancel={() => setEditing(false)}
               />
             ) : null}
-            <dl className="space-y-2 border-t border-border bg-muted/40 px-5 py-4 text-[13px]">
+            <dl id="biaya-ongkir" className="scroll-mt-20 space-y-2 border-t border-border bg-muted/40 px-5 py-4 text-[13px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total produk</dt>
                 <dd className="font-medium">{formatNumber(order.product_count)} produk</dd>
@@ -1252,6 +1252,7 @@ export default function OrderShow({
           </section>
 
 
+          <div id="konfirmasi-order" className="scroll-mt-20 space-y-4">
           <SectionCard title="Ubah status">
             <Select
               value={statusForm.data.order_status}
@@ -1341,6 +1342,7 @@ export default function OrderShow({
               </Button>
             </form>
           </SectionCard>
+          </div>
         </aside>
       </div>
       {printing ? (

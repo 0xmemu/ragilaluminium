@@ -123,6 +123,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
   - Route: admin.activity-logs.* → Admin/ActivityLogs/Index.
 - **Notifikasi** (Tipe: Operational / Monitoring)
   - Daftar dan tanda-baca notifikasi admin.
+  - Review ongkir manual ditampilkan satu kali per order (dedupe target order), dengan aksi Review ongkir, Edit biaya ongkir, dan Konfirmasi order menuju detail pesanan.
   - Route: admin.notifications.index.
 - **Profil Saya** (Tipe: `Settings/Account`)
   - Edit nama, email, password akun yang sedang login. Peran/status read-only.

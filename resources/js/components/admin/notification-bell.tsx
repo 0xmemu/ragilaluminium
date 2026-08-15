@@ -38,12 +38,49 @@ export interface NotificationItem {
   created_at_label?: string | null
 }
 
+/**
+ * Backend may use a more specific type name as the quote/manual-review
+ * contract evolves. Keep the UI resilient by recognizing the semantic family.
+ */
+export function isManualShippingReview(notification: NotificationItem): boolean {
+  const type = notification.type.toLowerCase()
+  const context = (type + " " + notification.title + " " + (notification.body ?? "")).toLowerCase()
+
+  return (
+    (context.includes("shipping") || context.includes("ongkir") || context.includes("postal")) &&
+    /(manual|review|pending|unavailable|failed|error)/.test(context)
+  )
+}
+
+/**
+ * Repeated provider failures can create multiple alerts for one order. The
+ * notification href is the canonical order target, so use it as the stable
+ * dedupe key and retain the newest notification.
+ */
+export function dedupeManualShippingReviews(
+  notifications: NotificationItem[],
+): NotificationItem[] {
+  const seen = new Set<string>()
+
+  return notifications.filter((notification) => {
+    if (!isManualShippingReview(notification)) return true
+
+    const orderNumber = (notification.title + " " + (notification.body ?? "")).match(/RA-[A-Z0-9-]+/i)?.[0]
+    const key = notification.href?.split("#")[0] || orderNumber || ("notification:" + notification.id)
+
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export function NotificationBell({
   notifications,
 }: {
   notifications: NotificationItem[]
 }) {
-  const unread = notifications.filter((n) => !n.read_at).length
+  const visibleNotifications = dedupeManualShippingReviews(notifications)
+  const unread = visibleNotifications.filter((n) => !n.read_at).length
 
   function markRead(id: number) {
     router.post(routeUrl("admin.notifications.read", { notification: id }), {}, {
@@ -91,12 +128,12 @@ export function NotificationBell({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-[min(60vh,26rem)] overflow-y-auto">
-          {notifications.length === 0 ? (
+          {visibleNotifications.length === 0 ? (
             <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
               Belum ada notifikasi.
             </p>
           ) : (
-            notifications.slice(0, 12).map((n) => (
+            visibleNotifications.slice(0, 12).map((n) => (
               <Link
                 key={n.id}
                 href={n.href ?? "#"}
