@@ -161,14 +161,14 @@ function variationLabel(item: OrderItemPreview): string {
 
 /** Grid kolom: produk | bayar | status | waktu | kirim | aksi */
 const orderRowGridClass =
-  "lg:grid lg:grid-cols-[minmax(0,2.8fr)_minmax(7rem,0.95fr)_minmax(8.5rem,1.05fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] lg:items-start lg:gap-x-4"
+  "xl:grid xl:grid-cols-[minmax(0,2.8fr)_minmax(7rem,0.95fr)_minmax(8.5rem,1.05fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
     <div
       className={cn(
         orderRowGridClass,
-        "hidden px-4 pb-2 text-xs font-medium text-muted-foreground lg:grid",
+        "hidden px-4 pb-2 text-xs font-medium text-muted-foreground xl:grid",
       )}
       aria-hidden="true"
     >
@@ -306,10 +306,10 @@ function OrderCardRow({
         </Link>
       </div>
 
-      <div className={cn(orderRowGridClass, "gap-y-3 p-4 divide-y divide-border lg:divide-y-0")}>
+      <div className={cn(orderRowGridClass, "gap-y-3 divide-y divide-border p-4 xl:divide-y-0")}>
         {/* Produk */}
         <div className="min-w-0 space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Produk
           </p>
           <ul className="space-y-2.5">
@@ -371,8 +371,8 @@ function OrderCardRow({
         </div>
 
         {/* Dibayar Pembeli */}
-        <div className="min-w-0 pt-3 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+        <div className="min-w-0 pt-3 xl:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Dibayar pembeli
           </p>
           <p className="tabular-nums text-sm font-semibold text-foreground">
@@ -388,8 +388,8 @@ function OrderCardRow({
         </div>
 
         {/* Status */}
-        <div className="min-w-0 pt-3 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+        <div className="min-w-0 pt-3 xl:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Status
           </p>
           <StatusBadge status={order.order_status} />
@@ -409,8 +409,8 @@ function OrderCardRow({
         </div>
 
         {/* Batas Waktu */}
-        <div className="min-w-0 pt-3 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+        <div className="min-w-0 pt-3 xl:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Batas waktu
           </p>
           <p className="text-[13px] font-medium leading-snug text-foreground">
@@ -422,8 +422,8 @@ function OrderCardRow({
         </div>
 
         {/* Jasa Kirim */}
-        <div className="min-w-0 pt-3 lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+        <div className="min-w-0 pt-3 xl:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Jasa kirim
           </p>
           <p className="text-[13px] font-medium text-foreground">
@@ -452,12 +452,12 @@ function OrderCardRow({
         </div>
 
         {/* Aksi */}
-        <div className="flex min-w-0 flex-col items-stretch gap-1.5 pt-3 lg:items-end lg:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:sr-only">
+        <div className="flex min-w-0 flex-col items-stretch gap-1.5 pt-3 xl:items-end xl:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Aksi
           </p>
           {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
-            <Button size="xs" className="w-full lg:w-auto" disabled={busy} onClick={applyPrimary}>
+            <Button size="xs" className="w-full xl:w-auto" disabled={busy} onClick={applyPrimary}>
               {busy ? "Memproses..." : order.primary_action.label}
             </Button>
           ) : null}
@@ -466,7 +466,7 @@ function OrderCardRow({
             <Button
               variant="secondary"
               size="xs"
-              className="w-full lg:w-auto"
+              className="w-full xl:w-auto"
               disabled={busy}
               onClick={() => applyStatus(order.secondary_action!.next_status!)}
             >
@@ -475,14 +475,14 @@ function OrderCardRow({
           ) : null}
 
           {order.whatsapp_url ? (
-            <Button asChild variant="secondary" size="xs" className="w-full lg:w-auto">
+            <Button asChild variant="secondary" size="xs" className="w-full xl:w-auto">
               <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
                 Chat WA
               </a>
             </Button>
           ) : null}
 
-          <Button asChild variant="ghost" size="xs" className="w-full lg:w-auto">
+          <Button asChild variant="ghost" size="xs" className="w-full xl:w-auto">
             <Link href={order.href}>Detail</Link>
           </Button>
 
@@ -491,7 +491,7 @@ function OrderCardRow({
               trigger={
                 <button
                   type="button"
-                  className="text-left text-xs font-medium text-destructive hover:underline lg:text-right"
+                  className="text-left text-xs font-medium text-destructive hover:underline xl:text-right"
                 >
                   Batalkan
                 </button>
@@ -776,7 +776,7 @@ export default function OrdersIndex({
               pesanan
             </p>
             <div className="overflow-x-auto">
-              <div className="min-w-[60rem] space-y-3">
+              <div className="space-y-3 xl:min-w-[60rem]">
                 <OrderListColumnHeader />
                 {orders.map((order) => (
                   <OrderCardRow key={order.id} order={order} queryState={queryState} />

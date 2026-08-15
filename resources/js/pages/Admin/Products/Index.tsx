@@ -212,7 +212,7 @@ function ProductListRow({
       <TableCell className="tabular-nums">{formatNumber(product.stock_total)}</TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.variants_count)}</TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.sold_count)}</TableCell>
-      <TableCell className="w-[1%] whitespace-nowrap text-right">
+      <TableCell className="sticky right-0 z-10 w-[1%] whitespace-nowrap bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">
         <ProductRowActions
           product={product}
           busy={busy}
@@ -376,7 +376,7 @@ export default function ProductsIndex({
                   <TableHead>Stok</TableHead>
                   <TableHead>Varian</TableHead>
                   <TableHead>Terjual</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="sticky right-0 z-10 bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

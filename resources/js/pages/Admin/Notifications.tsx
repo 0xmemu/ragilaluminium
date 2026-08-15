@@ -1,9 +1,10 @@
-import { Link, router } from "@inertiajs/react"
+import { Head, Link, router } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
+import AdminLayout from "@/layouts/admin-layout"
 import {
   dedupeManualShippingReviews,
   isManualShippingReview,
@@ -48,7 +49,12 @@ export default function Notifications({
   const visibleNotifications = dedupeManualShippingReviews(notifications)
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <AdminLayout
+      title="Notifikasi"
+      description="Pemberitahuan operasional yang perlu ditindaklanjuti admin."
+    >
+      <Head title="Notifikasi | Admin" />
+      <div className="mx-auto max-w-4xl">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Link
@@ -180,7 +186,8 @@ export default function Notifications({
           </ul>
         )}
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 

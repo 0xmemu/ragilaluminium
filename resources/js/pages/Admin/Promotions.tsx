@@ -153,11 +153,12 @@ export default function PromotionsIndex({
           </Button>
         </div>
 
-        <Card>
+        <Card className="overflow-hidden">
           {rows.length === 0 ? (
             <EmptyState title="Belum ada kampanye" description="Buat kampanye pertama untuk mulai memberikan diskon." />
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+            <Table className="min-w-[62rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
@@ -166,7 +167,7 @@ export default function PromotionsIndex({
                   <TableHead>Periode</TableHead>
                   <TableHead>Target</TableHead>
                   <TableHead className="text-right">Produk</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="sticky right-0 z-10 bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -212,7 +213,7 @@ export default function PromotionsIndex({
                       </ul>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{row.products_count}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">
                       <div className="flex items-center justify-end gap-3">
                         <Link className={rowActionTextClass} href={row.edit_href}>
                           Edit
@@ -254,6 +255,7 @@ export default function PromotionsIndex({
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </Card>
       </div>
