@@ -13,6 +13,7 @@ export type ShippingTrackData = {
   status_raw?: string | null
   last_status_at?: string | null
   tracking_url?: string | null
+  order_status?: string | null
 }
 
 type ShippingTrackPanelProps = {
@@ -34,9 +35,15 @@ export function ShippingTrackPanel({
   refreshBusy = false,
   onCopyWaybill,
 }: ShippingTrackPanelProps) {
-  const activeStatus = track.record_status || track.shipping_status
+  const activeStatus = (track.record_status || track.shipping_status || "").trim() || "unknown"
+  const normalizedStatus = activeStatus.toLowerCase()
+  const knownStatuses = new Set([...SHIPPING_STEPS, "cancelled", "returned"])
+  const isCancelled = normalizedStatus === "cancelled"
+  const isReturned = normalizedStatus === "returned"
+  const isUnknown = !knownStatuses.has(normalizedStatus)
   const stepIndex = shippingStepIndex(activeStatus)
   const hasWaybill = Boolean(track.waybill_number)
+  const orderMeta = statusMeta(track.order_status || "")
 
   if (compact) {
     return (
@@ -45,7 +52,7 @@ export function ShippingTrackPanel({
         {hasWaybill ? (
           <span className="font-mono text-[11px] text-muted-foreground">{track.waybill_number}</span>
         ) : (
-          <span className="text-[11px] text-muted-foreground">Belum ada resi</span>
+          <span className="text-[11px] text-muted-foreground">Menunggu resi</span>
         )}
       </div>
     )
@@ -73,6 +80,33 @@ export function ShippingTrackPanel({
           </Button>
         ) : null}
       </div>
+
+      {isCancelled ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs leading-5 text-destructive">
+          <p className="font-semibold">Pengiriman dibatalkan</p>
+          <p className="text-destructive/80">Tidak ada pembaruan tracking lanjutan untuk pengiriman ini.</p>
+        </div>
+      ) : isReturned ? (
+        <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5 text-xs leading-5 text-warning-foreground">
+          <p className="font-semibold">Paket dikembalikan</p>
+          <p className="text-warning-foreground/80">Status pengiriman menunjukkan paket sedang atau sudah dikembalikan ke toko.</p>
+        </div>
+      ) : isUnknown ? (
+        <div className="rounded-md border border-border bg-surface-muted px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+          <p className="font-semibold text-foreground">Status pengiriman belum dikenali</p>
+          <p>Informasi dari kurir belum dapat dipetakan. Tim toko akan memeriksa pembaruan berikutnya.</p>
+        </div>
+      ) : null}
+
+      {!hasWaybill && !isCancelled && !isReturned ? (
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-5">
+          <p className="font-semibold text-foreground">Menunggu resi pengiriman</p>
+          <p className="mt-0.5 text-muted-foreground">
+            Posisi pesanan: <span className="font-semibold text-foreground">{orderMeta.label}</span>.
+            Resi akan muncul setelah paket diserahkan ke kurir.
+          </p>
+        </div>
+      ) : null}
 
       <ol className="grid grid-cols-1 gap-1 min-[480px]:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-4">
         {SHIPPING_STEPS.map((step, index) => {
@@ -172,7 +206,13 @@ export function ShippingTrackPanel({
           ? jntEnabled
             ? "Status di atas mengikuti catatan pengiriman toko; refresh J&T memperbarui dari kurir bila tersedia."
             : "Resi tersimpan di sistem. Integrasi J&T belum aktif — status kurir live belum ditarik otomatis."
-          : "Belum ada resi. Status menampilkan tahap pengiriman dari pesanan (menunggu penjemputan / dikemas / dll.). Input resi manual tetap bisa dipakai."}
+          : isCancelled
+            ? "Pengiriman dibatalkan; tidak ada resi aktif untuk dilacak."
+            : isReturned
+              ? "Paket dikembalikan; detail retur akan mengikuti pembaruan dari toko."
+              : isUnknown
+                ? "Status kurir belum dikenali. Informasi akan diperbarui saat data baru tersedia."
+                : "Belum ada resi. Status menampilkan tahap pengiriman dari pesanan. Resi akan muncul setelah diterbitkan."}
       </p>
     </div>
   )

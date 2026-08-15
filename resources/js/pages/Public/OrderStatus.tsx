@@ -11,11 +11,90 @@ import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
+import { displayEtaRangeLabel } from "@/lib/order-eta-display"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder, SharedPageProps } from "@/types"
 
 const TERMINAL_STATUSES = new Set(["completed", "cancelled", "return_completed"])
+const ORDER_STATUS_STORAGE_KEY = "ragil.order-status.v1"
+const MAX_STORED_ORDER_REFS = 5
+
+type StoredOrderRef = {
+  order_number: string
+  customer_phone: string
+}
+
+function readStoredOrderRefs(): StoredOrderRef[] {
+  try {
+    const raw = window.localStorage.getItem(ORDER_STATUS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(parsed)) return []
+
+    return parsed
+      .filter((row): row is StoredOrderRef => (
+        row
+        && typeof row.order_number === "string"
+        && typeof row.customer_phone === "string"
+        && row.order_number.trim() !== ""
+        && row.customer_phone.trim() !== ""
+      ))
+      .slice(0, MAX_STORED_ORDER_REFS)
+  } catch {
+    return []
+  }
+}
+
+function writeStoredOrderRefs(refs: StoredOrderRef[]): void {
+  try {
+    window.localStorage.setItem(
+      ORDER_STATUS_STORAGE_KEY,
+      JSON.stringify(refs.slice(0, MAX_STORED_ORDER_REFS)),
+    )
+  } catch {
+    // Browser storage may be disabled (private mode or policy); session tracking still works.
+  }
+}
+
+function mergeStoredRef(ref: StoredOrderRef): void {
+  const refs = readStoredOrderRefs()
+  writeStoredOrderRefs([
+    ref,
+    ...refs.filter((row) => row.order_number !== ref.order_number),
+  ])
+}
+
+function mergeOrders(...lists: PublicOrder[][]): PublicOrder[] {
+  const byNumber = new Map<string, PublicOrder>()
+  for (const list of lists) {
+    for (const row of list) {
+      if (row?.order_number) byNumber.set(row.order_number, row)
+    }
+  }
+  return Array.from(byNumber.values())
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function fetchStoredOrder(
+  ref: StoredOrderRef,
+  signal: AbortSignal,
+): Promise<PublicOrder | null> {
+  const url = new URL(
+    routeUrl("order.status.api", { order_number: ref.order_number }),
+    window.location.origin,
+  )
+  url.searchParams.set("customer_phone", ref.customer_phone)
+  const response = await fetch(url, {
+    signal,
+    cache: "no-store",
+    headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+  })
+  if (!response.ok) return null
+  return await response.json() as PublicOrder
+}
 
 function OrderDetail({
   order,
@@ -59,10 +138,10 @@ function OrderDetail({
               <p className="text-xs font-bold tracking-tight text-muted-foreground">
                 Estimasi tiba
               </p>
-              <p className="mt-2 text-base font-bold text-foreground">{order.eta.range_label}</p>
+              <p className="mt-2 text-base font-bold text-foreground">{displayEtaRangeLabel(order.eta)}</p>
               <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
                 {order.eta.production_days} hari produksi + {order.eta.min_days}–
-                {order.eta.max_days} hari pengiriman sejak pesanan dibuat.
+                {order.eta.max_days} hari pengiriman + 1 hari buffer tampilan.
               </p>
             </div>
           ) : null}
@@ -144,8 +223,8 @@ function OrderDetail({
       </section>
 
       <Alert tone="info" className="mt-8">
-        Jika status belum berubah, buka ulang halaman pesanan beberapa menit lagi atau hubungi tim
-        Ragil.
+        Pesanan tersimpan di browser ini. Gunakan browser yang sama untuk memantau status berikutnya.
+        Jika status belum berubah, buka ulang halaman beberapa menit lagi atau hubungi tim Ragil.
       </Alert>
       <Button asChild variant="secondary" className="mt-4">
         <Link href={routeUrl("contact")}>Hubungi Kami</Link>
@@ -166,24 +245,31 @@ export default function OrderStatus({
   searched?: boolean
 }) {
   const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
-  const sessionList = orders.length ? orders : order ? [order] : []
+  const serverOrders = React.useMemo(
+    () => orders.length ? orders : order ? [order] : [],
+    [orders, order],
+  )
+  const [storedOrders, setStoredOrders] = React.useState<PublicOrder[]>([])
+  const [browserHydrated, setBrowserHydrated] = React.useState(false)
+  const [storedLoading, setStoredLoading] = React.useState(false)
+  const sessionList = React.useMemo(
+    () => mergeOrders(storedOrders, serverOrders),
+    [serverOrders, storedOrders],
+  )
   const [activeNumber, setActiveNumber] = React.useState(
     () => sessionList[0]?.order_number ?? "",
   )
 
   React.useEffect(() => {
-    const list = orders.length ? orders : order ? [order] : []
-    // Keep the selected order valid after a lookup response replaces the list.
+    const list = sessionList
+    // Keep the selected order valid after a lookup response or local restore replaces the list.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveNumber((current) =>
       list.some((row) => row.order_number === current)
         ? current
         : (list[0]?.order_number ?? ""),
     )
-  }, [orders, order])
-
-  const activeOrder =
-    sessionList.find((row) => row.order_number === activeNumber) ?? sessionList[0] ?? null
+  }, [sessionList])
 
   const form = useForm({
     order_number: "",
@@ -198,6 +284,58 @@ export default function OrderStatus({
   const [liveOrder, setLiveOrder] = React.useState<PublicOrder | null>(null)
 
   React.useEffect(() => {
+    const refs = readStoredOrderRefs()
+    // Tandai storage sudah dibaca agar form tidak berkedip sebelum restore selesai.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBrowserHydrated(true)
+    if (refs.length === 0) return
+
+    let disposed = false
+    const controller = new AbortController()
+    setStoredLoading(true)
+
+    void (async () => {
+      const loaded: PublicOrder[] = []
+      for (const ref of refs) {
+        if (disposed) return
+        if (loaded.length > 0) await sleep(350)
+        try {
+          const row = await fetchStoredOrder(ref, controller.signal)
+          if (row) loaded.push(row)
+        } catch {
+          // Satu order gagal dipulihkan tidak boleh menghentikan order lain.
+        }
+      }
+
+      if (!disposed) {
+        setStoredOrders(loaded)
+        setStoredLoading(false)
+      }
+    })()
+
+    return () => {
+      disposed = true
+      controller.abort()
+    }
+  }, [])
+
+  React.useEffect(() => {
+    for (const row of serverOrders) {
+      if (row.customer_phone) {
+        mergeStoredRef({
+          order_number: row.order_number,
+          customer_phone: row.customer_phone,
+        })
+      }
+    }
+  }, [serverOrders])
+
+  const activeOrder = React.useMemo(
+    () => sessionList.find((row) => row.order_number === activeNumber) ?? sessionList[0] ?? null,
+    [sessionList, activeNumber],
+  )
+
+  React.useEffect(() => {
     // Reset data polling saat pindah order.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLiveOrder(null)
@@ -205,58 +343,95 @@ export default function OrderStatus({
     if (!activeOrder || TERMINAL_STATUSES.has(activeOrder.order_status)) return
 
     let disposed = false
-    let lastFetch = 0
-    let id = 0
-    let onVisibility = () => {}
+    let timer: number | null = null
+    let inFlight = false
+    let lastAttempt = 0
+    let failures = 0
 
-    // Hentikan polling — dipanggil saat order mencapai status terminal via response.
-    // §3 cardinality: Stream harus berakhir di status terminal, bukan terus berjalan.
     const stopPolling = () => {
-      if (disposed) return
       disposed = true
-      window.clearInterval(id)
+      if (timer !== null) window.clearTimeout(timer)
       document.removeEventListener("visibilitychange", onVisibility)
     }
 
-    const poll = async () => {
-      if (disposed || cancelForm.processing) return
+    const schedule = (delay: number) => {
+      if (disposed) return
+      if (timer !== null) window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        timer = null
+        void poll()
+      }, delay)
+    }
 
-      const now = Date.now()
-      if (now - lastFetch < 10_000) return
-      lastFetch = now
+    const poll = async () => {
+      if (disposed || document.hidden || cancelForm.processing || inFlight) return
+
+      const elapsed = Date.now() - lastAttempt
+      if (lastAttempt > 0 && elapsed < 10_000) {
+        schedule(10_000 - elapsed)
+        return
+      }
+
+      inFlight = true
+      lastAttempt = Date.now()
 
       try {
-        const url = new URL(routeUrl("order.status.api", {
-          order_number: activeOrder.order_number,
-        }), window.location.origin)
+        const url = new URL(
+          routeUrl("order.status.api", { order_number: activeOrder.order_number }),
+          window.location.origin,
+        )
         if (activeOrder.customer_phone) {
           url.searchParams.set("customer_phone", activeOrder.customer_phone)
         }
         const response = await fetch(url, {
+          cache: "no-store",
           headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
         })
-        if (!response.ok) return
+        if (!response.ok) {
+          failures = response.status === 429 ? Math.max(2, failures + 1) : failures + 1
+          return
+        }
+
         const fresh = await response.json() as PublicOrder
         if (disposed) return
+        failures = 0
         setLiveOrder(fresh)
+        if (fresh.customer_phone) {
+          mergeStoredRef({
+            order_number: fresh.order_number,
+            customer_phone: fresh.customer_phone,
+          })
+        }
+        setStoredOrders((current) => current.map((row) =>
+          row.order_number === fresh.order_number ? fresh : row,
+        ))
         if (TERMINAL_STATUSES.has(fresh.order_status)) {
-          // Order sudah selesai/dibatalkan — tidak ada gunanya poll lagi.
           stopPolling()
         }
       } catch {
-        // Abaikan kegagalan polling; tick berikutnya akan mencoba lagi.
+        failures += 1
+      } finally {
+        inFlight = false
+        if (!disposed) {
+          const delay = Math.min(120_000, 30_000 * (2 ** Math.min(failures, 2)))
+          schedule(delay)
+        }
       }
     }
 
-    id = window.setInterval(poll, 30_000)
-    onVisibility = () => {
-      if (!document.hidden) void poll()
+    const onVisibility = () => {
+      if (!document.hidden && Date.now() - lastAttempt >= 10_000) {
+        void poll()
+      }
     }
+
     document.addEventListener("visibilitychange", onVisibility)
+    // Start conservatively; visibility changes may trigger one guarded refresh.
+    schedule(30_000)
 
     return () => {
       disposed = true
-      window.clearInterval(id)
+      if (timer !== null) window.clearTimeout(timer)
       document.removeEventListener("visibilitychange", onVisibility)
     }
   }, [activeOrder, cancelForm.processing])
@@ -289,7 +464,8 @@ export default function OrderStatus({
     })
   }
 
-  const showLookupForm = !has_session_orders
+  const hasBrowserOrders = has_session_orders || sessionList.length > 0
+  const showLookupForm = browserHydrated && !storedLoading && !hasBrowserOrders
 
   return (
     <PublicLayout>
@@ -310,7 +486,7 @@ export default function OrderStatus({
           <Icon name="arrow-left" className="size-5" aria-hidden="true" />
         </button>
         <h1 className="text-base font-bold text-foreground">
-          {has_session_orders ? "Pesanan di perangkat ini" : "Cek pesanan"}
+          {hasBrowserOrders ? "Pesanan di perangkat ini" : "Cek pesanan"}
         </h1>
       </section>
 
@@ -321,6 +497,10 @@ export default function OrderStatus({
               <h2 className="text-lg font-semibold">Cek pesanan</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Gunakan data yang sama dengan saat checkout.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Pesanan yang berhasil ditemukan disimpan di browser ini. Gunakan browser yang sama
+                untuk membukanya kembali.
               </p>
               <FormErrorSummary className="mt-4" errors={form.errors} />
               <div className="mt-6 space-y-4">
@@ -452,7 +632,11 @@ export default function OrderStatus({
             ) : null}
 
             <div>
-              {shownOrder ? (
+              {storedLoading ? (
+                <div className="flex min-h-[22rem] items-center justify-center border-y border-border py-10">
+                  <p className="text-sm text-muted-foreground">Memuat pesanan yang tersimpan di browser ini...</p>
+                </div>
+              ) : shownOrder ? (
                 <OrderDetail
                   order={shownOrder}
                   eyebrow={sessionList.length > 1 ? "Pesanan dipilih" : "Pesanan perangkat ini"}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
+import { displayEtaRangeLabel } from "@/lib/order-eta-display"
 import { routeUrl } from "@/lib/routes"
 import type { OrderEta, PublicOrder, SharedPageProps } from "@/types"
 
@@ -140,9 +141,9 @@ export default function OrderConfirmation({
                   <p className="text-sm font-bold text-foreground">Estimasi diterima</p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
                     Pesanan diperkirakan tiba pada{" "}
-                    <span className="font-semibold text-foreground">{eta.range_label}</span>
+                    <span className="font-semibold text-foreground">{displayEtaRangeLabel(eta)}</span>
                     {" "}— {eta.production_days} hari produksi + {eta.min_days}–{eta.max_days} hari
-                    pengiriman sejak pesanan dibuat.
+                    pengiriman + 1 hari buffer tampilan.
                   </p>
                 </div>
               </div>

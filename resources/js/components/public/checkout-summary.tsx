@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { formatCurrency } from "@/lib/format"
+import { displayEtaRangeLabel } from "@/lib/order-eta-display"
 import type { CheckoutCodConfig, CheckoutController, CheckoutVoucher } from "@/hooks/use-checkout"
 import type { OrderEta } from "@/types"
 
@@ -295,14 +296,14 @@ export function CheckoutSummary({
         {eta ? (
           <div className="flex justify-between gap-4 border-t border-border pt-3">
             <dt className="text-muted-foreground min-w-0 break-words">Estimasi tiba</dt>
-            <dd className="text-right font-semibold text-primary">{eta.range_label}</dd>
+            <dd className="text-right font-semibold text-primary">{displayEtaRangeLabel(eta)}</dd>
           </div>
         ) : null}
       </dl>
 
       <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
         Estimasi = {eta?.production_days ?? 1} hari produksi + {eta?.min_days ?? 2}–
-        {eta?.max_days ?? 5} hari pengiriman, dihitung sejak pesanan dibuat.
+        {eta?.max_days ?? 5} hari pengiriman + 1 hari buffer tampilan.
       </p>
 
       <TrustAssuranceCard className="mt-4" />
