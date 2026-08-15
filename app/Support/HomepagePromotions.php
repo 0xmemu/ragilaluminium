@@ -175,7 +175,7 @@ class HomepagePromotions
     {
         return Product::visible()
             ->with(['mainImage', 'activeVariants', 'attributes'])
-            ->withSum('orderItems as sold_count', 'quantity')
+            ->withPopularityScore()
             ->whereHas('activeVariants', fn ($q) => $q->where('price', '>', 0))
             ->whereHas('mainImage')
             ->where(function ($query) {
@@ -193,7 +193,7 @@ class HomepagePromotions
             })
             ->orderByDesc('homepage_popular')
             ->orderBy('homepage_popular_sort')
-            ->orderByDesc('sold_count')
+            ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')
             ->orderByDesc('id')
             ->limit(24)
             ->get()
@@ -204,7 +204,7 @@ class HomepagePromotions
                 $popularRank = $product->homepage_popular ? '0' : '1';
                 $sort = str_pad((string) (int) ($product->homepage_popular_sort ?? 9999), 6, '0', STR_PAD_LEFT);
                 $discount = str_pad((string) (1000 - (int) (ProductPromotionMetadata::forProduct($product, applyGlobalEventDiscount: false)['discount_percent'] ?? 0)), 4, '0', STR_PAD_LEFT);
-                $sold = str_pad((string) (1000000 - (int) ($product->sold_count ?? 0)), 7, '0', STR_PAD_LEFT);
+                $sold = str_pad((string) (1000000 - ((int) ($product->sold_count ?? 0) + (int) ($product->popularity_seed ?? 0))), 7, '0', STR_PAD_LEFT);
                 $id = str_pad((string) (1000000000 - $product->id), 10, '0', STR_PAD_LEFT);
 
                 return $bouvenRank.$popularRank.$sort.$discount.$sold.$id;

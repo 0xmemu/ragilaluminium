@@ -374,10 +374,10 @@ class ModelProductService
     protected function modelPopularity(): array
     {
         return Product::visible()
-            ->withSum('validOrderItems as sold_count', 'quantity')
+            ->withPopularityScore()
             ->get()
             ->groupBy(fn (Product $p) => $this->pairKey($p->product_category, $p->product_model))
-            ->map(fn (Collection $group) => (int) $group->sum('sold_count'))
+            ->map(fn (Collection $group) => (int) $group->sum(fn (Product $product) => (int) ($product->sold_count ?? 0) + (int) ($product->popularity_seed ?? 0)))
             ->all();
     }
 

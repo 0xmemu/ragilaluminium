@@ -227,17 +227,16 @@ class HomepagePopularTest extends \Tests\TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Home')
-                ->has('promoSlides', 2)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing')
-                ->where('promoSlides.1.source', 'manual')
-                ->where('promoSlides.1.layout', 'promo_card')
-                ->where('promoSlides.1.eyebrow', 'Promo Diskon')
-                ->where('promoSlides.1.headline', "Boven\nJungkit")
-                ->where('promoSlides.1.subheadline', 'Harga miring, kualitas terjamin')
-                ->where('promoSlides.1.accent', '-30%')
-                ->where('promoSlides.1.image', 'https://cdn.example/boven-promo.jpg')
-                ->where('promoSlides.1.href', '/product/BOU-PROMO-1'));
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'manual')
+                ->where('promoSlides.0.layout', 'promo_card')
+                ->where('promoSlides.0.eyebrow', 'Promo Diskon')
+                ->where('promoSlides.0.headline', "Boven\nJungkit")
+                ->where('promoSlides.0.subheadline', 'Harga miring, kualitas terjamin')
+                ->where('promoSlides.0.accent', '-30%')
+                ->where('promoSlides.0.image', 'https://cdn.example/boven-promo.jpg')
+                ->where('promoSlides.0.href', '/product/BOU-PROMO-1')
+                ->where('promoSlides.1.source', 'placeholder'));
     }
 
     public function test_product_card_uses_real_internal_promotion_attributes(): void
@@ -343,15 +342,9 @@ class HomepagePopularTest extends \Tests\TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Home')
-                ->has('promoSlides', 1)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing')
-                ->where('promoSlides.0.eyebrow', 'PROMO BOVEN JUNGKIT')
-                ->where('promoSlides.0.headline', 'Diskon 20%')
-                ->where('promoSlides.0.subheadline', 'Hanya Hari Ini !')
-                ->where('promoSlides.0.accent', null)
-                ->where('promoSlides.0.image', '/images/home/model-casement.png')
-                ->where('promoSlides.0.href', '/products/bouven'));
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'placeholder')
+                ->where('promoSlides.0.layout', 'placeholder'));
     }
 
     public function test_home_shows_only_landing_slide_when_no_banner_is_published(): void
@@ -359,9 +352,9 @@ class HomepagePopularTest extends \Tests\TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('promoSlides', 1)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing'));
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'placeholder')
+                ->where('promoSlides.0.layout', 'placeholder'));
     }
 
     public function test_manual_banner_slide_uses_linked_product_photo_and_copy(): void
@@ -383,15 +376,14 @@ class HomepagePopularTest extends \Tests\TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('promoSlides', 2)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing')
-                ->where('promoSlides.1.source', 'manual')
-                ->where('promoSlides.1.layout', 'promo_card')
-                ->where('promoSlides.1.href', '/product/BOU-MANUAL-NEW')
-                ->where('promoSlides.1.image', 'https://cdn.example/BOU-MANUAL-NEW.jpg')
-                ->where('promoSlides.1.eyebrow', 'Promo')
-                ->where('promoSlides.1.headline', "Boven\nJungkit"));
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'manual')
+                ->where('promoSlides.0.layout', 'promo_card')
+                ->where('promoSlides.0.href', '/product/BOU-MANUAL-NEW')
+                ->where('promoSlides.0.image', 'https://cdn.example/BOU-MANUAL-NEW.jpg')
+                ->where('promoSlides.0.eyebrow', 'Promo')
+                ->where('promoSlides.0.headline', "Boven\nJungkit")
+                ->where('promoSlides.1.source', 'placeholder'));
     }
 
     public function test_home_builds_slides_from_published_banners_only(): void
@@ -417,16 +409,15 @@ class HomepagePopularTest extends \Tests\TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Home')
-                ->has('promoSlides', 4)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing')
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'manual')
+                ->where('promoSlides.0.layout', 'promo_card')
+                ->where('promoSlides.0.headline', 'Banner satu')
                 ->where('promoSlides.1.source', 'manual')
-                ->where('promoSlides.1.layout', 'promo_card')
-                ->where('promoSlides.1.headline', 'Banner satu')
+                ->where('promoSlides.1.headline', 'Banner dua')
                 ->where('promoSlides.2.source', 'manual')
-                ->where('promoSlides.2.headline', 'Banner dua')
-                ->where('promoSlides.3.source', 'manual')
-                ->where('promoSlides.3.headline', 'Banner tiga'));
+                ->where('promoSlides.2.headline', 'Banner tiga')
+                ->where('promoSlides.3.source', 'placeholder'));
     }
 
     public function test_manual_slides_follow_banner_sort_order(): void
@@ -452,14 +443,13 @@ class HomepagePopularTest extends \Tests\TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('promoSlides', 3)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing')
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'manual')
+                ->where('promoSlides.0.href', '/product/WIN-MAN-1')
+                ->where('promoSlides.0.headline', "Jendela\nSliding")
                 ->where('promoSlides.1.source', 'manual')
-                ->where('promoSlides.1.href', '/product/WIN-MAN-1')
-                ->where('promoSlides.1.headline', "Jendela\nSliding")
-                ->where('promoSlides.2.source', 'manual')
-                ->where('promoSlides.2.href', '/product/WIN-MAN-2'));
+                ->where('promoSlides.1.href', '/product/WIN-MAN-2')
+                ->where('promoSlides.2.source', 'placeholder'));
     }
 
     public function test_automatic_promos_can_be_disabled_from_admin_settings(): void
@@ -473,9 +463,9 @@ class HomepagePopularTest extends \Tests\TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('promoSlides', 1)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing'));
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'placeholder')
+                ->where('promoSlides.0.layout', 'placeholder'));
     }
 
     public function test_manual_promos_are_the_only_campaign_slides_when_automatic_mode_is_off(): void
@@ -497,11 +487,10 @@ class HomepagePopularTest extends \Tests\TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('promoSlides', 2)
-                ->where('promoSlides.0.source', 'fallback')
-                ->where('promoSlides.0.layout', 'landing')
-                ->where('promoSlides.1.source', 'manual')
-                ->where('promoSlides.1.href', '/product/BOU-MANUAL-1'));
+                ->has('promoSlides', 10)
+                ->where('promoSlides.0.source', 'manual')
+                ->where('promoSlides.0.href', '/product/BOU-MANUAL-1')
+                ->where('promoSlides.1.source', 'placeholder'));
     }
 
     public function test_admin_can_update_auto_promotion_settings(): void
@@ -549,8 +538,8 @@ class HomepagePopularTest extends \Tests\TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('promoSlides.1.source', 'manual')
-                ->where('promoSlides.1.href', '/product/WIN-TICKER')
+                ->where('promoSlides.0.source', 'manual')
+                ->where('promoSlides.0.href', '/product/WIN-TICKER')
                 ->where('announcements', fn ($items) => collect($items)->contains(
                     fn ($item) => ($item['href'] ?? '') === '/product/WIN-TICKER'
                 ))

@@ -57,7 +57,7 @@ export default function ProductDetail({
       url.searchParams.set("variant", purchase.selectedVariant.variant_sku)
     }
     return url.toString()
-  }, [product.parent_sku, purchase.selectedVariant?.variant_sku])
+  }, [product.parent_sku, purchase.selectedVariant])
 
   const socialImage = variantMedia.find((item) => item.url)?.url ?? null
   const socialImageUrl = React.useMemo(() => {

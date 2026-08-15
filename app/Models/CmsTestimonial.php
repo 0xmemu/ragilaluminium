@@ -103,7 +103,7 @@ class CmsTestimonial extends Model
     }
 
     /** Public storefront payload (PDP + /reviews + home). */
-    public function toPublicArray(): array
+    public function toPublicArray(bool $includeProduct = true): array
     {
         $product = $this->relationLoaded('product') ? $this->product : null;
 
@@ -116,7 +116,7 @@ class CmsTestimonial extends Model
             'location' => $this->location,
             'image_url' => $this->image_url,
             'images' => $this->imagesPayload(),
-            'product' => $product ? [
+            'product' => $includeProduct && $product ? [
                 'id' => $product->id,
                 'parent_sku' => $product->parent_sku,
                 'name' => $product->short_name ?: $product->name,

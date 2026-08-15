@@ -21,7 +21,7 @@ class SearchController extends Controller
 
         $products = Product::visible()
             ->with(['mainImage', 'activeVariants', 'attributes'])
-            ->withSum('orderItems as sold_count', 'quantity')
+            ->withPopularityScore()
             ->when($q !== '', fn ($query) => CatalogSearch::apply($query, $q))
             ->when($q !== '' && $flashPeriodLive, function ($query) {
                 $query->orderByRaw(

@@ -36,6 +36,10 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Import Performance** (Tipe: Analytics) — tetap di bawah grup nav **Produk**, tepat setelah Import.
   - Metrik keberhasilan dan tingkat error sistem impor data.
   - Route: admin.analytics.import-performance.
+- **Teruskan Popularitas** (Tipe: Operational) — konfigurasi eksplisit produk sumber → target.
+  - Snapshot penjualan valid sumber menjadi seed target; penjualan target tetap dihitung sendiri.
+  - Bisa dinonaktifkan dengan alasan; audit dan notifikasi ambang masuk ke Akun & Sistem.
+  - Route: admin.products.popularity-boosts.*.
 - **Media Library** (Tipe: Operational) — global shared asset di bawah grup nav **Produk**.
 - **Riwayat Media** (Tipe: Operational) — histori pekerjaan media di bawah grup nav **Produk**
 

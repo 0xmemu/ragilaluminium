@@ -69,6 +69,7 @@ return [
                 ['label' => 'Kelola Produk', 'route' => 'admin.products.index', 'icon' => 'package', 'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*']],
                 ['label' => 'Import', 'route' => 'admin.imports.index', 'icon' => 'upload', 'active' => ['admin.imports.*']],
                 ['label' => 'Import Performance', 'route' => 'admin.analytics.import-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.import-performance']],
+                ['label' => 'Teruskan Popularitas', 'route' => 'admin.products.popularity-boosts.index', 'icon' => 'trending-up', 'active' => ['admin.products.popularity-boosts.*']],
                 ['label' => 'Media Library', 'route' => 'admin.media.library', 'icon' => 'image', 'active' => ['admin.media.library']],
                 ['label' => 'Riwayat Media', 'route' => 'admin.media.history', 'icon' => 'history', 'active' => ['admin.media.history']],
             ],

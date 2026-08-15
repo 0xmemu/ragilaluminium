@@ -267,7 +267,7 @@ class InertiaCatalog
         $products = Product::visible()
             ->homepagePopular()
             ->with($with)
-            ->withSum('validOrderItems as sold_count', 'quantity')
+            ->withPopularityScore()
             ->orderBy('homepage_popular_sort')
             ->orderByDesc('id')
             ->limit($limit)
@@ -276,7 +276,6 @@ class InertiaCatalog
         if ($products->isEmpty()) {
             $products = Product::visible()
                 ->with($with)
-                ->withSum('validOrderItems as sold_count', 'quantity')
                 ->orderByWebsiteSales()
                 ->limit($limit)
                 ->get();
@@ -301,7 +300,7 @@ class InertiaCatalog
 
             $products = Product::visible()
                 ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                ->withSum('validOrderItems as sold_count', 'quantity')
+                ->withPopularityScore()
                 ->whereHas('attributes', function ($attr) use ($flashNames, $trueValues) {
                     $attr->whereIn('attribute_name', $flashNames)
                         ->where(function ($inner) use ($trueValues) {
@@ -310,7 +309,7 @@ class InertiaCatalog
                             }
                         });
                 })
-                ->orderByDesc('sold_count')
+                ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')
                 ->orderByDesc('id')
                 ->limit($limit)
                 ->get();
@@ -318,8 +317,8 @@ class InertiaCatalog
             $products = Product::visible()
                 ->whereIn('id', $flashIds)
                 ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                ->withSum('validOrderItems as sold_count', 'quantity')
-                ->orderByDesc('sold_count')
+                ->withPopularityScore()
+                ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')
                 ->orderByDesc('id')
                 ->limit($limit)
                 ->get();

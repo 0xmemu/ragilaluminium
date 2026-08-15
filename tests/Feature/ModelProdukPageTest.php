@@ -69,7 +69,9 @@ class ModelProdukPageTest extends TestCase
                 ->where('models.0.model', 'SLIDING')
                 ->where('models.1.category', 'DOOR')
                 ->where('models.1.model', 'SLIDING')
-                ->has('filterDesigns', 2)
+                // Design filtering belongs to the SKU catalog, not this
+                // model/category-scoped hub.
+                ->missing('filterDesigns')
             );
     }
 

@@ -185,12 +185,12 @@ class CatalogTaxonomy
     protected static function modelPopularity(): array
     {
         return Product::visible()
-            ->withSum('validOrderItems as sold_count', 'quantity')
+            ->withPopularityScore()
             ->get()
             ->groupBy(
                 fn (Product $p) => strtoupper((string) $p->product_category).'|'.strtoupper((string) $p->product_model)
             )
-            ->map(fn (Collection $group) => (int) $group->sum('sold_count'))
+            ->map(fn (Collection $group) => (int) $group->sum(fn (Product $product) => (int) ($product->sold_count ?? 0) + (int) ($product->popularity_seed ?? 0)))
             ->all();
     }
 

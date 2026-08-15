@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
 use App\Services\ProductEngagementService;
+use App\Services\ProductPopularityService;
 use App\Support\CatalogLabels;
 use App\Support\InertiaCatalog;
 use App\Support\InstallationGallery;
@@ -212,16 +213,9 @@ class ProductController extends Controller
                 'thumb' => $m->urlFor('thumb') ?? $m->urlFor('card'),
                 'is_video' => InstallationGallery::isVideoMedia($m),
             ])->values()->all(),
-            'reviews' => CmsTestimonial::query()
-                ->published()
-                ->website()
-                ->forProduct($product->id)
-                ->with('product:id,parent_sku,name,short_name')
-                ->orderBy('sort_order')
-                ->orderByDesc('id')
-                ->limit(20)
-                ->get()
-                ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+            'reviews' => app(ProductPopularityService::class)
+                ->inheritedTestimonials($product)
+                ->map(fn (CmsTestimonial $t) => $t->toPublicArray((int) $t->product_id === (int) $product->id))
                 ->values()
                 ->all(),
             'relatedProducts' => InertiaCatalog::productCards(
@@ -298,7 +292,7 @@ class ProductController extends Controller
                 ->homepagePopular()
                 ->whereNotIn('id', $exclude->all())
                 ->with(['mainImage', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
+                ->withPopularityScore()
                 ->orderBy('homepage_popular_sort')
                 ->orderByDesc('id')
                 ->limit(8 - $related->count())

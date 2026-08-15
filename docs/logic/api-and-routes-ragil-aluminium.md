@@ -204,6 +204,21 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 - `POST /admin/products/{id}/unarchive`
   - Controller: `Admin\ProductController@unarchive`
 
+#### Teruskan Popularitas
+
+- `GET /admin/products/popularity-boosts`
+  - Controller: `Admin\ProductPopularityBoostController@index`
+  - Purpose: daftar konfigurasi sumber → target, seed, skor efektif, ambang notifikasi, dan status audit.
+- `POST /admin/products/popularity-boosts`
+  - Controller: `Admin\ProductPopularityBoostController@store`
+  - Purpose: snapshot penjualan valid produk A sebagai seed popularitas produk B.
+- `POST /admin/products/popularity-boosts/{boost}/disable`
+  - Controller: `Admin\ProductPopularityBoostController@disable`
+  - Purpose: menonaktifkan boost dengan alasan wajib; seed target dikosongkan, riwayat order tetap.
+- `POST /admin/products/popularity-boosts/{boost}/enable`
+  - Controller: `Admin\ProductPopularityBoostController@enable`
+  - Purpose: mengaktifkan kembali dengan snapshot penjualan sumber terbaru.
+
 #### Variants (per product)
 
 - `GET /admin/products/{id}/variants`

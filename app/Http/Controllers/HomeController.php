@@ -29,7 +29,7 @@ class HomeController extends Controller
 
             $featuredProducts = Product::visible()
                 ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
+                ->withPopularityScore()
                 ->latest()
                 ->limit(8)
                 ->get();

@@ -21,6 +21,10 @@ class Product extends Model
         'status',
         'homepage_popular',
         'homepage_popular_sort',
+        'popularity_seed',
+        'popularity_seed_source_product_id',
+        'popularity_seed_applied_at',
+        'popularity_seed_applied_by_user_id',
         'created_by_user_id',
         'updated_by_user_id',
     ];
@@ -28,6 +32,8 @@ class Product extends Model
     protected $casts = [
         'homepage_popular' => 'boolean',
         'homepage_popular_sort' => 'integer',
+        'popularity_seed' => 'integer',
+        'popularity_seed_applied_at' => 'datetime',
     ];
 
     public function variants(): HasMany
@@ -78,6 +84,16 @@ class Product extends Model
         return $this->hasMany(CmsTestimonial::class);
     }
 
+    public function popularityBoostsAsSource(): HasMany
+    {
+        return $this->hasMany(ProductPopularityBoost::class, 'source_product_id');
+    }
+
+    public function popularityBoostsAsTarget(): HasMany
+    {
+        return $this->hasMany(ProductPopularityBoost::class, 'target_product_id');
+    }
+
     public function mainImage()
     {
         return $this->hasOne(ProductMedia::class)
@@ -114,13 +130,23 @@ class Product extends Model
         return $query->where('homepage_popular', true);
     }
 
-    /** Rank by website order quantity (catalog Terlaris / fallback Home). */
-    public function scopeOrderByWebsiteSales(Builder $query): Builder
+    /** Rank by valid website sales plus an explicit popularity seed. */
+    public function scopeWithPopularityScore(Builder $query): Builder
+    {
+        return $query->withSum('validOrderItems as sold_count', 'quantity');
+    }
+
+    public function scopeOrderByPopularity(Builder $query): Builder
     {
         return $query
-            ->withSum('validOrderItems as sold_count', 'quantity')
-            ->orderByDesc('sold_count')
-            ->orderByDesc('id');
+            ->withPopularityScore()
+            ->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC');
+    }
+
+    /** Rank by website sales plus popularity seed (catalog / related products). */
+    public function scopeOrderByWebsiteSales(Builder $query): Builder
+    {
+        return $query->orderByPopularity()->orderByDesc('id');
     }
 
     public function getMinPriceAttribute(): ?float

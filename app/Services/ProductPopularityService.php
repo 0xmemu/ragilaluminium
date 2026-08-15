@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\AdminNotification;
 use App\Models\CmsTestimonial;
-use App\Models\EventLog;
+use App\Services\ActivityLogService;
 use App\Models\Product;
 use App\Models\ProductPopularityBoost;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,6 +54,18 @@ class ProductPopularityService
             ]);
         }
 
+        $hasAnotherActiveBoost = ProductPopularityBoost::query()
+            ->enabled()
+            ->where('target_product_id', $target->id)
+            ->where('source_product_id', '!=', $source->id)
+            ->exists();
+
+        if ($hasAnotherActiveBoost) {
+            throw ValidationException::withMessages([
+                'target_product_id' => 'Produk target sudah memiliki Teruskan Popularitas aktif dari sumber lain. Nonaktifkan konfigurasi tersebut terlebih dahulu.',
+            ]);
+        }
+
         $seed = (int) $source->validOrderItems()->sum('quantity');
 
         $boost = DB::transaction(function () use ($source, $target, $seed, $threshold, $userId): ProductPopularityBoost {
@@ -87,7 +99,7 @@ class ProductPopularityService
             return $boost->fresh(['sourceProduct', 'targetProduct']);
         });
 
-        EventLog::record(self::EVENT_ENABLED, 'product_popularity_boost', $boost->id, [
+        ActivityLogService::record(self::EVENT_ENABLED, 'product_popularity_boost', $boost->id, [
             'source_product_id' => $source->id,
             'target_product_id' => $target->id,
             'seed_sold_count' => $seed,
@@ -132,7 +144,7 @@ class ProductPopularityService
                 ]);
         });
 
-        EventLog::record(self::EVENT_DISABLED, 'product_popularity_boost', $boost->id, [
+        ActivityLogService::record(self::EVENT_DISABLED, 'product_popularity_boost', $boost->id, [
             'source_product_id' => $boost->source_product_id,
             'target_product_id' => $boost->target_product_id,
             'reason' => $reason,
@@ -165,7 +177,7 @@ class ProductPopularityService
         }
 
         $boost->update(['threshold_notified_at' => now()]);
-        EventLog::record(self::EVENT_THRESHOLD, 'product_popularity_boost', $boost->id, [
+        ActivityLogService::record(self::EVENT_THRESHOLD, 'product_popularity_boost', $boost->id, [
             'source_product_id' => $boost->source_product_id,
             'target_product_id' => $boost->target_product_id,
             'source_sold_count' => $sourceSold,

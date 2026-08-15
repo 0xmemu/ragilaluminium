@@ -165,7 +165,7 @@ class CatalogController extends Controller
             ->withMin('activeVariants as min_price_sort', 'price')
             ->withMin('activeVariants as min_height_sort', 'height_cm')
             ->withMin('activeVariants as min_width_sort', 'width_cm')
-            ->withSum('validOrderItems as sold_count', 'quantity')
+            ->withPopularityScore()
             ->withSum('activeVariants as stock_sort', 'stock')
             ->when($model, fn ($q) => $q->where('product_model', $model))
             ->when($design, fn ($q) => $q->where('design_variant', $design))
@@ -205,7 +205,7 @@ class CatalogController extends Controller
                 in_array($sort, ['popular', 'terlaris', 'bestseller'], true),
                 // Populer: penjualan dulu, lalu stok terbanyak sebagai tie-breaker
                 // (belum ada pembelian → produk stok tertinggi tampil di depan).
-                fn ($q) => $q->orderByDesc('sold_count')->orderByDesc('stock_sort')->orderByDesc('id')
+                fn ($q) => $q->orderByRaw('(COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)) DESC')->orderByDesc('stock_sort')->orderByDesc('id')
             )
              ->paginate(14)
             ->withQueryString();
@@ -224,7 +224,7 @@ class CatalogController extends Controller
             $flashSaleSpotlight = InertiaCatalog::productCards(
                 $flashQuery
                     ->with(['mainImage', 'activeVariants', 'attributes'])
-                    ->withSum('validOrderItems as sold_count', 'quantity')
+                    ->withPopularityScore()
                     ->latest('updated_at')
                     ->orderByDesc('id')
                     ->limit(8)
@@ -375,7 +375,7 @@ class CatalogController extends Controller
                     });
                 })
                 ->with(['mainImage', 'activeVariants', 'attributes'])
-                ->withSum('validOrderItems as sold_count', 'quantity')
+                ->withPopularityScore()
                 ->latest('id')
                 ->limit(8)
                 ->get();
@@ -464,7 +464,7 @@ class CatalogController extends Controller
         return InertiaCatalog::productCards(
             $flashQuery
                 ->with(['mainImage', 'activeVariants', 'attributes'])
-                ->withSum('validOrderItems as sold_count', 'quantity')
+                ->withPopularityScore()
                 ->latest('updated_at')
                 ->orderByDesc('id')
                 ->limit(8)
@@ -536,7 +536,7 @@ class CatalogController extends Controller
             ->where('product_category', $categoryCode)
             ->where('product_model', $modelCode)
             ->with(['mainImage', 'activeVariants', 'attributes'])
-            ->withSum('validOrderItems as sold_count', 'quantity')
+            ->withPopularityScore()
             ->latest('id')
             ->limit(48)
             ->get();

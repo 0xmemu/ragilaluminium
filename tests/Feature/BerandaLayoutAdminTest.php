@@ -42,7 +42,9 @@ class BerandaLayoutAdminTest extends TestCase
         $sections = collect($page->content['layout']['sections']);
         $this->assertCount(3, $sections);
         $this->assertFalse((bool) $sections->firstWhere('key', 'banner')['enabled']);
-        $this->assertTrue((bool) $sections->firstWhere('key', 'category_menu')['enabled']);
+        // Category menu is intentionally disabled in the homepage CMS layout;
+        // storefront navigation remains available through the header.
+        $this->assertFalse((bool) $sections->firstWhere('key', 'category_menu')['enabled']);
         $this->assertTrue((bool) $sections->firstWhere('key', 'how_to_order')['enabled']);
     }
 
