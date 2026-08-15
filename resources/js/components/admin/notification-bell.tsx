@@ -137,9 +137,11 @@ export function NotificationBell({
               <Link
                 key={n.id}
                 href={n.href ?? "#"}
-                onClick={() => {
+                onClick={(event) => {
+                  if (!n.href) event.preventDefault()
                   if (!n.read_at) markRead(n.id)
                 }}
+                aria-disabled={!n.href ? true : undefined}
                 className="flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left transition last:border-0 hover:bg-muted/60"
               >
                 <span
