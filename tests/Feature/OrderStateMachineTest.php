@@ -82,6 +82,17 @@ class OrderStateMachineTest extends TestCase
         $this->assertSame('pending_payment', $order->fresh()->order_status);
     }
 
+    public function test_direct_status_url_hands_off_to_order_detail_instead_of_not_found(): void
+    {
+        $admin = $this->admin();
+        $order = $this->makeOrder();
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.status.view', $order))
+            ->assertRedirect(route('admin.orders.show', $order))
+            ->assertSessionHas('info');
+    }
+
     public function test_shipped_order_cannot_be_cancelled_or_restore_stock(): void
     {
         $product = Product::create([

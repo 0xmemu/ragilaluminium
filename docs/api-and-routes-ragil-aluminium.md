@@ -195,6 +195,7 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `POST /admin/orders/{order}/shipping` -> `Admin\OrderController@storeShipping`  (name: `admin.orders.shipping.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/orders/{order}/shipping/refresh` -> `Admin\OrderController@refreshShipping`  (name: `admin.orders.shipping.refresh`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/orders/{order}/status` -> `Admin\OrderController@updateStatus`  (name: `admin.orders.status`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/orders/{order}/status` -> `Admin\OrderController@statusEntry` (name: `admin.orders.status.view`) — handoff ke detail order; perubahan status tetap memakai PUT.
 - `GET /admin/orders/{order}/whatsapp` -> `Admin\WhatsAppMessageController@byOrder`  (name: `admin.orders.whatsapp`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/pages` -> `Admin\PageController@index`  (name: `admin.pages.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/pages` -> `Admin\PageController@store`  (name: `admin.pages.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

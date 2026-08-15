@@ -155,7 +155,7 @@ class OrderTrackingPresenter
 
         return match ($to) {
             'pending_payment' => 'Menunggu konfirmasi pembayaran.',
-            'processing' => 'Pesanan sedang diproses oleh toko.',
+            'processing' => 'Pesanan sedang diproses oleh admin gudang.',
             'shipped' => 'Pesanan sedang dikirim oleh ekspedisi.',
             'delivered' => 'Paket berhasil diterima.',
             'completed' => 'Terima kasih, pesanan Anda telah selesai.',

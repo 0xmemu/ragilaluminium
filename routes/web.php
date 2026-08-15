@@ -255,6 +255,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/export', [AdminOrderController::class, 'export'])->name('orders.export');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    // Handoff GET untuk tautan/status yang dibuka langsung; perubahan status tetap PUT.
+    Route::get('orders/{order}/status', [AdminOrderController::class, 'statusEntry'])->name('orders.status.view');
     Route::put('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
     Route::post('orders/{order}/returns', [AdminOrderController::class, 'createReturn'])->name('orders.returns.store');
     Route::post('orders/{order}/returns/{returnCase}/complete', [AdminOrderController::class, 'completeReturn'])->name('orders.returns.complete');

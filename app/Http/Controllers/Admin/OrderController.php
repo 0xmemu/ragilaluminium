@@ -733,6 +733,19 @@ class OrderController extends Controller
     }
 
 
+    /**
+     * GET handoff for the status action URL.
+     *
+     * Status changes intentionally remain PUT-only. A direct browser visit should
+     * return the order workflow instead of a 404/ambiguous method error.
+     */
+    public function statusEntry(Order $order): RedirectResponse
+    {
+        return redirect()
+            ->route("admin.orders.show", $order)
+            ->with("info", "Status pesanan diubah melalui tombol tindakan pada detail pesanan.");
+    }
+
     public function updateStatus(Request $request, Order $order): RedirectResponse
     {
         $validated = $request->validate([

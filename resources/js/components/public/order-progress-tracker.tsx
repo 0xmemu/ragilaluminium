@@ -6,7 +6,7 @@ import type { PublicOrder } from "@/types"
 
 const STEPS = [
   { status: "pending_payment", label: "Pesanan dibuat", hint: "Menunggu konfirmasi" },
-  { status: "processing", label: "Diproses", hint: "Produksi oleh toko" },
+  { status: "processing", label: "Diproses", hint: "Sedang diproses oleh admin gudang" },
   { status: "shipped", label: "Dikirim", hint: "Dalam perjalanan" },
   { status: "delivered", label: "Sampai", hint: "Paket diterima" },
   { status: "completed", label: "Selesai", hint: "Pesanan selesai" },
@@ -14,7 +14,7 @@ const STEPS = [
 
 const MESSAGE_KEYWORDS: Record<(typeof STEPS)[number]["status"], string[]> = {
   pending_payment: ["menunggu konfirmasi", "dibuat"],
-  processing: ["diproses oleh toko", "diproses"],
+  processing: ["diproses oleh admin gudang", "diproses oleh toko", "diproses"],
   shipped: ["sedang dikirim", "resi pengiriman", "diterbitkan"],
   delivered: ["berhasil diterima", "paket diterima"],
   completed: ["selesai"],
