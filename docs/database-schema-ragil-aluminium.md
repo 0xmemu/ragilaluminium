@@ -530,6 +530,13 @@ Indexes:
 - `rating` (`INTEGER`), nullable
 - `source` (`VARCHAR`), NN, default 'other'
 - `location` (`VARCHAR`), nullable
+- `order_id` (`INTEGER`), nullable, FK -> orders.id; sumber verifikasi pembelian dan deduplikasi satu ulasan/order
+- `author_admin_id` (`INTEGER`), nullable, FK -> users.id; admin pembuat ulasan admin
+- `author_type` (`VARCHAR`), NN, default `customer` (`customer|admin`)
+- `moderation_status` (`VARCHAR`), NN, default `approved` (`pending|approved|rejected`)
+- `source_reference` (`VARCHAR`), nullable; referensi screenshot/WA atau sumber audit
+- `media_items` (`JSON`), nullable; item type/url/source tambahan oleh admin
+- `verified_at` (`TIMESTAMP`), nullable; terisi bila ditautkan ke order delivered/completed
 
 Indexes:
 - `cms_testimonials_product_published_idx` (IDX on `product_id`, `published`)

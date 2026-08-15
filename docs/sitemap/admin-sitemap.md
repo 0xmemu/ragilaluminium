@@ -116,6 +116,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
   - Route: `admin.customers.*` → `Admin/Customers/{Index,Edit}`. **Bukan** Manajemen Admin (`admin.users.*`).
 - **Ulasan** (Tipe: `Operational` / Monitoring)
   - Tab **Ulasan Website** (`cms_testimonials`) + **Ulasan Foto** (`cms_gallery_items` / hasil pemasangan): cari, filter publish, publish/unpublish, CRUD.
+-  Moderasi ulasan: status pending/approved/rejected, audit source/author, verified purchase dari order delivered/completed, admin dapat membuat satu ulasan/order yang belum diberi ulasan; teks pelanggan immutable, media foto/video dapat ditambahkan admin.
   - Route: `admin.testimonials.*` + `admin.gallery-items.*` → `Admin/Testimonials/{Index,Form,GalleryForm}`.
 ### 9. Settings (Sistem) / Akun
 - **Log Aktivitas** (Tipe: Operational / Monitoring)
