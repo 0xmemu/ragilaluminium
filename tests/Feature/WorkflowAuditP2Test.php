@@ -45,13 +45,17 @@ class WorkflowAuditP2Test extends TestCase
         $nav = config('admin-sitemap.navigation');
         $coreRoutes = collect($nav['core']['items'])->pluck('route')->all();
         $komunikasiRoutes = collect($nav['pelanggan_komunikasi']['items'])->pluck('route')->all();
-        $monitoringRoutes = collect($nav['monitoring']['items'])->pluck('route')->all();
+        $productRoutes = collect($nav['produk']['items'])->pluck('route')->all();
+        $accountRoutes = collect($nav['akun_sistem']['items'])->pluck('route')->all();
 
         $this->assertContains('admin.payments.index', $coreRoutes);
         $this->assertContains('admin.shipping.index', $coreRoutes);
+        $this->assertContains('admin.analytics.store-performance', $coreRoutes);
+        $this->assertContains('admin.imports.index', $productRoutes);
+        $this->assertContains('admin.analytics.import-performance', $productRoutes);
         // Menu WhatsApp terpusat di dashboard (active mencakup messages.*, connection, pairing).
         $this->assertContains('admin.whatsapp.dashboard', $komunikasiRoutes);
-        $this->assertContains('admin.analytics.store-performance', $monitoringRoutes);
+        $this->assertContains('admin.activity-logs.index', $accountRoutes);
     }
 
     public function test_orders_index_filters_payment_shipping_and_date(): void

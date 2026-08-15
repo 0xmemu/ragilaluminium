@@ -24,7 +24,7 @@ import {
   writeAdminTheme,
   type AdminTheme,
 } from "@/lib/admin-theme"
-import { routeUrl } from "@/lib/routes"
+import { isRouteActive, routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
 function useSearchShortcut(onOpen: () => void) {
@@ -84,6 +84,7 @@ export function AdminLayout({
   }, [])
 
   const openSearch = React.useCallback(() => setSearchOpen(true), [])
+  const isDashboard = isRouteActive(["admin.dashboard"])
   useSearchShortcut(openSearch)
 
   function toggleTheme() {
@@ -113,16 +114,18 @@ export function AdminLayout({
       <div className="min-w-0">
         <header className="sticky top-0 z-header flex h-14 items-center gap-2 border-b border-border bg-background/85 px-4 backdrop-blur-md md:px-6">
           <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="lg:hidden"
-                aria-label="Buka navigasi admin"
-              >
-                <Icon name="menu" className="h-5 w-5" aria-hidden="true" />
-              </Button>
-            </SheetTrigger>
+            {!isDashboard ? (
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="lg:hidden"
+                  aria-label="Buka navigasi admin"
+                >
+                  <Icon name="menu" className="h-5 w-5" aria-hidden="true" />
+                </Button>
+              </SheetTrigger>
+            ) : null}
             <SheetContent side="left" className="w-[min(85vw,18rem)] p-0">
               <AdminNavigation onNavigate={() => setNavigationOpen(false)} />
             </SheetContent>

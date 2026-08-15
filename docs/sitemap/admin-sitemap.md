@@ -20,31 +20,37 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Beranda** (Tipe: `Operational` & `Analytics`)
   - Snapshot KPI harian, funnel pesanan, grafik performa singkat, dan *alert* operasional (import gagal, WA gagal).
 
-### 2. Catalog / Produk
+### 2. Performa Toko
+- **Performa Toko** (Tipe: Analytics / pembukuan)
+  - Dashboard KPI penjualan, kunjungan, operasional + tren + tabel produk/customer + unduh CSV.
+  - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); net dikurangi refund return ledger yang selesai. issue bukan retur.
+
+### 3. Produk (Catalog)
 - **Daftar Produk** (Tipe: `Operational` & `Content`)
   - Daftar SKU Induk, status aktif/arsip.
   - Sub-view: Product Detail (Overview, Variants, Attributes, Media per produk).
   - Shortcut toolbar: Import, Media hub, Export CSV, Tambah Produk.
-- **Import** (Tipe: `Operational`) — di bawah grup nav **Produk**
+- **Import** (Tipe: Operational) — di bawah grup nav **Produk**
   - Daftar job impor Shopee/Internal.
   - Sub-view: Job Detail (Summary, Statistik Bar, Failed Rows Table, Download Correction).
-- **Media** (Tipe: `Operational`) — di bawah grup nav **Produk**
-  - Media manager global + status download/upload; kelola per produk lewat `admin.products.media.*`.
-- **Attributes** (Tipe: `Operational`)
-  - Manajemen taksonomi (material, tipe kaca, dll) dari konteks produk.
+- **Import Performance** (Tipe: Analytics) — tetap di bawah grup nav **Produk**, tepat setelah Import.
+  - Metrik keberhasilan dan tingkat error sistem impor data.
+  - Route: admin.analytics.import-performance.
+- **Media Library** (Tipe: Operational) — global shared asset di bawah grup nav **Produk**.
+- **Riwayat Media** (Tipe: Operational) — histori pekerjaan media di bawah grup nav **Produk**
 
-### 3. Orders & Payments (Pesanan & Pembayaran)
+### 4. Orders & Payments (Pesanan & Pembayaran)
 - **Orders** (Tipe: `Operational`)
   - Daftar pesanan dengan filter status (pending, processing, shipped, dll).
   - Sub-view: Order Detail (Ringkasan, Info Pelanggan, Item, Log WA, Log Status).
 - **Payments** (Tipe: `Operational`)
   - Daftar rekaman pembayaran, verifikasi bukti transfer.
 
-### 4. Shipping (Pengiriman)
+### 5. Shipping (Pengiriman)
 - **Shipping Records** (Tipe: `Operational`)
   - Daftar nomor resi (Waybill), kurir, dan status integrasi J&T/lainnya.
 
-### 5. WhatsApp Center
+### 6. WhatsApp Center
 - **WhatsApp Otomatis** (Tipe: `Settings/System` & `Operational`)
   - Daftar 5 otomasi Stage-8 (COD, Transfer, Diproses, Resi, Sampai): toggle aktif + edit provider/body preview.
   - Route: `admin.whatsapp.templates.*` → `Admin/WhatsApp/Index|Edit`.
@@ -52,7 +58,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Messages** (Tipe: `Operational`)
   - Log lalu lintas pesan masuk/keluar dan *troubleshooting* status gagal. Route: `admin.whatsapp.messages.*`.
 
-### 6. CMS / Pengaturan Website
+### 7. CMS / Pengaturan Website
 - **Beranda Pembeli** (Tipe: `Content/CMS`)
   - Tata letak section beranda (urutan/aktif) + editor Sorotan Layanan & Cara Pesan. Banner → Promo Toko.
   - Route: `admin.beranda.*` → `Admin/Beranda/{Index,ServiceHighlightsForm,HowToOrderForm}`. Data: `cms_pages.beranda` JSON.
@@ -98,24 +104,20 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Subsidi Ongkir** (Tipe: `Settings`)
   - Toggle subsidi + skema %/Rp + kurir J&T. Route: `admin.shipping-subsidy.*` → `cms_pages.checkout.content.shipping_subsidy`.
 
-### 7. Analytics (Analitik & Performa)
-- **Performa Toko** (Tipe: `Analytics` / pembukuan)
-  - Dashboard KPI penjualan, kunjungan, operasional + tren + tabel produk/customer + unduh CSV.
-  - Route: `admin.analytics.store-performance` (+ `.export`). Inertia: `Admin/Analytics/StorePerformance`.
-  - Omzet hanya order fulfillment (`processing|shipped|delivered|completed`).
+### 8. Pelanggan & Monitoring
 - **Customer** (Tipe: `Operational` / Monitoring)
   - Kelola pelanggan guest (tabel `customers`): cari, status/fraud turunan, detail/edit, riwayat order, unduh CSV.
   - Route: `admin.customers.*` → `Admin/Customers/{Index,Edit}`. **Bukan** Manajemen Admin (`admin.users.*`).
 - **Ulasan** (Tipe: `Operational` / Monitoring)
   - Tab **Ulasan Website** (`cms_testimonials`) + **Ulasan Foto** (`cms_gallery_items` / hasil pemasangan): cari, filter publish, publish/unpublish, CRUD.
   - Route: `admin.testimonials.*` + `admin.gallery-items.*` → `Admin/Testimonials/{Index,Form,GalleryForm}`.
-- **Log Aktivitas** (Tipe: `Operational` / Monitoring)
-  - Audit trail `event_logs`: tab kategori, cari, sort, unduh CSV, Detail ke order/import/WA. **Bukan** Import Performance.
-  - Route: `admin.activity-logs.*` → `Admin/ActivityLogs/Index`.
-- **Import Performance** (Tipe: `Analytics`)
-  - Metrik keberhasilan dan tingkat *error* sistem impor data. Route: `admin.analytics.import-performance`.
-
-### 8. Settings (Sistem) / Akun
+### 9. Settings (Sistem) / Akun
+- **Log Aktivitas** (Tipe: Operational / Monitoring)
+  - Audit trail event_logs: tab kategori, cari, sort, unduh CSV, Detail ke order/import/WA.
+  - Route: admin.activity-logs.* → Admin/ActivityLogs/Index.
+- **Notifikasi** (Tipe: Operational / Monitoring)
+  - Daftar dan tanda-baca notifikasi admin.
+  - Route: admin.notifications.index.
 - **Profil Saya** (Tipe: `Settings/Account`)
   - Edit nama, email, password akun yang sedang login. Peran/status read-only.
   - Route: `admin.profile.*` → `Admin/Profile/Edit`.

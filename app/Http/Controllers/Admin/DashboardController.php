@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EventLog;
 use App\Models\ImportJob;
 use App\Models\MediaAsset;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductMedia;
@@ -34,33 +34,7 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $today = now()->startOfDay();
-        $yesterday = now()->subDay()->startOfDay();
-        $yesterdayEnd = $today->copy()->subSecond();
         $activeOrderStatuses = ['processing', 'shipped', 'delivered'];
-
-        $todaysOrders = Order::where('created_at', '>=', $today)
-            ->where('order_status', '!=', 'cancelled')
-            ->count();
-        $todaysRevenue = (float) Order::where('created_at', '>=', $today)
-            ->whereIn('order_status', StorePerformanceService::REVENUE_STATUSES)
-            ->sum('total_amount');
-        $yesterdaysOrders = Order::whereBetween('created_at', [$yesterday, $yesterdayEnd])
-            ->where('order_status', '!=', 'cancelled')
-            ->count();
-        $yesterdaysRevenue = (float) Order::whereBetween('created_at', [$yesterday, $yesterdayEnd])
-            ->whereIn('order_status', StorePerformanceService::REVENUE_STATUSES)
-            ->sum('total_amount');
-
-        $todaysUnits = (int) OrderItem::query()
-            ->whereHas('order', fn ($q) => $q
-                ->where('created_at', '>=', $today)
-                ->whereIn('order_status', StorePerformanceService::REVENUE_STATUSES))
-            ->sum('quantity');
-        $yesterdaysUnits = (int) OrderItem::query()
-            ->whereHas('order', fn ($q) => $q
-                ->whereBetween('created_at', [$yesterday, $yesterdayEnd])
-                ->whereIn('order_status', StorePerformanceService::REVENUE_STATUSES))
-            ->sum('quantity');
 
         $pendingPaymentQuery = Order::query()->where('order_status', 'pending_payment');
         $activeOrdersQuery = Order::query()->whereIn('order_status', $activeOrderStatuses);
@@ -78,18 +52,6 @@ class DashboardController extends Controller
             : ! app()->environment('production');
         $queueConnection = (string) config('queue.default', 'sync');
         $queueIsReady = ! in_array($queueConnection, ['sync', 'null'], true);
-
-        $revenueChangePercent = $yesterdaysRevenue > 0
-            ? round((($todaysRevenue - $yesterdaysRevenue) / $yesterdaysRevenue) * 100, 1)
-            : ($todaysRevenue > 0 ? 100.0 : 0.0);
-
-        $revenueSparkline = collect(range(6, 0))->map(function (int $daysAgo) {
-            $day = now()->subDays($daysAgo)->startOfDay();
-
-            return (float) Order::whereBetween('created_at', [$day, $day->copy()->endOfDay()])
-                ->whereIn('order_status', StorePerformanceService::REVENUE_STATUSES)
-                ->sum('total_amount');
-        })->values()->all();
 
         $statusOrder = [
             ['key' => 'pending_payment', 'label' => 'Perlu Konfirmasi', 'icon' => 'clock'],
@@ -109,13 +71,43 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('order_status');
 
+        $attentionOrderIds = Order::query()
+            ->whereIn('order_status', ['pending_payment', 'processing', 'delivered', 'return_in_process'])
+            ->pluck('id');
+
+        // Status aging follows the last status transition event; legacy orders fall back to updated_at.
+        $latestStatusEvents = EventLog::query()
+            ->where('entity_type', 'order')
+            ->where('event_type', 'order_status_changed')
+            ->whereIn('entity_id', $attentionOrderIds)
+            ->latest('created_at')
+            ->get(['entity_id', 'payload', 'created_at'])
+            ->groupBy('entity_id')
+            ->map(fn ($events) => $events->first());
+
+        $overdueCount = static function (string $status, $cutoff) use ($latestStatusEvents): int {
+            return Order::query()
+                ->where('order_status', $status)
+                ->get(['id', 'created_at', 'updated_at'])
+                ->filter(function (Order $order) use ($latestStatusEvents, $cutoff, $status): bool {
+                    $event = $latestStatusEvents->get($order->id);
+                    $eventStatus = $event
+                        ? (string) data_get($event->payload, 'order_status', data_get($event->payload, 'to', ''))
+                        : '';
+                    $enteredAt = $event && $eventStatus === $status
+                        ? $event->created_at
+                        : ($order->updated_at ?? $order->created_at);
+
+                    return $enteredAt !== null && $enteredAt->lt($cutoff);
+                })
+                ->count();
+        };
+
         $attention = [
             [
                 'key' => 'confirm_overdue',
                 'label' => 'Perlu Konfirmasi > 24 Jam',
-                'count' => Order::where('order_status', 'pending_payment')
-                    ->where('updated_at', '<', now()->subDay())
-                    ->count(),
+                'count' => $overdueCount('pending_payment', now()->subDay()),
                 'href' => route('admin.orders.index', [
                     'order_status' => 'pending_payment',
                     'older_than' => '24h',
@@ -124,9 +116,7 @@ class DashboardController extends Controller
             [
                 'key' => 'processing_overdue',
                 'label' => 'Diproses > 24 Jam',
-                'count' => Order::where('order_status', 'processing')
-                    ->where('updated_at', '<', now()->subDay())
-                    ->count(),
+                'count' => $overdueCount('processing', now()->subDay()),
                 'href' => route('admin.orders.index', [
                     'order_status' => 'processing',
                     'older_than' => '24h',
@@ -135,9 +125,7 @@ class DashboardController extends Controller
             [
                 'key' => 'delivered_stale',
                 'label' => 'Pesanan Sampai > 2 Hari Belum Selesai',
-                'count' => Order::where('order_status', 'delivered')
-                    ->where('updated_at', '<', now()->subDays(2))
-                    ->count(),
+                'count' => $overdueCount('delivered', now()->subDays(2)),
                 'href' => route('admin.orders.index', [
                     'order_status' => 'delivered',
                     'older_than' => '2d',
@@ -146,9 +134,7 @@ class DashboardController extends Controller
             [
                 'key' => 'return_overdue',
                 'label' => 'Retur Diproses > 7 Hari',
-                'count' => Order::where('order_status', 'return_in_process')
-                    ->where('updated_at', '<', now()->subDays(7))
-                    ->count(),
+                'count' => $overdueCount('return_in_process', now()->subDays(7)),
                 'href' => route('admin.orders.index', [
                     'order_status' => 'return_in_process',
                     'older_than' => '7d',
@@ -293,14 +279,33 @@ class DashboardController extends Controller
             $performaPeriod = 'today';
         }
 
+        // StorePerformanceService is the canonical read model for dashboard sales metrics.
         $performance = $this->performance->build($performaPeriod);
+        $todayPerformance = $performaPeriod === 'today'
+            ? $performance
+            : $this->performance->build('today');
+        $todaySalesKpis = collect($todayPerformance['sections'] ?? [])
+            ->firstWhere('key', 'sales')['kpis'] ?? [];
+        $todaySales = collect($todaySalesKpis)->keyBy('key');
+        $todayOmzet = $todaySales->get('omzet', []);
+        $todayOrders = $todaySales->get('orders', []);
+        $todayUnits = $todaySales->get('units', []);
+        $revenueChart = collect($todayPerformance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
+        $todaysRevenue = (float) ($todayOmzet['value'] ?? 0);
+        $todaysOrders = (int) ($todayOrders['value'] ?? 0);
+        $todaysUnits = (int) ($todayUnits['value'] ?? 0);
+        $revenueChangePercent = $todayOmzet['change_percent'] ?? 0;
+        $ordersDelta = $todaysOrders - (int) ($todayOrders['previous'] ?? 0);
+        $unitsDelta = $todaysUnits - (int) ($todayUnits['previous'] ?? 0);
+        $revenueSparkline = collect($revenueChart['series'] ?? [])->pluck('value')->map(fn ($value) => (float) $value)->values()->all();
+
         $trafficKpis = collect($performance['sections'] ?? [])
             ->firstWhere('key', 'traffic')['kpis'] ?? [];
         $performaMetrics = collect($trafficKpis)
             ->whereIn('key', ['visitors', 'conversion', 'new_customers', 'repeat_customers'])
             ->values()
             ->all();
-        $revenueChart = collect($performance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
+        $performaRevenueChart = collect($performance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
 
         $promoProducts = Product::visible()
             ->with(['activeVariants', 'attributes'])
@@ -440,8 +445,8 @@ class DashboardController extends Controller
                 'orders' => $todaysOrders,
                 'units' => $todaysUnits,
                 'change_percent' => $revenueChangePercent,
-                'orders_delta' => $todaysOrders - $yesterdaysOrders,
-                'units_delta' => $todaysUnits - $yesterdaysUnits,
+                'orders_delta' => $ordersDelta,
+                'units_delta' => $unitsDelta,
                 'sparkline' => $revenueSparkline,
             ],
             'financial' => [
@@ -464,10 +469,10 @@ class DashboardController extends Controller
                 ],
                 'metrics' => $performaMetrics,
                 'trend' => [
-                    'total' => (float) ($revenueChart['total'] ?? 0),
-                    'total_format' => $revenueChart['total_format'] ?? 'currency',
+                    'total' => (float) ($performaRevenueChart['total'] ?? 0),
+                    'total_format' => $performaRevenueChart['total_format'] ?? 'currency',
                     'granularity' => $performance['range']['granularity'] ?? 'day',
-                    'series' => $revenueChart['series'] ?? [],
+                    'series' => $performaRevenueChart['series'] ?? [],
                 ],
                 'detail_href' => route('admin.analytics.store-performance', ['period' => $performaPeriod]),
             ],

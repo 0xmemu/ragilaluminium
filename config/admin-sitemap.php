@@ -57,6 +57,7 @@ return [
         'core' => [
             'items' => [
                 ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => ['admin.dashboard']],
+                ['label' => 'Performa Toko', 'route' => 'admin.analytics.store-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.store-performance', 'admin.analytics.store-performance.*']],
                 ['label' => 'Pesanan', 'route' => 'admin.orders.index', 'icon' => 'clipboard-list', 'active' => ['admin.orders.*']],
                 ['label' => 'Pembayaran', 'route' => 'admin.payments.index', 'icon' => 'hand-coins', 'active' => ['admin.payments.*', 'admin.orders.payments']],
                 ['label' => 'Pengiriman', 'route' => 'admin.shipping.index', 'icon' => 'truck', 'active' => ['admin.shipping.*']],
@@ -66,6 +67,8 @@ return [
             'title' => 'Produk',
             'items' => [
                 ['label' => 'Kelola Produk', 'route' => 'admin.products.index', 'icon' => 'package', 'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*']],
+                ['label' => 'Import', 'route' => 'admin.imports.index', 'icon' => 'upload', 'active' => ['admin.imports.*']],
+                ['label' => 'Import Performance', 'route' => 'admin.analytics.import-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.import-performance']],
                 ['label' => 'Media Library', 'route' => 'admin.media.library', 'icon' => 'image', 'active' => ['admin.media.library']],
                 ['label' => 'Riwayat Media', 'route' => 'admin.media.history', 'icon' => 'history', 'active' => ['admin.media.history']],
             ],
@@ -76,7 +79,7 @@ return [
                 ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'icon' => 'ticket', 'active' => ['admin.promotions.*']],
                 ['label' => 'Banner Promo', 'route' => 'admin.banners.index', 'icon' => 'images', 'active' => ['admin.banners.*']],
                 ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'icon' => 'megaphone', 'active' => ['admin.announcements.*']],
-                ['label' => 'Flash Sale', 'route' => 'admin.promotions.index?type=flash_sale', 'icon' => 'lightning', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
+                ['label' => 'Flash Sale', 'route' => 'admin.promotions.index', 'params' => ['type' => 'flash_sale'], 'icon' => 'lightning', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
                 ['label' => 'Voucher Toko', 'route' => 'admin.vouchers.index', 'icon' => 'voucher', 'active' => ['admin.vouchers.*']],
                 ['label' => 'Biaya COD', 'route' => 'admin.cod-settings.edit', 'icon' => 'hand-coins', 'active' => ['admin.cod-settings.*']],
                 ['label' => 'Subsidi Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'icon' => 'truck', 'active' => ['admin.shipping-subsidy.*']],
@@ -95,13 +98,6 @@ return [
                 ],
             ],
         ],
-        'monitoring' => [
-            'title' => 'Laporan & Monitoring',
-            'items' => [
-                ['label' => 'Performa Toko', 'route' => 'admin.analytics.store-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.store-performance', 'admin.analytics.store-performance.*']],
-                ['label' => 'Log Aktivitas', 'route' => 'admin.activity-logs.index', 'icon' => 'history', 'active' => ['admin.activity-logs.*']],
-            ],
-        ],
         'pengaturan_website' => [
             'title' => 'Pengaturan Website',
             'items' => [
@@ -117,9 +113,11 @@ return [
                 ['label' => 'Hasil Pemasangan Kami', 'route' => 'admin.hasil-pemasangan.index', 'icon' => 'images', 'active' => ['admin.hasil-pemasangan.*']],
             ],
         ],
-        'akun' => [
-            'title' => 'Akun',
+        'akun_sistem' => [
+            'title' => 'Akun & Sistem',
             'items' => [
+                ['label' => 'Log Aktivitas', 'route' => 'admin.activity-logs.index', 'icon' => 'history', 'active' => ['admin.activity-logs.*']],
+                ['label' => 'Notifikasi', 'route' => 'admin.notifications.index', 'icon' => 'bell', 'active' => ['admin.notifications.*']],
                 ['label' => 'Profil Saya', 'route' => 'admin.profile.edit', 'icon' => 'user', 'active' => ['admin.profile.*']],
                 ['label' => 'Manajemen Admin', 'route' => 'admin.users.index', 'icon' => 'user-cog', 'active' => ['admin.users.*']],
                 ['label' => 'Pengaturan Sistem', 'route' => 'admin.settings.index', 'icon' => 'settings', 'active' => ['admin.settings.*']],

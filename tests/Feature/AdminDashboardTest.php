@@ -264,7 +264,7 @@ class AdminDashboardTest extends TestCase
             );
     }
 
-    public function test_dashboard_revenue_and_units_ignore_pending_and_cancelled_orders(): void
+    public function test_dashboard_revenue_and_units_ignore_pending_and_cancelled_orders_but_count_all_incoming_orders(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -347,7 +347,7 @@ class AdminDashboardTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('omzet.revenue', 2_000_000)
-                ->where('omzet.orders', 2)
+                ->where('omzet.orders', 3)
                 ->where('omzet.units', 2)
                 ->where('financial.pending_payment_amount', 9_000_000)
                 ->where('financial.pending_payment_orders', 1)

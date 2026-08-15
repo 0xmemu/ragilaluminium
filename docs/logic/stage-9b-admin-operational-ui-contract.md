@@ -11,40 +11,43 @@ All agents must align UI behaviour with the backend modules from Stage 2–8 and
 
 Based on the current admin UI design: [file:586]
 
-- **Beranda** – Dashboard admin Ragil Aluminium.  
-- **Pesanan** – Halaman utama operasional order.  
+- **Beranda** – Dashboard admin Ragil Aluminium.
+- **Pesanan** – Halaman utama operasional order.
 - **Produk**:
-  - Daftar Produk (`admin.products.*` + variants/attributes)  
-  - Import (`admin.imports.*` — bulk Shopee/internal)  
-  - Media (`admin.media.*` — status unduh & hub media katalog)  
+  - Daftar Produk (`admin.products.*` + variants/attributes)
+  - Import (`admin.imports.*` — bulk Shopee/internal)
+  - Import Performance (`admin.analytics.import-performance` — metrik job import)
+  - Media Library (`admin.media.library` — shared asset katalog)
+  - Riwayat Media (`admin.media.history` — histori pekerjaan media)
 - **Harga & Promo**:
-  - Promo Toko  
-  - Flash Sale  
-  - Voucher Toko (`admin.vouchers.*` → tabel `store_vouchers`; publish eksklusif 1 aktif; apply di checkout)  
-  - Bayar COD / Biaya COD (`admin.cod-settings.*` → `cms_pages.checkout.content.cod`; fee masuk `orders.cod_fee_amount`)  
-  - Subsidi Ongkir (`admin.shipping-subsidy.*` → `cms_pages.checkout.content.shipping_subsidy`; net ongkir + `orders.shipping_subsidy_amount`)  
+  - Promo Toko
+  - Flash Sale
+  - Voucher Toko (`admin.vouchers.*` → tabel `store_vouchers`; publish eksklusif 1 aktif; apply di checkout)
+  - Bayar COD / Biaya COD (`admin.cod-settings.*` → `cms_pages.checkout.content.cod`; fee masuk `orders.cod_fee_amount`)
+  - Subsidi Ongkir (`admin.shipping-subsidy.*` → `cms_pages.checkout.content.shipping_subsidy`; net ongkir + `orders.shipping_subsidy_amount`)
 - **Komunikasi**:
-  - WhatsApp Otomatis (`admin.whatsapp.templates.*` + `admin.whatsapp.connection` → 5 trigger Stage-8; toggle/edit; Cloud API status)  
-- **Monitoring**:
-  - Performa Toko (`admin.analytics.store-performance` → pembukuan KPI/omzet/produk/customer + CSV; visitor via `performance_metrics`)  
-  - Customer (`admin.customers.*` → tabel `customers`; sync dari order; fraud/status turunan; CSV)  
-  - Ulasan  
-  - Log Aktivitas  
+  - WhatsApp Otomatis (`admin.whatsapp.templates.*` + `admin.whatsapp.connection` → 5 trigger Stage-8; toggle/edit; Cloud API status)
+- **Performa Toko** (top-level, Analytics):
+  - `admin.analytics.store-performance` → pembukuan KPI/omzet/produk/customer + CSV; visitor via `performance_metrics`.
+- **Pelanggan & Monitoring**:
+  - Customer (`admin.customers.*` → tabel `customers`; sync dari order; fraud/status turunan; CSV)
+  - Ulasan
 - **Pengaturan Website**:
-  - Model Pembeli  
-  - Model Produk  
-  - Cara Pemesanan  
-  - Sering Ditanyakan  
-  - Masalah & Solusi  
-  - Informasi Toko  
-  - Ketentuan Layanan  
-  - Kebijakan Privasi  
-  - Apa Kata Pelanggan Kami  
-  - Hasil Pemasangan Kami  
-- **Akun**:
-  - Profil Saya (`admin.profile.*` → edit nama/email/password akun login; peran read-only)  
+  - Model Pembeli
+  - Model Produk
+  - Cara Pemesanan
+  - Sering Ditanyakan
+  - Masalah & Solusi
+  - Informasi Toko
+  - Ketentuan Layanan
+  - Kebijakan Privasi
+  - Apa Kata Pelanggan Kami
+  - Hasil Pemasangan Kami
+- **Akun & Sistem**:
+  - Log Aktivitas (`admin.activity-logs.*`) dan Notifikasi (`admin.notifications.index`).
+  - Profil Saya (`admin.profile.*` → edit nama/email/password akun login; peran read-only)
   - Manajemen Admin (`admin.users.*` → `Admin/Users/{Index,Form}`; filter status; canonical role `admin`; equal-admin — no role hierarchy; guard self + last active admin). See `docs/contracts/ROLE-AND-STATUS-CONTRACT.md`.
-  - Pengaturan Sistem (`admin.settings.*` → status integrasi env, read-only)  
+  - Pengaturan Sistem (`admin.settings.*` → status integrasi env, read-only)
 - Logout.
 
 ### 1.2 Behaviour Principle

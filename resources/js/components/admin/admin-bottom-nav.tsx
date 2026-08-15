@@ -6,6 +6,7 @@ import { isRouteActive, routeUrl } from "@/lib/routes"
 
 const items = [
   { label: "Dashboard", route: "admin.dashboard", icon: "layout-dashboard", active: ["admin.dashboard"] },
+  { label: "Performa", route: "admin.analytics.store-performance", icon: "trending-up", active: ["admin.analytics.store-performance", "admin.analytics.store-performance.*"] },
   { label: "Pesanan", route: "admin.orders.index", icon: "clipboard-list", active: ["admin.orders.*"] },
   { label: "Produk", route: "admin.products.index", icon: "package", active: ["admin.products.*", "admin.variants.*", "admin.attributes.*", "admin.sub-models.*", "admin.model-products.*"] },
 ]
@@ -16,7 +17,7 @@ export function AdminBottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
       className="fixed bottom-0 left-0 z-[60] w-full border-t border-border bg-surface pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-6px_20px_hsl(var(--foreground)/0.05)] lg:hidden"
       aria-label="Navigasi admin cepat"
     >
-      <div className="mx-auto grid h-14 w-full max-w-lg grid-cols-4 items-stretch px-1">
+      <div className="mx-auto grid h-14 w-full max-w-lg grid-cols-5 items-stretch px-1">
         {items.map((item) => {
           const active = isRouteActive(item.active ?? [item.route])
           return (

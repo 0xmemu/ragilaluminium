@@ -120,43 +120,8 @@ interface RecentOrderRow {
   whatsapp_url?: string | null
 }
 
-interface PromoProduct {
-  id: number
-  parent_sku: string
-  name: string
-  discount_percent: number | null
-  flash_sale: boolean
-  homepage_popular: boolean
-  href: string
-}
 
-interface TopEngagedProduct {
-  id: number
-  parent_sku: string
-  name: string
-  image?: string | null
-  views: number
-  clicks: number
-  total: number
-  href: string
-}
 
-interface TopEngagedProductsData {
-  period: string
-  period_label: string
-  items: TopEngagedProduct[]
-}
-
-interface IntegrationReadinessItem {
-  key: string
-  label: string
-  icon: string
-  ready: boolean
-  verified: boolean
-  status_label: string
-  detail: string
-  href: string
-}
 
 interface MediaStatusSummary {
   ready: number
@@ -192,7 +157,6 @@ interface DashboardProps {
   greetingName: string
   todayLabel: string
   generatedAt: string
-  integrationReadiness: IntegrationReadinessItem[]
   importMediaSummary: ImportMediaSummary
   omzet: OmzetData
   financial: FinancialData
@@ -201,9 +165,6 @@ interface DashboardProps {
   attention: AttentionItem[]
   quickActions: QuickAction[]
   recentOrders: RecentOrderRow[]
-  promoProducts: PromoProduct[]
-  promoTotal: number
-  topEngagedProducts?: TopEngagedProductsData
   productCount: number
 }
 
@@ -334,7 +295,6 @@ export default function Dashboard({
   greetingName,
   todayLabel,
   generatedAt,
-  integrationReadiness = [],
   importMediaSummary,
   omzet,
   financial,
@@ -343,9 +303,6 @@ export default function Dashboard({
   attention = [],
   quickActions = [],
   recentOrders = [],
-  promoProducts = [],
-  promoTotal = 0,
-  topEngagedProducts,
   productCount = 0,
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
@@ -360,8 +317,6 @@ export default function Dashboard({
     statusOrder.reduce((sum, item) => sum + item.total, 0) > 0 || omzet.orders > 0
   const visitorsMetric = performa.metrics.find((metric) => metric.key === "visitors")
   const onboardingActions = quickActions.filter((action) => action.label !== "Lihat Pending Payment")
-  const allIntegrationsReady =
-    integrationReadiness.length > 0 && integrationReadiness.every((item) => item.ready && item.verified)
 
   function onPerformaPeriodChange(period: string) {
     router.get(
@@ -416,6 +371,47 @@ export default function Dashboard({
           </div>
         </div>
 
+        {/* Antrean kerja utama — order selalu didahulukan dari alert pendukung */}
+        <section className="grid gap-4">
+          <SectionCard
+            title="Antrean tindakan hari ini"
+            icon="alert-circle"
+            description="Prioritas order yang perlu segera diproses admin."
+            className="lg:col-span-12"
+            contentClassName="p-0"
+          >
+            {attention.length ? (
+              <ul className="divide-y divide-border">
+                {attention.map((item) => (
+                  <li key={item.key}>
+                    <Link
+                      href={item.href}
+                      className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
+                        <span className="text-pretty text-[13px] leading-5 text-foreground">
+                          {item.label}
+                        </span>
+                      </span>
+                      <span className="tabular-nums shrink-0 text-sm font-semibold text-destructive">
+                        {formatNumber(item.count)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex items-center gap-3 px-5 py-6">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+                  <Icon name="check-circle" className="size-4" aria-hidden="true" />
+                </span>
+                <p className="text-[13px] text-muted-foreground">Tidak ada pekerjaan yang perlu ditindaklanjuti.</p>
+              </div>
+            )}
+          </SectionCard>
+        </section>
+
         {/* Row 1 — Omzet | Performa Toko */}
         <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           {hasOrders ? (
@@ -458,7 +454,7 @@ export default function Dashboard({
               <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
                 <div className="px-4 py-3">
                   <MetricTile
-                    label="Jumlah order"
+                    label="Order masuk"
                     value={`${formatNumber(omzet.orders)} order`}
                     delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" />}
                   />
@@ -497,8 +493,7 @@ export default function Dashboard({
                     Toko belum memiliki pesanan
                   </h2>
                   <p className="mt-1.5 max-w-lg text-[13px] leading-5 text-muted-foreground">
-                    Semua siap dipakai. Lengkapi katalog dan pastikan layanan terkoneksi
-                    supaya order pertama bisa masuk dan diproses lancar.
+                    Semua siap dipakai. Lengkapi katalog agar order pertama bisa masuk dan diproses lancar.
                   </p>
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <DensityChip label="Produk aktif" value={formatNumber(productCount)} />
@@ -625,138 +620,8 @@ export default function Dashboard({
           </>
         ) : null}
 
-        {!allIntegrationsReady ? (
-          <SectionCard
-            title="Kesiapan layanan"
-            icon="gauge"
-            description="Status konfigurasi yang memengaruhi operasi order, media, dan notifikasi."
-          >
-            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-              {integrationReadiness.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className="group rounded-md border border-border p-2.5 transition hover:border-foreground/20 hover:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
-                      <Icon name={item.icon} className="size-4" aria-hidden="true" />
-                    </span>
-                    <span
-                      className={
-                        item.verified
-                          ? "rounded-full bg-success/10 px-2 py-1 text-[10px] font-semibold text-success"
-                          : item.ready
-                            ? "rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground"
-                            : "rounded-full bg-warning/15 px-2 py-1 text-[10px] font-semibold text-warning-foreground"
-                      }
-                    >
-                      {item.verified ? "Terverifikasi" : item.ready ? "Terkonfigurasi" : "Perlu cek"}
-                    </span>
-                  </div>
-                  <p className="mt-2.5 text-[13px] font-semibold text-foreground">{item.label}</p>
-                  <p className="mt-0.5 text-xs font-medium text-foreground/80">{item.status_label}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{item.detail}</p>
-                </Link>
-              ))}
-            </div>
-          </SectionCard>
-        ) : null}
 
-        {/* Row 3 — Perlu Perhatian | Produk Paling Dilihat | Aksi Cepat */}
-        <section className="grid items-stretch gap-4 lg:grid-cols-12">
-          <SectionCard
-            title="Perlu perhatian"
-            icon="alert-circle"
-            description="Item yang membutuhkan tindak lanjut."
-            className="lg:col-span-6"
-            contentClassName="p-0"
-          >
-            {attention.length ? (
-              <ul className="divide-y divide-border">
-                {attention.map((item) => (
-                  <li key={item.key}>
-                    <Link
-                      href={item.href}
-                      className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
-                    >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
-                        <span className="text-pretty text-[13px] leading-5 text-foreground">
-                          {item.label}
-                        </span>
-                      </span>
-                      <span className="tabular-nums shrink-0 text-sm font-semibold text-destructive">
-                        {formatNumber(item.count)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="flex items-center gap-3 px-5 py-6">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-                  <Icon name="check-circle" className="size-4" aria-hidden="true" />
-                </span>
-                <p className="text-[13px] text-muted-foreground">Tidak ada pekerjaan yang perlu ditindaklanjuti.</p>
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Produk paling dilihat"
-            icon="eye"
-            description={topEngagedProducts?.period_label ?? performa.period_label}
-            className="lg:col-span-6"
-            contentClassName="p-0"
-          >
-            {topEngagedProducts?.items?.length ? (
-              <ul className="divide-y divide-border">
-                {topEngagedProducts.items.slice(0, 5).map((product, index) => (
-                  <li key={product.id}>
-                    <Link
-                      href={product.href}
-                      className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-muted/60"
-                    >
-                      <span className="tabular-nums w-4 shrink-0 text-center text-xs font-medium text-muted-foreground">
-                        {index + 1}
-                      </span>
-                      <span className="size-8 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                        {product.image ? (
-                          <img src={product.image} alt="" className="size-full object-cover" />
-                        ) : (
-                          <span className="flex size-full items-center justify-center text-muted-foreground">
-                            <Icon name="image" className="size-3.5" aria-hidden="true" />
-                          </span>
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium text-foreground">
-                          {product.name}
-                        </span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {formatNumber(product.views)} dilihat
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="flex items-center gap-3 px-5 py-6">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-                  <Icon name="eye" className="size-4" aria-hidden="true" />
-                </span>
-                <p className="text-[13px] text-muted-foreground">
-                  Belum ada data kunjungan produk.
-                </p>
-              </div>
-            )}
-          </SectionCard>
-
-        </section>
-
-        {/* Row 4 — Pesanan Terbaru */}
+        {/* Pesanan terbaru — ringkasan dengan tautan detail */}
         <SectionCard
           title="Pesanan terbaru"
           description="Order terakhir yang masuk untuk tindak lanjut cepat."
@@ -901,8 +766,7 @@ export default function Dashboard({
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Belum ada pesanan</p>
                 <p className="mt-1 max-w-lg text-[13px] leading-5 text-muted-foreground">
-                  Order pertama akan tampil di sini. Supaya siap menerima pesanan, pastikan
-                  katalog terpasang, media aman, dan layanan WhatsApp/queue terkoneksi.
+                  Order pertama akan tampil di sini. Lengkapi katalog dan buka daftar pesanan untuk memantau order masuk.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -931,140 +795,6 @@ export default function Dashboard({
           )}
         </SectionCard>
 
-        {/* Row 5 — Promo & Flash Sale Aktif */}
-        <SectionCard
-          title="Promo & flash sale aktif"
-          description={`${formatNumber(promoTotal)} produk beratribut promo.`}
-          action={
-            <Link
-              href={routeUrl("admin.banners.index")}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
-            >
-              Kelola banner
-            </Link>
-          }
-          contentClassName="p-0"
-        >
-          {promoProducts.length ? (
-            <ul className="divide-y divide-border">
-              {promoProducts.map((product) => (
-                <li key={product.id}>
-                  <Link
-                    href={product.href}
-                    className="grid gap-2 px-5 py-3 transition hover:bg-muted/60 sm:grid-cols-[8rem_1fr_auto_auto] sm:items-center"
-                  >
-                    <span className="font-mono text-xs font-semibold text-foreground">
-                      {product.parent_sku}
-                    </span>
-                    <span className="line-clamp-1 text-[13px] text-foreground">{product.name}</span>
-                    <span className="flex items-center gap-1.5">
-                      {product.discount_percent !== null ? (
-                        <span className="rounded-md bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-accent-foreground">
-                          -{product.discount_percent}%
-                        </span>
-                      ) : null}
-                      {product.flash_sale ? (
-                        <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
-                          Flash sale
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {product.homepage_popular ? "Tampil di home" : "Katalog"}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="p-6 text-[13px] text-muted-foreground">
-              Tidak ada produk dengan atribut promo aktif.
-            </p>
-          )}
-        </SectionCard>
-
-        {/* Row 6 — Import & Media */}
-        <SectionCard
-          title="Import & media"
-          icon="images"
-          description="Antrean katalog dan status aset yang perlu dipantau."
-        >
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-md border border-border p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Import katalog</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatNumber(importMediaSummary.imports.failed_rows)} baris gagal dari seluruh job
-                  </p>
-                </div>
-                <Link href={importMediaSummary.imports.href} className="text-xs font-semibold text-primary hover:underline">
-                  Buka import
-                </Link>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <MetricTile label="Berjalan" value={formatNumber(importMediaSummary.imports.running)} />
-                <MetricTile label="Gagal" value={formatNumber(importMediaSummary.imports.failed)} />
-                <MetricTile label="Selesai" value={formatNumber(importMediaSummary.imports.completed)} />
-              </div>
-              {importMediaSummary.imports.recent.length ? (
-                <ul className="mt-4 divide-y divide-border border-t border-border">
-                  {importMediaSummary.imports.recent.map((job) => (
-                    <li key={job.id}>
-                      <Link href={job.href} className="flex items-center justify-between gap-3 py-2.5 hover:bg-muted/50">
-                        <span className="min-w-0">
-                          <span className="block truncate text-xs font-medium text-foreground">{job.file_name}</span>
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {job.failed_rows ? `${formatNumber(job.failed_rows)} baris gagal · ` : ""}
-                            {formatRelativeAge(job.updated_at)}
-                          </span>
-                        </span>
-                        <StatusBadge status={job.status} />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">Belum ada job import.</p>
-              )}
-            </div>
-
-            <div className="rounded-md border border-border p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-foreground">Status media</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">Attachment produk dan shared asset dipisahkan.</p>
-                </div>
-                <Link href={importMediaSummary.media.href} className="text-xs font-semibold text-primary hover:underline">
-                  Buka media
-                </Link>
-              </div>
-              <div className="mt-4 space-y-3">
-                {([
-                  ["Attachment produk", importMediaSummary.media.attachments],
-                  ["Shared asset", importMediaSummary.media.shared_assets],
-                ] as const).map(([label, status]) => (
-                  <div key={label} className="rounded-md bg-muted/40 p-3">
-                    <p className="text-xs font-semibold text-foreground">{label}</p>
-                    <div className="mt-2 grid grid-cols-4 gap-2 text-center">
-                      {([
-                        ["Siap", status.ready],
-                        ["Menunggu", status.pending],
-                        ["Gagal", status.failed],
-                        ["Arsip", status.archived],
-                      ] as const).map(([statusLabel, count]) => (
-                        <div key={statusLabel}>
-                          <p className="tabular-nums text-sm font-semibold text-foreground">{formatNumber(count)}</p>
-                          <p className="mt-0.5 text-[10px] text-muted-foreground">{statusLabel}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </SectionCard>
       </div>
     </AdminLayout>
   )
