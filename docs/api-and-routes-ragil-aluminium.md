@@ -233,6 +233,8 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `POST /admin/promotions/{promotion}/impact` -> `Admin\PromotionController@impact`  (name: `admin.promotions.impact`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/settings` -> `Admin\SettingsController@index`  (name: `admin.settings.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/settings` -> `Admin\SettingsController@update`  (name: `admin.settings.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint order shipping hanya menerima `waybill_number` manual (tidak lagi membuat resi via J&T). Detail pengiriman menampilkan tracking URL dan timeline event. Endpoint refresh mengembalikan flash `success` bila data berubah, `status` bila integrasi belum siap/tidak ada event baru (stale), atau `error` bila terjadi exception.
+
 - `GET /admin/shipping` -> `Admin\ShippingRecordController@index`  (name: `admin.shipping.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@edit`  (name: `admin.shipping-subsidy.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@update`  (name: `admin.shipping-subsidy.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

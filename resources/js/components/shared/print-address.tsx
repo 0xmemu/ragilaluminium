@@ -3,6 +3,11 @@ import * as React from "react"
 
 export interface AddressData {
   order_number?: string | null
+  order_status?: string | null
+  payment_status?: string | null
+  shipping_status?: string | null
+  notes?: string | null
+  admin_notes?: string | null
   customer_name?: string | null
   customer_phone?: string | null
   shipping_address_line1?: string | null
@@ -86,6 +91,44 @@ export function PrintAddressArea({ data }: { data: AddressData }) {
         <p style={{ marginTop: 14, fontSize: 12, color: "#555" }}>
           Order: {data.order_number}
         </p>
+      ) : null}
+      {(data.order_status || data.payment_status || data.shipping_status) ? (
+        <div style={{ marginTop: 14, borderTop: "1px solid #999", paddingTop: 10 }}>
+          <strong style={{ fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "#555" }}>
+            Status setelah konfirmasi
+          </strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 6, fontSize: 12 }}>
+            <tbody>
+              {[
+                ["Pesanan", data.order_status],
+                ["Pembayaran", data.payment_status],
+                ["Pengiriman", data.shipping_status],
+              ].map(([label, value]) => value ? (
+                <tr key={label}>
+                  <td style={{ padding: "3px 8px 3px 0", color: "#555" }}>{label}</td>
+                  <td style={{ padding: "3px 0", fontWeight: 600 }}>{String(value).replace(/_/g, " ")}</td>
+                </tr>
+              ) : null)}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {(data.notes || data.admin_notes) ? (
+        <div style={{ marginTop: 14, borderTop: "1px solid #999", paddingTop: 10 }}>
+          <strong style={{ fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "#555" }}>
+            Catatan operasional
+          </strong>
+          {data.notes ? (
+            <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
+              <strong>Catatan pembeli:</strong> {data.notes}
+            </p>
+          ) : null}
+          {data.admin_notes ? (
+            <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
+              <strong>Catatan admin:</strong> {data.admin_notes}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {data.items && data.items.length ? (
         <div style={{ marginTop: 18, borderTop: "1px solid #999", paddingTop: 12 }}>

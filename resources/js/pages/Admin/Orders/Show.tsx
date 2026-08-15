@@ -634,9 +634,7 @@ export default function OrderShow({
     paid_at: "",
   })
   const shippingForm = useForm({
-    mode: shippingActions.jntEnabled ? "jnt" : "manual",
     waybill_number: "",
-    weight_kg: "1",
     mark_shipped: true,
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
@@ -1220,43 +1218,23 @@ export default function OrderShow({
               <SectionCard title="Input resi">
                 <form onSubmit={storeShipping} className="space-y-3.5">
                   <FormErrorSummary errors={shippingForm.errors} />
-                  <Field id="shipping-mode" label="Sumber" required error={shippingForm.errors.mode}>
-                    <Select
-                      value={shippingForm.data.mode}
-                      onChange={(event) => shippingForm.setData("mode", event.target.value)}
-                    >
-                      <option value="jnt" disabled={!shippingActions.jntEnabled}>
-                        Buat via J&T{shippingActions.jntEnabled ? "" : " (nonaktif)"}
-                      </option>
-                      <option value="manual">Input nomor resi manual</option>
-                    </Select>
+                  <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                    Resi dibuat di J&T di luar website. Simpan nomor resi yang sudah diterbitkan kurir di sini.
+                  </p>
+                  <Field
+                    id="waybill"
+                    label="Nomor resi"
+                    required
+                    error={shippingForm.errors.waybill_number}
+                  >
+                    <Input
+                      value={shippingForm.data.waybill_number}
+                      onChange={(event) =>
+                        shippingForm.setData("waybill_number", event.target.value)
+                      }
+                      placeholder="Mis. JT1234567890"
+                    />
                   </Field>
-                  {shippingForm.data.mode === "manual" ? (
-                    <Field
-                      id="waybill"
-                      label="Nomor resi"
-                      required
-                      error={shippingForm.errors.waybill_number}
-                    >
-                      <Input
-                        value={shippingForm.data.waybill_number}
-                        onChange={(event) =>
-                          shippingForm.setData("waybill_number", event.target.value)
-                        }
-                        placeholder="Mis. JT1234567890"
-                      />
-                    </Field>
-                  ) : (
-                    <Field id="weight" label="Berat (kg)" error={shippingForm.errors.weight_kg}>
-                      <Input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={shippingForm.data.weight_kg}
-                        onChange={(event) => shippingForm.setData("weight_kg", event.target.value)}
-                      />
-                    </Field>
-                  )}
                   <Checkbox
                     compact
                     checked={Boolean(shippingForm.data.mark_shipped)}
@@ -1266,11 +1244,7 @@ export default function OrderShow({
                     label="Tandai pesanan sebagai dikirim setelah resi tersimpan"
                   />
                   <Button type="submit" className="w-full" disabled={shippingForm.processing}>
-                    {shippingForm.processing
-                      ? "Menyimpan..."
-                      : shippingForm.data.mode === "jnt"
-                        ? "Buat resi J&T"
-                        : "Simpan resi"}
+                    {shippingForm.processing ? "Menyimpan..." : "Simpan resi"}
                   </Button>
                 </form>
               </SectionCard>

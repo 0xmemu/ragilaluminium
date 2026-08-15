@@ -27,6 +27,19 @@ export function ResourceValue({
     return <StatusBadge status={value} />
   }
 
+  if (typeof value === "string" && /^https?:\/\//i.test(value)) {
+    return (
+      <a
+        href={value}
+        target="_blank"
+        rel="noreferrer"
+        className="text-primary underline-offset-2 hover:underline"
+      >
+        {value}
+      </a>
+    )
+  }
+
   if (Array.isArray(value)) {
     return (
       <ul className="space-y-1">

@@ -17,7 +17,7 @@ The website is **not a standalone store** — it is the **transaction engine** a
 | **Shopee** | Upstream source of the official catalog and SKUs. Catalog enters the website via Shopee "Mass Upload/Update" Excel exports. | Shopee → Website (website never writes back to Shopee) |
 | **Website** | Primary transaction engine: catalog display, cart, checkout, order of record, order-status tracking. | — |
 | **WhatsApp Business** | Post-order notifications and customer communication (payment proof, shipping updates, support). Orders are **not** created here. | Website ↔ Customer |
-| **J&T Cargo** | Shipping cost estimation, waybill creation, and authoritative shipping status (via API + webhook). | Website ↔ J&T |
+| **J&T Cargo** | Shipping cost estimation and authoritative shipping status (via API + webhook). Waybill dibuat di J&T di luar website; admin memasukkan nomor resi manual. | Website ↔ J&T |
 | **Cloud storage (Cloudflare R2 / local)** | Product image CDN after images are downloaded from Shopee URLs. | — |
 
 **Guiding principles baked into the product:**
@@ -274,7 +274,7 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 | `CartService` | Session cart (`ragil_cart` key): add/update/remove, subtotal, count |
 | `OrderService` | `createFromCart()` — DB revalidation, unique checkout idempotency key, stock lock/decrement, create order+items+payment; `cancel()` restores variant stock exactly once under order lock |
 | `PaymentService` | Locks order/payments, requires positive amounts and full completed settlement before `paid`; reconciles failed/refunded rows back to order payment status |
-| `ShippingService` | J&T tariff estimate (local fallback formula), `createShipment`, `refreshStatus`, `cancelShipment`, `applyCarrierUpdate` (idempotent; cascades order status; dispatches `ShippingStatusUpdated`) |
+| `ShippingService` | J&T tariff estimate (local fallback formula), manual waybill attachment, `refreshStatus`, `cancelShipment`, `applyCarrierUpdate` (idempotent; cascades order status; dispatches `ShippingStatusUpdated`) |
 | `WhatsAppService` | Template send via Meta Graph API, webhook handling, order/payment/shipping notification handlers; degrades safely without token |
 | `MediaDerivativeService` | GD-based WebP derivatives (thumb ~400 / card ~800 / pdp ~1400 px longest edge) |
 | `Shipping\JntCargoClient`, `Shipping\JntResponse` | Signed J&T API client + response wrapper |
@@ -516,7 +516,7 @@ For each: purpose · consumes · key actions.
 - **Imports (`admin.imports.*`)** — under sidebar **Produk → Import**; upload Shopee Excel; job list; job detail with counters and status; failed-rows view; download correction file; retry.
 - **Orders (`admin.orders.*`)** — order list (filter by statuses) + detail; manual `updateStatus`. Detail shows items, amounts, customer/shipping snapshot, linked payments/shipping/WhatsApp.
 - **Payments (`admin.payments.*`)** — payment list; per-order payments; record/update payment (marking completed drives order to processing + fires WhatsApp).; COD settlement otomatis saat completed dan tercatat sebagai system/cod_completion.
-- **Shipping (`admin.shipping.*`)** — shipping record list + detail; manual J&T status refresh.
+- **Shipping (`admin.shipping.*`) -- shipping record list + detail; admin inputs a waybill created externally at J&T, sees tracking URL/event timeline, and receives honest success/stale/failure feedback on refresh.
 - **WhatsApp (`admin.whatsapp.*`)** — WhatsApp Otomatis hub (5 Stage-8 triggers: toggle/edit/`body_preview`); Cloud API connection status; message log; per-order thread.
 - **Customers (`admin.customers.*`)** — Kelola Pelanggan (guest): list/search/CSV, detail/edit, order history; checkout upserts `customers` + `orders.customer_id`.
 - **Analytics (`admin.analytics.*`)** — Performa Toko as store bookkeeping (period KPIs, product sales, customers, charts, CSV export); import performance report.

@@ -11,7 +11,6 @@ use App\Services\PaymentService;
 use App\Services\ShippingService;
 use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
-use App\Support\JntReadiness;
 use App\Support\LikeSearch;
 use App\Support\OrderEventLabels;
 use App\Support\OrderTrackingPresenter;
@@ -19,7 +18,6 @@ use App\Support\PhoneNumber;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -428,7 +426,9 @@ class OrderController extends Controller
             'shippingActions' => [
                 'createUrl' => route('admin.orders.shipping.store', $order),
                 'refreshUrl' => route('admin.orders.shipping.refresh', $order),
-                'jntEnabled' => JntReadiness::report()['client_ready'],
+                // Readiness hanya mengontrol refresh tracking; pembuatan resi
+                // tetap dilakukan manual di luar website.
+                'jntEnabled' => \App\Support\JntReadiness::report()['client_ready'],
             ],
             'workflowLinks' => [
                 ['label' => 'Kelola pembayaran', 'href' => route('admin.orders.payments', $order)],
@@ -441,9 +441,10 @@ class OrderController extends Controller
     public function storeShipping(Request $request, Order $order): RedirectResponse
     {
         $validated = $request->validate([
-            'mode' => ['required', 'in:jnt,manual'],
-            'waybill_number' => ['nullable', 'string', 'max:100'],
-            'weight_kg' => ['nullable', 'numeric', 'min:0.1', 'max:1000'],
+            // Resi dibuat di J&T di luar aplikasi; admin hanya menempelkan
+            // nomor resi yang sudah diterbitkan kurir.
+            'mode' => ['nullable', 'in:manual'],
+            'waybill_number' => ['required', 'string', 'max:100'],
             'mark_shipped' => ['nullable', 'boolean'],
         ]);
 
@@ -455,20 +456,7 @@ class OrderController extends Controller
         }
 
         try {
-            if ($validated['mode'] === 'jnt') {
-                $record = Cache::lock("shipping:jnt:create:{$order->id}", 60)->block(
-                    10,
-                    fn () => $this->shipping->createShipment(
-                        $order,
-                        (float) ($validated['weight_kg'] ?? 1.0),
-                    ),
-                );
-            } else {
-                if (! filled($validated['waybill_number'] ?? null)) {
-                    return back()->withErrors(['waybill_number' => 'Nomor resi wajib diisi.'])->withInput();
-                }
-                $record = $this->shipping->attachManualWaybill($order, (string) $validated['waybill_number']);
-            }
+            $record = $this->shipping->attachManualWaybill($order, (string) $validated['waybill_number']);
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -502,10 +490,48 @@ class OrderController extends Controller
             return back()->with('error', 'Belum ada resi untuk dilacak.');
         }
 
-        $this->shipping->refreshStatus($record);
+        [$flashKey, $message] = $this->refreshShippingRecord($record);
 
-        return redirect()->route('admin.orders.show', $order)
-            ->with('success', 'Status J&T disegarkan.');
+        return redirect()->route('admin.orders.show', $order)->with($flashKey, $message);
+    }
+
+    /**
+     * Refresh feedback must describe what actually happened. ShippingService
+     * deliberately keeps a void API, so compare the persisted snapshot before
+     * and after the call; an unchanged record is stale, not success.
+     *
+     * @return array{0: 'success'|'status'|'error', 1: string}
+     */
+    private function refreshShippingRecord(\App\Models\ShippingRecord $record): array
+    {
+        if (! \App\Support\JntReadiness::report()['client_ready']) {
+            return ['status', 'Tracking J&T belum diperbarui: integrasi belum siap atau sedang nonaktif. Data terakhir tetap ditampilkan.'];
+        }
+
+        $before = [
+            'status' => $record->status,
+            'status_raw' => $record->status_raw,
+            'last_status_at' => optional($record->last_status_at)?->toIso8601String(),
+            'tracking_url' => $record->tracking_url,
+        ];
+
+        try {
+            $this->shipping->refreshStatus($record);
+        } catch (\Throwable $exception) {
+            return ['error', 'Refresh tracking gagal: '.$exception->getMessage()];
+        }
+
+        $after = $record->fresh();
+        $changed = $after && (
+            $before['status'] !== $after->status
+            || $before['status_raw'] !== $after->status_raw
+            || $before['last_status_at'] !== optional($after->last_status_at)?->toIso8601String()
+            || $before['tracking_url'] !== $after->tracking_url
+        );
+
+        return $changed
+            ? ['success', 'Status tracking berhasil diperbarui dari J&T.']
+            : ['status', 'Status tracking belum berubah (data stale atau belum ada event baru dari J&T).'];
     }
 
     /**

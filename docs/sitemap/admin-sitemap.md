@@ -53,6 +53,8 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 ### 5. Shipping (Pengiriman)
 - **Shipping Records** (Tipe: `Operational`)
   - Daftar nomor resi (Waybill), kurir, dan status integrasi J&T/lainnya.
+  - Resi diterbitkan di J&T di luar website; admin hanya memasukkan nomor resi manual.
+  - Detail menampilkan URL tracking (bila tersedia), timeline event, dan refresh dengan hasil sukses/gagal/stale yang jujur.
 
 ### 6. WhatsApp Center
 - **WhatsApp Otomatis** (Tipe: `Settings/System` & `Operational`)
