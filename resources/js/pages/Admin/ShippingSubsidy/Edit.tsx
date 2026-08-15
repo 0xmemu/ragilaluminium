@@ -20,13 +20,11 @@ export default function ShippingSubsidyEdit({
   description,
   settings,
   submitUrl,
-  jntConfigured,
 }: {
   title: string
   description: string
   settings: SubsidySettings
   submitUrl: string
-  jntConfigured: boolean
 }) {
   const form = useForm({
     enabled: settings.enabled,
@@ -120,9 +118,7 @@ export default function ShippingSubsidyEdit({
               <span>
                 J&T Cargo
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                  {jntConfigured
-                    ? "Kredensial J&T terdeteksi di konfigurasi."
-                    : "API key belum di-set — estimasi memakai tarif lokal."}
+                  Skema subsidi menggunakan aturan kurir tersimpan.
                 </span>
               </span>
             </label>

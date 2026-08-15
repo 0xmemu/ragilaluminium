@@ -28,7 +28,7 @@ class ActivityLogService
     {
         return [
             ['key' => 'all', 'label' => 'Semua Log'],
-            ['key' => 'attendance', 'label' => 'Kehadiran'],
+            ['key' => 'attendance', 'label' => 'Keamanan & Akses'],
             ['key' => 'product', 'label' => 'Produk & Harga'],
             ['key' => 'order', 'label' => 'Pesanan & Biaya'],
             ['key' => 'whatsapp', 'label' => 'WhatsApp Otomatis'],
@@ -418,6 +418,12 @@ class ActivityLogService
         ?int $entityId = null,
         ?array $payload = null,
         ?int $userId = null,
+        string $source = 'system',
+        ?array $before = null,
+        ?array $after = null,
+        ?string $reason = null,
+        ?string $referenceType = null,
+        ?string $referenceId = null,
     ): EventLog {
         return EventLog::create([
             'event_type' => $eventType,
@@ -426,6 +432,12 @@ class ActivityLogService
             'payload' => $payload,
             'created_by_user_id' => $userId,
             'created_at' => now(),
+            'source' => $source,
+            'before' => $before,
+            'after' => $after,
+            'reason' => $reason,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
         ]);
     }
 }

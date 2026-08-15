@@ -12,6 +12,7 @@ use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
 use App\Support\ShopeeStyleSku;
+use App\Support\OperationalSettings;
 use App\Services\ActivityLogService;
 use App\Services\ProductPublicationService;
 use Illuminate\Http\RedirectResponse;
@@ -200,9 +201,11 @@ class ProductController extends Controller
         ]);
         $wizard = $request->input('workflow') === 'wizard';
         $createInitialVariant = $request->boolean('create_initial_variant');
+        $stockSettings = OperationalSettings::get(OperationalSettings::STOCK_RANDOMIZATION);
+        $randomizeStock = $request->has('randomize_stock') ? $request->boolean('randomize_stock') : (bool) $stockSettings['default_enabled'];
         $initialVariant = [
             'price' => $validated['initial_price'] ?? null,
-            'stock' => (! $request->has('randomize_stock') || $request->boolean('randomize_stock')) ? random_int(700, 5000) : (int) ($validated['initial_stock'] ?? 0),
+            'stock' => $randomizeStock ? random_int((int) $stockSettings['min'], (int) $stockSettings['max']) : (int) ($validated['initial_stock'] ?? 0),
         ];
         unset(
             $validated['randomize_stock'],

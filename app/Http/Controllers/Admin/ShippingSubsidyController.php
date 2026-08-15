@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Support\JntReadiness;
 use App\Support\ShippingSubsidySettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,9 +24,8 @@ class ShippingSubsidyController extends Controller
                 'subsidy_type' => $settings['subsidy_type'],
                 'subsidy_value' => $settings['subsidy_value'],
                 'jnt_enabled' => $settings['carriers']['jnt'],
+            'reason' => ['nullable', 'string', 'max:1000'],
             ],
-            'jntConfigured' => JntReadiness::report()['client_ready'],
-            'jntConfigured' => filled(config('jnt.api.customer_code')) || filled(config('services.shipping.jnt.api_key')),
         ]);
     }
 
@@ -43,9 +41,10 @@ class ShippingSubsidyController extends Controller
                 Rule::when($request->input('subsidy_type') === 'percent', ['max:100']),
             ],
             'jnt_enabled' => ['required', 'boolean'],
+            'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        ShippingSubsidySettings::update($validated, (int) $request->user()->id);
+        ShippingSubsidySettings::update($validated, (int) $request->user()->id, ['reason' => $validated['reason'] ?? null]);
 
         return redirect()->route('admin.shipping-subsidy.edit')
             ->with('success', 'Pengaturan Subsidi Ongkir disimpan.');

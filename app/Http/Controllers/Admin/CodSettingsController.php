@@ -36,9 +36,10 @@ class CodSettingsController extends Controller
                 Rule::when($request->input('fee_type') === 'percent', ['max:100']),
             ],
             'max_order_amount' => ['nullable', 'numeric', 'min:0'],
+            'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        CodSettings::update($validated, (int) $request->user()->id);
+        CodSettings::update($validated, (int) $request->user()->id, ['reason' => $validated['reason'] ?? null]);
 
         return redirect()->route('admin.cod-settings.edit')
             ->with('success', 'Pengaturan Biaya COD disimpan.');

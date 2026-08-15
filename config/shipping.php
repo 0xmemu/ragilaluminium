@@ -23,5 +23,6 @@ return [
         'production_days' => (int) env('SHIPPING_ETA_PRODUCTION_DAYS', 1),
         'delivery_min_days' => (int) env('SHIPPING_ETA_DELIVERY_MIN_DAYS', 2),
         'delivery_max_days' => (int) env('SHIPPING_ETA_DELIVERY_MAX_DAYS', 5),
+        'display_buffer_days' => (int) env('SHIPPING_ETA_DISPLAY_BUFFER_DAYS', 1),
     ],
 ];

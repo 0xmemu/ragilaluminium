@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\ShopeeStyleSku;
+use App\Support\OperationalSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,12 +93,13 @@ class ProductVariantController extends Controller
             'variants.*.status' => ['required', 'in:active,inactive,archived'],
         ]);
 
-        $randomizeStock = ! $request->has('randomize_stock') || $request->boolean('randomize_stock');
-        DB::transaction(function () use ($validated, $product, $request, $randomizeStock): void {
+        $stockSettings = OperationalSettings::get(OperationalSettings::STOCK_RANDOMIZATION);
+        $randomizeStock = $request->has('randomize_stock') ? $request->boolean('randomize_stock') : (bool) $stockSettings['default_enabled'];
+        DB::transaction(function () use ($validated, $product, $request, $randomizeStock, $stockSettings): void {
             foreach ($validated['variants'] as $row) {
                 ProductVariant::create([
                     ...$row,
-                    'stock' => $randomizeStock ? random_int(700, 5000) : (int) ($row['stock'] ?? 0),
+                    'stock' => $randomizeStock ? random_int((int) $stockSettings['min'], (int) $stockSettings['max']) : (int) ($row['stock'] ?? 0),
                     'product_id' => $product->id,
                     'variant_sku' => ShopeeStyleSku::nextVariantSku($product),
                     'created_by_user_id' => $request->user()->id,

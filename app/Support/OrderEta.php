@@ -6,35 +6,39 @@ use App\Models\Order;
 use Carbon\Carbon;
 
 /**
- * Estimasi waktu tiba pesanan: waktu produksi (konfigurasi) ditambah
- * rentang hari pengiriman (fallback lokal sampai SLA kurir tersimpan).
- *
- * config/shipping.php → eta = { production_days, delivery_min_days, delivery_max_days }
+ * Display ETA: production + carrier range + configured display buffer.
  */
 class OrderEta
 {
     public static function productionDays(): int
     {
-        return max(0, (int) config('shipping.eta.production_days', 1));
+        $settings = OperationalSettings::current(OperationalSettings::ETA);
+
+        return max(0, (int) ($settings['production_days'] ?? config('shipping.eta.production_days', 1)));
+    }
+
+    public static function displayBufferDays(): int
+    {
+        $settings = OperationalSettings::current(OperationalSettings::ETA);
+
+        return max(0, (int) ($settings['display_buffer_days'] ?? config('shipping.eta.display_buffer_days', 1)));
     }
 
     public static function deliveryRange(): array
     {
+        $settings = OperationalSettings::current(OperationalSettings::ETA);
+        $min = max(1, (int) ($settings['delivery_min_days'] ?? config('shipping.eta.delivery_min_days', 2)));
+        $max = max($min, (int) ($settings['delivery_max_days'] ?? config('shipping.eta.delivery_max_days', 5)));
+        $buffer = self::displayBufferDays();
+
         return [
-            'min_days' => max(1, (int) config('shipping.eta.delivery_min_days', 2)),
-            'max_days' => max(1, (int) config('shipping.eta.delivery_max_days', 5)),
+            'min_days' => $min + $buffer,
+            'max_days' => $max + $buffer,
         ];
     }
 
     /**
-     * @return array{
-     *   production_days: int,
-     *   min_days: int,
-     *   max_days: int,
-     *   range_label: string,
-     *   start_at: string,
-     *   end_at: string
-     * }
+     * @return array{production_days: int, min_days: int, max_days: int, display_buffer_days: int, range_label: string, start_at: string, end_at: string}
      */
     public static function forOrder(?Order $order = null): array
     {
@@ -44,29 +48,24 @@ class OrderEta
 
         $start = $base->copy()->addDays($production + $minDays)->startOfDay();
         $end = $base->copy()->addDays($production + $maxDays)->endOfDay();
-
-        $sameMonth = $start->format('m') === $end->format('m');
         $startLabel = $start->translatedFormat('j M');
-        $endLabel = $sameMonth
-            ? $end->translatedFormat('j M Y')
-            : $end->translatedFormat('j M Y');
+        $endLabel = $end->translatedFormat('j M Y');
 
         return [
             'production_days' => $production,
             'min_days' => $minDays,
             'max_days' => $maxDays,
+            'display_buffer_days' => self::displayBufferDays(),
             'range_label' => "{$startLabel} – {$endLabel}",
             'start_at' => $start->toIso8601String(),
             'end_at' => $end->toIso8601String(),
         ];
     }
 
-    /** Teks satu baris untuk parameter template WhatsApp. */
     public static function whatsappLabel(?Order $order = null): string
     {
         $eta = self::forOrder($order);
 
-        return 'Estimasi tiba '.$eta['range_label']
-            .' (termasuk '.$eta['production_days'].' hari produksi)';
+        return 'Estimasi tiba '.$eta['range_label'].' (termasuk '.$eta['production_days'].' hari produksi)';
     }
 }
