@@ -282,6 +282,9 @@ Indexes:
 - `parent_sku` (`VARCHAR`), NN
 - `variant_sku` (`VARCHAR`), nullable
 - `name` (`VARCHAR`), NN
+- `product_category` (`VARCHAR`), nullable, snapshot saat checkout
+- `product_model` (`VARCHAR`), nullable, snapshot saat checkout
+- `design_variant` (`VARCHAR`), nullable, snapshot saat checkout
 - `variation_1_name` (`VARCHAR`), nullable
 - `variation_1_option` (`VARCHAR`), nullable
 - `variation_2_name` (`VARCHAR`), nullable
@@ -297,6 +300,45 @@ Indexes:
 Indexes:
 - `idx_order_items_variant_sku` (IDX on `variant_sku`)
 - `idx_order_items_order` (IDX on `order_id`)
+- `idx_order_items_catalog_identity` (IDX on `product_model`, `design_variant`)
+
+Snapshot identity di atas adalah sumber historis analytics; jangan membaca katalog live untuk order lama.
+
+### 3.2a order_return_cases
+
+Ledger internal retur yang diisi admin. issue pada orders.order_status bukan bukti retur.
+- id (INTEGER), PK
+- order_id (INTEGER), NN, FK -> orders.id
+- status (VARCHAR), NN, default open
+- reason (VARCHAR), NN
+- resolution_type (VARCHAR), nullable
+- customer_notes, admin_notes (TEXT), nullable
+- refund_amount, replacement_amount, additional_shipping_amount (NUMERIC), NN, default 0
+- completed_at (DATETIME), nullable
+- created_by_user_id, updated_by_user_id (INTEGER), nullable, FK -> users.id
+- created_at, updated_at (DATETIME), nullable
+
+Retur KPI hanya membaca case status=completed, completed_at pada periode, dan item dengan returned_quantity > 0.
+
+### 3.2b order_return_items
+
+- id (INTEGER), PK
+- return_case_id (INTEGER), NN, FK -> order_return_cases.id
+- order_item_id (INTEGER), NN, FK -> order_items.id
+- requested_quantity, returned_quantity (INTEGER), NN, default 0
+- created_at, updated_at (DATETIME), nullable
+
+Nilai retur = snapshot order_items.unit_price * returned_quantity; refund/settlement disimpan terpisah pada case.
+
+### 3.2c performance_visitor_events
+
+- id (INTEGER), PK
+- visitor_hash (VARCHAR(64)), NN
+- visit_date (DATE), NN
+- visited_at (DATETIME), NN
+- created_at, updated_at (DATETIME), nullable
+
+UQ visitor_hash + visit_date mendeduplikasi visitor per hari; agregasi periode memakai distinct hash dan bucket timezone aplikasi.
 
 ### 3.3 `order_number_sequences`
 

@@ -81,6 +81,9 @@ Total: 271 routes.
 - `GET /admin/analytics/import-performance` -> `Admin\AnalyticsController@importPerformance`  (name: `admin.analytics.import-performance`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/analytics/store-performance` -> `Admin\AnalyticsController@storePerformance`  (name: `admin.analytics.store-performance`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/analytics/store-performance/export` -> `Admin\AnalyticsController@exportStorePerformance`  (name: `admin.analytics.store-performance.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+
+Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). report.financial berisi gross_revenue, refund_adjustments, net_revenue, dan definisi. Gross memakai order fulfillment/return (processing, shipped, delivered, completed, return_in_process, return_completed); issue bukan retur. Net hanya mengurangi refund pada return case selesai dengan barang benar-benar kembali. completed_orders hanya status completed. Timing memakai event pending_payment ke processing dan timestamp pembuatan resi pertama. Semua angka mengikuti rentang dan timezone aplikasi.
+
 - `GET /admin/announcements` -> `Admin\AnnouncementController@index`  (name: `admin.announcements.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/announcements` -> `Admin\AnnouncementController@store`  (name: `admin.announcements.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/announcements/create` -> `Admin\AnnouncementController@create`  (name: `admin.announcements.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Payment;
+use App\Models\OrderReturnCase;
 use App\Models\PerformanceMetric;
+use App\Models\PerformanceVisitorEvent;
+use App\Models\ShippingRecord;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
@@ -16,13 +19,20 @@ use Illuminate\Support\Facades\DB;
 class StorePerformanceService
 {
     /** Omzet / unit terjual hanya dari pesanan yang sudah masuk alur fulfillment (bukan batal / pending bayar). */
-    public const REVENUE_STATUSES = ['processing', 'shipped', 'delivered', 'completed'];
+    public const REVENUE_STATUSES = [
+        'processing', 'shipped', 'delivered', 'completed',
+        'return_in_process', 'return_completed',
+    ];
 
-    public const COMPLETED_STATUSES = ['delivered', 'completed'];
+    public const COMPLETED_STATUSES = ['completed'];
 
     public const OPEN_STATUSES = ['pending_payment', 'processing', 'shipped'];
 
-    public const RETURN_STATUSES = ['return_in_process', 'issue'];
+    /**
+     * issue is an operational exception, not proof that goods were returned.
+     * Actual return KPIs come from the return ledger below.
+     */
+    public const RETURN_STATUSES = [];
 
     /**
      * @return array{from: Carbon, to: Carbon, previous_from: Carbon, previous_to: Carbon, label: string, granularity: string, period: string}
@@ -178,6 +188,12 @@ class StorePerformanceService
                 'compare_to_date' => $range['previous_to']->toDateString(),
                 'is_running' => $range['is_running'],
             ],
+            'financial' => [
+                'gross_revenue' => $current['gross_revenue'],
+                'refund_adjustments' => $current['refund_adjustments'],
+                'net_revenue' => $current['net_revenue'],
+                'definition' => 'Omset adalah gross dari order fulfillment/return; net dikurangi refund pada return case yang benar-benar selesai.',
+            ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
                 ['key' => 'traffic', 'title' => 'Kunjungan & Layanan', 'kpis' => $trafficKpis],
@@ -228,21 +244,42 @@ class StorePerformanceService
             ? 0
             : (int) OrderItem::query()->whereIn('order_id', $revenueOrderIds)->sum('quantity');
 
-        $modelsSold = $revenueOrderIds->isEmpty()
-            ? 0
-            : (int) OrderItem::query()
-                ->join('products', 'products.id', '=', 'order_items.product_id')
-                ->whereIn('order_items.order_id', $revenueOrderIds)
-                ->whereNotNull('order_items.product_id')
-                ->selectRaw("COUNT(DISTINCT products.product_model || '|' || COALESCE(products.design_variant, '')) as aggregate")
-                ->value('aggregate');
+        // Historical identity is read from order_items snapshots, never from live catalog rows.
+        $modelsSold = 0;
+        if ($revenueOrderIds->isNotEmpty()) {
+            $modelsSold = OrderItem::query()
+                ->whereIn('order_id', $revenueOrderIds)
+                ->get(['parent_sku', 'name', 'product_model', 'design_variant'])
+                ->map(function (OrderItem $item): string {
+                    $model = trim((string) ($item->product_model ?: $item->parent_sku ?: $item->name));
+                    $design = trim((string) ($item->design_variant ?: ''));
+                    return $model.'|'.$design;
+                })
+                ->filter(fn (string $key): bool => $key !== '|')
+                ->unique()
+                ->count();
+        }
 
         $avgUnitPrice = $units > 0 ? round($revenue / $units, 2) : 0.0;
 
         $completedOrders = (clone $base)->whereIn('order_status', self::COMPLETED_STATUSES)->count();
         $openOrders = (clone $base)->whereIn('order_status', self::OPEN_STATUSES)->count();
-        $returnOrders = (clone $base)->whereIn('order_status', self::RETURN_STATUSES)->count();
-        $returnValue = (float) (clone $base)->whereIn('order_status', self::RETURN_STATUSES)->sum('total_amount');
+
+        $returnCases = OrderReturnCase::query()
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereBetween('completed_at', [$from, $to])
+            ->whereHas('items', fn ($query) => $query->where('returned_quantity', '>', 0))
+            ->with(['items.orderItem:id,unit_price'])
+            ->get();
+        $returnOrders = $returnCases->pluck('order_id')->unique()->count();
+        $returnValue = (float) $returnCases->sum(
+            fn (OrderReturnCase $case): float => (float) $case->items->sum(
+                fn ($item): float => (float) $item->returned_quantity * (float) optional($item->orderItem)->unit_price
+            )
+        );
+        $refundAdjustments = (float) $returnCases->sum('refund_amount');
+        $netRevenue = $revenue - $refundAdjustments;
 
         $visitors = $this->visitorsBetween($from, $to);
         $conversionRate = $visitors > 0 ? round(($orders / $visitors) * 100, 2) : 0.0;
@@ -252,6 +289,9 @@ class StorePerformanceService
         return [
             'orders' => $orders,
             'revenue' => round($revenue, 2),
+            'gross_revenue' => round($revenue, 2),
+            'refund_adjustments' => round($refundAdjustments, 2),
+            'net_revenue' => round($netRevenue, 2),
             'units' => $units,
             'models_sold' => $modelsSold,
             'avg_unit_price' => $avgUnitPrice,
@@ -273,17 +313,27 @@ class StorePerformanceService
      */
     public function series(Carbon $from, Carbon $to, string $granularity, string $metric): array
     {
-        // Visitors hanya punya data per hari ??? turunkan granularity jam ke hari.
-        $visitorGranularity = $granularity === 'hour' ? 'day' : $granularity;
         if ($metric === 'visitors') {
-            $buckets = $this->emptyBuckets($from, $to, $visitorGranularity);
-            $rows = PerformanceMetric::query()
-                ->selectRaw($this->bucketSelect('metric_date', $visitorGranularity).' as bucket')
-                ->selectRaw('SUM(metric_value) as value')
-                ->where('metric_name', 'storefront_unique_visitors')
-                ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
+            $buckets = $this->emptyBuckets($from, $to, $granularity);
+            $rows = PerformanceVisitorEvent::query()
+                ->selectRaw($this->bucketSelect('visited_at', $granularity).' as bucket')
+                ->selectRaw('COUNT(DISTINCT visitor_hash) as value')
+                ->whereBetween('visited_at', [$from, $to])
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
+
+            if ($rows->isEmpty()) {
+                // Backward-compatible fallback for visitor history recorded before the event table.
+                $legacyGranularity = $granularity === 'hour' ? 'day' : $granularity;
+                $buckets = $this->emptyBuckets($from, $to, $legacyGranularity);
+                $rows = PerformanceMetric::query()
+                    ->selectRaw($this->bucketSelect('metric_date', $legacyGranularity).' as bucket')
+                    ->selectRaw('SUM(metric_value) as value')
+                    ->where('metric_name', 'storefront_unique_visitors')
+                    ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
+                    ->groupBy('bucket')
+                    ->pluck('value', 'bucket');
+            }
 
             return collect($buckets)->map(function (array $bucket) use ($rows) {
                 return [
@@ -419,27 +469,41 @@ class StorePerformanceService
      */
     public function trackPageView(string $sessionId): void
     {
-        $today = now()->toDateString();
+        $now = now();
+        $today = $now->toDateString();
+        $visitorHash = sha1($sessionId);
 
         $views = PerformanceMetric::query()->firstOrCreate(
             ['metric_date' => $today, 'metric_name' => 'storefront_page_views'],
-            ['metric_value' => 0, 'created_at' => now()]
+            ['metric_value' => 0, 'created_at' => $now]
         );
         $views->increment('metric_value');
 
-        $uniqueKey = 'storefront_unique:'.$today.':'.sha1($sessionId);
-        if (! cache()->has($uniqueKey)) {
-            cache()->put($uniqueKey, 1, now()->endOfDay());
-            $unique = PerformanceMetric::query()->firstOrCreate(
-                ['metric_date' => $today, 'metric_name' => 'storefront_unique_visitors'],
-                ['metric_value' => 0, 'created_at' => now()]
-            );
+        // The unique key is database-backed so analytics remains correct across workers.
+        $event = PerformanceVisitorEvent::query()->firstOrCreate(
+            ['visitor_hash' => $visitorHash, 'visit_date' => $today],
+            ['visited_at' => $now]
+        );
+        $unique = PerformanceMetric::query()->firstOrCreate(
+            ['metric_date' => $today, 'metric_name' => 'storefront_unique_visitors'],
+            ['metric_value' => 0, 'created_at' => $now]
+        );
+        if ($event->wasRecentlyCreated || (int) $unique->metric_value === 0) {
             $unique->increment('metric_value');
         }
     }
 
     protected function visitorsBetween(Carbon $from, Carbon $to): int
     {
+        $visitors = PerformanceVisitorEvent::query()
+            ->whereBetween('visited_at', [$from, $to])
+            ->distinct()
+            ->count('visitor_hash');
+
+        if ($visitors > 0) {
+            return (int) $visitors;
+        }
+
         return (int) PerformanceMetric::query()
             ->where('metric_name', 'storefront_unique_visitors')
             ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
@@ -461,70 +525,67 @@ class StorePerformanceService
             return [0, 0];
         }
 
-        $firstOrderDates = Order::query()
-            ->select(['customer_phone', DB::raw('MIN(created_at) as first_at')])
+        $priorPhones = Order::query()
             ->whereIn('customer_phone', $phonesInPeriod)
-            ->groupBy('customer_phone')
-            ->pluck('first_at', 'customer_phone');
+            ->where('created_at', '<', $from)
+            ->where('order_status', '!=', 'cancelled')
+            ->distinct()
+            ->pluck('customer_phone');
 
-        $new = 0;
-        foreach ($phonesInPeriod as $phone) {
-            $firstAt = isset($firstOrderDates[$phone]) ? Carbon::parse($firstOrderDates[$phone]) : null;
-            if ($firstAt && $firstAt->between($from, $to)) {
-                $new++;
-            }
-        }
-
-        $repeat = Order::query()
-            ->select('customer_phone')
-            ->whereBetween('created_at', [$from, $to])
-            ->whereNotNull('customer_phone')
-            ->groupBy('customer_phone')
-            ->havingRaw('COUNT(*) > 1')
-            ->get()
-            ->count();
+        $repeat = $priorPhones->count();
+        $new = $phonesInPeriod->diff($priorPhones)->count();
 
         return [$new, $repeat];
     }
 
+    protected function statusEventAt(int|string $orderId, string $fromStatus, string $toStatus): ?Carbon
+    {
+        return EventLog::query()
+            ->where('entity_type', 'order')
+            ->where('entity_id', (string) $orderId)
+            ->where('event_type', 'order_status_changed')
+            ->get()
+            ->filter(function (EventLog $event) use ($fromStatus, $toStatus): bool {
+                return (string) data_get($event->payload, 'from') === $fromStatus
+                    && (string) data_get($event->payload, 'order_status') === $toStatus;
+            })
+            ->sortBy('created_at')
+            ->first()?->created_at;
+    }
+
     protected function avgConfirmHours(Carbon $from, Carbon $to): float
     {
-        $rows = Payment::query()
-            ->select(['payments.paid_at', 'orders.created_at as ordered_at'])
-            ->join('orders', 'orders.id', '=', 'payments.order_id')
-            ->whereBetween('orders.created_at', [$from, $to])
-            ->whereNotNull('payments.paid_at')
-            ->where('payments.status', 'paid')
-            ->get();
+        $orders = Order::query()->whereBetween('created_at', [$from, $to])->get(['id', 'created_at']);
+        $durations = $orders->map(function (Order $order): ?float {
+            $confirmedAt = $this->statusEventAt($order->id, 'pending_payment', 'processing');
+            return $confirmedAt ? max(0, $order->created_at->diffInMinutes($confirmedAt) / 60) : null;
+        })->filter(fn (?float $value): bool => $value !== null);
 
-        if ($rows->isEmpty()) {
-            return 0.0;
-        }
-
-        $hours = $rows->map(function ($row) {
-            $ordered = Carbon::parse($row->ordered_at);
-            $paid = Carbon::parse($row->paid_at);
-
-            return max(0, $ordered->diffInMinutes($paid) / 60);
-        });
-
-        return round((float) $hours->avg(), 2);
+        return $durations->isEmpty() ? 0.0 : round((float) $durations->avg(), 2);
     }
 
     protected function avgProcessDays(Carbon $from, Carbon $to): float
     {
-        $rows = Order::query()
-            ->whereBetween('created_at', [$from, $to])
-            ->whereIn('order_status', ['shipped', 'delivered', 'completed'])
-            ->get(['created_at', 'updated_at']);
+        $orders = Order::query()->whereBetween('created_at', [$from, $to])->get(['id']);
+        $durations = $orders->map(function (Order $order): ?float {
+            $processingAt = $this->statusEventAt($order->id, 'pending_payment', 'processing')
+                ?: $this->statusEventAt($order->id, 'issue', 'processing');
+            if (! $processingAt) {
+                return null;
+            }
 
-        if ($rows->isEmpty()) {
-            return 0.0;
-        }
+            $waybillAt = ShippingRecord::query()
+                ->where('order_id', $order->id)
+                ->whereNotNull('waybill_number')
+                ->orderBy('created_at')
+                ->value('created_at');
 
-        $days = $rows->map(fn (Order $order) => max(0, $order->created_at->diffInMinutes($order->updated_at) / (60 * 24)));
+            return $waybillAt
+                ? max(0, $processingAt->diffInMinutes(Carbon::parse($waybillAt)) / (60 * 24))
+                : null;
+        })->filter(fn (?float $value): bool => $value !== null);
 
-        return round((float) $days->avg(), 2);
+        return $durations->isEmpty() ? 0.0 : round((float) $durations->avg(), 2);
     }
 
     /**

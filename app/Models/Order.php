@@ -79,6 +79,11 @@ class Order extends Model
         return $this->hasMany(WhatsAppMessage::class);
     }
 
+    public function returnCases(): HasMany
+    {
+        return $this->hasMany(OrderReturnCase::class);
+    }
+
     public function scopePendingPayment(Builder $query): Builder
     {
         return $query->where('order_status', 'pending_payment');

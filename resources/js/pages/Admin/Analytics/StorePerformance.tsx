@@ -52,6 +52,12 @@ interface Report {
     compare_to_date: string
     is_running: boolean
   }
+  financial: {
+    gross_revenue: number
+    refund_adjustments: number
+    net_revenue: number
+    definition: string
+  }
   sections: Section[]
   charts: ChartBlock[]
   top_products: Array<{
@@ -265,9 +271,25 @@ export default function StorePerformance({
             Perbandingan dengan: {report.range.compare_label}
           </p>
           <p className="text-xs text-muted-foreground">
-            ({report.range.compare_from_date} ??? {report.range.compare_to_date}
-            {report.range.is_running ? " ?? periode berjalan, dibandingkan sampai jam yang sama" : " ?? periode penuh"})
+            ({report.range.compare_from_date} – {report.range.compare_to_date}
+            {report.range.is_running ? " · periode berjalan, dibandingkan sampai jam yang sama" : " · periode penuh"})
           </p>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3" aria-label="Ringkasan keuangan">
+          <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
+            <p className="text-xs font-semibold text-muted-foreground">Omset gross</p>
+            <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.gross_revenue)}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
+            <p className="text-xs font-semibold text-muted-foreground">Penyesuaian refund</p>
+            <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.refund_adjustments)}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
+            <p className="text-xs font-semibold text-muted-foreground">Omset net</p>
+            <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.net_revenue)}</p>
+          </div>
+          <p className="text-xs text-muted-foreground sm:col-span-3">{report.financial.definition}</p>
         </div>
       </section>
 
