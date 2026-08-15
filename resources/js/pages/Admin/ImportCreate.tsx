@@ -12,9 +12,11 @@ import type { SelectOption } from "@/types"
 
 export default function ImportCreate({
   submitUrl,
+  internalTemplateUrl,
   types,
 }: {
   submitUrl: string
+  internalTemplateUrl: string
   types: SelectOption[]
 }) {
   const form = useForm<{
@@ -39,9 +41,14 @@ export default function ImportCreate({
       title="Import katalog"
       description="Unggah file Excel atau CSV untuk diproses melalui antrean import."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.imports.index")}>Riwayat import</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="secondary">
+            <a href={internalTemplateUrl} download>Unduh template internal</a>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={routeUrl("admin.imports.index")}>Riwayat import</Link>
+          </Button>
+        </div>
       }
     >
       <Head title="Import Katalog | Admin" />
@@ -117,9 +124,10 @@ export default function ImportCreate({
           ) : null}
 
           <Alert tone="info" className="mt-6">
-            Setelah unggahan selesai, file diproses oleh queue. Detail job menampilkan jumlah baris
-            berhasil dan gagal. Pilihan sumber stok juga disimpan pada job agar retry memakai aturan
-            yang sama.
+            Import memakai kontrak pengiriman admin: berat, tinggi, panjang (width), dan lebar/tebal
+            packing wajib lebih dari 0. Baris yang belum lengkap tetap berhasil diproses tetapi produknya
+            diarsipkan dengan alasan yang tampil pada data baris; tidak ada status draft. Media yang belum
+            selesai diproses masuk antrean media.
           </Alert>
 
           <div className="mt-6 flex justify-end gap-2">

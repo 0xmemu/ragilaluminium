@@ -25,6 +25,10 @@ Legend: PK = primary key, FK = foreign key, UQ = unique, IDX = index, NN = NOT N
 - `design_variant` (`VARCHAR`), nullable
 - `homepage_popular` (`TINYINT(1)`), NN, default '0'
 - `homepage_popular_sort` (`INTEGER`), NN, default '0'
+- `popularity_seed` (`BIGINT UNSIGNED`), NN, default '0'; snapshot seed used only for ranking
+- `popularity_seed_source_product_id` (`BIGINT`), nullable, FK -> products.id
+- `popularity_seed_applied_at` (`TIMESTAMP`), nullable
+- `popularity_seed_applied_by_user_id` (`BIGINT`), nullable, FK -> users.id
 
 Indexes:
 - `idx_products_status_category` (IDX on `status`, `product_category`)
@@ -529,6 +533,26 @@ Indexes:
 Indexes:
 - `cms_testimonials_product_published_idx` (IDX on `product_id`, `published`)
 
+### 5.8 `product_popularity_boosts`
+
+- `id` (`BIGINT`), PK, NN
+- `source_product_id` (`BIGINT`), NN, FK -> products.id
+- `target_product_id` (`BIGINT`), NN, FK -> products.id
+- `enabled` (`TINYINT(1)`), NN, default '1'
+- `seed_sold_count` (`BIGINT UNSIGNED`), NN, default '0'
+- `notification_threshold` (`BIGINT UNSIGNED`), nullable
+- `threshold_notified_at` (`TIMESTAMP`), nullable
+- `disabled_at` (`TIMESTAMP`), nullable
+- `disabled_by_user_id` (`BIGINT`), nullable, FK -> users.id
+- `disabled_reason` (`VARCHAR(500)`), nullable
+- `created_by_user_id` (`BIGINT`), nullable, FK -> users.id
+- `updated_by_user_id` (`BIGINT`), nullable, FK -> users.id
+- `created_at` / `updated_at` (`TIMESTAMP`), nullable
+
+Indexes:
+- `uq_popularity_boost_source_target` (UQ on `source_product_id`, `target_product_id`)
+- `idx_popularity_boost_target_enabled` (IDX on `target_product_id`, `enabled`)
+
 ### 5.8 `announcements`
 
 - `id` (`INTEGER`), PK, NN
@@ -730,3 +754,27 @@ Indexes:
 ## Return case ledger (2026-08-15)
 
 order_return_cases stores the admin-managed return record independently from orders.order_status: reason, customer/admin notes, resolution type, refund/replacement/additional shipping amounts, actors, and completion timestamp. order_return_items stores requested and returned quantities by order_item_id. Source order and order item history remain immutable; return_in_process and return_completed are audit status milestones only.
+
+
+## Import Produk   kontrak aktivasi dan data shipping (2026-08-15)
+
+Import katalog berjalan per baris dan menyimpan hasil pada import_job_rows.raw_data.
+Baris yang gagal validasi teknis tetap dicatat sebagai failed; baris yang berhasil
+tetapi belum memenuhi kelengkapan katalog dicatat success dengan metadata:
+
+- _activation_status: active bila checklist publikasi lengkap, atau archived.
+- _activation_reasons: daftar kebutuhan yang belum lengkap.
+- _shipping_contract: weight_kg, height_cm, width_cm, dan depth_cm wajib > 0
+  untuk aktivasi. Nilai 0/null mengikuti konflik spesifikasi web dan admin: kontrak
+  admin yang lebih ketat dipakai sampai ada keputusan baru.
+- _media_queue: media URL yang belum ready dikirim ke antrean media dan produk tetap
+  archived sampai checklist dapat dipenuhi.
+
+Tidak ada status draft pada hasil import. Kolom sumber shipping dapat memakai alias
+weight/weight_kg, height/height_cm, width/width_cm, dan depth/length
+(termasuk prefix packing_); semuanya disimpan pada product_variants.
+
+Template internal mengekspor satu baris per varian dan wajib membawa pasangan
+parent_sku + variant_sku. Endpoint preview hanya menghitung diff (maksimal 1.000
+baris) dan tidak menulis data. Preset Shopee adalah adapter opsional, bukan kontrak
+template internal.

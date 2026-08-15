@@ -8,6 +8,7 @@ use App\Models\ImportJobRow;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Services\ImportedProductActivationService;
 use App\Support\ShopeeCatalogTaxonomy;
 use App\Support\ShopeeStyleSku;
 use App\Support\ShopeeVariationAxes;
@@ -97,7 +98,7 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
                     'product_category' => $taxonomy['category'],
                     'product_model' => $taxonomy['model'],
                     'design_variant' => $taxonomy['design'],
-                    'status' => 'active',
+                    'status' => 'archived',
                 ], $dimensions)
             );
 
@@ -124,6 +125,7 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
                     'status' => 'active',
                 ], $this->parseVariantDimensions($variationName))
             );
+            $activation = app(\App\Services\ImportedProductActivationService::class)->apply($product);
 
             ImportJobRow::create([
                 'import_job_id' => $this->jobId,
@@ -136,6 +138,9 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
                     'variant_sku' => $variantSku,
                     'price' => $price,
                     'stock' => $stock,
+                    '_activation_status' => $activation['status'],
+                    '_activation_reasons' => $activation['reasons'],
+                    '_shipping_contract' => 'weight_kg,height_cm,width_cm,depth_cm must be > 0',
                 ],
                 'status' => 'success',
                 'linked_product_id' => $product->id,

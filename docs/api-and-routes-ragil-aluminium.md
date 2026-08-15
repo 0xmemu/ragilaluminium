@@ -308,3 +308,6 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - POST /admin/orders/{order}/returns"éÝyø§yÔ admin-only create return case. Valid only when order status is delivered or completed; requires reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions order to return_in_process, and records audit/WhatsApp follow-up.
 - POST /admin/orders/{order}/returns/{returnCase}/complete ºw^~)Þt admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
 - Direct PUT /admin/orders/{order}/status to return_in_process is rejected so undocumented returns cannot bypass the case form.
+
+- GET /admin/imports/internal-template -> Admin\\ImportJobController@downloadInternalTemplate (name: admin.imports.internal-template) [Authenticate|EnsureUserIsAdmin]
+- POST /admin/imports/preview -> Admin\\ImportJobController@previewInternal (name: admin.imports.preview) [Authenticate|EnsureUserIsAdmin]

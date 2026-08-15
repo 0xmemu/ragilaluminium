@@ -89,6 +89,7 @@ class ImportJobController extends Controller
     {
         return Inertia::render('Admin/ImportCreate', [
             'submitUrl' => route('admin.imports.store'),
+            'internalTemplateUrl' => route('admin.imports.internal-template'),
             'types' => [
                 ['value' => 'shopee_mass_upload', 'label' => 'Shopee Mass Upload'],
                 ['value' => 'shopee_mass_update', 'label' => 'Shopee Mass Update'],
@@ -164,8 +165,11 @@ class ImportJobController extends Controller
                 [
                     'title' => 'Baris Terakhir',
                     'rows' => $import_job->rows->map(fn ($r) => [
-                        'label' => 'Row '.$r->row_number.' Â· '.$r->status,
-                        'value' => (string) ($r->error_reason ?? '-'),
+                        'label' => 'Row '.$r->row_number.' · '.$r->status,
+                        'value' => (string) ($r->error_reason
+                            ?? (($r->raw_data['_activation_status'] ?? null) === 'archived'
+                                ? 'Diarsipkan: '.implode(', ', (array) ($r->raw_data['_activation_reasons'] ?? []))
+                                : '-')),
                     ])->values()->all(),
                 ],
             ],
@@ -222,4 +226,117 @@ class ImportJobController extends Controller
 
         return redirect()->back()->withErrors('Berkas sumber tidak ditemukan, tidak bisa menjalankan ulang.');
     }
+
+    public function downloadInternalTemplate(): StreamedResponse
+    {
+        $query = \App\Models\ProductVariant::query()
+            ->with(['product.attributes'])
+            ->orderBy('product_id')
+            ->orderBy('id');
+        ExportSafety::assertQueryWithinLimit($query);
+
+        return response()->streamDownload(function () use ($query) {
+            $handle = fopen('php://output', 'w');
+            ExportSafety::writeCsvRow($handle, [
+                'parent_sku', 'variant_sku', 'name', 'description', 'product_category',
+                'product_model', 'design_variant', 'variation_1_name', 'variation_1_option',
+                'variation_2_name', 'variation_2_option', 'price', 'stock', 'weight_kg',
+                'height_cm', 'width_cm', 'depth_cm', 'specifications', 'status',
+            ]);
+            $query->chunk(200, function ($variants) use ($handle) {
+                foreach ($variants as $variant) {
+                    $specifications = $variant->product->attributes
+                        ->whereNull('product_variant_id')
+                        ->map(fn ($attribute) => $attribute->attribute_name.': '.$attribute->attribute_value)
+                        ->implode('; ');
+                    ExportSafety::writeCsvRow($handle, [
+                        $variant->product->parent_sku,
+                        $variant->variant_sku,
+                        $variant->product->name,
+                        $variant->product->description,
+                        $variant->product->product_category,
+                        $variant->product->product_model,
+                        $variant->product->design_variant,
+                        $variant->variation_1_name,
+                        $variant->variation_1_option,
+                        $variant->variation_2_name,
+                        $variant->variation_2_option,
+                        $variant->price,
+                        $variant->stock,
+                        $variant->weight_kg,
+                        $variant->height_cm,
+                        $variant->width_cm,
+                        $variant->depth_cm,
+                        $specifications,
+                        $variant->status,
+                    ]);
+                }
+            });
+            fclose($handle);
+        }, 'internal-catalog-template.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function previewInternal(Request $request)
+    {
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:xls,xlsx,xlsm,csv', 'max:51200'],
+        ]);
+        $rows = \Maatwebsite\Excel\Facades\Excel::toArray(
+            new \App\Imports\InternalCatalogPreviewImport(),
+            $validated['file']
+        )[0] ?? [];
+        $rows = array_slice($rows, 0, 1000);
+        $diffs = [];
+
+        foreach ($rows as $index => $row) {
+            $parentSku = trim((string) ($row['parent_sku'] ?? ''));
+            $variantSku = trim((string) ($row['variant_sku'] ?? ''));
+            $variant = $variantSku !== ''
+                ? \App\Models\ProductVariant::with('product')->where('variant_sku', $variantSku)->first()
+                : null;
+            if (! $variant || $variant->product->parent_sku !== $parentSku) {
+                $diffs[] = ['row' => $index + 2, 'status' => 'error', 'message' => 'parent_sku/variant_sku tidak ditemukan atau tidak cocok'];
+                continue;
+            }
+
+            $changes = [];
+            $fields = [
+                'name' => $variant->product->name,
+                'description' => $variant->product->description,
+                'variation_1_name' => $variant->variation_1_name,
+                'variation_1_option' => $variant->variation_1_option,
+                'variation_2_name' => $variant->variation_2_name,
+                'variation_2_option' => $variant->variation_2_option,
+                'price' => $variant->price,
+                'stock' => $variant->stock,
+                'weight_kg' => $variant->weight_kg,
+                'height_cm' => $variant->height_cm,
+                'width_cm' => $variant->width_cm,
+                'depth_cm' => $variant->depth_cm,
+                'status' => $variant->status,
+            ];
+            foreach ($fields as $field => $before) {
+                if (! array_key_exists($field, $row) || $row[$field] === '' || (string) $row[$field] === (string) $before) {
+                    continue;
+                }
+                $changes[$field] = ['before' => $before, 'after' => $row[$field]];
+            }
+            $diffs[] = [
+                'row' => $index + 2,
+                'status' => 'changed',
+                'parent_sku' => $parentSku,
+                'variant_sku' => $variantSku,
+                'changes' => $changes,
+            ];
+        }
+
+        return response()->json([
+            'contract' => 'preview-only; tidak menulis data',
+            'rows' => $diffs,
+            'total' => count($rows),
+        ]);
+    }
+
 }

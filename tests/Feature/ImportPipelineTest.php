@@ -47,10 +47,13 @@ class ImportPipelineTest extends TestCase
         $job->refresh();
         $this->assertEquals('completed', $job->status);
         $this->assertEquals(1, $job->success_rows);
-        $this->assertDatabaseHas('products', ['parent_sku' => 'WIN-IMP-1', 'status' => 'active']);
+        $this->assertDatabaseHas('products', ['parent_sku' => 'WIN-IMP-1', 'status' => 'archived']);
         $this->assertDatabaseHas('product_variants', ['variant_sku' => 'WIN-IMP-1-V1']);
         $this->assertDatabaseHas('product_media', ['source_url' => 'https://example.com/a.jpg']);
         Queue::assertPushed(DownloadMediaAsset::class);
+        $row = ImportJob::whereKey($job->id)->first()->rows()->first();
+        $this->assertSame('archived', $row->raw_data['_activation_status']);
+        $this->assertNotEmpty($row->raw_data['_activation_reasons']);
     }
 
     public function test_import_manual_stock_overrides_file_stock(): void
