@@ -245,7 +245,7 @@ export function ProductBuyBox({
             type="button"
             variant="secondary"
             size="md"
-            className="h-11 min-h-11 flex-1 text-xs"
+            className="h-11 min-h-11 min-w-0 flex-1 gap-1 px-1 text-[11px] sm:gap-2 sm:px-5 sm:text-sm"
             disabled={ctaDisabled}
             onClick={purchase.buyNow}
           >
@@ -257,7 +257,7 @@ export function ProductBuyBox({
           <Button
             type="submit"
             size="md"
-            className="h-11 min-h-11 flex-1 text-xs"
+            className="h-11 min-h-11 min-w-0 flex-1 gap-1 px-1 text-[11px] sm:gap-2 sm:px-5 sm:text-sm"
             disabled={ctaDisabled}
           >
             <Icon name="shopping-cart" className="size-4 shrink-0" aria-hidden="true" />
