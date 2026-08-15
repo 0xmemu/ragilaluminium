@@ -371,11 +371,24 @@ export function useCheckout({
           const parsed = Number(value)
           return Number.isFinite(parsed) ? parsed : null
         }
+        const provisionalAmount = number(
+          source.estimated_amount ??
+            source.rough_estimate ??
+            source.net ??
+            source.shipping_amount ??
+            source.amount ??
+            source.cost ??
+            source.total,
+        )
         if (provisional) {
+          if (provisionalAmount === null) {
+            setShippingQuote(null)
+            return
+          }
           setShippingQuote({
-            gross: 9999,
+            gross: provisionalAmount,
             subsidy: 0,
-            net: 9999,
+            net: provisionalAmount,
             applied: false,
             status,
             provisional: true,

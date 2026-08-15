@@ -272,7 +272,7 @@ export function CheckoutSummary({
           <div className="space-y-1.5">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground min-w-0 break-words">Estimasi ongkir sementara</dt>
-              <dd className="tabular-nums font-bold">{formatCurrency(9999)}</dd>
+              <dd className="tabular-nums font-bold">{formatCurrency(effectiveShipping.net)}</dd>
             </div>
             <p className="text-[11px] leading-4 text-muted-foreground">
               Sementara. Konfirmasi pesanan untuk konfirmasi admin.
