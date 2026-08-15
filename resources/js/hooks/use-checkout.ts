@@ -42,6 +42,7 @@ export interface UseCheckoutOptions {
   applyVoucherUrl?: string | null
   removeVoucherUrl?: string | null
   shippingQuoteUrl?: string | null
+  shippingWeightKg?: number
 }
 
 const emptyDetails: CheckoutDetails = {
@@ -97,6 +98,7 @@ export function useCheckout({
   applyVoucherUrl = routeUrl("checkout.voucher.apply"),
   removeVoucherUrl = routeUrl("checkout.voucher.remove"),
   shippingQuoteUrl = null,
+  shippingWeightKg = 1,
 }: UseCheckoutOptions) {
   const [editingDetails, setEditingDetails] = React.useState(!details)
   const detailForm = useForm<CheckoutDetails>({ ...emptyDetails, ...(details ?? {}) })
@@ -321,7 +323,7 @@ export function useCheckout({
       try {
         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? ""
         const response = await fetch(
-          shippingQuoteUrl || routeUrl("checkout.shipping-quote", undefined, "/checkout/shipping-quote"),
+          shippingQuoteUrl || routeUrl("shipping.quote", undefined, "/api/shipping/quote"),
           {
             method: "POST",
             credentials: "same-origin",
@@ -333,13 +335,19 @@ export function useCheckout({
               ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
             },
             body: JSON.stringify({
+              weight_kg: shippingWeightKg,
+              destination_city: data.city,
+              destination_province: data.province,
+              destination_area: data.district,
+              village_id: data.village_id,
+              village_name: data.village,
+              district_id: data.district_id,
+              district_name: data.district,
               province_id: data.province_id,
               province: data.province,
               city_id: data.city_id,
               city: data.city,
-              district_id: data.district_id,
               district: data.district,
-              village_id: data.village_id,
               village: data.village,
               postal_code: data.postal_code,
               address_line1: data.address_line1,
@@ -416,6 +424,7 @@ export function useCheckout({
     detailForm.data.village_id,
     detailForm.data,
     shippingQuoteUrl,
+    shippingWeightKg,
   ])
 
   function selectProvince(option: WilayahOption | null) {

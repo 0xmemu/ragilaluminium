@@ -43,6 +43,7 @@ interface CheckoutProps {
   applyVoucherUrl: string
   removeVoucherUrl: string
   shippingQuoteUrl?: string | null
+  shippingWeightKg?: number
 }
 
 /**
@@ -73,6 +74,7 @@ export default function Checkout({
   applyVoucherUrl,
   removeVoucherUrl,
   shippingQuoteUrl = null,
+  shippingWeightKg = 1,
 }: CheckoutProps) {
   const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
   const [checkoutItems, setCheckoutItems] = React.useState(items)
@@ -99,6 +101,7 @@ export default function Checkout({
     applyVoucherUrl,
     removeVoucherUrl,
     shippingQuoteUrl,
+    shippingWeightKg,
   })
 
   if (!items.length) {
