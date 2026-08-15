@@ -185,6 +185,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Catalog - Products
     Route::get('products/export', [AdminProductController::class, 'export'])->name('products.export');
+    // Keep this literal path before the resource {product} route below.
+    Route::get('products/popularity-boosts', [ProductPopularityBoostController::class, 'index'])->name('products.popularity-boosts.index');
+    Route::post('products/popularity-boosts', [ProductPopularityBoostController::class, 'store'])->name('products.popularity-boosts.store');
     Route::resource('products', AdminProductController::class)->except(['destroy']);
     Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('categories/create', [CategoryController::class, 'create'])->name('categories.create');
@@ -196,8 +199,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('products/{product}/unarchive', [AdminProductController::class, 'unarchive'])->name('products.unarchive');
     Route::post('products/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
     Route::post('products/{product}/duplicate', [AdminProductController::class, 'duplicate'])->name('products.duplicate');
-    Route::get('products/popularity-boosts', [ProductPopularityBoostController::class, 'index'])->name('products.popularity-boosts.index');
-    Route::post('products/popularity-boosts', [ProductPopularityBoostController::class, 'store'])->name('products.popularity-boosts.store');
     Route::post('products/popularity-boosts/{boost}/disable', [ProductPopularityBoostController::class, 'disable'])->name('products.popularity-boosts.disable');
     Route::post('products/popularity-boosts/{boost}/enable', [ProductPopularityBoostController::class, 'enable'])->name('products.popularity-boosts.enable');
 
