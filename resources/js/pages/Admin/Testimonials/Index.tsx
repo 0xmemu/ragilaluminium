@@ -6,6 +6,13 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/admin/ui/dialog"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
@@ -57,6 +64,8 @@ interface FotoRow {
   edit_href: string
   publish_url?: string | null
   unpublish_url?: string | null
+  media_asset_id?: number | null
+  attach_url?: string | null
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -143,6 +152,123 @@ function PublishActions({
         </Button>
       )}
     </RowActions>
+  )
+}
+
+function AttachProductsDialog({ row }: { row: FotoRow }) {
+  const [open, setOpen] = React.useState(false)
+  const [query, setQuery] = React.useState("")
+  const [results, setResults] = React.useState<Array<{ id: number; label: string }>>([])
+  const [selectedIds, setSelectedIds] = React.useState<number[]>([])
+  const [verified, setVerified] = React.useState(false)
+  const [searching, setSearching] = React.useState(false)
+  const attachForm = useForm({
+    product_ids: [] as number[],
+    position: Math.max(1, row.sort_order || 1),
+    show_in_catalog: false,
+    is_installation: true,
+    is_main_image: false,
+    visibility: "visible",
+  })
+
+  React.useEffect(() => {
+    if (!open) return
+    const term = query.trim()
+    if (!term) {
+      // Clear stale search results when the dialog query is emptied.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResults([])
+      return
+    }
+    const timer = window.setTimeout(() => {
+      setSearching(true)
+      void fetch(`${routeUrl("admin.media.products.search")}?q=${encodeURIComponent(term)}`, {
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+        .then((body: { products?: Array<{ id: number; label: string }> }) => setResults(body.products ?? []))
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false))
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [open, query])
+
+  function close() {
+    setOpen(false)
+    setQuery("")
+    setResults([])
+    setSelectedIds([])
+    setVerified(false)
+    attachForm.clearErrors()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+      <DialogTrigger asChild>
+        <Button type="button" size="xs" variant="secondary">
+          Pasang ke produk lain
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl">
+        <DialogTitle>Verifikasi dan pasang ke produk lain</DialogTitle>
+        <DialogDescription>
+          Media ini tetap satu asset, tetapi dapat dipakai sebagai hasil pemasangan di beberapa produk.
+          Pastikan kecocokan foto sebelum mengonfirmasi.
+        </DialogDescription>
+        <div className="space-y-4">
+          <Field id={`installation-product-search-${row.id}`} label="Cari produk tujuan">
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Nama produk atau SKU"
+              autoComplete="off"
+            />
+          </Field>
+          <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
+            {searching ? (
+              <p className="p-3 text-sm text-muted-foreground">Mencari produk...</p>
+            ) : results.length ? (
+              results.map((product) => (
+                <label key={product.id} className="flex cursor-pointer items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0 hover:bg-muted/40">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(product.id)}
+                    onChange={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])}
+                    className="size-4 accent-primary"
+                  />
+                  <span className="text-sm">{product.label}</span>
+                </label>
+              ))
+            ) : (
+              <p className="p-3 text-sm text-muted-foreground">Ketik minimal sebagian nama atau SKU produk.</p>
+            )}
+          </div>
+          <label className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={verified}
+              onChange={(event) => setVerified(event.target.checked)}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>Saya sudah memverifikasi bahwa foto ini benar-benar relevan untuk semua produk yang dipilih.</span>
+          </label>
+          {attachForm.errors.product_ids ? <p className="text-xs text-destructive">{attachForm.errors.product_ids}</p> : null}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={close}>Batal</Button>
+            <Button
+              type="button"
+              disabled={!verified || selectedIds.length === 0 || attachForm.processing}
+              onClick={() => {
+                attachForm.transform((data) => ({ ...data, product_ids: selectedIds }))
+                attachForm.post(row.attach_url!, { preserveScroll: true, onSuccess: close })
+              }}
+            >
+              {attachForm.processing ? "Memasang..." : `Pasang ke ${selectedIds.length || "produk"}`}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -645,6 +771,7 @@ export default function TestimonialsIndex({
                           kind="foto"
                           readonly={Boolean(row.readonly)}
                         />
+                        {row.attach_url ? <AttachProductsDialog row={row} /> : null}
                       </td>
                     </tr>
                   ))}

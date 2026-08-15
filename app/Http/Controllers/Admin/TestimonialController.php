@@ -467,7 +467,7 @@ class TestimonialController extends Controller
         $importedQuery = ProductMedia::query()
             ->installation()
             ->visible()
-            ->with(['product:id,parent_sku,name,short_name']);
+            ->with(['product:id,parent_sku,name,short_name', 'mediaAsset']);
 
         if ($q !== '') {
             $importedQuery->where(function ($builder) use ($q) {
@@ -502,6 +502,10 @@ class TestimonialController extends Controller
                     'created_at' => optional($media->created_at)?->toIso8601String(),
                     'source' => 'import',
                     'readonly' => true,
+                    'media_asset_id' => $media->media_asset_id,
+                    'attach_url' => $media->media_asset_id
+                        ? route('admin.media.attach', $media->media_asset_id)
+                        : null,
                     'edit_href' => $product
                         ? route('admin.products.media.byProduct', $product)
                         : route('admin.media.index'),
