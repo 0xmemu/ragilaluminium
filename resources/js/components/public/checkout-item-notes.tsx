@@ -115,9 +115,9 @@ export function CheckoutItemNotes({
     <section className="surface-panel min-w-0 p-5 sm:p-7">
       <div>
         <p className="font-mono text-xs font-semibold text-primary">01</p>
-        <h2 className="mt-2 text-lg font-semibold">Catatan produk</h2>
+        <h2 className="mt-2 text-lg font-semibold">Produk yang akan di-checkout</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Tambahkan catatan untuk setiap produk sebelum mengisi alamat pengiriman.
+          Produk yang dipilih akan masuk ke pesanan ini. Tambahkan catatan per produk sebelum mengisi alamat pengiriman.
         </p>
       </div>
       <div className="mt-5 space-y-3">

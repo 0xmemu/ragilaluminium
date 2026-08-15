@@ -369,7 +369,7 @@ export default function Cart({
                 <Button
                   type="submit"
                   size="md"
-                  className="h-10 min-h-10 shrink-0 px-5 text-sm"
+                  className="h-10 min-h-10 min-w-0 shrink-0 px-3 text-xs min-[375px]:px-5 min-[375px]:text-sm"
                   disabled={(selectMode && noneSelected) || selectForm.processing}
                 >
                   {selectMode

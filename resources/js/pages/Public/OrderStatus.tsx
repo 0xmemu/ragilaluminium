@@ -128,7 +128,7 @@ function OrderDetail({
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="rounded-lg border border-border bg-surface p-5">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">
-            Status pesanan
+            Status pesanan & pengiriman
           </p>
           <OrderProgressTracker order={order} />
         </div>
@@ -140,10 +140,6 @@ function OrderDetail({
                 Estimasi tiba
               </p>
               <p className="mt-2 text-base font-bold text-foreground">{displayEtaRangeLabel(order.eta)}</p>
-              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                {order.eta.production_days} hari produksi + {order.eta.min_days}–
-                {order.eta.max_days} hari pengiriman + 1 hari buffer tampilan.
-              </p>
             </div>
           ) : null}
 
@@ -258,6 +254,7 @@ export default function OrderStatus({
     () => orders.length ? orders : order ? [order] : [],
     [orders, order],
   )
+  const currentOrderNumber = order?.order_number ?? ""
   const [storedOrders, setStoredOrders] = React.useState<PublicOrder[]>([])
   const [browserHydrated, setBrowserHydrated] = React.useState(false)
   const [storedLoading, setStoredLoading] = React.useState(false)
@@ -266,7 +263,7 @@ export default function OrderStatus({
     [serverOrders, storedOrders],
   )
   const [activeNumber, setActiveNumber] = React.useState(
-    () => sessionList[0]?.order_number ?? "",
+    () => currentOrderNumber,
   )
 
   React.useEffect(() => {
@@ -276,9 +273,9 @@ export default function OrderStatus({
     setActiveNumber((current) =>
       list.some((row) => row.order_number === current)
         ? current
-        : (list[0]?.order_number ?? ""),
+        : currentOrderNumber,
     )
-  }, [sessionList])
+  }, [sessionList, currentOrderNumber])
 
   const form = useForm({
     order_number: "",
@@ -340,7 +337,7 @@ export default function OrderStatus({
   }, [serverOrders])
 
   const activeOrder = React.useMemo(
-    () => sessionList.find((row) => row.order_number === activeNumber) ?? sessionList[0] ?? null,
+    () => sessionList.find((row) => row.order_number === activeNumber) ?? null,
     [sessionList, activeNumber],
   )
 
@@ -495,11 +492,11 @@ export default function OrderStatus({
           <Icon name="arrow-left" className="size-5" aria-hidden="true" />
         </button>
         <h1 className="text-base font-bold text-foreground">
-          {hasBrowserOrders ? "Pesanan di perangkat ini" : "Cek pesanan"}
+          {hasBrowserOrders ? "Pesanan Anda" : "Cek pesanan"}
         </h1>
       </section>
 
-      <section className="container-page min-w-0 pb-4 lg:pb-6">
+      <section className="container-page min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
         {showLookupForm ? (
           <div className="grid min-w-0 gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">
@@ -591,13 +588,13 @@ export default function OrderStatus({
           <div
             className={cn(
               "grid gap-10 lg:items-start lg:gap-12",
-              sessionList.length > 1 && "lg:grid-cols-[16rem_minmax(0,1fr)]",
+              sessionList.length > 0 && "lg:grid-cols-[16rem_minmax(0,1fr)]",
             )}
           >
             {pageErrors.cancel ? (
               <Alert tone="danger" title={pageErrors.cancel} className="mb-4 lg:col-span-2" />
             ) : null}
-            {sessionList.length > 1 ? (
+            {sessionList.length > 0 ? (
               <aside className="space-y-2 lg:sticky lg:top-28">
                 <p className="text-xs font-bold tracking-tight text-muted-foreground">
                   Daftar pesanan
@@ -652,6 +649,12 @@ export default function OrderStatus({
                   onCancel={cancelOrder}
                   cancelBusy={cancelForm.processing}
                 />
+              ) : sessionList.length ? (
+                <div className="flex min-h-[18rem] flex-col justify-center border-y border-border py-10">
+                  <Icon name="clipboard-list" className="size-8 text-primary" aria-hidden="true" />
+                  <h2 className="mt-4 text-xl font-semibold">Pesanan Anda</h2>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Pilih pesanan dari daftar untuk melihat detail status pesanan dan pengirimannya.</p>
+                </div>
               ) : (
                 <EmptyState
                   icon="clipboard-list"

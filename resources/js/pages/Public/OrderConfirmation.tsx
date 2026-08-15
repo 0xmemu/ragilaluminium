@@ -83,7 +83,7 @@ export default function OrderConfirmation({
         </div>
       </section>
 
-      <section className="container-page !px-5 md:!px-8 lg:!px-12">
+      <section className="container-page !px-5 pt-6 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] md:!px-8 lg:!px-12 sm:pt-10 lg:pb-8">
         <div className="mx-auto max-w-4xl">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
             <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
@@ -140,10 +140,7 @@ export default function OrderConfirmation({
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-foreground">Estimasi diterima</p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Pesanan diperkirakan tiba pada{" "}
-                    <span className="font-semibold text-foreground">{displayEtaRangeLabel(eta)}</span>
-                    {" "}— {eta.production_days} hari produksi + {eta.min_days}–{eta.max_days} hari
-                    pengiriman + 1 hari buffer tampilan.
+                    Pesanan diperkirakan tiba pada <span className="font-semibold text-foreground">{displayEtaRangeLabel(eta)}</span>.
                   </p>
                 </div>
               </div>

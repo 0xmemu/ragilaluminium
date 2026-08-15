@@ -100,6 +100,11 @@ class CheckoutController extends Controller
             return [
                 'line_id' => $item['line_id'],
                 'name' => $item['name'],
+                'image' => $item['image'] ?? null,
+                'variation_1_name' => $item['variation_1_name'] ?? null,
+                'variation_1_option' => $item['variation_1_option'] ?? null,
+                'variation_2_name' => $item['variation_2_name'] ?? null,
+                'variation_2_option' => $item['variation_2_option'] ?? null,
                 'quantity' => (int) ($item['quantity'] ?? 0),
                 'line_total' => (float) ($item['line_total'] ?? 0),
                 'unit_price' => (float) ($item['unit_price'] ?? 0),

@@ -325,10 +325,6 @@ export function CheckoutSummary({
         ) : null}
       </dl>
 
-      <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
-        Estimasi = {eta?.production_days ?? 1} hari produksi + {eta?.min_days ?? 2}–
-        {eta?.max_days ?? 5} hari pengiriman + 1 hari buffer tampilan.
-      </p>
 
       <TrustAssuranceCard className="mt-4" />
       <Alert tone="info" className="mt-4">
