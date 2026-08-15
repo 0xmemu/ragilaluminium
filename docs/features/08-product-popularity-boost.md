@@ -14,7 +14,7 @@ Admin dapat mengarahkan popularitas produk aktif A ke produk aktif B tanpa memin
 4. Skor target untuk ranking populer adalah `popularity_seed + penjualan valid target`.
 5. A dan B tidak harus model yang sama dan tetap merupakan produk aktif terpisah.
 6. Admin dapat menonaktifkan konfigurasi dengan alasan wajib. Seed target dikosongkan; order history tidak disentuh.
-7. Ambang notifikasi opsional membuat notifikasi admin satu kali ketika penjualan aktual A mencapai ambang.
+7. Ambang notifikasi opsional membuat notifikasi admin satu kali ketika penjualan aktual A mencapai ambang. Evaluasi otomatis berjalan saat order sumber masuk event fulfillment valid; halaman konfigurasi juga melakukan evaluasi ulang.
 
 ## Review
 

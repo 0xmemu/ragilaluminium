@@ -8,6 +8,7 @@ use App\Events\OrderProcessingStarted;
 use App\Events\PaymentConfirmed;
 use App\Events\ShippingStatusUpdated;
 use App\Listeners\CreateAdminNotifications;
+use App\Listeners\EvaluateProductPopularityThresholds;
 use App\Listeners\ReportQueueBusy;
 use App\Listeners\ReportQueueJobFailure;
 use App\Listeners\SendOrderCreatedWhatsApp;
@@ -32,10 +33,12 @@ class EventServiceProvider extends ServiceProvider
         ],
         OrderProcessingStarted::class => [
             SendOrderProcessingWhatsApp::class,
+            EvaluateProductPopularityThresholds::class,
         ],
         ShippingStatusUpdated::class => [
             SendShippingStatusWhatsApp::class,
             CreateAdminNotifications::class . '@notifyOrderDelivered',
+            EvaluateProductPopularityThresholds::class,
         ],
         OrderCreated::class => [
             SendOrderCreatedWhatsApp::class,
