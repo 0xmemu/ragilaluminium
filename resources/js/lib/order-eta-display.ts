@@ -14,10 +14,5 @@ export function displayEtaRangeLabel(eta: OrderEta): string {
     return eta.range_label
   }
 
-  // Buffer ini hanya untuk tanggal yang dilihat pelanggan. Nilai eta dari backend,
-  // provider, dan kalkulasi internal tetap tidak berubah.
-  start.setDate(start.getDate() + 1)
-  end.setDate(end.getDate() + 1)
-
   return start.toLocaleDateString("id-ID", DATE_OPTIONS) + " - " + end.toLocaleDateString("id-ID", DATE_OPTIONS)
 }
