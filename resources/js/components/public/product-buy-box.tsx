@@ -23,6 +23,7 @@ const BENEFIT_TINTS = ["bg-[#fdf2f2]", "bg-[#eef4ef]", "bg-[#eef2f6]"] as const
 export function ProductBuyBox({
   purchase,
   activeMedia,
+  shareUrl,
 }: {
   product: ProductDetailData
   purchase: ProductPurchase
