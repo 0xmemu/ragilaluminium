@@ -7,6 +7,7 @@ use App\Models\CmsGalleryItem;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Models\Order;
 use App\Support\InertiaAdmin;
 use App\Support\InstallationPageSettings;
 use App\Support\TestimonialPageSettings;
@@ -140,7 +141,7 @@ class TestimonialController extends Controller
 
     public function create(Request $request): Response
     {
-        $intent = $request->query('intent') === 'marketplace' ? 'marketplace' : 'website';
+        $intent = in_array((string) $request->query('intent'), ['marketplace', 'admin-order'], true) ? (string) $request->query('intent') : 'website';
         $sources = $intent === 'marketplace'
             ? CmsTestimonial::MARKETPLACE_SOURCES
             : CmsTestimonial::SOURCES;
@@ -154,8 +155,10 @@ class TestimonialController extends Controller
             'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'intent' => $intent,
-            'submitUrl' => route('admin.testimonials.store'),
+            'submitUrl' => $intent === 'admin-order' ? route('admin.testimonials.admin-review.store') : route('admin.testimonials.store'),
             'indexUrl' => $indexUrl,
+            'reviewMode' => $intent === 'admin-order',
+            'verifiedOrders' => $intent === 'admin-order' ? $this->verifiedOrderOptions() : [],
         ]);
     }
 
@@ -220,7 +223,15 @@ class TestimonialController extends Controller
     public function update(Request $request, CmsTestimonial $testimonial): RedirectResponse
     {
         $validated = $this->validated($request, $testimonial);
+        if ($testimonial->isCustomerAuthored()) {
+            // Customer text/identity is immutable; moderation may only add media or change visibility.
+            $validated['message'] = $testimonial->message;
+            $validated['customer_name'] = $testimonial->customer_name;
+            $validated['rating'] = $testimonial->rating;
+        }
+        unset($validated['author_type'], $validated['order_id'], $validated['author_admin_id'], $validated['verified_at']);
         $testimonial->update($validated);
+        ActivityLogService::record('cms.testimonial_updated', 'cms_testimonial', $testimonial->id, ['customer_text_immutable' => $testimonial->isCustomerAuthored(), 'media_count' => count($testimonial->mediaPayload())], $request->user()?->id);
 
         if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
             return redirect()
@@ -391,6 +402,7 @@ class TestimonialController extends Controller
                 ['value' => '0', 'label' => 'Draft'],
             ],
             'createHref' => route('admin.testimonials.create'),
+            'adminReviewHref' => route('admin.testimonials.create', ['intent' => 'admin-order']),
             'createLabel' => 'Tambah Ulasan',
             'indexRoute' => $indexRoute,
             'pageMeta' => null,
@@ -660,4 +672,58 @@ class TestimonialController extends Controller
             ->values()
             ->all();
     }
+    public function moderate(Request $request, CmsTestimonial $testimonial): RedirectResponse
+    {
+        $validated = $request->validate(['moderation_status' => ['required', Rule::in(CmsTestimonial::MODERATION_STATUSES)]]);
+        $from = $testimonial->moderation_status ?: 'approved';
+        $testimonial->update(['moderation_status' => $validated['moderation_status'], 'published' => $validated['moderation_status'] === 'approved' ? $testimonial->published : false]);
+        ActivityLogService::record('cms.testimonial_moderated', 'cms_testimonial', $testimonial->id, ['from' => $from, 'to' => $validated['moderation_status'], 'author_type' => $testimonial->author_type], $request->user()?->id);
+        return back()->with('success', 'Status moderasi ulasan diperbarui.');
+    }
+
+    public function addMedia(Request $request, CmsTestimonial $testimonial): RedirectResponse
+    {
+        $validated = $request->validate(['media_url' => ['required', 'url', 'max:2048'], 'media_type' => ['required', Rule::in(['image', 'video'])], 'media_source' => ['nullable', 'string', 'max:40']]);
+        $items = $testimonial->mediaPayload();
+        $items[] = ['type' => $validated['media_type'], 'url' => $validated['media_url'], 'source' => $validated['media_source'] ?? 'admin'];
+        $testimonial->update(['media_items' => array_values(array_unique($items, SORT_REGULAR))]);
+        ActivityLogService::record('cms.testimonial_media_added', 'cms_testimonial', $testimonial->id, ['type' => $validated['media_type'], 'source' => $validated['media_source'] ?? 'admin'], $request->user()?->id);
+        return back()->with('success', 'Media ulasan ditambahkan.');
+    }
+
+    public function storeAdminReview(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['required', 'integer', 'exists:orders,id'], 'message' => ['required', 'string'],
+            'rating' => ['nullable', 'integer', 'min:1', 'max:5'], 'source_reference' => ['nullable', 'string', 'max:2048'],
+            'published' => ['boolean'], 'media_items' => ['nullable', 'array', 'max:30'],
+            'media_items.*.type' => ['required_with:media_items', Rule::in(['image', 'video'])],
+            'media_items.*.url' => ['required_with:media_items', 'url', 'max:2048'],
+        ]);
+        $order = Order::query()->with('items')->whereIn('order_status', ['delivered', 'completed'])->findOrFail($validated['order_id']);
+        if (CmsTestimonial::query()->where('order_id', $order->id)->exists()) {
+            throw ValidationException::withMessages(['order_id' => 'Pesanan ini sudah memiliki ulasan. Hindari duplikasi.']);
+        }
+        $item = $order->items->first();
+        $testimonial = CmsTestimonial::create([
+            'cms_page_id' => $this->testimonialsPageId(), 'order_id' => $order->id, 'product_id' => $item?->product_id,
+            'customer_name' => $order->customer_name ?: 'Pelanggan', 'message' => trim($validated['message']), 'rating' => $validated['rating'] ?? null,
+            'source' => 'website', 'source_reference' => $validated['source_reference'] ?? null, 'author_type' => 'admin',
+            'author_admin_id' => $request->user()?->id, 'verified_at' => now(), 'moderation_status' => 'approved',
+            'media_items' => $validated['media_items'] ?? null, 'published' => $request->boolean('published'), 'sort_order' => 0,
+        ]);
+        ActivityLogService::record('cms.testimonial_admin_created', 'cms_testimonial', $testimonial->id, ['order_id' => $order->id, 'verified_purchase' => true], $request->user()?->id);
+        return redirect()->route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website'])->with('success', 'Ulasan admin untuk pembelian terverifikasi ditambahkan.');
+    }
+
+    /** @return list<array{id:int,label:string,status:string}> */
+    protected function verifiedOrderOptions(): array
+    {
+        return Order::query()->whereIn('order_status', ['delivered', 'completed'])
+            ->whereNotIn('id', CmsTestimonial::query()->whereNotNull('order_id')->pluck('order_id'))
+            ->withCount('items')->orderByDesc('id')->limit(200)->get(['id', 'order_number', 'customer_name', 'order_status'])
+            ->map(fn (Order $order) => ['id' => $order->id, 'label' => $order->order_number.' · '.($order->customer_name ?: 'Pelanggan'), 'status' => $order->order_status])
+            ->values()->all();
+    }
+
 }

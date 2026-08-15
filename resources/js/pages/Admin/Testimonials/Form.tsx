@@ -19,6 +19,8 @@ interface TestimonialRecord {
   image_urls?: string[] | null
   sort_order: number
   published: boolean
+  author_type?: string
+  order_id?: number | null
 }
 
 const DEFAULT_SOURCE_LABELS: Record<string, string> = {
@@ -36,14 +38,18 @@ export default function TestimonialForm({
   intent = "website",
   submitUrl,
   indexUrl,
+  reviewMode = false,
+  verifiedOrders = [],
 }: {
   testimonial: TestimonialRecord | null
   products: Array<{ id: number; label: string }>
   sources: string[]
   sourceLabels?: Record<string, string>
-  intent?: "marketplace" | "website"
+  intent?: "marketplace" | "website" | "admin-order"
   submitUrl: string
   indexUrl: string
+  reviewMode?: boolean
+  verifiedOrders?: Array<{ id: number; label: string; status: string }>
 }) {
   const editing = Boolean(testimonial)
   const labels = sourceLabels ?? DEFAULT_SOURCE_LABELS
@@ -60,6 +66,8 @@ export default function TestimonialForm({
     image: File | null
     sort_order: number
     published: boolean
+    author_type: string
+    order_id: number | null
   }>({
     customer_name: testimonial?.customer_name ?? "",
     message: testimonial?.message ?? "",
@@ -72,6 +80,8 @@ export default function TestimonialForm({
     image: null,
     sort_order: testimonial?.sort_order ?? 0,
     published: testimonial?.published ?? false,
+    author_type: reviewMode ? "admin" : "customer",
+    order_id: testimonial?.order_id ?? null,
   })
 
   const isMarketplace = ["shopee", "whatsapp"].includes(form.data.source) || isMarketplaceIntent
@@ -88,7 +98,9 @@ export default function TestimonialForm({
             : "Tambah ulasan"
       }
       description={
-        isMarketplaceIntent
+        reviewMode
+          ? "Pilih pesanan delivered/completed yang belum memiliki ulasan. Teks ditulis admin dan sumber/author dicatat."
+          : isMarketplaceIntent
           ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
           : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
       }
@@ -155,15 +167,23 @@ export default function TestimonialForm({
 
           <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <Field id="testimonial-customer" label="Nama pelanggan" required error={form.errors.customer_name}>
-              <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
+              <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} readOnly={reviewMode} />
             </Field>
             <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
               <Input value={form.data.location} onChange={(event) => form.setData("location", event.target.value)} />
             </Field>
+            {reviewMode ? (
+              <Field id="testimonial-order" label="Pesanan terverifikasi" required error={form.errors.order_id} className="sm:col-span-2" hint="Hanya pesanan delivered/completed tanpa ulasan yang dapat dipilih.">
+                <Select value={form.data.order_id?.toString() ?? ""} onChange={(event) => form.setData("order_id", event.target.value ? Number(event.target.value) : null)}>
+                  <option value="">Pilih pesanan</option>
+                  {verifiedOrders.map((order) => <option key={order.id} value={order.id}>{order.label} · {order.status}</option>)}
+                </Select>
+              </Field>
+            ) : null}
             {!isMarketplaceIntent ? (
               <Field
                 id="testimonial-message"
-                label="Isi ulasan"
+                label={reviewMode ? "Isi ulasan admin" : "Isi ulasan"}
                 error={form.errors.message}
                 className="sm:col-span-2"
                 hint="Opsional jika ada gambar. Wajib salah satu: teks atau gambar."
@@ -257,7 +277,7 @@ export default function TestimonialForm({
         <div className="flex justify-end gap-2">
           <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
           <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
+            {form.processing ? "Menyimpan..." : reviewMode ? "Simpan ulasan terverifikasi" : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
           </Button>
         </div>
       </form>

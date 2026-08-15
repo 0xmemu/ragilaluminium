@@ -445,6 +445,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('testimonials/{testimonial}', [TestimonialController::class, 'update'])->name('testimonials.update');
     Route::post('testimonials/{testimonial}/publish', [TestimonialController::class, 'publish'])->name('testimonials.publish');
     Route::post('testimonials/{testimonial}/unpublish', [TestimonialController::class, 'unpublish'])->name('testimonials.unpublish');
+    Route::post('testimonials/{testimonial}/moderate', [TestimonialController::class, 'moderate'])->name('testimonials.moderate');
+    Route::post('testimonials/{testimonial}/media', [TestimonialController::class, 'addMedia'])->name('testimonials.media');
+    Route::post('testimonials/admin-review', [TestimonialController::class, 'storeAdminReview'])->name('testimonials.admin-review.store');
 
     Route::get('gallery-items/create', [GalleryItemController::class, 'create'])->name('gallery-items.create');
     Route::post('gallery-items', [GalleryItemController::class, 'store'])->name('gallery-items.store');
