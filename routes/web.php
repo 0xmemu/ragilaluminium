@@ -49,6 +49,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CustomerReviewController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductEngagementController;
@@ -156,6 +157,10 @@ Route::get('/order/status/{order_number}', [OrderController::class, 'statusApi']
 Route::post('/order/{order_number}/cancel', [OrderController::class, 'cancel'])
     ->middleware('throttle:10,1')->name('order.cancel');
 
+Route::post('/order/{order_number}/review', [CustomerReviewController::class, 'store'])
+    ->middleware('throttle:10,1')->name('order.review.store');
+Route::put('/order/{order_number}/review/{testimonial}', [CustomerReviewController::class, 'update'])
+    ->middleware('throttle:10,1')->name('order.review.update');
 /*
 |--------------------------------------------------------------------------
 | Auth Routes (Admin)

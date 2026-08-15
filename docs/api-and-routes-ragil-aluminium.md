@@ -325,3 +325,14 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
   - input: `weight_kg`, `destination_city`, optional province/area/postal/village/district identifiers
   - output state: `ready` (live J&T, final), `fallback` (local formula while J&T is not ready), or `manual_review` (provider unavailable; provisional estimate only)
 - Postal validation uses the active versioned dataset. If no dataset is active, validation reports unavailable and does not invalidate legacy checkout data. Active data rejects a postal code that does not match the selected village/district.
+
+### Customer review contract
+
+- `POST /order/{order_number}/review` (`order.review.store`) accepts a guest review only when the order is `delivered` or `completed`. Ownership is proven by the order number plus the checkout phone number (normalized to the same Indonesian format); there is no customer account fallback.
+- `PUT /order/{order_number}/review/{testimonial}` (`order.review.update`) allows the verified customer to edit message, rating, and media. The review must belong to the order and be customer-authored. An admin-authored review returns `403` and cannot be edited through this customer contract.
+- One review is allowed per order, including a review recorded by admin. A customer submission is stored as verified, `moderation_status=pending`, and `published=false`; edits return it to pending moderation. Text is 3–5000 characters, rating is 1–5, and media is at most 10 image/video URL items.
+- Both routes are web/CSRF routes and throttled at 10 requests per minute. Each create/edit writes an immutable `event_logs` audit record with source `customer`, order reference, and moderation transition.
+
+### ETA presentation contract
+
+`OrderEta::deliveryRange()` is the raw internal/provider range and never includes the display buffer. `OrderEta::forOrder()` is the sole customer-facing presentation boundary: it adds the configured display buffer once and exposes `base_min_days`, `base_max_days`, and `display_buffer_days` metadata so consumers must not add it again. WhatsApp uses the same presentation result.
