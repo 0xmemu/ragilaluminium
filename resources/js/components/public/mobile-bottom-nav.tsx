@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react"
-import { ClipboardText, House, Package, Storefront, type IconProps } from "@phosphor-icons/react"
+import { ClipboardText, House, Info, Package, Storefront, type IconProps } from "@phosphor-icons/react"
 import type { ComponentType } from "react"
 
 import { cn } from "@/lib/utils"
@@ -15,6 +15,7 @@ const NAV_ICONS: Record<string, NavGlyph> = {
   package: Package,
   "clipboard-list": ClipboardText,
   storefront: Storefront,
+  info: Info,
 }
 
 function NavIcon({ name, active }: { name: string; active: boolean }) {

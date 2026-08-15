@@ -250,7 +250,7 @@ return [
             [
                 'label' => 'Tentang Kami',
                 'route' => 'about',
-                'icon' => 'storefront',
+                'icon' => 'info',
                 'active' => ['about'],
             ],
         ],
