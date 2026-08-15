@@ -62,6 +62,10 @@ const emptyDetails: CheckoutDetails = {
 }
 
 export async function fetchWilayah(path: string, signal?: AbortSignal): Promise<WilayahOption[]> {
+  if (signal?.aborted) throw new DOMException("Wilayah request dibatalkan", "AbortError")
+  const cached = wilayahResponseCache.get(path)
+  if (cached) return cached
+
   const response = await fetch(`/api/wilayah/${path}`, {
     headers: { Accept: "application/json" },
     signal,
@@ -73,8 +77,11 @@ export async function fetchWilayah(path: string, signal?: AbortSignal): Promise<
   if (!Array.isArray(payload.data)) {
     throw new Error("Respons wilayah tidak valid")
   }
+  wilayahResponseCache.set(path, payload.data)
   return payload.data
 }
+
+const wilayahResponseCache = new Map<string, WilayahOption[]>()
 
 /**
  * Seluruh state & aksi halaman checkout: form detail pengiriman, metode bayar,
@@ -146,7 +153,6 @@ export function useCheckout({
 
   function applyPickedLocation(picked: {
     display_name: string
-    postcode?: string
     province?: string
     city?: string
     district?: string
@@ -166,7 +172,7 @@ export function useCheckout({
       city_id: picked.city_id ?? "",
       district_id: picked.district_id ?? "",
       village_id: picked.village_id ?? "",
-      postal_code: picked.postcode ?? current.postal_code,
+      postal_code: current.postal_code,
     }))
   }
 
@@ -492,7 +498,7 @@ export function useCheckout({
       ...detailForm.data,
       village_id: option?.id ?? "",
       village: option?.name ?? "",
-      postal_code: option?.postal_code ?? option?.postcode ?? "",
+      postal_code: option?.postal_code ?? "",
     })
   }
 

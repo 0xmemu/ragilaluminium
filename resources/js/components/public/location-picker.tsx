@@ -16,7 +16,6 @@ export interface PickedLocation {
   display_name: string
   lat: number
   lon: number
-  postcode?: string
   province?: string
   city?: string
   district?: string
@@ -175,7 +174,6 @@ export function LocationPickerModal({
         display_name: result.display_name,
         lat: Number(result.lat),
         lon: Number(result.lon),
-        postcode: address.postcode,
         province: province?.name ?? provinceName,
         city: regency?.name ?? cityName,
         district: district?.name ?? address.county ?? address.suburb,
@@ -219,8 +217,8 @@ export function LocationPickerModal({
         <div>
           <DialogTitle>Pilih lokasi di peta</DialogTitle>
           <DialogDescription className="mt-2">
-            Cari alamat Anda, lalu pilih. Kode pos dan wilayah akan terisi otomatis — Anda cukup
-            menambahkan alamat rumah dan patokan.
+            Gunakan peta hanya untuk membantu memilih titik dan alamat. Kode pos tidak diambil dari
+            peta; sistem tetap memakai data desa/kelurahan yang tervalidasi.
           </DialogDescription>
         </div>
 
@@ -272,7 +270,8 @@ export function LocationPickerModal({
 
         <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
           <p className="text-[11px] leading-4 text-muted-foreground">
-            Data lokasi dari OpenStreetMap. Periksa kembali kebenarannya sebelum lanjut.
+            Peta hanya fallback lokasi. Periksa kembali desa/kelurahan dan kode pos dari data
+            wilayah sebelum lanjut.
           </p>
           <Button
             type="button"

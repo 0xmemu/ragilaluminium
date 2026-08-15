@@ -170,6 +170,25 @@ export function CheckoutAddressForm({
               searchPlaceholder="Cari Desa/Kelurahan..."
               onSelect={selectVillage}
             />
+            <Field
+              id="checkout-postal-code"
+              label="Kode pos"
+              required
+              hint="Terisi otomatis dari data desa/kelurahan. Jika mapping belum tersedia, isi manual dari sumber resmi; peta bukan sumber kode pos."
+              error={detailForm.errors.postal_code}
+              className="sm:col-span-2"
+            >
+              <Input
+                value={detailForm.data.postal_code}
+                readOnly={Boolean(detailForm.data.postal_code)}
+                aria-readonly={detailForm.data.postal_code ? "true" : undefined}
+                onChange={(event) => detailForm.setData("postal_code", event.target.value)}
+                placeholder="Otomatis dari desa/kelurahan"
+                autoComplete="postal-code"
+                inputMode="numeric"
+                className="rounded-md"
+              />
+            </Field>
           </div>
 
           <Field
@@ -196,36 +215,22 @@ export function CheckoutAddressForm({
               onChange={(event) => detailForm.setData("address_line2", event.target.value)}
             />
           </Field>
-          <Field
-            id="checkout-postal-code"
-            label="Kode pos"
-            required
-            hint="Kode pos terisi otomatis dari data desa/kelurahan. Jika belum tersedia, isi 5 digit kode pos atau gunakan fallback peta."
-            error={detailForm.errors.postal_code}
-          >
-            <div className="flex flex-wrap items-end gap-2">
-              <Input
-                value={detailForm.data.postal_code}
-                readOnly={Boolean(detailForm.data.postal_code)}
-                aria-readonly={detailForm.data.postal_code ? "true" : undefined}
-                onChange={(event) => detailForm.setData("postal_code", event.target.value)}
-                placeholder="Otomatis dari desa/kelurahan"
-                autoComplete="postal-code"
-                inputMode="numeric"
-                className="max-w-48 rounded-md"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setMapPickerOpen(true)}
-              >
-                <Icon name="map-pin" className="size-4" aria-hidden="true" />
-                Pilih titik di Maps (opsional)
-              </Button>
-            </div>
-          </Field>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-border bg-surface-muted p-3">
+            <p className="text-xs leading-5 text-muted-foreground">
+              Alamat tidak terdaftar? Pilih titik di Maps sebagai bantuan lokasi. Kode pos tetap
+              mengikuti desa/kelurahan yang dipilih.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setMapPickerOpen(true)}
+            >
+              <Icon name="map-pin" className="size-4" aria-hidden="true" />
+              Pilih titik di Maps (opsional)
+            </Button>
+          </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-5">
             {details ? (
               <Button variant="ghost" onClick={() => setEditingDetails(false)}>
