@@ -3,6 +3,16 @@
 Cross-session shift log. **Update only on milestones** (section ship, big SoT change, baseline commit).  
 Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 
+### 2026-08-14 — Fase 4: SKU & nomor order (revisi no-dash, random)
+
+- Product SKU resmi `RA`+10 acak (mis. RAK7X2P9MFQ), varian `RA`+6..8 acak (TANPA dash, opak, unik);
+  asosiasi varian via FK product_variant.product_id, bukan parse SKU. Dibuat hanya saat create/duplicate, immutable.
+- Nomor order resmi `ORD`+YYMM+seq4 (mis. ORD26080001) via order_number_sequences kunci `order-YYMM`
+  (SequenceService transaksi terkunci, reset per bulan, anti-duplikasi). Legacy `RA-{Ymd}-{seq}` tetap
+  tersimpan & resolve; WhatsApp inbound regex diperluas ke format ORD\d{8}.
+- Normalisasi data testing (2 order + produk SP) = DOKUMEN strategi saja (tidak mutasi prod; compat legacy
+  dijaga). Migrasi data wajib `--pretend` + backup dulu bila kelak dijalankan.
+
 ### 2026-08-14 — Media: restore archive + bulk produk media (double-confirm) + GC pending
 
 - Media Library: action restore (visibility -> visible) di bulk-action + filter Visibilitas

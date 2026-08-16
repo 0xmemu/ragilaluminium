@@ -5,6 +5,32 @@ Source of truth: `database/migrations/` (forward-only, no wipe). All agents must
 
 Legend: PK = primary key, FK = foreign key, UQ = unique, IDX = index, NN = NOT NULL.
 
+## 0. Pemformatan ID Publik — SKU & Nomor Order (Fase 4, FINAL)
+
+Produk & varian buatan admin/website (bukan import Shopee) memakai SKU opak acak, TANPA dash:
+
+- Product `parent_sku` = `RA` + 10 karakter acak (alfabet aman-URL tanpa 0/O/1/l), mis. `RAK7X2P9MFQ`.
+  Dibuat hanya saat create/duplicate, IMMUTABLE — edit atribut tidak mengubah SKU.
+- Variant `variant_sku` = `RA` + token acak independen 6–8 karakter, TANPA dash, unik & opak.
+  Asosiasi varian ke produk lewat FK `product_variant.product_id`, BUKAN parse SKU.
+
+Nomor order (`orders.order_number`) = `ORD` + `YYMM` + seq 4 digit (11 karakter), mis. `ORD26080001`.
+Alokasi via `order_number_sequences` kunci `order-YYMM` (`SequenceService::next`) dalam transaksi
+terkunci (`lockForUpdate`) sehingga unik/anti-bentrok; kunci per bulan membuat seq reset otomatis tiap bulan.
+
+### Kompatibilitas legacy (TETAP resolve, JANGAN di-ubah)
+- Import Shopee: `parent_sku` = `SP{id}`, `variant_sku` = `SP{id}-{variation_id}` (tetap dipakai).
+- Nomor order lama `RA-{Ymd}-{seq}` tetap tersimpan & di-resolve via lookup string langsung.
+
+### Strategi normalisasi data testing (AMAN — JANGAN jalankan di prod)
+Data DB saat ini hanya: 2 order testing (`RA-260810-0001`, `RA-260815-0002`) + produk `SP{id}`
+(sudah tanpa dash) + varian `SP{id}-{variation_id}` (berdash). Kontrak ini TIDAK mewajibkan migrasi
+data: format baru hanya berlaku untuk SKU/order yang DIBUAT BARU; legacy SP/order dibiarkan apa adanya
+agar tetap dapat di-resolve oleh referensi publik lama (constraint compat). Jika pembersihan dash
+pernah diperlukan di kemudian hari: buat MIGRATION forward-only baru, tinjau SQL dengan
+`php artisan migrate --pretend`, backup tabel terkait dahulu, dan JANGAN `migrate` di production
+tanpa perintah eksplisit pengguna.
+
 ## 1. Catalog & Taxonomy
 
 ### 1.0 `categories` — sumber kanonik taxonomy katalog
