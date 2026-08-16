@@ -25,10 +25,12 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/catalog/{category}', function ($category, Request $request) {
         $controller = app(CatalogController::class);
 
+        // Slug kanonik Indonesia; alias English (window/windows/door/doors/bouven/boven)
+        // diarahkan ke slug Indonesia agar tidak terperangkap redirect 301 kanonik.
         return match (strtoupper($category)) {
-            'WINDOWS', 'WINDOW' => $controller->categoryShow('windows', $request),
-            'DOORS', 'DOOR' => $controller->categoryShow('doors', $request),
-            'BOUVEN', 'BOVEN' => $controller->categoryShow('bouven', $request),
+            'WINDOWS', 'WINDOW' => $controller->categoryShow('jendela', $request),
+            'DOORS', 'DOOR' => $controller->categoryShow('pintu', $request),
+            'BOUVEN', 'BOVEN' => $controller->categoryShow('boven', $request),
             default => abort(404),
         };
     });

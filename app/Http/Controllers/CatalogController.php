@@ -13,6 +13,7 @@ use App\Support\InertiaCatalog;
 use App\Support\InstallationGallery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -50,8 +51,12 @@ class CatalogController extends Controller
         return $this->category(null, $request);
     }
 
-    public function categoryShow(string $category, Request $request): JsonResponse|Response
+    public function categoryShow(string $category, Request $request): JsonResponse|Response|RedirectResponse
     {
+        if ($redirect = $this->canonicalCategoryRedirect($category, null, null, $request)) {
+            return $redirect;
+        }
+
         $categoryCode = InstallationGallery::categoryFromSlug($category);
         if ($categoryCode === null || $categoryCode === 'LAINNYA') {
             abort(404);
@@ -60,8 +65,12 @@ class CatalogController extends Controller
         return $this->category($categoryCode, $request);
     }
 
-    public function designShow(string $category, string $model, string $design, Request $request): JsonResponse|Response
+    public function designShow(string $category, string $model, string $design, Request $request): JsonResponse|Response|RedirectResponse
     {
+        if ($redirect = $this->canonicalCategoryRedirect($category, $model, $design, $request)) {
+            return $redirect;
+        }
+
         $categoryCode = InstallationGallery::categoryFromSlug($category);
         $modelCode = InstallationGallery::modelFromSlug($model);
         $designCode = CatalogLabels::normalizeDesign($design);
@@ -83,6 +92,42 @@ class CatalogController extends Controller
     public function flashSale(Request $request): JsonResponse|Response
     {
         return $this->category(null, $request, mode: 'flash');
+    }
+
+    /**
+     * Redirect 301 slug kategori alias English / non-kanonik ke slug Indonesia kanonik
+     * (windows→jendela, doors→pintu, bouven→boven) agar tidak ada konten duplikat.
+     * Route model/desain tetap dipertahankan; return null bila slug sudah kanonik.
+     *
+     * @param  string|null  $model  Path segment model (di route catalog.model/design)
+     * @param  string|null  $design Path segment design (di route catalog.design)
+     */
+    protected function canonicalCategoryRedirect(string $category, ?string $model = null, ?string $design = null, ?Request $request = null): ?RedirectResponse
+    {
+        $canonical = CategoryUrl::canonicalSlug((string) $category);
+        if ($canonical === null || strtolower((string) $category) === $canonical) {
+            return null;
+        }
+
+        $params = ['category' => $canonical];
+        if (filled($model)) {
+            $params['model'] = $model;
+        }
+        if (filled($design)) {
+            $params['design'] = $design;
+        }
+
+        $route = filled($design) ? 'catalog.design' : (filled($model) ? 'catalog.model' : 'catalog.category');
+
+        $target = route($route, $params);
+        if ($request) {
+            $qs = $request->getQueryString();
+            if ($qs !== null && $qs !== '') {
+                $target .= '?'.$qs;
+            }
+        }
+
+        return redirect($target, 301);
     }
 
 protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
@@ -471,8 +516,12 @@ protected function category(?string $category, Request $request, string $mode = 
     /**
      * Halaman detail satu model (deskripsi + highlight) + daftar produk nyata model itu.
      */
-    public function modelShow(string $category, string $model): Response
+    public function modelShow(string $category, string $model): Response|RedirectResponse
     {
+        if ($redirect = $this->canonicalCategoryRedirect($category, $model, null)) {
+            return $redirect;
+        }
+
         $categoryCode = InstallationGallery::categoryFromSlug($category);
         $modelCode = InstallationGallery::modelFromSlug($model);
 

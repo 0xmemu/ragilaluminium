@@ -31,7 +31,7 @@ class CatalogRuntimeSchemaTest extends TestCase
             'product_model' => 'SLIDING',
         ]);
 
-        foreach (['/products/all', '/products/windows', '/products/doors', '/products/bouven'] as $uri) {
+        foreach (['/products/all', '/products/jendela', '/products/pintu', '/products/boven'] as $uri) {
             $this->get($uri)
                 ->assertOk()
                 ->assertInertia(fn (AssertableInertia $page) => $page->component('Public/Catalog'));

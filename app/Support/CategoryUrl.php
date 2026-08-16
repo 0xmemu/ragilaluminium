@@ -88,6 +88,26 @@ class CategoryUrl
     }
 
     /**
+     * Slug URL Indonesia kanonik untuk sebuah slug kategori.
+     * Terima slug Indonesia maupun alias English back-compat (window/windows/...).
+     * Return null bila slug tidak dikenal (bukan kategori).
+     */
+    public static function canonicalSlug(string $slug): ?string
+    {
+        $key = strtolower(trim((string) $slug));
+        if ($key === '') {
+            return null;
+        }
+
+        $code = self::categoryFromSlug($key);
+        if ($code === null) {
+            return null;
+        }
+
+        return self::categoryToSlug($code);
+    }
+
+    /**
      * Daftar kategori aktif untuk navigasi (slug kanonik, kode internal, label).
      *
      * @return list<array{slug: string, code: string, label: string}>

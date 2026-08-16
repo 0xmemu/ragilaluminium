@@ -35,7 +35,7 @@ class FrontendPageContractTest extends TestCase
         $routes = [
             ['home', 'Public/Home'],
             ['catalog.index', 'Public/ModelProduk'],
-            ['catalog.category', 'Public/Catalog', ['category' => 'windows']],
+            ['catalog.category', 'Public/Catalog', ['category' => 'jendela']],
             ['reviews.website', 'Public/Reviews'],
             ['reviews.screenshots', 'Public/Reviews'],
             ['cart.index', 'Public/Cart'],

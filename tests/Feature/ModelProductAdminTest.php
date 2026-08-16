@@ -110,7 +110,7 @@ class ModelProductAdminTest extends TestCase
                 ->where('modelCards.0.desc', 'Deskripsi jungkit dari admin untuk halaman detail model.')
                 ->where('modelCards.0.subtitle', null));
 
-        $this->get(route('catalog.model', ['category' => 'window', 'model' => 'jungkit']))
+        $this->get(route('catalog.model', ['category' => 'jendela', 'model' => 'jungkit']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/ModelDetail')

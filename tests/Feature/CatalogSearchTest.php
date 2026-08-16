@@ -59,7 +59,7 @@ class CatalogSearchTest extends TestCase
         $this->get('/windows')
             ->assertNotFound();
 
-        $this->get('/products/windows')
+        $this->get('/products/jendela')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Catalog')
@@ -69,7 +69,7 @@ class CatalogSearchTest extends TestCase
         $this->get('/windows?model=SLIDING')
             ->assertNotFound();
 
-        $this->get('/products/windows/sliding/ornamen')
+        $this->get('/products/jendela/sliding/ornamen')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Catalog')
@@ -85,4 +85,24 @@ class CatalogSearchTest extends TestCase
         $this->get('/doors?model=SWING')
             ->assertNotFound();
     }
+
+    public function test_english_category_aliases_redirect_301_to_indonesian_canonical(): void
+    {
+        // Alias English / non-kanonik → 301 ke slug Indonesia (anti duplicate-content).
+        $this->get('/products/windows')
+            ->assertRedirect(route('catalog.category', ['category' => 'jendela'], false));
+        $this->get('/products/doors')
+            ->assertRedirect(route('catalog.category', ['category' => 'pintu'], false));
+        $this->get('/products/bouven')
+            ->assertRedirect(route('catalog.category', ['category' => 'boven'], false));
+
+        // Route model/desain tetap dipertahankan saat alias kategori di-redirect.
+        $this->get('/products/windows/sliding/ornamen')
+            ->assertRedirect(route('catalog.design', ['category' => 'jendela', 'model' => 'sliding', 'design' => 'ornamen'], false));
+
+        // Slug kanonik Indonesia tetap 200.
+        $this->get('/products/boven')
+            ->assertOk();
+    }
 }
+

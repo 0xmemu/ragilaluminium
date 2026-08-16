@@ -122,7 +122,7 @@ class ModelProdukPageTest extends TestCase
                 ->where('robotsDirective', 'index,follow')
             );
 
-        $this->get('/products/windows')
+        $this->get('/products/jendela')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('categoryName', 'Jendela')
@@ -209,7 +209,7 @@ class ModelProdukPageTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->get(route('catalog.model', ['category' => 'window', 'model' => 'jungkit']))
+        $this->get(route('catalog.model', ['category' => 'jendela', 'model' => 'jungkit']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ModelDetail')
@@ -279,7 +279,7 @@ class ModelProdukPageTest extends TestCase
         $popular->update(['design_variant' => 'ORNAMEN']);
         $this->addSales($popular, 6);
 
-        $this->get('/products/windows/jungkit/ornamen')
+        $this->get('/products/jendela/jungkit/ornamen')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Catalog')
