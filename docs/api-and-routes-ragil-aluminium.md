@@ -1,9 +1,9 @@
 # API & Routes - Ragil Aluminium Website
 
-**Generated 2026-08-09 from `php artisan route:list` (production).**
+**Generated 2026-08-16 from `php artisan route:list`.**
 Canonical route map; do not add ad-hoc endpoints outside the documented modules.
 
-Total: 271 routes.
+Total: 320 routes (regenerated 2026-08-16).
 
 ## 1. Public Storefront
 
@@ -19,7 +19,6 @@ Total: 271 routes.
 - `GET /api/wilayah/regencies/{provinceId}` -> `WilayahController@regencies`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - `GET /api/wilayah/villages/{districtId}` -> `WilayahController@villages`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - Wilayah village payload items expose id, name, and nullable postal_code; the active versioned postal dataset populates postal_code when available.
-- `GET /bouven` -> `CatalogController@bouven`  (name: `catalog.bouven`)
 - `GET /cara-pemesanan` -> `PageController@howToOrder`  (name: `cara-pemesanan`)
 - `GET /cart` -> `CartController@index`  (name: `cart.index`)
 - `POST /cart/add` -> `CartController@add`  (name: `cart.add`)
@@ -37,7 +36,6 @@ Total: 271 routes.
 - `POST /checkout/voucher/remove` -> `CheckoutController@removeVoucher`  (name: `checkout.voucher.remove`)
 - `POST /consultation/whatsapp` -> `ConsultationController@send`  (name: `consultation.whatsapp.send`)  [Illuminate\Routing\Middleware\ThrottleRequests:10,1]
 - `GET /contact` -> `PageController@contact`  (name: `contact`)
-- `GET /doors` -> `CatalogController@doors`  (name: `catalog.doors`)
 - `GET /faq` -> `PageController@faq`  (name: `faq`)
 - `GET /flash-sale` -> `CatalogController@flashSale`  (name: `catalog.flash-sale`)
 - `GET /hasil-pemasangan` -> `PageController@installations`  (name: `installation.index`)
@@ -60,6 +58,10 @@ Total: 271 routes.
 - `GET /products/{category}` -> `CatalogController@categoryShow`  (name: `catalog.category`)
 - `GET /products/{category}/{model}` -> `CatalogController@modelShow`  (name: `catalog.model`)
 - `GET /products/{category}/{model}/{design}` -> `CatalogController@designShow`  (name: `catalog.design`)
+- Canonical category slug is always Indonesian: `jendela` / `pintu` / `boven`.
+- Legacy English aliases `window|windows|door|doors|bouven` under `/products/...` are no longer routes; they `301` (moved permanently) to the canonical Indonesian slug so there is no duplicate content:
+  - `GET /products/windows` -> `301 /products/jendela`; `GET /products/doors` -> `301 /products/pintu`; `GET /products/bouven` -> `301 /products/boven`.
+- Top-level `GET /windows`, `GET /doors`, `GET /bouven` no longer exist (404) and are not re-added.
 - `GET /promo` -> `CatalogController@promo`  (name: `catalog.promo`)
 - `GET /reviews/web` -> `PageController@reviewsWebsite`  (name: `reviews.website`)
 - `GET /reviews/ss` -> `PageController@reviewsScreenshots`  (name: `reviews.screenshots`)
@@ -74,7 +76,6 @@ Total: 271 routes.
 - `GET /webhook/whatsapp` -> `Webhook\WhatsAppController@verify`  (name: `webhook.whatsapp.verify`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 - `POST /webhook/whatsapp` -> `Webhook\WhatsAppController@handle`  (name: `webhook.whatsapp.handle`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 - `POST /webhook/whatsapp/baileys` -> `Webhook\WhatsAppController@handleBaileys`  (name: `webhook.whatsapp.baileys`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
-- `GET /windows` -> `CatalogController@windows`  (name: `catalog.windows`)
 
 ## 2. Admin
 
