@@ -7,6 +7,34 @@ Legend: PK = primary key, FK = foreign key, UQ = unique, IDX = index, NN = NOT N
 
 ## 1. Catalog & Taxonomy
 
+### 1.0 `categories` — sumber kanonik taxonomy katalog
+
+- `id` (`INTEGER`), PK, NN
+- `code` (`VARCHAR 50`), NN, UQ — kode kategori (Indonesia, mis. `JENDELA`/`PINTU`/`BOVEN`; admin dapat menambah)
+- `name` (`VARCHAR 100`), NN — nama tampilan Bahasa Indonesia
+- `slug` (`VARCHAR 100`), NN, UQ — slug URL kanonik (ASCII-safe)
+- `seo_title` (`VARCHAR 191`), nullable
+- `seo_description` (`VARCHAR 500`), nullable
+- `sort_order` (`INTEGER UNSIGNED`), NN, default 0
+- `is_active` (`BOOLEAN`), NN, default true
+- `created_at` / `updated_at` (`DATETIME`), nullable
+
+Sumber tunggal kategori untuk: navigasi mega menu (`CatalogTaxonomy::buildMegaMenuNav`),
+slug URL + pemetaan kode produk (`CategoryUrl::codeToProductCode`/`categoryToSlug`),
+pencarian (`CatalogSearch`), sitemap, breadcrumb, serta validasi form admin
+(`Rule::in(productCategoryCodes())` / `Rule::in(modelCodes())`).
+`products.product_category` tetap kolom kode internal (`VARCHAR`) untuk kompatibilitas
+(legacy `WINDOW`/`DOOR`/`BOUVEN` via `CategoryUrl::codeToProductCode`); **JANGAN dihapus**
+sebelum seluruh pemakai dipindah.
+
+Migration terkait:
+- `20260810_100926_create_categories_table.php` — create + seed WINDOW/DOOR/BOUVEN
+- `2026_08_16_000001_normalize_category_slugs_to_indonesian.php` — normalisasi kode/slug ke
+  Indonesia (grouped where/orWhere, preflight unique, snapshot `category_normalize_snapshot`
+  agar rollback memulihkan penuh termasuk `name`/metadata)
+- `2026_08_16_000002_relax_product_model_enum_to_string.php` — relaksasi `products.product_model`
+  ENUM->VARCHAR(50) (MySQL) agar admin dapat menambah model baru (model dinamis)
+
 ### 1.1 `products`
 
 - `id` (`INTEGER`), PK, NN

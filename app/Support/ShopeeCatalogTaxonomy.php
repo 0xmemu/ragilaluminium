@@ -16,6 +16,9 @@ namespace App\Support;
 class ShopeeCatalogTaxonomy
 {
     /**
+     * Kategori tak dikenal diwakili sentinel 'UNKNOWN' (bukan fallback diam-diam ke
+     * WINDOW/Jendela) sehingga import bisa menandainya untuk ditinjau admin.
+     *
      * @return array{category: string, model: string, design: string}
      */
     public static function fromProductName(string $name): array
@@ -44,7 +47,8 @@ class ShopeeCatalogTaxonomy
             return 'WINDOW';
         }
 
-        return 'WINDOW';
+        // Kategori tidak dikenal: sentinel jelas, bukan Jendela (hindari asumsi diam-diam).
+        return 'UNKNOWN';
     }
 
     protected static function modelFromName(string $upper): string

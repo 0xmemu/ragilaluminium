@@ -79,15 +79,30 @@ class DevPreviewCatalogSeeder extends Seeder
 
     private function seedProduct(int $index): Product
     {
-        $category = ['WINDOW', 'DOOR', 'BOUVEN'][($index - 1) % 3];
+        // Kategori kanonik dari tabel `categories` (bukan daftar tetap WINDOW/DOOR/BOUVEN).
+        $categories = \App\Models\Category::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['id', 'code', 'name']);
+        $categoryRow = $categories->isNotEmpty()
+            ? $categories[($index - 1) % $categories->count()]
+            : null;
+        $category = $categoryRow
+            ? \App\Support\CategoryUrl::codeToProductCode((string) $categoryRow->code)
+            : 'WINDOW';
+        $categoryId = $categoryRow ? (int) $categoryRow->id : 1;
         $modelsByCategory = [
             'WINDOW' => ['JUNGKIT', 'SLIDING', 'SWING', 'KACA_MATI', 'ZIGZAG'],
             'DOOR' => ['SWING', 'SLIDING', 'ZIGZAG', 'KACA_MATI', 'JUNGKIT'],
             'BOUVEN' => ['JUNGKIT', 'KACA_MATI', 'SLIDING', 'ZIGZAG', 'SWING'],
         ];
-        $model = $modelsByCategory[$category][($index - 1) % 5];
+        $modelPool = $modelsByCategory[$category] ?? ['JUNGKIT', 'SLIDING', 'SWING'];
+        $model = $modelPool[($index - 1) % count($modelPool)];
         $design = array_keys(self::DESIGN_LABELS)[($index - 1) % count(self::DESIGN_LABELS)];
-        $categoryLabel = self::CATEGORY_LABELS[$category];
+        $categoryLabel = $categoryRow
+            ? (string) $categoryRow->name
+            : (self::CATEGORY_LABELS[$category] ?? $category);
         $modelLabel = self::MODEL_LABELS[$model];
         $designLabel = self::DESIGN_LABELS[$design];
         $isFlashSale = $index <= 30;
@@ -109,11 +124,7 @@ class DevPreviewCatalogSeeder extends Seeder
                     strtolower($modelLabel),
                     strtolower($designLabel)
                 ),
-                'category_id' => match ($category) {
-                    'WINDOW' => 1,
-                    'DOOR' => 2,
-                    default => 3,
-                },
+                'category_id' => $categoryId,
                 'product_category' => $category,
                 'product_model' => $model,
                 'design_variant' => $design,

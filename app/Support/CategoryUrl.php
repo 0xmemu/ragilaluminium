@@ -61,7 +61,7 @@ class CategoryUrl
             }
         }
 
-        return self::FALLBACK_SLUG_BY_CODE[$key] ?? 'jendela';
+        return self::FALLBACK_SLUG_BY_CODE[$key] ?? strtolower($key);
     }
 
     /**
@@ -122,10 +122,52 @@ class CategoryUrl
     }
 
     /**
-     * Baris kategori aktif dari tabel `categories` (dipakai ganda: ke-slug & ke-kode).
-     *
-     * @return list<array{code: string, slug: string, label: string}>
+     * Terjemahkan kode kategori (categories.code, e.g. JENDELA) ke kode internal
+     * products.product_category (e.g. WINDOW). Kategori baru (tidak punya alias
+     * legacy) memetakan ke dirinya sendiri, sehingga admin bebas menambah kategori.
      */
+    public static function codeToProductCode(string $code): string
+    {
+        $key = strtoupper(trim((string) $code));
+
+        return self::CODE_TO_PRODUCT[$key] ?? $key;
+    }
+
+    /**
+     * Kode produk (products.product_category) yang didukung tabel categories.
+     * Urutan mengikuti sort_order (kanonik navigasi). Dipakai untuk validasi
+     * dinamis di form produk / model produk, bukan daftar tetap WINDOW/DOOR.
+     */
+    public static function productCategoryCodes(int $limit = 0): array
+    {
+        $codes = Category::query()
+            ->orderBy("sort_order")
+            ->orderBy("id")
+            ->get(["code"])
+            ->map(fn (Category $c) => self::codeToProductCode((string) $c->code))
+            ->filter(fn (string $v) => $v !== "")
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($limit <= 0) {
+            return $codes;
+        }
+
+        return array_slice($codes, 0, $limit);
+    }
+
+    /** Bersihkan cache peta kategori agar kategori baru muncul segera. */
+    public static function forgetCache(): void
+    {
+        Cache::forget("category.url.rows");
+
+        // Bersihkan label kategori yang pernah di-cache per kode produk.
+        foreach (self::productCategoryCodes() as $productCode) {
+            Cache::forget("catalog.category.label.".strtolower($productCode));
+        }
+    }
+
     private static function categoryRows(): array
     {
         return Cache::remember('category.url.rows', self::CACHE_TTL, function () {

@@ -108,7 +108,7 @@ class DownloadPendingMedia extends Command
                     ->pluck('id')
             );
 
-        foreach (['WINDOW', 'DOOR', 'BOUVEN'] as $category) {
+        foreach (\App\Support\CategoryUrl::productCategoryCodes() as $category) {
             $ids = $ids->merge(
                 Product::visible()
                     ->where('product_category', $category)

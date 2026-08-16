@@ -8,6 +8,7 @@ use App\Services\ActivityLogService;
 use App\Services\ModelProductService;
 use App\Support\CatalogLabels;
 use App\Support\CatalogTaxonomy;
+use App\Support\CategoryUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -169,7 +170,7 @@ class ModelProductController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'product_category' => ['nullable', 'string', Rule::in(['WINDOW', 'DOOR', 'BOUVEN'])],
+            'product_category' => ['nullable', 'string', Rule::in(CategoryUrl::productCategoryCodes())],
             'product_model' => ['nullable', 'string', 'max:64'],
             'image_url' => ['nullable', 'string', 'max:2048'],
             'description' => ['nullable', 'string', 'max:5000'],
@@ -196,17 +197,23 @@ class ModelProductController extends Controller
     /** @return list<array{value:string,label:string}> */
     protected function categoryOptions(): array
     {
-        return [
-            ['value' => 'WINDOW', 'label' => 'Jendela'],
-            ['value' => 'DOOR', 'label' => 'Pintu'],
-            ['value' => 'BOUVEN', 'label' => 'Boven'],
-        ];
+        return \App\Models\Category::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['code', 'name'])
+            ->map(fn (\App\Models\Category $c) => [
+                'value' => CategoryUrl::codeToProductCode((string) $c->code),
+                'label' => (string) $c->name,
+            ])
+            ->values()
+            ->all();
     }
 
     /** @return list<array{value:string,label:string}> */
     protected function modelOptions(): array
     {
-        return collect(CatalogLabels::MODEL_ORDER)
+        return collect(CatalogLabels::modelCodes())
             ->map(fn (string $code) => [
                 'value' => $code,
                 'label' => CatalogLabels::model($code),

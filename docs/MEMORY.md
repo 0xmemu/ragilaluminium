@@ -704,3 +704,24 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 - Public checkout no longer collects email. Public order lookup, cancellation, and API fallback now require order number plus phone only; legacy nullable email columns remain for historical data and admin compatibility.
 - Canonical docs updated: docs/logic/stage-10-public-store-ui-and-checkout-contract.md and docs/PRODUCT-HANDOFF.md.
 - No database migration or new route was added.
+
+### 2026-08-16 — Fase 3: Dynamic taxonomy database (selesai)
+
+- `categories` = sumber kategori kanonik end-to-end: nav mega menu, katalog (`/products/{slug}`),
+  pencarian, sitemap, breadcrumb, dan validasi form admin produk/model memakai DB, bukan daftar
+  tetap WINDOW/DOOR/BOUVEN. Admin CategoryController (`admin.categories.*`) sudah flush cache
+  (`CategoryUrl::forgetCache` + `CatalogTaxonomy::forgetCache`) setelah create/update/delete.
+- Validasi dinamis: `ProductController` & `ModelProductController` pakai
+  `Rule::in(CategoryUrl::productCategoryCodes())`; model pakai `Rule::in(CatalogLabels::modelCodes())`
+  (MODEL_ORDER + `sub_models.product_model` aktif) sehingga model baru bisa ditambahkan.
+- `ShopeeCatalogTaxonomy` tidak lagi fallback diam-diam ke WINDOW → sentinel `UNKNOWN`;
+  `CatalogProductsImport` menandai kategori tak dikenal/tidak diisi sebagai baris gagal
+  (status `failed` + error_reason) untuk ditinjau admin, tanpa menebak Jendela.
+- Compatibility resolver: `products.product_category` (VARCHAR) dipertahankan; legacy
+  WINDOW/DOOR/BOUVEN dipetakan via `CategoryUrl::codeToProductCode`/`categoryToSlug`; kategori
+  baru memakai kodenya sendiri. Kolom tersebut TIDAK dihapus.
+- Migration: `2026_08_16_000001_normalize_category_slugs_to_indonesian.php` diperbaiki (grouped
+  where/orWhere, preflight konflik unique code/slug, snapshot `category_normalize_snapshot` utk
+  rollback penuh); tambah `2026_08_16_000002_relax_product_model_enum_to_string.php` (MySQL, ENUM->VARCHAR)
+  [PENDING — tidak dieksekusi, hanya `migrate --pretend`].
+- Test baru `tests/Feature/CatalogDynamicCategoryTest.php`; full suite 352 passed (4611 assertions).

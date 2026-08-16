@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Support\CatalogTaxonomy;
+use App\Support\CategoryUrl;
 use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,6 +65,8 @@ class CategoryController extends Controller
             'name' => $category->name,
         ]);
 
+        $this->flushTaxonomyCaches();
+
         return redirect()->route('admin.categories.edit', $category)->with('success', 'Kategori dibuat.');
     }
 
@@ -95,6 +99,8 @@ class CategoryController extends Controller
             'name' => $category->name,
         ]);
 
+        $this->flushTaxonomyCaches();
+
         return redirect()->route('admin.categories.edit', $category)->with('success', 'Kategori diperbarui.');
     }
 
@@ -107,11 +113,18 @@ class CategoryController extends Controller
             'code' => $category->code,
         ]);
         $category->delete();
+        $this->flushTaxonomyCaches();
 
         return redirect()->route('admin.categories.index')->with('success', 'Kategori dihapus.');
     }
 
-    protected function validateCategory(Request $request, ?Category $category = null): array
+        protected function flushTaxonomyCaches(): void
+    {
+        CategoryUrl::forgetCache();
+        CatalogTaxonomy::forgetCache();
+    }
+
+protected function validateCategory(Request $request, ?Category $category = null): array
     {
         $slugRule = ['required', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/'];
         if ($category) {

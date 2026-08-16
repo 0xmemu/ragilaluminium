@@ -54,25 +54,49 @@ class CatalogLabels
 
     public static function category(?string $code): string
     {
-        if ($code === null || $code === '' || $code === 'ALL') {
-            return 'Semua Produk';
+        if ($code === null || $code === "" || $code === "ALL") {
+            return "Semua Produk";
         }
 
-        return self::CATEGORY[strtoupper($code)] ?? $code;
+        $key = strtoupper(trim((string) $code));
+        if (isset(self::CATEGORY[$key])) {
+            return self::CATEGORY[$key];
+        }
+
+        return self::categoryNameForProductCode($key) ?? ((string) $code);
     }
 
     /**
-     * Normalisasikan nilai query kategori (slug/code) menjadi code enum DB.
-     * Nilai kosong/ALL/null → null (semua kategori). Unknown → null.
+     * Nama kategori aktif yang kode produknya (products.product_category) sama dengan
+     * kode yang dicari. Kategori baru (bukan legacy) memakai kodenya sendiri sebagai
+     * product_category sehingga cukup dicocokkan ke code category.
      */
+    private static function categoryNameForProductCode(string $productCode): ?string
+    {
+        return \Illuminate\Support\Facades\Cache::remember(
+            "catalog.category.label.".strtolower($productCode),
+            3600,
+            function () use ($productCode): ?string {
+                return \App\Models\Category::query()
+                    ->where("is_active", true)
+                    ->get(["code", "name"])
+                    ->first(
+                        fn (\App\Models\Category $c) => \App\Support\CategoryUrl::codeToProductCode((string) $c->code) === $productCode
+                    )?->name;
+            }
+        );
+    }
+
     public static function normalizeCategory(?string $code): ?string
     {
         if ($code === null || $code === '' || $code === 'ALL' || $code === 'all') {
             return null;
         }
 
-        $key = strtoupper(trim($code));
-        $map = [
+        $key = strtoupper(trim((string) $code));
+
+        // Alias query lama (English + Indonesia) ke kode internal produk.
+        $aliases = [
             'WINDOWS' => 'WINDOW',
             'JENDELA' => 'WINDOW',
             'DOORS' => 'DOOR',
@@ -80,8 +104,17 @@ class CatalogLabels
             'BOUVEN' => 'BOUVEN',
             'BOVEN' => 'BOUVEN',
         ];
+        if (isset($aliases[$key])) {
+            return $aliases[$key];
+        }
 
-        return $map[$key] ?? (isset(self::CATEGORY[$key]) ? $key : null);
+        // Kode kategori dinamis dari tabel `categories` (bukan daftar tetap).
+        $resolved = \App\Support\CategoryUrl::codeToProductCode($key);
+        if (isset(self::CATEGORY[$resolved])) {
+            return $resolved;
+        }
+
+        return \App\Models\Category::query()->where('code', $key)->exists() ? $resolved : null;
     }
 
     public static function normalizeModel(?string $code): ?string
@@ -172,7 +205,18 @@ class CatalogLabels
     /** @return list<string> */
     public static function modelCodes(): array
     {
-        return self::MODEL_ORDER;
+        $db = \Illuminate\Support\Facades\Cache::remember('catalog.model_codes', 3600, function (): array {
+            return \App\Models\SubModel::query()
+                ->where('is_active', true)
+                ->distinct()
+                ->pluck('product_model')
+                ->filter()
+                ->map(fn ($m) => strtoupper((string) $m))
+                ->values()
+                ->all();
+        });
+
+        return array_values(array_unique(array_merge(self::MODEL_ORDER, $db)));
     }
 
     /** @return list<string> */

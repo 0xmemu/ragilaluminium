@@ -211,11 +211,19 @@ class CatalogSearch
      */
     protected static function categoryCodesMatching(string $term, array $tokens): array
     {
+        // Peta kategori DINAMIS dari tabel `categories` + alias legacy back-compat.
         $map = [
-            'WINDOW' => ['jendela', 'window', 'windows'],
-            'DOOR' => ['pintu', 'door', 'doors'],
-            'BOUVEN' => ['boven', 'bouven'],
+            'WINDOW' => ['window', 'windows'],
+            'DOOR' => ['door', 'doors'],
+            'BOUVEN' => ['bouven', 'boven'],
         ];
+        foreach (\App\Support\CategoryUrl::categoryLinks() as $link) {
+            $code = (string) $link['code'];
+            $map[$code] = array_values(array_unique(array_merge(
+                $map[$code] ?? [],
+                [mb_strtolower((string) $link['slug']), mb_strtolower((string) $link['label'])]
+            )));
+        }
 
         $haystacks = array_values(array_unique(array_merge([mb_strtolower($term)], $tokens)));
         $matched = [];

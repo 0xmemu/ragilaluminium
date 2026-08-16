@@ -47,6 +47,22 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                 throw new \RuntimeException('parent_sku kosong');
             }
 
+            // Resolusi kategori dari sumber DINAMIS (tabel categories), bukan default
+            // WINDOW. Kategori tak dikenal / tidak diisi ditandai untuk review admin.
+            $existingProduct = Product::where('parent_sku', $parentSku)->first();
+            $rawCategory = trim(strtoupper((string) ($data['product_category'] ?? '')));
+            $productCategory = $rawCategory === ''
+                ? (string) ($existingProduct?->product_category ?? '')
+                : (\App\Support\CatalogLabels::normalizeCategory($rawCategory) ?? '');
+
+            if ($productCategory === '') {
+                throw new \RuntimeException(
+                    $rawCategory === ''
+                        ? 'master kategori tidak diisi (perlu ditinjau admin)'
+                        : 'kategori tidak dikenal: '.$rawCategory.' (perlu ditinjau admin)'
+                );
+            }
+
             $product = Product::updateOrCreate(
                 ['parent_sku' => $parentSku],
                 [
@@ -54,7 +70,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     'short_name' => $data['short_name'] ?? null,
                     'description' => $data['description'] ?? null,
                     'category_id' => (int) ($data['category_id'] ?? 0),
-                    'product_category' => strtoupper($data['product_category'] ?? 'WINDOW'),
+                    'product_category' => $productCategory,
                     'product_model' => \App\Support\CatalogLabels::normalizeModel($data['product_model'] ?? 'SLIDING') ?? 'SLIDING',
                     'design_variant' => \App\Support\CatalogLabels::normalizeDesign($data['design_variant'] ?? 'POLOS') ?? 'POLOS',
                     'status' => 'archived',
