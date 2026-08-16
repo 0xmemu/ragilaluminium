@@ -50,10 +50,10 @@ export function TestimonialCard({
                 src={imageUrl!}
                 alt={imageAlt}
                 wrapperClassName="aspect-square size-full overflow-hidden"
-                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+                className="size-full object-cover blur-[1px] transition duration-300 group-hover/img:scale-[1.03]"
               />
               <span
-                className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition duration-300 group-hover/img:bg-black/20"
+                className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15 transition duration-300 group-hover/img:bg-black/20"
                 aria-hidden="true"
               >
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition duration-300 group-hover/img:opacity-100">
@@ -164,10 +164,10 @@ export function TestimonialCard({
             src={imageUrl}
             alt={imageAlt}
             wrapperClassName="size-full bg-surface-muted"
-            className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+            className="size-full object-cover blur-[1px] transition duration-300 group-hover/img:scale-[1.03]"
           />
           <span
-            className="absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition duration-300 group-hover/img:bg-black/20 group-focus-visible/img:bg-black/20"
+            className="absolute inset-0 z-10 flex items-center justify-center bg-black/15 transition duration-300 group-hover/img:bg-black/20 group-focus-visible/img:bg-black/20"
             aria-hidden="true"
           >
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition duration-300 group-hover/img:opacity-100 group-focus-visible/img:opacity-100">
