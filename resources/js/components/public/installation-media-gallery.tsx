@@ -13,6 +13,7 @@ export function InstallationMediaGallery({
 }) {
   const [activeIndex, setActiveIndex] = React.useState(0)
   const [open, setOpen] = React.useState(false)
+  const [loadedVideoIds, setLoadedVideoIds] = React.useState<Set<number>>(() => new Set())
 
   if (!items.length) return null
 
@@ -31,15 +32,33 @@ export function InstallationMediaGallery({
             aria-label={`Perbesar ${item.is_video ? "video" : "foto"} ${index + 1}`}
           >
             {item.is_video ? (
-              <video src={item.thumb ?? item.url} muted playsInline preload="metadata" className="size-full object-cover" />
+              <>
+                <video
+                  src={item.thumb ?? item.url}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="size-full object-cover"
+                  onLoadedData={() =>
+                    setLoadedVideoIds((current) => new Set(current).add(item.id))
+                  }
+                  onError={() =>
+                    setLoadedVideoIds((current) => new Set(current).add(item.id))
+                  }
+                />
+                {!loadedVideoIds.has(item.id) ? (
+                  <span
+                    className="pointer-events-none absolute inset-0 z-10 skeleton-shimmer bg-muted"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span className="absolute inset-0 z-20 flex items-center justify-center bg-black/15 text-white">
+                  <Icon name="play" weight="fill" className="size-8 drop-shadow" aria-hidden />
+                </span>
+              </>
             ) : (
               <ResponsiveImage src={item.thumb ?? item.url} alt="" wrapperClassName="absolute inset-0 size-full !aspect-auto" className="object-cover transition duration-200 group-hover:scale-[1.02]" />
             )}
-            {item.is_video ? (
-              <span className="absolute inset-0 flex items-center justify-center bg-black/15 text-white">
-                <Icon name="play" weight="fill" className="size-8 drop-shadow" aria-hidden />
-              </span>
-            ) : null}
           </button>
         ))}
       </div>

@@ -158,6 +158,7 @@ export function ProductGallery({
                       fetchPriority={index === 0 ? "high" : undefined}
                       wrapperClassName="size-full bg-white"
                       className="!object-contain"
+                      skeleton={false}
                       onLoad={() => setLoadedMediaIds((current) => new Set(current).add(item.id))}
                       onError={() => setLoadedMediaIds((current) => new Set(current).add(item.id))}
                     />
