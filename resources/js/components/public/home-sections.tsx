@@ -426,7 +426,7 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
   const seeMoreHref = `${routeUrl("reviews")}#ulasan-website`
 
   return (
-    <section id="ulasan-website" className="scroll-mt-20 bg-surface-muted">
+    <section id="ulasan-website" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
           title="Ulasan pelanggan di website"
@@ -510,7 +510,7 @@ export function ClosingCTASection() {
 
 export function KamiBantuSection() {
   return (
-    <section id="kami-bantu" className="scroll-mt-20 bg-muted/30">
+    <section id="kami-bantu" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
           <p className="text-xs font-bold text-primary sm:text-sm">
