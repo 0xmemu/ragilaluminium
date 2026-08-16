@@ -99,9 +99,6 @@ function HeaderSearchForm({
     "catalog.category",
     "catalog.model",
     "catalog.design",
-    "catalog.windows",
-    "catalog.doors",
-    "catalog.bouven",
   ])
 
   function searchAll(value: string) {
@@ -292,7 +289,7 @@ export function PublicHeader() {
   const secondaryProductItems = productItems.slice(2)
   const closeMenu = React.useCallback(() => setMenuOpen(false), [])
   const isAllProductsListing =
-    isRouteActive(["catalog.all", "catalog.category", "catalog.design", "catalog.windows", "catalog.doors", "catalog.bouven", "product.show", "search"]) ||
+    isRouteActive(["catalog.all", "catalog.category", "catalog.design", "product.show", "search"]) ||
     (isRouteActive(["catalog.index"]) && /[?&](sort|q|model|price_min|price_max)=/.test(page.url))
   const modelGroups = React.useMemo(
     () =>
@@ -712,7 +709,7 @@ export function PublicHeader() {
         <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10 !px-5 md:!px-8 lg:!px-12">
           {desktopItems.map((item) => {
             const listingActive =
-              isRouteActive(["catalog.all", "catalog.category", "catalog.design", "catalog.windows", "catalog.doors", "catalog.bouven", "product.show"]) ||
+              isRouteActive(["catalog.all", "catalog.category", "catalog.design", "product.show"]) ||
               (isRouteActive(["catalog.index"]) &&
                 /[?&](sort|q|model|price_min|price_max)=/.test(page.url))
             const modelHubActive =

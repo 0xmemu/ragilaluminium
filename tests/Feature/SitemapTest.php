@@ -44,10 +44,11 @@ class SitemapTest extends TestCase
         $response->assertOk()
             ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
             ->assertSee(route('catalog.flash-sale'), false)
-            ->assertSee(route('catalog.category', ['category' => 'windows']), false)
-            ->assertSee(route('catalog.model', ['category' => 'windows', 'model' => 'jungkit']), false)
-            ->assertSee(route('catalog.design', ['category' => 'windows', 'model' => 'jungkit', 'design' => 'polos']), false)
-            ->assertDontSee(route('catalog.windows'), false)
+            ->assertSee(route('catalog.category', ['category' => 'jendela']), false)
+            ->assertSee(route('catalog.model', ['category' => 'jendela', 'model' => 'jungkit']), false)
+            ->assertSee(route('catalog.design', ['category' => 'jendela', 'model' => 'jungkit', 'design' => 'polos']), false)
+            ->assertDontSee('/products/windows', false)
+            ->assertDontSee('/windows', false)
             ->assertSee(route('product.show', $active->parent_sku), false)
             ->assertDontSee('ARCHIVED-SKU');
     }

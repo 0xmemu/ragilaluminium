@@ -85,45 +85,7 @@ class CatalogController extends Controller
         return $this->category(null, $request, mode: 'flash');
     }
 
-    public function windows(Request $request)
-    {
-        return $this->redirectLegacyCategory('windows', $request);
-    }
-
-    public function doors(Request $request)
-    {
-        return $this->redirectLegacyCategory('doors', $request);
-    }
-
-    public function bouven(Request $request)
-    {
-        return $this->redirectLegacyCategory('bouven', $request);
-    }
-
-    protected function redirectLegacyCategory(string $legacySlug, Request $request)
-    {
-        $model = CatalogLabels::normalizeModel($request->query('model'));
-        $design = CatalogLabels::normalizeDesign($request->query('design'));
-        $categorySlug = CategoryUrl::categoryToSlug((string) CategoryUrl::categoryFromSlug($legacySlug));
-        $parameters = ['category' => $categorySlug];
-        $route = 'catalog.category';
-
-        if (filled($model)) {
-            $parameters['model'] = str_replace('_', '-', strtolower($model));
-            $route = 'catalog.model';
-        }
-
-        if (filled($model) && filled($design)) {
-            $parameters['design'] = str_replace('_', '-', strtolower($design));
-            $route = 'catalog.design';
-        }
-
-        $query = $request->except(['model', 'design']);
-
-        return redirect()->to(route($route, $parameters).($query === [] ? '' : '?'.http_build_query($query)), 301);
-    }
-
-    protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
+protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
     {
         $sort = (string) $request->input('sort', 'popular');
         if (! in_array($sort, ['popular', 'terlaris', 'bestseller', 'newest', 'baru', 'size_asc', 'size_desc', 'price_asc', 'price_desc'], true)) {

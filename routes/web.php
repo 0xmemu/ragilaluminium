@@ -97,9 +97,6 @@ Route::get('/products/{category}/{model}/{design}', [CatalogController::class, '
     ->name('catalog.design');
 Route::get('/promo', [CatalogController::class, 'promo'])->name('catalog.promo');
 Route::get('/flash-sale', [CatalogController::class, 'flashSale'])->name('catalog.flash-sale');
-Route::get('/windows', [CatalogController::class, 'windows'])->name('catalog.windows');
-Route::get('/doors', [CatalogController::class, 'doors'])->name('catalog.doors');
-Route::get('/bouven', [CatalogController::class, 'bouven'])->name('catalog.bouven');
 
 Route::get('/search', function (Request $request) {
     return redirect()->route('catalog.index', $request->query());

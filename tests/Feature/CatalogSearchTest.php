@@ -57,8 +57,7 @@ class CatalogSearchTest extends TestCase
         ]);
 
         $this->get('/windows')
-            ->assertRedirect('/products/windows')
-            ->assertStatus(301);
+            ->assertNotFound();
 
         $this->get('/products/windows')
             ->assertOk()
@@ -68,8 +67,7 @@ class CatalogSearchTest extends TestCase
             );
 
         $this->get('/windows?model=SLIDING')
-            ->assertRedirect('/products/windows/sliding')
-            ->assertStatus(301);
+            ->assertNotFound();
 
         $this->get('/products/windows/sliding/ornamen')
             ->assertOk()
@@ -82,11 +80,9 @@ class CatalogSearchTest extends TestCase
             );
 
         $this->get('/windows?model=SLIDING&design=ORNAMEN')
-            ->assertRedirect('/products/windows/sliding/ornamen')
-            ->assertStatus(301);
+            ->assertNotFound();
 
         $this->get('/doors?model=SWING')
-            ->assertRedirect('/products/doors/swing')
-            ->assertStatus(301);
+            ->assertNotFound();
     }
 }

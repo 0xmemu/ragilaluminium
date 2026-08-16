@@ -175,10 +175,10 @@ class ModelProdukPageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ModelProduk')
-                ->where('models.0.detail_href', '/products/window/swing')
+                ->where('models.0.detail_href', '/products/jendela/swing')
             );
 
-        $this->get(route('catalog.model', ['category' => 'window', 'model' => 'swing']))
+        $this->get(route('catalog.model', ['category' => 'jendela', 'model' => 'swing']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ModelDetail')

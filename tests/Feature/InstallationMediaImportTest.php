@@ -130,7 +130,7 @@ class InstallationMediaImportTest extends TestCase
         $this->assertSame('WINDOW', $models[0]['category']);
         $this->assertSame('SLIDING', $models[0]['model']);
         $this->assertSame(
-            route('installation.model', ['category' => 'window', 'model' => 'sliding'], absolute: false),
+            route('installation.model', ['category' => 'jendela', 'model' => 'sliding'], absolute: false),
             $models[0]['href']
         );
 
@@ -143,7 +143,7 @@ class InstallationMediaImportTest extends TestCase
             ->has('installations', 1)
             ->where('installations.0.image_url', 'https://example.com/hasil.jpg')
             ->where('installations.0.product_count', 1)
-            ->where('installations.0.href', route('installation.model', ['category' => 'window', 'model' => 'sliding'], absolute: false))
+            ->where('installations.0.href', route('installation.model', ['category' => 'jendela', 'model' => 'sliding'], absolute: false))
         );
 
         $indexSorted = $this->get(route('installation.index', ['sort' => 'name']));
@@ -183,7 +183,7 @@ class InstallationMediaImportTest extends TestCase
             ->component('Public/InstallationDetail')
             ->where('product.parent_sku', 'WIN-REV-1')
             ->has('media', 1)
-            ->where('modelHref', route('installation.model', ['category' => 'window', 'model' => 'sliding'], absolute: false))
+            ->where('modelHref', route('installation.model', ['category' => 'jendela', 'model' => 'sliding'], absolute: false))
         );
     }
 

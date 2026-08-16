@@ -51,14 +51,7 @@ return [
             'status' => 'implemented',
             'notes' => 'Listing SKU dengan atribut promo eksplisit (card-produk).',
         ],
-        'Halaman Tampilan Model Produk' => [
-            'route' => 'catalog.windows',
-            'path' => '/windows',
-            'view' => 'Public/Catalog',
-            'controller' => 'CatalogController@windows',
-            'group' => 'catalog',
-            'status' => 'implemented',
-        ],
+
         'Halaman Produk Satuan' => [
             'route' => 'product.show',
             'path' => '/product/{parent_sku}',
