@@ -119,27 +119,111 @@ class PageController extends Controller
     }
 
     /**
-     * Halaman gabungan "Apa kata pelanggan kami" + "Ulasan pelanggan di website".
-     * Satu slug (/reviews) dengan nav/filter model produk ala halaman Model Produk.
+     * Halaman "Ulasan pelanggan di website" (ulasan teks).
+     * /reviews/web — filter model via query ?model=KATEGORI|MODEL.
      */
-    public function reviews(Request $request): Response
+    public function reviewsWebsite(Request $request): Response
     {
-        $modelFilter = (string) $request->input('model', '');
-        $modelCategory = null;
-        $modelCode = null;
-        if ($modelFilter !== '' && str_contains($modelFilter, '|')) {
-            [$modelCategory, $modelCode] = explode('|', $modelFilter, 2);
-            $modelCategory = strtoupper($modelCategory);
-            $modelCode = strtoupper($modelCode);
+        [$modelCategory, $modelCode] = $this->reviewModelFilter($request);
+
+        $published = CmsTestimonial::query()->published()->website();
+        if ($modelCategory && $modelCode) {
+            $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
+                $q->where('product_category', $modelCategory)
+                    ->where('product_model', $modelCode);
+            });
         }
 
-        // Nav model produk: pasangan kategori+model unik yang punya testimonial terbit.
+        $websiteTotal = (clone $published)->count();
+        $avgRating = (clone $published)->whereNotNull('rating')->avg('rating');
+
+        $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->limit(120)
+            ->get()
+            ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+            ->values()
+            ->all();
+
+        return Inertia::render('Public/Reviews', [
+            'type' => 'web',
+            'pageMeta' => [
+                'title' => 'Ulasan pelanggan website',
+                'heading' => 'Ulasan pelanggan di website',
+                'subtitle' => 'Ulasan pelanggan yang memesan lewat website.',
+            ],
+            'testimonials' => $testimonials,
+            'modelNav' => $this->reviewModelNav(),
+            'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
+            'stats' => [
+                'website_total' => $websiteTotal,
+                'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
+            ],
+            'installationsHref' => route('installation.index'),
+        ]);
+    }
+
+    /**
+     * Halaman "Apa kata pelanggan kami" (galeri screenshot).
+     * /reviews/ss — hanya ulasan yang punya gambar (media).
+     */
+    public function reviewsScreenshots(Request $request): Response
+    {
+        [$modelCategory, $modelCode] = $this->reviewModelFilter($request);
+
+        $published = CmsTestimonial::query()->published()->withScreenshot();
+        if ($modelCategory && $modelCode) {
+            $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
+                $q->where('product_category', $modelCategory)
+                    ->where('product_model', $modelCode);
+            });
+        }
+
+        $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->limit(120)
+            ->get()
+            ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+            ->values()
+            ->all();
+
+        $websiteTotal = (clone $published)->website()->count();
+
+        return Inertia::render('Public/Reviews', [
+            'type' => 'ss',
+            'pageMeta' => TestimonialPageSettings::forStorefront(),
+            'testimonials' => $testimonials,
+            'modelNav' => $this->reviewModelNav(),
+            'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
+            'stats' => [
+                'website_total' => $websiteTotal,
+                'average_rating' => null,
+            ],
+            'installationsHref' => route('installation.index'),
+        ]);
+    }
+
+    private function reviewModelFilter(Request $request): array
+    {
+        $modelFilter = (string) $request->input('model', '');
+        if ($modelFilter === '' || ! str_contains($modelFilter, '|')) {
+            return [null, null];
+        }
+        [$category, $code] = explode('|', $modelFilter, 2);
+
+        return [strtoupper($category), strtoupper($code)];
+    }
+
+    private function reviewModelNav(): array
+    {
         $navSource = CmsTestimonial::query()->published()
             ->whereHas('product')
             ->with('product:id,parent_sku,name,short_name,product_category,product_model')
             ->get();
 
-        $modelNav = $navSource
+        return $navSource
             ->groupBy(function (CmsTestimonial $t) {
                 $p = $t->product;
                 return $p ? strtoupper($p->product_category).'|'.strtoupper((string) $p->product_model) : '__none';
@@ -157,41 +241,8 @@ class PageController extends Controller
             ->sortBy('label')
             ->values()
             ->all();
-
-        $published = CmsTestimonial::query()->published();
-
-        if ($modelCategory && $modelCode) {
-            $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
-                $q->where('product_category', $modelCategory)
-                    ->where('product_model', $modelCode);
-            });
-        }
-
-        // Hitung stats dari clone bersih (tanpa orderBy/limit yang melekat pada daftar kartu).
-        $websiteTotal = (clone $published)->website()->count();
-        $avgRating = (clone $published)->website()->whereNotNull('rating')->avg('rating');
-
-        $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
-            ->orderBy('sort_order')
-            ->orderByDesc('id')
-            ->limit(120)
-            ->get()
-            ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
-            ->values()
-            ->all();
-
-        return Inertia::render('Public/Reviews', [
-            'pageMeta' => TestimonialPageSettings::forStorefront(),
-            'testimonials' => $testimonials,
-            'modelNav' => $modelNav,
-            'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
-            'stats' => [
-                'website_total' => $websiteTotal,
-                'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
-            ],
-            'installationsHref' => route('installation.index'),
-        ]);
     }
+
 
     public function installations(Request $request): Response
     {
@@ -217,7 +268,7 @@ class PageController extends Controller
             'installations' => $installations,
             'level' => 'model',
             'activeSort' => $sort,
-            'reviewsHref' => route('reviews'),
+            'reviewsHref' => route('reviews.website'),
         ]);
     }
 
@@ -297,7 +348,7 @@ class PageController extends Controller
                 'label' => $title,
             ],
             'indexHref' => route('installation.index'),
-            'reviewsHref' => route('reviews'),
+            'reviewsHref' => route('reviews.website'),
         ]);
     }
 

@@ -28,8 +28,8 @@ Drawer mobile terstruktur empat zona: **brand header** (wordmark + tagline) → 
 | Promo | `catalog.promo` `/promo` | — | implemented (tidak di drawer / desktop_main; bottom nav mobile) |
 | Flash Sale | `catalog.flash-sale` `/flash-sale` | — | implemented (halaman tetap; **tidak** di `desktop_main` / `hamburger_product`) |
 | Hasil Pemasangan | `installation.index` `/hasil-pemasangan` | produk | implemented |
-| Ulasan | `reviews` `/reviews` | produk | implemented — galeri screenshot marketplace/WA |
-| Ulasan Website | `ulasan` `/ulasan` | produk | implemented — ulasan pelanggan website |
+| Ulasan (screenshot) | `reviews.screenshots` `/reviews/ss` | produk | implemented — galeri screenshot |
+| Ulasan Website (teks) | `reviews.website` `/reviews/web` | produk | implemented — ulasan teks/rating |
 | Lacak Pengiriman | `order.status` | info | implemented |
 | Konsultasi Gratis | `contact` | info | implemented |
 | Cara Pemesanan | `cara-pemesanan` | info | implemented |
@@ -37,7 +37,7 @@ Drawer mobile terstruktur empat zona: **brand header** (wordmark + tagline) → 
 | Masalah & Solusi | `masalah-dan-solusi` | info | implemented |
 | Informasi Toko | `about` `/about` | info | implemented |
 
-Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa garis pembatas. **Mobile header (Figma):** hamburger · kolom cari inline · keranjang — tanpa logo wordmark dan tanpa ikon Pesanan di header (Pesanan ada di bottom nav). **Mobile:** tidak menampilkan footer situs; navigasi bawah: Beranda · Model Produk · Promo · Pesanan. `Model Produk` menampilkan submenu hover/focus berisi model visible dari taxonomy katalog; pada layar sentuh submenu dapat dibuka dengan tap. Desktop menampilkan strip `desktop_main` di bawah bar logo/search: **Model Produk** → `/products` (hub model); **Produk** → `/products/all` (Semua Produk, default Populer); **Ulasan** → `/reviews`; **Hasil Pemasangan**; **Informasi Toko**. Flash Sale dan Promo tidak ada di nav utama desktop (halaman `/flash-sale` dan `/promo` tetap ada). Tidak ada carousel Flash Sale di beranda.
+Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa garis pembatas. **Mobile header (Figma):** hamburger · kolom cari inline · keranjang — tanpa logo wordmark dan tanpa ikon Pesanan di header (Pesanan ada di bottom nav). **Mobile:** tidak menampilkan footer situs; navigasi bawah: Beranda · Model Produk · Promo · Pesanan. `Model Produk` menampilkan submenu hover/focus berisi model visible dari taxonomy katalog; pada layar sentuh submenu dapat dibuka dengan tap. Desktop menampilkan strip `desktop_main` di bawah bar logo/search: **Model Produk** → `/products` (hub model); **Produk** → `/products/all` (Semua Produk, default Populer); **Ulasan** → `/reviews/web`; **Hasil Pemasangan**; **Informasi Toko**. Flash Sale dan Promo tidak ada di nav utama desktop (halaman `/flash-sale` dan `/promo` tetap ada). Tidak ada carousel Flash Sale di beranda.
 
 ---
 
@@ -70,7 +70,8 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 | Halaman Kebijakan Privasi | `/policy/privacy` | `privacy` | `Public/CmsPage` | implemented |
 | Halaman Ketentuan Layanan | `/policy/terms` | `terms` | `Public/CmsPage` | implemented |
 | Informasi Toko | `/about` | `about` | `Public/CmsPage` | implemented |
-| Halaman Apa Kata Pelanggan (galeri) | `/reviews` | `reviews` | `Public/Reviews` | implemented — galeri screenshot Shopee/WA dengan lightbox; jika belum ada screenshot, sementara menampilkan ulasan website bergambar; meta `cms_pages.testimoni` |
+| Halaman Apa Kata Pelanggan (galeri) | `/reviews/ss` | `reviews.screenshots` | `Public/Reviews` | implemented — galeri screenshot dengan lightbox; meta `cms_pages.testimoni` |
+| Halaman Ulasan Website | `/reviews/web` | `reviews.website` | `Public/Reviews` | implemented — ulasan teks + rating, filter model via `?model=KATEGORI\|MODEL`, stats `website_total`/`average_rating` |
 | Halaman Ulasan Website | `/ulasan` | `ulasan` | `Public/Ulasan` | implemented — ulasan pelanggan website (teks+rating, sort `newest\|oldest\|rating_desc\|rating_asc`), stats `website_total`/`average_rating` |
 | Halaman Hasil Pemasangan (listing model) | `/hasil-pemasangan` | `installation.index` | `Public/Installations` | implemented — header katalog (breadcrumb + judul + count + `?sort=newest\|photos\|name`) + grid kartu model |
 | Halaman Hasil Pemasangan (produk dalam model) | `/hasil-pemasangan/{category}/{model}` | `installation.model` | `Public/Installations` | implemented — header katalog + kartu **featured** (`ModelProductPresentation`) + **Inspirasi Pemasangan** (grid produk, `?sort=`) |

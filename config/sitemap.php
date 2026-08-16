@@ -76,10 +76,10 @@ return [
             'status' => 'implemented',
         ],
         'Halaman Apa Kata Pelanggan kami' => [
-            'route' => 'reviews',
-            'path' => '/reviews',
+            'route' => 'reviews.screenshots',
+            'path' => '/reviews/ss',
             'view' => 'Public/Reviews',
-            'controller' => 'PageController@reviews',
+            'controller' => 'PageController@reviewsScreenshots',
             'group' => 'core',
             'status' => 'implemented',
         ],
@@ -92,8 +92,8 @@ return [
             'status' => 'implemented',
         ],
         'Halaman Hasil Pemasangan Kami' => [
-            'route' => 'reviews',
-            'path' => '/reviews',
+            'route' => 'reviews.website',
+            'path' => '/reviews/web',
             'view' => 'Public/Reviews',
             'group' => 'core',
             'status' => 'implemented',
@@ -281,9 +281,9 @@ return [
             ],
             [
                 'label' => 'Ulasan',
-                'route' => 'reviews',
+                'route' => 'reviews.website',
                 'icon' => 'star',
-                'active' => ['reviews'],
+                'active' => ['reviews.website', 'reviews.screenshots'],
             ],
         ],
 
@@ -351,8 +351,8 @@ return [
             ],
             [
                 'label' => 'Ulasan',
-                'route' => 'reviews',
-                'active' => ['reviews'],
+                'route' => 'reviews.website',
+                'active' => ['reviews.website', 'reviews.screenshots'],
             ],
             [
                 'label' => 'Hasil Pemasangan',
@@ -432,7 +432,7 @@ return [
             'title' => 'Informasi Toko',
             'links' => [
                 ['label' => 'Profil Perusahaan', 'route' => 'about'],
-                ['label' => 'Ulasan', 'route' => 'reviews'],
+                ['label' => 'Ulasan', 'route' => 'reviews.website'],
                 ['label' => 'Hasil Pemasangan', 'route' => 'installation.index'],
                 ['label' => 'Pesanan', 'route' => 'order.status'],
             ],

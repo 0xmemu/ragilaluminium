@@ -393,7 +393,10 @@ export function HasilPemasanganSection({
 }
 
 export function ApaKataPelangganSection({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = `${routeUrl("reviews")}#apa-kata-pelanggan`
+  const seeMoreHref = routeUrl("reviews.screenshots")
+
+  // Section screenshot: hanya ulasan ber-media (hindari kartu kosong tanpa media).
+  const screenshots = testimonials.filter((t) => Boolean(t.image_url))
 
   return (
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface">
@@ -403,9 +406,9 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
           actionHref={seeMoreHref}
           actionLabel="Lihat Semua →"
         />
-        {testimonials.length ? (
+        {screenshots.length ? (
           <TestimonialCarousel
-            testimonials={testimonials}
+            testimonials={screenshots}
             seeMoreHref={seeMoreHref}
             variant="screenshot"
             navLabel="testimoni"
@@ -423,7 +426,7 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
 }
 
 export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: Testimonial[] }) {
-  const seeMoreHref = `${routeUrl("reviews")}#ulasan-website`
+  const seeMoreHref = routeUrl("reviews.website")
 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface">
@@ -467,7 +470,7 @@ const HELP_STEPS = [
   },
   {
     icon: "package",
-    title: "Packing aman & pengiriman ke seluruh Indonesia",
+    title: "Packing kayu gratis & pengiriman ke seluruh Indonesia",
     description:
       "Produk dikemas rapi agar aman sampai di rumah Anda, ke seluruh Indonesia.",
   },
@@ -484,22 +487,19 @@ export function ClosingCTASection() {
   const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
 
   return (
-    <section id="closing-cta" className="scroll-mt-20 bg-[#1a1e1c] text-background">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 flex flex-col items-center py-7 text-center">
-        <div className="flex flex-col items-center gap-1 text-center">
-          <p className="text-xs font-semibold tracking-tight text-white">Pakai produk berkualitas</p>
-          <h2 className="text-balance text-[22px] font-bold leading-[1.5] tracking-tight text-background sm:text-3xl">
-            Tingkatkan kualitas bangunan Anda bersama kami
+    <section id="closing-cta" className="scroll-mt-20">
+      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-primary px-5 py-5 text-center shadow-sm sm:px-8">
+          <p className="text-xs font-semibold tracking-tight text-primary-foreground/90 sm:text-sm">
+            Butuh bantuan pilih jendela?
+          </p>
+          <h2 className="text-balance text-[17px] font-bold leading-snug tracking-tight text-primary-foreground sm:text-xl">
+            Konsultasi gratis via WhatsApp, admin balas cepat
           </h2>
-        </div>
-        <div className="mt-10 flex w-full max-w-xl flex-nowrap items-center justify-center gap-2 sm:gap-3">
-          <Button asChild className="h-9 min-w-0 flex-1 whitespace-nowrap bg-background px-3 text-xs text-primary hover:bg-background/90 sm:px-6 sm:text-sm">
-            <Link href={routeUrl("catalog.index")}>Pilih Model Produk</Link>
-          </Button>
-          <Button asChild variant="secondary" className="h-9 min-w-0 flex-1 whitespace-nowrap border border-white/40 bg-transparent px-3 text-xs text-white hover:bg-white/10 sm:px-6 sm:text-sm">
+          <Button asChild className="mt-3 h-7 !min-h-7 min-w-0 whitespace-nowrap bg-background px-3.5 text-[11px] text-primary hover:bg-background/90 sm:text-xs">
             <a href={whatsappUrl} target="_blank" rel="noreferrer">
               <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-              Konsultasi ukuran
+              Chat WhatsApp
             </a>
           </Button>
         </div>
@@ -528,25 +528,31 @@ export function KamiBantuSection() {
           />
         </div>
 
-        <div className="mx-auto max-w-3xl space-y-3 sm:space-y-4 lg:max-w-none lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-          {HELP_STEPS.map((item) => (
-            <article
-              key={item.title}
-              className="flex flex-row items-center gap-3 rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-md sm:gap-4 sm:p-5"
-            >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-12">
-                <Icon name={item.icon} className="size-5 sm:size-6" aria-hidden="true" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-bold leading-snug tracking-tight text-foreground sm:text-base">
+        <div className="mx-auto max-w-3xl grid grid-cols-2 gap-2 sm:gap-4 lg:max-w-none">
+          {HELP_STEPS.map((item, index) => {
+            const stepNo = String(index + 1).padStart(2, "0")
+            return (
+              <article
+                key={item.title}
+                className="flex flex-col rounded-xl border border-border/60 bg-[#F9FAFA] p-3 sm:p-4"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold tracking-tight text-primary sm:text-base">
+                    {stepNo}
+                  </span>
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-10">
+                    <Icon name={item.icon} className="size-4 sm:size-5" aria-hidden="true" />
+                  </span>
+                </div>
+                <h3 className="mt-2 text-[12.5px] font-bold leading-snug tracking-tight text-foreground sm:text-sm">
                   {item.title}
                 </h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground sm:text-sm">
+                <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs">
                   {item.description}
                 </p>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
 
       </div>

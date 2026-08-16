@@ -20,14 +20,14 @@ class FrontendPageContractTest extends TestCase
             ->assertRedirect(route('catalog.index', ['q' => 'jendela'], absolute: false));
     }
 
-    public function test_legacy_ulasan_redirects_to_reviews(): void
+    public function test_legacy_ulasan_redirects_to_web_reviews(): void
     {
         $this->get('/ulasan')
-            ->assertRedirect(route('reviews', absolute: false));
+            ->assertRedirect(route('reviews.website', absolute: false));
 
         // Query string lama tetap diteruskan ke slug baru.
         $this->get('/ulasan?sort=oldest')
-            ->assertRedirect(route('reviews', absolute: false).'?sort=oldest');
+            ->assertRedirect(route('reviews.website', absolute: false).'?sort=oldest');
     }
 
     public function test_public_entry_pages_render_the_contracted_inertia_components(): void
@@ -36,7 +36,8 @@ class FrontendPageContractTest extends TestCase
             ['home', 'Public/Home'],
             ['catalog.index', 'Public/ModelProduk'],
             ['catalog.category', 'Public/Catalog', ['category' => 'windows']],
-            ['reviews', 'Public/Reviews'],
+            ['reviews.website', 'Public/Reviews'],
+            ['reviews.screenshots', 'Public/Reviews'],
             ['cart.index', 'Public/Cart'],
             ['checkout.index', 'Public/Checkout'],
             ['order.status', 'Public/OrderStatus'],

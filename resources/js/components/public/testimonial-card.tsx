@@ -43,7 +43,7 @@ export function TestimonialCard({
             <button
               type="button"
               onClick={() => (onOpen ? onOpen() : setPreviewOpen(true))}
-              className="group/img relative block size-full overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group/img relative block size-full overflow-hidden rounded-[5px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Perbesar screenshot ulasan ${testimonial.customer_name}`}
             >
               <ResponsiveImage
@@ -62,9 +62,7 @@ export function TestimonialCard({
               </span>
             </button>
           ) : (
-            <div className="flex aspect-square items-center justify-center bg-muted p-4 text-center text-xs text-muted-foreground">
-              Bukti ulasan tidak memiliki gambar
-            </div>
+            <div className="aspect-square bg-muted" />
           )}
         </article>
 
@@ -139,6 +137,30 @@ export function TestimonialCard({
     ? `Ulasan ${testimonial.customer_name}, lihat produk ${testimonial.product.name}`
     : `Ulasan ${testimonial.customer_name}`
 
+  // Jumlah media (foto) pada ulasan ini; dipakai untuk badge di atas thumbnail.
+  const mediaCount = testimonial.images?.length
+    ? testimonial.images.length
+    : testimonial.image_url
+      ? 1
+      : 0
+
+  // Klik thumbnail (homepage) -> langsung ke section ulasan produk terkait.
+  const reviewSectionHref = testimonial.product
+    ? `${testimonial.product.href}#penilaian-ulasan`
+    : cardHref
+
+  const thumbMediaBadge = (
+    <span
+      className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 transition duration-300 group-hover/img:bg-black/60 group-focus-visible/img:bg-black/60"
+      aria-hidden="true"
+    >
+      <span className="inline-flex h-6 min-w-6 items-center justify-center gap-1 rounded-full bg-black/70 px-2 text-white opacity-0 transition duration-300 group-hover/img:opacity-100 group-focus-visible/img:opacity-100">
+        <Icon name="image" className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="text-xs font-semibold tabular-nums">{mediaCount}</span>
+      </span>
+    </span>
+  )
+
   return (
     <article className={cardClassName}>
       {cardHref ? (
@@ -154,45 +176,48 @@ export function TestimonialCard({
       )}
 
       {hasImage ? (
-        <button
-          type="button"
-          onClick={() => (onOpen ? onOpen() : setPreviewOpen(true))}
-          className="group/img relative block h-20 w-full shrink-0 overflow-hidden bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label={`Perbesar foto dari ${testimonial.customer_name}`}
-        >
-          <ResponsiveImage
-            src={imageUrl}
-            alt={imageAlt}
-            wrapperClassName="size-full bg-surface-muted"
-            className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
-          />
-          <span
-            className="absolute inset-0 z-10 flex items-center justify-center bg-black/15 transition duration-300 group-hover/img:bg-black/20 group-focus-visible/img:bg-black/20"
-            aria-hidden="true"
-          >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition duration-300 group-hover/img:opacity-100 group-focus-visible/img:opacity-100">
-              <Icon name="expand" weight="bold" className="h-5 w-5" aria-hidden="true" />
-            </span>
-          </span>
-        </button>
-      ) : null}
-
-      {hasImage && !onOpen ? (
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="!fixed !inset-0 !left-0 !top-0 z-modal !flex !h-dvh !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !gap-0 !overflow-hidden !rounded-none !border-0 !bg-black/95 !p-0 shadow-none" aria-describedby={undefined}>
-            <DialogTitle className="sr-only">
-              Foto ulasan dari {testimonial.customer_name}
-            </DialogTitle>
-            <img
-              src={imageUrl ?? undefined}
-              alt={imageAlt}
-              className="mx-auto aspect-square max-h-[80dvh] w-auto max-w-full object-contain"
-            />
-            <div className="text-center">
-              <p className="text-sm font-semibold text-white">{testimonial.customer_name}</p>
+        <div className="shrink-0 px-[5px] pb-[5px]">
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="group/img relative block h-20 w-full shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={`Perbesar foto dari ${testimonial.customer_name}`}
+            >
+              <ResponsiveImage
+                src={imageUrl}
+                alt={imageAlt}
+                wrapperClassName="size-full bg-surface-muted"
+                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+              />
+              {thumbMediaBadge}
+            </button>
+          ) : reviewSectionHref ? (
+            <a
+              href={reviewSectionHref}
+              className="group/img relative block h-20 w-full shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={`Lihat ulasan ${testimonial.customer_name} di produk`}
+            >
+              <ResponsiveImage
+                src={imageUrl}
+                alt={imageAlt}
+                wrapperClassName="size-full bg-surface-muted"
+                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+              />
+              {thumbMediaBadge}
+            </a>
+          ) : (
+            <div className="group/img relative block h-20 w-full shrink-0 overflow-hidden rounded-[3px] bg-surface-muted">
+              <ResponsiveImage
+                src={imageUrl}
+                alt={imageAlt}
+                wrapperClassName="size-full bg-surface-muted"
+                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+              />
+              {thumbMediaBadge}
             </div>
-          </DialogContent>
-        </Dialog>
+          )}
+        </div>
       ) : null}
     </article>
   )

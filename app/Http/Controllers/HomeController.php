@@ -80,7 +80,11 @@ class HomeController extends Controller
             // Keep the customer section populated from published CMS reviews when
             // no marketplace channel has been configured yet.
             if ($marketplaceTestimonials === [] && $websiteTestimonials !== []) {
-                $marketplaceTestimonials = array_slice($websiteTestimonials, 0, 12);
+                $marketplaceTestimonials = collect($websiteTestimonials)
+                    ->filter(fn (array $t) => filled($t['image_url'] ?? null))
+                    ->slice(0, 12)
+                    ->values()
+                    ->all();
             }
         } catch (\Throwable) {
             $marketplaceTestimonials = [];

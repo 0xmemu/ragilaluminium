@@ -231,7 +231,7 @@ export function MobileEndActionReveal({
     <Link
       href={href}
       aria-label="Lihat Semua"
-      className="absolute right-0 top-0 bottom-3 z-10 flex w-[4.75rem] flex-col items-center justify-center gap-1 text-[#2563EB] transition-[transform,opacity] duration-[360ms] ease-out md:hidden sm:w-20"
+      className="absolute right-0 top-0 bottom-3 z-10 flex w-[4.75rem] flex-col items-center justify-center gap-1 text-[#474747] transition-[transform,opacity] duration-[360ms] ease-out md:hidden sm:w-20"
       style={{
         transform: `translateX(${offset}px)`,
         opacity,
@@ -431,7 +431,6 @@ export function TestimonialCarousel({
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
   const reveal = useEndActionReveal(trackRef)
-  const anchor = variant === "screenshot" ? "apa-kata-pelanggan" : "ulasan-website"
 
   return (
     <div className="relative min-w-0 px-1">
@@ -457,7 +456,7 @@ export function TestimonialCarousel({
               testimonial={testimonial}
               compact
               variant={variant}
-              href={testimonial.product?.href ?? `${routeUrl("reviews")}#${anchor}`}
+              href={testimonial.product?.href ?? routeUrl(variant === "screenshot" ? "reviews.screenshots" : "reviews.website")}
             />
           </div>
         ))}

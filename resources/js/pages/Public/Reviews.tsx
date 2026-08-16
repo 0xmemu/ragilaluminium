@@ -30,6 +30,7 @@ interface ModelNavOption {
  * Satu slug (/reviews) dengan nav/filter model produk seperti halaman Model Produk.
  */
 export default function Reviews({
+  type = "ss",
   pageMeta,
   testimonials = [],
   modelNav = [],
@@ -37,6 +38,7 @@ export default function Reviews({
   stats,
   installationsHref,
 }: {
+  type?: "ss" | "web"
   pageMeta?: { title: string; heading: string; subtitle: string } | null
   testimonials?: Testimonial[]
   modelNav?: ModelNavOption[]
@@ -44,10 +46,15 @@ export default function Reviews({
   stats?: { website_total?: number; average_rating?: number | null }
   installationsHref?: string
 }) {
-  const heading = pageMeta?.heading?.trim().replace(/\.$/, "") || "Apa kata pelanggan kami"
+  const isSs = type === "ss"
+  const heading =
+    pageMeta?.heading?.trim().replace(/\.$/, "") ||
+    (isSs ? "Apa kata pelanggan kami" : "Ulasan pelanggan di website")
   const subtitle =
     pageMeta?.subtitle?.trim() ||
-    "Screenshot percakapan Shopee/WhatsApp dan ulasan pelanggan di website."
+    (isSs
+      ? "Galeri screenshot percakapan Shopee/WhatsApp dari pelanggan."
+      : "Ulasan pelanggan yang memesan lewat website.")
   const docTitle = pageMeta?.title?.trim() || heading
 
   const marketplace = React.useMemo(() => {
@@ -79,7 +86,7 @@ export default function Reviews({
     [],
   )
 
-  const total = stats?.website_total ?? testimonials.length
+  const total = isSs ? marketplace.length : (stats?.website_total ?? website.length)
   const averageRating = stats?.average_rating ?? null
 
   const galleryItems = React.useMemo(() => toGalleryItems(testimonials), [testimonials])
@@ -90,7 +97,7 @@ export default function Reviews({
 
   function selectModel(value: string | null) {
     router.get(
-      routeUrl("reviews"),
+      routeUrl(isSs ? "reviews.screenshots" : "reviews.website"),
       value ? { model: value } : {},
       { preserveScroll: true, preserveState: false, replace: true },
     )
@@ -265,57 +272,59 @@ export default function Reviews({
               </FilterSidebar>
             </div>
           </aside><div className="flex flex-col gap-8">
-            <section id="apa-kata-pelanggan" className="scroll-mt-20">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-base font-bold text-foreground">Screenshot pelanggan</h2>
-                <span className="tabular-nums text-sm text-muted-foreground">
-                  {formatNumber(marketplace.length)}
-                </span>
-              </div>
-              {renderGrid(
-                marketplace,
-                "screenshot",
-                "Belum ada screenshot pelanggan",
-                "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
-              )}
-            </section>
-
-            <section id="ulasan-website" className="scroll-mt-20">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-base font-bold text-foreground">
-                    Ulasan pelanggan di website
-                  </h2>
+            {isSs ? (
+              <section id="apa-kata-pelanggan" className="scroll-mt-20">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-bold text-foreground">Screenshot pelanggan</h2>
                   <span className="tabular-nums text-sm text-muted-foreground">
-                    {formatNumber(websiteFiltered.length)}
+                    {formatNumber(marketplace.length)}
                   </span>
                 </div>
-                <FilterBerdasarkanControl
-                  id="reviews-star"
-                  variant="plain"
-                  value={starFilter}
-                  options={starOptions}
-                  onChange={setStarFilter}
-                  ariaLabel="Filter ulasan berdasarkan bintang"
-                  menuLabel="Urutkan / Filter"
-                />
-              </div>
-              {renderGrid(
-                websiteFiltered,
-                "review",
-                starFilter
-                  ? `Belum ada ulasan bintang ${starFilter}`
-                  : "Belum ada ulasan website",
-                starFilter
-                  ? "Ulasan dengan rating tersebut belum tersedia. Coba bintang lain atau Semua."
-                  : "Ulasan dari pembeli website akan tampil di sini.",
-              )}
-            </section>
+                {renderGrid(
+                  marketplace,
+                  "screenshot",
+                  "Belum ada screenshot pelanggan",
+                  "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
+                )}
+              </section>
+            ) : (
+              <section id="ulasan-website" className="scroll-mt-20">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-base font-bold text-foreground">
+                      Ulasan pelanggan di website
+                    </h2>
+                    <span className="tabular-nums text-sm text-muted-foreground">
+                      {formatNumber(websiteFiltered.length)}
+                    </span>
+                  </div>
+                  <FilterBerdasarkanControl
+                    id="reviews-star"
+                    variant="plain"
+                    value={starFilter}
+                    options={starOptions}
+                    onChange={setStarFilter}
+                    ariaLabel="Filter ulasan berdasarkan bintang"
+                    menuLabel="Urutkan / Filter"
+                  />
+                </div>
+                {renderGrid(
+                  websiteFiltered,
+                  "review",
+                  starFilter
+                    ? `Belum ada ulasan bintang ${starFilter}`
+                    : "Belum ada ulasan website",
+                  starFilter
+                    ? "Ulasan dengan rating tersebut belum tersedia. Coba bintang lain atau Semua."
+                    : "Ulasan dari pembeli website akan tampil di sini.",
+                )}
+              </section>
+            )}
           </div>
         </div>
       </section>
 
-      {galleryItems.length ? (
+      {isSs && galleryItems.length ? (
         <GalleryLightbox
           items={galleryItems}
           index={lightboxIndex}

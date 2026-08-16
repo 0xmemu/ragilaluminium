@@ -137,7 +137,7 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $this->get(route('reviews'))
+        $this->get(route('reviews.screenshots'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
@@ -161,7 +161,7 @@ class ProductReviewsTest extends TestCase
             'published' => true,
         ]);
 
-        $this->get(route('reviews'))
+        $this->get(route('reviews.screenshots'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
@@ -201,7 +201,7 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $this->get(route('reviews'))
+        $this->get(route('reviews.website'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
@@ -268,23 +268,24 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 2,
         ]);
 
-        $this->get(route('reviews', ['source' => 'marketplace']))
+        // Halaman galeri screenshot (/reviews/ss): hanya ulasan ber-gambar.
+        $this->get(route('reviews.screenshots'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 3)
-                ->where('stats.website_total', 1)
+                ->has('testimonials', 2)
+                ->where('stats.website_total', 0)
                 ->has('modelNav')
                 ->has('pageMeta')
                 ->has('installationsHref')
             );
 
-        $this->get(route('reviews'))
+        $this->get(route('reviews.screenshots'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 3)
-                ->where('stats.website_total', 1)
+                ->has('testimonials', 2)
+                ->where('stats.website_total', 0)
             );
     }
 
@@ -316,7 +317,7 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $this->get(route('reviews'))
+        $this->get(route('reviews.website'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
@@ -382,29 +383,30 @@ class ProductReviewsTest extends TestCase
             'sort_order' => 3,
         ]);
 
-        // Halaman gabungan: marketplace + website tampil dalam satu slug /reviews.
-        $this->get(route('reviews'))
+        // Halaman "Ulasan website" (/reviews/web): hanya ulasan website teks/rating.
+        $this->get(route('reviews.website'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 3)
+                ->has('testimonials', 2)
                 ->where('stats.website_total', 2)
                 ->where('stats.average_rating', 4.5)
                 ->has('modelNav')
                 ->has('installationsHref')
             );
 
-        // Filter model produk ala halaman Model Produk.
-        $this->get(route('reviews', ['model' => 'WINDOW|SLIDING']))
+        // Filter model produk (web).
+        $this->get(route('reviews.website', ['model' => 'WINDOW|SLIDING']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 2)
+                ->has('testimonials', 1)
                 ->where('activeModel', 'WINDOW|SLIDING')
             );
 
-        // Slug lama /ulasan di-redirect 301 ke /reviews.
-        $this->get('/ulasan')->assertRedirect(route('reviews'));
+        // Slug lama /ulasan & /reviews di-redirect 301 ke /reviews/web.
+        $this->get('/ulasan')->assertRedirect(route('reviews.website'));
+        $this->get('/reviews')->assertRedirect(route('reviews.website'));
     }
 
     public function test_home_splits_marketplace_and_website_testimonials(): void
