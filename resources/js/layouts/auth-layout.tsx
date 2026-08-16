@@ -20,7 +20,7 @@ export function AuthLayout({
           <Link href={routeUrl("home")} aria-label="Beranda">
             <BrandWordmark variant="dark" />
           </Link>
-          <CardTitle>{heading ?? "masuk ke panel admin"}</CardTitle>
+          <CardTitle>{heading ?? "Masuk Ke Panel Admin"}</CardTitle>
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
@@ -30,7 +30,7 @@ export function AuthLayout({
         className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
       >
         <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
-        kembali ke beranda
+        Kembali Ke Beranda
       </Link>
     </main>
   )

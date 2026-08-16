@@ -25,14 +25,14 @@ export default function Login({ login = "" }: { login?: string }) {
   }
 
   return (
-    <AuthLayout heading="masuk ke panel admin">
-      <Head title="login admin" />
+    <AuthLayout heading="Masuk Ke Panel Admin">
+      <Head title="Login Admin" />
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <FormErrorSummary errors={form.errors} />
+        <FormErrorSummary title="Username/Password Salah" errors={form.errors} hideMessages />
 
         <Field
           id="login-identifier"
-          label="email/username"
+          label="Email/Username"
           required
           error={form.errors.login}
         >
@@ -42,13 +42,13 @@ export default function Login({ login = "" }: { login?: string }) {
             onChange={(event) => form.setData("login", event.target.value)}
             autoComplete="username"
             autoFocus
-            placeholder="masukkan email/username"
+            placeholder="Masukkan Email/Username"
           />
         </Field>
 
         <div className="grid gap-1.5">
           <label htmlFor="login-password" className="text-sm font-medium text-foreground">
-            password
+            Password
           </label>
           <div className="relative">
             <Input
@@ -57,7 +57,7 @@ export default function Login({ login = "" }: { login?: string }) {
               value={form.data.password}
               onChange={(event) => form.setData("password", event.target.value)}
               autoComplete="current-password"
-              placeholder="masukkan password"
+              placeholder="Masukkan Password"
               className="pr-11"
               aria-describedby={form.errors.password ? "login-password-error" : undefined}
               aria-invalid={Boolean(form.errors.password)}
@@ -66,7 +66,7 @@ export default function Login({ login = "" }: { login?: string }) {
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
               className="absolute right-1 top-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={showPassword ? "Sembunyikan Password" : "Tampilkan Password"}
             >
               <Icon name="eye" className="size-4" aria-hidden="true" />
             </button>
@@ -81,13 +81,13 @@ export default function Login({ login = "" }: { login?: string }) {
         <Checkbox
           checked={form.data.remember}
           onChange={(event) => form.setData("remember", event.target.checked)}
-          label="tetap masuk di perangkat ini"
+          label="Tetap Masuk Di Perangkat Ini"
           round
           compact
         />
 
         <Button type="submit" className="mt-1 w-full" disabled={form.processing}>
-          {form.processing ? "memeriksa..." : "masuk"}
+          {form.processing ? "Memeriksa..." : "Masuk"}
         </Button>
       </form>
     </AuthLayout>

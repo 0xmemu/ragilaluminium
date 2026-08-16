@@ -87,7 +87,7 @@ class LoginController extends Controller
         RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
         return back()->withErrors([
-            'login' => 'Username/email atau password tidak cocok.',
+            'login' => 'Username/Password Salah',
         ])->onlyInput('login');
     }
 
