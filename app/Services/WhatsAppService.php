@@ -590,7 +590,7 @@ class WhatsAppService
             $msg['text']['body'] ?? null,
         ]));
 
-        if (preg_match('/RA-\d{6}-[A-Z0-9]+/i', $haystack, $match)) {
+        if (preg_match('/(?:RA-\d{6}-[A-Z0-9]+|ORD\d{8})/i', $haystack, $match)) {
             $order = Order::query()
                 ->where('order_number', strtoupper($match[0]))
                 ->where('order_status', 'pending_payment')

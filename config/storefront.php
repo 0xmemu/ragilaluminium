@@ -17,13 +17,13 @@ return [
     | Manual admin product public ID (website-created, not Shopee import)
     |--------------------------------------------------------------------------
     |
-    | Admin-created products receive parent_sku = {prefix}{randomToken}.
-    | Default prefix WEB keeps them distinct from Shopee imports (SP{n}).
+    | Admin-created products receive parent_sku = RA + 10 random chars (Fase 4, no dash).
+    | Default prefix RA keeps manual codes distinct from Shopee imports (SP{n}).
     | These codes are URL/backend keys only — never show on the storefront.
     | manual_sku_floor is legacy (sequential era) and unused by the random allocator.
     |
     */
-    'manual_sku_prefix' => env('STOREFRONT_MANUAL_SKU_PREFIX', 'WEB'),
+    'manual_sku_prefix' => env('STOREFRONT_MANUAL_SKU_PREFIX', 'RA'),
     'manual_sku_floor' => (int) env('STOREFRONT_MANUAL_SKU_FLOOR', 1),
 
     /*

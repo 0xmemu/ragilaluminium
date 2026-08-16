@@ -46,7 +46,7 @@ class CheckoutFlowTest extends TestCase
         ])->assertRedirect();
 
         $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
-            ->assertRedirectContains('/order/RA-');
+            ->assertRedirectContains('/order/ORD');
 
         $order = Order::latest()->first();
         $this->assertNotNull($order);
@@ -102,7 +102,7 @@ class CheckoutFlowTest extends TestCase
         ])->assertRedirect();
 
         $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
-            ->assertRedirectContains('/order/RA-');
+            ->assertRedirectContains('/order/ORD');
 
         $order = Order::latest()->first();
         $this->assertNotNull($order);

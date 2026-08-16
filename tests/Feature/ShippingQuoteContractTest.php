@@ -144,7 +144,7 @@ class ShippingQuoteContractTest extends TestCase
         ]);
 
         $this->post('/checkout/place-order', ['payment_method' => 'cod'])
-            ->assertRedirectContains('/order/RA-');
+            ->assertRedirectContains('/order/ORD');
 
         $order = Order::latest('id')->firstOrFail();
         $this->assertTrue((bool) $order->cod_flag);
@@ -231,7 +231,7 @@ class ShippingQuoteContractTest extends TestCase
         ]);
 
         $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
-            ->assertRedirectContains('/order/RA-');
+            ->assertRedirectContains('/order/ORD');
 
         $order = Order::latest('id')->firstOrFail();
         $this->assertDatabaseHas('admin_notifications', [

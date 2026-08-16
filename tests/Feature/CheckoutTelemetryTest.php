@@ -42,7 +42,7 @@ class CheckoutTelemetryTest extends TestCase
         $response = $this->post('/checkout/place-order', ['payment_method' => 'transfer']);
         $requestId = (string) $response->headers->get('X-Request-ID');
 
-        $response->assertRedirectContains('/order/RA-');
+        $response->assertRedirectContains('/order/ORD');
         Log::shouldHaveReceived('info')
             ->withArgs(function ($message, $context) use ($requestId): bool {
                 return $message === 'checkout_outcome'

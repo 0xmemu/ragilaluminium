@@ -12,37 +12,29 @@ class ShopeeStyleSkuTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_next_parent_sku_is_opaque_random_with_prefix(): void
+    public function test_next_parent_sku_is_ra_plus_10_random_chars_without_dashes(): void
     {
-        $prefix = ShopeeStyleSku::manualPrefix();
-
         $first = ShopeeStyleSku::nextParentSku();
-        Product::create([
-            'parent_sku' => $first,
-            'name' => 'Allocated',
-            'category_id' => 1,
-            'product_category' => 'WINDOW',
-            'product_model' => 'SLIDING',
-            'design_variant' => 'POLOS',
-            'status' => 'draft',
-        ]);
         $second = ShopeeStyleSku::nextParentSku();
 
-        $this->assertTrue(str_starts_with($first, $prefix));
-        $this->assertTrue(str_starts_with($second, $prefix));
-        $this->assertSame(strlen($prefix) + 10, strlen($first));
-        $this->assertSame(strlen($prefix) + 10, strlen($second));
+        // RA + 10 random chars = 12 chars, no dashes, opaque.
+        $this->assertSame('RA', substr($first, 0, 2));
+        $this->assertSame('RA', substr($second, 0, 2));
+        $this->assertSame(12, strlen($first));
+        $this->assertSame(12, strlen($second));
+        $this->assertStringNotContainsString('-', $first);
         $alphabet = ShopeeStyleSku::RANDOM_ALPHABET;
-        $this->assertTrue(strspn(substr($first, strlen($prefix)), $alphabet) === 10);
-        $this->assertTrue(strspn(substr($second, strlen($prefix)), $alphabet) === 10);
+        $this->assertSame(10, strspn(substr($first, 2), $alphabet));
+        $this->assertSame(10, strspn(substr($second, 2), $alphabet));
         $this->assertNotSame($first, $second);
     }
 
-    public function test_next_parent_sku_does_not_collide_with_shopee_sp_skus(): void
+    public function test_next_parent_sku_is_unique_globally(): void
     {
+        $occupied = 'RA'.str_repeat('2', 10);
         Product::create([
-            'parent_sku' => 'SP24247818254',
-            'name' => 'Shopee item',
+            'parent_sku' => $occupied,
+            'name' => 'Occupied',
             'category_id' => 1,
             'product_category' => 'WINDOW',
             'product_model' => 'SLIDING',
@@ -52,15 +44,16 @@ class ShopeeStyleSkuTest extends TestCase
 
         $manual = ShopeeStyleSku::nextParentSku();
 
-        $this->assertStringStartsWith('WEB', $manual);
-        $this->assertNotSame('WEB1', $manual);
-        $this->assertGreaterThan(strlen('WEB'), strlen($manual));
+        $this->assertStringStartsWith('RA', $manual);
+        $this->assertSame(12, strlen($manual));
+        $this->assertStringNotContainsString('-', $manual);
+        $this->assertNotSame($occupied, $manual);
     }
 
-    public function test_next_variant_sku_uses_parent_for_first_then_random_suffix(): void
+    public function test_next_variant_sku_is_ra_plus_6_to_8_random_no_dash_independent_of_parent(): void
     {
         $product = Product::create([
-            'parent_sku' => 'WEBABCDEF12',
+            'parent_sku' => 'RAABCDEFGH1',
             'name' => 'Test',
             'category_id' => 1,
             'product_category' => 'WINDOW',
@@ -69,25 +62,29 @@ class ShopeeStyleSkuTest extends TestCase
             'status' => 'active',
         ]);
 
-        $first = ShopeeStyleSku::nextVariantSku($product);
-        ProductVariant::create([
-            'product_id' => $product->id,
-            'variant_sku' => $first,
-            'price' => 1000000,
-            'stock' => 1,
-            'status' => 'active',
-        ]);
+        foreach (range(1, 20) as $i) {
+            $sku = ShopeeStyleSku::nextVariantSku($product);
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'variant_sku' => $sku,
+                'price' => 1000000,
+                'stock' => 1,
+                'status' => 'active',
+            ]);
 
-        $second = ShopeeStyleSku::nextVariantSku($product);
-
-        $this->assertSame('WEBABCDEF12', $first);
-        $this->assertTrue(str_starts_with($second, 'WEBABCDEF12-'));
-        $this->assertSame(strlen('WEBABCDEF12-') + 6, strlen($second));
-        $this->assertTrue(strspn(substr($second, strlen('WEBABCDEF12-')), ShopeeStyleSku::RANDOM_ALPHABET) === 6);
+            $this->assertStringStartsWith('RA', $sku);
+            $this->assertStringNotContainsString('-', $sku);
+            $tokenLen = strlen($sku) - 2;
+            $this->assertGreaterThanOrEqual(6, $tokenLen, 'variant random token too short');
+            $this->assertLessThanOrEqual(8, $tokenLen, 'variant random token too long');
+            // Independent: never derived from the parent SKU.
+            $this->assertNotSame($product->parent_sku, $sku);
+        }
     }
 
-    public function test_format_variant_sku_matches_shopee_import_rules(): void
+    public function test_format_variant_sku_matches_shopee_import_rules_legacy(): void
     {
+        // Legacy Shopee format stays unchanged (SP{n}, SP{n}-{variation}).
         $this->assertSame('SP123', ShopeeStyleSku::formatVariantSku('SP123'));
         $this->assertSame('SP123-456', ShopeeStyleSku::formatVariantSku('SP123', '456'));
         $this->assertSame('SP123-CUSTOM', ShopeeStyleSku::formatVariantSku('SP123', '456', 'SP123-CUSTOM'));

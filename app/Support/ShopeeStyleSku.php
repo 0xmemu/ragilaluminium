@@ -7,22 +7,36 @@ use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Opaque product public-ID helpers (DB columns parent_sku / variant_sku):
- * - Shopee import: SP{product_id}, variants SP{id}-{variation_id}
- * - Website/admin create: random opaque ID with configurable prefix (default WEB)
+ * Opaque public IDs for products & variants (columns parent_sku / variant_sku):
  *
- * These codes are URL/backend keys — do not display them on the storefront.
+ * - Shopee import (legacy, immutable): SP{product_id}, variants SP{id}-{variation_id}
+ * - Admin / website create (Fase 4, FINAL): RA + 10 random chars (products),
+ *   RA + 6..8 random chars (variants), NO dashes, fully opaque and unique.
+ *   Variant -> product association is via FK product_variant.product_id, NEVER
+ *   by parsing the variant SKU.
+ *
+ * These codes are URL/backend keys - do not display them on the storefront.
  */
 class ShopeeStyleSku
 {
     public const SHOPEE_PREFIX = 'SP';
 
+    /** FINAL website/admin prefix (Fase 4): RA + random, no dashes. */
+    public const WEBSITE_PREFIX = 'RA';
+
     /** Characters for random website IDs (URL-safe, no ambiguous 0/O/1/l). */
     public const RANDOM_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
+    /** Random token length for admin-created products (RA + 10). */
+    public const PARENT_RANDOM_LENGTH = 10;
+
+    /** Random token length range for admin-created variants (RA + 6..8). */
+    public const VARIANT_RANDOM_MIN = 6;
+    public const VARIANT_RANDOM_MAX = 8;
+
     public static function manualPrefix(): string
     {
-        return (string) config('storefront.manual_sku_prefix', 'WEB');
+        return (string) config('storefront.manual_sku_prefix', self::WEBSITE_PREFIX);
     }
 
     public static function formatParentSku(string|int $productId): string
@@ -51,19 +65,16 @@ class ShopeeStyleSku
         return $parentSku;
     }
 
-    /** Allocate a unique opaque public ID for admin-created (website) products. */
+    /**
+     * Allocate a unique opaque product public ID for admin-created (website)
+     * products: RA + 10 random chars. Generated only on create/duplicate and
+     * IMMUTABLE afterwards - editing attributes never changes the SKU.
+     */
     public static function nextParentSku(): string
     {
-        $prefix = self::manualPrefix();
-
-        return DB::transaction(function () use ($prefix) {
-            Product::query()
-                ->where('parent_sku', 'like', $prefix.'%')
-                ->lockForUpdate()
-                ->pluck('parent_sku');
-
+        return DB::transaction(function () {
             for ($attempt = 0; $attempt < 32; $attempt++) {
-                $candidate = $prefix.self::randomToken(10);
+                $candidate = self::WEBSITE_PREFIX.self::randomToken(self::PARENT_RANDOM_LENGTH);
                 if (! Product::where('parent_sku', $candidate)->exists()) {
                     return $candidate;
                 }
@@ -73,30 +84,18 @@ class ShopeeStyleSku
         });
     }
 
-    /** Allocate a unique variant ID for a product (first = parent ID, next = parent-random). */
+    /**
+     * Allocate a unique opaque variant public ID: RA + 6..8 random chars,
+     * fully independent from the parent SKU (no dashes). Association to the
+     * product relies on the product_id FK, never on SKU parsing.
+     */
     public static function nextVariantSku(Product $product): string
     {
-        $parentSku = $product->parent_sku;
+        $length = random_int(self::VARIANT_RANDOM_MIN, self::VARIANT_RANDOM_MAX);
 
-        return DB::transaction(function () use ($product, $parentSku) {
-            ProductVariant::query()
-                ->where('product_id', $product->id)
-                ->lockForUpdate()
-                ->pluck('variant_sku');
-
-            $existing = ProductVariant::query()
-                ->where('product_id', $product->id)
-                ->pluck('variant_sku');
-
-            if ($existing->isEmpty()) {
-                $candidate = $parentSku;
-                if (! ProductVariant::where('variant_sku', $candidate)->exists()) {
-                    return $candidate;
-                }
-            }
-
+        return DB::transaction(function () use ($product, $length) {
             for ($attempt = 0; $attempt < 32; $attempt++) {
-                $candidate = $parentSku.'-'.self::randomToken(6);
+                $candidate = self::WEBSITE_PREFIX.self::randomToken($length);
                 if (! ProductVariant::where('variant_sku', $candidate)->exists()) {
                     return $candidate;
                 }

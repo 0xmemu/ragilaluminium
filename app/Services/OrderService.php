@@ -392,9 +392,9 @@ class OrderService
 
     protected function generateOrderNumber(): string
     {
-        $seq = app(SequenceService::class)->next('order-'.now()->format('Ymd'));
+        $seq = app(SequenceService::class)->next('order-'.now()->format('ym'));
 
-        return 'RA-'.now()->format('ymd').'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        return 'ORD'.now()->format('ym').str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 
     /**
