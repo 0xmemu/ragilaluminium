@@ -55,3 +55,10 @@ xlsx/
 /_cf_rate_limit.py
 /_sync_env_example.py
 /.gitignore.bak-*
+
+# --- Artefak backup/junk agent (bukan sumber kebenaran) ---
+/.backup-*/
+/.env.pre-*
+*.bak-*
+/resources/js/ziggy.d.ts
+/storage/logs/
