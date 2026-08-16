@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\OrderProcessingStarted;
 use App\Events\ShippingStatusUpdated;
+use App\Models\Product;
 use App\Models\ProductPopularityBoost;
 use App\Services\ProductPopularityService;
 
