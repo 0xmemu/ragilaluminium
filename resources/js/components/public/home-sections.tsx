@@ -114,7 +114,7 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
             description="Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
             action={
               <Button asChild>
-                <Link href={routeUrl("catalog.category", { category: "windows" })}>Jelajahi Produk</Link>
+                <Link href={routeUrl("catalog.category", { category: "jendela" })}>Jelajahi Produk</Link>
               </Button>
             }
           />
