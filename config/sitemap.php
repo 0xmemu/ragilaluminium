@@ -232,7 +232,7 @@ return [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'icon' => 'package',
-                'active' => ['catalog.index', 'catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'active' => ['catalog.index', 'catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
                 'label' => 'Pesanan',
@@ -258,13 +258,13 @@ return [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'icon' => 'package',
-                'active' => ['catalog.index', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'active' => ['catalog.index', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
                 'label' => 'Semua Produk',
                 'route' => 'catalog.all',
                 'icon' => 'grid-2x2',
-                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
                 'label' => 'Hasil Pemasangan',
@@ -340,7 +340,7 @@ return [
             [
                 'label' => 'Produk',
                 'route' => 'catalog.all',
-                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
                 'label' => 'Ulasan',
@@ -408,8 +408,8 @@ return [
             'links' => [
                 ['label' => 'Model Produk', 'route' => 'catalog.index'],
                 ['label' => 'Paling Banyak Dipesan', 'route' => 'catalog.index', 'params' => ['sort' => 'popular']],
-                ['label' => 'Jendela', 'route' => 'catalog.windows'],
-                ['label' => 'Boven', 'route' => 'catalog.bouven'],
+                ['label' => 'Jendela', 'route' => 'catalog.category', 'params' => ['category' => 'jendela']],
+                ['label' => 'Boven', 'route' => 'catalog.category', 'params' => ['category' => 'boven']],
             ],
         ],
         'help' => [
@@ -534,21 +534,22 @@ return [
         'items' => [
             [
                 'text' => 'Promo Boven Jungkit: harga miring untuk model favorit rumah Indonesia',
-                'route' => 'catalog.bouven',
-                'params' => ['model' => 'JUNGKIT'],
+                'route' => 'catalog.model',
+                'params' => ['category' => 'boven', 'model' => 'jungkit'],
                 'starts_at' => '2026-07-01',
                 'ends_at' => '2026-09-30',
             ],
             [
                 'text' => 'Diskon model Swing dan Sliding: jendela aluminium siap pilih dan bisa custom',
-                'route' => 'catalog.windows',
-                'params' => ['sort' => 'newest'],
+                'route' => 'catalog.category',
+                'params' => ['category' => 'jendela', 'sort' => 'newest'],
                 'starts_at' => '2026-07-01',
                 'ends_at' => '2026-09-30',
             ],
             [
                 'text' => 'Pintu aluminium promo aktif. Bandingkan model di katalog sekarang',
-                'route' => 'catalog.doors',
+                'route' => 'catalog.category',
+                'params' => ['category' => 'pintu'],
                 'starts_at' => '2026-07-01',
                 'ends_at' => '2026-09-30',
             ],
