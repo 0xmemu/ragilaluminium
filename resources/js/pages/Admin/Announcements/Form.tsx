@@ -95,12 +95,12 @@ export default function AnnouncementForm({
               id="href"
               label="Link tujuan / produk terkait"
               error={form.errors.href}
-              hint="Path internal (mis. /products/bouven/jungkit) atau URL penuh. Kosongkan untuk arahkan ke katalog."
+              hint="Path internal (mis. /products/boven/jungkit) atau URL penuh. Kosongkan untuk arahkan ke katalog."
             >
               <Input
                 value={form.data.href}
                 onChange={(event) => form.setData("href", event.target.value)}
-                placeholder="/products/bouven/jungkit"
+                placeholder="/products/boven/jungkit"
               />
             </Field>
             <Field id="starts" label="Mulai (opsional)" error={form.errors.starts_at}>

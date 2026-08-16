@@ -46,9 +46,6 @@ declare module 'ziggy-js' {
     ],
     "catalog.promo": [],
     "catalog.flash-sale": [],
-    "catalog.windows": [],
-    "catalog.doors": [],
-    "catalog.bouven": [],
     "search": [],
     "product.show": [
         {
