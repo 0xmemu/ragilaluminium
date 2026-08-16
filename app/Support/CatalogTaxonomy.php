@@ -135,11 +135,7 @@ class CatalogTaxonomy
             $pairs = [];
             foreach ($wanted as $w) {
                 $sample = $samples->get($w['model'].'|'.$w['category']);
-                $categorySlug = match ($w['category']) {
-                    'DOOR' => 'doors',
-                    'BOUVEN' => 'bouven',
-                    default => 'windows',
-                };
+                $categorySlug = CategoryUrl::categoryToSlug((string) $w['category']);
                 $route = $design ? 'catalog.design' : 'catalog.model';
                 $params = array_filter([
                     'category' => $categorySlug,

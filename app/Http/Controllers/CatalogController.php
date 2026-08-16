@@ -7,6 +7,7 @@ use App\Services\ModelProductService;
 use App\Support\CatalogLabels;
 use App\Support\CatalogSearch;
 use App\Support\CatalogTaxonomy;
+use App\Support\CategoryUrl;
 use App\Support\FlashSalePeriodSettings;
 use App\Support\InertiaCatalog;
 use App\Support\InstallationGallery;
@@ -99,11 +100,12 @@ class CatalogController extends Controller
         return $this->redirectLegacyCategory('bouven', $request);
     }
 
-    protected function redirectLegacyCategory(string $category, Request $request)
+    protected function redirectLegacyCategory(string $legacySlug, Request $request)
     {
         $model = CatalogLabels::normalizeModel($request->query('model'));
         $design = CatalogLabels::normalizeDesign($request->query('design'));
-        $parameters = ['category' => $category];
+        $categorySlug = CategoryUrl::categoryToSlug((string) CategoryUrl::categoryFromSlug($legacySlug));
+        $parameters = ['category' => $categorySlug];
         $route = 'catalog.category';
 
         if (filled($model)) {
@@ -288,9 +290,7 @@ class CatalogController extends Controller
             $request->routeIs('catalog.flash-sale') => '/flash-sale',
             $promoOnly => '/promo',
             $request->routeIs('catalog.category', 'catalog.design') => '/'.$request->path(),
-            $category === 'WINDOW' => '/products/windows',
-            $category === 'DOOR' => '/products/doors',
-            $category === 'BOUVEN' => '/products/bouven',
+            $category !== null => '/products/'.CategoryUrl::categoryToSlug($category),
             default => '/products/all',
         };
 
@@ -385,11 +385,7 @@ class CatalogController extends Controller
 
         $tokens = preg_split('/\s+/u', mb_strtolower($term), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $haystacks = array_values(array_unique(array_merge([mb_strtolower($term)], $tokens)));
-        $categorySlug = match (strtoupper((string) $category)) {
-            'DOOR' => 'doors',
-            'BOUVEN' => 'bouven',
-            default => 'window',
-        };
+        $categorySlug = CategoryUrl::categoryToSlug((string) $category);
 
         foreach (CatalogLabels::MODEL_ORDER as $code) {
             $label = mb_strtolower(CatalogLabels::model($code));
@@ -580,11 +576,7 @@ class CatalogController extends Controller
             return [];
         }
 
-        $categorySlug = match ($categoryCode) {
-            'DOOR' => 'doors',
-            'BOUVEN' => 'bouven',
-            default => 'windows',
-        };
+        $categorySlug = CategoryUrl::categoryToSlug($categoryCode);
 
         $ordered = [];
         foreach (CatalogLabels::DESIGN_ORDER as $code) {

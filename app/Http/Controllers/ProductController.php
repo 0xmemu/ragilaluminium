@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Services\ProductEngagementService;
 use App\Services\ProductPopularityService;
 use App\Support\CatalogLabels;
+use App\Support\CategoryUrl;
 use App\Support\InertiaCatalog;
 use App\Support\InstallationGallery;
 use App\Support\ProductPromotionMetadata;
@@ -82,11 +83,7 @@ class ProductController extends Controller
             $detailVariants = $selectedVariant ? collect([$selectedVariant]) : collect();
         }
 
-        $categorySlug = match ($product->product_category) {
-            'DOOR' => 'doors',
-            'BOUVEN' => 'bouven',
-            default => 'windows',
-        };
+        $categorySlug = CategoryUrl::categoryToSlug((string) $product->product_category);
 
         $modelLabel = CatalogLabels::model($product->product_model);
         $designLabel = CatalogLabels::design($product->design_variant);

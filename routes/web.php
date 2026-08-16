@@ -79,18 +79,18 @@ Route::get('/policy/terms', [PageController::class, 'terms'])->name('terms');
 Route::get('/products', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('/products/all', [CatalogController::class, 'all'])->name('catalog.all');
 Route::get('/products/{category}', [CatalogController::class, 'categoryShow'])
-    ->where('category', 'window|windows|door|doors|bouven|boven|jendela|pintu')
+    ->where('category', '[a-z0-9-]+')
     ->name('catalog.category');
 Route::get('/products/{category}/{model}', [CatalogController::class, 'modelShow'])
     ->where([
-        'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu',
+        'category' => '[a-z0-9-]+',
         'model' => '[A-Za-z0-9_-]+',
     ])
     ->name('catalog.model');
 
 Route::get('/products/{category}/{model}/{design}', [CatalogController::class, 'designShow'])
     ->where([
-        'category' => 'window|windows|door|doors|bouven|boven|jendela|pintu',
+        'category' => '[a-z0-9-]+',
         'model' => '[A-Za-z0-9_-]+',
         'design' => '[A-Za-z0-9_-]+',
     ])
@@ -120,11 +120,17 @@ Route::post('/cart/restore', [CartController::class, 'restore'])->name('cart.res
 Route::post('/cart/select', [CartController::class, 'select'])->name('cart.select');
 Route::post('/cart/remove-selected', [CartController::class, 'removeSelected'])->name('cart.remove-selected');
 
-Route::get('/reviews', [PageController::class, 'reviews'])->name('reviews');
-// /ulasan (lama) di-redirect 301 ke /reviews agar hanya satu slug review.
+Route::get('/reviews/web', [PageController::class, 'reviewsWebsite'])->name('reviews.website');
+Route::get('/reviews/ss', [PageController::class, 'reviewsScreenshots'])->name('reviews.screenshots');
+// /reviews (lama) di-redirect 301 ke /reviews/web; query (filter model dll.) diteruskan.
+Route::get('/reviews', function () {
+    $qs = request()->getQueryString();
+    return redirect(route('reviews.website').($qs ? '?'.$qs : ''), 301);
+});
+// /ulasan (sangat lama) di-redirect 301 ke /reviews agar satu slug review.
 Route::get('/ulasan', function () {
     $qs = request()->getQueryString();
-    return redirect(route('reviews').($qs ? '?'.$qs : ''), 301);
+    return redirect(route('reviews.website').($qs ? '?'.$qs : ''), 301);
 });
 Route::get('/hasil-pemasangan', [PageController::class, 'installations'])->name('installation.index');
 Route::get('/hasil-pemasangan/{category}/{model}', [PageController::class, 'installationModel'])

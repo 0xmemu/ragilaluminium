@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\CatalogLabels;
 use App\Support\CatalogTaxonomy;
+use App\Support\CategoryUrl;
 use App\Support\ModelProductPresentation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -202,11 +203,7 @@ class ModelProductService
             $key = $this->pairKey($row->product_category, $row->product_model);
             $designs = $stats[$key]['designs'] ?? [];
 
-            $categorySlug = match ($row->product_category) {
-                'DOOR' => 'doors',
-                'BOUVEN' => 'bouven',
-                default => 'windows',
-            };
+            $categorySlug = CategoryUrl::categoryToSlug((string) $row->product_category);
             $route = $design ? 'catalog.design' : 'catalog.model';
             $params = array_filter([
                 'category' => $categorySlug,
@@ -317,11 +314,7 @@ class ModelProductService
             $key = $this->pairKey($row->product_category, $row->product_model);
             $designCodes = $stats[$key]['design_codes'] ?? [];
 
-            $categorySlug = match ($row->product_category) {
-                'DOOR' => 'doors',
-                'BOUVEN' => 'bouven',
-                default => 'windows',
-            };
+            $categorySlug = CategoryUrl::categoryToSlug((string) $row->product_category);
             $modelSlug = strtolower(str_replace('_', '-', $row->product_model));
 
             $href = filled($row->menu_href)

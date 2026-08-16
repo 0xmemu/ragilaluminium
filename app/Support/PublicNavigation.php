@@ -62,9 +62,9 @@ class PublicNavigation
     public static function canonicalRoute(string $route, array $params = []): array
     {
         $category = match ($route) {
-            'catalog.windows' => 'windows',
-            'catalog.doors' => 'doors',
-            'catalog.bouven' => 'bouven',
+            'catalog.windows' => 'WINDOW',
+            'catalog.doors' => 'DOOR',
+            'catalog.bouven' => 'BOUVEN',
             default => null,
         };
 
@@ -76,7 +76,7 @@ class PublicNavigation
         $design = CatalogLabels::normalizeDesign($params['design'] ?? null);
         unset($params['model'], $params['design']);
 
-        $path = ['category' => $category];
+        $path = ['category' => CategoryUrl::categoryToSlug($category)];
         $target = 'catalog.category';
 
         if (filled($model)) {

@@ -288,20 +288,19 @@ class InstallationGallery
 
     public static function categoryToSlug(string $category): string
     {
-        return match (strtoupper(trim($category))) {
-            'DOOR' => 'doors',
-            'BOUVEN' => 'bouven',
-            default => 'window',
-        };
+        return CategoryUrl::categoryToSlug($category);
     }
 
     public static function categoryFromSlug(string $slug): ?string
     {
+        $code = CategoryUrl::categoryFromSlug($slug);
+        if ($code !== null) {
+            return $code;
+        }
+
+        // Kategori pseudo untuk media unggahan manual pada hierarki hasil pemasangan.
         return match (strtolower(trim($slug))) {
-            'doors', 'door', 'pintu' => 'DOOR',
-            'bouven', 'boven' => 'BOUVEN',
-            'windows', 'window', 'jendela' => 'WINDOW',
-            'lainnya', 'manual' => 'LAINNYA',
+            'lainnya', 'manual', 'other' => 'LAINNYA',
             default => null,
         };
     }
