@@ -819,7 +819,7 @@ Village/kelurahan postal mappings imported into a dataset version.
 
 UQ: `postal_dataset_id + village_id + village_name + postal_code`; IDX: dataset/postal and dataset/village.
 
-Import baseline: data.go.id “Kode Pos Desa Kelurahan di Indonesia”; Pos Indonesia is retained as a verification reference. Import command: `php artisan postal:import {path} --version=... --activate`. Existing orders retain their postal snapshot and are not rewritten.
+Import baseline: Satu Data Indonesia/data.go.id “Kode Pos Desa Kelurahan di Indonesia”; Pos Indonesia is retained as a verification cross-check. Activation requires source/version/checksum, parent-child integrity, duplicate checks, coverage/format validation, and verified review; unverified or missing mappings do not auto-fill checkout. The active dataset provides a server-side suggestion only, the customer postal-code field is readonly, and checkout rechecks the selected region when a mapping exists. Import command: `php artisan postal:import {path} --version=... --activate`. Existing orders retain their postal snapshot and are not rewritten.
 
 ## 15. Operational settings & audit contract (2026-08-15)
 

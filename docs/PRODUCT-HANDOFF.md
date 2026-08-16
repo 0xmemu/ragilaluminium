@@ -482,7 +482,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 
 **Checkout (`GET /checkout`)**
 - Consumes: cart summary, prior validated details (session `checkout_details`), shipping estimate.
-- Fields: `name`, `phone`, `province`, `city`, `district`, `village` (selected wilayah names), `province_id` / `city_id` / `district_id` / `village_id` (session helpers), `address_line1` (alamat lengkap, manual), `address_line2` (patokan, optional manual), `postal_code` (manual), per-item `note` (optional), `payment_method` (`cod` / `transfer` only on public checkout; opsi lain diproses manual via WhatsApp/admin). Order snapshot also stores `shipping_district` / `shipping_village`.
+- Fields: `name`, `phone`, `province`, `city`, `district`, `village` (selected wilayah names), `province_id` / `city_id` / `district_id` / `village_id` (session helpers), `address_line1` (alamat lengkap, manual), `address_line2` (patokan, optional manual), `postal_code` (server auto-fill readonly; blank jika mapping belum terverifikasi), per-item `note` (optional), `payment_method` (`cod` / `transfer` only on public checkout; opsi lain diproses manual via WhatsApp/admin). Order snapshot also stores `shipping_district` / `shipping_village`.
 - Actions: `POST /checkout/validate` (validate + shipping estimate), `POST /checkout/place-order` (throttled). Wilayah options: `GET /api/wilayah/provinces|regencies/{id}|districts/{id}|villages/{id}` (`?q=` filter). On success → redirect to confirmation.
 - States: validation errors per field, shipping-estimate failure fallback, Loading, empty-cart guard.
 

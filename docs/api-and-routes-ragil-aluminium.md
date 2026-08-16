@@ -326,8 +326,7 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 - `POST /api/shipping/quote` -> `ShippingQuoteController@store` [throttled]
   - input: `weight_kg`, `destination_city`, optional province/area/postal/village/district identifiers
   - output state: `ready` (live J&T, final), `fallback` (local formula while J&T is not ready), or `manual_review` (provider unavailable; provisional estimate only)
-- Postal validation uses the active versioned dataset. If no dataset is active, validation reports unavailable and does not invalidate legacy checkout data. Active data rejects a postal code that does not match the selected village/district.
-- GET /api/maps/geocode?query=... and GET /api/maps/geocode?lat=...&lon=... use the configured Google Geocoding API and return normalized address components, including postal_code when Google supplies one. Provider errors return state=unavailable without provider details.
+- Postal validation uses the active versioned dataset only after its quality gates pass. The dataset supplies a server-side auto-fill suggestion; the customer postal-code field is readonly. Submitted checkout data is rechecked against the selected village/district when a mapping exists. If mapping is missing or unverified, postal_code remains blank and the customer must reconfirm the full address or retry the region lookup; manual review is reserved for shipping quote/provider failure. No map provider supplies postal_code. If no dataset is active, validation reports unavailable and does not invalidate legacy checkout snapshots.
 
 ### Customer review contract
 
