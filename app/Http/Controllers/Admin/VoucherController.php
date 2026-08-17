@@ -79,8 +79,23 @@ class VoucherController extends Controller
             'published' => false,
         ]);
 
+        \App\Services\ActivityLogService::record(
+            'product.voucher.created',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code, 'name' => $voucher->name],
+            $userId,
+        );
+
         if ($request->boolean('publish_now')) {
             $this->vouchers->publishExclusive($voucher);
+            \App\Services\ActivityLogService::record(
+                'product.voucher.published',
+                'voucher',
+                $voucher->id,
+                ['code' => $voucher->code],
+                $userId,
+            );
         }
 
         return redirect()->route('admin.vouchers.index')
@@ -107,6 +122,14 @@ class VoucherController extends Controller
             'updated_by_user_id' => (int) $request->user()->id,
         ]);
 
+        \App\Services\ActivityLogService::record(
+            'product.voucher.updated',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            (int) $request->user()->id,
+        );
+
         if ($request->boolean('publish_now')) {
             $this->vouchers->publishExclusive($voucher->fresh());
         }
@@ -119,12 +142,28 @@ class VoucherController extends Controller
     {
         $this->vouchers->publishExclusive($voucher);
 
+        \App\Services\ActivityLogService::record(
+            'product.voucher.published',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            (int) auth()->id(),
+        );
+
         return redirect()->back()->with('success', 'Voucher diaktifkan. Voucher lain dinonaktifkan.');
     }
 
     public function unpublish(StoreVoucher $voucher): RedirectResponse
     {
         $this->vouchers->unpublish($voucher);
+
+        \App\Services\ActivityLogService::record(
+            'product.voucher.unpublished',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            (int) auth()->id(),
+        );
 
         return redirect()->back()->with('success', 'Voucher dinonaktifkan.');
     }
@@ -138,7 +177,7 @@ class VoucherController extends Controller
             $code = $baseCode.'_'.$suffix++;
         }
 
-        StoreVoucher::create([
+        $copy = StoreVoucher::create([
             'name' => $voucher->name.' (Salinan)',
             'code' => $code,
             'discount_type' => $voucher->discount_type,
@@ -152,6 +191,14 @@ class VoucherController extends Controller
             'updated_by_user_id' => $request->user()->id,
         ]);
 
+        \App\Services\ActivityLogService::record(
+            'product.voucher.duplicated',
+            'voucher',
+            $copy->id,
+            ['code' => $copy->code, 'from' => $voucher->id],
+            (int) $request->user()->id,
+        );
+
         return redirect()->back()->with('success', 'Voucher diduplikasi sebagai '.$code.'.');
     }
 
@@ -161,6 +208,14 @@ class VoucherController extends Controller
             'published' => false,
             'ends_at' => now(),
         ]);
+
+        \App\Services\ActivityLogService::record(
+            'product.voucher.ended',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            (int) auth()->id(),
+        );
 
         return redirect()->back()->with('success', 'Voucher diakhiri dan dinonaktifkan.');
     }
@@ -213,6 +268,7 @@ class VoucherController extends Controller
             'published' => (bool) $voucher->published,
             'stackable' => (bool) $voucher->stackable,
             'runnable' => $voucher->isCurrentlyRunnable(),
+            'reason' => $voucher->unusableReason(),
             'duplicate_url' => route('admin.vouchers.duplicate', $voucher),
             'end_url' => route('admin.vouchers.end', $voucher),
             'updated_at' => optional($voucher->updated_at)?->toIso8601String(),

@@ -212,6 +212,12 @@ class ActivityLogService
                 $payload['type'] ?? $payload['file'] ?? 'katalog'
             ),
             'import.retried' => sprintf('Import #%s diulang', $log->entity_id),
+            'product.voucher.created' => sprintf('Voucher dibuat%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.updated' => sprintf('Voucher diperbarui%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.published' => sprintf('Voucher diaktifkan%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.unpublished' => sprintf('Voucher dinonaktifkan%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.duplicated' => sprintf('Voucher diduplikasi%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.ended' => sprintf('Voucher diakhiri%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
             'whatsapp.template_updated' => sprintf(
                 'Template WhatsApp diperbarui%s',
                 isset($payload['internal_key']) ? ': '.$payload['internal_key'] : ''

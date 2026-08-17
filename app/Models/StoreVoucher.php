@@ -65,4 +65,25 @@ class StoreVoucher extends Model
     {
         return $this->published && $this->isWithinSchedule($at);
     }
+
+    /**
+     * Alasan voucher tidak dapat dipakai sekarang, untuk UI admin (Fase 12).
+     * Mengembalikan null bila voucher siap dipakai (published && dalam periode).
+     */
+    public function unusableReason(?Carbon $at = null): ?string
+    {
+        $at ??= now();
+
+        if (! $this->published) {
+            return 'Voucher tidak aktif (belum dipublikasikan).';
+        }
+        if ($this->starts_at && $at->lt($this->starts_at)) {
+            return 'Periode voucher belum dimulai (mulai '.$this->starts_at->translatedFormat('j M Y, H:i').').';
+        }
+        if ($this->ends_at && $at->gt($this->ends_at)) {
+            return 'Periode voucher sudah berakhir ('.$this->ends_at->translatedFormat('j M Y, H:i').').';
+        }
+
+        return null;
+    }
 }

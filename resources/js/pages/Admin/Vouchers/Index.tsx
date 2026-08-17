@@ -27,6 +27,7 @@ interface VoucherCard {
   ends_at: string | null
   published: boolean
   runnable: boolean
+  reason: string | null
   updated_at: string | null
   edit_href: string
   publish_url: string
@@ -53,6 +54,15 @@ function discountLabel(voucher: VoucherCard): string {
     return `${voucher.discount_value}%`
   }
   return formatCurrency(voucher.discount_value)
+}
+
+function VoucherUnusableReason({ reason }: { reason: string }) {
+  return (
+    <p className="mt-2 inline-flex items-start gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700">
+      <span aria-hidden="true">&#9888;</span>
+      <span>{reason}</span>
+    </p>
+  )
 }
 
 function VoucherActions({
@@ -284,6 +294,7 @@ export default function VouchersIndex({
               <p className="mt-1 text-xs text-muted-foreground">
                 {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Minimum {formatCurrency(voucher.min_purchase)}
               </p>
+              {voucher.reason ? <VoucherUnusableReason reason={voucher.reason} /> : null}
               <div className="mt-3">
                 <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
               </div>
@@ -311,6 +322,7 @@ export default function VouchersIndex({
                     <p className="text-[11px] text-muted-foreground">
                       {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Min {formatCurrency(voucher.min_purchase)}
                     </p>
+                    {voucher.reason ? <VoucherUnusableReason reason={voucher.reason} /> : null}
                   </td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">
                     <div>{formatDateTime(voucher.starts_at)}</div>

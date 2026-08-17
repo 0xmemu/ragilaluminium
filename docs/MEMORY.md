@@ -3,6 +3,13 @@
 Cross-session shift log. **Update only on milestones** (section ship, big SoT change, baseline commit).  
 Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 
+### 2026-08-17 — Fase 12: Promo, voucher, Flash Sale, COD dikunci
+
+- Urutan kalkulasi eksplisit: harga efektif Promo/Flash Sale per varian -> voucher atas subtotal -> subsidi ongkir (ongkir net) -> biaya COD atas (subtotal-voucher); total = subtotal + ongkir(net) - voucher + COD. Dikunci `PricePromoOrderContractTest`.
+- Flash Sale diskon PER VARIASI (tiap varian pakai bandrol sendiri). Voucher TIDAK mengubah harga dasar histori (`subtotal_amount`/`unit_price` tetap harga efektif promo; potongan voucher terpisah di `voucher_discount_amount`).
+- UI admin Voucher kini menampilkan ALASAN voucher tidak dapat dipakai (`StoreVoucher::unusableReason` + prop `reason` di `Admin/Vouchers/Index`): nonaktif / periode belum mulai / periode sudah berakhir.
+- Perubahan finansial voucher dicatat audit log `event_logs` (`product.voucher.created|updated|published|unpublished|duplicated|ended`) + label deskriptif di ActivityLogService::describe.
+
 ### 2026-08-14 — Fase 4: SKU & nomor order (revisi no-dash, random)
 
 - Product SKU resmi `RA`+10 acak (mis. RAK7X2P9MFQ), varian `RA`+6..8 acak (TANPA dash, opak, unik);
