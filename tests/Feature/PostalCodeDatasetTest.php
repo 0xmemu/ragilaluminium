@@ -105,4 +105,36 @@ class PostalCodeDatasetTest extends TestCase
             'postal_code' => '40134',
         ])->assertRedirect('/checkout')->assertSessionHasErrors('postal_code');
     }
+    public function test_village_mapping_feeds_postal_autofill_for_district(): void
+    {
+        $dataset = PostalDataset::create([
+            'source' => 'data.go.id',
+            'version' => 'test-autofill-2026',
+            'status' => 'active',
+            'row_count' => 2,
+            'retrieved_at' => now(),
+        ]);
+        $dataset->mappings()->create([
+            'province_id' => '32', 'province_name' => 'JAWA BARAT',
+            'regency_id' => '3273', 'regency_name' => 'KOTA BANDUNG',
+            'district_id' => '3273010', 'district_name' => 'COBLONG',
+            'village_id' => '3273010001', 'village_name' => 'LEBAK GEDE',
+            'postal_code' => '40132',
+        ]);
+        $dataset->mappings()->create([
+            'province_id' => '32', 'province_name' => 'JAWA BARAT',
+            'regency_id' => '3273', 'regency_name' => 'KOTA BANDUNG',
+            'district_id' => '3273010', 'district_name' => 'COBLONG',
+            'village_id' => '3273010002', 'village_name' => 'SEKELOA',
+            'postal_code' => '40134',
+        ]);
+
+        $autofill = app(PostalCodeRepository::class)->postalCodesForDistrict('3273010');
+
+        $this->assertSame(
+            ['3273010001' => '40132', '3273010002' => '40134'],
+            $autofill,
+            'desa harus menjadi sumber autofill kode pos (village_id -> postal_code)',
+        );
+    }
 }
