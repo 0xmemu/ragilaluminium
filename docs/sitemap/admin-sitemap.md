@@ -33,7 +33,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Import** (Tipe: Operational) — di bawah grup nav **Produk**
   - Daftar job impor Shopee/Internal.
   - Sub-view: Job Detail (Summary, Statistik Bar, Failed Rows Table, Download Correction).
-- **Import Performance** (Tipe: Analytics) — tetap di bawah grup nav **Produk**, tepat setelah Import.
+- **Import Performance** (Tipe: Analytics) — BUKAN nav terpisah; dibuka dari halaman **Import** lewat toolbar Performa Import (Fase 13).
   - Metrik keberhasilan dan tingkat error sistem impor data.
   - Route: admin.analytics.import-performance.
 - **Teruskan Popularitas** (Tipe: Operational) — konfigurasi eksplisit produk sumber → target.

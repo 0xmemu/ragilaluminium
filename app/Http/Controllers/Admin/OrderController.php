@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderReturnCase;
+use App\Models\AdminNotification;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
@@ -660,6 +661,16 @@ class OrderController extends Controller
 
             return $case;
         });
+
+        AdminNotification::create([
+            'type' => 'return_created',
+            'related_type' => Order::class,
+            'related_id' => $order->id,
+            'order_id' => $order->id,
+            'title' => 'Retur baru '.$order->order_number,
+            'body' => 'Alasan: '.$case->reason,
+            'href' => route('admin.orders.show', $order),
+        ]);
 
         $this->whatsapp->sendTemplateMessage(
             $order->customer_phone,

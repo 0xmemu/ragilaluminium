@@ -7,6 +7,7 @@ use App\Imports\ShopeeCatalogExport;
 use App\Imports\ShopeeMediaExport;
 use App\Models\ImportJob;
 use App\Support\CatalogTaxonomy;
+use App\Support\ImportFailureNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,6 +59,7 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             'global_error_message' => 'Job gagal: '.$e->getMessage(),
             'completed_at' => now(),
         ]);
+        ImportFailureNotifier::notify($this->jobId, "Job gagal: ".$e->getMessage());
     }
 
     public function handle(): void
@@ -76,6 +78,7 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                 'global_error_message' => 'Berkas sumber tidak ditemukan.',
                 'completed_at' => now(),
             ]);
+            ImportFailureNotifier::notify($this->jobId, "Berkas sumber tidak ditemukan.");
 
             throw new \RuntimeException('Berkas sumber impor tidak ditemukan.');
         }
@@ -93,6 +96,7 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                 'global_error_message' => $e->getMessage(),
                 'completed_at' => now(),
             ]);
+            ImportFailureNotifier::notify($this->jobId, $e->getMessage());
 
             throw $e;
         }

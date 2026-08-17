@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Notifikasi admin (keputusan spec ??F): Pesanan Baru, Sampai, Dibatalkan.
+ * Notifikasi admin (Fase 13): order_created, order_delivered, order_cancelled, shipping_quote_manual_review, media_failed, import_failed, return_created, media_cleanup, popularity_threshold.
  */
 class AdminNotification extends Model
 {

@@ -750,3 +750,10 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 - Jumlah model (models_sold) dihitung via SQL DISTINCT COALESCE/NULLIF/TRIM pada order_items snapshot (rule R8) — kompatibel MySQL & SQLite, bukan dedupe collection PHP.
 - Return/refund memakai ledger order_return_cases/items dan TIDAK menghapus order/order_items mentah (rule R9); refund_amount dari return case completed dikurangkan dari gross menjadi net (rule R10). products != units (rules R5). Histori & model dari order_items snapshot, perubahan katalog tidak mengubah performa lama (rules R6/R7).
 - Test baru tests/Feature/StorePerformanceF10RulesTest.php (6 kasus). Full suite 401 passed (4951+ assertions).
+
+### 2026-08-17 - Fase 13: Admin IA, notifikasi, log, keamanan dikunci
+- Import Performance bukan nav terpisah; dibuka dari halaman Import (toolbar Performa Import).
+- Notifikasi admin: import_failed (ImportFailureNotifier) + return_created (retur baru) ditambah.
+- Kunci 9 aturan dgn test (Fase13*): dashboard summary+followup, Performa Toko terpisah, Log
+  Aktivitas di Akun & Sistem, Import Performance di Import, rate-limit login (5x/60s), rotasi
+  session tidak putus WhatsApp (daemon luar), admin hak setara, audit log append-only & traceable.
