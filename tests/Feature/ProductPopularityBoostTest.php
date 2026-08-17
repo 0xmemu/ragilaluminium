@@ -175,4 +175,72 @@ class ProductPopularityBoostTest extends TestCase
             'line_total' => 100000 * $quantity,
         ]);
     }
+
+
+    public function test_reviews_do_not_chain_across_boost_A_to_B_and_B_to_C(): void
+    {
+        $a = $this->product('BOOST-CHAIN-A', 'MODEL-CHA');
+        $b = $this->product('BOOST-CHAIN-B', 'MODEL-CHB');
+        $c = $this->product('BOOST-CHAIN-C', 'MODEL-CHC');
+        $page = CmsPage::create(['slug' => 'testimonials', 'title' => 'Ulasan', 'published' => true]);
+
+        $reviewA = CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'product_id' => $a->id,
+            'customer_name' => 'Rina',
+            'message' => 'Ulasan produk A',
+            'rating' => 5,
+            'source' => 'website',
+            'published' => true,
+        ]);
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'product_id' => $b->id,
+            'customer_name' => 'Dodi',
+            'message' => 'Ulasan produk B',
+            'rating' => 4,
+            'source' => 'website',
+            'published' => true,
+        ]);
+
+        $service = app(ProductPopularityService::class);
+        $service->enable($a->id, $b->id, null, null);
+        $service->enable($b->id, $c->id, null, null);
+
+        // B inherits A directly (A -> B).
+        $inheritedB = $service->inheritedTestimonials($b);
+        $this->assertSame(2, $inheritedB->count());
+        $this->assertTrue($inheritedB->contains('product_id', $a->id));
+
+        // C inherits B only; A's review must NOT propagate through B (no A->B->C chain).
+        $inheritedC = $service->inheritedTestimonials($c);
+        $this->assertSame(1, $inheritedC->count());
+        $this->assertTrue($inheritedC->contains('product_id', $b->id));
+        $this->assertFalse($inheritedC->contains('product_id', $a->id));
+        $this->assertFalse($inheritedC->contains('id', $reviewA->id));
+    }
+
+    public function test_disabling_boost_stops_review_inheritance(): void
+    {
+        $source = $this->product('BOOST-OFF-S', 'MODEL-OFS');
+        $target = $this->product('BOOST-OFF-T', 'MODEL-OFT');
+        $page = CmsPage::create(['slug' => 'testimonials', 'title' => 'Ulasan', 'published' => true]);
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'product_id' => $source->id,
+            'customer_name' => 'Sinta',
+            'message' => 'Dari sumber',
+            'rating' => 5,
+            'source' => 'website',
+            'published' => true,
+        ]);
+
+        $service = app(ProductPopularityService::class);
+        $result = $service->enable($source->id, $target->id, null, null);
+        $this->assertSame(1, $service->inheritedTestimonials($target)->count());
+
+        $service->disable($result['boost'], 'Fitur dimatikan', null);
+
+        $this->assertSame(0, $service->inheritedTestimonials($target)->count());
+    }
 }

@@ -181,4 +181,27 @@ class CustomerReviewTest extends TestCase
 
         return [$order, $product];
     }
+
+    public function test_customer_can_only_review_a_product_included_in_the_order(): void
+    {
+        [$order] = $this->orderWithProduct('delivered', 'RA-REVIEW-006');
+        $notInOrder = Product::create([
+            'parent_sku' => 'WIN-TIDAK-DIBELI',
+            'name' => 'Produk Tidak Dibeli',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->postJson(route('order.review.store', $order->order_number), [
+            'customer_phone' => '081234567890',
+            'product_id' => $notInOrder->id,
+            'rating' => 5,
+            'message' => 'Coba ulas produk yang tidak dibeli.',
+        ])->assertStatus(422)->assertJsonValidationErrors('product_id');
+
+        $this->assertSame(0, CmsTestimonial::where('order_id', $order->id)->count());
+    }
 }
