@@ -104,5 +104,50 @@ class CatalogSearchTest extends TestCase
         $this->get('/products/boven')
             ->assertOk();
     }
-}
 
+    public function test_search_api_exposes_original_and_normalized_query(): void
+    {
+        $this->createVisibleProduct([
+            'parent_sku' => 'API-SL-1',
+            'name' => 'Jendela Aluminium Sliding Polos',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->getJson('/api/search?q='.urlencode('jendela slidding'))
+            ->assertOk()
+            ->assertJson([
+                'query' => 'jendela slidding',
+                'search' => [
+                    'original' => 'jendela slidding',
+                    'normalized' => 'jendela sliding',
+                    'changed' => true,
+                ],
+                'dimension' => null,
+            ]);
+    }
+
+    public function test_search_api_exposes_dimension_key_and_suggestions(): void
+    {
+        // Query tanpa hasil (bukan ukuran) → `suggestions` hadir sebagai array
+        // kata kunci katalog yang benar-benar tersedia; metadata tetap muncul.
+        $this->getJson('/api/search?q='.urlencode('modern'))
+            ->assertOk()
+            ->assertJson([
+                'dimension' => null,
+                'search' => [
+                    'original' => 'modern',
+                    'normalized' => 'modern',
+                    'changed' => false,
+                ],
+            ])
+            ->assertJsonStructure([
+                'suggestions' => [],
+                'nearest_sizes' => [],
+            ]);
+    }
+
+}

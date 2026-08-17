@@ -14,6 +14,10 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /api/orders/{order_number}/status` -> `OrderController@statusApi`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - `GET /api/products/{parent_sku}` -> `ProductController@show`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - `GET /api/search` -> `SearchController@index`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
+  - Response menambah metadata `search` (original/normalized/changed/replacements),
+  - `dimension` (exact/range, orientasi Tinggi × Panjang), `nearest_sizes`, dan `suggestions`
+  - (lihat PRODUCT-HANDOFF §8.3.1). Query asli selalu dipertahankan di `query`.
+
 - `GET /api/wilayah/districts/{regencyId}` -> `WilayahController@districts`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - `GET /api/wilayah/provinces` -> `WilayahController@provinces`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]
 - `GET /api/wilayah/regencies/{provinceId}` -> `WilayahController@regencies`  [Illuminate\Routing\Middleware\ThrottleRequests:60,1]

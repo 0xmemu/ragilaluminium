@@ -171,4 +171,209 @@ class CatalogSearchBoundaryTest extends TestCase
         $this->assertContains('E1', $hits);
         $this->assertContains('E2', $hits);
     }
+
+    public function test_typo_slidding_matches_sliding(): void
+    {
+        $this->makeProduct('T1', 'Jendela Aluminium Sliding Polos');
+        $this->makeProduct('T2', 'Jendela Aluminium Jungkit Polos', ['product_model' => 'JUNGKIT']);
+
+        $hits = $this->searchSkus('jendela slidding');
+
+        $this->assertContains('T1', $hits);
+        $this->assertNotContains('T2', $hits);
+    }
+
+    public function test_synonym_bouven_matches_boven(): void
+    {
+        $this->makeProduct('BY1', 'Boven Aluminium Jungkit Polos', [
+            'product_category' => 'BOUVEN',
+            'product_model' => 'JUNGKIT',
+        ]);
+        $this->makeProduct('BY2', 'Jendela Aluminium Jungkit Polos', ['product_model' => 'JUNGKIT']);
+
+        $hits = $this->searchSkus('bouven jungkit');
+
+        $this->assertContains('BY1', $hits);
+        $this->assertNotContains('BY2', $hits);
+    }
+
+    public function test_synonym_geser_and_ayun_map_to_models(): void
+    {
+        $this->makeProduct('G1', 'Pintu Aluminium Sliding Polos', [
+            'product_category' => 'DOOR',
+            'product_model' => 'SLIDING',
+        ]);
+        $this->makeProduct('G2', 'Pintu Aluminium Swing Polos', [
+            'product_category' => 'DOOR',
+            'product_model' => 'SWING',
+        ]);
+
+        $hitsGeser = $this->searchSkus('pintu geser');
+        $this->assertContains('G1', $hitsGeser);
+        $this->assertNotContains('G2', $hitsGeser);
+
+        $hitsAyun = $this->searchSkus('pintu ayun');
+        $this->assertContains('G2', $hitsAyun);
+        $this->assertNotContains('G1', $hitsAyun);
+    }
+
+    public function test_design_sequence_phrase_routes_to_real_design(): void
+    {
+        $this->makeProduct('SR1', 'Jendela Aluminium Jungkit Seri A', [
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'SERIES_A',
+        ]);
+        $this->makeProduct('SR2', 'Jendela Aluminium Jungkit Kombinasi', [
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'KOMBINASI',
+        ]);
+
+        $hits = $this->searchSkus('jendela seri a');
+
+        $this->assertContains('SR1', $hits);
+        $this->assertNotContains('SR2', $hits);
+    }
+
+    public function test_ambiguous_descriptor_does_not_create_vague_matches(): void
+    {
+        $this->makeProduct('M1', 'Jendela Aluminium Sliding Polos');
+        $this->makeProduct('M2', 'Jendela Aluminium Jungkit Polos', ['product_model' => 'JUNGKIT']);
+
+        $hits = $this->searchSkus('modern sliding');
+        $this->assertContains('M1', $hits);
+        $this->assertNotContains('M2', $hits);
+
+        $hitsOnly = $this->searchSkus('modern');
+        $this->assertNotContains('M1', $hitsOnly);
+        $this->assertNotContains('M2', $hitsOnly);
+    }
+
+    public function test_ambiguous_word_still_matches_real_named_product(): void
+    {
+        $this->makeProduct('MN1', 'Pintu Minimalis Kaca Polos', ['product_category' => 'DOOR']);
+        $this->makeProduct('MN2', 'Pintu Swing Polos', [
+            'product_category' => 'DOOR',
+            'product_model' => 'SWING',
+        ]);
+
+        $hits = $this->searchSkus('minimalis');
+
+        $this->assertContains('MN1', $hits);
+        $this->assertNotContains('MN2', $hits);
+    }
+
+    public function test_color_matches_only_official_variant_option(): void
+    {
+        $p = $this->makeProduct('CL1', 'Jendela Aluminium Sliding Polos');
+        ProductVariant::create([
+            'product_id' => $p->id,
+            'variant_sku' => 'CL1-H',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Hitam',
+            'price' => 900000,
+            'stock' => 3,
+            'status' => 'active',
+        ]);
+        $p2 = $this->makeProduct('CL2', 'Jendela Aluminium Jungkit Polos', ['product_model' => 'JUNGKIT']);
+        ProductVariant::create([
+            'product_id' => $p2->id,
+            'variant_sku' => 'CL2-P',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Putih',
+            'price' => 900000,
+            'stock' => 3,
+            'status' => 'active',
+        ]);
+
+        $hits = $this->searchSkus('sliding hitam');
+
+        $this->assertContains('CL1', $hits);
+        $this->assertNotContains('CL2', $hits);
+    }
+
+    public function test_invented_color_does_not_exist_in_catalog(): void
+    {
+        $p = $this->makeProduct('AB1', 'Jendela Aluminium Sliding Polos');
+        ProductVariant::create([
+            'product_id' => $p->id,
+            'variant_sku' => 'AB1-H',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Hitam',
+            'price' => 900000,
+            'stock' => 3,
+            'status' => 'active',
+        ]);
+
+        $hits = $this->searchSkus('abu doff');
+
+        $this->assertNotContains('AB1', $hits);
+    }
+
+    public function test_official_color_values_only_from_db(): void
+    {
+        $p = $this->makeProduct('OC1', 'Jendela Aluminium Sliding Polos');
+        ProductVariant::create([
+            'product_id' => $p->id,
+            'variant_sku' => 'OC1-1',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Biru Langit',
+            'price' => 1,
+            'stock' => 1,
+            'status' => 'active',
+        ]);
+
+        $colors = CatalogSearch::officialColorValues();
+
+        $this->assertContains('Biru Langit', $colors);
+        $this->assertNotContains('Ungu', $colors);
+    }
+
+    public function test_dimension_range_matches_within_bounds_preserving_orientation(): void
+    {
+        $a = $this->makeProduct('RG1', 'Jendela A');
+        ProductVariant::create(['product_id' => $a->id, 'variant_sku' => 'RG1-1', 'height_cm' => 82, 'width_cm' => 105, 'price' => 1, 'stock' => 1, 'status' => 'active']);
+        $b = $this->makeProduct('RG2', 'Jendela B');
+        ProductVariant::create(['product_id' => $b->id, 'variant_sku' => 'RG2-1', 'height_cm' => 80, 'width_cm' => 100, 'price' => 1, 'stock' => 1, 'status' => 'active']);
+        $c = $this->makeProduct('RG3', 'Jendela C');
+        ProductVariant::create(['product_id' => $c->id, 'variant_sku' => 'RG3-1', 'height_cm' => 85, 'width_cm' => 110, 'price' => 1, 'stock' => 1, 'status' => 'active']);
+        $rev = $this->makeProduct('RG4', 'Jendela D');
+        ProductVariant::create(['product_id' => $rev->id, 'variant_sku' => 'RG4-1', 'height_cm' => 100, 'width_cm' => 80, 'price' => 1, 'stock' => 1, 'status' => 'active']);
+        $out = $this->makeProduct('RG5', 'Jendela E');
+        ProductVariant::create(['product_id' => $out->id, 'variant_sku' => 'RG5-1', 'height_cm' => 86, 'width_cm' => 100, 'price' => 1, 'stock' => 1, 'status' => 'active']);
+
+        $hits = $this->searchSkus('80x100 sampai 85x110');
+
+        $this->assertContains('RG1', $hits);
+        $this->assertContains('RG2', $hits);
+        $this->assertContains('RG3', $hits);
+        $this->assertNotContains('RG4', $hits);
+        $this->assertNotContains('RG5', $hits);
+    }
+
+    public function test_dimension_range_alternate_separators(): void
+    {
+        $a = $this->makeProduct('RS1', 'Jendela A');
+        ProductVariant::create(['product_id' => $a->id, 'variant_sku' => 'RS1-1', 'height_cm' => 81, 'width_cm' => 104, 'price' => 1, 'stock' => 1, 'status' => 'active']);
+
+        foreach (['80x100 hingga 85x110', '80x100 - 85x110', '80x100 s/d 85x110'] as $q) {
+            $this->assertContains('RS1', $this->searchSkus($q), "range query: $q");
+        }
+    }
+
+    public function test_nearest_size_variants_ordered_by_distance(): void
+    {
+        $a = $this->makeProduct('NS1', 'Jendela A');
+        ProductVariant::create(['product_id' => $a->id, 'variant_sku' => 'NS1-1', 'height_cm' => 100, 'width_cm' => 50, 'price' => 100, 'stock' => 1, 'status' => 'active']);
+        $b = $this->makeProduct('NS2', 'Jendela B');
+        ProductVariant::create(['product_id' => $b->id, 'variant_sku' => 'NS2-1', 'height_cm' => 95, 'width_cm' => 55, 'price' => 100, 'stock' => 1, 'status' => 'active']);
+        $c = $this->makeProduct('NS3', 'Jendela C');
+        ProductVariant::create(['product_id' => $c->id, 'variant_sku' => 'NS3-1', 'height_cm' => 60, 'width_cm' => 120, 'price' => 100, 'stock' => 1, 'status' => 'active']);
+
+        $near = CatalogSearch::nearestSizeVariants(100, 50, 3);
+
+        $this->assertSame('NS1-1', $near[0]['variant_sku']);
+        $this->assertSame('NS2-1', $near[1]['variant_sku']);
+        $this->assertSame('NS3-1', $near[2]['variant_sku']);
+    }
+
 }

@@ -343,6 +343,19 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 |----------|---------|
 | `GET /api/catalog/{category}` | Category list (`WINDOWS`/`WINDOW`, `DOORS`/`DOOR`, `BOUVEN`) |
 | `GET /api/search?q=` | Search results |
+
+`GET /api/search?q=` (Fase 6 — pencarian deterministik) response additions:
+  - `query` — query ASLI (debrief/telemetri; tidak pernah diganti diam-diam).
+  - `search` — `{ original, normalized, changed, replacements }` normalisasi typo/sinonim
+    (slidding→sliding, bouven→boven, geser→sliding, ayun→swing); `changed` true bila berubah.
+  - `dimension` — null, atau `{ kind:'exact', height, width }` / `{ kind:'range',
+    height_min, height_max, width_min, width_max }` — orientasi Tinggi × Panjang dipertahankan.
+  - `nearest_sizes` — bila ukuran eksak tak ada hasil: varian terdekat (jarak Manhattan
+    |ΔT|+|ΔP|) sebagai rekomendasi ukuran terdekat yang relevan (tidak memaksa balik orientasi).
+  - `suggestions` — bila tak ada hasil: kata kunci katalog yang benar-benar tersedia
+    (model/desain/kategori/warna dari DB) untuk saran "Mungkin yang Anda maksud".
+  - `products`, `pagination` — seperti sebelumnya.
+
 | `GET /api/products/{parent_sku}` | Product detail (`Product::toApiArray()`) |
 | `GET /api/orders/{order_number}/status` | Order status JSON |
 

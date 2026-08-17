@@ -37,8 +37,56 @@ class SearchController extends Controller
             ->paginate(24)
             ->withQueryString();
 
+        // Normalisasi deterministik (typo + sinonim). Query ASLI (`query`/`original`)
+        // selalu dipertahankan untuk debrief/telemetri; `normalized` hanya dipakai
+        // untuk konteks disambiguasi — tidak pernah mengganti input diam-diam.
+        $meta = CatalogSearch::normalizeQuery($q);
+
+        // Dimensi: ukuran eksak (Tinggi × Panjang) atau range (orientasi tetap).
+        $dimension = null;
+        if ($q !== '') {
+            $exact = CatalogSearch::exactDimension($q);
+            if ($exact !== null) {
+                $dimension = [
+                    'kind' => 'exact',
+                    'height' => $exact['height'],
+                    'width' => $exact['width'],
+                ];
+            } else {
+                $range = CatalogSearch::dimensionRange($q);
+                if ($range !== null) {
+                    $dimension = [
+                        'kind' => 'range',
+                        'height_min' => $range['hMin'],
+                        'height_max' => $range['hMax'],
+                        'width_min' => $range['wMin'],
+                        'width_max' => $range['wMax'],
+                    ];
+                }
+            }
+        }
+
+        // Saat tidak ada hasil: tawarkan ukuran terdekat (untuk ukuran eksak) atau
+        // saran kata kunci katalog yang BENAR-BENAR ada (untuk query tidak berbuah).
+        $nearestSizes = [];
+        $suggestions = [];
+        if ($products->total() === 0 && $q !== '') {
+            if (isset($dimension['kind']) && $dimension['kind'] === 'exact') {
+                $nearestSizes = CatalogSearch::nearestSizeVariants($dimension['height'], $dimension['width']);
+            } elseif ($meta['normalized'] !== '') {
+                $suggestions = CatalogSearch::catalogKeywordSuggestions(10);
+            }
+        }
+
         return response()->json([
             'query' => $q,
+            'search' => [
+                'original' => $meta['original'],
+                'normalized' => $meta['normalized'],
+                'changed' => $meta['changed'],
+                'replacements' => $meta['replacements'],
+            ],
+            'dimension' => $dimension,
             'products' => $products->getCollection()->map(
                 fn ($product) => $product->toApiArray()
             )->all(),
@@ -48,6 +96,8 @@ class SearchController extends Controller
                 'current_page' => $products->currentPage(),
                 'last_page' => $products->lastPage(),
             ],
+            'nearest_sizes' => $nearestSizes,
+            'suggestions' => $suggestions,
         ]);
     }
 }
