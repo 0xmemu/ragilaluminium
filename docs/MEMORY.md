@@ -735,3 +735,11 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
   rollback penuh); tambah `2026_08_16_000002_relax_product_model_enum_to_string.php` (MySQL, ENUM->VARCHAR)
   [PENDING — tidak dieksekusi, hanya `migrate --pretend`].
 - Test baru `tests/Feature/CatalogDynamicCategoryTest.php`; full suite 352 passed (4611 assertions).
+
+### 2026-08-17 — Fase 10: Performa Toko (StorePerformance) locked
+
+- Dashboard admin \"omzet/performa\" dan halaman Performa Toko / admin.analytics.store-performance memakai kontrak formula SAMA dari StorePerformanceService::build() (rule R1).
+- Revenue scope (paidRevenueStatusSql) sekarang mengakui COD hanya saat order mencapai status completed (rule R4): di processing/shipped/delivered COD belum dihitung omzet/unit/model; transfer tetap dihitung mulai processing. Konsisten di metricsFor, series, topProducts, customers (total_spent CASE), paymentMix.
+- Jumlah model (models_sold) dihitung via SQL DISTINCT COALESCE/NULLIF/TRIM pada order_items snapshot (rule R8) — kompatibel MySQL & SQLite, bukan dedupe collection PHP.
+- Return/refund memakai ledger order_return_cases/items dan TIDAK menghapus order/order_items mentah (rule R9); refund_amount dari return case completed dikurangkan dari gross menjadi net (rule R10). products != units (rules R5). Histori & model dari order_items snapshot, perubahan katalog tidak mengubah performa lama (rules R6/R7).
+- Test baru tests/Feature/StorePerformanceF10RulesTest.php (6 kasus). Full suite 401 passed (4951+ assertions).

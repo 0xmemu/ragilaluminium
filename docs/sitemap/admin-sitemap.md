@@ -23,7 +23,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 ### 2. Performa Toko
 - **Performa Toko** (Tipe: Analytics / pembukuan)
   - Dashboard KPI penjualan, kunjungan, operasional + tren + tabel produk/customer + unduh CSV.
-  - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); net dikurangi refund return ledger yang selesai. issue bukan retur.
+  - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); untuk COD, omzet hanya diakui saat order mencapai completed (uang belum tertagih di status fulfillment); net dikurangi refund return ledger yang selesai. issue bukan retur.
 
 ### 3. Produk (Catalog)
 - **Daftar Produk** (Tipe: `Operational` & `Content`)
