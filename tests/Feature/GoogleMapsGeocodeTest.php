@@ -11,7 +11,7 @@ class GoogleMapsGeocodeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_google_geocode_normalizes_address_components_and_postal_code(): void
+    public function test_google_geocode_normalizes_address_components_but_never_postal_code(): void
     {
         Config::set('services.google_maps.server_key', 'server-test-key');
         Http::fake([
@@ -35,12 +35,12 @@ class GoogleMapsGeocodeTest extends TestCase
         $this->getJson('/api/maps/geocode?query=Dago%20Bandung')
             ->assertOk()
             ->assertJsonPath('state', 'ready')
-            ->assertJsonPath('results.0.postal_code', '40135')
+            ->assertJsonMissingPath('results.0.postal_code')
             ->assertJsonPath('results.0.city', 'Kota Bandung')
             ->assertJsonPath('results.0.village', 'Dago');
     }
 
-    public function test_google_geocode_keeps_result_without_postal_code_explicitly_empty(): void
+    public function test_google_geocode_never_returns_postal_code_from_address_components(): void
     {
         Config::set('services.google_maps.server_key', 'server-test-key');
         Http::fake([
@@ -57,7 +57,7 @@ class GoogleMapsGeocodeTest extends TestCase
         $this->getJson('/api/maps/geocode?lat=-6.2&lon=106.8')
             ->assertOk()
             ->assertJsonPath('state', 'ready')
-            ->assertJsonPath('results.0.postal_code', null);
+            ->assertJsonMissingPath('results.0.postal_code');
     }
 
     public function test_google_geocode_failure_is_safe_and_does_not_return_provider_error(): void

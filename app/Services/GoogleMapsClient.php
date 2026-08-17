@@ -82,6 +82,8 @@ class GoogleMapsClient
             }
         }
 
+        // Maps is never a source of postal codes; postal codes come only from the
+        // validated desa/kelurahan dataset. The geocode response carries context only.
         return [
             'place_id' => (string) ($result['place_id'] ?? ''),
             'display_name' => (string) ($result['formatted_address'] ?? ''),
@@ -91,7 +93,6 @@ class GoogleMapsClient
             'city' => $components['administrative_area_level_2'] ?? null,
             'district' => $components['administrative_area_level_3'] ?? $components['sublocality_level_1'] ?? null,
             'village' => $components['administrative_area_level_4'] ?? $components['sublocality'] ?? $components['sublocality_level_2'] ?? null,
-            'postal_code' => $components['postal_code'] ?? null,
             'address_components' => $components,
         ];
     }

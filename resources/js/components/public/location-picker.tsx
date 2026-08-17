@@ -33,7 +33,6 @@ interface GoogleLocationResult {
   display_name: string
   lat: number
   lon: number
-  postal_code?: string | null
   province?: string | null
   city?: string | null
   district?: string | null
@@ -175,7 +174,8 @@ export function LocationPickerModal({
         display_name: resolved.display_name,
         lat: resolved.lat,
         lon: resolved.lon,
-        postal_code: resolved.postal_code ?? null,
+        // Postal codes come only from the validated desa/kelurahan dataset, never from Maps.
+        postal_code: village?.postal_code ?? null,
         province: province?.name ?? resolved.province ?? undefined,
         city: regency?.name ?? resolved.city ?? undefined,
         district: district?.name ?? resolved.district ?? undefined,
@@ -218,8 +218,8 @@ export function LocationPickerModal({
         <div>
           <DialogTitle>Pilih lokasi di Google Maps</DialogTitle>
           <DialogDescription className="mt-2">
-            Google Maps hanya membantu menemukan titik dan alamat. Kode pos yang tersedia akan
-            diambil dari address components Google, lalu diperiksa kembali terhadap desa/kelurahan.
+            Google Maps hanya membantu menemukan titik dan alamat (opsional). Kode pos selalu
+            mengikuti desa/kelurahan dari dataset tervalidasi; peta bukan sumber kode pos.
           </DialogDescription>
         </div>
 
