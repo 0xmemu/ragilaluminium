@@ -236,7 +236,7 @@ class StorePerformanceService
         $base = Order::query()->whereBetween('created_at', [$from, $to]);
 
         $orders = (clone $base)->count();
-        $revenueOrders = (clone $base)->whereIn('order_status', self::REVENUE_STATUSES);
+        $revenueOrders = $this->paidRevenueScope(clone $base);
         $revenue = (float) (clone $revenueOrders)->sum('total_amount');
         $revenueOrderIds = (clone $revenueOrders)->pluck('id');
 
@@ -245,20 +245,9 @@ class StorePerformanceService
             : (int) OrderItem::query()->whereIn('order_id', $revenueOrderIds)->sum('quantity');
 
         // Historical identity is read from order_items snapshots, never from live catalog rows.
-        $modelsSold = 0;
-        if ($revenueOrderIds->isNotEmpty()) {
-            $modelsSold = OrderItem::query()
-                ->whereIn('order_id', $revenueOrderIds)
-                ->get(['parent_sku', 'name', 'product_model', 'design_variant'])
-                ->map(function (OrderItem $item): string {
-                    $model = trim((string) ($item->product_model ?: $item->parent_sku ?: $item->name));
-                    $design = trim((string) ($item->design_variant ?: ''));
-                    return $model.'|'.$design;
-                })
-                ->filter(fn (string $key): bool => $key !== '|')
-                ->unique()
-                ->count();
-        }
+        $modelsSold = $revenueOrderIds->isEmpty()
+            ? 0
+            : $this->distinctModelCount($revenueOrderIds);
 
         $avgUnitPrice = $units > 0 ? round($revenue / $units, 2) : 0.0;
 
@@ -352,7 +341,7 @@ class StorePerformanceService
                 ->selectRaw('SUM(order_items.quantity) as value')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween('orders.created_at', [$from, $to])
-                ->whereIn('orders.order_status', self::REVENUE_STATUSES)
+                ->whereRaw($this->paidRevenueStatusSql('orders'))
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
         } elseif ($metric === 'revenue') {
@@ -360,7 +349,7 @@ class StorePerformanceService
                 ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
                 ->selectRaw('SUM(total_amount) as value')
                 ->whereBetween('created_at', [$from, $to])
-                ->whereIn('order_status', self::REVENUE_STATUSES)
+                ->whereRaw($this->paidRevenueStatusSql())
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
         } else {
@@ -396,7 +385,7 @@ class StorePerformanceService
             ])
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.order_status', self::REVENUE_STATUSES)
+            ->whereRaw($this->paidRevenueStatusSql('orders'))
             ->groupBy('order_items.parent_sku', 'order_items.name')
             ->orderByDesc('revenue')
             ->limit($limit)
@@ -421,7 +410,7 @@ class StorePerformanceService
                 'customer_phone',
                 DB::raw('MAX(customer_name) as customer_name'),
                 DB::raw('COUNT(*) as order_count'),
-                DB::raw('SUM(CASE WHEN order_status IN (\''.implode("','", self::REVENUE_STATUSES).'\') THEN total_amount ELSE 0 END) as total_spent'),
+                DB::raw('SUM(CASE WHEN '.$this->paidRevenueStatusSql().' THEN total_amount ELSE 0 END) as total_spent'),
                 DB::raw('MAX(created_at) as last_order_at'),
             ])
             ->whereBetween('created_at', [$from, $to])
@@ -452,7 +441,7 @@ class StorePerformanceService
                 DB::raw('SUM(total_amount) as revenue'),
             ])
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('order_status', self::REVENUE_STATUSES)
+            ->whereRaw($this->paidRevenueStatusSql())
             ->groupBy('payment_method')
             ->orderByDesc('revenue')
             ->get()
@@ -704,4 +693,49 @@ class StorePerformanceService
 
         return $buckets;
     }
+
+    /**
+     * Whether an order counts as paid revenue.
+     * Rule F10.R4: COD only recognized as paid when it reaches completed;
+     * transfer/regular orders count from fulfilment statuses onward.
+     */
+    protected function paidRevenueStatusSql(string $alias = ''): string
+    {
+        $prefix = $alias !== '' ? $alias.'.' : '';
+        $revList = implode(',', array_map(fn (string $v): string => "'".$v."'", self::REVENUE_STATUSES));
+        $compList = implode(',', array_map(fn (string $v): string => "'".$v."'", self::COMPLETED_STATUSES));
+
+        return "(({$prefix}cod_flag = 0 OR {$prefix}cod_flag IS NULL)"
+            ." AND {$prefix}order_status IN ({$revList}))"
+            ." OR ({$prefix}cod_flag = 1 AND {$prefix}order_status IN ({$compList}))";
+    }
+
+    /**
+     * MySQL + SQLite compatible distinct count of catalogue models sold.
+     * Identity is read from order_items snapshots (never live catalog).
+     *
+     * @param  iterable<int>  $orderIds
+     */
+    protected function distinctModelCount(iterable $orderIds): int
+    {
+        return (int) OrderItem::query()
+            ->whereIn('order_id', $orderIds)
+            ->whereRaw(
+                "(COALESCE(NULLIF(TRIM(product_model), ''), NULLIF(TRIM(parent_sku), ''), NULLIF(TRIM(name), ''), '') <> '' "
+                ."OR COALESCE(NULLIF(TRIM(design_variant), ''), '') <> '')"
+            )
+            ->selectRaw(
+                "COALESCE(NULLIF(TRIM(product_model), ''), NULLIF(TRIM(parent_sku), ''), NULLIF(TRIM(name), ''), '') AS model_ref, "
+                ."COALESCE(NULLIF(TRIM(design_variant), ''), '') AS design_ref"
+            )
+            ->distinct()
+            ->get(['model_ref', 'design_ref'])
+            ->count();
+    }
+
+    protected function paidRevenueScope($query, string $alias = '')
+    {
+        return $query->whereRaw($this->paidRevenueStatusSql($alias));
+    }
+
 }
