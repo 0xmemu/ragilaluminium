@@ -72,7 +72,6 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 | Informasi Toko | `/about` | `about` | `Public/CmsPage` | implemented |
 | Halaman Apa Kata Pelanggan (galeri) | `/reviews/ss` | `reviews.screenshots` | `Public/Reviews` | implemented — galeri screenshot dengan lightbox; meta `cms_pages.testimoni` |
 | Halaman Ulasan Website | `/reviews/web` | `reviews.website` | `Public/Reviews` | implemented — ulasan teks + rating, filter model via `?model=KATEGORI\|MODEL`, stats `website_total`/`average_rating` |
-| Halaman Ulasan Website | `/ulasan` | `ulasan` | `Public/Ulasan` | implemented — ulasan pelanggan website (teks+rating, sort `newest\|oldest\|rating_desc\|rating_asc`), stats `website_total`/`average_rating` |
 | Halaman Hasil Pemasangan (listing model) | `/hasil-pemasangan` | `installation.index` | `Public/Installations` | implemented — header katalog (breadcrumb + judul + count + `?sort=newest\|photos\|name`) + grid kartu model |
 | Halaman Hasil Pemasangan (produk dalam model) | `/hasil-pemasangan/{category}/{model}` | `installation.model` | `Public/Installations` | implemented — header katalog + kartu **featured** (`ModelProductPresentation`) + **Inspirasi Pemasangan** (grid produk, `?sort=`) |
 | Halaman Isi Hasil Pemasangan (detail galeri) | `/hasil-pemasangan/{parent_sku}` | `installation.show` | `Public/InstallationDetail` | implemented — galeri foto/video instalasi; ketuk media → lightbox (nama produk tetap terlihat) + slide media bersebelahan; breadcrumb model → produk |
