@@ -212,7 +212,7 @@ flowchart TB
   - **UI rule:** display images via `urlFor()`/`display_url` (derivatives). Never hotlink `source_url` in production.
 
 ### 6.3 Orders & commerce
-- **`Order`** — lifecycle master with customer/shipping snapshot. `order_number` (unique, format `RA-YYMMDD-XXXXXX`), `checkout_idempotency_key` (nullable unique UUID for session retry/double-submit protection), customer contact/address fields (`shipping_address_line1/2`, `shipping_city`, `shipping_province`, `shipping_district`, `shipping_village`, `shipping_postal_code`, `shipping_country`), tri-status:
+- **`Order`** — lifecycle master with customer/shipping snapshot. `order_number` (unique, format `ORD`+`YYMM`+sequence 4-digit, mis. `ORD26080001`), `checkout_idempotency_key` (nullable unique UUID for session retry/double-submit protection), customer contact/address fields (`shipping_address_line1/2`, `shipping_city`, `shipping_province`, `shipping_district`, `shipping_village`, `shipping_postal_code`, `shipping_country`), tri-status:
   - `order_status`: `pending_payment`, `processing`, `shipped`, `delivered`, `completed`, `issue`, `return_in_process`, `cancelled`
   - `payment_status`: `pending`, `paid`, `refunded`
   - `shipping_status`: `pending_pickup`, `in_process`, `in_transit`, `delivered`, `cancelled`
@@ -416,7 +416,7 @@ sequenceDiagram
     OS-->>CO: order_number
     CO-->>C: redirect /order/{order_number}/confirmation
 ```
-- Order number format: `RA-260717-ABCDEF`.
+- Order number format: `ORD`+`YYMM`+4-digit sequence (mis. `ORD26080001`), dialokasikan via `order_number_sequences`; legacy `RA-{Ymd}-{seq}` tetap di-resolve.
 - Payment confirmation (admin) sets `payment_status: paid` and `order_status: processing` only when completed payments cover the full order total, then fires `PaymentConfirmed` → WhatsApp. Untuk COD, pembayaran tidak dilunasi saat delivered; saat order berstatus completed sistem otomatis membuat/menyelesaikan payment sebesar total_amount dan mencatat audit system/cod_completion.
 
 ### D. WhatsApp notifications
