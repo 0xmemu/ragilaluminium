@@ -7,6 +7,7 @@ use App\Models\ProductVariant;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -22,9 +23,25 @@ final class CampaignService
 {
     private ?Collection $liveCache = null;
 
+    /**
+     * Key Redis untuk hasil resolusi kampanye lintas-request.
+     * Nilai serialize-able; di-invalidasi via flushCache() saat admin
+     * mengubah/aktivasi/akhiri kampanye. TTL pendek agar tetap segar.
+     */
+    private const REDIS_KEYS = [
+        'campaign:promo-ids:v1',
+        'campaign:flash-ids:v1',
+        'campaign:flash-period:v1',
+    ];
+
+    private const REDIS_TTL_SECONDS = 120;
+
     public function flushCache(): void
     {
         $this->liveCache = null;
+        foreach (self::REDIS_KEYS as $key) {
+            Cache::forget($key);
+        }
     }
 
     /**
@@ -65,7 +82,7 @@ final class CampaignService
      */
     public function flashProductIds(): array
     {
-        return $this->productIdsForType(Promotion::TYPE_FLASH_SALE);
+        return Cache::remember(self::REDIS_KEYS[1], self::REDIS_TTL_SECONDS, fn () => $this->productIdsForType(Promotion::TYPE_FLASH_SALE));
     }
 
     /**
@@ -75,7 +92,7 @@ final class CampaignService
      */
     public function promoProductIds(): array
     {
-        return $this->productIdsForType(Promotion::TYPE_STORE);
+        return Cache::remember(self::REDIS_KEYS[0], self::REDIS_TTL_SECONDS, fn () => $this->productIdsForType(Promotion::TYPE_STORE));
     }
 
     /**
@@ -99,17 +116,19 @@ final class CampaignService
      */
     public function flashPeriod(): ?array
     {
-        $flash = $this->liveCampaigns()->firstWhere('type', Promotion::TYPE_FLASH_SALE);
+        return Cache::remember(self::REDIS_KEYS[2], self::REDIS_TTL_SECONDS, function (): ?array {
+            $flash = $this->liveCampaigns()->firstWhere('type', Promotion::TYPE_FLASH_SALE);
 
-        if ($flash === null) {
-            return null;
-        }
+            if ($flash === null) {
+                return null;
+            }
 
-        return [
-            'enabled' => true,
-            'starts_at' => $flash->starts_at?->toIso8601String(),
-            'ends_at' => $flash->ends_at?->toIso8601String(),
-        ];
+            return [
+                'enabled' => true,
+                'starts_at' => $flash->starts_at?->toIso8601String(),
+                'ends_at' => $flash->ends_at?->toIso8601String(),
+            ];
+        });
     }
 
     /**
