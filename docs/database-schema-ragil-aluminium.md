@@ -202,6 +202,23 @@ Indexes:
 - `idx_media_assets_created_at` (IDX on `created_at`)
 - `idx_media_assets_library` (IDX on `kind`, `status`, `visibility`)
 
+### 1.5a media_processing_logs
+
+Log pemrosesan media (unduh/finalisasi) berbasis polimorfik `loggable`.
+
+- id (INTEGER), PK
+- loggable_type (VARCHAR), NN
+- loggable_id (INTEGER), NN
+- entity_label (VARCHAR), nullable
+- event (VARCHAR), NN
+- message (TEXT), nullable
+- created_at (DATETIME), nullable
+
+Indexes:
+- IDX on `loggable_type`, `loggable_id`
+- IDX on `event`
+- IDX on `created_at`
+
 ### 1.6 `sub_models`
 
 - `id` (`INTEGER`), PK, NN
@@ -238,9 +255,9 @@ Indexes:
 ### 2.1 `promotions`
 
 - `id` (`INTEGER`), PK, NN
-- `type` (`VARCHAR`), NN, default 'store'
+- `type` (`VARCHAR`), NN, default 'store' — nilai: `store`, `flash_sale`
 - `name` (`VARCHAR`), NN
-- `status` (`VARCHAR`), NN, default 'draft'
+- `status` (`VARCHAR`), NN, default 'draft' — nilai: `draft`, `scheduled`, `active`, `ended`, `finished`
 - `starts_at` (`DATETIME`), nullable
 - `ends_at` (`DATETIME`), nullable
 - `discount_percent` (`INTEGER`), NN
@@ -315,6 +332,7 @@ Indexes:
 - `payment_method` (`VARCHAR`), NN, default 'transfer'
 - `cod_flag` (`TINYINT(1)`), NN, default '0'
 - `notes` (`TEXT`), nullable
+- `admin_notes` (`TEXT`), nullable (catatan internal admin, migrasi 2026-08-10)
 - `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
 - `updated_by_user_id` (`INTEGER`), nullable, FK -> users.id
 - `created_at` (`DATETIME`), nullable
@@ -353,6 +371,7 @@ Indexes:
 - `line_subtotal` (`NUMERIC`), NN
 - `line_discount` (`NUMERIC`), NN, default '0'
 - `line_total` (`NUMERIC`), NN
+- `note` (`TEXT`), nullable (catatan per item, migrasi 2026-08-10)
 - `created_at` (`DATETIME`), nullable
 - `updated_at` (`DATETIME`), nullable
 
@@ -425,6 +444,29 @@ UQ visitor_hash + visit_date mendeduplikasi visitor per hari; agregasi periode m
 Indexes:
 - `idx_shipping_records_status` (IDX on `status`)
 - `idx_shipping_records_order` (IDX on `order_id`)
+
+### 3.4a shipping_tracking_events
+
+Riwayat pelacakan pengiriman per waybill (J&T webhook/poll).
+
+- id (INTEGER), PK
+- shipping_record_id (INTEGER), NN, FK -> shipping_records.id
+- order_id (INTEGER), NN, FK -> orders.id
+- provider (VARCHAR 40), NN, default 'jnt'
+- waybill_number (VARCHAR 100), NN
+- provider_status (VARCHAR 80), nullable
+- normalized_status (VARCHAR 40), nullable
+- source (VARCHAR 24), NN, default 'poll'
+- location (VARCHAR 160), nullable
+- description (TEXT), nullable
+- occurred_at (DATETIME), nullable
+- event_hash (CHAR 64), NN
+- created_at, updated_at (DATETIME), nullable
+
+Indexes:
+- UQ (`shipping_record_id`, `event_hash`)
+- IDX (`order_id`, `occurred_at`)
+- IDX (`waybill_number`, `occurred_at`)
 
 ### 3.5 `payments`
 
@@ -555,6 +597,11 @@ Indexes:
 - `product_category` (`VARCHAR`), nullable
 - `product_model` (`VARCHAR`), nullable
 - `description` (`TEXT`), nullable
+- `menu_href` (`VARCHAR 2048`), nullable (link menu override, migrasi 2026-08-10)
+- `keywords` (`JSON`), nullable (array kata kunci 0-6, migrasi 2026-08-17; menggantikan kolom highlights)
+
+Nilai enum `type`: `polos`, `ornamen`, `lainnya` (default `polos`).
+Nilai enum `status`: `active`, `draft` (default `draft`).
 
 Indexes:
 - `cms_model_products_category_model_idx` (IDX on `product_category`, `product_model`)
@@ -656,11 +703,14 @@ Indexes:
 - `order_id` (`INTEGER`), nullable, FK -> orders.id
 - `href` (`VARCHAR`), nullable
 - `read_at` (`DATETIME`), nullable
+- `related_type` (`VARCHAR 80`), nullable (polimorfik target, migrasi 2026-08-14)
+- `related_id` (`INTEGER`), nullable, FK polimorfik (no constraint) (migrasi 2026-08-14)
 - `created_at` (`DATETIME`), nullable
 - `updated_at` (`DATETIME`), nullable
 
 Indexes:
 - `admin_notifications_read_at_index` (IDX on `read_at`)
+- `admin_notifications_related_idx` (IDX on `related_type`, `related_id`)
 - `admin_notifications_order_id_index` (IDX on `order_id`)
 - `admin_notifications_type_index` (IDX on `type`)
 
