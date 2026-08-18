@@ -105,6 +105,6 @@ class ShippingStatusTest extends \Tests\TestCase
 
         $this->post('/webhook/shipping/jnt', ['bizContent' => '{}'])
             ->assertOk()
-            ->assertJsonPath('code', '0');
+            ->assertJsonPath('code', config('jnt.ack.code'));
     }
 }
