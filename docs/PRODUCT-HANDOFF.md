@@ -23,7 +23,7 @@ The website is **not a standalone store** — it is the **transaction engine** a
 **Guiding principles baked into the product:**
 - **Product public IDs** live in columns `parent_sku` / `variant_sku` (opaque URL keys). **Never show these codes on the storefront** (cards, PDP, cart, model pages). Customers see name + options only. Admin/import/orders may show them as **Kode produk**.
 - **Shopee import** maps `SP{product_id}` (and variant suffixes) into those columns — Shopee remains upstream for imported rows. Website never writes back to Shopee.
-- **Website-created products** get a **random opaque** public ID with configurable prefix (`storefront.manual_sku_prefix`, default `WEB`) via `ShopeeStyleSku::nextParentSku()` — not a sequential catalog number and not a customer-facing “SKU label”.
+- **Website-created products** get a **random opaque** public ID with configurable prefix (`storefront.manual_sku_prefix`, default `RA`) via `ShopeeStyleSku::nextParentSku()` (Fase 4, no dash; distinct dari import Shopee `SP{id}`) — not a sequential catalog number and not a customer-facing “SKU label”.
 - **Product name (Shopee / admin)** follows the live Shopee title pattern, e.g.  
   `Jendela Aluminium 3 Daun Swing Casement Ornamen Tinggi 200 cm x Panjang 160 cm (200x160)`.  
   Older sample XLSX title layouts are **not** the naming SoT. Import stores `name` as-is; taxonomy/dimensions are parsed from the title.
