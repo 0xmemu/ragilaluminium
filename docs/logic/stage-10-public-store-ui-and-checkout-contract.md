@@ -56,33 +56,32 @@ Katalog reads from:
 
 - **Catalog Module** (Stage 3):
   - `products` and aggregated `product_variants`.  
-  - attributes for filtering: category (Window/Door/Bouven), model (`JUNGKIT`, `SLIDING`, `SWING`, `KACA_MATI`, `ZIGZAG`), price range, color, glass type, dimensions.
+  - attributes for filtering (implementasi aktual): category (`product_category`), model (`product_model`), design (`design_variant`), dan rentang harga (min/max via `activeVariants.price`). Facet warna/kaca/dimensi belum diimplementasikan sisi backend maupun frontend.
 
 - **Performance & Caching** (Stage 7):
   - query results should be cached (Redis) for common filters to keep UI responsive.
 
 ### 2.2 Filter & Sort Contract
 
-Filter Sidebar:
+Filter Sidebar (implementasi aktual — `catalog-listing-sidebar.tsx:249-320`, `CatalogController.php`):
 
-- CategoryAccordionFilter:
-  - maps to internal `product_category` and `product_model`.  
-- PriceRangeRangeSlider:
-  - filters min/max based on variant prices.  
-- ColorCheckboxGroup:
-  - filters by variant color attribute.  
-- GlassTypeFilter:
-  - filters by glass attribute.  
-- DimensionCustomFilter:
-  - filters by width/height attributes (either direct or via a size category).
+- Model Bukaan (`ModelFilterOptions`):
+  - pivot `product_model`; memicu revisi query `?model=...`.
+- Desain (`DesignFilterOptions`):
+  - pivot `design_variant`; memicu revisi query `?design=...`.
+- Rentang Harga (input numerik manual min/max, bukan slider):
+  - memicu `?price_min=` / `?price_max=` dibatasi ke `activeVariants.price`.
+
+Catatan: facet warna (`ColorCheckboxGroup`), jenis kaca (`GlassTypeFilter`), dan dimensi (`DimensionCustomFilter`) yang semula dikontrak BELUM diimplementasikan (tidak ada di backend maupun frontend). Kontrak diturunkan mengikuti implementasi.
 
 SortAndResultCountBar:
 
-- sorts by:
-  - newest (created_at desc),  
-  - most popular ( orders count or featured flag ),  
-  - lowest price,  
-  - highest price.
+- sorts by (nilai aktual `CatalogController.php:135-137,208-219`):
+  - popular/terlaris/bestseller (popularity score + stock tie-breaker),
+  - newest/baru (created_at desc),
+  - price_asc (termurah),
+  - price_desc (termahal),
+  - size_asc / size_desc (tinggi×lebar).
 
 ### 2.3 Product Card Behaviour
 
