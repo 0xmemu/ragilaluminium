@@ -467,13 +467,14 @@ class CatalogTaxonomy
         $panels = [];
 
         foreach (config('sitemap.navigation.mega_menu', []) as $column) {
-            $key = match ($column['route'] ?? '') {
-                'catalog.doors' => 'DOOR',
-                'catalog.bouven' => 'BOUVEN',
-                default => 'WINDOW',
-            };
+            // Kategori canonical berasal dari slug konfigurasi/database.
+            // Tidak ada lagi ketergantungan pada route kategori statis.
+            $key = CategoryUrl::categoryFromSlug((string) ($column['category'] ?? '')) ?? 'WINDOW';
 
-            $items = collect($column['items'] ?? [])->map(function (array $item) use ($column) {
+            $slug = CategoryUrl::categoryToSlug($key);
+            $baseParams = ['category' => $slug];
+
+            $items = collect($column['items'] ?? [])->map(function (array $item) use ($baseParams) {
                 $params = array_filter([
                     'model' => CatalogLabels::normalizeModel($item['model'] ?? null),
                     'design' => CatalogLabels::normalizeDesign($item['design'] ?? null),
@@ -483,7 +484,7 @@ class CatalogTaxonomy
                     'label' => $item['label'],
                     'model' => $params['model'] ?? null,
                     'design' => $params['design'] ?? null,
-                    'href' => PublicNavigation::canonicalHref($column['route'], $params, false),
+                    'href' => PublicNavigation::canonicalHref('catalog.category', $baseParams + $params, false),
                 ];
             })->all();
 
@@ -499,8 +500,8 @@ class CatalogTaxonomy
 
             $panels[$key] = [
                 'title' => $column['title'],
-                'route' => $column['route'],
-                'shop_all' => PublicNavigation::canonicalHref($column['route'], [], false),
+                'route' => 'catalog.category',
+                'shop_all' => PublicNavigation::canonicalHref('catalog.category', $baseParams, false),
                 'items' => $items,
                 'samples' => [],
             ];

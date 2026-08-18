@@ -368,7 +368,8 @@ return [
         'mega_menu' => [
             [
                 'title' => 'Jendela Aluminium',
-                'route' => 'catalog.windows',
+                'route' => 'catalog.category',
+                'category' => 'jendela',
                 'items' => [
                     ['label' => 'Jendela Sliding', 'model' => 'SLIDING', 'design' => null],
                     ['label' => 'Jendela Sliding Ornamen', 'model' => 'SLIDING', 'design' => 'ORNAMEN'],
@@ -383,7 +384,8 @@ return [
             ],
             [
                 'title' => 'Boven Aluminium',
-                'route' => 'catalog.bouven',
+                'route' => 'catalog.category',
+                'category' => 'boven',
                 'items' => [
                     ['label' => 'Boven Sliding', 'model' => 'SLIDING', 'design' => null],
                     ['label' => 'Boven Sliding Ornamen', 'model' => 'SLIDING', 'design' => 'ORNAMEN'],
@@ -392,6 +394,18 @@ return [
                     ['label' => 'Boven Swing', 'model' => 'SWING', 'design' => null],
                     ['label' => 'Boven Swing Ornamen', 'model' => 'SWING', 'design' => 'ORNAMEN'],
                     ['label' => 'Boven Zigzag', 'model' => 'ZIGZAG', 'design' => null],
+                ],
+            ],
+            [
+                'title' => 'Pintu Aluminium',
+                'route' => 'catalog.category',
+                'category' => 'pintu',
+                'items' => [
+                    ['label' => 'Pintu Sliding', 'model' => 'SLIDING', 'design' => null],
+                    ['label' => 'Pintu Sliding Ornamen', 'model' => 'SLIDING', 'design' => 'ORNAMEN'],
+                    ['label' => 'Pintu Swing', 'model' => 'SWING', 'design' => null],
+                    ['label' => 'Pintu Swing Ornamen', 'model' => 'SWING', 'design' => 'ORNAMEN'],
+                    ['label' => 'Pintu Kaca Mati', 'model' => 'KACA_MATI', 'design' => null],
                 ],
             ],
         ],

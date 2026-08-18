@@ -243,7 +243,7 @@ class HomepagePromotions
             'accent' => null,
             'image' => '/images/home/model-casement.png',
             'image_alt' => 'Promo bouven jungkit',
-            'href' => PublicNavigation::canonicalHref('catalog.bouven', [], false),
+            'href' => PublicNavigation::canonicalHref('catalog.category', ['category' => 'boven'], false),
         ];
     }
 
@@ -361,19 +361,19 @@ class HomepagePromotions
     private static function modelListingHref(Product $product): string
     {
         $model = CatalogLabels::normalizeModel($product->product_model);
-        $route = match (strtoupper((string) $product->product_category)) {
-            'WINDOW', 'WINDOWS' => 'catalog.windows',
-            'DOOR', 'DOORS' => 'catalog.doors',
-            'BOUVEN', 'BOVEN' => 'catalog.bouven',
-            default => null,
-        };
+        $category = filled($product->product_category)
+            ? CategoryUrl::categoryToSlug((string) $product->product_category)
+            : null;
 
-        if ($route && $model) {
-            return PublicNavigation::canonicalHref($route, ['model' => $model], false);
+        if ($category && $model) {
+            return PublicNavigation::canonicalHref('catalog.model', [
+                'category' => $category,
+                'model' => strtolower(str_replace('_', '-', $model)),
+            ], false);
         }
 
-        if ($route) {
-            return PublicNavigation::canonicalHref($route, [], false);
+        if ($category) {
+            return PublicNavigation::canonicalHref('catalog.category', ['category' => $category], false);
         }
 
         return route('product.show', $product->parent_sku, absolute: false);

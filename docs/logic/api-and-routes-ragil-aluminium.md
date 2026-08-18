@@ -40,16 +40,17 @@ This historical copy is not an active integration surface; use the canonical rou
 
 ### 1.2 Catalog Browsing
 
-- `GET /products/windows` (legacy `/windows` redirects 301)
-  - Controller: `CatalogController@windows`
-  - Purpose:
-    - List WINDOW products, with filters for model & design variant.
+- GET /products/{categorySlug}
+  - Controller: CatalogController
+  - Canonical examples: /products/jendela, /products/pintu, /products/boven
+  - Legacy /products/windows|doors|bouven redirect 301 to the Indonesian slug.
+  - Top-level /windows|doors|bouven routes do not exist and return 404.
 
-- `GET /products/doors` (legacy `/doors` redirects 301)
-  - Controller: `CatalogController@doors`
+- GET /products/{categorySlug}/{modelSlug}
+  - Controller: CatalogController
 
-- `GET /products/bouven` (legacy `/bouven` redirects 301)
-  - Controller: `CatalogController@bouven`
+- GET /products/{categorySlug}/{modelSlug}/{designSlug}
+  - Controller: CatalogController
 
 Common query parameters for category pages:
 
@@ -60,7 +61,7 @@ Common query parameters for category pages:
 
 Example:
 
-- `/products/windows/sliding/plain?sort=popular`
+- `/products/jendela/sliding/ornamen?sort=popular`
 
 - `GET /search`
   - Controller: `SearchController@index`
