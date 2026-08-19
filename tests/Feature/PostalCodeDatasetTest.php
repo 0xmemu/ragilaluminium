@@ -57,8 +57,22 @@ class PostalCodeDatasetTest extends TestCase
             $this->assertTrue($valid['valid']);
             $this->assertSame('2026-08', $valid['dataset_version']);
 
-            $invalid = app(PostalCodeRepository::class)->validate(
+            // Strategi validasi KECAMATAN: 40134 milik kecamatan COBLONG (walaupun
+            // di data itu untuk desa SEKELOA), jadi valid walau kombinasi
+            // desa berbeda — beda ejaan/nama desa antar sumber tidak menolak.
+            $kecamatan = app(PostalCodeRepository::class)->validate(
                 '40134',
+                '3273010001',
+                'LEBAK GEDE',
+                '3273010',
+                'COBLONG',
+            );
+            $this->assertSame('valid', $kecamatan['status']);
+            $this->assertTrue($kecamatan['valid']);
+
+            // Kode pos di LUAR kecamatan COBLONG tetap invalid.
+            $invalid = app(PostalCodeRepository::class)->validate(
+                '40199',
                 '3273010001',
                 'LEBAK GEDE',
                 '3273010',

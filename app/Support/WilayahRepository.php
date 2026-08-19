@@ -54,7 +54,12 @@ class WilayahRepository
         }
 
         $rows = [];
-        $postalCodes = app(PostalCodeRepository::class)->postalCodesForDistrict($districtId);
+        // Kode pos dicocokkan PER DESA (granularitas paling akurat): dataset
+        // aktif memberi peta village_name => postal_code untuk kecamatan ini.
+        $districtName = $this->districtNameFor($districtId);
+        $postalCodes = $districtName !== null
+            ? app(PostalCodeRepository::class)->postalCodesForVillageNames($districtName)
+            : [];
         $handle = fopen($path, 'r');
         if ($handle === false) {
             return [];
@@ -71,7 +76,7 @@ class WilayahRepository
                 $rows[] = [
                     'id' => (string) $cols[0],
                     'name' => (string) $cols[2],
-                    'postal_code' => $postalCodes[(string) $cols[0]] ?? null,
+                    'postal_code' => $postalCodes[\Illuminate\Support\Str::lower(trim((string) $cols[2]))] ?? null,
                 ];
             }
         } finally {
@@ -185,6 +190,17 @@ class WilayahRepository
             fn (array $row) => ['id' => $row['id'], 'name' => $row['name']],
             $rows,
         );
+    }
+
+    private function districtNameFor(string $districtId): ?string
+    {
+        foreach ($this->loadWithParent('districts.csv') as $row) {
+            if ((string) $row['id'] === (string) $districtId) {
+                return (string) $row['name'];
+            }
+        }
+
+        return null;
     }
 
     private function path(string $filename): string

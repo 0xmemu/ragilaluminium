@@ -26,21 +26,31 @@ class PostalCodeRepository
             return $this->result('invalid', false, $postal, $dataset, null);
         }
 
+        // Spesifikasi: kode pos Indonesia pada dasarnya LINGKUP KECAMATAN.
+        // Validasi utama mencocokkan (district + kode pos), bukan per-desa —
+        // menghindari penolakan order yang sah akibat beda ejaan nama desa antar
+        // sumber (Kemendagri vs Pos Indonesia). Desa hanya dipakai bila identitas
+        // kecamatan tidak diberikan (fallback granular).
+        $hasDistrict = filled($districtId) || filled($districtName);
+        $hasVillage = filled($villageId) || filled($villageName);
+        $identityGiven = $hasDistrict || $hasVillage;
+
         $query = PostalCodeMapping::query()
             ->where('postal_dataset_id', $dataset->id)
             ->where('postal_code', $postal);
 
-        $identityGiven = filled($villageId) || filled($villageName) || filled($districtId) || filled($districtName);
-        if (filled($villageId)) {
-            $query->where('village_id', (string) $villageId);
-        } elseif (filled($villageName)) {
-            $query->whereRaw('LOWER(village_name) = ?', [Str::lower(trim((string) $villageName))]);
-        }
-
-        if (filled($districtId)) {
-            $query->where('district_id', (string) $districtId);
-        } elseif (filled($districtName)) {
-            $query->whereRaw('LOWER(district_name) = ?', [Str::lower(trim((string) $districtName))]);
+        if ($hasDistrict) {
+            if (filled($districtId)) {
+                $query->where('district_id', (string) $districtId);
+            } elseif (filled($districtName)) {
+                $query->whereRaw('LOWER(TRIM(district_name)) = ?', [Str::lower(trim((string) $districtName))]);
+            }
+        } elseif ($hasVillage) {
+            if (filled($villageId)) {
+                $query->where('village_id', (string) $villageId);
+            } elseif (filled($villageName)) {
+                $query->whereRaw('LOWER(TRIM(village_name)) = ?', [Str::lower(trim((string) $villageName))]);
+            }
         }
 
         $mapping = $query->first();
@@ -88,6 +98,35 @@ class PostalCodeRepository
             ->where('district_id', $districtId)
             ->pluck('postal_code', 'village_id')
             ->map(static fn ($postal): string => (string) $postal)
+            ->all();
+    }
+
+    /**
+     * Kode pos per desa (village_name) dalam satu kecamatan (district_name).
+     * Kode pos Indonesia umumnya per kecamatan, tetapi di kota besar tiap desa
+     * boleh beda kode pos. Mencocokkan per nama desa adalah granularitas paling
+     * akurat dan menghilangkan ambiguitas kecamatan multi-kode-pos.
+     *
+     * @return array<string, string> map lowercase village_name => postal_code
+     */
+    public function postalCodesForVillageNames(string $districtName): array
+    {
+        $dataset = $this->activeDataset();
+        if ($dataset === null) {
+            return [];
+        }
+
+        $name = \Illuminate\Support\Str::lower(trim($districtName));
+
+        return PostalCodeMapping::query()
+            ->where('postal_dataset_id', $dataset->id)
+            ->whereRaw('LOWER(TRIM(district_name)) = ?', [$name])
+            ->get(['village_name', 'postal_code'])
+            ->mapWithKeys(function (PostalCodeMapping $mapping): array {
+                $key = \Illuminate\Support\Str::lower(trim($mapping->village_name));
+
+                return [$key => (string) $mapping->postal_code];
+            })
             ->all();
     }
 
