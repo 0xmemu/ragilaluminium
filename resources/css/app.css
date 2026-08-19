@@ -955,60 +955,21 @@
     position: fixed;
     inset: 0;
     background: #fff;
-    display: block;
-  }
-}
-
-/**
- * Cetak detail konsumen (admin customers): saat tombol "Cetak" ditekan,
- * PrintCustomerArea me-render #print-customer-detail via portal ke <body>;
- * aturan berikut menyembunyikan seluruh app dan hanya mencetak halaman itu.
- */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-
-  #print-customer-detail,
-  #print-customer-detail * {
-    visibility: visible;
+    display: block !important;
   }
 
   #print-customer-detail {
     position: absolute;
     inset: 0;
     background: #fff;
-  }
-}
-
-/**
- * Cetak detail konsumen dari daftar pesanan (admin orders index): saat tombol
- * "Cetak" ditekan, PrintOrderArea me-render #print-order-customer via portal
- * ke <body>. `display: none` pada saudara kandung body menghapus seluruh
- * layout app (bukan sekadar menyembunyikannya) sehingga hasil cetak tepat
- * satu halaman A4 tanpa halaman kosong lanjutan.
- */
-@media print {
-  body > :not(#print-order-customer) {
-    display: none !important;
-  }
-
-  #print-order-customer,
-  #print-order-customer * {
-    visibility: visible;
+    display: block !important;
   }
 
   #print-order-customer {
-    display: block;
+    display: block !important;
     background: #fff;
   }
-}
 
-/**
- * Cetak: matikan header/footer otomatis browser (tanggal, judul tab, URL
- * sumber cetak) dengan margin 0 dan paksa ukuran A4 portrait.
- */
-@media print {
   @page {
     size: A4 portrait;
     margin: 0;
