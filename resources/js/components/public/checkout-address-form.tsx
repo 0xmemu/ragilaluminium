@@ -34,7 +34,6 @@ export function CheckoutAddressForm({
     loadingVillages,
     wilayahError,
     setWilayahRetry,
-    setMapPickerOpen,
     selectProvince,
     selectCity,
     selectDistrict,
@@ -215,22 +214,6 @@ export function CheckoutAddressForm({
               onChange={(event) => detailForm.setData("address_line2", event.target.value)}
             />
           </Field>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-border bg-surface-muted p-3">
-            <p className="text-xs leading-5 text-muted-foreground">
-              Alamat tidak terdaftar? Pilih titik di Maps sebagai bantuan lokasi. Kode pos tetap
-              mengikuti desa/kelurahan yang dipilih.
-            </p>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setMapPickerOpen(true)}
-            >
-              <Icon name="map-pin" className="size-4" aria-hidden="true" />
-              Pilih titik di Maps (opsional)
-            </Button>
-          </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-5">
             {details ? (
               <Button variant="ghost" onClick={() => setEditingDetails(false)}>

@@ -5,7 +5,6 @@ import { CheckoutAddressForm } from "@/components/public/checkout-address-form"
 import { CheckoutItemNotes } from "@/components/public/checkout-item-notes"
 import { CheckoutPaymentSection } from "@/components/public/checkout-payment-section"
 import { CheckoutSummary, type CheckoutItem } from "@/components/public/checkout-summary"
-import { LocationPickerModal } from "@/components/public/location-picker"
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -192,15 +191,6 @@ export default function Checkout({
         </div>
       </section>
 
-      <LocationPickerModal
-        open={c.mapPickerOpen}
-        onOpenChange={c.setMapPickerOpen}
-        provinces={c.provinces}
-        regencies={c.regencies}
-        districts={c.districts}
-        villages={c.villages}
-        onApply={c.applyPickedLocation}
-      />
     </PublicLayout>
   )
 }

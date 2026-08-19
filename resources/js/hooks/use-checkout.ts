@@ -145,37 +145,10 @@ export function useCheckout({
   const [loadingVillages, setLoadingVillages] = React.useState(false)
   const [wilayahError, setWilayahError] = React.useState<string | null>(null)
   const [wilayahRetry, setWilayahRetry] = React.useState(0)
-  const [mapPickerOpen, setMapPickerOpen] = React.useState(false)
   const [shippingQuote, setShippingQuote] = React.useState<CheckoutShippingQuote | null>(null)
   const [shippingQuoteLoading, setShippingQuoteLoading] = React.useState(false)
   const [shippingQuoteAttempted, setShippingQuoteAttempted] = React.useState(false)
   const shippingQuoteAbortRef = React.useRef<AbortController | null>(null)
-
-  function applyPickedLocation(picked: {
-    display_name: string
-    postal_code?: string | null
-    province?: string
-    city?: string
-    district?: string
-    village?: string
-    province_id?: string
-    city_id?: string
-    district_id?: string
-    village_id?: string
-  }) {
-    detailForm.setData((current) => ({
-      ...current,
-      province: picked.province ?? current.province,
-      city: picked.city ?? current.city,
-      district: picked.district ?? current.district,
-      village: picked.village ?? current.village,
-      province_id: picked.province_id ?? "",
-      city_id: picked.city_id ?? "",
-      district_id: picked.district_id ?? "",
-      village_id: picked.village_id ?? "",
-      postal_code: picked.postal_code ?? current.postal_code,
-    }))
-  }
 
   React.useEffect(() => {
     let cancelled = false
@@ -560,12 +533,9 @@ export function useCheckout({
     loadingVillages,
     wilayahError,
     setWilayahRetry,
-    mapPickerOpen,
-    setMapPickerOpen,
     shippingQuote,
     shippingQuoteLoading,
     shippingQuoteAttempted,
-    applyPickedLocation,
     selectProvince,
     selectCity,
     selectDistrict,
