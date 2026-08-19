@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -121,6 +122,14 @@ class WhatsAppPairingController extends Controller
 
     public function refreshQr(): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
+        ActivityLogService::record(
+            'whatsapp.refresh_qr',
+            'whatsapp_gateway',
+            1,
+            ['reason' => 'Generate QR baru dari panel admin'],
+            request()->user()?->id,
+        );
+
         try {
             $response = Http::timeout(10)
                 ->withHeaders($this->headers())
@@ -146,6 +155,14 @@ class WhatsAppPairingController extends Controller
         if ($phone === '') {
             return response()->json(['error' => 'Nomor WhatsApp tidak valid.'], 422);
         }
+
+        ActivityLogService::record(
+            'whatsapp.pairing_code',
+            'whatsapp_gateway',
+            1,
+            ['phone' => $phone],
+            $request->user()?->id,
+        );
 
         try {
             $response = Http::timeout(20)

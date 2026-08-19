@@ -77,8 +77,6 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /ulasan` -> `PageController@ulasan`  (name: `ulasan`)
 - `GET /up` -> `Closure`
 - `POST /webhook/shipping/jnt` -> `Webhook\ShippingController@handleJnt`  (name: `webhook.shipping.jnt`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
-- `GET /webhook/whatsapp` -> `Webhook\WhatsAppController@verify`  (name: `webhook.whatsapp.verify`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
-- `POST /webhook/whatsapp` -> `Webhook\WhatsAppController@handle`  (name: `webhook.whatsapp.handle`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 - `POST /webhook/whatsapp/baileys` -> `Webhook\WhatsAppController@handleBaileys`  (name: `webhook.whatsapp.baileys`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 
 ## 2. Admin
@@ -310,9 +308,17 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 ## 4. Webhooks
 
 - `POST /webhook/shipping/jnt` -> `Webhook\ShippingController@handleJnt`  (name: `webhook.shipping.jnt`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
-- `GET /webhook/whatsapp` -> `Webhook\WhatsAppController@verify`  (name: `webhook.whatsapp.verify`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
-- `POST /webhook/whatsapp` -> `Webhook\WhatsAppController@handle`  (name: `webhook.whatsapp.handle`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 - `POST /webhook/whatsapp/baileys` -> `Webhook\WhatsAppController@handleBaileys`  (name: `webhook.whatsapp.baileys`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
+
+Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
+- Body: `{ "event": "<event>", "session": "<session>", "payload": { ... } }`.
+- Auth: header `X-Webhook-Secret` (atau `X-BAILEYS-Secret`) sama dgn `WHATSAPP_BAILEYS_WEBHOOK_SECRET`,
+  atau `X-Webhook-Hmac` HMAC sha512 (algo header `X-Webhook-Hmac-Algorithm`). Query-string secret ditolak.
+- Event `message`: inbound customer message; `payload.from` = JID (`<nomor>@c.us`), `payload.body` = teks,
+  `payload.fromMe` harus `false`. Di-log ke `whatsapp_messages` (`direction=inbound`, `provider=baileys`),
+  dan bila berisi konfirmasi order, memicu `beginProcessing`.
+- Event `message.ack`: ack status pengiriman; `payload.id` + `payload.ack` (0..3) -> `sent|delivered|read`.
+- Event lain (mis. `session.status`) diabaikan.
 
 ## 5. Fallback
 
@@ -321,8 +327,8 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 
 ## Admin order returns (2026-08-15)
 
-- POST /admin/orders/{order}/returns"éÝyø§yÔ admin-only create return case. Valid only when order status is delivered or completed; requires reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions order to return_in_process, and records audit/WhatsApp follow-up.
-- POST /admin/orders/{order}/returns/{returnCase}/complete ºw^~)Þt admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
+- POST /admin/orders/{order}/returns"ï¿½ï¿½yï¿½ï¿½yï¿½ admin-only create return case. Valid only when order status is delivered or completed; requires reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions order to return_in_process, and records audit/WhatsApp follow-up.
+- POST /admin/orders/{order}/returns/{returnCase}/complete ï¿½w^~)ï¿½t admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
 - Direct PUT /admin/orders/{order}/status to return_in_process is rejected so undocumented returns cannot bypass the case form.
 
 - GET /admin/imports/internal-template -> Admin\\ImportJobController@downloadInternalTemplate (name: admin.imports.internal-template) [Authenticate|EnsureUserIsAdmin]

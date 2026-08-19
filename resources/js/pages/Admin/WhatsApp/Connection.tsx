@@ -16,13 +16,6 @@ interface ConnectionInfo {
   webhook_path: string
   baileys_webhook_path: string
   providers: {
-    meta: {
-      configured: boolean
-      base_url?: string | null
-      token_set: boolean
-      number_id_set?: boolean
-      verify_token_set?: boolean
-    }
     baileys: {
       configured: boolean
       base_url?: string | null

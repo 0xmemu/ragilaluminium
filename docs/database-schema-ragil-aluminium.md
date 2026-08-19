@@ -524,7 +524,7 @@ Indexes:
 - `raw_payload` (`TEXT`), nullable
 - `created_at` (`DATETIME`), nullable
 - `updated_at` (`DATETIME`), nullable
-- `provider` (`VARCHAR`), NN, default 'meta'
+- `provider` (`VARCHAR`), NN, default 'meta'  _(legacy; kode selalu isi eksplisit `baileys`/`jnt` — provider aktif kini Baileys-only)_
 - `provider_session` (`VARCHAR`), nullable
 
 Indexes:
