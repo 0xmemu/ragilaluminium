@@ -11,6 +11,7 @@ use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
 use App\Support\BankTransferInstructions;
 use App\Support\PhoneNumber;
+use App\Support\WhatsAppSessionNotifier;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -84,9 +85,7 @@ class WhatsAppService
             return $message;
         }
 
-        $result = $provider === 'baileys'
-            ? $this->sendViaBaileys($phone, $text)
-            : $this->sendViaMetaText($phone, $text);
+        $result = $this->sendViaBaileys($phone, $text);
 
         $this->applyProviderResult($message, $result);
 
@@ -121,13 +120,6 @@ class WhatsAppService
             'compare_provider' => $this->compareProvider(),
             'compare_allowlist' => $this->compareAllowlist(),
             'providers' => [
-                'meta' => [
-                    'configured' => $this->providerConfigured('meta'),
-                    'base_url' => config('services.whatsapp.meta.base_url'),
-                    'token_set' => filled(config('services.whatsapp.meta.token')),
-                    'number_id_set' => filled(config('services.whatsapp.meta.number_id')),
-                    'verify_token_set' => filled(config('services.whatsapp.meta.verify_token')),
-                ],
                 'baileys' => [
                     'configured' => $this->providerConfigured('baileys'),
                     'base_url' => config('services.whatsapp.baileys.base_url'),
@@ -138,32 +130,6 @@ class WhatsAppService
                 ],
             ],
         ];
-    }
-
-    public function handleMetaWebhook(array $payload): void
-    {
-        $entry = $payload['entry'][0]['changes'][0]['value'] ?? null;
-        if (! $entry) {
-            return;
-        }
-
-        $messages = $entry['messages'] ?? [];
-        $statuses = $entry['statuses'] ?? [];
-
-        $this->handleCanonicalWebhook(
-            'meta',
-            collect($messages)->map(fn (array $msg) => [
-                'provider_message_id' => $msg['id'] ?? null,
-                'phone' => PhoneNumber::normalize($msg['from'] ?? null) ?? ($msg['from'] ?? null),
-                'text' => $this->extractInboundText($msg),
-                'raw' => $msg,
-                'provider_session' => null,
-            ])->all(),
-            collect($statuses)->map(fn (array $status) => [
-                'provider_message_id' => $status['id'] ?? null,
-                'status' => $status['status'] ?? null,
-            ])->all(),
-        );
     }
 
     public function handleBaileysWebhook(array $payload): void
@@ -189,6 +155,27 @@ class WhatsAppService
                 'provider_message_id' => $body['id'] ?? null,
                 'status' => $this->mapBaileysAckStatus($body['ack'] ?? null),
             ]]);
+
+            return;
+        }
+
+        if ($event === 'session.status') {
+            $this->handleSessionStatusWebhook($body);
+
+            return;
+        }
+    }
+
+    /**
+     * Webhook session.status dari gateway Baileys.
+     * logged_out -> notifikasi admin + audit (dedupe di notifier).
+     */
+    protected function handleSessionStatusWebhook(array $body): void
+    {
+        $status = (string) ($body['status'] ?? '');
+
+        if ($status === 'logged_out') {
+            WhatsAppSessionNotifier::notifyLoggedOut();
         }
     }
 
@@ -208,7 +195,7 @@ class WhatsAppService
             'provider' => $provider,
             'internal_template_key' => $internalKey,
             'status' => 'pending',
-            'content_text' => $provider === 'baileys' ? $this->renderTemplateBody($template, $variables) : null,
+            'content_text' => $this->renderTemplateBody($template, $variables),
             'content_payload' => ['variables' => $variables],
         ]);
 
@@ -224,9 +211,7 @@ class WhatsAppService
             return $message;
         }
 
-        $result = $provider === 'baileys'
-            ? $this->sendViaBaileys($phone, $this->renderTemplateBody($template, $variables))
-            : $this->sendViaMetaTemplate($template, $phone, $variables);
+        $result = $this->sendViaBaileys($phone, $this->renderTemplateBody($template, $variables));
 
         $this->applyProviderResult($message, $result);
 
@@ -243,68 +228,6 @@ class WhatsAppService
             'error_reason' => $result['error_reason'] ?? null,
             'raw_payload' => $result['raw_payload'] ?? null,
         ]);
-    }
-
-    protected function sendViaMetaTemplate(WhatsAppTemplate $template, string $phone, array $variables): array
-    {
-        $parameters = collect($variables)
-            ->map(fn ($v) => ['type' => 'text', 'text' => $this->sanitizeTemplateParam((string) $v)])
-            ->values()
-            ->all();
-
-        $payload = [
-            'messaging_product' => 'whatsapp',
-            'to' => $phone,
-            'type' => 'template',
-            'template' => [
-                'name' => $template->provider_template_name,
-                'language' => ['code' => $template->language_code],
-                'components' => [[
-                    'type' => 'body',
-                    'parameters' => $parameters,
-                ]],
-            ],
-        ];
-
-        return $this->sendMetaPayload($payload);
-    }
-
-    protected function sendViaMetaText(string $phone, string $text): array
-    {
-        return $this->sendMetaPayload([
-            'messaging_product' => 'whatsapp',
-            'to' => $phone,
-            'type' => 'text',
-            'text' => ['body' => $this->sanitizeTemplateParam($text)],
-        ]);
-    }
-
-    protected function sendMetaPayload(array $payload): array
-    {
-        try {
-            $response = Http::withToken(config('services.whatsapp.meta.token'))
-                ->timeout((int) config('services.whatsapp.meta.timeout', 15))
-                ->retry(2, 500, throw: false)
-                ->post($this->metaEndpoint(), $payload);
-
-            return [
-                'successful' => $response->successful(),
-                'provider_message_id' => $response->json('messages.0.id'),
-                'provider_session' => null,
-                'status' => $response->successful() ? 'sent' : 'failed',
-                'error_reason' => $response->successful() ? null : $response->body(),
-                'raw_payload' => $response->json() ?: ['body' => $response->body()],
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'successful' => false,
-                'provider_message_id' => null,
-                'provider_session' => null,
-                'status' => 'failed',
-                'error_reason' => $e->getMessage(),
-                'raw_payload' => null,
-            ];
-        }
     }
 
     protected function sendViaBaileys(string $phone, string $text): array
@@ -391,27 +314,25 @@ class WhatsAppService
 
     protected function defaultProvider(): string
     {
-        return $this->normalizeProvider((string) config('services.whatsapp.default_provider', 'meta'));
+        return 'baileys';
     }
 
     protected function compareProvider(): ?string
     {
         $provider = trim((string) config('services.whatsapp.compare_provider', ''));
 
-        return $provider === '' ? null : $this->normalizeProvider($provider);
+        return $provider === '' ? null : 'baileys';
     }
 
     protected function normalizeProvider(string $provider): string
     {
-        return strtolower($provider) === 'baileys' ? 'baileys' : 'meta';
+        return 'baileys';
     }
 
     protected function providerConfigured(string $provider): bool
     {
-        return match ($provider) {
-            'baileys' => filled(config('services.whatsapp.baileys.base_url')) && filled(config('services.whatsapp.baileys.api_key')),
-            default => filled(config('services.whatsapp.meta.token')) && filled(config('services.whatsapp.meta.number_id')),
-        };
+        return filled(config('services.whatsapp.baileys.base_url'))
+            && filled(config('services.whatsapp.baileys.api_key'));
     }
 
     /**
@@ -884,18 +805,6 @@ class WhatsAppService
         return $lines->isNotEmpty() ? $lines->implode(' | ') : '-';
     }
 
-    /**
-     * Meta Cloud API menolak parameter body yang berisi newline/tab atau >4 spasi beruntun.
-     */
-    protected function sanitizeTemplateParam(string $value): string
-    {
-        $value = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $value);
-        $value = preg_replace('/ {5,}/', '    ', $value) ?? $value;
-        $value = trim($value);
-
-        return $value !== '' ? $value : '-';
-    }
-
     protected function formatEta(Order $order): string
     {
         return \App\Support\OrderEta::whatsappLabel($order);
@@ -906,9 +815,4 @@ class WhatsAppService
         return number_format((float) $order->total_amount, 0, ',', '.');
     }
 
-    protected function metaEndpoint(): string
-    {
-        return rtrim((string) config('services.whatsapp.meta.base_url'), '/')
-            .'/'.config('services.whatsapp.meta.number_id').'/messages';
-    }
 }
