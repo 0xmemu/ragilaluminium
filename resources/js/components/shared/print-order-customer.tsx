@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { formatCurrency, formatDateTime } from "@/lib/format"
 
-const LOGO_URL = "/images/brand/dark-logo.png"
+const LOGO_URL = "/images/brand/dark-mark.png"
 
 const INTER_FONT =
   "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
@@ -239,57 +239,55 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "220px minmax(0, 1fr)",
+            gridTemplateColumns: "300px minmax(0, 1fr)",
             columnGap: 24,
           }}
         >
-          {/* Kiri: data pelanggan */}
+          {/* Kiri: nama, no HP, lalu alamat lengkap di bawahnya (box sempit) */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", gap: 8 }}>
-              <span style={{ ...label, width: 60, flexShrink: 0 }}>Nama</span>
+              <span style={{ ...label, width: 56, flexShrink: 0 }}>Nama</span>
               <span style={value}>{data.customer_name}</span>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <span style={{ ...label, width: 60, flexShrink: 0 }}>No. HP</span>
+              <span style={{ ...label, width: 56, flexShrink: 0 }}>No. HP</span>
               <span style={value}>{data.customer_phone || "—"}</span>
             </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <span style={{ ...label, color: "#333333", fontWeight: 700 }}>Alamat lengkap</span>
+              <span style={{ ...value, fontSize: 10, lineHeight: 1.5, maxWidth: 290 }}>{address || "—"}</span>
+            </div>
           </div>
-          {/* Kanan: alamat lengkap */}
-          <div style={{ display: "flex", gap: 8 }}>
-            <span style={{ ...label, color: "#333333", fontWeight: 700, width: 96, flexShrink: 0, paddingTop: 1 }}>
-              Alamat lengkap
-            </span>
-            <span style={{ ...value, fontSize: 10, lineHeight: 1.55 }}>{address || "—"}</span>
-          </div>
-        </div>
-        <div style={{ height: 1, background: "#DEE3E0", margin: "10px 0 10px" }} />
-        {/* Bawah: wilayah */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-            columnGap: 16,
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={label}>Provinsi</span>
-            <span style={value}>{data.shipping_province || "—"}</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={label}>Kota</span>
-            <span style={value}>{data.shipping_city || "—"}</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={label}>Kecamatan</span>
-            <span style={value}>{data.shipping_district || "—"}</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={label}>Kelurahan</span>
-            <span style={value}>{data.shipping_village || "—"}</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={label}>Kode Pos</span>
-            <span style={value}>{data.shipping_postal_code || "—"}</span>
+          {/* Kanan: wilayah (provinsi, kota, kecamatan, kelurahan, kode pos) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              columnGap: 16,
+              rowGap: 8,
+              alignContent: "start",
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={label}>Provinsi</span>
+              <span style={value}>{data.shipping_province || "—"}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={label}>Kota</span>
+              <span style={value}>{data.shipping_city || "—"}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={label}>Kecamatan</span>
+              <span style={value}>{data.shipping_district || "—"}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={label}>Kelurahan</span>
+              <span style={value}>{data.shipping_village || "—"}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={label}>Kode Pos</span>
+              <span style={value}>{data.shipping_postal_code || "—"}</span>
+            </div>
           </div>
         </div>
       </div>

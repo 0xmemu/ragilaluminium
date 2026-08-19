@@ -984,12 +984,13 @@
 /**
  * Cetak detail konsumen dari daftar pesanan (admin orders index): saat tombol
  * "Cetak" ditekan, PrintOrderArea me-render #print-order-customer via portal
- * ke <body>; aturan berikut menyembunyikan seluruh app dan hanya mencetak
- * halaman itu.
+ * ke <body>. `display: none` pada saudara kandung body menghapus seluruh
+ * layout app (bukan sekadar menyembunyikannya) sehingga hasil cetak tepat
+ * satu halaman A4 tanpa halaman kosong lanjutan.
  */
 @media print {
-  body * {
-    visibility: hidden;
+  body > :not(#print-order-customer) {
+    display: none !important;
   }
 
   #print-order-customer,
@@ -998,9 +999,19 @@
   }
 
   #print-order-customer {
-    position: absolute;
-    inset: 0;
+    display: block;
     background: #fff;
+  }
+}
+
+/**
+ * Cetak: matikan header/footer otomatis browser (tanggal, judul tab, URL
+ * sumber cetak) dengan margin 0 dan paksa ukuran A4 portrait.
+ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
   }
 }
 
