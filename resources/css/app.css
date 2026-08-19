@@ -981,6 +981,29 @@
   }
 }
 
+/**
+ * Cetak detail konsumen dari daftar pesanan (admin orders index): saat tombol
+ * "Cetak" ditekan, PrintOrderArea me-render #print-order-customer via portal
+ * ke <body>; aturan berikut menyembunyikan seluruh app dan hanya mencetak
+ * halaman itu.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #print-order-customer,
+  #print-order-customer * {
+    visibility: visible;
+  }
+
+  #print-order-customer {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+  }
+}
+
 /* Badge keranjang berdenyut saat produk "mendarat" (FlyingCart). */
 @keyframes cart-bump {
   0% {

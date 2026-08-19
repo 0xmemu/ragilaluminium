@@ -11,10 +11,10 @@ import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import {
-  PrintAddressArea,
-  type AddressData,
-  usePrintAddress,
-} from "@/components/shared/print-address"
+  PrintOrderArea,
+  type OrderPrintData,
+  usePrintOrder,
+} from "@/components/shared/print-order-customer"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -209,7 +209,7 @@ function OrderCardRow({
     }
   }
   const [busy, setBusy] = React.useState(false)
-  const { printing, handlePrint } = usePrintAddress()
+  const { printing, handlePrint } = usePrintOrder()
 
   const visibleItems = expanded ? order.items : order.items.slice(0, 2)
   const hiddenCount = Math.max(order.items_total - visibleItems.length, 0)
@@ -280,8 +280,8 @@ function OrderCardRow({
             type="button"
             onClick={handlePrint}
             className="inline-flex h-8 w-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-            aria-label={`Cetak alamat ${order.customer_name}`}
-            title="Cetak alamat"
+            aria-label={`Cetak detail konsumen ${order.customer_name}`}
+            title="Cetak detail konsumen"
           >
             <Icon name="printer" className="size-4" aria-hidden="true" />
             <span className="hidden text-xs font-medium xl:inline">Print</span>
@@ -507,7 +507,7 @@ function OrderCardRow({
           ) : null}
         </div>
       </div>
-      {printing ? <PrintAddressArea data={order as AddressData} /> : null}
+      {printing ? <PrintOrderArea data={order as OrderPrintData} /> : null}
     </article>
   )
 }
