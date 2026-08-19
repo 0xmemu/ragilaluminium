@@ -60,7 +60,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **WhatsApp Otomatis** (Tipe: `Settings/System` & `Operational`)
   - Daftar 5 otomasi Stage-8 (COD, Transfer, Diproses, Resi, Sampai): toggle aktif + edit provider/body preview.
   - Route: `admin.whatsapp.templates.*` → `Admin/WhatsApp/Index|Edit`.
-  - Status koneksi Cloud API: `admin.whatsapp.connection` → `Admin/WhatsApp/Connection` (bukan QR WhatsApp Web).
+  - Status koneksi gateway **Baileys** (provider Meta diarsipkan 2026-08-19): `admin.whatsapp.connection` → `Admin/WhatsApp/Connection` (bukan QR WhatsApp Web).
 - **Messages** (Tipe: `Operational`)
   - Log lalu lintas pesan masuk/keluar dan *troubleshooting* status gagal. Route: `admin.whatsapp.messages.*`.
 
