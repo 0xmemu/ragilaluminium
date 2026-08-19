@@ -164,7 +164,7 @@ class WhatsAppTemplateController extends Controller
 
         return Inertia::render('Admin/WhatsApp/Connection', [
             'title' => 'Hubungkan WhatsApp',
-            'description' => 'Status integrasi Meta resmi dan BAILEYS untuk pesan otomatis toko, termasuk compare mode yang aman untuk nomor uji.',
+            'description' => 'Status gateway WhatsApp (Baileys) untuk pesan otomatis toko dan jalur webhook masuk.',
             'backUrl' => route('admin.whatsapp.templates.index'),
             'connection' => array_merge($connection, [
                 'webhook_path' => '/webhook/whatsapp',
@@ -264,7 +264,7 @@ class WhatsAppTemplateController extends Controller
                 ]
             );
 
-            // Katalog = sumber naskah resmi; refresh preview/deskripsi tanpa menimpa nama Meta / status.
+            // Katalog = sumber naskah resmi; refresh preview/deskripsi tanpa menimpa provider_template_name / status.
             $template->forceFill([
                 'description' => $trigger['description'],
                 'body_preview' => $trigger['default_body'],
