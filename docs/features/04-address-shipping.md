@@ -6,13 +6,13 @@
 1. Provinsi → kabupaten/kota → kecamatan → desa.
 2. Sistem mengisi kode pos otomatis hanya setelah mapping internal lolos quality gate; field kode pos readonly bagi customer.
 3. Tampilkan kode pos/detail alamat (patokan/RT/RW).
-4. Jika mapping kode pos kosong atau belum terverifikasi, kode pos tetap kosong dan customer diminta mengonfirmasi ulang alamat lengkap atau mencoba pencarian wilayah lagi; titik lokasi/peta hanya fallback opsional untuk membantu menemukan dan mengonfirmasi alamat, bukan sumber kode pos.
+4. Jika mapping kode pos kosong atau belum terverifikasi, kode pos tetap kosong dan customer diminta mengonfirmasi ulang alamat lengkap atau mencoba pencarian wilayah lagi. Tidak ada fallback peta; kode pos hanya dari mapping dataset internal yang aktif.
 5. Hitung ongkir destination/berat/dimensi/service.
 6. Tampilkan normal, subsidi, net, dan ETA hasil display yang sudah termasuk buffer +1 hari sekali.
 CSV storage/app/wilayah/*.csv belum lengkap kode pos. Target dataset up-to-date, parent-child konsisten, source/version, update terverifikasi.
 
 ## UI/UX states
-Dependent child disabled; kode pos tampil tepat di bawah desa dan readonly; auto-fill hanya dari mapping internal aktif yang lolos quality gate; mapping kosong/tidak terverifikasi menampilkan state kosong + konfirmasi ulang alamat/pencarian wilayah, tanpa input kode pos customer; fallback titik/peta opsional hanya konteks alamat; ongkir loading/success/pending review/provider unavailable/invalid tanpa angka palsu. COD reason saat dipilih dan Transfer ditawarkan.
+Dependent child disabled; kode pos tampil tepat di bawah desa dan readonly; auto-fill hanya dari mapping internal aktif yang lolos quality gate; mapping kosong/tidak terverifikasi menampilkan state kosong + konfirmasi ulang alamat/pencarian wilayah, tanpa input kode pos customer; tanpa fallback peta (fitur reset dgn `c96ba16`); ongkir loading/success/pending review/provider unavailable/invalid tanpa angka palsu. COD reason saat dipilih dan Transfer ditawarkan.
 
 ## Optional location pin fallback
 - Fallback hanya untuk membantu customer menemukan dan mengonfirmasi titik alamat ketika lookup internal tidak menemukan alamat.

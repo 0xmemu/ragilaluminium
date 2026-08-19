@@ -60,7 +60,7 @@ Rujukan: `docs/features/03-cart-checkout.md`, `docs/PRODUCT-HANDOFF.md`, commit 
 - Notifikasi ikon admin harus dedupe per order dan actionable. Admin dapat edit ongkir, subsidi, total dengan alasan wajib; nilai terbaru masuk timeline/audit dan WhatsApp dapat dikirim ulang.
 - Resi dibuat di J&T di luar website; web hanya menerima input nomor resi manual. Refresh harus jujur membedakan success/data berubah, stale/tidak ada event/integrasi belum siap, dan error.
 
-**ROLLBACK REQUIRED:** commit `65a337e` menambahkan Google Maps geocoding contract; itu bukan keputusan final. Kontrak final tidak memiliki endpoint/API key Google Maps untuk postal. Docs telah diselaraskan di `34e2aa1` dan batch kode berikutnya harus menghapus runtime contract tersebut.
+**ROLLBACK COMPLETED (`c96ba16`):** commit `65a337e` menambahkan Google Maps geocoding contract; itu bukan keputusan final. Kontrak final tidak memiliki endpoint/API key Google Maps untuk postal (docs diselaraskan di `34e2aa1`). Runtime contract kini dihapus total dengan `c96ba16` (client, controller, route, config, shared-prop, dan fitur maps opsional di form alamat). Sumber kode pos sepenuhnya dataset postal DB (Satu Data/Pos Indonesia) + validasi kecamatan.
 
 Rujukan: `docs/features/04-address-shipping.md`, bagian Postal & Shipping di `docs/api-and-routes-ragil-aluminium.md`, §14 schema postal, commit `e300442`, `b62b8ea`, `ef07bfa`, `77e2071`, `34e2aa1`.
 

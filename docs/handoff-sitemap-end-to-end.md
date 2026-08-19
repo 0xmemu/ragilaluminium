@@ -117,18 +117,19 @@ format baru serta kebijakan legacy.
 
 **Status:** OPEN, P0 sebelum production. **Owner:** Agent D, keputusan akhir owner.
 
-### F7 — Google Maps rollback dan postal quality belum selesai
+### F7 — Google Maps rollback dan postal quality — SELESAI
 
-Commit/branch sebelumnya pernah menambah Google Geocoding sebagai fallback postal. Keputusan
-final: Google Maps bukan sumber kode pos dan tidak boleh menjadi postal API contract.
+Rollback Google Maps selesai di `c96ba16` (runtime contract dihapus total: client, controller,
+route, config, shared-prop, fitur maps opsional di form alamat). Keputusan final dipegang: Google
+Maps bukan sumber kode pos dan bukan postal API contract.
 Postal internal memakai dataset versioned berbasis Satu Data Indonesia/data.go.id dengan
 cross-check Pos Indonesia, quality gate, coverage/integrity/checksum/review, dan activation
 terkendali.
 
 Field postal customer readonly. Mapping valid dapat mengisi otomatis; mapping kosong atau
 belum terverifikasi menghasilkan blank + konfirmasi ulang alamat/pencarian wilayah.
-Titik peta hanya konteks lokasi opsional. Manual review hanya untuk quote/provider failure.
-Agent G harus memeriksa runtime/config/docs dan menghapus contract Google Maps yang masih
+Fitur titik peta opsional di form alamat dihapus (data dipandang tidak kredibel). Manual review
+hanya untuk quote/provider failure. Runtime/config/docs sudah dibersihkan pada `c96ba16`.
 tersisa tanpa mengubah shipping math/J&T tracking.
 
 **Status:** OPEN, P0. **Owner:** Agent G.

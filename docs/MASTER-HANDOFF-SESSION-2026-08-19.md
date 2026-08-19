@@ -54,8 +54,8 @@ OPEN=belum dikunci/dikerjakan; BLOCKED=menunggu perbaikan/otorisasi.
 - Wilayah provinsi -> kabupaten/kota -> kecamatan -> desa. Kode pos readonly dan hanya
   dari dataset kredibel yang lolos quality gate. Mapping invalid tidak mengarang angka;
   alamat lengkap dipakai untuk konfirmasi ulang.
-- Peta hanya fallback opsional; Google Maps bukan sumber kode pos dan kontraknya harus
-  direkonsiliasi/rollback bila tersisa.
+- Google Maps dihapus total (`c96ba16`): bukan sumber kode pos, fitur peta opsional di form
+  alamat juga dihapus.
 - Quote live saat alamat lengkap. Provider gagal berarti sedang menghitung atau estimasi
   lokal yang dihitung, bukan angka tetap Rp9.999; admin diberi notifikasi.
 - Customer hanya melihat tanggal hasil estimasi + satu hari; rumus produksi/pengiriman
@@ -171,7 +171,7 @@ backup/restore, queue/WhatsApp/R2/J&T readiness, rollback. Gate setelah A-F sele
 
 - Working tree VPS dirty milik beberapa agent; jangan reset/checkout/commit massal.
 - Lint warning dari UI agent harus diperbaiki pemilik scope.
-- Google Maps contract perlu rollback/reconcile.
+- Google Maps contract rollback SELESAI (`c96ba16`); dataset postal aktif & kredibel.
 - Dataset postal kredibel/quality gate masih prioritas; customer field readonly.
 - Production migration, backup cutover, deploy graceful belum dimulai.
 - Teruskan Popularitas, retur admin, dan alur admin perlu verifikasi browser/DB.
