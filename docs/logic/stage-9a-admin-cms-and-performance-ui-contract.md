@@ -233,7 +233,7 @@ Data contract:
 
  Dashboard Performa Toko adalah halaman analitik yang menampilkan metrik bisnis dan customer data. Visual mengikuti UI Consistency Contract + admin React page yang ada.
 
-**Implemented (Inertia):** `Admin/Analytics/StorePerformance` via `StorePerformanceService` — period filters, KPI grids (Penjualan / Kunjungan & Layanan / Operasional), trend charts, top products, customers, payment mix, CSV export. Omzet = orders with status `processing|shipped|delivered|completed`. Visitors = `performance_metrics.storefront_unique_visitors`.
+**Implemented (Inertia):** `Admin/Analytics/StorePerformance` via `StorePerformanceService` — period filters, KPI grids (Penjualan / Kunjungan & Layanan / Operasional), trend charts, top products, customers, payment mix, CSV export. Omzet mengikuti skema spek baru (`StorePerformanceService::REVENUE_STATUSES` = processing/shipped/delivered/completed/return_in_process/return_completed) dengan pengakuan per metode (rule F10.R4): COD hanya saat `completed`, transfer sejak `processing`. Visitors = `performance_metrics.storefront_unique_visitors`.
 
 ### 3.1 KPI Cards
 
@@ -303,10 +303,23 @@ laba:
 
 Ringkasan ini tidak menghitung laba kotor atau “unrealized profit”. Laba baru
 boleh ditampilkan setelah harga modal/COGS dan kebijakan pengakuan pendapatan
-memiliki kontrak tersendiri. Omzet Beranda tetap mengikuti
-'StorePerformanceService::REVENUE_STATUSES' ('processing', 'shipped',
-'delivered', 'completed') dan tidak memasukkan order pending, cancelled,
-issue, atau return.
+memiliki kontrak tersendiri.
+
+Omzet (baik panel Performa Toko maupun ringkasan Beranda) mengikuti skema spek
+baru `StorePerformanceService` sepenuhnya (rule R1/R4):
+
+- `REVENUE_STATUSES` = `processing`, `shipped`, `delivered`, `completed`,
+  `return_in_process`, `return_completed`.
+- Pengakuan per metode (`paidRevenueStatusSql`, rule F10.R4):
+  - **COD** (`cod_flag = 1`) → baru dihitung omzet/unit/model saat
+    `order_status = completed` (di `processing`/`shipped`/`delivered` COD
+    belum diakui).
+  - **Transfer / regular** (`cod_flag = 0/null`) → dihitung mulai
+    `processing` (masuk alur fulfillment).
+- Order berstatus `pending_payment`, `cancelled`, `issue` tidak masuk omzet.
+- Order dalam alur retur (`return_in_process`/`return_completed`) TETAP masuk
+  omzet; nilai retur dipotong lewat `netRevenue = revenue - refundAdjustments`
+  (ledger `order_return_cases`, rule R10), bukan dengan mengubah scope omzet.
 
 ### 3.1B Kesiapan Layanan
 
