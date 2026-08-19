@@ -84,6 +84,7 @@ class OrderController extends Controller
         $ordersQuery = Order::query()
             ->with([
                 'items.product.mainImage',
+                'items.productVariant',
                 'shippingRecords' => fn ($q) => $q->latest('id'),
             ])
             ->withCount('items')
@@ -904,10 +905,23 @@ class OrderController extends Controller
             'flow' => $isCod ? 'cod' : 'transfer',
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
+            'customer_email' => $order->customer_email,
+            'shipping_address_line1' => $order->shipping_address_line1,
+            'shipping_address_line2' => $order->shipping_address_line2,
+            'shipping_village' => $order->shipping_village,
+            'shipping_district' => $order->shipping_district,
             'shipping_city' => $order->shipping_city,
             'shipping_province' => $order->shipping_province,
+            'shipping_postal_code' => $order->shipping_postal_code,
             'notes' => $order->notes,
             'admin_notes' => $order->admin_notes,
+            'subtotal_amount' => (float) $order->subtotal_amount,
+            'shipping_amount' => (float) $order->shipping_amount,
+            'shipping_subsidy_amount' => (float) $order->shipping_subsidy_amount,
+            'discount_amount' => (float) $order->discount_amount,
+            'voucher_code' => $order->voucher_code,
+            'voucher_discount_amount' => (float) $order->voucher_discount_amount,
+            'cod_fee_amount' => (float) $order->cod_fee_amount,
             'total_amount' => (float) $order->total_amount,
             'product_count' => (int) $order->items_count,
             'unit_count' => (int) ($order->units_count ?? 0),
@@ -943,8 +957,22 @@ class OrderController extends Controller
             'unit_price' => (float) $item->unit_price,
             'line_total' => (float) $item->line_total,
             'note' => $item->note ?? null,
+            'weight_kg' => $item->productVariant?->weight_kg !== null
+                ? (float) $item->productVariant->weight_kg
+                : null,
+            'volume_m3' => $this->itemVolumeM3($item),
             'image' => $image,
         ];
+    }
+
+    /** Volume kotor item (m3) dari dimensi varian; null bila tidak lengkap. */
+    private function itemVolumeM3($item): ?float
+    {
+        $v = $item->productVariant;
+        if (! $v || $v->width_cm === null || $v->height_cm === null || $v->depth_cm === null) {
+            return null;
+        }
+        return round(((float) $v->width_cm * (float) $v->height_cm * (float) $v->depth_cm) / 1_000_000, 3);
     }
 
     private function isCod(Order $order): bool
