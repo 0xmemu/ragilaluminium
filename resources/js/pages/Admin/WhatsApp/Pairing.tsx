@@ -1,5 +1,5 @@
 import { Head, Link } from "@inertiajs/react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
@@ -65,6 +65,25 @@ export default function Pairing({
   const connected = status === "open"
   const reconnectingSession = hasSession && !connected
   const showQr = !hasSession && (status === "SCAN_QR" || status === "connecting")
+
+  const confirmRefreshQr = (e: FormEvent) => {
+    e.preventDefault()
+    const msg = connected
+      ? `Sesi WhatsApp saat ini terhubung ke ${connectedPhone || "nomor yang aktif"}.\n\nGenerate QR baru akan memutus sesi ini dan menampilkan QR pengganti untuk di-scan ulang. Lanjutkan?`
+      : `Generate QR baru untuk di-scan? Sesi/pairing saat ini akan diganti dengan QR baru.\n\nLanjutkan?`
+    if (window.confirm(msg)) {
+      ;(e.target as HTMLFormElement).submit()
+    }
+  }
+
+  const confirmPairingCode = (e: FormEvent) => {
+    e.preventDefault()
+    const target = e.target as HTMLFormElement
+    const msg = `Dapatkan pairing code untuk nomor ${phone.trim()}?\n\nPastikan nomor itu adalah yang benar di HP sebelum melanjutkan.`
+    if (window.confirm(msg)) {
+      target.submit()
+    }
+  }
 
   return (
     <AdminLayout
@@ -146,7 +165,7 @@ export default function Pairing({
             )}
           </div>
           {showQr && (
-            <form method="post" action={refreshQrUrl} className="mt-2">
+            <form method="post" action={refreshQrUrl} className="mt-2" onSubmit={confirmRefreshQr}>
               <Button type="submit" className="w-full">
                 <Icon name="refresh" className="size-4" aria-hidden="true" />
                 Generate QR Baru
@@ -163,7 +182,7 @@ export default function Pairing({
           <p className="text-sm text-muted-foreground">
             Alternatif jika QR tidak muncul: di HP pilih <b>"Tautkan dengan nomor telepon"</b>, lalu masukkan kode 8 digit di bawah.
           </p>
-          <form method="post" action={codeUrl} className="flex gap-2">
+          <form method="post" action={codeUrl} className="flex gap-2" onSubmit={confirmPairingCode}>
             <input
               name="phone"
               value={phone}
