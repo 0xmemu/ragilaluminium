@@ -959,6 +959,28 @@
   }
 }
 
+/**
+ * Cetak detail konsumen (admin customers): saat tombol "Cetak" ditekan,
+ * PrintCustomerArea me-render #print-customer-detail via portal ke <body>;
+ * aturan berikut menyembunyikan seluruh app dan hanya mencetak halaman itu.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #print-customer-detail,
+  #print-customer-detail * {
+    visibility: visible;
+  }
+
+  #print-customer-detail {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+  }
+}
+
 /* Badge keranjang berdenyut saat produk "mendarat" (FlyingCart). */
 @keyframes cart-bump {
   0% {

@@ -7,6 +7,7 @@ import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { PrintCustomerArea, usePrintCustomer } from "@/components/shared/print-customer-detail"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { statusMeta } from "@/lib/status"
@@ -66,6 +67,8 @@ export default function CustomerEdit({
   backUrl: string
   whatsappUrl: string
 }) {
+  const { printing, handlePrint } = usePrintCustomer()
+
   const form = useForm({
     name: customer.name,
     email: customer.email ?? "",
@@ -103,6 +106,10 @@ export default function CustomerEdit({
               <Icon name="whatsapp" className="size-4" aria-hidden="true" />
               Chat WA
             </a>
+          </Button>
+          <Button type="button" variant="secondary" onClick={handlePrint}>
+            <Icon name="printer" className="size-4" aria-hidden="true" />
+            Cetak
           </Button>
         </div>
       </div>
@@ -244,6 +251,15 @@ export default function CustomerEdit({
           )}
         </aside>
       </form>
+      {printing ? (
+        <PrintCustomerArea
+          data={{
+            customer,
+            metrics,
+            orders,
+          }}
+        />
+      ) : null}
     </AdminLayout>
   )
 }
