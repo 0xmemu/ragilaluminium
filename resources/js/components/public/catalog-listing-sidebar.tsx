@@ -1,16 +1,14 @@
-import { Link } from "@inertiajs/react"
 import * as React from "react"
 
-import { ConsultationWhatsAppCard } from "@/components/public/consultation-whatsapp-card"
 import {
   AppliedFiltersCard,
   FilterSidebar,
   FilterSidebarSection,
 } from "@/components/public/filter-sidebar"
-import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Radio } from "@/components/ui/radio"
 import { routeUrl, withQuery } from "@/lib/routes"
 import type { SelectOption } from "@/types"
 
@@ -118,80 +116,6 @@ export function ModelFilterOptions({
   )
 }
 
-export function CategoryFilterNav({
-  currentHref,
-}: {
-  currentHref?: string | null
-}) {
-  return (
-    <nav aria-label="Kategori" className="flex flex-col">
-      {CATALOG_CATEGORY_LINKS.map((link) => {
-        const active = currentHref === link.href
-
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="flex min-h-10 items-center justify-between py-1.5 text-sm capitalize text-foreground hover:text-primary"
-            aria-current={active ? "page" : undefined}
-          >
-            <span className={active ? "font-semibold text-primary" : undefined}>{link.label}</span>
-            <Icon name="chevron-right" className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          </Link>
-        )
-      })}
-    </nav>
-  )
-}
-
-export function ModelProdukListingSidebar({
-  filterDesigns,
-  activeDesign,
-  onSelectDesign,
-  onClearDesign,
-  className,
-}: {
-  filterDesigns: SelectOption[]
-  activeDesign: string | null
-  onSelectDesign: (value: string | null) => void
-  onClearDesign: () => void
-  className?: string
-}) {
-  const activeDesignLabel =
-    filterDesigns.find((design) => design.value === activeDesign)?.label ?? null
-
-  return (
-    <FilterSidebar className={className}>
-      <AppliedFiltersCard
-        chips={
-          activeDesign && activeDesignLabel
-            ? [{ id: activeDesign, label: activeDesignLabel }]
-            : []
-        }
-        onRemove={() => onClearDesign()}
-        onClearAll={onClearDesign}
-      />
-
-      {filterDesigns.length ? (
-        <FilterSidebarSection title="Desain" subtitle={activeDesignLabel}>
-          <DesignFilterOptions
-            name="model-design"
-            designs={filterDesigns}
-            activeDesign={activeDesign}
-            onSelect={onSelectDesign}
-          />
-        </FilterSidebarSection>
-      ) : null}
-
-      <FilterSidebarSection title="Kategori">
-        <CategoryFilterNav />
-      </FilterSidebarSection>
-
-      <ConsultationWhatsAppCard source="model_produk" />
-    </FilterSidebar>
-  )
-}
-
 export interface CatalogListingFilters {
   model: string
   design: string
@@ -214,8 +138,6 @@ export function CatalogProductListingSidebar({
   activeDesign,
   priceMin,
   priceMax,
-  currentHref,
-  consultationSource = "catalog",
   variant = "live",
   onFiltersChange,
   onClearAll,
@@ -230,8 +152,6 @@ export function CatalogProductListingSidebar({
   activeDesign: string | null
   priceMin: number | null
   priceMax: number | null
-  currentHref?: string | null
-  consultationSource?: string
   variant?: "live" | "draft"
   onFiltersChange: (next: Partial<CatalogListingFilters>) => void
   onClearAll: () => void
@@ -328,11 +248,6 @@ export function CatalogProductListingSidebar({
         ) : null}
       </FilterSidebarSection>
 
-      <FilterSidebarSection title="Kategori">
-        <CategoryFilterNav currentHref={currentHref} />
-      </FilterSidebarSection>
-
-      <ConsultationWhatsAppCard source={consultationSource} />
     </FilterSidebar>
   )
 }

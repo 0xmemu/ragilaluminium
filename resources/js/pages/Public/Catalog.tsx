@@ -309,12 +309,6 @@ export default function Catalog({
     activeDesign: filters.design || null,
     priceMin: filters.priceMin ? Number(filters.priceMin) : null,
     priceMax: filters.priceMax ? Number(filters.priceMax) : null,
-    currentHref: listingAllProducts
-      ? activeSort === "popular"
-        ? withQuery(routeUrl("catalog.all"), { sort: "popular" })
-        : routeUrl("catalog.all")
-      : basePath,
-    consultationSource: "catalog",
     onClearAll: reset,
   }
 
