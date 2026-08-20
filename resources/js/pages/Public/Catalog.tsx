@@ -369,6 +369,9 @@ export default function Catalog({
       filterSheet={filterSheetContent}
       basePath={basePath}
       isFlash={isFlash}
+      priceMin={filters.priceMin}
+      priceMax={filters.priceMax}
+      onReset={reset}
     />
   )
 
