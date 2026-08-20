@@ -13,6 +13,8 @@ interface AdminNavItemData {
   params?: Record<string, string | number>
   icon?: string
   active?: string[]
+  /** Filter tambahan berbasis query string (mis. type=flash_sale pada route yang sama). */
+  activeType?: "store" | "flash_sale"
   children?: AdminNavItemData[]
 }
 
@@ -59,7 +61,11 @@ function AdminNavLink({
   onNavigate?: () => void
   isChild?: boolean
 }) {
-  const active = isRouteActive(item.active ?? [item.route])
+  let active = isRouteActive(item.active ?? [item.route])
+  if (item.activeType && typeof window !== "undefined") {
+    const type = new URLSearchParams(window.location.search).get("type")
+    active = active && (item.activeType === "flash_sale" ? type === "flash_sale" : type !== "flash_sale")
+  }
   return (
     <Link
       href={routeUrl(item.route, item.params)}

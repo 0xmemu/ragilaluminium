@@ -95,7 +95,7 @@ export function CheckoutAddressForm({
                 onChange={(event) => detailForm.setData("phone", event.target.value)}
                 autoComplete="tel"
                 inputMode="tel"
-                placeholder="08xxxxxxxxxx"
+                placeholder="08XXXXXXXXXX"
                 className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
               />
             </Field>

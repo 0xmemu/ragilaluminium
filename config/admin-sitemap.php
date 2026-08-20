@@ -90,7 +90,7 @@ return [
                     'icon' => 'package',
                     'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*', 'admin.imports.*', 'admin.media.*', 'admin.products.popularity-boosts.*'],
                     'children' => [
-                        ['label' => 'Produk', 'route' => 'admin.products.index', 'active' => ['admin.products.*', 'admin.variants.*', 'admin.attributes.*']],
+                        ['label' => 'Produk', 'route' => 'admin.products.index', 'active' => ['admin.products.index', 'admin.products.create', 'admin.products.store', 'admin.products.edit', 'admin.products.update', 'admin.products.show', 'admin.products.archive', 'admin.products.unarchive', 'admin.products.publish', 'admin.products.duplicate', 'admin.products.export', 'admin.products.variants.*', 'admin.products.attributes.*', 'admin.products.media.*']],
                         ['label' => 'Kategori', 'route' => 'admin.categories.index', 'active' => ['admin.categories.*']],
                         ['label' => 'Model Produk', 'route' => 'admin.model-products.index', 'active' => ['admin.model-products.*']],
                         ['label' => 'Sub Model', 'route' => 'admin.sub-models.index', 'active' => ['admin.sub-models.*']],
@@ -111,10 +111,10 @@ return [
                     'icon' => 'ticket',
                     'active' => ['admin.promotions.*', 'admin.banners.*', 'admin.announcements.*', 'admin.vouchers.*', 'admin.shipping-subsidy.*', 'admin.flash-sale.*'],
                     'children' => [
-                        ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'active' => ['admin.promotions.*']],
-                        ['label' => 'Flash Sale', 'route' => 'admin.promotions.index', 'params' => ['type' => 'flash_sale'], 'icon' => 'lightning', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
+                        ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'activeType' => 'store', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
+                        ['label' => 'Flash Sale', 'route' => 'admin.promotions.index', 'params' => ['type' => 'flash_sale'], 'icon' => 'lightning', 'activeType' => 'flash_sale', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
                         ['label' => 'Voucher Toko', 'route' => 'admin.vouchers.index', 'active' => ['admin.vouchers.*']],
-                        ['label' => 'Diskon Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'active' => ['admin.shipping-subsidy.*']],
+                        ['label' => 'Subsidi Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'active' => ['admin.shipping-subsidy.*']],
                         ['label' => 'Banner Promo', 'route' => 'admin.banners.index', 'active' => ['admin.banners.*']],
                         ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'active' => ['admin.announcements.*']],
                     ],
