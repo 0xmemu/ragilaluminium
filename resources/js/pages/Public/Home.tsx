@@ -82,7 +82,7 @@ export default function Home({
 
   return (
     <PublicLayout>
-      <Head title="Ragil Aluminium">
+      <Head title="">
         <meta
           name="description"
           content="Pilih jendela, pintu, dan bouven aluminium berdasarkan model, desain, ukuran, dan harga."

@@ -101,6 +101,11 @@ function SearchFallbackEmpty({
             </a>
           </Button>
         ) : null}
+        {nearbySizes.length === 0 && relatedModels.length === 0 ? (
+          <Button asChild variant="secondary" className="mt-3">
+            <Link href={routeUrl("catalog.all")}>Lihat semua model</Link>
+          </Button>
+        ) : null}
       </div>
 
       {nearbySizes.length ? (
