@@ -21,6 +21,7 @@ interface WilayahSearchSelectProps {
   error?: string
   placeholder?: string
   searchPlaceholder?: string
+  className?: string
   onSelect: (option: WilayahOption | null) => void
 }
 
@@ -35,6 +36,7 @@ export function WilayahSearchSelect({
   error,
   placeholder = "Pilih…",
   searchPlaceholder = "Cari…",
+  className,
   onSelect,
 }: WilayahSearchSelectProps) {
   const [open, setOpen] = React.useState(false)
@@ -78,8 +80,6 @@ export function WilayahSearchSelect({
 
   React.useEffect(() => {
     if (disabled) {
-      // Disabled controls cannot remain open or retain a stale search query.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(false)
       setQuery("")
     }
@@ -89,11 +89,10 @@ export function WilayahSearchSelect({
   const showPlaceholder = !loading && !valueName
 
   return (
-    <div ref={rootRef} className="relative space-y-2">
-      <label htmlFor={id} className="block text-sm font-medium text-muted-foreground">
+    <div ref={rootRef} className={cn("relative space-y-1", className)}>
+      <label htmlFor={id} className="block text-xs font-semibold text-foreground">
         {label}
-        <span className="text-destructive" aria-hidden="true">
-          {" "}
+        <span className="text-primary ml-0.5" aria-hidden="true">
           *
         </span>
       </label>
@@ -106,11 +105,11 @@ export function WilayahSearchSelect({
         aria-expanded={open}
         aria-invalid={error ? true : undefined}
         className={cn(
-          "flex min-h-11 w-full items-center justify-between gap-3 rounded-full border border-input bg-surface px-4 py-2.5 text-left text-base shadow-sm transition duration-200 ease-standard md:text-sm",
-          "focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10",
+          "flex h-9 min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-3 py-1.5 text-left text-xs shadow-none transition duration-150 ease-standard",
+          "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
           "disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70",
           error && "border-destructive focus:border-destructive focus:ring-destructive/15",
-          open && "border-primary ring-4 ring-primary/10",
+          open && "border-primary ring-2 ring-primary/15",
         )}
         onClick={() => {
           if (disabled || loading) return
@@ -128,67 +127,70 @@ export function WilayahSearchSelect({
         <Icon
           name="caret-down"
           className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
+            "size-3.5 shrink-0 text-muted-foreground transition-transform",
             open && "rotate-180",
           )}
           weight="bold"
-          aria-hidden
+          aria-hidden="true"
         />
       </button>
 
+      {error ? (
+        <p className="text-[11px] font-medium leading-4 text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+
       {open ? (
-        <div className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg">
-          <div className="border-b border-border p-2">
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute z-dropdown mt-1 max-h-60 w-full min-w-48 overflow-hidden rounded-md border border-border bg-surface shadow-lg"
+        >
+          <div className="border-b border-border p-1.5">
             <input
               ref={searchRef}
-              type="search"
+              type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              autoComplete="off"
-              className="min-h-10 w-full rounded-full border border-input bg-surface px-3.5 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10 md:text-sm"
-              aria-label={`Cari ${label}`}
+              className="h-8 w-full rounded border border-input bg-surface px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             />
           </div>
-          <ul
-            role="listbox"
-            aria-labelledby={id}
-            className="max-h-56 overflow-y-auto py-1"
-          >
-            {filtered.length ? (
+
+          <div className="max-h-48 overflow-y-auto p-1 text-xs">
+            {filtered.length === 0 ? (
+              <p className="p-2 text-center text-xs text-muted-foreground">Tidak ditemukan.</p>
+            ) : (
               filtered.map((option) => {
-                const selected = option.id === valueId
+                const isSelected = option.id === valueId
                 return (
-                  <li key={option.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      className={cn(
-                        "flex w-full px-4 py-2.5 text-left text-sm transition hover:bg-accent",
-                        selected && "bg-primary/5 font-semibold text-primary",
-                      )}
-                      onClick={() => {
-                        onSelect(option)
-                        setOpen(false)
-                        setQuery("")
-                      }}
-                    >
-                      {option.name}
-                    </button>
-                  </li>
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left text-xs transition",
+                      isSelected
+                        ? "bg-primary/10 font-semibold text-primary"
+                        : "text-foreground hover:bg-surface-muted",
+                    )}
+                    onClick={() => {
+                      onSelect(option)
+                      setOpen(false)
+                      setQuery("")
+                    }}
+                  >
+                    <span className="truncate">{option.name}</span>
+                    {isSelected ? <Icon name="check" className="size-3.5 shrink-0 text-primary" weight="bold" /> : null}
+                  </button>
                 )
               })
-            ) : (
-              <li className="px-4 py-3 text-sm text-muted-foreground">
-                Tidak ada hasil untuk pencarian ini.
-              </li>
             )}
-          </ul>
+          </div>
         </div>
       ) : null}
-
-      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
     </div>
   )
 }

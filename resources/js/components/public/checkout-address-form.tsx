@@ -40,46 +40,46 @@ export function CheckoutAddressForm({
 
   return (
     <section className="surface-panel min-w-0 p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-4 min-w-0 pb-3 border-b border-border">
+      <div className="flex items-start justify-between gap-4 min-w-0 pb-2.5 border-b border-border">
         <div>
           <h2 className="text-sm sm:text-base font-bold text-foreground">Detail Pengiriman</h2>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Data ini dipakai untuk pesanan, pengiriman, dan pengecekan status.
           </p>
         </div>
         {details && !editingDetails ? (
-          <Button variant="ghost" size="sm" onClick={() => setEditingDetails(true)}>
+          <Button variant="ghost" size="xs" onClick={() => setEditingDetails(true)}>
             Ubah
           </Button>
         ) : null}
       </div>
 
       {details && !editingDetails ? (
-        <dl className="mt-4 grid gap-3 rounded-lg bg-surface-muted/60 border border-border p-3.5 text-xs sm:grid-cols-2">
+        <dl className="mt-3 grid gap-2.5 rounded-md bg-surface-muted/50 border border-border p-3 text-xs sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">Pemesan</dt>
-            <dd className="mt-1 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{details.name}</dd>
+            <dd className="mt-0.5 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{details.name}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Nomor HP/WhatsApp</dt>
-            <dd className="mt-1 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{details.phone}</dd>
+            <dd className="mt-0.5 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{details.phone}</dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-muted-foreground">Alamat</dt>
-            <dd className="mt-1 font-semibold leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">{addressSummary}</dd>
+            <dd className="mt-0.5 font-semibold leading-snug text-foreground break-words [overflow-wrap:anywhere]">{addressSummary}</dd>
           </div>
         </dl>
       ) : (
-        <form onSubmit={submitDetails} className="mt-4 space-y-3.5">
+        <form onSubmit={submitDetails} className="mt-3 space-y-2.5">
           <FormErrorSummary errors={detailForm.errors} />
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            <Field id="checkout-name" label="Nama lengkap" required error={detailForm.errors.name}>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <Field id="checkout-name" label="Nama lengkap" required error={detailForm.errors.name} className="gap-1">
               <Input
                 value={detailForm.data.name}
                 onChange={(event) => detailForm.setData("name", event.target.value)}
                 autoComplete="name"
                 placeholder="Masukkan nama lengkap"
-                className="rounded-md"
+                className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
               />
             </Field>
             <Field
@@ -87,6 +87,7 @@ export function CheckoutAddressForm({
               label="Nomor HP/WhatsApp"
               required
               error={detailForm.errors.phone}
+              className="gap-1"
             >
               <Input
                 type="tel"
@@ -95,21 +96,21 @@ export function CheckoutAddressForm({
                 autoComplete="tel"
                 inputMode="tel"
                 placeholder="08xxxxxxxxxx"
-                className="rounded-md"
+                className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
               />
             </Field>
           </div>
 
-          <div className="grid gap-3.5 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             {wilayahError ? (
               <div className="sm:col-span-2">
                 <Alert tone="danger" title="Wilayah tidak tersedia">
-                  <p>{wilayahError}</p>
+                  <p className="text-xs">{wilayahError}</p>
                   <Button
                     type="button"
                     variant="secondary"
                     size="xs"
-                    className="mt-3"
+                    className="mt-2"
                     onClick={() => setWilayahRetry((value) => value + 1)}
                   >
                     Muat ulang daftar wilayah
@@ -172,19 +173,18 @@ export function CheckoutAddressForm({
               id="checkout-postal-code"
               label="Kode pos"
               required
-              hint="Terisi otomatis dari data desa/kelurahan."
               error={detailForm.errors.postal_code}
-              className="sm:col-span-2"
+              className="gap-1 sm:col-span-2"
             >
               <Input
                 value={detailForm.data.postal_code}
                 readOnly={Boolean(detailForm.data.postal_code)}
                 aria-readonly={detailForm.data.postal_code ? "true" : undefined}
                 onChange={(event) => detailForm.setData("postal_code", event.target.value)}
-                placeholder="Isi Otomatis"
+                placeholder="Isi otomatis dari desa/kelurahan"
                 autoComplete="postal-code"
                 inputMode="numeric"
-                className="rounded-md"
+                className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
               />
             </Field>
           </div>
@@ -193,37 +193,38 @@ export function CheckoutAddressForm({
             id="checkout-address-1"
             label="Alamat lengkap"
             required
-            hint="Nama jalan, nomor rumah, RT/RW, Patokan."
             error={detailForm.errors.address_line1}
+            className="gap-1"
           >
             <Textarea
-              rows={3}
+              rows={2}
               value={detailForm.data.address_line1}
               onChange={(event) => detailForm.setData("address_line1", event.target.value)}
               autoComplete="street-address"
-              placeholder="Nama jalan, nomor rumah, RT/RW, Patokan."
-              className="rounded-md text-xs"
+              placeholder="Nama jalan, nomor rumah, RT/RW, patokan."
+              className="rounded-md p-2.5 text-xs min-h-[4rem]"
             />
           </Field>
           <Field
             id="checkout-address-2"
-            label="Patokan atau detail tambahan"
+            label="Patokan / Detail tambahan (opsional)"
             error={detailForm.errors.address_line2}
+            className="gap-1"
           >
             <Input
               value={detailForm.data.address_line2 ?? ""}
               onChange={(event) => detailForm.setData("address_line2", event.target.value)}
               placeholder="Contoh: Dekat masjid / pagar hitam"
-              className="rounded-md"
+              className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
             />
           </Field>
-          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
             {details ? (
-              <Button variant="ghost" size="sm" onClick={() => setEditingDetails(false)}>
+              <Button variant="ghost" size="xs" onClick={() => setEditingDetails(false)}>
                 Batal
               </Button>
             ) : null}
-            <Button type="submit" size="sm" disabled={detailForm.processing}>
+            <Button type="submit" size="sm" className="h-9 px-4 font-semibold text-xs rounded-md" disabled={detailForm.processing}>
               {detailForm.processing ? "Memvalidasi..." : "Simpan Alamat"}
             </Button>
           </div>
