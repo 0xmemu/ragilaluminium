@@ -235,63 +235,68 @@ systemctl enable --now ragil-queue.service
 
 ## 8a. Backup & Disaster Recovery
 
-### Arsitektur backup (3 lapis)
+### Kebijakan backup yang disepakati
 
-1. **Lokal** — `/root/backups/ragil/`: dump `mysqldump` + gzip setiap hari
-   (cron `17 3 * * *`), rotasi 7 hari, symlink `ragil_aluminium-latest.sql.gz`.
-2. **Off-site R2 — bucket terpisah `ra-backup`**: setiap backup lokal otomatis
-   di-upload (prefix `mysql/`), retensi 30 hari via **lifecycle rule Cloudflare**
-   di bucket (bukan delete di script). Bucket backup **terisolasi** dari media —
-   kalau kredensial media bocor, backup tetap aman.
-3. **Media** — bucket `ra-media` (produk/gambar) terpisah dari backup, sudah di
-   R2 sejak awal (bukan di VPS). Tidak ikut hilang saat VPS mati.
+Backup MySQL berisi **data database bisnis dan sistem** (seluruh 49 tabel saat ini), termasuk pelanggan, orders/order_items, payments, shipping, retur, performa toko, akun admin, sessions, audit log, WhatsApp, katalog/CMS, promosi, dan metadata media (URL/nama file). Backup **tidak menyimpan file media fisik** seperti foto produk, banner, galeri, atau bukti pembayaran. Media tetap berada di storage R2 media aktif; file asli media tetap menjadi tanggung jawab komputer admin sebelum upload.
 
-Script: `/root/scripts_backup_mysql.sh` (dump + upload), diikuti
-`/root/scripts_r2_upload_backup.py` (SigV4 R2, stdlib Python, tanpa aws cli).
+### Arsitektur backup (harian + arsip mingguan/bulanan + binary log)
+
+1. **Dump harian lokal** — `/root/backups/ragil/`: `mysqldump` + gzip setiap hari (cron `17 3 * * *`), rotasi lokal sekitar 7 hari, dengan symlink `ragil_aluminium-latest.sql.gz`.
+2. **Dump harian off-site** — bucket R2 terpisah `ra-backup`, prefix `mysql/`. Retensi lifecycle R2 saat ini sekitar 30 hari per objek. Ini snapshot penuh database pada waktu dump; retensi backup tidak menghapus data dari database produksi.
+3. **Arsip mingguan** — prefix `weekly/`, dibuat Senin pukul 05:00 dari dump harian yang sudah tersedia, bukan dump ulang langsung dari database live.
+4. **Arsip bulanan** — prefix `monthly/`, dibuat tanggal 1 pukul 05:00 dari dump harian bulan sebelumnya, bukan dump ulang langsung dari database live.
+5. **Binary log** — prefix `binlogs/`, diarsipkan setiap jam untuk membantu pemulihan point-in-time setelah dump penuh.
+6. **Media** — bucket media R2 aktif (`ra-media`) tetap terpisah dan **tidak dibuatkan backup tambahan oleh kebijakan ini**.
+
+Script utama:
+
+- `/root/scripts_backup_mysql.sh` — dump harian, verifikasi gzip, rotasi lokal, dan upload `mysql/`.
+- `/root/scripts_r2_upload_backup.py` — upload dump harian ke R2.
+- `/root/scripts_backup_mysql_binlog.sh` + `/root/scripts_r2_upload_binlog.py` — flush dan upload binary log per jam.
+- `/root/scripts_weekly_restore_test.sh` — restore test mingguan ke database test, membandingkan row count tabel utama, dan menjalankan `CHECK TABLE`.
+- `/root/scripts_weekly_mysql_archive.sh` — arsip `weekly/` dari dump harian.
+- `/root/scripts_monthly_mysql_archive.sh` — arsip `monthly/` dari dump harian.
 
 Cron root:
-```
+
+```cron
 17 3 * * * /root/scripts_backup_mysql.sh >> /root/backups/ragil-backup.log 2>&1
+0 * * * * /root/scripts_backup_mysql_binlog.sh
+30 4 * * 1 /root/scripts_weekly_restore_test.sh
+0 5 * * 1 /root/scripts_weekly_mysql_archive.sh
+0 5 1 * * /root/scripts_monthly_mysql_archive.sh
 ```
 
-Bucket: `ra-backup` (backup, lifecycle 30 hari) & `ra-media` (media).
-Kredensial R2 di `.env` (CLOUDFLARE_R2_*), sama untuk kedua bucket.
+Bucket backup: `ra-backup`. Bucket media aktif: `ra-media`. Kredensial backup/media dikelola terpisah sesuai file konfigurasi runtime VPS.
 
-### Uji restore (wajib berkala)
+### Uji restore dan batas validasi
 
-```bash
-mysql -uroot -e 'CREATE DATABASE ragil_restore_test;'
-zcat /root/backups/ragil/ragil_aluminium-latest.sql.gz | mysql -uroot ragil_restore_test
-# bandingkan TABLE_ROWS per tabel (information_schema) antara ragil_aluminium dan ragil_restore_test
-mysql -uroot -e 'DROP DATABASE ragil_restore_test;'
-```
+Restore test mingguan dilakukan ke database sementara, bukan ke database produksi. Sumber arsip mingguan/bulanan berasal dari dump harian yang sudah ada dan hanya boleh diarsipkan setelah marker restore test PASS masih baru.
 
-Catatan: jangan menjalankan restore bersamaan dengan backup (bisa baca dump
-yang sedang ditulis). Verifikasi row count per tabel harus identik semua.
+Validasi yang berjalan:
+
+- file dump dapat didekompresi dan direstore;
+- row count tabel utama dibandingkan dengan produksi;
+- `CHECK TABLE` tabel utama harus OK;
+- kegagalan membuat alert dan menghentikan arsip.
+
+Validasi ini membuktikan integritas teknis dasar, **belum membuktikan seluruh isi bisnis benar secara semantik** (misalnya total order, relasi item, pembayaran, dan status omzet). Audit semantik read-only masih merupakan penguatan terpisah.
 
 ### Recovery — VPS mati total / error
 
-Media (R2) tidak hilang — tinggal arahkan app ke bucket yang sama.
-Data MySQL diambil dari backup R2 (`ra-backup`):
+Media R2 aktif tidak dipulihkan dari dump MySQL; arahkan app ke bucket media yang sama. Data MySQL diambil dari backup R2 (`ra-backup`):
 
 ```bash
-# 1. Siapkan VPS baru (ikuti runbook dari awal: Nginx, PHP-FPM, MySQL, Redis)
-# 2. Buat DB + user, lalu restore dari backup off-site:
+# 1. Siapkan VPS baru (Nginx, PHP-FPM, MySQL, Redis)
+# 2. Buat DB + user, lalu restore dump harian/mingguan/bulanan yang dipilih
 mysql -uragil -p<pass> -e 'CREATE DATABASE ragil_aluminium CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
-# download backup dari R2 (dashboard R2 / aws cli / script SigV4 GET)
 zcat ragil_aluminium-YYYYMMDD-HHMMSS.sql.gz | mysql -uragil -p<pass> ragil_aluminium
-# 3. Verifikasi count: SELECT COUNT(*) FROM products; -- harus 50+
-# 4. Jalankan migrate hanya untuk migration yang BELUM ada (backup sudah berisi tabel)
+# 3. Jalankan migrate hanya untuk migration yang BELUM ada
 php artisan migrate --force
-# 5. config:cache, route:cache, view:cache; start queue worker + tunnel
+# 4. config:cache, route:cache, view:cache; start queue worker + tunnel
 ```
 
-Data performa toko (KPI) dihitung langsung dari tabel `orders`, `customers`,
-`products` oleh `StorePerformanceService` — ikut ter-restore bersama dump.
-`performance_metrics` hanya agregat view/click produk, tidak pernah menjadi
-sumber tunggal.
-
----
+Data performa toko dihitung langsung dari tabel orders, order_items, dan customers oleh `StorePerformanceService` — ikut ter-restore bersama dump.
 
 ## 8. Ingress Cloudflare
 
