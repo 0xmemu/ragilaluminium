@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 /** Grid kartu non-produk (Model Produk / Hasil Pemasangan) — max 4 kolom. */
 export const showcaseCardGridClassName =
-  "grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4"
+  "grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
 
 export function ShowcaseCardGrid({
   children,
@@ -17,9 +17,9 @@ export function ShowcaseCardGrid({
 }
 
 /** Satu standar kolom untuk ProductCard di Home / Catalog / Search / PDP. */
-/* Gutter 1.25rem (20px) mengikuti grid IKEA. */
+/* Gutter: 12px mobile, 16px sm+ (standar seluruh storefront). */
 export const productCardGridClassName =
-  "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"
+  "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
 
 export function ProductCardGrid({
   children,

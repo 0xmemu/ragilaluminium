@@ -156,9 +156,9 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
         </div>
       </section>
 
-      <section className="container-page py-5 md:py-8">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-5 md:py-8">
         {models.length ? (
-          <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:gap-6 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {models.map((model) => (
               <ModelCategoryCard key={`${model.category}-${model.model}`} model={model} />
             ))}
