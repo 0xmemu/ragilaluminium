@@ -253,9 +253,10 @@ Script utama:
 - `/root/scripts_backup_mysql.sh` — dump harian, verifikasi gzip, rotasi lokal, dan upload `mysql/`.
 - `/root/scripts_r2_upload_backup.py` — upload dump harian ke R2.
 - `/root/scripts_backup_mysql_binlog.sh` + `/root/scripts_r2_upload_binlog.py` — flush dan upload binary log per jam.
-- `/root/scripts_weekly_restore_test.sh` — restore test mingguan ke database test, membandingkan row count tabel utama, dan menjalankan `CHECK TABLE`.
-- `/root/scripts_weekly_mysql_archive.sh` — arsip `weekly/` dari dump harian.
-- `/root/scripts_monthly_mysql_archive.sh` — arsip `monthly/` dari dump harian.
+- `/root/scripts_weekly_restore_test.sh` — restore test mingguan ke database test: row count tabel utama, `CHECK TABLE`, lalu **audit semantik bisnis**; PASS marker hanya ditulis bila semua lolos.
+- `/root/scripts_weekly_mysql_archive.sh` — arsip `weekly/` dari dump harian (fallback ke dump terbaru bila dump kemarin tidak ada).
+- `/root/scripts_monthly_mysql_archive.sh` — arsip `monthly/` dari dump harian (fallback sama).
+- `/root/scripts_semantic_audit.sh` — audit semantik read-only (22 invariant: relasi, formula `total_amount = subtotal + shipping - voucher_discount + cod_fee`, enum status, koherensi cod_flag, pembayaran vs order). Exit 1 + alert bila ada pelanggaran.
 
 Cron root:
 
