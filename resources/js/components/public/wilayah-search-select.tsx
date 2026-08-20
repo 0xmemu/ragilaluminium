@@ -145,9 +145,9 @@ export function WilayahSearchSelect({
         <div
           role="listbox"
           aria-label={label}
-          className="absolute z-dropdown mt-1 max-h-60 w-full min-w-48 overflow-hidden rounded-md border border-border bg-surface shadow-lg"
+          className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full min-w-48 overflow-hidden rounded-md border border-border bg-surface shadow-xl"
         >
-          <div className="border-b border-border p-1.5">
+          <div className="border-b border-border bg-surface p-1.5">
             <input
               ref={searchRef}
               type="text"
@@ -158,9 +158,9 @@ export function WilayahSearchSelect({
             />
           </div>
 
-          <div className="max-h-48 overflow-y-auto p-1 text-xs">
+          <div className="max-h-48 overflow-y-auto bg-surface p-1 text-xs divide-y divide-border/20">
             {filtered.length === 0 ? (
-              <p className="p-2 text-center text-xs text-muted-foreground">Tidak ditemukan.</p>
+              <p className="p-2.5 text-center text-xs text-muted-foreground">Tidak ditemukan.</p>
             ) : (
               filtered.map((option) => {
                 const isSelected = option.id === valueId
@@ -171,7 +171,7 @@ export function WilayahSearchSelect({
                     role="option"
                     aria-selected={isSelected}
                     className={cn(
-                      "flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left text-xs transition",
+                      "flex w-full items-center justify-between rounded px-2.5 py-2 text-left text-xs transition",
                       isSelected
                         ? "bg-primary/10 font-semibold text-primary"
                         : "text-foreground hover:bg-surface-muted",
