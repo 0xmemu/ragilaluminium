@@ -497,13 +497,11 @@ export default function OrderStatus({
         <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
           <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Cek Status Pesanan" }]} />
         </div>
-      </section>
-
-      <section className="container-page flex items-center gap-2 py-2 !px-2.5 md:!px-8 lg:!px-12">
-        <button
+        <div className="container-page flex items-center gap-2 py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <button
           type="button"
           onClick={() => window.history.back()}
-          className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+          className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
           aria-label="Kembali"
         >
           <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -511,9 +509,10 @@ export default function OrderStatus({
         <h1 className="text-base font-bold text-foreground">
           {hasBrowserOrders ? "Pesanan Anda" : "Cek pesanan"}
         </h1>
+        </div>
       </section>
 
-      <section className="container-page min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
         {showLookupForm ? (
           <div className="grid min-w-0 gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">

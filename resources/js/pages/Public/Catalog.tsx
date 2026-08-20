@@ -377,6 +377,15 @@ export default function Catalog({
       priceMin={filters.priceMin}
       priceMax={filters.priceMax}
       onReset={reset}
+      breadcrumbItems={[
+        { label: "Home", href: routeUrl("home") },
+        ...(listingAllProducts
+          ? [{ label: categoryName }]
+          : [
+              { label: "Semua Model Produk", href: routeUrl("catalog.index") },
+              { label: categoryName },
+            ]),
+      ]}
     />
   )
 
@@ -604,24 +613,7 @@ export default function Catalog({
           </div>
         </section>
       ) : (
-        <>
-          <section className="border-b border-border bg-surface">
-            <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-              <Breadcrumbs
-                items={[
-                  { label: "Home", href: routeUrl("home") },
-                  ...(listingAllProducts
-                    ? [{ label: categoryName }]
-                    : [
-                        { label: "Semua Model Produk", href: routeUrl("catalog.index") },
-                        { label: categoryName },
-                      ]),
-                ]}
-              />
-            </div>
-          </section>
-          {catalogNav}
-        </>
+        catalogNav
       )}
 
       {isPromo ? (

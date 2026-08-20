@@ -9,6 +9,7 @@ import {
   categoryHrefFor,
   type CatalogCategoryLink,
 } from "@/components/public/catalog-listing-sidebar"
+import { Breadcrumbs, type BreadcrumbItem } from "@/components/ui/breadcrumbs"
 import { Icon } from "@/components/shared/icon"
 import { Input } from "@/components/ui/input"
 import {
@@ -71,6 +72,7 @@ export function CatalogNav({
   onToggleFlash,
   priceMin = "",
   priceMax = "",
+  breadcrumbItems,
 }: {
   category: string
   categoryName: string
@@ -93,6 +95,7 @@ export function CatalogNav({
   onToggleFlash: () => void
   priceMin?: string
   priceMax?: string
+  breadcrumbItems?: BreadcrumbItem[]
 }) {
   const activeModelObj = filterModels.find((m) => m.value === activeModel)
   const activeModelLabel = activeModelObj ? activeModelObj.label : null
@@ -112,9 +115,14 @@ export function CatalogNav({
             : categoryName
 
   return (
-    <section className="bg-surface" aria-label="Navigasi katalog produk">
+    <section className="border-b border-border bg-surface" aria-label="Navigasi katalog produk">
+      {breadcrumbItems && breadcrumbItems.length > 0 ? (
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+      ) : null}
       {/* Baris 1 ??? Judul halaman: Back button & Category Name */}
-      <div className="container-page flex items-center justify-between gap-3 px-3 sm:px-5 md:px-8 lg:px-12 py-2.5 sm:py-3">
+      <div className="container-page flex items-center justify-between gap-3 !px-2.5 md:!px-8 lg:!px-12 py-2.5 sm:py-3">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
