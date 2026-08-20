@@ -72,12 +72,14 @@ function CheckoutItemNoteRow({
         if (!response.ok) throw new Error("save failed")
         onChange(item.line_id, next.trim())
         setError(null)
-        setSaved(true)
-        if (savedTimer.current !== null) window.clearTimeout(savedTimer.current)
-        savedTimer.current = window.setTimeout(() => {
-          savedTimer.current = null
-          setSaved(false)
-        }, 2000)
+        if (next.trim().length > 0) {
+          setSaved(true)
+          if (savedTimer.current !== null) window.clearTimeout(savedTimer.current)
+          savedTimer.current = window.setTimeout(() => {
+            savedTimer.current = null
+            setSaved(false)
+          }, 2000)
+        }
       })
       .catch((reason: unknown) => {
         if ((reason as Error)?.name !== "AbortError") setError("Gagal simpan")
@@ -111,6 +113,7 @@ function CheckoutItemNoteRow({
   }
 
   const variantLabel = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
+  const hasContent = value.trim().length > 0
 
   return (
     <div className="py-3.5 space-y-2.5">
@@ -168,20 +171,22 @@ function CheckoutItemNoteRow({
           placeholder="Catatan untuk produk ini (opsional)"
           maxLength={2000}
         />
-        <button
-          type="button"
-          onClick={() => {
-            if (timer.current !== null) {
-              window.clearTimeout(timer.current)
-              timer.current = null
-            }
-            save(value)
-          }}
-          disabled={saving}
-          className="shrink-0 bg-transparent border-0 p-0 text-xs font-semibold text-primary hover:underline focus:outline-none disabled:opacity-50"
-        >
-          {saving ? "Menyimpan..." : saved ? "Tersimpan" : error ? "Coba lagi" : "Simpan"}
-        </button>
+        {hasContent || saving || saved ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (timer.current !== null) {
+                window.clearTimeout(timer.current)
+                timer.current = null
+              }
+              save(value)
+            }}
+            disabled={saving}
+            className="shrink-0 bg-transparent border-0 p-0 text-xs font-semibold text-primary hover:underline focus:outline-none disabled:opacity-50"
+          >
+            {saving ? "Menyimpan..." : saved ? "Tersimpan" : error ? "Coba lagi" : "Simpan"}
+          </button>
+        ) : null}
       </form>
     </div>
   )
