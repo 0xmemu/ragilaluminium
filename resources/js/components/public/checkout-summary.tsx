@@ -144,7 +144,7 @@ export function CheckoutSummary({
       </ul>
 
       {/* Embedded Voucher Action Box */}
-      <div className="mt-3 rounded-lg border border-border bg-surface-muted/40 p-2.5">
+      <div className="mt-3 rounded-md border border-border bg-surface-muted/40 px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Icon name="ticket" className="size-3.5 shrink-0 text-primary" weight="bold" aria-hidden="true" />
@@ -178,32 +178,17 @@ export function CheckoutSummary({
         </div>
 
         {hasVoucher ? (
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
             {voucher?.name} · Hemat {formatCurrency(voucherDiscount)}
           </p>
         ) : null}
 
         {voucherOpen ? (
-          <form onSubmit={applyVoucher} className="mt-2 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <label htmlFor="summary-voucher" className="text-[11px] font-medium text-foreground">
-                Masukkan kode voucher
-              </label>
-              <button
-                type="button"
-                className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setVoucherOpen(false)
-                  setVoucherCode("")
-                  voucherForm.clearErrors()
-                }}
-              >
-                Batal
-              </button>
-            </div>
-            <div className="flex gap-1.5">
-              <Input
+          <form onSubmit={applyVoucher} className="mt-2 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <input
                 id="summary-voucher"
+                type="text"
                 value={voucherCode}
                 onChange={(event) => {
                   setVoucherCode(event.target.value.toUpperCase())
@@ -212,11 +197,26 @@ export function CheckoutSummary({
                 placeholder="KODE VOUCHER"
                 autoComplete="off"
                 autoFocus
-                className="h-8 min-w-0 flex-1 text-xs font-mono uppercase"
+                className="h-7 min-w-0 flex-1 rounded border border-input bg-surface px-2 text-xs font-mono uppercase text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
               />
-              <Button type="submit" size="xs" className="h-8 shrink-0" disabled={voucherForm.processing}>
+              <button
+                type="submit"
+                disabled={voucherForm.processing || !voucherCode.trim()}
+                className="h-7 shrink-0 rounded bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 focus:outline-none disabled:opacity-50"
+              >
                 {voucherForm.processing ? "..." : "Pakai"}
-              </Button>
+              </button>
+              <button
+                type="button"
+                className="h-7 shrink-0 px-1 text-[11px] text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setVoucherOpen(false)
+                  setVoucherCode("")
+                  voucherForm.clearErrors()
+                }}
+              >
+                Batal
+              </button>
             </div>
             {voucherForm.errors.code || pageErrors.voucher ? (
               <p className="text-[11px] font-medium text-destructive">
