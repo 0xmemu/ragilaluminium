@@ -191,7 +191,7 @@ export function CheckoutAddressForm({
 
           <Field
             id="checkout-address-1"
-            label="Alamat lengkap (beserta patokan)"
+            label="Alamat lengkap"
             required
             error={detailForm.errors.address_line1}
             className="gap-1"
@@ -201,7 +201,7 @@ export function CheckoutAddressForm({
               value={detailForm.data.address_line1}
               onChange={(event) => detailForm.setData("address_line1", event.target.value)}
               autoComplete="street-address"
-              placeholder="Nama jalan, nomor rumah, RT/RW, dan patokan rumah."
+              placeholder="Nama jalan, nomor rumah, RT/RW, patokan."
               className="rounded-md p-2.5 text-xs min-h-[4rem]"
             />
           </Field>
