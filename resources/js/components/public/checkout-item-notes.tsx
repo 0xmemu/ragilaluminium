@@ -92,52 +92,51 @@ function CheckoutItemNoteRow({
   const variantLabel = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
 
   return (
-    <div className="py-3.5 space-y-2">
-      <div className="flex gap-3 items-start justify-between">
-        <div className="flex gap-3 items-start min-w-0 flex-1">
-          <div className="size-16 sm:size-18 shrink-0 overflow-hidden rounded-md border border-border/80 bg-surface-muted">
-            {item.image ? (
-              <img
-                src={item.image}
-                alt={item.name}
-                className="size-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="flex size-full items-center justify-center text-muted-foreground">
-                <Icon name="image" className="size-6 opacity-40" />
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="line-clamp-2 text-xs font-semibold text-foreground leading-snug sm:text-sm">
-              {item.name}
-            </p>
-            {variantLabel ? (
-              <p className="text-xs text-muted-foreground">{variantLabel}</p>
-            ) : null}
-            {!showNoteInput && !value ? (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline pt-0.5"
-                onClick={() => setShowNoteInput(true)}
-              >
-                <Icon name="pen-line" className="size-3" aria-hidden="true" />
-                Tulis catatan
-              </button>
-            ) : null}
-          </div>
+    <div className="py-3.5 space-y-2.5">
+      <div className="flex gap-3 items-start">
+        <div className="size-16 sm:size-18 shrink-0 overflow-hidden rounded-md border border-border/80 bg-surface-muted">
+          {item.image ? (
+            <img
+              src={item.image}
+              alt={item.name}
+              className="size-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-muted-foreground">
+              <Icon name="image" className="size-6 opacity-40" />
+            </div>
+          )}
         </div>
 
-        <div className="shrink-0 text-right space-y-0.5">
-          <p className="tabular-nums text-xs font-bold text-primary sm:text-sm">
-            {formatCurrency(item.unit_price ?? item.line_total ?? 0)}
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-xs font-semibold text-foreground leading-snug sm:text-sm">
+            {item.name}
           </p>
-          <p className="text-[11px] text-muted-foreground">{item.quantity} pcs</p>
+          {variantLabel ? (
+            <p className="text-xs text-muted-foreground">{variantLabel}</p>
+          ) : null}
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <span className="tabular-nums text-xs font-bold text-primary sm:text-sm">
+              {formatCurrency(item.unit_price ?? item.line_total ?? 0)}
+            </span>
+            <span className="text-xs text-muted-foreground">{item.quantity} pcs</span>
+          </div>
         </div>
       </div>
 
-      {showNoteInput || value ? (
+      {!showNoteInput && !value ? (
+        <div className="pl-[4.75rem]">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+            onClick={() => setShowNoteInput(true)}
+          >
+            <Icon name="pen-line" className="size-3" aria-hidden="true" />
+            Tulis catatan
+          </button>
+        </div>
+      ) : (
         <div className="flex items-center gap-2 rounded-md border border-border bg-surface-muted/50 px-2.5 py-1.5 focus-within:border-primary/60 focus-within:bg-surface">
           <Icon name="pen-line" className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
@@ -155,7 +154,7 @@ function CheckoutItemNoteRow({
             <span className="shrink-0 text-[10px] text-destructive">{error}</span>
           ) : null}
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
