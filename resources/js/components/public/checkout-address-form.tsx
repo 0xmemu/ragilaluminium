@@ -1,4 +1,5 @@
-import { Icon } from "@/components/shared/icon"
+import * as React from "react"
+
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Field, FormErrorSummary } from "@/components/ui/field"
@@ -8,11 +9,6 @@ import { WilayahSearchSelect } from "@/components/public/wilayah-search-select"
 import type { CheckoutController } from "@/hooks/use-checkout"
 import type { CheckoutDetails } from "@/types"
 
-/**
- * Section 01 — Detail pengiriman: ringkasan alamat saat sudah tervalidasi,
- * atau form lengkap (data diri, wilayah, alamat, kode pos, catatan) saat
- * pertama kali / sedang diedit. Semua state datang dari `useCheckout` (§5 R).
- */
 export function CheckoutAddressForm({
   details,
   c,
@@ -43,12 +39,11 @@ export function CheckoutAddressForm({
   } = c
 
   return (
-    <section className="surface-panel min-w-0 p-5 sm:p-7">
-      <div className="flex items-start justify-between gap-4 min-w-0">
+    <section className="surface-panel min-w-0 p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-4 min-w-0 pb-3 border-b border-border">
         <div>
-          <p className="font-mono text-xs font-semibold text-primary">02</p>
-          <h2 className="mt-2 text-lg font-semibold">Detail pengiriman</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          <h2 className="text-sm sm:text-base font-bold text-foreground">Detail Pengiriman</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Data ini dipakai untuk pesanan, pengiriman, dan pengecekan status.
           </p>
         </div>
@@ -60,29 +55,31 @@ export function CheckoutAddressForm({
       </div>
 
       {details && !editingDetails ? (
-        <dl className="mt-4 grid gap-4 rounded-md bg-surface-muted p-4 text-sm sm:grid-cols-2">
+        <dl className="mt-4 grid gap-3 rounded-lg bg-surface-muted/60 border border-border p-3.5 text-xs sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-muted-foreground">Pemesan</dt>
-            <dd className="mt-1 font-semibold break-words [overflow-wrap:anywhere]">{details.name}</dd>
+            <dt className="text-muted-foreground">Pemesan</dt>
+            <dd className="mt-1 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{details.name}</dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Nomor HP/WhatsApp</dt>
-            <dd className="mt-1 font-semibold break-words [overflow-wrap:anywhere]">{details.phone}</dd>
+            <dt className="text-muted-foreground">Nomor HP/WhatsApp</dt>
+            <dd className="mt-1 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{details.phone}</dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-xs text-muted-foreground">Alamat</dt>
-            <dd className="mt-1 font-semibold leading-6 break-words [overflow-wrap:anywhere]">{addressSummary}</dd>
+            <dt className="text-muted-foreground">Alamat</dt>
+            <dd className="mt-1 font-semibold leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">{addressSummary}</dd>
           </div>
         </dl>
       ) : (
-        <form onSubmit={submitDetails} className="mt-6 space-y-4">
+        <form onSubmit={submitDetails} className="mt-4 space-y-3.5">
           <FormErrorSummary errors={detailForm.errors} />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3.5 sm:grid-cols-2">
             <Field id="checkout-name" label="Nama lengkap" required error={detailForm.errors.name}>
               <Input
                 value={detailForm.data.name}
                 onChange={(event) => detailForm.setData("name", event.target.value)}
                 autoComplete="name"
+                placeholder="Masukkan nama lengkap"
+                className="rounded-md"
               />
             </Field>
             <Field
@@ -97,11 +94,13 @@ export function CheckoutAddressForm({
                 onChange={(event) => detailForm.setData("phone", event.target.value)}
                 autoComplete="tel"
                 inputMode="tel"
+                placeholder="08xxxxxxxxxx"
+                className="rounded-md"
               />
             </Field>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3.5 sm:grid-cols-2">
             {wilayahError ? (
               <div className="sm:col-span-2">
                 <Alert tone="danger" title="Wilayah tidak tersedia">
@@ -126,7 +125,7 @@ export function CheckoutAddressForm({
               valueName={detailForm.data.province}
               loading={loadingProvinces}
               error={detailForm.errors.province ?? detailForm.errors.province_id}
-              placeholder="Pilih provinsi"
+              placeholder="Pilih Provinsi"
               searchPlaceholder="Cari provinsi"
               onSelect={selectProvince}
             />
@@ -173,7 +172,7 @@ export function CheckoutAddressForm({
               id="checkout-postal-code"
               label="Kode pos"
               required
-              hint="Terisi otomatis dari data desa/kelurahan. Jika mapping belum tersedia, isi manual dari sumber resmi; peta bukan sumber kode pos."
+              hint="Terisi otomatis dari data desa/kelurahan."
               error={detailForm.errors.postal_code}
               className="sm:col-span-2"
             >
@@ -182,7 +181,7 @@ export function CheckoutAddressForm({
                 readOnly={Boolean(detailForm.data.postal_code)}
                 aria-readonly={detailForm.data.postal_code ? "true" : undefined}
                 onChange={(event) => detailForm.setData("postal_code", event.target.value)}
-                placeholder="Otomatis dari desa/kelurahan"
+                placeholder="Isi Otomatis"
                 autoComplete="postal-code"
                 inputMode="numeric"
                 className="rounded-md"
@@ -194,7 +193,7 @@ export function CheckoutAddressForm({
             id="checkout-address-1"
             label="Alamat lengkap"
             required
-            hint="Nama jalan, nomor rumah, RT/RW."
+            hint="Nama jalan, nomor rumah, RT/RW, Patokan."
             error={detailForm.errors.address_line1}
           >
             <Textarea
@@ -202,6 +201,8 @@ export function CheckoutAddressForm({
               value={detailForm.data.address_line1}
               onChange={(event) => detailForm.setData("address_line1", event.target.value)}
               autoComplete="street-address"
+              placeholder="Nama jalan, nomor rumah, RT/RW, Patokan."
+              className="rounded-md text-xs"
             />
           </Field>
           <Field
@@ -212,16 +213,18 @@ export function CheckoutAddressForm({
             <Input
               value={detailForm.data.address_line2 ?? ""}
               onChange={(event) => detailForm.setData("address_line2", event.target.value)}
+              placeholder="Contoh: Dekat masjid / pagar hitam"
+              className="rounded-md"
             />
           </Field>
-          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-5">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
             {details ? (
-              <Button variant="ghost" onClick={() => setEditingDetails(false)}>
+              <Button variant="ghost" size="sm" onClick={() => setEditingDetails(false)}>
                 Batal
               </Button>
             ) : null}
-            <Button type="submit" disabled={detailForm.processing}>
-              {detailForm.processing ? "Memvalidasi..." : "Lanjut Ke Pembayaran"}
+            <Button type="submit" size="sm" disabled={detailForm.processing}>
+              {detailForm.processing ? "Memvalidasi..." : "Simpan Alamat"}
             </Button>
           </div>
         </form>

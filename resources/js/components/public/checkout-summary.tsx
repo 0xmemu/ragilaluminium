@@ -1,3 +1,5 @@
+import * as React from "react"
+
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -5,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { formatCurrency } from "@/lib/format"
 import { displayEtaRangeLabel } from "@/lib/order-eta-display"
+import { cn } from "@/lib/utils"
 import type { CheckoutCodConfig, CheckoutController, CheckoutVoucher } from "@/hooks/use-checkout"
 import type { OrderEta } from "@/types"
 
@@ -19,6 +22,11 @@ export interface CheckoutItem {
   line_compare_total?: number | null
   line_discount?: number
   flash_sale?: boolean
+  image?: string | null
+  variation_1_name?: string | null
+  variation_1_option?: string | null
+  variation_2_name?: string | null
+  variation_2_option?: string | null
   note?: string | null
 }
 
@@ -32,11 +40,6 @@ export interface CheckoutShipping {
   message?: string | null
 }
 
-/**
- * Aside "Ringkasan pesanan": daftar item, voucher, rincian harga (subtotal,
- * potongan, COD, ongkir asli/subsidi, estimasi tiba), dan jaminan belanja.
- * UI voucher (buka/tutup, input kode) hidup di sini, state dari `useCheckout`.
- */
 export function CheckoutSummary({
   items,
   subtotal,
@@ -44,8 +47,8 @@ export function CheckoutSummary({
   voucher,
   voucherDiscount,
   cod,
-  shipping,
-  eta,
+  shipping = null,
+  eta = null,
   pageErrors,
   c,
 }: {
@@ -62,7 +65,6 @@ export function CheckoutSummary({
 }) {
   const {
     hasVoucher,
-    showCodFee,
     voucherCode,
     setVoucherCode,
     voucherOpen,
@@ -70,6 +72,7 @@ export function CheckoutSummary({
     voucherForm,
     applyVoucher,
     removeVoucher,
+    showCodFee,
     shippingQuote,
     shippingQuoteLoading,
     shippingQuoteAttempted,
@@ -77,10 +80,15 @@ export function CheckoutSummary({
   const effectiveShipping = shippingQuote ?? (!shippingQuoteAttempted ? shipping : null)
   const hasDiscount = discountTotal > 0
 
+  const shippingCost = effectiveShipping ? Number(effectiveShipping.net || 0) : 0
+  const codFee = showCodFee ? Number(cod.fee_amount || 0) : 0
+  const discount = Number(discountTotal || 0) + (hasVoucher ? Number(voucherDiscount || 0) : 0)
+  const finalTotal = Math.max(0, Number(subtotal || 0) - discount + shippingCost + codFee)
+
   return (
-    <aside className="surface-panel min-w-0 p-5 lg:sticky lg:top-28">
-      <h2 className="text-lg font-semibold">Ringkasan pesanan</h2>
-      <ul className="mt-4 divide-y divide-border border-y border-border">
+    <aside className="surface-panel min-w-0 p-4 sm:p-5 lg:sticky lg:top-28">
+      <h2 className="text-sm sm:text-base font-bold text-foreground">Ringkasan Pesanan</h2>
+      <ul className="mt-3 divide-y divide-border border-y border-border">
         {items.map((item) => {
           const lineTotal = Number(item.line_total ?? 0)
           const lineDiscount = Number(item.line_discount ?? 0)
@@ -96,38 +104,27 @@ export function CheckoutSummary({
                 ? comparePrice * item.quantity
                 : null
           const discountPercent = item.discount_percent
+          const variantText = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
 
           return (
-            <li key={item.line_id} className="flex justify-between gap-4 py-3 text-xs">
-              <span className="min-w-0">
-                <span className="font-semibold leading-5 break-words [overflow-wrap:anywhere]">{item.name}</span>
-                <span className="tabular-nums mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <li key={item.line_id} className="flex justify-between gap-3 py-2.5 text-xs">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold leading-snug break-words [overflow-wrap:anywhere] text-foreground">
+                  {item.name}
+                </p>
+                <p className="tabular-nums mt-0.5 text-[11px] text-muted-foreground">
                   <span>{item.quantity} item</span>
-                  {item.flash_sale ? (
-                    <span className="font-extrabold italic tracking-tight text-sale">
-                      Flash Sale
-                    </span>
-                  ) : null}
-                  {discountPercent ? (
-                    <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground">
-                      −{discountPercent}%
-                    </span>
-                  ) : null}
-                </span>
-                {item.note ? (
-                  <span className="mt-1.5 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
-                    <span className="font-semibold">Catatan:</span> {item.note}
+                  {variantText ? <span> · {variantText}</span> : null}
+                </p>
+                {discountPercent ? (
+                  <span className="mt-1 inline-block rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
+                    −{discountPercent}%
                   </span>
                 ) : null}
-                {hasLineDiscount ? (
-                  <span className="mt-1 block text-xs font-semibold text-sale">
-                    Hemat {formatCurrency(lineDiscount)}
-                  </span>
-                ) : null}
-              </span>
-              <span className="shrink-0 text-right">
+              </div>
+              <div className="shrink-0 text-right">
                 {hasLineDiscount && lineCompare != null ? (
-                  <span className="tabular-nums block text-xs text-muted-foreground line-through">
+                  <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
                     {formatCurrency(lineCompare)}
                   </span>
                 ) : null}
@@ -135,110 +132,104 @@ export function CheckoutSummary({
                   className={
                     hasLineDiscount
                       ? "tabular-nums block font-bold text-sale"
-                      : "tabular-nums block font-semibold"
+                      : "tabular-nums block font-semibold text-foreground"
                   }
                 >
                   {formatCurrency(lineTotal)}
                 </span>
-              </span>
+              </div>
             </li>
           )
         })}
       </ul>
 
-      <div className="mt-4 border-t border-border pt-4">
-        {hasVoucher ? (
-          <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold">
-              <Icon name="ticket" className="size-4 shrink-0 text-primary" weight="bold" aria-hidden="true" />
-              Voucher diterapkan
-            </p>
-            {(voucher?.vouchers ?? (voucher ? [voucher] : [])).map((item) => (
-              <div key={item.code} className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-xs font-semibold">{item.code}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.name} · Hemat {formatCurrency(item.discount)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-destructive hover:underline"
-                  onClick={() => removeVoucher(item.code)}
-                  disabled={voucherForm.processing}
-                >
-                  Hapus
-                </button>
-              </div>
-            ))}
+      {/* Embedded Voucher Action Box */}
+      <div className="mt-3 rounded-lg border border-border bg-surface-muted/40 p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <Icon name="ticket" className="size-3.5 shrink-0 text-primary" weight="bold" aria-hidden="true" />
+            <span>{hasVoucher ? `Voucher (${voucher?.code})` : "Voucher Toko"}</span>
+          </div>
+          {!voucherOpen && (
             <button
               type="button"
-              className="text-xs font-semibold text-primary hover:underline"
-              onClick={() => setVoucherOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1 text-xs font-semibold hover:underline",
+                hasVoucher ? "text-destructive" : "text-primary"
+              )}
+              onClick={() => {
+                if (hasVoucher && voucher?.code) {
+                  removeVoucher(voucher.code)
+                } else {
+                  setVoucherOpen(true)
+                }
+              }}
             >
-              Tambah voucher
+              {hasVoucher ? (
+                "Hapus"
+              ) : (
+                <>
+                  <Icon name="plus" className="size-3 shrink-0" weight="bold" aria-hidden="true" />
+                  Tambah voucher
+                </>
+              )}
             </button>
-          </div>
-        ) : !voucherOpen ? (
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"
-            onClick={() => setVoucherOpen(true)}
-          >
-            <Icon name="ticket" className="size-4 shrink-0" weight="bold" aria-hidden="true" />
-            Masukkan voucher
-          </button>
-        ) : (
-          <form onSubmit={applyVoucher} className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <label
-                htmlFor="checkout-voucher"
-                className="inline-flex items-center gap-2 text-sm font-medium text-foreground"
-              >
-                <Icon name="ticket" className="size-4 shrink-0 text-primary" weight="bold" aria-hidden="true" />
-                Masukkan voucher
+          )}
+        </div>
+
+        {hasVoucher ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {voucher?.name} · Hemat {formatCurrency(voucherDiscount)}
+          </p>
+        ) : null}
+
+        {voucherOpen ? (
+          <form onSubmit={applyVoucher} className="mt-2 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="summary-voucher" className="text-[11px] font-medium text-foreground">
+                Masukkan kode voucher
               </label>
               <button
                 type="button"
-                className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setVoucherOpen(false)
                   setVoucherCode("")
                   voucherForm.clearErrors()
                 }}
               >
-                Tutup
+                Batal
               </button>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <Input
-                id="checkout-voucher"
+                id="summary-voucher"
                 value={voucherCode}
                 onChange={(event) => {
                   setVoucherCode(event.target.value.toUpperCase())
                   voucherForm.clearErrors("code")
                 }}
-                placeholder="Kode voucher"
+                placeholder="KODE VOUCHER"
                 autoComplete="off"
                 autoFocus
-                className="min-w-0 flex-1 font-mono uppercase"
+                className="h-8 min-w-0 flex-1 text-xs font-mono uppercase"
               />
-              <Button type="submit" className="shrink-0" disabled={voucherForm.processing}>
+              <Button type="submit" size="xs" className="h-8 shrink-0" disabled={voucherForm.processing}>
                 {voucherForm.processing ? "..." : "Pakai"}
               </Button>
             </div>
             {voucherForm.errors.code || pageErrors.voucher ? (
-              <p className="text-xs font-medium text-destructive">
+              <p className="text-[11px] font-medium text-destructive">
                 {voucherForm.errors.code || pageErrors.voucher}
               </p>
             ) : null}
           </form>
-        )}
+        ) : null}
       </div>
 
-      <dl className="mt-4 space-y-3 text-xs">
+      <dl className="mt-3 space-y-2.5 text-xs">
         <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground min-w-0 break-words">Subtotal</dt>
+          <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.length})</dt>
           <dd className="tabular-nums font-semibold">{formatCurrency(subtotal)}</dd>
         </div>
         {hasDiscount ? (
@@ -251,8 +242,8 @@ export function CheckoutSummary({
         ) : null}
         {hasVoucher ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Voucher ({voucher?.code})</dt>
-            <dd className="tabular-nums font-semibold text-sale">
+            <dt className="text-muted-foreground min-w-0 break-words">Voucher Diskon</dt>
+            <dd className="tabular-nums font-bold text-sale">
               −{formatCurrency(voucherDiscount)}
             </dd>
           </div>
@@ -269,7 +260,7 @@ export function CheckoutSummary({
             <dd className="shrink-0 text-right font-semibold">Menghitung ongkir…</dd>
           </div>
         ) : effectiveShipping?.provisional ? (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground min-w-0 break-words">Estimasi ongkir sementara</dt>
               <dd className="tabular-nums font-bold">{formatCurrency(effectiveShipping.net)}</dd>
@@ -311,25 +302,28 @@ export function CheckoutSummary({
         ) : (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
-            <dd className="text-right font-semibold shrink-0">
+            <dd className="text-right font-semibold shrink-0 text-muted-foreground">
               {shippingQuoteAttempted ? "Dihitung saat konfirmasi" : "Lengkapi alamat untuk menghitung"}
             </dd>
           </div>
         )}
 
         {eta ? (
-          <div className="flex justify-between gap-4 border-t border-border pt-3">
+          <div className="flex justify-between gap-4 border-t border-border pt-2.5">
             <dt className="text-muted-foreground min-w-0 break-words">Estimasi tiba</dt>
             <dd className="text-right font-semibold text-primary">{displayEtaRangeLabel(eta)}</dd>
           </div>
         ) : null}
+
+        <div className="flex justify-between gap-4 border-t border-border pt-3">
+          <dt className="text-sm font-bold text-foreground">Total Pembayaran</dt>
+          <dd className="tabular-nums text-base font-bold text-primary">
+            {formatCurrency(finalTotal)}
+          </dd>
+        </div>
       </dl>
 
-
       <TrustAssuranceCard className="mt-4" />
-      <Alert tone="info" className="mt-4">
-        Total akhir dan nomor pesanan ditampilkan setelah konfirmasi berhasil.
-      </Alert>
     </aside>
   )
 }

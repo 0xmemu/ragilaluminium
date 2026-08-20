@@ -13,7 +13,6 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { useCheckout, type CheckoutCodConfig } from "@/hooks/use-checkout"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
-import { cn } from "@/lib/utils"
 import type { CheckoutDetails, OrderEta, SharedPageProps } from "@/types"
 
 export interface CheckoutShipping {
@@ -46,11 +45,6 @@ interface CheckoutProps {
   shippingWeightKg?: number
 }
 
-/**
- * Halaman checkout — murni komposisi. State & aksi (form detail, wilayah,
- * voucher, metode bayar) di `useCheckout`; tiap section (alamat, pembayaran,
- * ringkasan) adalah komponen props-only (§5 R).
- */
 export default function Checkout({
   items = [],
   subtotal = 0,
@@ -80,8 +74,6 @@ export default function Checkout({
   const [checkoutItems, setCheckoutItems] = React.useState(items)
 
   React.useEffect(() => {
-    // Sync server-provided lines after voucher/address redirects.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCheckoutItems(items)
   }, [items])
 
@@ -90,7 +82,6 @@ export default function Checkout({
       item.line_id === lineId ? { ...item, note } : item,
     ))
   }
-
 
   const c = useCheckout({
     details,
@@ -157,7 +148,7 @@ export default function Checkout({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -166,24 +157,10 @@ export default function Checkout({
               Proses pesanan
             </h1>
           </div>
-          <ol className="mt-4 grid max-w-2xl grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
-            <li className="bg-surface p-4">
-              <p className="font-mono text-[11px] text-primary">01</p>
-              <p className="mt-1 text-sm font-semibold">Catatan produk</p>
-            </li>
-            <li className="bg-surface p-4">
-              <p className="font-mono text-[11px] text-primary">02</p>
-              <p className="mt-1 text-sm font-semibold">Detail pengiriman</p>
-            </li>
-            <li className={cn("p-4", details ? "bg-surface" : "bg-surface-muted")}>
-              <p className="font-mono text-[11px] text-primary">03</p>
-              <p className="mt-1 text-sm font-semibold">Pembayaran dan konfirmasi</p>
-            </li>
-          </ol>
         </div>
       </section>
 
-      <section className="container-page !px-5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] md:!px-8 lg:!px-12 lg:py-8">
+      <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] md:!px-8 lg:!px-12 lg:py-8">
         {pageErrors.checkout ? (
           <Alert tone="danger" title={pageErrors.checkout} className="mb-4" />
         ) : null}
@@ -214,7 +191,6 @@ export default function Checkout({
           />
         </div>
       </section>
-
     </PublicLayout>
   )
 }
