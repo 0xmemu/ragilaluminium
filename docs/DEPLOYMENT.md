@@ -270,6 +270,32 @@ Cron root:
 
 Bucket backup: `ra-backup`. Bucket media aktif: `ra-media`. Kredensial backup/media dikelola terpisah sesuai file konfigurasi runtime VPS.
 
+### Alerting & monitoring kegagalan (2026-08-21)
+
+Semua kegagalan dikumpulkan satu aggregator dan dikirim ke **Telegram bot** (publik — siapa
+pun yang Start bot menjadi subscriber):
+
+- `/root/scripts_tg_alert.sh "<pesan>"` — kirim pesan ke SEMUA chat yang pernah Start bot
+  @ragilaluminium_bot. Token bot di `/root/.config/ragilaluminium/telegram.env` (chmod 600),
+  TIDAK disimpan di script/repo.
+- `/root/scripts_alert_aggregator.sh` — cron `*/5` (tiap 5 menit), memeriksa:
+  file `ALERT-*` di `/root/backups/` (dump/upload/binlog/restore/audit gagal),
+  status systemd (nginx, php-fpm, queue, redis, mysql, baileys), disk & inode (>85%),
+  kedalaman queue Redis (>500), health HTTP halaman publik (/, /products, /cart),
+  dan umur marker restore-test/semantic-audit/binlog (stale detection).
+  Dedupe via hash state (`/root/backups/.alert-state`) — alert sama tidak dikirim ulang.
+
+Cron root (ringkasan):
+```cron
+17 3 * * * /root/scripts_backup_mysql.sh
+0 * * * * /root/scripts_backup_mysql_binlog.sh
+30 4 * * 1 /root/scripts_weekly_restore_test.sh
+0 5 * * 1 /root/scripts_weekly_mysql_archive.sh
+0 5 1 * * /root/scripts_monthly_mysql_archive.sh
+*/5 * * * * /root/scripts_alert_aggregator.sh
+*/5 * * * * /usr/bin/python3 /root/scripts_health_check.py
+```
+
 ### Uji restore dan batas validasi
 
 Restore test mingguan dilakukan ke database sementara, bukan ke database produksi. Sumber arsip mingguan/bulanan berasal dari dump harian yang sudah ada dan hanya boleh diarsipkan setelah marker restore test PASS masih baru.
