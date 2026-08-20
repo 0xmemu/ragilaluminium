@@ -1,9 +1,16 @@
 import * as React from "react"
 
+import { Link } from "@inertiajs/react"
+
 import {
   CATALOG_SORT_OPTIONS,
 } from "@/components/public/filter-berdasarkan-control"
+import {
+  categoryHrefFor,
+  type CatalogCategoryLink,
+} from "@/components/public/catalog-listing-sidebar"
 import { Icon } from "@/components/shared/icon"
+import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,11 +51,13 @@ function ChevronDownIcon({ className }: { className?: string }) {
 }
 
 export function CatalogNav({
+  category,
   categoryName,
   total,
   searchQuery = "",
   filterModels = [],
   filterDesigns = [],
+  categoryLinks = [],
   filters,
   activeModel = null,
   activeDesign = null,
@@ -69,6 +78,7 @@ export function CatalogNav({
   searchQuery?: string
   filterModels?: SelectOption[]
   filterDesigns?: SelectOption[]
+  categoryLinks?: CatalogCategoryLink[]
   filters: CatalogNavFilters
   activeModel?: string | null
   activeDesign?: string | null
@@ -176,6 +186,42 @@ export function CatalogNav({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={6} className="w-80 p-3">
+              <DropdownMenuLabel className="px-1 pb-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Kategori
+              </DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link
+                  href={categoryHrefFor("all")}
+                  className={cn(
+                    "min-h-8 rounded-md px-3 text-xs",
+                    (!category || category === "ALL") && "font-semibold",
+                  )}
+                >
+                  <span className="flex-1">Semua Produk</span>
+                  {!category || category === "ALL" ? (
+                    <Icon name="check" className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                  ) : null}
+                </Link>
+              </DropdownMenuItem>
+              {categoryLinks.map((link) => {
+                const active = category === link.code
+                return (
+                  <DropdownMenuItem key={link.slug} asChild>
+                    <Link
+                      href={categoryHrefFor(link.slug)}
+                      className={cn("min-h-8 rounded-md px-3 text-xs", active && "font-semibold")}
+                    >
+                      <span className="flex-1 capitalize">{link.label}</span>
+                      {active ? (
+                        <Icon name="check" className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                      ) : null}
+                    </Link>
+                  </DropdownMenuItem>
+                )
+              })}
+
+              <DropdownMenuSeparator className="my-1.5" />
+
               <DropdownMenuLabel className="px-1 pb-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Model Bukaan
               </DropdownMenuLabel>

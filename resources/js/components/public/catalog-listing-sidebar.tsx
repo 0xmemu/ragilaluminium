@@ -9,22 +9,19 @@ import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Radio } from "@/components/ui/radio"
-import { routeUrl, withQuery } from "@/lib/routes"
+import { Link } from "@inertiajs/react"
+import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
 
-export const CATALOG_CATEGORY_LINKS = [
-  {
-    label: "Semua Produk",
-    href: routeUrl("catalog.all"),
-  },
-  { label: "Jendela", href: routeUrl("catalog.category", { category: "windows" }) },
-  { label: "Pintu", href: routeUrl("catalog.category", { category: "doors" }) },
-  { label: "Boven", href: routeUrl("catalog.category", { category: "bouven" }) },
-  {
-    label: "Paling Banyak Dipesan",
-    href: withQuery(routeUrl("catalog.all"), { sort: "popular" }),
-  },
-] as const
+export interface CatalogCategoryLink {
+  slug: string
+  code: string
+  label: string
+}
+
+export function categoryHrefFor(slug: string): string {
+  return slug === "all" ? routeUrl("catalog.all") : routeUrl("catalog.category", { category: slug })
+}
 
 export function DesignFilterOptions({
   name,
@@ -116,6 +113,49 @@ export function ModelFilterOptions({
   )
 }
 
+export function CategoryFilterOptions({
+  categoryLinks,
+  activeCategory,
+  fieldSuffix,
+}: {
+  categoryLinks: CatalogCategoryLink[]
+  activeCategory?: string | null
+  fieldSuffix?: string
+}) {
+  const options = categoryLinks.length > 0
+    ? [{ slug: "all", code: "ALL", label: "Semua Produk" }, ...categoryLinks]
+    : []
+
+  return (
+    <nav aria-label="Kategori" className="flex flex-col">
+      {options.map((option) => {
+        const active =
+          (option.code === "ALL" && (!activeCategory || activeCategory === "ALL")) ||
+          (option.code !== "ALL" && activeCategory === option.code)
+        return (
+          <Link
+            key={option.slug}
+            href={categoryHrefFor(option.slug)}
+            className="flex min-h-10 items-center justify-between py-1.5 text-sm capitalize text-foreground hover:text-primary"
+            aria-current={active ? "page" : undefined}
+          >
+            <span className={active ? "font-semibold text-primary" : undefined}>{option.label}</span>
+            {active ? (
+              <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            )}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
 export interface CatalogListingFilters {
   model: string
   design: string
@@ -144,6 +184,8 @@ export function CatalogProductListingSidebar({
   onApplyPrice,
   className,
   fieldSuffix = "sidebar",
+  categoryLinks = [],
+  activeCategory,
 }: {
   filterModels: SelectOption[]
   filterDesigns: SelectOption[]
@@ -158,6 +200,8 @@ export function CatalogProductListingSidebar({
   onApplyPrice?: () => void
   className?: string
   fieldSuffix?: string
+  categoryLinks?: CatalogCategoryLink[]
+  activeCategory?: string | null
 }) {
   const activeModelLabel =
     filterModels.find((model) => model.value === activeModel)?.label ?? null
@@ -195,6 +239,16 @@ export function CatalogProductListingSidebar({
   return (
     <FilterSidebar className={className}>
       <AppliedFiltersCard chips={chips} onRemove={removeChip} onClearAll={onClearAll} />
+
+      {categoryLinks.length > 0 ? (
+        <FilterSidebarSection title="Kategori">
+          <CategoryFilterOptions
+            categoryLinks={categoryLinks}
+            activeCategory={activeCategory}
+            fieldSuffix={fieldSuffix}
+          />
+        </FilterSidebarSection>
+      ) : null}
 
       {filterModels.length ? (
         <FilterSidebarSection title="Model Bukaan" subtitle={activeModelLabel}>

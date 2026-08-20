@@ -43,6 +43,7 @@ type ListingMode = "catalog" | "promo" | "flash"
 interface CatalogProps {
   category: string
   categoryName: string
+  categoryLinks?: Array<{ slug: string; code: string; label: string }>
   listingMode?: ListingMode
   isAllProductsListing?: boolean
   products: ProductCardData[]
@@ -163,6 +164,7 @@ function resolveSortValue(sort: string | null | undefined): string {
 export default function Catalog({
   category,
   categoryName,
+  categoryLinks = [],
   listingMode = "catalog",
   isAllProductsListing = false,
   products = [],
@@ -310,6 +312,8 @@ export default function Catalog({
     priceMin: filters.priceMin ? Number(filters.priceMin) : null,
     priceMax: filters.priceMax ? Number(filters.priceMax) : null,
     onClearAll: reset,
+    categoryLinks,
+    activeCategory: category,
   }
 
   const filterSheetContent = (
@@ -358,6 +362,7 @@ export default function Catalog({
       searchQuery={searchQuery}
       filterModels={filterModels}
       filterDesigns={filterDesigns}
+      categoryLinks={categoryLinks}
       filters={{ model: filters.model, design: filters.design, sort: filters.sort || "popular" }}
       activeModel={activeModel}
       activeDesign={activeDesign}

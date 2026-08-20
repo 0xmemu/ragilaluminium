@@ -339,6 +339,7 @@ protected function category(?string $category, Request $request, string $mode = 
                 'total' => $products->total(),
                 'links' => $products->linkCollection()->toArray(),
             ],
+            'categoryLinks' => CategoryUrl::categoryLinks(),
             'filterModels' => collect(CatalogTaxonomy::models($category))
                 ->map(fn ($m) => ['value' => $m, 'label' => CatalogLabels::model($m) ?: $m])
                 ->values()
