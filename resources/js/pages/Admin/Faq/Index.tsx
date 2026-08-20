@@ -440,7 +440,7 @@ export default function FaqIndex({
             setCategory(value)
             apply({ category: value })
           }}
-          className="min-w-[14rem]"
+          className="w-56"
         >
           {categoryOptions.map((option) => (
             <option key={option.value || "all"} value={option.value}>

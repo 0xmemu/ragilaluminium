@@ -310,6 +310,7 @@ export default function ProductsIndex({
         className="mb-4"
       >
         <Select
+          className="flex-1 min-w-0"
           value={filters.product_category}
           onChange={(event) => visit({ product_category: event.target.value })}
           aria-label="Filter kategori"
@@ -321,6 +322,7 @@ export default function ProductsIndex({
           ))}
         </Select>
         <Select
+          className="flex-1 min-w-0"
           value={filters.product_model}
           onChange={(event) => visit({ product_model: event.target.value })}
           aria-label="Filter model"
@@ -332,6 +334,7 @@ export default function ProductsIndex({
           ))}
         </Select>
         <Select
+          className="flex-1 min-w-0"
           value={filters.status}
           onChange={(event) => visit({ status: event.target.value })}
           aria-label="Filter status"

@@ -197,6 +197,7 @@ export default function AnnouncementsIndex({
         className="mb-6"
       >
         <Select
+          className="w-40"
           value={activeStatus}
           onChange={(event) => visit({ status: event.target.value })}
           aria-label="Filter status"

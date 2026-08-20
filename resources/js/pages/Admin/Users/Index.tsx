@@ -99,6 +99,7 @@ export default function UsersIndex({
         className="mb-4"
       >
         <Select
+          className="w-40"
           value={status}
           onChange={(event) => {
             setStatus(event.target.value)
