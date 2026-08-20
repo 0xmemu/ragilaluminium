@@ -67,6 +67,7 @@ return [
             'query' => ['sort' => 'popular'],
             'group' => 'catalog',
             'status' => 'implemented',
+            'notes' => 'Alias IA: runtime sama dengan /products?sort=popular (Catalog). Berbeda view dari Halaman Semua Model Produk (ModelProduk).',
         ],
         'Halaman Apa Kata Pelanggan kami' => [
             'route' => 'reviews.screenshots',
@@ -131,6 +132,7 @@ return [
             'view' => 'Public/OrderConfirmation',
             'group' => 'transaction',
             'status' => 'implemented',
+            'notes' => 'Alias IA: runtime sama dengan Halaman Setelah CO TF (route order.confirmation, view OrderConfirmation).',
         ],
         'Pesanan Saya' => [
             'route' => 'order.status',
@@ -146,6 +148,7 @@ return [
             'view' => 'Public/OrderStatus',
             'group' => 'transaction',
             'status' => 'implemented',
+            'notes' => 'Alias IA: runtime sama dengan Pesanan Saya (route order.status, view OrderStatus).',
         ],
         'Halaman Cara Pemesanan' => [
             'route' => 'cara-pemesanan',
