@@ -8,6 +8,7 @@ use App\Models\ProductAttribute;
 use App\Models\ProductVariant;
 use App\Models\ProductMedia;
 use App\Support\CatalogLabels;
+use App\Support\CategoryUrl;
 use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
@@ -68,7 +69,7 @@ class ProductController extends Controller
             })
             ->when(
                 $category !== '' && $category !== 'all',
-                fn ($query) => $query->where('product_category', strtoupper($category))
+                fn ($query) => $query->where('product_category', CategoryUrl::codeToProductCode($category))
             )
             ->when(
                 $model !== '' && $model !== 'all',
@@ -119,7 +120,7 @@ class ProductController extends Controller
                     LikeSearch::orWhereLike($inner, 'parent_sku', $q);
                 });
             })
-            ->when($category !== '' && $category !== 'all', fn ($builder) => $builder->where('product_category', strtoupper($category)))
+            ->when($category !== '' && $category !== 'all', fn ($builder) => $builder->where('product_category', CategoryUrl::codeToProductCode($category)))
             ->when(
                 $model !== '' && $model !== 'all',
                 fn ($builder) => $builder->where('product_model', CatalogLabels::normalizeModel($model) ?? $model)
