@@ -328,6 +328,8 @@ class CartService
 
             $items[] = [
                 ...$item,
+                'product_id' => $product?->id,
+                'product_model' => $product?->product_model,
                 'quantity' => $qty,
                 'unit_price' => $unit,
                 'compare_price' => $compare,

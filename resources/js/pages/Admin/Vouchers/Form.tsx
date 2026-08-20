@@ -15,9 +15,23 @@ interface VoucherFormData {
   discount_value: number
   min_purchase: number
   stackable: boolean
+  target_type: "general" | "model" | "product"
+  target_model: string
+  target_product_id: string
   starts_at: string | null
   ends_at: string | null
   published: boolean
+}
+
+interface TargetOption {
+  value: string
+  label: string
+  model?: string
+}
+
+interface TargetOptions {
+  modelOptions: TargetOption[]
+  productOptions: TargetOption[]
 }
 
 function toLocalInput(iso: string | null | undefined): string {
@@ -33,11 +47,13 @@ export default function VoucherForm({
   submitUrl,
   method,
   indexHref,
+  targetOptions,
 }: {
   voucher: VoucherFormData | null
   submitUrl: string
   method: "post" | "put"
   indexHref: string
+  targetOptions: TargetOptions
 }) {
   const isEdit = Boolean(voucher?.id)
   const form = useForm({
@@ -47,10 +63,16 @@ export default function VoucherForm({
     discount_value: voucher?.discount_value ?? 10,
     min_purchase: voucher?.min_purchase ?? 0,
     stackable: voucher?.stackable ?? false,
+    target_type: voucher?.target_type ?? ("general" as "general" | "model" | "product"),
+    target_model: voucher?.target_model ?? "",
+    target_product_id: voucher?.target_product_id != null ? String(voucher.target_product_id) : "",
     starts_at: toLocalInput(voucher?.starts_at),
     ends_at: toLocalInput(voucher?.ends_at),
     publish_now: voucher?.published ?? false,
   })
+
+  const targetModelOptions = targetOptions?.modelOptions ?? []
+  const targetProductOptions = targetOptions?.productOptions ?? []
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -58,6 +80,8 @@ export default function VoucherForm({
       ...form.data,
       starts_at: form.data.starts_at || null,
       ends_at: form.data.ends_at || null,
+      target_model: form.data.target_type === "model" ? form.data.target_model : null,
+      target_product_id: form.data.target_type === "product" ? form.data.target_product_id || null : null,
     }
     if (method === "post") {
       form.transform(() => payload)
@@ -115,6 +139,73 @@ export default function VoucherForm({
               required
             />
           </Field>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-base font-bold">Berlaku untuk</h2>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { value: "general", label: "Semua produk" },
+              { value: "model", label: "Model Produk" },
+              { value: "product", label: "Produk Tertentu" },
+            ] as const).map((option) => (
+              <label
+                key={option.value}
+                className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-semibold ${
+                  form.data.target_type === option.value
+                    ? "border-primary bg-primary/5 text-foreground"
+                    : "border-border text-muted-foreground"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="target_type"
+                  className="size-4 accent-primary"
+                  checked={form.data.target_type === option.value}
+                  onChange={() => form.setData("target_type", option.value)}
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+          {form.data.target_type === "model" ? (
+            <Field id="target_model" label="Pilih model produk" error={form.errors.target_model}>
+              <Select
+                id="target_model"
+                value={form.data.target_model}
+                onChange={(event) => form.setData("target_model", event.target.value)}
+              >
+                <option value="">Pilih model…</option>
+                {targetModelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Voucher hanya berlaku untuk produk dengan model ini. Minimum pembelian dihitung dari belanja model tersebut.
+              </p>
+            </Field>
+          ) : null}
+          {form.data.target_type === "product" ? (
+            <Field id="target_product_id" label="Pilih produk" error={form.errors.target_product_id}>
+              <Select
+                id="target_product_id"
+                value={form.data.target_product_id}
+                onChange={(event) => form.setData("target_product_id", event.target.value)}
+              >
+                <option value="">Pilih produk…</option>
+                {targetProductOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Voucher hanya berlaku untuk produk ini. Minimum pembelian dihitung dari belanja produk tersebut.
+              </p>
+            </Field>
+          ) : null}
         </section>
 
         <section className="space-y-4">

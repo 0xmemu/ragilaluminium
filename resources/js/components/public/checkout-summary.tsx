@@ -178,9 +178,27 @@ export function CheckoutSummary({
         </div>
 
         {hasVoucher ? (
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {voucher?.name} · Hemat {formatCurrency(voucherDiscount)}
-          </p>
+          <div className="mt-0.5 space-y-1 text-[11px] text-muted-foreground">
+            {voucher?.vouchers?.length ? (
+              voucher.vouchers.map((entry) => (
+                <p key={entry.code} className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 break-words">
+                    {entry.name}
+                    {entry.target_label && entry.target_label !== "Semua produk" ? (
+                      <span className="font-medium text-primary"> · {entry.target_label}</span>
+                    ) : null}
+                  </span>
+                  <span className="tabular-nums shrink-0 font-semibold text-foreground">
+                    −{formatCurrency(entry.discount)}
+                  </span>
+                </p>
+              ))
+            ) : (
+              <p>
+                {voucher?.name} · Hemat {formatCurrency(voucherDiscount)}
+              </p>
+            )}
+          </div>
         ) : null}
 
         {voucherOpen ? (

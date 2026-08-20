@@ -23,6 +23,8 @@ interface VoucherCard {
   discount_value: number
   min_purchase: number
   stackable: boolean
+  target_type: "general" | "model" | "product"
+  target_label: string
   starts_at: string | null
   ends_at: string | null
   published: boolean
@@ -62,6 +64,14 @@ function VoucherUnusableReason({ reason }: { reason: string }) {
       <span aria-hidden="true">&#9888;</span>
       <span>{reason}</span>
     </p>
+  )
+}
+
+function TargetChip({ label }: { label: string }) {
+  return (
+    <span className="inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+      {label}
+    </span>
   )
 }
 
@@ -288,6 +298,9 @@ export default function VouchersIndex({
               </div>
               <h3 className="mt-2 text-sm font-semibold">{voucher.name}</h3>
               <p className="mt-1 font-mono text-xs text-muted-foreground">{voucher.code}</p>
+              <p className="mt-1.5">
+                <TargetChip label={voucher.target_label} />
+              </p>
               <p className="mt-3 text-xs text-muted-foreground">
                 {formatDateTime(voucher.starts_at)} s/d {formatDateTime(voucher.ends_at)}
               </p>
@@ -319,6 +332,9 @@ export default function VouchersIndex({
                   <td className="px-3 py-3">
                     <p className="font-semibold">{voucher.name}</p>
                     <p className="font-mono text-[11px] text-muted-foreground">{voucher.code}</p>
+                    <p className="mt-1">
+                      <TargetChip label={voucher.target_label} />
+                    </p>
                     <p className="text-[11px] text-muted-foreground">
                       {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Min {formatCurrency(voucher.min_purchase)}
                     </p>

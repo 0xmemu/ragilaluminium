@@ -131,7 +131,12 @@ class OrderService
                     $voucherDiscount = 0.0;
                     $voucherCodes = $this->vouchers->codesFromPayload($voucher);
                     if ($voucherCodes !== []) {
-                        $applied = $this->vouchers->applyCodes($voucherCodes, $subtotal);
+                        $voucherLines = collect($resolved)->map(fn (array $r): array => [
+                            'product_id' => $r['product']->id,
+                            'product_model' => $r['product']->product_model,
+                            'amount' => (float) $r['lineSubtotal'],
+                        ])->all();
+                        $applied = $this->vouchers->applyCodesToLines($voucherCodes, $voucherLines);
                         $voucherCode = $applied['code'];
                         $voucherDiscount = $applied['discount'];
                     }
@@ -545,7 +550,12 @@ class OrderService
                     $voucherCodes = $this->vouchers->normalizeCodes(
                         preg_split('/\s*,\s*/', (string) $locked->voucher_code) ?: [],
                     );
-                    $applied = $this->vouchers->applyCodes($voucherCodes, $subtotal);
+                    $voucherLines = collect($lines)->map(fn (array $line): array => [
+                        'product_id' => $line['product']->id,
+                        'product_model' => $line['product']->product_model,
+                        'amount' => (float) $line['lineSubtotal'],
+                    ])->all();
+                    $applied = $this->vouchers->applyCodesToLines($voucherCodes, $voucherLines);
                     $voucherCode = $applied['code'];
                     $voucherDiscount = $applied['discount'];
                 } catch (\DomainException $e) {

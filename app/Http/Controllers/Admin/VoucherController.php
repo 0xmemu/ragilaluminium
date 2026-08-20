@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use App\Models\StoreVoucher;
+use App\Models\SubModel;
 use App\Services\VoucherService;
+use App\Support\CatalogLabels;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
@@ -27,6 +30,7 @@ class VoucherController extends Controller
         $q = trim((string) $request->input('q', ''));
 
         $vouchers = StoreVoucher::query()
+            ->with(['targetProduct'])
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
                     LikeSearch::whereLike($inner, 'name', $q);
@@ -63,6 +67,7 @@ class VoucherController extends Controller
             'submitUrl' => route('admin.vouchers.store'),
             'method' => 'post',
             'indexHref' => route('admin.vouchers.index'),
+            'targetOptions' => $this->targetOptions(),
         ]);
     }
 
@@ -109,6 +114,7 @@ class VoucherController extends Controller
             'submitUrl' => route('admin.vouchers.update', $voucher),
             'method' => 'put',
             'indexHref' => route('admin.vouchers.index'),
+            'targetOptions' => $this->targetOptions(),
         ]);
     }
 
@@ -184,6 +190,9 @@ class VoucherController extends Controller
             'discount_value' => $voucher->discount_value,
             'min_purchase' => $voucher->min_purchase,
             'stackable' => $voucher->stackable,
+            'target_type' => $voucher->target_type,
+            'target_model' => $voucher->target_model,
+            'target_product_id' => $voucher->target_product_id,
             'starts_at' => $voucher->starts_at,
             'ends_at' => $voucher->ends_at,
             'published' => false,
@@ -223,6 +232,8 @@ class VoucherController extends Controller
     /** @return array<string, mixed> */
     private function validateVoucher(Request $request, ?StoreVoucher $existing = null): array
     {
+        $targetType = (string) $request->input('target_type', StoreVoucher::TARGET_GENERAL);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'code' => [
@@ -241,6 +252,19 @@ class VoucherController extends Controller
             ],
             'min_purchase' => ['nullable', 'numeric', 'min:0'],
             'stackable' => ['sometimes', 'boolean'],
+            'target_type' => ['sometimes', 'in:'.implode(',', StoreVoucher::TARGET_TYPES)],
+            'target_model' => [
+                'nullable',
+                'string',
+                Rule::requiredIf($targetType === StoreVoucher::TARGET_MODEL),
+                Rule::in(SubModel::MODELS),
+            ],
+            'target_product_id' => [
+                'nullable',
+                'integer',
+                Rule::requiredIf($targetType === StoreVoucher::TARGET_PRODUCT),
+                Rule::exists('products', 'id'),
+            ],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'publish_now' => ['sometimes', 'boolean'],
@@ -249,6 +273,13 @@ class VoucherController extends Controller
         unset($validated['publish_now']);
         $validated['min_purchase'] = (float) ($validated['min_purchase'] ?? 0);
         $validated['stackable'] = $request->boolean('stackable');
+        $validated['target_type'] = $targetType;
+        if ($targetType !== StoreVoucher::TARGET_MODEL) {
+            $validated['target_model'] = null;
+        }
+        if ($targetType !== StoreVoucher::TARGET_PRODUCT) {
+            $validated['target_product_id'] = null;
+        }
 
         return $validated;
     }
@@ -263,6 +294,8 @@ class VoucherController extends Controller
             'discount_type' => $voucher->discount_type,
             'discount_value' => (float) $voucher->discount_value,
             'min_purchase' => (float) $voucher->min_purchase,
+            'target_type' => $voucher->target_type ?? StoreVoucher::TARGET_GENERAL,
+            'target_label' => $voucher->targetLabel(),
             'starts_at' => optional($voucher->starts_at)?->toIso8601String(),
             'ends_at' => optional($voucher->ends_at)?->toIso8601String(),
             'published' => (bool) $voucher->published,
@@ -275,6 +308,26 @@ class VoucherController extends Controller
             'edit_href' => route('admin.vouchers.edit', $voucher),
             'publish_url' => route('admin.vouchers.publish', $voucher),
             'unpublish_url' => route('admin.vouchers.unpublish', $voucher),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function targetOptions(): array
+    {
+        return [
+            'modelOptions' => collect(SubModel::MODELS)
+                ->map(fn (string $m): array => ['value' => $m, 'label' => CatalogLabels::model($m)])
+                ->all(),
+            'productOptions' => Product::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'parent_sku', 'name', 'product_model'])
+                ->map(fn (Product $p): array => [
+                    'value' => (string) $p->id,
+                    'label' => $p->name.' ('.$p->parent_sku.')',
+                    'model' => $p->product_model,
+                ])
+                ->all(),
         ];
     }
 }

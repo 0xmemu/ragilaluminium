@@ -295,6 +295,9 @@ Indexes:
 - `discount_value` (`NUMERIC`), NN
 - `min_purchase` (`NUMERIC`), NN, default '0' (0 = tanpa minimum)
 - `stackable` (`TINYINT(1)`), NN, default '0' (boleh ditumpuk dengan voucher lain)
+- `target_type` (`VARCHAR`), NN, default 'general' — nilai: `general`, `model`, `product` (keputusan owner 2026-08-20)
+- `target_model` (`VARCHAR`), nullable — kode `product_model` (JUNGKIT/SLIDING/SWING/KACA_MATI/ZIGZAG) saat `target_type` = `model`
+- `target_product_id` (`INTEGER`), nullable, FK -> products.id (nullOnDelete) — saat `target_type` = `product`
 - `starts_at` (`DATETIME`), nullable
 - `ends_at` (`DATETIME`), nullable
 - `published` (`TINYINT(1)`), NN, default '0'

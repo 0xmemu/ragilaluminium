@@ -20,7 +20,16 @@ export interface CheckoutVoucher {
   name: string
   discount: number
   stackable?: boolean
-  vouchers?: Array<{ code: string; name: string; discount: number; stackable?: boolean }>
+  target_type?: "general" | "model" | "product"
+  target_label?: string
+  vouchers?: Array<{
+    code: string
+    name: string
+    discount: number
+    stackable?: boolean
+    target_type?: "general" | "model" | "product"
+    target_label?: string
+  }>
 }
 
 export interface CheckoutShippingQuote {

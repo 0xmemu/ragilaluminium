@@ -148,6 +148,7 @@ Admin mengarahkan popularitas produk aktif A ke produk aktif B tanpa memindahkan
 
 - Harga promo/Flash Sale menghasilkan harga efektif terlebih dahulu.
 - Voucher admin dapat nominal **atau** persentase; minimum pembelian opsional (default tanpa minimum); stacking dikonfigurasi per voucher. Voucher diterapkan setelah harga efektif produk dan dapat digabung subsidi ongkir. CRUD/status/duplikasi/akhiri memiliki audit.
+- Voucher dapat di-target-kan (keputusan owner 2026-08-20): `general` (seluruh keranjang, default), `model` (`product_model`), atau `product` (produk spesifik). Untuk voucher bertarget, potongan dihitung hanya atas subtotal produk yang memenuhi target; minimum pembelian dihitung dari subtotal eligible tersebut (bukan total keranjang). Stacking tetap berurutan: base voucher berikutnya = sisa eligible setelah potongan sebelumnya (didistribusi proporsional). Tanpa produk yang memenuhi target → voucher ditolak dengan alasan jelas.
 - Flash Sale memiliki campaign window dan target hingga variasi yang ditetapkan; jangan menggandakan mekanisme promo atau membuat campaign table baru tanpa keputusan.
 - COD hanya ditawarkan bila wilayah/nilai order memenuhi aturan; penjelasan unavailable muncul pada pemilihan payment dan Transfer ditawarkan.
 - Subsidi ongkir tetap terpisah dari harga produk dan dapat diedit admin melalui workflow ongkir dengan audit.

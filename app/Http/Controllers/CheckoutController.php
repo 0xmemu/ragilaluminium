@@ -42,9 +42,9 @@ class CheckoutController extends Controller
 
         if (is_array($applied)) {
             try {
-                $fresh = $this->vouchers->applyCodes(
+                $fresh = $this->vouchers->applyCodesToLines(
                     $this->vouchers->codesFromPayload($applied),
-                    (float) $priced['subtotal'],
+                    $this->voucherLinesFromPriced($priced),
                 );
                 $voucherDiscount = $fresh['discount'];
                 $voucherPayload = $fresh;
@@ -153,7 +153,7 @@ class CheckoutController extends Controller
         $codes[] = (string) $validated['code'];
 
         try {
-            $applied = $this->vouchers->applyCodes($codes, (float) $priced['subtotal']);
+            $applied = $this->vouchers->applyCodesToLines($codes, $this->voucherLinesFromPriced($priced));
         } catch (\DomainException $e) {
             return redirect()->route('checkout.index')->withErrors(['voucher' => $e->getMessage()]);
         }
@@ -324,5 +324,21 @@ class CheckoutController extends Controller
         $confirmed = $request->session()->get('confirmed_orders', []);
         $confirmed[] = $order->order_number;
         $request->session()->put('confirmed_orders', array_values(array_unique($confirmed)));
+    }
+
+    /**
+     * Bangun array baris (product_id, product_model, amount) dari output pricedLines
+     * untuk kalkulasi voucher bertarget (general/model/produk).
+     *
+     * @param  array{items: list<array<string, mixed>>}  $priced
+     * @return list<array{product_id: int|null, product_model: string|null, amount: float}>
+     */
+    private function voucherLinesFromPriced(array $priced): array
+    {
+        return collect($priced['items'] ?? [])->map(fn (array $item): array => [
+            'product_id' => $item['product_id'] ?? null,
+            'product_model' => $item['product_model'] ?? null,
+            'amount' => (float) ($item['line_total'] ?? 0),
+        ])->all();
     }
 }
