@@ -178,13 +178,11 @@ export function CheckoutAddressForm({
             >
               <Input
                 value={detailForm.data.postal_code}
-                readOnly={Boolean(detailForm.data.postal_code)}
-                aria-readonly={detailForm.data.postal_code ? "true" : undefined}
-                onChange={(event) => detailForm.setData("postal_code", event.target.value)}
-                placeholder="Isi otomatis dari desa/kelurahan"
-                autoComplete="postal-code"
-                inputMode="numeric"
-                className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
+                readOnly
+                tabIndex={-1}
+                aria-readonly="true"
+                placeholder="Otomatis dari pilihan desa/kelurahan"
+                className="h-9 min-h-9 rounded-md bg-surface-muted/70 px-3 py-1.5 text-xs text-muted-foreground shadow-none cursor-not-allowed focus:border-input focus:ring-0"
               />
             </Field>
           </div>
