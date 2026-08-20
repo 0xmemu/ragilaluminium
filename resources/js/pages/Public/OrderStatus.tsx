@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/alert"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -492,7 +493,13 @@ export default function OrderStatus({
         />
       </Head>
 
-      <section className="container-page flex items-center gap-2 py-2">
+      <section className="border-b border-border bg-surface">
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Cek Status Pesanan" }]} />
+        </div>
+      </section>
+
+      <section className="container-page flex items-center gap-2 py-2 !px-2.5 md:!px-8 lg:!px-12">
         <button
           type="button"
           onClick={() => window.history.back()}

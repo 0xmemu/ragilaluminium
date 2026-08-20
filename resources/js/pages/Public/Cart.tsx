@@ -4,9 +4,9 @@ import * as React from "react"
 import { CartLineItem } from "@/components/public/cart-line-item"
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
-import { TrustBadgesGrid } from "@/components/public/trust-badges-grid"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
@@ -148,7 +148,10 @@ export default function Cart({
       <Head title="Keranjang" />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-2">
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Keranjang" }]} />
+        </div>
+        <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
           <div className="flex items-center gap-2">
             <button
               type="button"

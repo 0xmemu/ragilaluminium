@@ -4,6 +4,7 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { StatusBadge } from "@/components/ui/status-badge"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
@@ -66,7 +67,10 @@ export default function OrderConfirmation({
       <Head title={`Pesanan ${order.order_number}`} />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-2">
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Pesanan berhasil" }]} />
+        </div>
+        <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
           <div className="flex items-center gap-2">
             <button
               type="button"

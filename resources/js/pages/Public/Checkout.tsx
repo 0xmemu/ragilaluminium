@@ -8,6 +8,7 @@ import { CheckoutSummary, type CheckoutItem } from "@/components/public/checkout
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useCheckout, type CheckoutCodConfig } from "@/hooks/use-checkout"
 import PublicLayout from "@/layouts/public-layout"
@@ -107,7 +108,27 @@ export default function Checkout({
     return (
       <PublicLayout>
         <Head title="Checkout" />
-        <section className="container-page !px-5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] md:!px-8 lg:!px-12 lg:py-8">
+        <section className="border-b border-border bg-surface">
+          <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+            <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Proses pesanan" }]} />
+          </div>
+          <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
+                aria-label="Kembali"
+              >
+                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+              </button>
+              <h1 className="text-base font-bold tracking-tight text-foreground">
+                Proses pesanan
+              </h1>
+            </div>
+          </div>
+        </section>
+        <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] md:!px-8 lg:!px-12 lg:py-8">
           <EmptyState
             icon="shopping-cart"
             title="Keranjang kosong"
@@ -128,7 +149,10 @@ export default function Checkout({
       <Head title="Checkout" />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-2">
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Proses pesanan" }]} />
+        </div>
+        <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
           <div className="flex items-center gap-2">
             <button
               type="button"
