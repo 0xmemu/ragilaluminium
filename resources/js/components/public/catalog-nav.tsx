@@ -116,25 +116,28 @@ export function CatalogNav({
 
       {/* Baris 2 ??? Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis */}
       <div className="border-y border-border bg-surface">
-        <div className="container-page flex items-center justify-between gap-1 sm:gap-1.5 px-3 sm:px-5 md:px-8 lg:px-12 py-2">
+        <div className="container-page flex items-center justify-between gap-1.5 sm:gap-2 !px-2.5 md:!px-8 lg:!px-12 py-2">
           {/* Pill 1: Filter */}
           <Sheet open={sheetOpen} onOpenChange={onSheetOpenChange}>
             <SheetTrigger asChild>
               <button
                 type="button"
                 className={cn(
-                  "inline-flex h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border px-1 sm:px-1.5 text-[11px] sm:text-xs font-normal transition",
+                  "relative inline-flex h-8 flex-1 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-2 sm:flex-none sm:px-2.5 text-xs sm:text-[13px] font-medium transition",
                   activeFilterCount > 0
                     ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-[#F4F4F4] text-foreground hover:border-foreground/40",
+                    : "border-border bg-surface-muted text-foreground hover:border-foreground/40",
                 )}
               >
                 <Icon name="sliders" className="size-3 shrink-0" aria-hidden="true" />
                 <span className="whitespace-nowrap">Filter</span>
-                <ChevronDownIcon className="size-2 shrink-0 opacity-60" />
+                <ChevronDownIcon className="size-3 shrink-0 opacity-60" />
                 {activeFilterCount > 0 ? (
-                  <span className="tabular-nums flex size-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                    {activeFilterCount}
+                  <span
+                    data-filter-count
+                    className="tabular-nums absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground"
+                  >
+                    {activeFilterCount > 99 ? "99+" : activeFilterCount}
                   </span>
                 ) : null}
               </button>
@@ -148,10 +151,10 @@ export function CatalogNav({
             onClick={onToggleFlash}
             aria-pressed={isFlash}
             className={cn(
-              "inline-flex h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border px-1 sm:px-1.5 text-[11px] sm:text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c20000] focus-visible:ring-offset-2",
+              "inline-flex h-8 flex-1 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-2 sm:flex-none sm:px-2.5 text-xs sm:text-[13px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               isFlash
-                ? "border-[#c20000] bg-[#c20000] text-white shadow-sm ring-2 ring-[#c20000] ring-offset-1 hover:bg-[#a80000]"
-                : "border-border bg-[#F4F4F4] text-foreground hover:border-foreground/40",
+                ? "border-primary bg-primary text-white shadow-sm ring-2 ring-primary ring-offset-1 hover:bg-primary-hover"
+                : "border-border bg-surface-muted text-foreground hover:border-foreground/40",
             )}
           >
             <Icon
@@ -170,14 +173,14 @@ export function CatalogNav({
               <button
                 type="button"
                 className={cn(
-                  "inline-flex h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border px-1 sm:px-1.5 text-[11px] sm:text-xs font-normal transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "inline-flex h-8 flex-1 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-2 sm:flex-none sm:px-2.5 text-xs sm:text-[13px] font-medium transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   activeModel
-                    ? "border-foreground/50 bg-[#F4F4F4] text-foreground font-medium"
-                    : "border-[#DEDEDE] bg-background text-foreground/80 hover:text-foreground",
+                    ? "border-foreground/50 bg-surface-muted text-foreground font-medium"
+                    : "border-border bg-background text-foreground/80 hover:text-foreground",
                 )}
               >
                 <span className="truncate">{activeModelLabel || "Model"}</span>
-                <ChevronDownIcon className="size-2 shrink-0 opacity-60" />
+                <ChevronDownIcon className="size-3 shrink-0 opacity-60" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={6} className="w-56 p-2">
@@ -214,20 +217,20 @@ export function CatalogNav({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Pill 4: Ukuran / Desain */}
+          {/* Pill 4: Desain */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 className={cn(
-                  "inline-flex h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border px-1 sm:px-1.5 text-[11px] sm:text-xs font-normal transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "inline-flex h-8 flex-1 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-2 sm:flex-none sm:px-2.5 text-xs sm:text-[13px] font-medium transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   activeDesign
-                    ? "border-foreground/50 bg-[#F4F4F4] text-foreground font-medium"
-                    : "border-[#DEDEDE] bg-background text-foreground/80 hover:text-foreground",
+                    ? "border-foreground/50 bg-surface-muted text-foreground font-medium"
+                    : "border-border bg-background text-foreground/80 hover:text-foreground",
                 )}
               >
-                <span className="truncate">{activeDesignLabel || "Ukuran"}</span>
-                <ChevronDownIcon className="size-2 shrink-0 opacity-60" />
+                <span className="truncate">{activeDesignLabel || "Desain"}</span>
+                <ChevronDownIcon className="size-3 shrink-0 opacity-60" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={6} className="w-56 p-2">
@@ -270,10 +273,10 @@ export function CatalogNav({
               <button
                 type="button"
                 aria-label="Urutkan produk"
-                className="inline-flex h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border border-[#DEDEDE] bg-background px-1 sm:px-1.5 text-[11px] sm:text-xs font-normal text-foreground/80 transition hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex h-8 flex-1 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-md border border-border bg-background px-2 sm:flex-none sm:px-2.5 text-xs sm:text-[13px] font-medium text-foreground/80 transition hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <span className="whitespace-nowrap">Atur</span>
-                <ChevronDownIcon className="size-2 shrink-0 opacity-60" />
+                <ChevronDownIcon className="size-3 shrink-0 opacity-60" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={6} className="w-56 p-2">

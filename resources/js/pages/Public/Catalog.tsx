@@ -539,20 +539,9 @@ export default function Catalog({
       {productGallery}
     </section>
   ) : (
-    <section className="container-page !px-5 md:!px-8 lg:!px-12">
-      <div className="grid min-w-0 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
-        <aside className="hidden lg:block">
-          <div className="sticky top-28">
-            <CatalogProductListingSidebar
-              {...sidebarProps}
-              variant="live"
-              onFiltersChange={handleLiveSidebarChange}
-              onApplyPrice={applyLivePrice}
-            />
-          </div>
-        </aside>
-        {productGallery}
-      </div>
+    <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
+      {/* Filter desktop via topnav (pill) — sidebar dihapus; sheet tetap utk mobile. */}
+      {productGallery}
     </section>
   )
 
