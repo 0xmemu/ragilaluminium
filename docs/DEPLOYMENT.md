@@ -295,6 +295,7 @@ Cron root (ringkasan):
 */5 * * * * /root/scripts_alert_aggregator.sh
 */5 * * * * /usr/bin/python3 /root/scripts_health_check.py
 0 6 * * 1 /root/scripts_weekly_cleanup.sh
+30 6 * * * /root/scripts_db_live_health.sh
 ```
 
 Cleanup mingguan (Senin 06:00, `/root/scripts_weekly_cleanup.sh`): hapus `sessions`
@@ -304,6 +305,17 @@ lama ("Semua waktu"/"Tahun ini") dibaca dari tabel event
 (`visitorsBetween`/`series` prefer detail, fallback agregat hanya saat detail kosong);
 menghapus detail > N hari akan merusak angka lifetime. Data bisnis inti
 (orders/order_items/payments/customers) tidak pernah disentuh cleanup.
+
+### Live DB health check (harian 06:30, `/root/scripts_db_live_health.sh`)
+
+Deteksi dini masalah DB live (read-only: SELECT/CHECK TABLE saja):
+- `CHECK TABLE` tabel inti (orders, order_items, payments, products, product_variants, customers, users);
+- audit semantik 22 invariant terhadap LIVE DB (bukan hanya test DB);
+- rowcount drift vs run sebelumnya — penurunan >=10% (min 1 baris) pada orders/order_items/payments/
+  customers/products/product_variants/users/event_logs/whatsapp_messages → alert (sessions dikecualikan,
+  fluktuasi normal). Baseline di `/root/backups/rowcount-last.txt`.
+Gagal → `ALERT-db-live-health` → aggregator → Telegram. Terbukti (drill 2026-08-21): hapus 1 order
+→ alert 3 tabel; restore dari dump harian via DB sementara → data kembali, app 200.
 
 ### Uji restore dan batas validasi
 
