@@ -274,14 +274,24 @@ Bucket backup: `ra-backup`. Bucket media aktif: `ra-media`. Kredensial backup/me
 
 Restore test mingguan dilakukan ke database sementara, bukan ke database produksi. Sumber arsip mingguan/bulanan berasal dari dump harian yang sudah ada dan hanya boleh diarsipkan setelah marker restore test PASS masih baru.
 
-Validasi yang berjalan:
+Validasi yang berjalan (rantai E-node: restore test → audit semantik → marker PASS):
 
 - file dump dapat didekompresi dan direstore;
 - row count tabel utama dibandingkan dengan produksi;
 - `CHECK TABLE` tabel utama harus OK;
-- kegagalan membuat alert dan menghentikan arsip.
+- **audit semantik 22 invariant** dijalankan terhadap DB hasil restore — relasi
+  (orphan order_items/payments, order tanpa item, duplikat order_number), nilai
+  (formula `total_amount` OrderService, semua komponen non-negatif), status
+  (semua enum sesuai kontrak, koherensi `cod_flag`/`payment_method`), dan
+  pembayaran (total paid ≤ total order, `payment_status=paid` harus punya
+  payment completed);
+- PASS marker (restore test + semantic audit) hanya ditulis bila SEMUA lolos;
+- kegagalan membuat alert dan menghentikan arsip mingguan/bulanan.
 
-Validasi ini membuktikan integritas teknis dasar, **belum membuktikan seluruh isi bisnis benar secara semantik** (misalnya total order, relasi item, pembayaran, dan status omzet). Audit semantik read-only masih merupakan penguatan terpisah.
+Arsip `weekly/`/`monthly/` hanya dibuat dari dump yang sudah lolos seluruh
+rantai ini. Verifikasi lifecycle R2 (2026-08-20): rule `expire-30d` hanya pada
+prefix `mysql/` dan `expire-30d-binlogs` pada `binlogs/` (30 hari) — prefix
+`weekly/` dan `monthly/` TANPA rule = tersimpan permanen (arsip jangka panjang).
 
 ### Recovery — VPS mati total / error
 
