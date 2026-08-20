@@ -101,19 +101,7 @@ function CheckoutItemNoteRow({
     }, 500)
   }
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault()
-      if (timer.current !== null) {
-        window.clearTimeout(timer.current)
-        timer.current = null
-      }
-      save(value)
-    }
-  }
-
   const variantLabel = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
-  const hasContent = value.trim().length > 0
 
   return (
     <div className="py-3.5 space-y-2.5">
@@ -149,17 +137,7 @@ function CheckoutItemNoteRow({
         </div>
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (timer.current !== null) {
-            window.clearTimeout(timer.current)
-            timer.current = null
-          }
-          save(value)
-        }}
-        className="flex items-center gap-2 rounded-md border border-border bg-surface-muted/50 px-2.5 py-1.5 focus-within:border-primary/60 focus-within:bg-surface"
-      >
+      <div className="flex items-center gap-2 rounded-md border border-border bg-surface-muted/50 px-2.5 py-1.5 focus-within:border-primary/60 focus-within:bg-surface">
         <Icon name="pencil" className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <input
           id={`checkout-note-${item.line_id}`}
@@ -167,27 +145,17 @@ function CheckoutItemNoteRow({
           className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
           value={value}
           onChange={(event) => update(event.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder="Catatan untuk produk ini (opsional)"
           maxLength={2000}
         />
-        {hasContent || saving || saved ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (timer.current !== null) {
-                window.clearTimeout(timer.current)
-                timer.current = null
-              }
-              save(value)
-            }}
-            disabled={saving}
-            className="shrink-0 bg-transparent border-0 p-0 text-xs font-semibold text-primary hover:underline focus:outline-none disabled:opacity-50"
-          >
-            {saving ? "Menyimpan..." : saved ? "Tersimpan" : error ? "Coba lagi" : "Simpan"}
-          </button>
+        {saving ? (
+          <span className="shrink-0 text-[10px] text-muted-foreground">Menyimpan...</span>
+        ) : saved ? (
+          <span className="shrink-0 text-[10px] font-medium text-primary">Tersimpan</span>
+        ) : error ? (
+          <span className="shrink-0 text-[10px] text-destructive">{error}</span>
         ) : null}
-      </form>
+      </div>
     </div>
   )
 }

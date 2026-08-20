@@ -105,13 +105,21 @@ return [
         'harga_promo' => [
             'title' => 'Harga & Promo',
             'items' => [
-                ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'icon' => 'ticket', 'active' => ['admin.promotions.*']],
-                ['label' => 'Banner Promo', 'route' => 'admin.banners.index', 'icon' => 'images', 'active' => ['admin.banners.*']],
-                ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'icon' => 'megaphone', 'active' => ['admin.announcements.*']],
-                ['label' => 'Flash Sale', 'route' => 'admin.promotions.index', 'params' => ['type' => 'flash_sale'], 'icon' => 'lightning', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
-                ['label' => 'Voucher Toko', 'route' => 'admin.vouchers.index', 'icon' => 'voucher', 'active' => ['admin.vouchers.*']],
+                [
+                    'label' => 'Promo',
+                    'route' => 'admin.promotions.index',
+                    'icon' => 'ticket',
+                    'active' => ['admin.promotions.*', 'admin.banners.*', 'admin.announcements.*', 'admin.vouchers.*', 'admin.shipping-subsidy.*', 'admin.flash-sale.*'],
+                    'children' => [
+                        ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'active' => ['admin.promotions.*']],
+                        ['label' => 'Flash Sale', 'route' => 'admin.promotions.index', 'params' => ['type' => 'flash_sale'], 'icon' => 'lightning', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
+                        ['label' => 'Voucher Toko', 'route' => 'admin.vouchers.index', 'active' => ['admin.vouchers.*']],
+                        ['label' => 'Diskon Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'active' => ['admin.shipping-subsidy.*']],
+                        ['label' => 'Banner Promo', 'route' => 'admin.banners.index', 'active' => ['admin.banners.*']],
+                        ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'active' => ['admin.announcements.*']],
+                    ],
+                ],
                 ['label' => 'Biaya COD', 'route' => 'admin.cod-settings.edit', 'icon' => 'hand-coins', 'active' => ['admin.cod-settings.*']],
-                ['label' => 'Subsidi Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'icon' => 'truck', 'active' => ['admin.shipping-subsidy.*']],
             ],
         ],
         'pelanggan_komunikasi' => [

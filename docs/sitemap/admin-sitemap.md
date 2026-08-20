@@ -62,7 +62,20 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
 - **Payments** (Tipe: `Operational`)
   - Daftar rekaman pembayaran, verifikasi bukti transfer.
 
-### 5. Shipping (Pengiriman)
+### 5. Promo (Harga & Promo)
+Satu menu nav **Promo** (submenu inline) memayungi semua jenis promosi:
+Promo Toko | Flash Sale | Voucher Toko | Diskon Ongkir | Banner Promo | Bar Promo.
+Biaya COD tetap item flat di grup yang sama.
+
+- **Promo Toko** — kampanye diskon reguler toko (type=store).
+- **Flash Sale** — diskon menit terbatas (type=flash_sale).
+- **Voucher Toko** — kode voucher diskon.
+- **Diskon Ongkir** — pengaturan subsidi ongkos kirim.
+- **Banner Promo** — banner promosi di halaman.
+- **Bar Promo** — bar notifikasi promosi.
+- **Biaya COD** — biaya tambahan pembayaran tunai.
+
+### 6. Shipping (Pengiriman)
 - **Shipping Records** (Tipe: `Operational`)
   - Daftar nomor resi (Waybill), kurir, dan status integrasi J&T/lainnya.
   - Resi diterbitkan di J&T di luar website; admin hanya memasukkan nomor resi manual.
