@@ -37,13 +37,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | WhatsApp Business API (Stage 8)
+    | WhatsApp provider (Baileys-only; legacy Meta API diarsipkan)
     |--------------------------------------------------------------------------
     */
 
     'whatsapp' => [
         'allow_unsigned_webhooks' => (bool) env('WHATSAPP_ALLOW_UNSIGNED_WEBHOOKS', false),
-        'default_provider' => env('WHATSAPP_PROVIDER', 'meta'),
+        'default_provider' => env('WHATSAPP_PROVIDER', 'baileys'),
         'compare_provider' => env('WHATSAPP_COMPARE_PROVIDER'),
         'compare_allowlist' => array_values(array_filter(array_map(
             static fn (?string $phone) => $phone !== null ? trim($phone) : null,
@@ -58,16 +58,6 @@ return [
         'business_phone' => env('WHATSAPP_BUSINESS_PHONE'),
         'language' => env('WHATSAPP_LANGUAGE', 'id'),
         'timeout' => (int) env('WHATSAPP_TIMEOUT', 15),
-        'meta' => [
-            'base_url' => env('WHATSAPP_API_BASE_URL', 'https://graph.facebook.com/v20.0'),
-            'token' => env('WHATSAPP_API_TOKEN'),
-            'number_id' => env('WHATSAPP_BUSINESS_NUMBER_ID'),
-            'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
-            'app_secret' => env('WHATSAPP_APP_SECRET'),
-            'business_phone' => env('WHATSAPP_BUSINESS_PHONE'),
-            'language' => env('WHATSAPP_LANGUAGE', 'id'),
-            'timeout' => (int) env('WHATSAPP_TIMEOUT', 15),
-        ],
         'baileys' => [
             'base_url' => env('WHATSAPP_BAILEYS_BASE_URL'),
             'api_key' => env('WHATSAPP_BAILEYS_API_KEY'),

@@ -11,10 +11,10 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
 
     public function test_consultation_send_creates_outbound_whatsapp_message(): void
     {
-        // Isolasi: tanpa token → mark sent (jangan hit Meta live di PHPUnit).
+        // Isolasi: tanpa gateway terkonfigurasi → mark sent (jangan hit Baileys live di PHPUnit).
         config([
-            'services.whatsapp.token' => null,
-            'services.whatsapp.default_provider' => 'meta',
+            'services.whatsapp.baileys.base_url' => null,
+            'services.whatsapp.baileys.api_key' => null,
         ]);
 
         WhatsAppTemplate::create([

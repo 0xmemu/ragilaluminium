@@ -303,6 +303,7 @@ class DashboardController extends Controller
             ->firstWhere('key', 'traffic')['kpis'] ?? [];
         $performaMetrics = collect($trafficKpis)
             ->whereIn('key', ['visitors', 'conversion', 'new_customers', 'repeat_customers'])
+            ->map(fn (array $metric): array => collect($metric)->except('detail')->all())
             ->values()
             ->all();
         $performaRevenueChart = collect($performance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];

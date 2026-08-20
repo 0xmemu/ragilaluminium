@@ -1,4 +1,4 @@
-import { Head, Link } from "@inertiajs/react"
+import { Head, Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import {
@@ -9,6 +9,7 @@ import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageHeader } from "@/components/public/page-header"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -16,7 +17,7 @@ import { useDragScroll } from "@/hooks/use-drag-scroll"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
-import type { ModelCardData, ProductCardData } from "@/types"
+import type { ModelCardData, ProductCardData, SharedPageProps } from "@/types"
 
 export interface DesignVariantCard {
   value: string
@@ -33,7 +34,7 @@ const carouselNavBtnClass =
   "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
 const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 const carouselCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/4)]"
@@ -149,7 +150,7 @@ function DesignProductRail({
         </h3>
         <Link
           href={variant.href}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-[#474747] transition hover:text-[#333333]"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-muted-foreground transition hover:text-foreground"
         >
           Lihat Semua
           <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
@@ -240,10 +241,46 @@ export default function ModelDetail({
 
   const modelsHref = hubHref || routeUrl("catalog.index")
 
+  const { consultationWhatsApp } = usePage<SharedPageProps>().props
+  const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
+
   const rails = React.useMemo(() => {
     const source = designRails.length ? designRails : designVariants
     return source.filter((rail) => (rail.products?.length ?? 0) > 0)
   }, [designRails, designVariants])
+
+  const heroThumbs = React.useMemo(() => {
+    const seen = new Set<string>()
+    const out: Array<{ id: string; src: string; alt: string; href?: string }> = []
+    const push = (src: string | null | undefined, alt: string, href?: string) => {
+      if (!src || seen.has(src)) return
+      seen.add(src)
+      out.push({ id: src, src, alt, href })
+    }
+    push(model.image, model.title, model.detail_href ?? undefined)
+    for (const rail of rails) {
+      for (const p of rail.products ?? []) push(p.image, p.name, p.href ?? undefined)
+    }
+    for (const p of products) push(p.image, p.name, p.href ?? undefined)
+    return out.slice(0, 12)
+  }, [model, rails, products])
+
+  const heroThumbsRef = React.useRef<HTMLDivElement>(null)
+  useDragScroll(heroThumbsRef)
+  const [heroActive, setHeroActive] = React.useState(0)
+
+  const handleHeroScroll = React.useCallback(() => {
+    const track = heroThumbsRef.current
+    if (!track) return
+    const index = Math.round(track.scrollLeft / Math.max(1, track.clientWidth))
+    setHeroActive(Math.max(0, Math.min(heroThumbs.length - 1, index)))
+  }, [heroThumbs.length])
+
+  const goHeroSlide = React.useCallback((index: number) => {
+    const track = heroThumbsRef.current
+    if (!track) return
+    track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" })
+  }, [])
 
   return (
     <PublicLayout>
@@ -255,82 +292,123 @@ export default function ModelDetail({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: "Model Produk", href: modelsHref },
               { label: model.title, href: null },
             ]}
           />
-        </div>
-        <div className="container-page">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
-              aria-label="Kembali"
-            >
-              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-            </button>
-            <h1 className="text-base font-bold tracking-tight text-foreground">Model Produk</h1>
           </div>
+        </div>
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+          <PageHeader title="Model Produk" container={false} />
         </div>
       </section>
 
       <section className="py-5">
-        <div className="container-page !px-5 md:!px-8 lg:!px-12">
-          <div className="md:grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-start md:gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
-            <div className="relative aspect-square w-full overflow-hidden bg-surface-muted">
-              <ResponsiveImage
-                src={model.image}
-                alt={model.title}
-                loading="eager"
-                fetchPriority="high"
-                wrapperClassName="absolute inset-0 size-full !aspect-auto bg-surface-muted"
-                className="object-cover"
-              />
+        <div className="relative aspect-square w-full overflow-hidden">
+            <div
+              ref={heroThumbsRef}
+              onScroll={handleHeroScroll}
+              className="absolute inset-0 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] data-[dragging=true]:cursor-grabbing"
+            >
+              {heroThumbs.map((thumb) => (
+                <button
+                  key={thumb.id}
+                  type="button"
+                  onClick={() => thumb.href && window.location.assign(thumb.href)}
+                  className="relative h-full w-full shrink-0 snap-start"
+                  aria-label={thumb.alt}
+                >
+                  <ResponsiveImage
+                    src={thumb.src}
+                    alt={thumb.alt}
+                    loading="lazy"
+                    wrapperClassName="absolute inset-0 size-full !aspect-auto bg-surface-muted"
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ))}
             </div>
 
-            <div className="min-w-0 pt-5 md:pt-0">
-              <h1 className="text-base font-bold leading-tight tracking-tight text-foreground">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
+
+            <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5">
+              <h1
+                className={cn(
+                  "font-bold leading-tight tracking-tight text-white",
+                  "text-sm sm:text-base",
+                )}
+              >
                 {model.title}
               </h1>
               {model.desc ? (
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-4 sm:text-[15px] sm:leading-7">
+                <p className="mt-1.5 max-w-xl truncate text-[11px] leading-snug text-white/90 sm:text-[13px]">
                   {model.desc}
                 </p>
               ) : null}
 
               {highlights.length ? (
-                <ul
-                  className="mt-6 grid grid-cols-3 gap-2.5 sm:mt-8 sm:gap-3"
-                  aria-label="Keunggulan model"
-                >
+                <div className="mt-3 flex flex-nowrap items-center gap-1.5 sm:gap-2" aria-label="Keunggulan model">
                   {highlights.map((item) => (
-                    <li
+                    <span
                       key={item.label}
-                      className="flex min-h-[5rem] flex-col items-center justify-center gap-2 rounded-xl border border-border bg-white px-2 py-3.5 text-center sm:min-h-[6.25rem] sm:gap-3 sm:px-3 sm:py-5"
+                      className="inline-flex min-w-0 flex-1 items-center justify-center truncate whitespace-nowrap rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-foreground sm:px-2.5 sm:text-[11px]"
                     >
-                      <Icon
-                        name={item.icon}
-                        weight="regular"
-                        className="size-6 text-foreground sm:size-8"
-                        aria-hidden="true"
-                      />
-                      <span className="text-[11px] font-medium leading-snug text-foreground/85 sm:text-xs">
-                        {item.label}
-                      </span>
-                    </li>
+                      {item.label}
+                    </span>
                   ))}
-                </ul>
+                </div>
               ) : null}
+            </div>
+
+            {heroThumbs.length > 1 ? (
+              <div className="absolute inset-x-0 bottom-1.5 flex items-center justify-center">
+                {heroThumbs.map((thumb, index) => (
+                  <button
+                    key={`dot-${index}-${thumb.id}`}
+                    type="button"
+                    onClick={() => goHeroSlide(index)}
+                    aria-label={`Foto ${index + 1}`}
+                    className="relative flex size-6 items-center justify-center rounded-full"
+                  >
+                    <span
+                      className={cn(
+                        "h-1 rounded-full transition-all duration-300",
+                        index === heroActive ? "w-4 bg-white" : "w-1 bg-white/50 hover:bg-white/80",
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
+        </div>
+
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 mt-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-base font-bold leading-tight tracking-tight text-foreground">
+                {rails.length}
+              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">Varian Desain</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-base font-bold leading-tight tracking-tight text-foreground">
+                {(model.inspiration_count || rails.reduce((sum, rail) => sum + (rail.products?.length ?? 0), 0))}+
+              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">Foto Terpasang</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>
+              <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
             </div>
           </div>
         </div>
 
-        <div id="produk" className="container-page !px-5 md:!px-8 lg:!px-12 scroll-mt-24 mt-8 border-t border-border pt-6 sm:mt-10 sm:pt-8">
+        <div id="produk" className="container-page !px-2.5 md:!px-8 lg:!px-12 scroll-mt-24 mt-4">
           {rails.length === 1 ? (
             <section aria-labelledby="single-design-heading">
               <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
@@ -342,7 +420,7 @@ export default function ModelDetail({
                 </h2>
                 <Link
                   href={rails[0].href}
-                  className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-[#474747] transition hover:text-[#333333]"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted-foreground transition hover:text-foreground"
                 >
                   Lihat Semua
                   <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
@@ -376,6 +454,25 @@ export default function ModelDetail({
               }
             />
           )}
+        </div>
+
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 mt-6 sm:mt-8">
+          <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-primary px-5 py-5 text-center">
+            <p className="text-sm font-bold leading-tight tracking-tight text-primary-foreground">
+              Butuh bantuan pilih jendela?
+            </p>
+            <p className="text-[10px] leading-snug text-primary-foreground/80 sm:text-[11px]">
+              Konsultasi gratis via WhatsApp, admin balas cepat
+            </p>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex h-7 items-center justify-center whitespace-nowrap rounded-full bg-background px-5 text-[11px] font-semibold text-primary transition hover:bg-background/90"
+            >
+              Chat WhatsApp
+            </a>
+          </div>
         </div>
       </section>
     </PublicLayout>

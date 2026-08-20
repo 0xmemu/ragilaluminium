@@ -231,12 +231,14 @@ class ModelProductService
             ];
 
             $cmsDescription = trim((string) ($row->description ?? ''));
+            $cmsKeywords = $row->keywords ?? [];
 
             $cards[] = [
                 'title' => $row->name,
                 'count' => (string) $count,
                 'meta' => $this->metaFromDesigns($designs),
                 'desc' => $cmsDescription !== '' ? $cmsDescription : $this->descriptionFor($row->product_model),
+                'keywords' => $cmsKeywords,
                 'image' => $image,
                 'href' => route($route, $params, absolute: false),
                 'model' => $row->product_model,

@@ -21,6 +21,7 @@ import {
   FilterBerdasarkanControl,
 } from "@/components/public/filter-berdasarkan-control"
 import { FilterSheetContent } from "@/components/public/filter-sidebar"
+import { FlashSaleCarouselSection } from "@/components/public/flash-sale-carousel-section"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -29,7 +30,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { ProductGridSkeleton } from "@/components/ui/skeleton"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
-import { routeUrl, withQuery } from "@/lib/routes"
+import { routeUrl } from "@/lib/routes"
 import type {
   FlashSalePeriod,
   Pagination as PaginationData,
@@ -48,6 +49,7 @@ interface CatalogProps {
   isAllProductsListing?: boolean
   products: ProductCardData[]
   popularProducts?: ProductCardData[]
+  flashSaleSpotlight?: ProductCardData[]
   youMightLike?: ProductCardData[]
   flashSalePeriod?: FlashSalePeriod | null
   pagination: PaginationData
@@ -169,6 +171,7 @@ export default function Catalog({
   isAllProductsListing = false,
   products = [],
   popularProducts = [],
+  flashSaleSpotlight = [],
   youMightLike = [],
   flashSalePeriod = null,
   pagination,
@@ -192,6 +195,11 @@ export default function Catalog({
   const listingAllProducts = isAllProductsListing || category === "ALL" || basePath === "/products"
   const resolvedSort = resolveSortValue(activeSort)
   const flashLive = period?.live === true
+  const fromTopSold = React.useMemo(() => {
+    if (typeof window === "undefined") return false
+    return new URLSearchParams(window.location.search).get("from") === "paling-banyak-dipesan"
+  }, [])
+  const flashCarouselProducts = React.useMemo(() => flashSaleSpotlight, [flashSaleSpotlight])
   const useModelToggles = isPromo
 
   const [loading, setLoading] = React.useState(false)
@@ -275,26 +283,6 @@ export default function Catalog({
     }
     setMobileFiltersOpen(false)
     visit(empty)
-  }
-
-  function handleLiveSidebarChange(next: Partial<CatalogListingFilters>) {
-    const merged = { ...filters, ...next }
-
-    const touchesPrice = "priceMin" in next || "priceMax" in next
-    const clearingPrice = touchesPrice && !merged.priceMin && !merged.priceMax
-    const editingPrice = touchesPrice && !clearingPrice
-
-    setFilters(merged)
-
-    if (editingPrice) {
-      return
-    }
-
-    visit(merged)
-  }
-
-  function applyLivePrice() {
-    visit(filters)
   }
 
   const activeFilterCount = [activeModel, activeDesign, priceMin, priceMax, searchQuery]
@@ -517,7 +505,7 @@ export default function Catalog({
   )
 
   const listingBody = useModelToggles ? (
-    <section className="container-page !px-5 md:!px-8 lg:!px-12">
+    <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
       {isFlash ? (
         <FlashSaleListingToolbar
           sort={filters.sort || "popular"}
@@ -577,8 +565,9 @@ export default function Catalog({
 
       {isPromo ? (
         <section className="border-b border-border bg-surface">
-          <div className="container-page hidden py-2 sm:block">
-            <Breadcrumbs
+          <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+            <div className="flex items-center gap-3">
+                          <Breadcrumbs
               items={[
                 { label: "Home", href: routeUrl("home") },
                 ...(listingAllProducts
@@ -589,14 +578,15 @@ export default function Catalog({
                     ]),
               ]}
             />
+            </div>
           </div>
 
-          <div className="container-page">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -617,9 +607,13 @@ export default function Catalog({
       )}
 
       {isPromo ? (
-        <div className="container-page flex justify-end py-3">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 flex justify-end py-3">
           {filterToolbar}
         </div>
+      ) : null}
+
+      {fromTopSold && flashCarouselProducts.length > 0 ? (
+        <FlashSaleCarouselSection products={flashCarouselProducts} />
       ) : null}
 
       {listingBody}

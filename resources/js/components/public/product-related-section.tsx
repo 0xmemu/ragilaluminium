@@ -19,18 +19,18 @@ export function ProductRelatedSection({ products }: { products: ProductCardData[
   const items = products.slice(0, 8)
 
   return (
-    <section className="pt-5 pb-[calc(var(--mobile-sticky-cta-height)+1rem)] border-t border-border lg:pb-5">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+    <section id="produk-terkait" className="pt-5 pb-5 lg:pb-5">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <div className="flex items-center justify-between gap-3">
           <h2 className="min-w-0 break-words text-base font-bold text-foreground">
             Anda mungkin juga suka
           </h2>
           <Link
             href={routeUrl("catalog.index")}
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#474747] transition hover:text-[#333333]"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
           >
             <span>Lihat Semua</span>
-            <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
+            <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
           </Link>
         </div>
 

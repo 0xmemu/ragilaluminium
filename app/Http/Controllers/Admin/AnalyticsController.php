@@ -31,6 +31,8 @@ class AnalyticsController extends Controller
             granularity: is_string($granularity) ? $granularity : null,
         );
 
+        $payload = $this->injectConversionDetail($payload);
+
         return Inertia::render('Admin/Analytics/StorePerformance', [
             'title' => 'Performa Toko',
             'description' => 'Pantau dan analisis basis data performa toko Anda dalam satu antarmuka — pembukuan penjualan, produk, dan operasional.',
@@ -65,6 +67,46 @@ class AnalyticsController extends Controller
                 'granularity' => $payload['range']['granularity'],
             ]),
         ]);
+    }
+
+    /**
+     * Tambahkan breakdown konkret "N dari N pengunjung" untuk KPI conversion
+     * HANYA di halaman analytics (bukan dashboard) — dashboard kontrak ketat 6 key
+     * tetap terjaga karena service tidak menyentuh detail.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function injectConversionDetail(array $payload): array
+    {
+        $sections = collect($payload['sections'] ?? []);
+
+        $orders = (int) collect($sections->firstWhere('key', 'sales')['kpis'] ?? [])
+            ->firstWhere('key', 'orders')['value'] ?? 0;
+        $visitors = (int) collect($sections->firstWhere('key', 'traffic')['kpis'] ?? [])
+            ->firstWhere('key', 'visitors')['value'] ?? 0;
+
+        $detail = ($orders > 0 || $visitors > 0)
+            ? sprintf('%s dari %s pengunjung', number_format($orders, 0, ',', '.'), number_format($visitors, 0, ',', '.'))
+            : null;
+
+        $payload['sections'] = $sections->map(function (array $section) use ($detail) {
+            if (($section['key'] ?? null) !== 'traffic') {
+                return $section;
+            }
+
+            $section['kpis'] = collect($section['kpis'])->map(function (array $kpi) use ($detail) {
+                if (($kpi['key'] ?? null) === 'conversion' && $detail !== null) {
+                    $kpi['detail'] = $detail;
+                }
+
+                return $kpi;
+            })->all();
+
+            return $section;
+        })->all();
+
+        return $payload;
     }
 
     public function exportStorePerformance(Request $request): StreamedResponse

@@ -757,3 +757,30 @@ Bukan changelog harian. Agent: 1–3 bullets pendek per entri.
 - Kunci 9 aturan dgn test (Fase13*): dashboard summary+followup, Performa Toko terpisah, Log
   Aktivitas di Akun & Sistem, Import Performance di Import, rate-limit login (5x/60s), rotasi
   session tidak putus WhatsApp (daemon luar), admin hak setara, audit log append-only & traceable.
+
+## 2026-08-18: Integration Feature Gates (Credential-Driven)
+
+### Problem
+- JNT webhook retried 22x/day when signing key not configured (J&T retries on non-2xx ACK)
+- ShippingService logged 94 warnings/day when JNT tariff unavailable
+- No clear mechanism to know when integrations are ready vs not
+
+### Changes
+- config/integrations.php: centralized feature gate; each integration checks ALL required credentials automatically.
+- ShippingController@handleJnt: when signing key blank, returns ACK success (code 1) instead of error.
+- ShippingService: tariff unavailable/failed logs downgraded from warning to debug.
+- createShipment error message now lists all required .env keys.
+
+### Principle
+Integration = credential-driven. If credentials present -> auto-active. If missing -> silent fallback, no errors, no retries.
+
+### Verification
+- php -l (4 files) PASS, tsc --noEmit PASS, npm run build PASS (11.8s)
+
+- [2026-08-18 14:00] CREDENTIAL-DRIVEN FEATURE GATE (JNT + WhatsApp):
+  - NEW config/integrations.php: centralized feature gate dengan ready() callback.
+  - PATCHED ShippingController@webhook: return ack(true) + debug log jika credential kosong (stop J&T retry forever)
+  - PATCHED ShippingService: tariff unavailable -> debug level (bukan warning, stop log spam)
+  - Backend DashboardController sudah pass integrationReadiness + jntReadiness
+  - Frontend Dashboard.tsx belum render panel integrasi (WIP)
+  - Alur: credential diisi -> integrasi aktif otomatis, kosong -> diam + ACK ke J&T

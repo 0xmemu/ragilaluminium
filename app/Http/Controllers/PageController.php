@@ -412,18 +412,26 @@ class PageController extends Controller
         $presentation = ModelProductPresentation::forModel($model !== '' ? $model : 'MANUAL');
 
         $cmsDescription = null;
+        $cmsKeywords = null;
         if ($category !== '' && $model !== '' && $category !== 'LAINNYA') {
-            $cmsDescription = CmsModelProduct::query()
+            $row = CmsModelProduct::query()
                 ->active()
                 ->where('product_category', $category)
                 ->where('product_model', $model)
-                ->value('description');
-            $cmsDescription = filled($cmsDescription) ? trim((string) $cmsDescription) : null;
+                ->first(['description', 'keywords']);
+            if ($row) {
+                $cmsDescription = filled(trim((string) ($row->description ?? '')))
+                    ? trim((string) $row->description)
+                    : null;
+                $cmsKeywords = filled($row->keywords ?? []) ? $row->keywords : null;
+            }
         }
 
         $payload['subtitle'] = $presentation['subtitle'];
         $payload['desc'] = $cmsDescription ?: $presentation['desc'];
-        $payload['highlights'] = $presentation['highlights'];
+        $payload['highlights'] = $cmsKeywords
+            ? ModelProductPresentation::highlightsFromKeywords($cmsKeywords)
+            : $presentation['highlights'];
 
         return $payload;
     }

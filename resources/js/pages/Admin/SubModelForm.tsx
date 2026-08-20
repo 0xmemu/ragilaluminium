@@ -3,7 +3,6 @@ import * as React from "react"
 
 
 import { Button } from "@/components/admin/ui/button"
-import { Card } from "@/components/admin/ui/card"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
@@ -60,7 +59,7 @@ export default function SubModelForm({
       <Head title={title} />
       <form onSubmit={submit} className="mx-auto max-w-2xl space-y-6">
         <FormErrorSummary errors={form.errors} />
-        <Card>
+        <div>
           <div className="space-y-4 p-5 sm:p-7">
             <Field id="sub-model-model" label="Model produk" required error={form.errors.product_model}>
               <Select
@@ -124,7 +123,7 @@ export default function SubModelForm({
               </Field>
             ) : null}
           </div>
-        </Card>
+        </div>
 
         <div className="flex flex-wrap justify-between gap-3">
           <Button asChild variant="secondary">

@@ -33,11 +33,11 @@ export function applyAdminTheme(theme: AdminTheme): () => void {
   if (theme === "light") {
     root.classList.remove("dark")
     root.classList.add("light")
-    meta?.setAttribute("content", "#F7F6F2")
+    meta?.setAttribute("content", "#FFFFFF")
   } else {
     root.classList.add("dark")
     root.classList.remove("light")
-    meta?.setAttribute("content", "#0B0B0B")
+    meta?.setAttribute("content", "#0A0A0A")
   }
 
   return () => {

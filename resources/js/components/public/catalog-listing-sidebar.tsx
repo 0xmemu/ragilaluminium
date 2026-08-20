@@ -37,32 +37,26 @@ export function DesignFilterOptions({
   return (
     <fieldset className="space-y-1">
       <legend className="sr-only">Filter desain</legend>
-      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent">
-        <input
-          type="radio"
-          name={name}
-          value=""
-          checked={!activeDesign}
-          onChange={() => onSelect(null)}
-          className="h-4 w-4 accent-primary"
-        />
+      <Radio
+        name={name}
+        value=""
+        checked={!activeDesign}
+        onChange={() => onSelect(null)}
+        className="min-h-11 px-1 text-sm hover:bg-accent"
+      >
         Semua Desain
-      </label>
+      </Radio>
       {designs.map((design) => (
-        <label
+        <Radio
           key={design.value}
-          className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent"
+          name={name}
+          value={design.value}
+          checked={activeDesign === design.value}
+          onChange={() => onSelect(design.value)}
+          className="min-h-11 px-1 text-sm hover:bg-accent"
         >
-          <input
-            type="radio"
-            name={name}
-            value={design.value}
-            checked={activeDesign === design.value}
-            onChange={() => onSelect(design.value)}
-            className="h-4 w-4 accent-primary"
-          />
           {design.label}
-        </label>
+        </Radio>
       ))}
     </fieldset>
   )
@@ -82,36 +76,31 @@ export function ModelFilterOptions({
   return (
     <fieldset className="space-y-1">
       <legend className="sr-only">Filter model bukaan</legend>
-      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent">
-        <input
-          type="radio"
-          name={name}
-          value=""
-          checked={!activeModel}
-          onChange={() => onSelect(null)}
-          className="h-4 w-4 accent-primary"
-        />
+      <Radio
+        name={name}
+        value=""
+        checked={!activeModel}
+        onChange={() => onSelect(null)}
+        className="min-h-11 px-1 text-sm hover:bg-accent"
+      >
         Semua Model
-      </label>
+      </Radio>
       {models.map((model) => (
-        <label
+        <Radio
           key={model.value}
-          className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent"
+          name={name}
+          value={model.value}
+          checked={activeModel === model.value}
+          onChange={() => onSelect(model.value)}
+          className="min-h-11 px-1 text-sm hover:bg-accent"
         >
-          <input
-            type="radio"
-            name={name}
-            value={model.value}
-            checked={activeModel === model.value}
-            onChange={() => onSelect(model.value)}
-            className="h-4 w-4 accent-primary"
-          />
           {model.label}
-        </label>
+        </Radio>
       ))}
     </fieldset>
   )
 }
+
 
 export function CategoryFilterOptions({
   categoryLinks,

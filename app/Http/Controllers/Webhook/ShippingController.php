@@ -29,11 +29,13 @@ class ShippingController extends Controller
         $signature = $request->header(config('jnt.webhook.signature_header'))
             ?? $request->input('digest');
 
-        // Webhook tidak boleh fail-open saat secret belum dikonfigurasi.
+        // Jika credential belum dikonfigurasi, terima webhook secara diam
+        // (ACK success) agar J&T berhenti me-retry. Tidak ada yang bisa
+        // diproses tanpa credential, tapi retry tanpa henti lebih merugikan.
         if (blank(config('jnt.webhook.private_key'))) {
-            Log::channel('jnt')->error('JNT webhook rejected: signing key is not configured');
+            Log::channel('jnt')->debug('JNT webhook acknowledged (integration not configured)');
 
-            return $this->ack(false, 'webhook not configured');
+            return $this->ack(true);
         }
 
         if (! $this->jnt->verifyWebhookSignature($rawJson, $signature)) {

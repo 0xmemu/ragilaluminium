@@ -153,7 +153,18 @@ class StorePerformanceService
 
         $trafficKpis = [
             $this->kpi('visitors', 'Jumlah Pengunjung', $current['visitors'], $previous['visitors'], 'number'),
-            $this->kpi('conversion', 'Tingkat Konversi', $current['conversion_rate'], $previous['conversion_rate'], 'percent'),
+            $this->kpi(
+                'conversion',
+                'Pengunjung yang Membeli',
+                $current['conversion_rate'],
+                $previous['conversion_rate'],
+                'percent',
+                sprintf(
+                    '%s dari %s pengunjung',
+                    number_format((int) $current['orders'], 0, ',', '.'),
+                    number_format((int) $current['visitors'], 0, ',', '.')
+                )
+            ),
             $this->kpi('new_customers', 'Customer Baru', $current['new_customers'], $previous['new_customers'], 'number'),
             $this->kpi('repeat_customers', 'Customer Order Ulang', $current['repeat_customers'], $previous['repeat_customers'], 'number'),
             $this->kpi('completed_orders', 'Pesanan Selesai', $current['completed_orders'], $previous['completed_orders'], 'number'),
@@ -580,7 +591,7 @@ class StorePerformanceService
     /**
      * @return array{key: string, label: string, value: float|int, previous: float|int, change_percent: float|null, format: string}
      */
-    protected function kpi(string $key, string $label, float|int $value, float|int $previous, string $format): array
+    protected function kpi(string $key, string $label, float|int $value, float|int $previous, string $format, ?string $detail = null): array
     {
         $change = null;
         if ((float) $previous > 0) {
@@ -602,6 +613,7 @@ class StorePerformanceService
                 : (int) $previous,
             'change_percent' => $change,
             'format' => $format,
+            'detail' => $detail,
         ];
     }
 

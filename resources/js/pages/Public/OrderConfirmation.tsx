@@ -75,7 +75,7 @@ export default function OrderConfirmation({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -87,7 +87,7 @@ export default function OrderConfirmation({
         </div>
       </section>
 
-      <section className="container-page !px-5 pt-6 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] md:!px-8 lg:!px-12 sm:pt-10 lg:pb-8">
+      <section className="container-page !px-2.5 pt-6 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] md:!px-8 lg:!px-12 sm:pt-10 lg:pb-8">
         <div className="mx-auto max-w-4xl">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
             <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
@@ -101,7 +101,7 @@ export default function OrderConfirmation({
           </p>
 
           <div className="precision-frame mt-9">
-            <div className="rounded-lg bg-foreground p-6 text-background sm:p-8">
+            <div className="rounded-lg bg-header-bg p-6 text-background sm:p-8">
               <p className="text-xs font-semibold tracking-tight text-background/60">
                 Nomor pesanan
               </p>

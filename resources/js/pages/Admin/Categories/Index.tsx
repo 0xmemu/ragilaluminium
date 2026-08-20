@@ -5,6 +5,7 @@ import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 
@@ -34,6 +35,7 @@ export default function CategoriesIndex({ title, description, categories, create
   return (
     <AdminLayout title={title} description={description} backUrl={backUrl} actions={undefined}>
       <Head title={`${title} | Admin`} />
+      <ManageProductsTabs active="categories" />
       <ListToolbar
         actions={
           <Button asChild>
@@ -45,7 +47,7 @@ export default function CategoriesIndex({ title, description, categories, create
         }
         className="mb-4"
       />
-      <div className="rounded-xl border border-border bg-card shadow-soft">
+      <div>
         <div className="divide-y divide-border">
           {categories.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada kategori.</p>

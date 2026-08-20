@@ -5,8 +5,10 @@ import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
+
 
 interface ModelRecord {
   id: number
@@ -15,6 +17,7 @@ interface ModelRecord {
   product_model?: string | null
   image_url?: string | null
   description?: string | null
+  keywords?: string[]
   menu_href?: string | null
   type: string
   status: string
@@ -45,6 +48,7 @@ export default function ModelProductForm({
     product_model: modelProduct?.product_model ?? "",
     image_url: modelProduct?.image_url ?? "",
     description: modelProduct?.description ?? "",
+    keywords: modelProduct?.keywords ?? [],
     menu_href: modelProduct?.menu_href ?? "",
     type: modelProduct?.type ?? types[0] ?? "polos",
     status: modelProduct?.status ?? "draft",
@@ -139,6 +143,53 @@ export default function ModelProductForm({
                 onChange={(event) => form.setData("description", event.target.value)}
                 placeholder="Contoh: Jendela sliding cocok untuk ruangan dengan bukaan lebar…"
               />
+            </Field>
+            <Field
+              id="model-keywords"
+              label="Kata kunci (opsional)"
+              hint="Tiap baris menjadi satu pill di hero halaman detail model. Kosongkan untuk memakai kata kunci default sistem. Maksimal 6."
+              error={form.errors.keywords}
+              className="sm:col-span-2"
+            >
+              <div className="space-y-2">
+                {form.data.keywords.map((keyword, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      className="min-w-0 flex-1"
+                      value={form.data.keywords[index]}
+                      onChange={(event) => {
+                        const next = form.data.keywords.map((item, i) =>
+                          i === index ? event.target.value : item,
+                        )
+                        form.setData("keywords", next)
+                      }}
+                      placeholder={`Kata kunci ${index + 1}, contoh: Tahan Cipratan Air`}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="size-8 shrink-0 px-0"
+                      disabled={form.data.keywords.length <= 1}
+                      onClick={() => {
+                        const next = form.data.keywords.filter((_, i) => i !== index)
+                        form.setData("keywords", next)
+                      }}
+                      aria-label={`Hapus kata kunci ${index + 1}`}
+                    >
+                      <Icon name="trash-2" className="size-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={form.data.keywords.length >= 6}
+                  onClick={() => form.setData("keywords", [...form.data.keywords, ""])}
+                >
+                  <Icon name="plus" className="size-4" aria-hidden="true" />
+                  Tambah kata kunci
+                </Button>
+              </div>
             </Field>
             <Field
               id="model-menu-href"

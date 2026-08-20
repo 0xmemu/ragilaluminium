@@ -127,11 +127,14 @@ export function variantAxes(variants: ProductVariant[]): VariantAxis[] {
     })
   })
 
-  const dimensions = new Set(
-    variants
-      .map((variant) => variant.dimension_label ?? variant.dimension_compact)
-      .filter((value): value is string => Boolean(value)),
-  )
+  // Use dimension_compact for Ukuran axis display (e.g. "200x180") and map to label for resolveVariant.
+  const compactToLabel = new Map<string, string>()
+  variants.forEach((variant) => {
+    const compact = variant.dimension_compact
+    const label = variant.dimension_label ?? compact
+    if (compact && label) compactToLabel.set(compact, label)
+  })
+  const dimensions = new Set(compactToLabel.keys())
   if (dimensions.size > 1 && !axes.has("Ukuran")) {
     axes.set("Ukuran", dimensions)
   }
@@ -152,6 +155,16 @@ export function variantAxes(variants: ProductVariant[]): VariantAxis[] {
       if (ai >= 0 && bi >= 0) return ai - bi
       if (ai >= 0) return -1
       if (bi >= 0) return 1
+      // Numeric sort for Ukuran ("200x180" -> height x width)
+      if (name === "Ukuran") {
+        const parseDim = (s: string) => {
+          const m = s.match(/(\d+\.?\d*)\s*[x×]\s*(\d+\.?\d*)/)
+          return m ? [parseFloat(m[1]), parseFloat(m[2])] : [0, 0]
+        }
+        const [ah, aw] = parseDim(a)
+        const [bh, bw] = parseDim(b)
+        return ah !== bh ? ah - bh : aw - bw
+      }
       return a.localeCompare(b, "id")
     })
   }
@@ -174,7 +187,7 @@ function variantMatchesSelections(
   const pairs = new Map(variantPairs(variant))
 
   if (axes.some((axis) => axis.name === "Ukuran")) {
-    const dimension = variant.dimension_label ?? variant.dimension_compact
+    const dimension = variant.dimension_compact
     if (dimension) pairs.set("Ukuran", dimension)
   }
 
@@ -203,4 +216,15 @@ export function firstAvailableSelections(_variants: ProductVariant[]): VariantSe
   // (Warna, Kaca, dll.) secara eksplisit sebelum varian ditemukan dan
   // tombol "Tambah ke keranjang" / "Beli Sekarang" bisa diklik.
   return {}
+}
+
+/** Map compact dimension strings to full labels for resolveVariant matching. */
+export function dimensionLabelMap(variants: ProductVariant[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const v of variants) {
+    const compact = v.dimension_compact
+    const label = v.dimension_label ?? compact
+    if (compact && label) map.set(compact, label)
+  }
+  return map
 }

@@ -15,6 +15,8 @@ export interface ActivityLogItem {
   id: number
   event_type: string
   entity_type: string
+  activity?: string | null
+  href?: string | null
   created_at?: string | null
   created_at_label?: string | null
   actor?: string | null
@@ -57,27 +59,40 @@ export function ActivityLogBell({ activityLogs = [] }: { activityLogs?: Activity
               Belum ada aktivitas.
             </p>
           ) : (
-            activityLogs.slice(0, 10).map((l) => (
-              <div
-                key={l.id}
-                className="flex w-full items-start gap-3 border-b border-border/60 px-4 py-2.5 last:border-0"
-              >
-                <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Icon name="history" className="h-3.5 w-3.5" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium text-foreground">
-                    {l.event_type}
+            activityLogs.slice(0, 10).map((l) => {
+              const label = l.activity || l.event_type
+              const rowClass =
+                "flex w-full items-start gap-3 border-b border-border/60 px-4 py-2.5 last:border-0"
+              const content = (
+                <>
+                  <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Icon name="history" className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                    {l.entity_type} · {l.actor || "Sistem"}
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground">
+                      {label}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {l.actor || "Sistem"} · {l.created_at_label ?? l.created_at}
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground/70">
-                    {l.created_at_label ?? l.created_at}
-                  </span>
-                </span>
-              </div>
-            ))
+                </>
+              )
+
+              return l.href ? (
+                <Link
+                  key={l.id}
+                  href={l.href}
+                  className={`${rowClass} text-left transition hover:bg-muted/60`}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div key={l.id} className={rowClass}>
+                  {content}
+                </div>
+              )
+            })
           )}
         </div>
       </DropdownMenuContent>

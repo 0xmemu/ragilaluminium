@@ -231,7 +231,7 @@ export function MobileEndActionReveal({
     <Link
       href={href}
       aria-label="Lihat Semua"
-      className="absolute right-0 top-0 bottom-3 z-10 flex w-[4.75rem] flex-col items-center justify-center gap-1 text-[#474747] transition-[transform,opacity] duration-[360ms] ease-out md:hidden sm:w-20"
+      className="absolute right-0 top-0 bottom-3 z-10 flex w-[4.75rem] flex-col items-center justify-center gap-1 text-muted-foreground transition-[transform,opacity] duration-[360ms] ease-out md:hidden sm:w-20"
       style={{
         transform: `translateX(${offset}px)`,
         opacity,

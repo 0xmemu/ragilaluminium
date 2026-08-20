@@ -41,14 +41,6 @@ class AppServiceProvider extends ServiceProvider
                 (string) config('services.whatsapp.compare_provider'),
             ]);
 
-            if (in_array('meta', $providers, true)
-                && (filled(config('services.whatsapp.meta.token')) || filled(config('services.whatsapp.meta.number_id')))
-                && blank(config('services.whatsapp.app_secret'))) {
-                throw new \RuntimeException(
-                    'WHATSAPP_APP_SECRET wajib saat provider Meta aktif di production.'
-                );
-            }
-
             if (in_array('baileys', $providers, true)
                 && filled(config('services.whatsapp.baileys.base_url'))
                 && blank(config('services.whatsapp.baileys.webhook_secret'))) {

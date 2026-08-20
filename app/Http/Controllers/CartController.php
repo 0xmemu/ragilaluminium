@@ -18,14 +18,14 @@ class CartController extends Controller
     public function index(): Response
     {
         $priced = $this->cart->pricedLines();
-        $undoItem = $this->cart->getLastRemoved();
+        $undoCount = count($this->cart->getPendingRemovals());
 
         return Inertia::render('Public/Cart', [
             'items' => $priced['items'],
             'subtotal' => $priced['subtotal'],
             'compare_subtotal' => $priced['compare_subtotal'],
             'discount_total' => $priced['discount_total'],
-            'undo_item' => $undoItem,
+            'undo_count' => $undoCount,
         ]);
     }
 
@@ -63,6 +63,7 @@ class CartController extends Controller
             'variant_sku' => ['nullable', 'string'],
             'quantity' => ['required', 'integer', 'min:1'],
             'note' => ['nullable', 'string', 'max:2000'],
+            'intent' => ['nullable', 'string', 'in:cart,checkout'],
         ]);
 
         $this->cart->add(
@@ -72,8 +73,13 @@ class CartController extends Controller
             filled($validated['note'] ?? null) ? trim((string) $validated['note']) : null
         );
 
-        // Tetap di halaman produk supaya animasi "produk terbang ke keranjang"
-        // terlihat; badge keranjang diperbarui lewat shared props Inertia.
+        // "Beli sekarang" mengirim intent=checkout; redirect langsung ke
+        // checkout supaya user tidak melihat halaman produk/cart dulu.
+        // "Tambah ke keranjang" tetap back() untuk animasi fly-to-cart.
+        if (($validated['intent'] ?? null) === 'checkout') {
+            return redirect()->route('checkout.index');
+        }
+
         return back()->with('success', 'Produk ditambahkan ke keranjang.');
     }
 
@@ -114,8 +120,7 @@ class CartController extends Controller
 
         $this->cart->remove($validated['line_id']);
 
-        return redirect()->route('cart.index')
-            ->with('success', 'Item dihapus dari keranjang.');
+        return redirect()->route('cart.index');
     }
 
     public function select(Request $request): RedirectResponse
@@ -144,7 +149,7 @@ class CartController extends Controller
 
     public function restore(): RedirectResponse
     {
-        $restored = $this->cart->restoreLastRemoved();
+        $restored = $this->cart->restorePendingRemovals();
 
         return redirect()->route('cart.index')
             ->with($restored ? 'success' : 'error', $restored
@@ -159,13 +164,8 @@ class CartController extends Controller
             'line_ids.*' => ['string'],
         ]);
 
-        $count = 0;
-        foreach ($validated['line_ids'] as $lineId) {
-            $this->cart->remove($lineId);
-            $count++;
-        }
+        $this->cart->removeBatch($validated['line_ids']);
 
-        return redirect()->route('cart.index')
-            ->with('success', "{$count} item dihapus dari keranjang.");
+        return redirect()->route('cart.index');
     }
 }

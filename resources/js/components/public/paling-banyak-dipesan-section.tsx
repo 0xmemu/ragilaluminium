@@ -13,7 +13,7 @@ const carouselNavBtnClass =
   "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
 const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 const carouselCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
@@ -170,14 +170,14 @@ export function PalingBanyakDipesanSection({
 }) {
   if (!products.length) return null
 
-  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular`
+  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular&from=paling-banyak-dipesan`
 
   return (
     <section
       id="paling-banyak-dipesan"
       className={cn("scroll-mt-20", className)}
     >
-      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <SectionHeading
           align="left"
           size="default"
@@ -187,10 +187,10 @@ export function PalingBanyakDipesanSection({
           action={
             <a
               href={seeMoreHref}
-              className="inline-flex shrink-0 items-center gap-1 self-end text-xs font-medium text-[#474747] transition hover:text-[#333333]"
+              className="inline-flex shrink-0 items-center gap-1 self-end text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
               <span>Lihat Semua</span>
-              <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
+              <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
             </a>
           }
         />

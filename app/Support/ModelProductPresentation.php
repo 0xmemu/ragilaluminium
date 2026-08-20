@@ -77,6 +77,28 @@ class ModelProductPresentation
         ];
     }
 
+
+    /**
+     * Kata kunci admin -> pill keunggulan (icon otomatis mengikuti urutan).
+     *
+     * @param  list<string>  $keywords
+     * @return list<array{icon: string, label: string}>
+     */
+    public static function highlightsFromKeywords(array $keywords): array
+    {
+        $icons = ['sparkle', 'sun', 'shield-check'];
+        $out = [];
+        foreach (array_values($keywords) as $index => $keyword) {
+            $label = trim((string) $keyword);
+            if ($label === '') {
+                continue;
+            }
+            $out[] = ['icon' => $icons[$index % count($icons)], 'label' => $label];
+        }
+
+        return $out;
+    }
+
     /**
      * Batch inspiration (installation) photo counts + deep-link per category|model.
      *
@@ -172,7 +194,10 @@ class ModelProductPresentation
         $card['subtitle'] = null;
         $existingDesc = trim((string) ($card['desc'] ?? ''));
         $card['desc'] = $existingDesc !== '' ? $existingDesc : $presentation['desc'];
-        $card['highlights'] = $presentation['highlights'];
+        $existingKeywords = $card['keywords'] ?? [];
+        $card['highlights'] = filled($existingKeywords)
+            ? self::highlightsFromKeywords($existingKeywords)
+            : $presentation['highlights'];
         $card['inspiration_count'] = $count;
         $card['inspiration_href'] = $inspirationHref;
         $card['detail_href'] = ($category !== '' && $model !== '')

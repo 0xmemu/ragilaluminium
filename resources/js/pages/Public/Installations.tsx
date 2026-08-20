@@ -91,7 +91,7 @@ export default function Installations({
           setSearchOpen((current) => !current)
           if (searchOpen) setSearchQuery("")
         }}
-        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[#333333] transition hover:bg-muted/50"
+        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-muted/50"
         aria-label="Cari hasil pemasangan"
         aria-expanded={searchOpen}
       >
@@ -106,9 +106,10 @@ export default function Installations({
         <meta name="description" content={subtitle} />
       </Head>
 
-      <section className="border-b border-[#dee3e0] bg-white">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs
+      <section className="border-b border-border bg-surface">
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             singleLine={!isModelLevel}
             items={
               isModelLevel
@@ -123,21 +124,22 @@ export default function Installations({
                   ]
             }
           />
+          </div>
         </div>
 
         {isModelLevel ? (
-          <div className="container-page py-2">
+          <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => window.history.back()}
-                  className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                  className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
                   aria-label="Kembali"
                 >
                   <Icon name="arrow-left" className="size-5" aria-hidden="true" />
                 </button>
-                <h1 className="text-base font-bold tracking-tight text-[#333333]">
+                <h1 className="text-base font-bold tracking-tight text-foreground">
                   {heading}
                 </h1>
               </div>
@@ -145,17 +147,17 @@ export default function Installations({
             </div>
           </div>
         ) : (
-          <div className="container-page py-2">
+          <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
               </button>
-              <h1 className="text-base font-bold tracking-tight text-[#333333]">
+              <h1 className="text-base font-bold tracking-tight text-foreground">
                 Hasil Pemasangan Produk
               </h1>
             </div>
@@ -166,9 +168,9 @@ export default function Installations({
 
       <section className={isModelLevel ? "pt-4 pb-4 sm:pt-6 sm:pb-6" : "pt-0 pb-4 sm:pb-6"}>
         {isModelLevel ? (
-          <div className="container-page">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
             {filteredInstallations.length ? (
-              <ShowcaseCardGrid className="gap-2">
+              <ShowcaseCardGrid className="gap-3 sm:gap-4">
                 {filteredInstallations.map((item) => (
                   <InstallationCard
                     key={item.id}
@@ -194,7 +196,7 @@ export default function Installations({
         ) : (
           <div className="space-y-6 lg:space-y-8">
             {featured ? (
-              <div className="container-page">
+              <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
                 <InstallationFeaturedCard
                   className="w-full"
                   item={{
@@ -205,7 +207,7 @@ export default function Installations({
               </div>
             ) : null}
 
-            <div id="inspirasi-pemasangan" className="container-page scroll-mt-24">
+            <div id="inspirasi-pemasangan" className="container-page !px-2.5 md:!px-8 lg:!px-12 scroll-mt-24">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
                 <h2 className="text-lg font-bold tracking-tight text-foreground">
                   Inspirasi Pemasangan

@@ -29,6 +29,8 @@ export interface CatalogNavFilters {
   model: string
   design: string
   sort: string
+  priceMin?: string
+  priceMax?: string
 }
 
 function ChevronDownIcon({ className }: { className?: string }) {
@@ -402,7 +404,7 @@ export function CatalogNav({
                   event.preventDefault()
                   onVisit({ model: "" })
                 }}
-                className={cn("min-h-9 rounded-md px-3 text-xs", !activeModel && "font-semibold")}
+                className={cn("min-h-8 rounded-md px-3 text-xs", !activeModel && "font-semibold")}
               >
                 <span className="flex-1">Semua Model</span>
                 {!activeModel ? (
@@ -418,7 +420,7 @@ export function CatalogNav({
                       event.preventDefault()
                       onVisit({ model: model.value })
                     }}
-                    className={cn("min-h-9 rounded-md px-3 text-xs", active && "font-semibold")}
+                    className={cn("min-h-8 rounded-md px-3 text-xs", active && "font-semibold")}
                   >
                     <span className="flex-1">{model.label}</span>
                     {active ? (
@@ -452,9 +454,9 @@ export function CatalogNav({
                   event.preventDefault()
                   onVisit({ design: "" })
                 }}
-                className={cn("min-h-9 rounded-md px-3 text-xs", !activeDesign && "font-semibold")}
+                className={cn("min-h-8 rounded-md px-3 text-xs", !activeDesign && "font-semibold")}
               >
-                <span className="flex-1">Semua Ukuran</span>
+                <span className="flex-1">Semua Desain</span>
                 {!activeDesign ? (
                   <Icon name="check" className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                 ) : null}
@@ -468,7 +470,7 @@ export function CatalogNav({
                       event.preventDefault()
                       onVisit({ design: design.value })
                     }}
-                    className={cn("min-h-9 rounded-md px-3 text-xs", active && "font-semibold")}
+                    className={cn("min-h-8 rounded-md px-3 text-xs", active && "font-semibold")}
                   >
                     <span className="flex-1">{design.label}</span>
                     {active ? (
@@ -504,7 +506,7 @@ export function CatalogNav({
                       event.preventDefault()
                       onVisit({ sort: option.value })
                     }}
-                    className={cn("min-h-9 rounded-md px-3 text-xs", active && "font-semibold")}
+                    className={cn("min-h-8 rounded-md px-3 text-xs", active && "font-semibold")}
                   >
                     <span className="flex-1">{option.label}</span>
                     {active ? (
@@ -519,14 +521,14 @@ export function CatalogNav({
       </div>
 
       {/* Baris 3 ??? Ringkasan Filter & Jumlah Barang + Garis Inset Bawah */}
-      <div className="container-page px-3 sm:px-5 md:px-8 lg:px-12 pt-2.5 pb-0">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-2.5 pb-0">
         <div className="flex items-center justify-between gap-2 text-xs font-normal">
           <span className="truncate font-medium text-foreground">{summaryFilterLabel}</span>
           <span className="shrink-0 text-right text-muted-foreground">
             {formatNumber(total)} Barang ditemukan
           </span>
         </div>
-        <div className="mt-2.5 border-b border-[#E5E7EB]" />
+        <div className="mt-2.5 border-b border-border" />
       </div>
     </section>
   )

@@ -29,7 +29,7 @@ export function InstallationCard({
 
   const body = (
     <>
-      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-[#f7f8f8]">
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
         <ResponsiveImage
           src={image}
           alt={title}
@@ -37,30 +37,30 @@ export function InstallationCard({
           className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
         {productCount > 0 ? (
-          <span className="absolute bottom-2 left-2 rounded-[4px] bg-[#c20000] px-2 py-1.5 text-[10px] font-semibold leading-none text-white shadow-sm">
+          <span className="absolute bottom-2 left-2 rounded-[4px] bg-primary px-2 py-1.5 text-[10px] font-semibold leading-none text-white shadow-sm">
             {formatNumber(productCount)} produk
           </span>
         ) : null}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2.5">
-        <h3 className="line-clamp-2 shrink-0 text-[13px] font-semibold leading-snug text-[#333333]">
+        <h3 className="line-clamp-2 shrink-0 text-[13px] font-semibold leading-snug text-foreground">
           {title}
         </h3>
         <div className="flex-1" aria-hidden="true" />
-        <div className="h-px w-full bg-[#dee3e0]" aria-hidden="true" />
+        <div className="h-px w-full bg-border" aria-hidden="true" />
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] leading-snug text-[#666666]">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] leading-snug text-muted-foreground">
               <Icon name="images" className="size-3 shrink-0" aria-hidden="true" />
               {formatNumber(photoCount)} foto
             </span>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] leading-snug text-[#666666]">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] leading-snug text-muted-foreground">
               <Icon name="video" className="size-3 shrink-0" aria-hidden="true" />
               {formatNumber(videoCount)} video
             </span>
           </div>
-          <Icon name="arrow-up-right" className="size-3.5 shrink-0 text-[#333333]" aria-hidden="true" />
+          <Icon name="arrow-up-right" className="size-3.5 shrink-0 text-foreground" aria-hidden="true" />
         </div>
       </div>
     </>
@@ -69,7 +69,7 @@ export function InstallationCard({
   return (
     <article
       className={cn(
-        "group flex h-full min-w-0 flex-col overflow-hidden rounded-[5px] border border-[#dee3e0] bg-white transition-colors duration-200 hover:border-[#b9c2bd]",
+        "group flex h-full min-w-0 flex-col overflow-hidden rounded-[5px] border border-border bg-white transition-colors duration-200 hover:border-border",
         className,
       )}
     >

@@ -9,6 +9,9 @@ use Illuminate\Session\Store;
 class CartService
 {
     protected const SESSION_KEY = 'ragil_cart';
+    protected const PENDING_KEY = 'ragil_cart_pending';
+    protected const PENDING_UNTIL = 'ragil_cart_pending_until';
+    protected const UNDO_TTL = 5;
 
     public function __construct(protected Store $session)
     {
@@ -108,35 +111,85 @@ class CartService
 
     public function remove(string $lineId): array
     {
+        // Undo untuk hapus per-item ikut batch (konsisten dengan hapus banyak).
+        return $this->removeBatch([$lineId]);
+    }
+
+    /**
+     * Hapus beberapa line sekaligus. Snapshot item yang dihapus disimpan di session
+     * selama 5 detik (window "Urungkan"); lewat dari itu dianggap destroy permanen.
+     *
+     * @param  list<string>  $lineIds
+     */
+    public function removeBatch(array $lineIds): array
+    {
         $cart = $this->get();
-        if (isset($cart[$lineId])) {
-            $this->session->put(self::SESSION_KEY . '_undo', $cart[$lineId]);
+        $removed = [];
+        foreach (array_values(array_unique($lineIds)) as $lineId) {
+            if (isset($cart[$lineId])) {
+                $removed[] = $cart[$lineId];
+                unset($cart[$lineId]);
+            }
         }
-        unset($cart[$lineId]);
         $this->session->put(self::SESSION_KEY, $cart);
+
+        if ($removed !== []) {
+            $existing = $this->session->get(self::PENDING_KEY, []);
+            $merged = array_merge(is_array($existing) ? $existing : [], $removed);
+            $this->session->put(self::PENDING_KEY, $merged);
+            $this->session->put(self::PENDING_UNTIL, time() + self::UNDO_TTL);
+        }
 
         return $cart;
     }
 
-    public function getLastRemoved(): ?array
+    /**
+     * Item yang masih dalam window undo (5 dtk). Snapshot kedaluwarsa dibuang.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getPendingRemovals(): array
     {
-        return $this->session->get(self::SESSION_KEY . '_undo');
+        $until = (int) $this->session->get(self::PENDING_UNTIL, 0);
+        if ($until <= 0 || time() > $until) {
+            $this->clearPendingRemovals();
+
+            return [];
+        }
+        $items = $this->session->get(self::PENDING_KEY, []);
+
+        return is_array($items) ? $items : [];
     }
 
-    public function restoreLastRemoved(): bool
+    /** Kembalikan semua item yang masih bisa diurungkan. */
+    public function restorePendingRemovals(): bool
     {
-        $item = $this->getLastRemoved();
-        if (!$item || empty($item['parent_sku'])) {
+        $items = $this->getPendingRemovals();
+        if ($items === []) {
             return false;
         }
 
         $cart = $this->get();
-        $lineId = $item['line_id'] ?? ($item['variant_sku'] ?: $item['parent_sku']);
-        $cart[$lineId] = $item;
+        foreach ($items as $item) {
+            if (! is_array($item) || empty($item['parent_sku'])) {
+                continue;
+            }
+            $lineId = $item['line_id'] ?? ($item['variant_sku'] ?: $item['parent_sku']);
+            if (! $lineId) {
+                continue;
+            }
+            $cart[$lineId] = $item;
+        }
         $this->session->put(self::SESSION_KEY, $cart);
-        $this->session->forget(self::SESSION_KEY . '_undo');
+        $this->clearPendingRemovals();
 
         return true;
+    }
+
+    protected function clearPendingRemovals(): void
+    {
+        $this->session->forget(self::PENDING_KEY);
+        $this->session->forget(self::PENDING_UNTIL);
     }
 
     public function selectLines(array $lineIds): void
@@ -169,6 +222,7 @@ class CartService
     {
         $this->session->forget(self::SESSION_KEY);
         $this->clearSelectedLines();
+        $this->clearPendingRemovals();
     }
 
     public function count(): int

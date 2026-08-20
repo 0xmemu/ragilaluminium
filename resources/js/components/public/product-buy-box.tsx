@@ -1,7 +1,8 @@
 import { Link } from "@inertiajs/react"
+import * as React from "react"
 
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
-import { ShareProduct } from "@/components/public/share-product"
+import { ShareActionButton } from "@/components/public/share-action-button"
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -13,7 +14,7 @@ import type { ProductDetailData, ProductMedia } from "@/types"
 
 import type { ProductPurchase } from "@/hooks/use-product-purchase"
 
-const BENEFIT_TINTS = ["bg-[#fdf2f2]", "bg-[#eef4ef]", "bg-[#eef2f6]"] as const
+const BENEFIT_TINTS = ["bg-destructive/10", "bg-success/10", "bg-info/10"] as const
 
 /**
  * Kolom beli di halaman detail produk: nama, rating, harga + promo, form varian,
@@ -21,6 +22,7 @@ const BENEFIT_TINTS = ["bg-[#fdf2f2]", "bg-[#eef4ef]", "bg-[#eef2f6]"] as const
  * Semua state & aksi datang dari `useProductPurchase` (§5 R — page tipis, section props-only).
  */
 export function ProductBuyBox({
+  product,
   purchase,
   activeMedia,
   shareUrl,
@@ -74,52 +76,67 @@ export function ProductBuyBox({
     <>
       {/* Nama produk — baris 1 ukuran, baris 2 model (split otomatis), font body */}
       <div className="mt-0.5 flex items-start justify-between gap-3">
-        <h1 className="min-w-0 flex-1 text-base font-normal tracking-tight text-foreground">
-          <span className="block">{titleLine1}</span>
-          {titleLine2 ? <span className="block">{titleLine2}</span> : null}
+        <h1 className="min-w-0 flex-1 text-sm lg:text-[21px] font-normal tracking-tight text-foreground [text-wrap:normal]">
+          <span className="block">
+            {titleLine1}
+            {titleLine2 ? ` ${titleLine2}` : ""}
+          </span>
         </h1>
-        <ShareProduct title={title} url={shareUrl} />
       </div>
 
-      {/* Harga + promo */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="tabular-nums text-2xl font-bold leading-8 text-sale">
-          {currentPrice !== null
-            ? `${selectedVariant ? '' : '~ '}${formatCurrency(currentPrice)}`
-            : "Harga belum tersedia"}
-        </span>
-        {comparePrice ? (
-          <>
-            <span className="tabular-nums text-sm font-light leading-5 text-muted-foreground line-through">
-              {formatCurrency(comparePrice)}
-            </span>
+      {/* Harga utama + sub-harga (coret, diskon, flash) di bawahnya */}
+      <div className="mt-2">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="tabular-nums text-2xl font-bold leading-8 text-sale">
+            {currentPrice !== null
+              ? `${selectedVariant ? '' : '~ '}${formatCurrency(currentPrice)}`
+              : "Harga belum tersedia"}
+          </span>
+        </div>
+        {comparePrice || promo?.flash_sale ? (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            {comparePrice ? (
+              <span className="tabular-nums text-sm font-light leading-5 text-muted-foreground line-through">
+                {formatCurrency(comparePrice)}
+              </span>
+            ) : null}
             {discountPercent && discountPercent > 0 ? (
-              <span className="rounded bg-[#fdf2f2] px-1.5 text-xs font-semibold leading-5 text-[#c81e1e]">
+              <span className="rounded bg-destructive/10 px-1.5 text-xs font-semibold leading-5 text-destructive">
                 -{discountPercent}%
               </span>
             ) : null}
-          </>
-        ) : null}
-        {promo?.flash_sale ? (
-          <span className="inline-flex items-center gap-1">
-            <Icon name="lightning" weight="fill" className="size-4 shrink-0 text-sale" aria-hidden />
-            <span className="text-base font-extrabold italic leading-5 tracking-tight text-sale">Flash Sale</span>
-          </span>
+            {promo?.flash_sale ? (
+              <span className="inline-flex items-center gap-1">
+                <Icon name="lightning" weight="fill" className="size-4 shrink-0 text-sale" aria-hidden />
+                <span className="text-base font-extrabold italic leading-5 tracking-tight text-sale">FLASH SALE</span>
+              </span>
+            ) : null}
+          </div>
         ) : null}
       </div>
+
+      {averageRating !== null || (product.sold_count ?? 0) > 0 ? (
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[11px] leading-snug text-muted-foreground">
+          {(product.sold_count ?? 0) > 0 ? (
+            <span>{product.sold_count} terjual</span>
+          ) : null}
+          {averageRating !== null ? (
+            <>
+              <span className="text-muted-foreground/50">·</span>
+              <Icon name="star" weight="fill" className="size-3 text-warning" aria-hidden />
+              <span className="tabular-nums font-medium text-foreground">
+                {ratingLabel} ({ratedReviews.length} ulasan)
+              </span>
+            </>
+          ) : null}
+        </p>
+      ) : null}
 
       <form
         onSubmit={(event) => addToCart(event, activeMedia)}
         className="mt-3 space-y-4"
       >
         <div ref={variantSectionRef} className="space-y-4">
-          {averageRating !== null ? (
-            <div className="inline-flex items-center gap-0.5 rounded-full border border-border px-2.5 py-1 text-xs">
-              <span className="font-semibold text-foreground">{ratingLabel}</span>
-              <Icon name="star" weight="fill" className="size-3 text-[#F5A623]" aria-hidden />
-              <span className="text-muted-foreground">{ratedReviews.length} ulasan</span>
-            </div>
-          ) : null}
           {axes.length > 0 || selectedVariant ? (
             <div className="mb-2 flex items-center justify-between gap-3">
               {axes.length > 0 ? (
@@ -188,6 +205,7 @@ export function ProductBuyBox({
 
         {/* CTA — desktop / tablet satu baris horizontal: qty + keranjang + beli sekarang */}
         <div className="mt-0 hidden gap-2 lg:flex">
+          <ShareActionButton title={title} url={shareUrl} />
           <QuantityControl
             className="h-10"
             value={form.data.quantity}
@@ -226,6 +244,7 @@ export function ProductBuyBox({
         <MobileStickyCta
           aria-label="Beli produk"
           spacerClassName="hidden"
+          hideBelowSection="#produk-terkait"
           className="[&>div]:flex-row [&>div]:gap-2"
         >
           <QuantityControl

@@ -97,7 +97,7 @@ export default function Variants({
                       <StatusBadge status={variant.status} />
                     </div>
                     <p className="mt-2 text-sm font-semibold">
-                      {[variant.variation_1_option, variant.variation_2_option].filter(Boolean).join(" / ") ||
+                      {[variant.variation_1_option, variant.variation_2_option].filter(Boolean).join(" - ") ||
                         "Tanpa label variasi"}
                     </p>
                     <div className="mt-2 flex gap-4 text-xs text-muted-foreground">

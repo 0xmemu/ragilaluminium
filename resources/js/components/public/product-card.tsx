@@ -51,6 +51,7 @@ function FitOneLine({
   )
 }
 
+
 function CodBadge() {
   return (
     <span className="product-card__cod">
@@ -58,9 +59,9 @@ function CodBadge() {
       <img
         src="/images/icons/cod.svg"
         alt=""
-        width={30}
-        height={15}
-        className="h-[15px] w-[30px]"
+        width={24}
+        height={12}
+        className="h-[12px] w-[24px]"
         aria-hidden="true"
       />
       <span className="sr-only">COD tersedia</span>
@@ -230,20 +231,22 @@ export function ProductCard({
             )}
           </div>
 
-          <div className="product-card__extras">
-            {showCod ? <CodBadge /> : null}
-            {showFlash ? (
+          {showFlash ? (
+            <div className="product-card__extras">
               <span className="product-card__flash-label">
                 <Lightning weight="fill" className="-mr-px size-3.5 shrink-0" aria-hidden />
-                Flash Sale
+                FLASH SALE
               </span>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           <div className="product-card__meta">
+            <span className="product-card__meta-start">
+            {showCod ? <CodBadge /> : null}
             <span className="product-card__warranty">
               <SealCheck weight="fill" className="size-3.5 shrink-0 lg:size-4" aria-hidden />
               <span className="truncate">{warrantyLabel}</span>
+            </span>
             </span>
             {soldCount > 0 ? (
               <span className="product-card__sold">

@@ -11,7 +11,6 @@ use App\Models\WhatsAppTemplate;
 use App\Services\WhatsAppService;
 use App\Support\WhatsAppAutomationCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -74,10 +73,8 @@ class WhatsAppAutomationTest extends TestCase
         ]);
     }
 
-    public function test_connection_page_renders_cloud_api_status(): void
+    public function test_connection_page_renders_baileys_status(): void
     {
-        config(['services.whatsapp.default_provider' => 'meta']);
-
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $this->actingAs($admin)
@@ -85,54 +82,9 @@ class WhatsAppAutomationTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/WhatsApp/Connection')
-                ->where('connection.default_provider', 'meta')
-                ->has('connection.providers.meta')
+                ->where('connection.default_provider', 'baileys')
                 ->has('connection.providers.baileys')
                 ->has('stats'));
-    }
-
-    public function test_compare_mode_sends_copy_to_baileys_allowlist_only(): void
-    {
-        Http::fake([
-            'https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'meta-1']]], 200),
-            'https://baileys.test/*' => Http::response(['id' => 'baileys-1'], 200),
-        ]);
-
-        config([
-            'services.whatsapp.default_provider' => 'meta',
-            'services.whatsapp.compare_provider' => 'baileys',
-            'services.whatsapp.compare_allowlist' => ['6281234567890'],
-            'services.whatsapp.meta.token' => 'meta-token',
-            'services.whatsapp.meta.number_id' => '12345',
-            'services.whatsapp.meta.base_url' => 'https://graph.facebook.com/v20.0',
-            'services.whatsapp.baileys.base_url' => 'https://baileys.test',
-            'services.whatsapp.baileys.api_key' => 'baileys-key',
-            'services.whatsapp.baileys.session' => 'ragil-test',
-        ]);
-
-        $template = WhatsAppTemplate::create([
-            'internal_key' => 'consultation_request',
-            'provider_template_name' => 'consultation_request',
-            'language_code' => 'id',
-            'category' => 'transactional',
-            'status' => 'active',
-            'body_preview' => "Halo {{1}}\nTes compare",
-        ]);
-
-        app(WhatsAppService::class)->sendTemplateMessage('081234567890', $template->internal_key, ['Ragil']);
-
-        $this->assertDatabaseCount('whatsapp_messages', 2);
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'provider' => 'meta',
-            'provider_message_id' => 'meta-1',
-            'status' => 'sent',
-        ]);
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'provider' => 'baileys',
-            'provider_message_id' => 'baileys-1',
-            'provider_session' => 'ragil-test',
-            'status' => 'sent',
-        ]);
     }
 
     public function test_order_created_uses_cod_or_transfer_template_key(): void

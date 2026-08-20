@@ -272,8 +272,57 @@ class ActivityLogService
             'cms.kebijakan_privasi_updated' => 'Dokumen Kebijakan Privasi diperbarui',
             'cms.apa_kata_pelanggan_meta_updated' => 'Meta halaman Apa Kata Pelanggan diperbarui',
             'cms.hasil_pemasangan_meta_updated' => 'Meta halaman Hasil Pemasangan diperbarui',
-            default => $log->event_type.($log->entity_type ? ' · '.$log->entity_type.' #'.$log->entity_id : ''),
+            'cms.beranda_how_to_order_updated' => sprintf(
+                'Cara pemesanan di beranda diperbarui (%s langkah)',
+                $payload['step_count'] ?? 0
+            ),
+            'order.edited' => sprintf(
+                'Pesanan %s diedit%s',
+                $payload['order_number'] ?? '#'.$log->entity_id,
+                filled($payload['note'] ?? null) ? ' · catatan: '.$payload['note'] : ''
+            ),
+            'payment.reconciled' => sprintf(
+                'Status pembayaran pesanan #%s disinkronkan: %s → %s',
+                $log->entity_id,
+                $this->paymentStatusLabel(isset($payload['from']) ? (string) $payload['from'] : null),
+                $this->paymentStatusLabel(isset($payload['payment_status']) ? (string) $payload['payment_status'] : null)
+            ),
+            'system/cod_completion' => sprintf(
+                'Pembayaran COD pesanan #%s otomatis dilunasi%s',
+                $log->entity_id,
+                isset($payload['amount']) ? ' (Rp '.number_format((float) $payload['amount'], 0, ',', '.').')' : ''
+            ),
+            'product.promotion.created' => sprintf('Kampanye promo dibuat%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.promotion.duplicated' => sprintf('Kampanye promo diduplikasi%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.promotion.activated' => sprintf('Kampanye promo diaktifkan%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.promotion.ended' => sprintf('Kampanye promo diakhiri%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.sub_model_created' => sprintf(
+                'Sub model ditambahkan%s',
+                isset($payload['name']) ? ': '.$payload['name'].(isset($payload['code']) ? ' ('.$payload['code'].')' : '') : ''
+            ),
+            'product.sub_model_reordered' => sprintf('Urutan sub model diperbarui (%s item)', $payload['count'] ?? 0),
+            'product.category_updated' => sprintf('Kategori diperbarui%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.duplicated' => sprintf('Produk diduplikasi%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            default => $this->humanizeEventType($log->event_type),
         };
+    }
+
+    protected function paymentStatusLabel(?string $code): string
+    {
+        return match ($code) {
+            'pending' => 'Menunggu',
+            'paid' => 'Lunas',
+            'refunded' => 'Dikembalikan',
+            null, '' => '—',
+            default => str_replace('_', ' ', $code),
+        };
+    }
+
+    protected function humanizeEventType(string $eventType): string
+    {
+        $text = trim((string) preg_replace('/\s+/', ' ', str_replace(['_', '/', '.'], ' ', $eventType)));
+
+        return ucfirst($text);
     }
 
     /**

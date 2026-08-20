@@ -316,9 +316,9 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 | `GET /policy/privacy` | `privacy` | Privacy policy |
 | `GET /policy/terms` | `terms` | Terms |
 | `GET /products` | `catalog.index` | Model hub (no listing query) or SKU listing (with `sort`/`q`/`model`/`price_*`) |
-| `GET /products/windows` | `catalog.category` | Window category; `/windows` redirects 301 |
-| `GET /products/doors` | `catalog.category` | Door category; `/doors` redirects 301 |
-| `GET /products/bouven` | `catalog.category` | Bouven category; `/bouven` redirects 301 |
+| `GET /products/jendela` | `catalog.category` | Jendela category (canonical Indonesian slug); legacy `/products/windows` → 301, top-level `/windows` → 404 |
+| `GET /products/pintu` | `catalog.category` | Pintu category (canonical Indonesian slug); legacy `/products/doors` → 301, top-level `/doors` → 404 |
+| `GET /products/boven` | `catalog.category` | Boven category (canonical Indonesian slug); legacy `/products/bouven` → 301, top-level `/bouven` → 404 |
 | `GET /search` | `search` | Redirect → `/products` (query `q` dll. diteruskan) |
 | `GET /product/{parent_sku}` | `product.show` | Product detail (PDP) |
 | `GET /cart` | `cart.index` | Cart page |

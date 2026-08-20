@@ -110,8 +110,11 @@ class ShippingService
                 }
             }
         } catch (Throwable $e) {
-            Log::channel('jnt')->warning('JNT tariff unavailable; using provisional local estimate', [
+            // Gunakan debug agar tidak spam log saat J&T belum siap atau down.
+            // Warning hanya dicatat saat integration benar-benar aktif.
+            Log::channel('jnt')->debug('JNT tariff unavailable; using provisional local estimate', [
                 'exception_class' => $e::class,
+                'jnt_enabled' => config('jnt.enabled'),
             ]);
         }
 
@@ -164,7 +167,7 @@ class ShippingService
                     }
                 }
             } catch (Throwable $e) {
-                Log::channel('jnt')->warning('JNT tariff failed, fallback to local estimate', ['error' => $e->getMessage()]);
+                Log::channel('jnt')->debug('JNT tariff failed, fallback to local estimate', ['error' => $e->getMessage()]);
             }
         }
 
@@ -191,7 +194,7 @@ class ShippingService
         }
 
         if (! $this->jnt->isEnabled()) {
-            throw new \RuntimeException('Integrasi J&T belum aktif (JNT_ENABLED=false / kredensial kosong).');
+            throw new \RuntimeException('Integrasi J&T belum aktif. Lengkapi kredensial di .env (JNT_ENABLED, JNT_API_ACCOUNT, JNT_PRIVATE_KEY, JNT_CUSTOMER_CODE, JNT_CUSTOMER_PASSWORD).');
         }
 
         $bizContent = $this->buildCreateOrderPayload($order, $weightKg);

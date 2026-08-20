@@ -108,11 +108,20 @@ class StorePerformanceContractTest extends TestCase
         $this->assertSame(self::DASHBOARD_TRAFFIC_KEYS, array_column($dashboardMetrics, 'key'));
 
         foreach ($dashboardMetrics as $metric) {
+            // `detail` opsional (hanya KPI conversion di halaman Performa). Kontrak
+            // Dashboard.tsx tetap 6 key karena DashboardController men-strip `detail`.
+            $baseKeys = array_values(array_diff(array_keys($metric), ['detail']));
             $this->assertSame(
                 ['key', 'label', 'value', 'previous', 'change_percent', 'format'],
-                array_keys($metric),
+                $baseKeys,
                 "shape KPI {$metric['key']} harus persis kontrak Dashboard.tsx"
             );
+            if (array_key_exists('detail', $metric)) {
+                $this->assertTrue(
+                    $metric['detail'] === null || is_string($metric['detail']),
+                    "detail {$metric['key']} harus null atau string"
+                );
+            }
             $this->assertIsString($metric['label']);
             $this->assertIsNumeric($metric['value']);
             $this->assertIsNumeric($metric['previous']);
@@ -186,6 +195,7 @@ class StorePerformanceContractTest extends TestCase
 
         $this->assertSame(3, $visitors['value']);
         $this->assertEqualsWithDelta(33.33, $conversion['value'], 0.01); // 1 order / 3 pengunjung * 100
+        $this->assertSame('1 dari 3 pengunjung', $conversion['detail']);
         $this->assertEqualsWithDelta(1_500_000.0, $revenue['value'], 0.01);
         $this->assertSame('number', $visitors['format']);
         $this->assertSame('percent', $conversion['format']);

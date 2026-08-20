@@ -24,12 +24,16 @@ export function TestimonialCard({
   onOpen?: () => void
 }) {
   const [previewOpen, setPreviewOpen] = React.useState(false)
+  const [visiblePhotos, setVisiblePhotos] = React.useState(0)
+  const photoRowRef = React.useRef<HTMLDivElement>(null)
   const rating = Math.max(0, Math.min(5, testimonial.rating ?? 0))
   const cardHref = href ?? testimonial.product?.href ?? null
   const isScreenshot = variant === "screenshot"
   const message = (testimonial.message ?? "").trim()
   const hasImage = Boolean(testimonial.image_url)
   const imageUrl = testimonial.image_url ?? null
+  const photos = (testimonial.images ?? []).filter((url): url is string => Boolean(url))
+  if (!photos.length && imageUrl) photos.push(imageUrl)
   const imageAlt = isScreenshot
     ? `Screenshot ulasan ${testimonial.customer_name}`
     : `Hasil pemasangan dari ${testimonial.customer_name}`
@@ -68,7 +72,7 @@ export function TestimonialCard({
 
         {hasImage && !onOpen ? (
           <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="!fixed !inset-0 !left-0 !top-0 z-modal !flex !h-dvh !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !gap-0 !overflow-hidden !rounded-none !border-0 !bg-black/95 !p-0 shadow-none" aria-describedby={undefined}>
+            <DialogContent className="!fixed !inset-0 !left-0 !top-0 z-modal !flex !h-dvh !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !gap-0 !overflow-hidden !rounded-none !border-0 !bg-black/95 !p-0 shadow-none" aria-describedby={undefined}>
               <DialogTitle className="sr-only">
                 Screenshot ulasan {testimonial.customer_name}
               </DialogTitle>
@@ -84,141 +88,116 @@ export function TestimonialCard({
     )
   }
 
-  // Mode Review (Website): Rating, pesan ulasan, identitas & link produk
+  // Tujuan klik: ulasan produk terkait (bukan preview gambar). Fallback ke href.
+  const reviewSectionHref = testimonial.product
+    ? `${testimonial.product.href}#penilaian-ulasan`
+    : cardHref
+
+  // Hitung berapa foto 56px yang muat dalam lebar kartu; sisanya jadi badge "+N"
+  // pada foto terakhir yang ditampilkan (overlay gelap) — bukan scroll.
+  React.useEffect(() => {
+    const el = photoRowRef.current
+    if (!el || photos.length === 0) return
+    const CELL = 56 + 6
+    const compute = () => {
+      const width = el.clientWidth
+      const count = Math.max(1, Math.floor((width + 6) / CELL))
+      setVisiblePhotos(Math.min(photos.length, count))
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [photos.length])
+
+  const shown = visiblePhotos > 0 ? visiblePhotos : Math.min(photos.length, 3)
+  const extra = photos.length - shown
+  const showOverlay = extra > 0
+
   const cardClassName = cn(
-    "testimonial-card @container group flex h-full min-w-0 flex-col overflow-hidden border border-border bg-white shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none",
-    cardHref ? "cursor-pointer" : null,
+    "testimonial-card @container group flex h-full min-w-0 flex-col rounded-xl border border-border bg-white p-4 transition-all duration-300 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none",
+    reviewSectionHref ? "cursor-pointer" : null,
     hasImage ? "testimonial-card--with-image" : null,
   )
 
-  const clampLines = hasImage ? (compact ? "line-clamp-2" : "line-clamp-3") : (compact ? "line-clamp-4" : "line-clamp-5")
-
-  const body = (
-    <div className="flex min-h-0 flex-1 flex-col p-[5px]">
-      <p
-        className={cn(
-          "font-semibold text-foreground",
-          compact ? "truncate text-xs leading-4" : "text-sm",
-        )}
-      >
-        {testimonial.customer_name}
-      </p>
+  const inner = (
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
+          {testimonial.customer_name}
+        </p>
+        {testimonial.location ? (
+          <p className="truncate text-[11px] leading-tight text-muted-foreground">
+            {testimonial.location}
+          </p>
+        ) : null}
+      </div>
       {rating > 0 ? (
-        <div
-          className="mt-1 flex gap-0.5 text-warning"
-          aria-label={`${rating} dari 5 bintang`}
-        >
+        <div className="mt-2 flex gap-0.5 text-warning" aria-label={`${rating} dari 5 bintang`}>
           {Array.from({ length: 5 }).map((_, index) => (
             <Icon
               name="star"
               key={index}
               weight={index < rating ? "fill" : "regular"}
-              className={compact ? "h-3 w-3" : "h-4 w-4"}
+              className="size-3"
               aria-hidden="true"
             />
           ))}
         </div>
       ) : null}
       {message ? (
-        <blockquote
-          className={cn(
-            "text-foreground",
-            compact ? "mt-1.5 text-xs leading-5" : "mt-2 text-sm leading-6",
-            clampLines,
-          )}
-        >
-          “{message}”
-        </blockquote>
+        <p className={cn("mt-1 text-xs leading-snug text-foreground", compact ? "line-clamp-4" : "line-clamp-5")}>
+          {message}
+        </p>
+      ) : null}
+
+      {photos.length ? (
+        <div ref={photoRowRef} className="mt-auto flex items-center gap-1.5 pt-2.5">
+          {photos.slice(0, shown).map((src, index) => {
+            const isBadge = showOverlay && index === shown - 1
+            return (
+              <span
+                key={src + "-" + index}
+                className="relative size-14 shrink-0 overflow-hidden rounded-[6px] bg-surface-muted"
+              >
+                <ResponsiveImage
+                  src={src}
+                  alt={imageAlt}
+                  wrapperClassName="size-full bg-surface-muted"
+                  className="size-full object-cover"
+                />
+                {isBadge ? (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <span className="text-base font-semibold leading-none tabular-nums text-muted-foreground">
+                      +{extra}
+                    </span>
+                  </span>
+                ) : null}
+              </span>
+            )
+          })}
+        </div>
       ) : null}
     </div>
   )
 
   const linkLabel = testimonial.product
-    ? `Ulasan ${testimonial.customer_name}, lihat produk ${testimonial.product.name}`
-    : `Ulasan ${testimonial.customer_name}`
-
-  // Jumlah media (foto) pada ulasan ini; dipakai untuk badge di atas thumbnail.
-  const mediaCount = testimonial.images?.length
-    ? testimonial.images.length
-    : testimonial.image_url
-      ? 1
-      : 0
-
-  // Klik thumbnail (homepage) -> langsung ke section ulasan produk terkait.
-  const reviewSectionHref = testimonial.product
-    ? `${testimonial.product.href}#penilaian-ulasan`
-    : cardHref
-
-  const thumbMediaBadge = (
-    <span
-      className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 transition duration-300 group-hover/img:bg-black/60 group-focus-visible/img:bg-black/60"
-      aria-hidden="true"
-    >
-      <span className="inline-flex h-6 min-w-6 items-center justify-center gap-1 rounded-full bg-black/70 px-2 text-white opacity-0 transition duration-300 group-hover/img:opacity-100 group-focus-visible/img:opacity-100">
-        <Icon name="image" className="h-3.5 w-3.5" aria-hidden="true" />
-        <span className="text-xs font-semibold tabular-nums">{mediaCount}</span>
-      </span>
-    </span>
-  )
+    ? `Lihat ulasan ${testimonial.customer_name} di produk ${testimonial.product.name}`
+    : `Lihat ulasan ${testimonial.customer_name}`
 
   return (
     <article className={cardClassName}>
-      {cardHref ? (
+      {reviewSectionHref ? (
         <Link
-          href={cardHref}
-          className="flex min-h-0 min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          href={reviewSectionHref}
+          className="flex h-full min-h-0 min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={linkLabel}
         >
-          {body}
+          {inner}
         </Link>
       ) : (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">{body}</div>
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">{inner}</div>
       )}
-
-      {hasImage ? (
-        <div className="shrink-0 px-[5px] pb-[5px]">
-          {onOpen ? (
-            <button
-              type="button"
-              onClick={onOpen}
-              className="group/img relative block h-20 w-full shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label={`Perbesar foto dari ${testimonial.customer_name}`}
-            >
-              <ResponsiveImage
-                src={imageUrl}
-                alt={imageAlt}
-                wrapperClassName="size-full bg-surface-muted"
-                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
-              />
-              {thumbMediaBadge}
-            </button>
-          ) : reviewSectionHref ? (
-            <a
-              href={reviewSectionHref}
-              className="group/img relative block h-20 w-full shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label={`Lihat ulasan ${testimonial.customer_name} di produk`}
-            >
-              <ResponsiveImage
-                src={imageUrl}
-                alt={imageAlt}
-                wrapperClassName="size-full bg-surface-muted"
-                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
-              />
-              {thumbMediaBadge}
-            </a>
-          ) : (
-            <div className="group/img relative block h-20 w-full shrink-0 overflow-hidden rounded-[3px] bg-surface-muted">
-              <ResponsiveImage
-                src={imageUrl}
-                alt={imageAlt}
-                wrapperClassName="size-full bg-surface-muted"
-                className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
-              />
-              {thumbMediaBadge}
-            </div>
-          )}
-        </div>
-      ) : null}
     </article>
   )
 }

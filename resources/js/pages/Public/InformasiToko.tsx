@@ -199,20 +199,22 @@ export default function InformasiToko({ page }: { page: PageData }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: "Informasi Toko", href: null },
             ]}
           />
+          </div>
         </div>
-        <div className="container-page py-2">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -222,11 +224,11 @@ export default function InformasiToko({ page }: { page: PageData }) {
         </div>
       </section>
 
-      <div className="container-page pt-4 !px-5 md:!px-8 lg:!px-12">
+      <div className="container-page pt-4 !px-2.5 md:!px-8 lg:!px-12">
         <BrandWordmark className="[&_img]:h-12 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-14" />
       </div>
 
-      <div className="container-page space-y-6 !px-5 md:!px-8 lg:!px-12 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
+      <div className="container-page space-y-6 !px-2.5 md:!px-8 lg:!px-12 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
         <div className="space-y-6">
           <section aria-labelledby="why-ragil">
             <h2 id="why-ragil" className="text-base font-bold tracking-tight text-foreground">
@@ -260,7 +262,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
         </div>
       </div>
 
-      <div className="container-page space-y-8 !px-5 md:!px-8 lg:!px-12">
+      <div className="container-page space-y-8 !px-2.5 md:!px-8 lg:!px-12">
         <section aria-labelledby="store-contact">
           <h2 id="store-contact" className="text-base font-bold tracking-tight text-foreground">
             Informasi Kontak

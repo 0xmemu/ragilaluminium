@@ -153,6 +153,17 @@ interface ImportMediaSummary {
   }
 }
 
+interface IntegrationReadinessItem {
+  key: string
+  label: string
+  icon: string
+  ready: boolean
+  verified: boolean
+  status_label: string
+  detail: string
+  href: string
+}
+
 interface DashboardProps {
   greetingName: string
   todayLabel: string
@@ -166,6 +177,7 @@ interface DashboardProps {
   quickActions: QuickAction[]
   recentOrders: RecentOrderRow[]
   productCount: number
+  integrationReadiness?: IntegrationReadinessItem[]
 }
 
 function greetingPrefix(date = new Date()): string {
@@ -304,6 +316,7 @@ export default function Dashboard({
   quickActions = [],
   recentOrders = [],
   productCount = 0,
+  integrationReadiness = [],
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
   const [refreshing, setRefreshing] = React.useState(false)
@@ -794,6 +807,51 @@ export default function Dashboard({
             </div>
           )}
         </SectionCard>
+
+        {/* Integration readiness panel */}
+        {integrationReadiness.length > 0 && (
+          <SectionCard
+            title="Status Integrasi"
+            icon="settings"
+            description="Koneksi eksternal dan layanan pendukung."
+            className="lg:col-span-12"
+            contentClassName="p-0"
+          >
+            <ul className="divide-y divide-border">
+              {integrationReadiness.map((item) => (
+                <li key={item.key} className="flex items-center justify-between gap-3 px-5 py-3">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span
+                      aria-hidden="true"
+                      className={`size-2 shrink-0 rounded-full ${item.ready ? "bg-green-500" : "bg-muted-foreground/40"}`}
+                    />
+                    <span className="min-w-0">
+                      <span className="text-[13px] font-medium text-foreground">{item.label}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{item.detail}</span>
+                    </span>
+                  </span>
+                  <span className="shrink-0">
+                    {item.ready ? (
+                      <Link
+                        href={item.href}
+                        className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 transition hover:bg-green-100"
+                      >
+                        Aktif
+                      </Link>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted/80"
+                      >
+                        Belum aktif
+                      </Link>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </SectionCard>
+        )}
 
       </div>
     </AdminLayout>

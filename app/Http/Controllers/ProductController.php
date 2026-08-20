@@ -135,6 +135,7 @@ class ProductController extends Controller
                 'description' => $product->description,
                 'product_category' => $product->product_category,
                 'product_model' => $product->product_model,
+                'sold_count' => (int) ($product->sold_count ?? 0),
                 'design_variant' => $product->design_variant,
                 'category_label' => $categoryLabel,
                 'model_label' => $modelLabel,

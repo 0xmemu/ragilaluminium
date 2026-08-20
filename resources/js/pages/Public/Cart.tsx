@@ -28,18 +28,20 @@ function optimisticItem(item: CartItem, quantity: number): CartItem {
     line_discount: Math.max(0, lineCompare - lineTotal),
   }
 }
+
 export default function Cart({
   items: initialItems = [],
   subtotal: _subtotal = 0,
   compare_subtotal: _compareSubtotal = 0,
   discount_total: _discountTotal = 0,
-  undo_item: undoItem = null,
+  undo_count: initialUndoCount = 0,
 }: {
   items: CartItem[]
   subtotal: number
   compare_subtotal?: number
   discount_total?: number
-  undo_item?: Record<string, unknown> | null
+  /** Jumlah item yang baru dihapus dan masih bisa diurungkan (window 5 dtk). */
+  undo_count?: number
 }) {
   const [cartItems, setCartItems] = React.useState<CartItem[]>(() => initialItems)
 
@@ -50,97 +52,88 @@ export default function Cart({
   }, [initialItems])
 
   function updateLocalQuantity(lineId: string, quantity: number) {
-    setCartItems((current) => current.map((item) =>
-      item.line_id === lineId ? optimisticItem(item, quantity) : item
-    ))
+    setCartItems((current) =>
+      current.map((item) => (item.line_id === lineId ? optimisticItem(item, quantity) : item)),
+    )
   }
 
+  // Fitur pilih tidak aktif secara default. Aktif hanya saat tombol Pilih ditekan.
   const [selectMode, setSelectMode] = React.useState(false)
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
-  const selectForm = useForm({ line_ids: [] as string[] })
-  const deleteForm = useForm({ line_ids: [] as string[] })
-  const restoreForm = useForm({})
+
+  function enterSelectMode() {
+    setSelectMode(true)
+    setSelectedIds(new Set())
+  }
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  React.useEffect(() => {
+    if (!selectMode) setSelectedIds(new Set())
+  }, [initialItems, selectMode])
 
   const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length
   const someSelected = selectedIds.size > 0 && selectedIds.size < cartItems.length
   const noneSelected = selectedIds.size === 0
 
   function toggleAll() {
-    if (allSelected) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(cartItems.map((it) => it.line_id)))
-    }
+    setSelectedIds(allSelected ? new Set() : new Set(cartItems.map((it) => it.line_id)))
   }
 
   function toggleOne(lineId: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(lineId)) {
-        next.delete(lineId)
-      } else {
-        next.add(lineId)
-      }
+      if (next.has(lineId)) next.delete(lineId)
+      else next.add(lineId)
       return next
     })
   }
 
-  function enterSelectMode() {
-    setSelectMode(true)
-    setSelectedIds(new Set())
-    setConfirmDelete(false)
-  }
-
-  function exitSelectMode() {
-    setSelectMode(false)
-    setSelectedIds(new Set())
-    setConfirmDelete(false)
-  }
-
-  // Checkout scope: semua item secara default; hanya item terpilih saat mode pilih.
-  const effectiveItems = selectMode
-    ? cartItems.filter((it) => selectedIds.has(it.line_id))
-    : cartItems
-  const selectedSubtotal = effectiveItems.reduce(
-    (sum, it) => sum + (typeof it.line_total === "number" ? it.line_total : 0),
-    0
-  )
-  const selectedCompare = effectiveItems.reduce(
-    (sum, it) =>
-      sum +
-      (typeof it.line_compare_total === "number"
-        ? it.line_compare_total
-        : typeof it.line_total === "number"
-          ? it.line_total
-          : 0),
-    0
-  )
-  const selectedDiscount = selectedCompare - selectedSubtotal
+  // Ringkasan: semua item saat mode pilih non-aktif; hanya item tercentang saat aktif.
+  const scoped = selectMode ? cartItems.filter((it) => selectedIds.has(it.line_id)) : cartItems
+  const selectedSubtotal = scoped.reduce((sum, it) => sum + (typeof it.line_total === "number" ? it.line_total : 0), 0)
+  const selectedCompare = scoped.reduce((sum, it) => {
+    const v = typeof it.line_compare_total === "number"
+      ? it.line_compare_total
+      : typeof it.line_total === "number"
+        ? it.line_total
+        : 0
+    return sum + v
+  }, 0)
+  const selectedDiscount = Math.max(0, selectedCompare - selectedSubtotal)
   const hasDiscount = selectedDiscount > 0
 
-  const [confirmDelete, setConfirmDelete] = React.useState(false)
+  const submitForm = useForm({ line_ids: [] as string[] })
+  const removeSelectedForm = useForm({ line_ids: [] as string[] })
+  const undoForm = useForm({})
+  const [showUndoToast, setShowUndoToast] = React.useState(false)
+
+  React.useEffect(() => {
+    if (initialUndoCount <= 0) {
+      setShowUndoToast(false)
+      return
+    }
+    setShowUndoToast(true)
+    const timer = window.setTimeout(() => setShowUndoToast(false), 5000)
+    return () => window.clearTimeout(timer)
+  }, [initialUndoCount])
 
   function checkoutSelected(e: React.FormEvent) {
     e.preventDefault()
     const lineIds = selectMode ? [...selectedIds] : cartItems.map((it) => it.line_id)
-    selectForm.setData("line_ids", lineIds)
-    selectForm.post(routeUrl("cart.select"))
+    submitForm.setData("line_ids", lineIds)
+    submitForm.post(routeUrl("cart.select"))
   }
 
-  function deleteSelected(e: React.FormEvent) {
-    e.preventDefault()
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      return
-    }
-    deleteForm.setData("line_ids", [...selectedIds])
-    deleteForm.post(routeUrl("cart.remove-selected"), {
-      onSuccess: () => setConfirmDelete(false),
-    })
-  }
-
-  function cancelDelete() {
-    setConfirmDelete(false)
+  function removeSelected() {
+    const lineIds = allSelected
+      ? cartItems.map((it) => it.line_id)
+      : [...selectedIds]
+    if (!lineIds.length) return
+    removeSelectedForm.setData("line_ids", lineIds)
+    removeSelectedForm.post(routeUrl("cart.remove-selected"))
   }
 
   return (
@@ -156,214 +149,137 @@ export default function Cart({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
             <h1 className="text-base font-bold tracking-tight text-foreground">
-              Keranjang
+              Keranjang{cartItems.length > 0 ? ` (${cartItems.length})` : ""}
             </h1>
           </div>
         </div>
       </section>
 
-      {undoItem ? (
-        <div className="border-b border-border bg-accent/10">
-          <div className="container-page flex items-center justify-between gap-3 py-2">
-            <p className="min-w-0 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{String(undoItem.name ?? "Produk")}</span> dihapus dari keranjang
-            </p>
-            <Button
-              type="button"
-              variant="link"
-              size="xs"
-              className="shrink-0 px-0 text-xs"
-              disabled={restoreForm.processing}
-              onClick={() => restoreForm.post(routeUrl("cart.restore"))}
-            >
-              Urungkan
-            </Button>
+      {cartItems.length ? (
+        <div className="border-b border-border bg-surface">
+          <div className="mx-auto flex w-full max-w-[80rem] items-center justify-between gap-3 !px-2.5 md:!px-8 lg:!px-12 py-2">
+            {selectMode ? (
+              <label
+                className="flex min-w-0 cursor-pointer select-none items-center gap-2.5"
+                style={{ animation: "cart-label-slide 0.22s ease-out" }}
+              >
+                <span className="relative inline-flex shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected
+                    }}
+                    onChange={toggleAll}
+                    className="peer absolute inset-0 z-10 size-full cursor-pointer opacity-0"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none flex size-[22px] items-center justify-center rounded-[3px] border border-border bg-white text-white transition peer-checked:border-primary peer-checked:bg-primary peer-checked:[&_svg]:opacity-100"
+                  >
+                    <svg
+                      viewBox="0 0 16 16"
+                      className="size-[70%] opacity-0 transition"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+                    </svg>
+                  </span>
+                </span>
+                <span className="text-xs font-semibold text-foreground">
+                  {allSelected ? "Semua dipilih" : someSelected ? `${selectedIds.size}/${cartItems.length} dipilih` : "Pilih semua"}
+                </span>
+              </label>
+            ) : (
+              <button
+                type="button"
+                onClick={enterSelectMode}
+                className="shrink-0 text-xs font-semibold text-primary transition hover:opacity-80"
+              >
+                Pilih
+              </button>
+            )}
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {selectMode ? `${selectedIds.size} item` : `${cartItems.length} item`}
+            </span>
+            {selectMode ? (
+              <span className="flex shrink-0 items-center gap-4" style={{ animation: "cart-count-slide 0.24s ease-out 0.05s" }}>
+                <button
+                  type="button"
+                  onClick={removeSelected}
+                  disabled={noneSelected || removeSelectedForm.processing}
+                  className="shrink-0 text-xs font-semibold text-destructive transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {allSelected ? "Hapus semua" : "Hapus"}
+                </button>
+                <button
+                  type="button"
+                  onClick={exitSelectMode}
+                  className="shrink-0 text-xs font-semibold text-muted-foreground underline-offset-2 transition hover:underline"
+                >
+                  Selesai
+                </button>
+              </span>
+            ) : null}
           </div>
         </div>
       ) : null}
 
-      <section className={cartItems.length ? "container-page min-w-0 overflow-x-hidden !px-5 md:!px-8 lg:!px-12" : "container-page !px-5 md:!px-8 lg:!px-12"}>
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
         {cartItems.length ? (
-          <div className="space-y-4">
-            {/* Select bar */}
-            <div className="flex items-center justify-between gap-3 border-b border-border pb-2.5">
-              <div className="flex items-center gap-3">
-                {selectMode ? (
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      ref={(el) => { if (el) el.indeterminate = someSelected }}
-                      onChange={toggleAll}
-                      className="size-4 cursor-pointer rounded border-border accent-primary"
-                    />
-                    <span className="text-xs font-semibold text-foreground">
-                      {allSelected
-                        ? "Batalkan Semua"
-                        : someSelected
-                          ? `${selectedIds.size}/${cartItems.length} dipilih`
-                          : "Pilih semua"}
-                    </span>
-                  </label>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="xs"
-                    className="h-7 gap-1 px-2.5 text-[11px]"
-                    onClick={enterSelectMode}
-                  >
-                    <Icon name="check" className="size-3" aria-hidden="true" />
-                    Pilih
-                  </Button>
-                )}
-                {selectMode && selectedIds.size > 0 ? (
-                  <span className="text-xs text-muted-foreground">
-                    {selectedIds.size} item
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {selectMode && selectedIds.size > 0 ? (
-                  <form onSubmit={deleteSelected} className="flex items-center gap-2">
-                  {confirmDelete ? (
-                    <>
-                      <span className="text-xs font-semibold text-destructive">
-                        Hapus {selectedIds.size} item?
-                      </span>
-                      <Button
-                        type="submit"
-                        variant="destructive"
-                        size="xs"
-                        className="h-7 px-2.5 text-[11px]"
-                        disabled={deleteForm.processing}
-                      >
-                        Ya, hapus
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        className="h-7 px-2.5 text-[11px]"
-                        onClick={cancelDelete}
-                        disabled={deleteForm.processing}
-                      >
-                        Batal
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      type="submit"
-                      variant="secondary"
-                      size="xs"
-                      className="h-7 gap-1 px-2 text-[11px] text-destructive border-destructive/30"
-                    >
-                      <Icon name="x" className="size-3" aria-hidden="true" />
-                      Hapus ({selectedIds.size})
-                    </Button>
-                  )}
-                </form>
-                ) : null}
-                {selectMode ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    className="h-7 px-2.5 text-[11px]"
-                    onClick={exitSelectMode}
-                    disabled={selectForm.processing || deleteForm.processing}
-                  >
-                    Selesai
-                  </Button>
-                ) : null}
-              </div>
+          <div className="space-y-3 py-3">
+            {/* Item list — padding antar kartu */}
+            <div className="flex flex-col gap-2">
+              {cartItems.map((item) => (
+                <CartLineItem
+                  key={item.line_id}
+                  item={item}
+                  selectable={selectMode}
+                  selected={selectedIds.has(item.line_id)}
+                  onToggle={() => toggleOne(item.line_id)}
+                  onQuantityChange={(quantity) => updateLocalQuantity(item.line_id, quantity)}
+                />
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-              <div className="min-w-0">
-                <div>
-                  {cartItems.map((item) => (
-                    <CartLineItem
-                      key={item.line_id}
-                      item={item}
-                      selectable={selectMode}
-                      selected={selectedIds.has(item.line_id)}
-                      onToggle={() => toggleOne(item.line_id)}
-                      onQuantityChange={(quantity) => updateLocalQuantity(item.line_id, quantity)}
-                    />
-                  ))}
-                </div>
-              </div>
+            <TrustAssuranceCard />
 
-              <aside className="surface-panel min-w-0 p-5 lg:sticky lg:top-28">
-                <h2 className="text-lg font-semibold">Ringkasan</h2>
-                <dl className="mt-4 space-y-3 text-xs">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">
-                      Subtotal
-                      {selectMode && selectedIds.size !== cartItems.length ? (
-                        <span className="ml-1 text-xs">({selectedIds.size} item)</span>
-                      ) : null}
-                    </dt>
-                    <dd className="tabular-nums font-semibold">{formatCurrency(selectedSubtotal)}</dd>
-                  </div>
-                  {hasDiscount ? (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-muted-foreground">Potongan harga</dt>
-                      <dd className="tabular-nums font-semibold text-sale">
-                        −{formatCurrency(selectedDiscount)}
-                      </dd>
-                    </div>
-                  ) : null}
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">Pengiriman</dt>
-                    <dd className="text-right font-semibold break-words">Dihitung saat checkout</dd>
-                  </div>
-                </dl>
-                <div className="mt-4 border-t border-border pt-4">
-                  <div className="flex items-end justify-between gap-4">
-                    <p className="text-sm font-semibold">Subtotal saat ini</p>
-                    <p className="tabular-nums text-lg font-bold">{formatCurrency(selectedSubtotal)}</p>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    {hasDiscount
-                      ? "Subtotal sudah termasuk potongan promo yang sedang berlaku."
-                      : "Total akhir mengikuti biaya pengiriman dari alamat tujuan."}
-                  </p>
+            {/* Ringkasan flat (prototype Sum) */}
+            <div className="border-t border-border pt-3">
+              <dl className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted-foreground">Subtotal ({selectMode ? selectedIds.size : cartItems.length} barang)</dt>
+                  <dd className="tabular-nums font-semibold text-foreground">
+                    {formatCurrency(selectedSubtotal)}
+                  </dd>
                 </div>
-                <form onSubmit={checkoutSelected}>
-                  <Button
-                    type="submit"
-                    size="md"
-                    className="mt-4 hidden h-10 w-full lg:inline-flex text-sm"
-                    disabled={(selectMode && noneSelected) || selectForm.processing}
-                  >
-                    {selectMode
-                      ? noneSelected
-                        ? "Pilih item terlebih dahulu"
-                        : `Checkout (${selectedIds.size})`
-                      : "Checkout"}
-                    <Icon name="arrow-right" className="size-4" aria-hidden="true" />
-                  </Button>
-                </form>
-                <TrustAssuranceCard className="mt-4" />
-              </aside>
+                {hasDiscount ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Total Potongan</dt>
+                    <dd className="tabular-nums font-semibold text-sale">
+                      −{formatCurrency(selectedDiscount)}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
             </div>
 
-            <TrustBadgesGrid />
-
-            <MobileStickyCta aria-label="Lanjut checkout" spacerClassName="h-[calc(var(--mobile-sticky-cta-height)+0.5rem)]">
+            <MobileStickyCta
+              aria-label="Lanjut checkout"
+              spacerClassName="h-[calc(var(--mobile-sticky-cta-height)+0.5rem)]"
+            >
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Subtotal {selectMode && selectedIds.size !== cartItems.length ? `(${selectedIds.size} item)` : ""}
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
                 <span className="tabular-nums text-sm font-bold leading-5">
                   {formatCurrency(selectedSubtotal)}
                 </span>
@@ -373,34 +289,51 @@ export default function Cart({
                   type="submit"
                   size="md"
                   className="h-10 min-h-10 min-w-0 shrink-0 px-3 text-xs min-[375px]:px-5 min-[375px]:text-sm"
-                  disabled={(selectMode && noneSelected) || selectForm.processing}
+                  disabled={(selectMode && noneSelected) || submitForm.processing}
                 >
-                  {selectMode
-                    ? noneSelected
-                      ? "Pilih item"
-                      : `Checkout (${selectedIds.size})`
-                    : "Checkout"}
+                  {selectMode ? `Checkout (${selectedIds.size})` : `Checkout (${cartItems.length})`}
                   <Icon name="arrow-right" className="size-4" aria-hidden="true" />
                 </Button>
               </form>
             </MobileStickyCta>
           </div>
         ) : (
-          <EmptyState
-            icon="shopping-cart"
-            title="Keranjang masih kosong"
-            description="Pilih model yang sesuai, tentukan varian, lalu tambahkan produk ke keranjang."
-            action={
-              <Button asChild size="md">
-                <Link href={routeUrl("catalog.index")}>
-                  Pilih Model Produk
-                  <Icon name="arrow-right" className="size-4" aria-hidden="true" />
-                </Link>
-              </Button>
-            }
-          />
+          <div className="py-8">
+            <EmptyState
+              icon="shopping-cart"
+              title="Keranjang masih kosong"
+              description="Pilih model yang sesuai, tentukan varian, lalu tambahkan produk ke keranjang."
+              action={
+                <Button asChild size="md">
+                  <Link href={routeUrl("catalog.index")}>
+                    Pilih Model Produk
+                    <Icon name="arrow-right" className="size-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+              }
+            />
+          </div>
         )}
       </section>
+
+      {showUndoToast && initialUndoCount > 0 ? (
+        <div className="pointer-events-none fixed inset-x-0 top-16 z-[60] flex justify-center px-4">
+          <div className="pointer-events-auto flex w-auto max-w-full items-center gap-3 rounded-xl border border-destructive/70 bg-destructive/10 px-4 py-3 shadow-[0_8px_24px_rgba(10,0,0,0.14)]">
+            <Icon name="trash" className="size-5 shrink-0 text-destructive" aria-hidden="true" />
+            <span className="shrink-0 text-xs font-semibold text-destructive">
+              produk dihapus dari keranjang
+            </span>
+            <button
+              type="button"
+              onClick={() => undoForm.post(routeUrl("cart.restore"))}
+              disabled={undoForm.processing}
+              className="shrink-0 rounded-full border border-destructive px-3 py-1 text-xs font-bold text-destructive transition hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Urungkan
+            </button>
+          </div>
+        </div>
+      ) : null}
     </PublicLayout>
   )
 }

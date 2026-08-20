@@ -2,6 +2,8 @@ import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"
+import { TestimonialCard } from "@/components/public/testimonial-card"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { routeUrl } from "@/lib/routes"
@@ -18,7 +20,7 @@ function StarRow({
   className?: string
 }) {
   return (
-    <span className={cn("inline-flex items-center gap-0.5 text-[#F5A623]", className)} aria-hidden="true">
+    <span className={cn("inline-flex items-center gap-0.5 text-warning", className)} aria-hidden="true">
       {Array.from({ length: 5 }).map((_, index) => (
         <Icon
           key={index}
@@ -54,7 +56,7 @@ function AccordionSection({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-14 w-full items-center justify-between gap-4 text-left"
+        className="flex min-h-10 w-full items-center justify-between gap-4 text-left"
         aria-expanded={open}
         aria-controls={contentId}
       >
@@ -97,6 +99,7 @@ export function ProductInfoSections({
 }) {
   const [previewReview, setPreviewReview] = React.useState<Testimonial | null>(null)
   const [previewIndex, setPreviewIndex] = React.useState(0)
+  const [reviewsOpen, setReviewsOpen] = React.useState(false)
 
   const visibleAttributes = attributes.filter(
     (a) => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name),
@@ -157,10 +160,10 @@ export function ProductInfoSections({
             <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
             <Link
               href={routeUrl("installation.show", { parent_sku: product.parent_sku })}
-              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#474747] transition hover:text-[#333333]"
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
               <span>Lihat Semua</span>
-              <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
+              <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
             </Link>
           </div>
           <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -180,71 +183,79 @@ export function ProductInfoSections({
 
       {/* Penilaian & Ulasan */}
       <section id="penilaian-ulasan" className="mt-4 scroll-mt-28">
-        <h2 className="text-base font-bold text-foreground">Penilaian & ulasan</h2>
+        <h2 className="text-base font-bold text-foreground">Ulasan Pembeli</h2>
         {averageRating !== null ? (
-          <div className="mt-2 flex items-center gap-2.5">
-            <span className="text-3xl font-normal leading-9 text-foreground">
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[22px] font-normal leading-8 text-foreground">
               {ratingLabel}/5
             </span>
-            <StarRow value={averageRating} size="size-5" />
-            <span className="text-sm text-muted-foreground">
+            <StarRow value={averageRating} size="size-4" />
+            <span className="text-xs text-muted-foreground">
               ({ratedReviews.length} ulasan)
             </span>
           </div>
         ) : null}
 
         {reviews.length ? (
-          <ul className="mt-4 divide-y divide-border border-t border-border">
-            {reviews.slice(0, 2).map((review) => (
-              <li key={review.id} className="py-4">
-                {(review.rating ?? 0) > 0 ? (
-                  <StarRow value={review.rating ?? 0} size="size-3.5" />
-                ) : null}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {review.customer_name}
-                  {review.location ? ` · ${review.location}` : ""}
-                </p>
-                <p className="mt-2 max-w-full break-words text-xs leading-5 text-foreground">
-                  {review.message}
-                </p>
-                {reviewImages(review).length ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreviewReview(review)
-                      setPreviewIndex(0)
-                    }}
-                    className="group/img relative mt-3 block h-24 w-full overflow-hidden rounded-sm bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    aria-label={`Perbesar foto ulasan ${review.customer_name}`}
-                  >
-                    <ResponsiveImage
-                      src={reviewImages(review)[0]}
-                      alt={`Foto ulasan ${review.customer_name}`}
-                      wrapperClassName="size-full bg-surface-muted"
-                      className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
-                    />
-                    {reviewImages(review).length > 1 ? (
-                      <span
-                        className="absolute bottom-1.5 right-1.5 z-10 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-white"
-                        aria-hidden="true"
-                      >
-                        <Icon name="image" weight="fill" className="size-3" />
-                        {reviewImages(review).length}
-                      </span>
+          <ul className="mt-4 flex flex-col gap-3">
+            {reviews.slice(0, 2).map((review) => {
+              const photos = reviewImages(review)
+              return (
+                <li
+                  key={review.id}
+                  className="flex flex-col rounded-xl border border-border bg-white p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
+                      {review.customer_name}
+                    </p>
+                    {review.location ? (
+                      <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                        {review.location}
+                      </p>
                     ) : null}
-                    <span
-                      className="absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition duration-300 group-hover/img:bg-black/30"
-                      aria-hidden="true"
-                    >
-                      <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition duration-300 group-hover/img:opacity-100">
-                        <Icon name="expand" weight="bold" className="size-3.5" />
-                        {reviewImages(review).length} foto
-                      </span>
-                    </span>
-                  </button>
-                ) : null}
-              </li>
-            ))}
+                  </div>
+                  {(review.rating ?? 0) > 0 ? (
+                    <div className="mt-2 flex text-warning" aria-label={`${review.rating} dari 5 bintang`}>
+                      <StarRow value={review.rating ?? 0} size="size-3" />
+                    </div>
+                  ) : null}
+                  <p className="mt-1 max-w-full break-words text-xs leading-snug text-foreground">
+                    {review.message}
+                  </p>
+                  {photos.length ? (
+                    <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
+                      {photos.slice(0, 3).map((src, index) => (
+                        <button
+                          type="button"
+                          key={`${src}-${index}`}
+                          onClick={() => {
+                            setPreviewReview(review)
+                            setPreviewIndex(index)
+                          }}
+                          className="group/img relative size-14 shrink-0 overflow-hidden rounded-[6px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          aria-label={`Foto ulasan ${review.customer_name} ${index + 1}`}
+                        >
+                          <ResponsiveImage
+                            src={src}
+                            alt={`Foto ulasan ${review.customer_name}`}
+                            wrapperClassName="size-full bg-surface-muted"
+                            className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
+                          />
+                        </button>
+                      ))}
+                      {photos.length > 3 ? (
+                        <span className="flex size-14 shrink-0 select-none items-center justify-center rounded-[6px] bg-black/50">
+                          <span className="text-base font-semibold leading-none text-muted-foreground">
+                            {photos.length - 3}+
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         ) : (
           <p className="mt-3 border-t border-border pt-4 text-sm text-muted-foreground">
@@ -253,15 +264,75 @@ export function ProductInfoSections({
           </p>
         )}
         {reviews.length ? (
-          <Link
-            href={routeUrl("reviews")}
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#474747] transition hover:text-[#333333]"
-          >
-            <span>Lihat Semua Ulasan ({reviews.length})</span>
-            <Icon name="arrow-right" className="size-3.5" weight="regular" aria-hidden="true" />
-          </Link>
+          <div className="mt-4 border-t border-b border-border">
+            <button
+              type="button"
+              onClick={() => setReviewsOpen(true)}
+              className="flex w-full cursor-pointer items-center justify-between gap-1.5 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              <span>Lihat Semua Ulasan ({reviews.length})</span>
+              <Icon name="arrow-right" className="size-4 -rotate-90 transition-transform md:rotate-0" weight="regular" aria-hidden="true" />
+            </button>
+          </div>
         ) : null}
       </section>
+
+      <DialogPrimitive.Root open={reviewsOpen} onOpenChange={setReviewsOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-black/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed inset-x-0 bottom-0 z-[70] flex max-h-[82dvh] w-full flex-col gap-0 overflow-hidden rounded-t-2xl bg-white shadow-[0_-8px_40px_rgba(10,0,0,0.2)]",
+              "data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-[100%] data-[state=open]:duration-500 data-[state=open]:ease-[cubic-bezier(0.16,1,0.3,1)]",
+              "data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom-[100%] data-[state=closed]:duration-300 data-[state=closed]:ease-[cubic-bezier(0.32,0,0.67,0)]",
+              "sm:mx-auto sm:w-[min(30rem,100%)]",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">
+              Semua ulasan {product.short_name || product.name}
+            </DialogPrimitive.Title>
+            <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-border" />
+            <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-3">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-foreground">
+                  Semua Ulasan{" "}
+                  <span className="font-normal text-muted-foreground">({reviews.length})</span>
+                </h3>
+                {averageRating !== null ? (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="text-[13px] font-semibold leading-none text-foreground">
+                      {ratingLabel}/5
+                    </span>
+                    <StarRow value={averageRating} size="size-3.5" />
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewsOpen(false)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup daftar ulasan"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3">
+              <ul className="flex flex-col gap-3">
+                {reviews.map((review) => (
+                  <li key={review.id} className="min-w-0">
+                    <TestimonialCard
+                      testimonial={{ ...review, product: undefined as Testimonial["product"] }}
+                      variant="review"
+                      href={null}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {previewReview ? (
         <GalleryLightbox

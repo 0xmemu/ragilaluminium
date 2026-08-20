@@ -46,21 +46,23 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: page.title, href: null },
             ]}
           />
+          </div>
         </div>
-        <div className="container-page py-2">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
           {isContact ? (
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -74,7 +76,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -87,7 +89,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
         </div>
       </section>
 
-      <section className="container-page !px-5 md:!px-8 lg:!px-12">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
         {isLegal ? (
           <div className="mx-auto max-w-3xl border-t border-border pt-8">
             <article className="cms-content" dangerouslySetInnerHTML={{ __html: cleanBody }} />
@@ -95,7 +97,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
               <div className="mt-6">
                 <Button asChild variant="secondary" size="sm">
                   <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                    <Icon name="whatsapp" className="size-4 text-[#25D366]" aria-hidden="true" />
+                    <Icon name="whatsapp" className="size-4 text-whatsapp" aria-hidden="true" />
                     {whatsappLabel}
                   </a>
                 </Button>

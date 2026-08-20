@@ -30,6 +30,24 @@ return [
             'path' => '/admin/products',
             'view' => 'Admin/Products/Index',
         ],
+        'Halaman Kategori' => [
+            'route' => 'admin.categories.index',
+            'path' => '/admin/kelola/kategori',
+            'view' => 'Admin/Categories/Index',
+            'controller' => 'Admin\\CategoryController@index',
+        ],
+        'Halaman Model Produk' => [
+            'route' => 'admin.model-products.index',
+            'path' => '/admin/kelola/model-produk',
+            'view' => 'Admin/ModelProducts/Index',
+            'controller' => 'Admin\\ModelProductController@index',
+        ],
+        'Halaman Sub Model' => [
+            'route' => 'admin.sub-models.index',
+            'path' => '/admin/kelola/sub-model',
+            'view' => 'Admin/SubModels/Index',
+            'controller' => 'Admin\\SubModelController@index',
+        ],
         'Halaman WhatsApp Otomatis' => [
             'route' => 'admin.whatsapp.templates.index',
             'path' => '/admin/whatsapp/templates',
@@ -66,11 +84,22 @@ return [
         'produk' => [
             'title' => 'Produk',
             'items' => [
-                ['label' => 'Kelola Produk', 'route' => 'admin.products.index', 'icon' => 'package', 'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*']],
-                ['label' => 'Import', 'route' => 'admin.imports.index', 'icon' => 'upload', 'active' => ['admin.imports.*']],
-                ['label' => 'Teruskan Popularitas', 'route' => 'admin.products.popularity-boosts.index', 'icon' => 'trending-up', 'active' => ['admin.products.popularity-boosts.*']],
-                ['label' => 'Media Library', 'route' => 'admin.media.library', 'icon' => 'image', 'active' => ['admin.media.library']],
-                ['label' => 'Riwayat Media', 'route' => 'admin.media.history', 'icon' => 'history', 'active' => ['admin.media.history']],
+                [
+                    'label' => 'Kelola Produk',
+                    'route' => 'admin.products.index',
+                    'icon' => 'package',
+                    'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*', 'admin.imports.*', 'admin.media.*', 'admin.products.popularity-boosts.*'],
+                    'children' => [
+                        ['label' => 'Produk', 'route' => 'admin.products.index', 'active' => ['admin.products.*', 'admin.variants.*', 'admin.attributes.*']],
+                        ['label' => 'Kategori', 'route' => 'admin.categories.index', 'active' => ['admin.categories.*']],
+                        ['label' => 'Model Produk', 'route' => 'admin.model-products.index', 'active' => ['admin.model-products.*']],
+                        ['label' => 'Sub Model', 'route' => 'admin.sub-models.index', 'active' => ['admin.sub-models.*']],
+                        ['label' => 'Import', 'route' => 'admin.imports.index', 'icon' => 'upload', 'active' => ['admin.imports.*']],
+                        ['label' => 'Teruskan Popularitas', 'route' => 'admin.products.popularity-boosts.index', 'active' => ['admin.products.popularity-boosts.*']],
+                        ['label' => 'Media Library', 'route' => 'admin.media.library', 'active' => ['admin.media.library']],
+                        ['label' => 'Riwayat Media', 'route' => 'admin.media.history', 'active' => ['admin.media.history']],
+                    ],
+                ],
             ],
         ],
         'harga_promo' => [
@@ -102,8 +131,7 @@ return [
             'title' => 'Pengaturan Website',
             'items' => [
                 ['label' => 'Beranda Pembeli', 'route' => 'admin.beranda.index', 'icon' => 'layout-grid', 'active' => ['admin.beranda.*']],
-                ['label' => 'Model Produk', 'route' => 'admin.model-products.index', 'icon' => 'box', 'active' => ['admin.model-products.*']],
-                ['label' => 'Sub Model', 'route' => 'admin.sub-models.index', 'icon' => 'layout-grid', 'active' => ['admin.sub-models.*']],
+
                 ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
                 ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],

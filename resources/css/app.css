@@ -34,6 +34,8 @@
     --warning-foreground: 35 92% 10%;
     --info: 205 56% 39%;
     --info-foreground: 0 0% 100%;
+    --whatsapp: 142 71% 45%;
+    --header-bg: 0 0% 7.1%;
     --border: 150 8% 88%;
     --input: 150 6% 82%;
     --ring: 0 100% 38%;
@@ -94,28 +96,28 @@
      ADMIN DESIGN LANGUAGE — "Ink" (dark command-center, fintech bento)
      Dark-first: token gelap adalah DEFAULT admin. Mode terang opsional via
      <html class="admin-shell light">. Storefront tidak terpengaruh.
-     Kanvas: near-black · Kartu: dark raised + hairline · CTA: putih solid ·
-     Aksen fungsional: biru (link, highlight, chart) · Status: semantik.
+     Kanvas: mono near-black · Kartu: dark raised + hairline · CTA: putih solid ·
+     Aksen fungsional: netral (monochrome) · Status: semantik.
      ========================================================================== */
   html.admin-shell {
     color-scheme: dark;
-    --background: 0 0% 4.5%;
+    --background: 0 0% 4%;
     --foreground: 0 0% 96%;
     --action-foreground: 0 0% 94%;
-    --body-foreground: 0 0% 60%;
-    --card: 0 0% 8%;
+    --body-foreground: 0 0% 62%;
+    --card: 0 0% 7.5%;
     --card-foreground: 0 0% 96%;
     --popover: 0 0% 8.5%;
     --popover-foreground: 0 0% 96%;
     --primary: 0 0% 96%;
-    --primary-hover: 0 0% 84%;
-    --primary-foreground: 0 0% 7%;
+    --primary-hover: 0 0% 82%;
+    --primary-foreground: 0 0% 6%;
     --secondary: 0 0% 13%;
     --secondary-foreground: 0 0% 94%;
     --muted: 0 0% 11%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 213 94% 45%;
-    --accent-foreground: 0 0% 100%;
+    --muted-foreground: 0 0% 62%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 96%;
     --destructive: 0 74% 56%;
     --destructive-foreground: 0 0% 100%;
     --sale: 0 74% 56%;
@@ -125,10 +127,10 @@
     --warning-foreground: 36 95% 82%;
     --info: 207 82% 62%;
     --info-foreground: 207 90% 84%;
-    --border: 0 0% 11.5%;
-    --input: 0 0% 16%;
-    --ring: 213 94% 62%;
-    --surface: 0 0% 8%;
+    --border: 0 0% 13%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 72%;
+    --surface: 0 0% 7.5%;
     --surface-muted: 0 0% 11%;
     --radius: 1rem;
     --radius-control: 0.625rem;
@@ -136,24 +138,24 @@
     --shadow-float: 0 24px 48px -16px hsl(0 0% 0% / 0.65);
   }
 
-  /* Mode terang alternatif (toggle) — mempertahankan palet "Paper" lama. */
+  /* Mode terang alternatif (toggle) — putih bersih (netral), tanpa warm paper. */
   html.admin-shell.light {
     color-scheme: light;
-    --background: 45 6% 96.5%;
-    --foreground: 30 3% 13%;
-    --action-foreground: 30 4% 15%;
-    --body-foreground: 35 3% 42%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 13%;
+    --action-foreground: 0 0% 15%;
+    --body-foreground: 0 0% 42%;
     --card: 0 0% 100%;
-    --card-foreground: 30 3% 13%;
+    --card-foreground: 0 0% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 30 3% 13%;
+    --popover-foreground: 0 0% 13%;
     --primary: 187 62% 32%;
     --primary-hover: 187 66% 26%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 45 5% 93%;
-    --secondary-foreground: 30 4% 15%;
-    --muted: 45 5% 94%;
-    --muted-foreground: 35 3% 42%;
+    --secondary: 0 0% 93%;
+    --secondary-foreground: 0 0% 15%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 42%;
     --accent: 187 42% 92.5%;
     --accent-foreground: 187 60% 24%;
     --destructive: 5 68% 44%;
@@ -165,15 +167,17 @@
     --warning-foreground: 36 80% 26%;
     --info: 207 55% 38%;
     --info-foreground: 0 0% 100%;
-    --border: 45 5% 88.5%;
-    --input: 45 5% 84%;
+    --whatsapp: 142 71% 45%;
+    --header-bg: 0 0% 7.1%;
+    --border: 0 0% 89%;
+    --input: 0 0% 80%;
     --ring: 187 62% 32%;
     --surface: 0 0% 100%;
-    --surface-muted: 45 5% 94%;
+    --surface-muted: 0 0% 96%;
     --radius: 1rem;
     --radius-control: 0.625rem;
-    --shadow-soft: 0 1px 2px hsl(30 4% 12% / 0.05);
-    --shadow-float: 0 16px 40px -16px hsl(30 4% 12% / 0.18);
+    --shadow-soft: 0 1px 2px hsl(0 0% 11% / 0.06), 0 2px 12px -2px hsl(0 0% 11% / 0.08);
+    --shadow-float: 0 16px 40px -16px hsl(0 0% 11% / 0.12);
   }
 
   * {
@@ -258,7 +262,7 @@
     width: 100%;
     max-width: 80rem;
     margin-inline: auto;
-    padding-inline: 1.25rem;
+    padding-inline: 0.625rem;
   }
 
   @media (min-width: 37.5em) {
@@ -287,9 +291,12 @@
     overflow: visible;
   }
 
-  .public-title-case .product-card,
-  .public-title-case .testimonial-card {
+  .public-title-case .product-card {
     border-radius: 5px !important;
+  }
+
+  .public-title-case .testimonial-card {
+    border-radius: 12px !important;
   }
 
   .public-title-case .product-card__media,
@@ -382,7 +389,7 @@
 
   .product-card--model .product-card__title {
     color: #333333;
-    font-weight: 600;
+    font-weight: 300;
     line-height: 1.3;
     min-height: 0;
   }
@@ -527,17 +534,17 @@
   }
 
   .product-card__title {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
     width: 100%;
     min-width: 0;
-    min-height: 2rem;
+    min-height: 0;
     color: hsl(var(--action-foreground));
     font-size: 13px;
     font-weight: 300;
-    line-height: 1rem;
+    line-height: 1.35;
     text-wrap: pretty;
   }
 
@@ -653,11 +660,18 @@
 
   .product-card__meta {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 8px;
     margin-top: auto;
     padding-top: 6px;
+  }
+
+  .product-card__meta-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
   }
 
   .product-card__warranty {
@@ -666,7 +680,7 @@
     gap: 4px;
     min-width: 0;
     color: hsl(var(--warning));
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     line-height: 1;
   }
@@ -674,7 +688,7 @@
   .product-card__sold {
     flex-shrink: 0;
     color: hsl(var(--muted-foreground));
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 300;
     line-height: 1;
   }
@@ -746,7 +760,6 @@
   }
 
   .text-pretty {
-    text-wrap: pretty;
   }
 
   .tabular-nums {
@@ -930,6 +943,11 @@
 .public-title-case .uppercase {
   text-transform: capitalize;
 }
+/* Keep genuine brand labels uppercase (e.g. FLASH SALE) despite title-case rule. */
+.public-title-case .flash-sale-headline,
+.public-title-case .uppercase.flash-sale-label {
+  text-transform: uppercase;
+}
 
 .public-title-case :is(p, li, dd, dt, figcaption, label, input, textarea, select),
 .public-title-case [role="alert"] {
@@ -937,17 +955,23 @@
 }
 
 /*
- * Cetak alamat (admin orders): saat tombol "Cetak" ditekan, komponen
- * PrintAddressArea me-render #print-address via portal ke <body>; aturan
- * berikut menyembunyikan seluruh app dan hanya mencetak label alamat itu.
+ * CETAK (konsolidasi): tombol Cetak mana pun (alamat, detail konsumen, detail
+ * pesanan) me-render portalnya ke <body>. Satu aturan untuk semua: seluruh app
+ * (saudara kandung body selain portal) di-display:none sehingga TIDAK ada
+ * layout website yang tersisa di hasil cetak; hanya portal aktif yang tampil.
+ * Aturan page-margin mematikan header/footer otomatis browser.
  */
 @media print {
-  body * {
-    visibility: hidden;
+  body > *:not(#print-address):not(#print-customer-detail):not(#print-order-customer) {
+    display: none !important;
   }
 
   #print-address,
-  #print-address * {
+  #print-address *,
+  #print-customer-detail,
+  #print-customer-detail *,
+  #print-order-customer,
+  #print-order-customer * {
     visibility: visible;
   }
 
@@ -1014,4 +1038,27 @@
   .announcement-marquee {
     animation: announcement-marquee 48s linear infinite !important;
   }
+}
+
+
+/* Cart select count/controls chrome */
+@keyframes cart-count-slide {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes cart-label-slide {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+input[type="search"]::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
 }

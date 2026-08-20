@@ -133,8 +133,14 @@ class HandleInertiaRequests extends Middleware
                     ])
                     ->all()
                 : [],
-            'adminActivityLogs' => fn () => $request->user()
-                ? \App\Models\EventLog::query()
+            'adminActivityLogs' => function () use ($request) {
+                if (! $request->user()) {
+                    return [];
+                }
+
+                $activityLogs = app(\App\Services\ActivityLogService::class);
+
+                return \App\Models\EventLog::query()
                     ->with('createdBy')
                     ->latest('id')
                     ->limit(8)
@@ -143,12 +149,14 @@ class HandleInertiaRequests extends Middleware
                         'id' => $log->id,
                         'event_type' => $log->event_type,
                         'entity_type' => $log->entity_type,
+                        'activity' => $activityLogs->describe($log),
+                        'href' => $activityLogs->entityHref($log),
                         'created_at' => optional($log->created_at)?->toIso8601String(),
                         'created_at_label' => optional($log->created_at)?->locale('id')->diffForHumans(),
                         'actor' => optional($log->createdBy)->name ?? 'Sistem',
                     ])
-                    ->all()
-                : [],
+                    ->all();
+            },
         ];
     }
 

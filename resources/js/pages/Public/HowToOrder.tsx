@@ -55,20 +55,22 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
 
       {/* Baris Navigasi Breadcrumbs & Judul Halaman */}
       <section className="border-b border-border bg-surface">
-        <div className="container-page !px-4 sm:!px-5 md:!px-8 lg:!px-12 hidden py-2 sm:block">
-          <Breadcrumbs
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: "Cara pemesanan", href: null },
             ]}
           />
+          </div>
         </div>
-        <div className="container-page !px-4 sm:!px-5 md:!px-8 lg:!px-12 py-2.5 sm:py-3">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-9 shrink-0 items-center justify-center sm:hidden text-foreground hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -82,7 +84,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
 
       {/* Bagian 1: 4 Langkah Pemesanan (Mobile-optimized Horizontal Cards) */}
       <section className="py-4 sm:py-6 bg-surface">
-        <div className="container-page !px-4 sm:!px-5 md:!px-8 lg:!px-12">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           <ol className="grid gap-3 sm:gap-4 sm:grid-cols-2">
             {guide.steps.map((step, index) => (
               <li
@@ -92,7 +94,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
                 {/* Icon & Step Number */}
                 <div className="relative flex size-11 sm:size-13 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Icon name={step.icon} className="size-5 sm:size-6" aria-hidden="true" />
-                  <span className="tabular-nums absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-[#c20000] text-[10px] font-bold text-white shadow-xs">
+                  <span className="tabular-nums absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-xs">
                     {index + 1}
                   </span>
                 </div>
@@ -132,7 +134,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       {/* Bagian 2: Pembayaran, Pengiriman & Bantuan (Compact on Mobile) */}
       {guide.info_cards.length ? (
         <section className="border-t border-border bg-surface py-5 sm:py-8">
-          <div className="container-page !px-4 sm:!px-5 md:!px-8 lg:!px-12">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
             <div className="mx-auto mb-4 sm:mb-5 max-w-xl text-center">
               <SectionHeading
                 title="Pembayaran, Pengiriman & Bantuan"
@@ -164,7 +166,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       {/* Bagian 3: Catatan Ukuran Kustom */}
       {bodyHtml ? (
         <section className="border-t border-border bg-surface/50 py-3 sm:py-4">
-          <div className="container-page !px-4 sm:!px-5 md:!px-8 lg:!px-12">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
             <article
               className="cms-content mx-auto max-w-3xl rounded-xl border border-border/80 bg-background p-3.5 text-xs leading-relaxed text-muted-foreground sm:p-4"
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
@@ -173,7 +175,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       ) : (
         <section className="border-t border-border bg-surface/50 py-3 sm:py-4">
-          <div className="container-page !px-4 sm:!px-5 md:!px-8 lg:!px-12">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
             <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl border border-border/80 bg-background p-3.5 sm:p-4 text-xs leading-relaxed text-muted-foreground shadow-xs">
               <Icon name="info" weight="fill" className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
               <div>
@@ -187,8 +189,8 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       )}
 
       {/* Bagian 4: Call to Action (CTA) ??? Compact & Sleek Spacing */}
-      <section className="border-t border-border bg-[#141414] py-5 sm:py-6 text-white">
-        <div className="container-page !px-4 sm:!px-5 md:!px-8 lg:!px-12 flex flex-col items-center text-center">
+      <section className="border-t border-border bg-header-bg py-5 sm:py-6 text-white">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 flex flex-col items-center text-center">
           <SectionHeading
             className="text-white [&_h2]:text-white [&_p]:text-white/75"
             title="Siap Memesan?"
@@ -197,7 +199,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
           <div className="mt-3.5 sm:mt-4 flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-center">
             <Button
               asChild
-              className="h-9 sm:h-9.5 bg-[#c20000] text-white hover:bg-[#a80000] px-5 text-xs sm:text-sm font-semibold shadow-sm sm:min-w-[160px]"
+              className="h-9 sm:h-9.5 bg-primary text-white hover:bg-primary-hover px-5 text-xs sm:text-sm font-semibold shadow-sm sm:min-w-[160px]"
             >
               <Link href={routeUrl("catalog.index")}>Pilih Model Produk</Link>
             </Button>
@@ -208,12 +210,12 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
             >
               {whatsappUrl ? (
                 <a href={whatsappUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-                  <Icon name="whatsapp" className="h-4 w-4 text-[#25D366]" aria-hidden="true" />
+                  <Icon name="whatsapp" className="h-4 w-4 text-whatsapp" aria-hidden="true" />
                   <span>Konsultasi Sekarang</span>
                 </a>
               ) : (
                 <Link href={routeUrl("contact")} className="flex items-center justify-center gap-2">
-                  <Icon name="whatsapp" className="h-4 w-4 text-[#25D366]" aria-hidden="true" />
+                  <Icon name="whatsapp" className="h-4 w-4 text-whatsapp" aria-hidden="true" />
                   <span>Konsultasi Sekarang</span>
                 </Link>
               )}

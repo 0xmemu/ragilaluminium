@@ -1,4 +1,4 @@
-import { router, useForm } from "@inertiajs/react"
+import { useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { dispatchCartFly } from "@/lib/cart-events"
@@ -44,7 +44,7 @@ export function useProductPurchase({
 }: UseProductPurchaseOptions) {
   const title = productName(product.name, product.short_name)
   const axes = React.useMemo(
-    () => variantAxes(variants).filter((axis) => axis.name !== "Ukuran"),
+    () => variantAxes(variants),
     [variants],
   )
   const initialSelections = React.useMemo(
@@ -83,7 +83,7 @@ export function useProductPurchase({
         const pairOption = pairs.get(axisName)
         // Cocokkan juga dimensi
         if (axisName === "Ukuran") {
-          return (v.dimension_label ?? v.dimension_compact) === axisOption
+          return v.dimension_compact === axisOption || v.dimension_label === axisOption
         }
         return pairOption === axisOption
       })
@@ -104,6 +104,7 @@ export function useProductPurchase({
 
   const form = useForm({
     parent_sku: product.parent_sku,
+    intent: "cart",
     variant_sku: selectedVariant?.variant_sku ?? "",
     quantity: 1,
   })
@@ -183,9 +184,12 @@ export function useProductPurchase({
     if (selectedVariant.stock < 1) return
 
     setSubmitIntent("checkout")
+    form.setData("intent", "checkout")
     form.post(routeUrl("cart.add"), {
-      onSuccess: () => router.visit(routeUrl("checkout.index")),
-      onFinish: () => setSubmitIntent(null),
+      onFinish: () => {
+        setSubmitIntent(null)
+        form.setData("intent", "cart")
+      },
     })
   }
 

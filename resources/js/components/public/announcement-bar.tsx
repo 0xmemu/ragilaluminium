@@ -63,7 +63,7 @@ function AnnouncementLink({ announcement }: { announcement: Announcement }) {
 export function AnnouncementBar({ className }: { className?: string }) {
   const { announcements, announcementSlide } = usePage<SharedPageProps>().props
   const items = React.useMemo(() => announcements ?? [], [announcements])
-  const slide = announcementSlide ?? { enabled: false, interval: 5 }
+  const slide = announcementSlide ?? { enabled: false, interval: 2.5 }
   const [index, setIndex] = React.useState(0)
 
   const fingerprint = React.useMemo(
@@ -94,7 +94,7 @@ export function AnnouncementBar({ className }: { className?: string }) {
     if (media.matches) return
     const timer = window.setInterval(() => {
       setIndex((prev) => (prev + 1) % items.length)
-    }, Math.max(4000, slide.interval * 1000))
+    }, Math.max(2500, (slide.interval || 5) * 1000))
     return () => window.clearInterval(timer)
   }, [slide.enabled, slide.interval, items.length, dismissed, fingerprint])
 
@@ -111,7 +111,7 @@ export function AnnouncementBar({ className }: { className?: string }) {
 
   return (
     <div className={cn("relative bg-primary text-white", className)}>
-      <div className="mx-auto flex min-h-8 w-full max-w-[80rem] items-center justify-center px-9 py-1.5 sm:px-10">
+      <div className="mx-auto flex h-8 w-full max-w-[80rem] items-center justify-center px-9 sm:px-10">
         <AnnouncementLink announcement={active} />
       </div>
       <button

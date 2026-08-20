@@ -337,6 +337,7 @@ export interface ProductDetailData {
   product_category?: string | null
   product_model?: string | null
   design_variant?: string | null
+  sold_count?: number | null
   category_label?: string
   model_label?: string
   design_label?: string

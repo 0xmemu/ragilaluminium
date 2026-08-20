@@ -102,7 +102,7 @@ export function ProductGallery({
   }, [items])
 
   return (
-    <div className="group/gallery min-w-0" aria-label="Galeri produk">
+    <div className="group/gallery -mx-5 min-w-0 sm:-mx-10 lg:mx-0" aria-label="Galeri produk">
       {activeMedia ? (
         <>
           <div
@@ -113,15 +113,6 @@ export function ProductGallery({
             onTouchCancel={onGalleryTouchEnd}
             className="relative mx-auto aspect-square w-full overflow-hidden bg-white"
           >
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="absolute left-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:hidden"
-              aria-label="Kembali"
-            >
-              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-            </button>
-
             {/* Horizontal strip: semua gambar sejajar — swipe real-time */}
             <div
               className="flex h-full touch-pan-y"
@@ -174,7 +165,7 @@ export function ProductGallery({
                   onClick={() => moveGallery(-1)}
                   disabled={activeMediaIndex === 0}
                   aria-label="Lihat foto sebelumnya"
-                  className="absolute left-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#525252] text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-[#303030] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-left-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
+                  className="absolute left-2 top-1/2 z-10 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-left-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
                 >
                   <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
                 </button>
@@ -183,7 +174,7 @@ export function ProductGallery({
                   onClick={() => moveGallery(1)}
                   disabled={activeMediaIndex === items.length - 1}
                   aria-label="Lihat foto berikutnya"
-                  className="absolute right-2 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#525252] text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-[#303030] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-right-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
+                  className="absolute right-2 top-1/2 z-10 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-right-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
                 >
                   <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
                 </button>
@@ -193,10 +184,10 @@ export function ProductGallery({
 
           {items.length > 1 ? (
             <div
-              className="scrollbar-x mt-2 flex snap-x gap-1 overflow-x-auto px-0 pb-2"
+              className="mt-2 flex gap-2 overflow-x-auto px-4 pb-2"
               aria-label="Pilih foto produk"
             >
-              {items.map((item, index) => (
+              {items.slice(0, 4).map((item, index) => (
                 <button
                   type="button"
                   key={item.id}
@@ -204,9 +195,9 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative size-14 shrink-0 snap-start overflow-hidden border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:size-16",
+                    "relative size-16 lg:size-12 shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeMediaIndex === index
-                      ? "border-foreground"
+                      ? "border-primary"
                       : "border-transparent hover:border-border",
                   )}
                 >
@@ -218,6 +209,18 @@ export function ProductGallery({
                   />
                 </button>
               ))}
+              {/* Penanda foto lainnya: hanya jika foto >5 (slot 5 pas); klik lanjut ke foto ke-5 dst */}
+              {items.length > 5 ? (
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(5)}
+                  className="flex size-16 lg:size-12 shrink-0 cursor-pointer select-none flex-col items-center justify-center gap-0.5 self-center rounded-[3px] bg-black/30 !opacity-100 transition hover:bg-black/50"
+                >
+                  <span className="pointer-events-none text-base font-semibold leading-none text-muted-foreground">
+                    {items.length - 5}+
+                  </span>
+                </button>
+              ) : null}
             </div>
           ) : null}
 

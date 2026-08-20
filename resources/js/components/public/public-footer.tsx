@@ -73,8 +73,8 @@ export function PublicFooter({ className }: { className?: string }) {
   const showLegacySocial = !showPlatformStrip && socials.length > 0
 
   return (
-    <footer className={cn("border-t border-white/10 bg-[#1a1e1c] pt-12 text-white lg:pt-14", className)}>
-      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+    <footer className={cn("border-t border-white/10 bg-header-bg pt-12 text-white lg:pt-14", className)}>
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <div className="grid gap-10 border-b border-white/10 pb-10 sm:grid-cols-2 lg:grid-cols-12 lg:items-start lg:gap-8 lg:pb-12">
           <div className="sm:col-span-2 lg:col-span-3">
             <BrandWordmark compact variant="dark" />

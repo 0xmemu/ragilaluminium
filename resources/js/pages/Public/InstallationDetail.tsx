@@ -72,16 +72,18 @@ export default function InstallationDetail({
       <Head title={docTitle} />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs items={crumbs} />
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs items={crumbs} />
+          </div>
         </div>
-        <div className="container-page flex flex-col gap-3 py-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="container-page flex flex-col gap-3 py-2 sm:flex-row !px-2.5 md:!px-8 lg:!px-12 sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -108,10 +110,10 @@ export default function InstallationDetail({
       </section>
 
       <section className="pt-4 pb-4 sm:pt-6 sm:pb-6 lg:pt-6">
-        <div className="container-page">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           {active ? (
             <div className="mx-auto max-w-4xl">
-              <div className="relative border border-border bg-[#fafafa]">
+              <div className="relative border border-border bg-surface">
                 <button
                   type="button"
                   onClick={() => openLightbox(activeIndex)}
@@ -185,7 +187,7 @@ export default function InstallationDetail({
                         onClick={() => setActiveIndex(index)}
                         onDoubleClick={() => openLightbox(index)}
                         className={cn(
-                          "relative block size-16 overflow-hidden border-2 bg-[#fafafa] transition",
+                          "relative block size-16 overflow-hidden border-2 bg-surface transition",
                           index === activeIndex
                             ? "border-foreground"
                             : "border-transparent opacity-80 hover:opacity-100",

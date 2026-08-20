@@ -9,6 +9,7 @@ import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -106,6 +107,7 @@ export default function ModelProductsIndex({
       actions={undefined}
     >
       <Head title={`${title} | Admin`} />
+      <ManageProductsTabs active="models" />
 
       {reorderMode ? (
         <div className="mb-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
@@ -171,7 +173,7 @@ export default function ModelProductsIndex({
         </Select>
       </ListToolbar>
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      <section className="overflow-hidden">
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">

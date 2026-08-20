@@ -27,25 +27,21 @@ class WhatsAppCustomerConfirmTest extends TestCase
         ]);
     }
 
-    /** @param array<string, mixed> $payload */
-    private function postSignedMeta(array $payload): TestResponse
+    private function postBaileysMessage(string $chatId, string $body, string $id): TestResponse
     {
-        config(['services.whatsapp.app_secret' => 'meta-app-secret']);
-        $body = json_encode($payload, JSON_THROW_ON_ERROR);
+        config(['services.whatsapp.baileys.webhook_secret' => 'baileys-secret']);
 
-        return $this->call(
-            'POST',
-            '/webhook/whatsapp',
-            [],
-            [],
-            [],
-            [
-                'CONTENT_TYPE' => 'application/json',
-                'HTTP_ACCEPT' => 'application/json',
-                'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $body, 'meta-app-secret'),
-            ],
-            $body,
-        );
+        return $this->withHeader('X-Webhook-Secret', 'baileys-secret')
+            ->postJson('/webhook/whatsapp/baileys', [
+                'event' => 'message',
+                'session' => 'default',
+                'payload' => [
+                    'id' => $id,
+                    'from' => $chatId,
+                    'fromMe' => false,
+                    'body' => $body,
+                ],
+            ]);
     }
 
     public function test_button_reply_processes_cod_order(): void
@@ -82,30 +78,8 @@ class WhatsAppCustomerConfirmTest extends TestCase
             'content_payload' => ['variables' => []],
         ]);
 
-        $payload = [
-            'entry' => [[
-                'changes' => [[
-                    'value' => [
-                        'messages' => [[
-                            'from' => '6285711122233',
-                            'id' => 'wamid.button-confirm-1',
-                            'timestamp' => (string) time(),
-                            'type' => 'interactive',
-                            'interactive' => [
-                                'type' => 'button_reply',
-                                'button_reply' => [
-                                    'id' => 'confirm_order',
-                                    'title' => 'Oke, Proses Pesanan',
-                                ],
-                            ],
-                        ]],
-                        'statuses' => [],
-                    ],
-                ]],
-            ]],
-        ];
-
-        $this->postSignedMeta($payload)->assertOk();
+        $this->postBaileysMessage('6285711122233@c.us', 'Oke, Proses Pesanan', 'wamid.button-confirm-1')
+            ->assertOk();
 
         $order->refresh();
         $this->assertSame('processing', $order->order_status);
@@ -138,22 +112,8 @@ class WhatsAppCustomerConfirmTest extends TestCase
             'cod_flag' => false,
         ]);
 
-        $payload = [
-            'entry' => [[
-                'changes' => [[
-                    'value' => [
-                        'messages' => [[
-                            'from' => '6285799988877',
-                            'id' => 'wamid.text-ok-1',
-                            'type' => 'text',
-                            'text' => ['body' => 'Oke'],
-                        ]],
-                    ],
-                ]],
-            ]],
-        ];
-
-        $this->postSignedMeta($payload)->assertOk();
+        $this->postBaileysMessage('6285799988877@c.us', 'Oke', 'wamid.text-ok-1')
+            ->assertOk();
 
         $order->refresh();
         $this->assertSame('pending_payment', $order->order_status);

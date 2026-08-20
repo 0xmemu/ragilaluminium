@@ -4,7 +4,6 @@ import * as React from "react"
 import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
-import { Card } from "@/components/admin/ui/card"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -212,7 +211,7 @@ function ProductListRow({
       <TableCell className="tabular-nums">{formatNumber(product.stock_total)}</TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.variants_count)}</TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.sold_count)}</TableCell>
-      <TableCell className="sticky right-0 z-10 w-[1%] whitespace-nowrap bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">
+      <TableCell className="sticky right-0 z-10 w-[1%] whitespace-nowrap bg-background text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">
         <ProductRowActions
           product={product}
           busy={busy}
@@ -256,7 +255,7 @@ export default function ProductsIndex({
       if (key === "q" && !value.trim()) return
       next[key] = value
     })
-    router.get("/admin/products", next, { preserveState: true, replace: true })
+    router.get("/admin/kelola/produk", next, { preserveState: true, replace: true })
   }
 
   return (
@@ -365,7 +364,7 @@ export default function ProductsIndex({
           }
         />
       ) : (
-        <Card className="mt-4 overflow-hidden">
+        <div className="mt-4">
           <div className="overflow-x-auto">
             <Table className="min-w-[68rem]">
               <TableHeader>
@@ -379,7 +378,7 @@ export default function ProductsIndex({
                   <TableHead>Stok</TableHead>
                   <TableHead>Varian</TableHead>
                   <TableHead>Terjual</TableHead>
-                  <TableHead className="sticky right-0 z-10 bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">Aksi</TableHead>
+                  <TableHead className="sticky right-0 z-10 bg-background text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -394,7 +393,7 @@ export default function ProductsIndex({
               </TableBody>
             </Table>
           </div>
-        </Card>
+        </div>
       )}
 
       {pagination.last_page > 1 ? <Pagination pagination={pagination} /> : null}

@@ -30,7 +30,7 @@ export interface HowToOrderData {
 function SectionTitle({
   title,
   actionHref,
-  actionLabel = "Lihat Semua →",
+  actionLabel = "Lihat Semua",
   tone = "default",
 }: {
   title: string
@@ -57,10 +57,11 @@ function SectionTitle({
               "inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               onPrimary
                 ? "text-white/90 hover:text-white"
-                : "text-[#474747] hover:text-[#333333]",
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {actionLabel}
+            <span className="shrink-0">{actionLabel}</span>
+            <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
           </Link>
         ) : undefined
       }
@@ -73,7 +74,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
 
   return (
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
           title="Pilih Model Produk"
           actionHref={seeMoreHref}
@@ -97,11 +98,11 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
 }
 
 export function PalingBanyakDipesanSection({ products }: { products: ProductCardData[] }) {
-  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular`
+  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular&from=paling-banyak-dipesan`
 
   return (
     <section id="paling-banyak-dipesan" className="scroll-mt-20">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
           title="Paling banyak dipesan"
           actionHref={seeMoreHref}
@@ -281,7 +282,7 @@ export function CaraPesanSection({
 
   return (
     <section id="cara-pesan" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
           title={title}
           actionHref={routeUrl("cara-pemesanan")}
@@ -294,7 +295,7 @@ export function CaraPesanSection({
           onMouseLeave={() => setPaused(false)}
           onFocusCapture={() => setPaused(true)}
           onBlurCapture={() => setPaused(false)}
-          className="relative w-full overflow-hidden rounded-xl bg-foreground shadow-[0_2px_16px_rgba(10,0,0,0.12)] [touch-action:pan-y]"
+          className="relative w-full overflow-hidden rounded-xl bg-header-bg shadow-[0_2px_16px_rgba(10,0,0,0.12)] [touch-action:pan-y]"
         >
           <div
             className={cn(
@@ -313,7 +314,7 @@ export function CaraPesanSection({
               return (
                 <div
                   key={`${index}-${item.title}`}
-                  className="flex h-full w-full shrink-0 items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:w-1/3 lg:basis-1/3"
+                  className="flex h-full w-full shrink-0 items-center gap-3 bg-[#333333] px-4 sm:gap-4 sm:px-6 lg:w-1/3 lg:basis-1/3"
                 >
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white sm:size-10">
                     <Icon name={icon} className="size-4.5 sm:size-5" aria-hidden="true" />
@@ -346,8 +347,8 @@ export function CaraPesanSection({
                 >
                   <span
                     className={cn(
-                      "h-1 rounded-full transition-all duration-300",
-                      index === active ? "w-4 bg-white" : "w-1 bg-white/40 hover:bg-white/70",
+                      "h-1 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
+                      index === active ? "w-4 bg-white mix-blend-difference opacity-80" : "w-1 bg-white mix-blend-difference opacity-80",
                     )}
                   />
                 </button>
@@ -372,11 +373,11 @@ export function HasilPemasanganSection({
 
   return (
     <section id="hasil-pemasangan" className="scroll-mt-20">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           actionHref={seeMoreHref}
-          actionLabel="Lihat Semua →"
+          actionLabel="Lihat Semua"
         />
         {items.length ? (
           <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
@@ -400,11 +401,11 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
 
   return (
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
           title="Apa kata pelanggan kami"
           actionHref={seeMoreHref}
-          actionLabel="Lihat Semua →"
+          actionLabel="Lihat Semua"
         />
         {screenshots.length ? (
           <TestimonialCarousel
@@ -430,11 +431,11 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
           title="Ulasan pelanggan di website"
           actionHref={seeMoreHref}
-          actionLabel="Lihat Semua →"
+          actionLabel="Lihat Semua"
         />
         {testimonials.length ? (
           <TestimonialCarousel
@@ -488,7 +489,7 @@ export function ClosingCTASection() {
 
   return (
     <section id="closing-cta" className="scroll-mt-20">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <div className="flex flex-col items-center gap-1 rounded-xl bg-primary px-5 py-5 text-center shadow-sm sm:px-8">
           <p className="text-xs font-semibold tracking-tight text-primary-foreground/90 sm:text-sm">
             Butuh bantuan pilih jendela?
@@ -511,7 +512,7 @@ export function ClosingCTASection() {
 export function KamiBantuSection() {
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-surface">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-[10px]">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
           <p className="text-xs font-bold text-primary sm:text-sm">
             Masih Bingung?
@@ -528,13 +529,13 @@ export function KamiBantuSection() {
           />
         </div>
 
-        <div className="mx-auto max-w-3xl grid grid-cols-2 gap-2 sm:gap-4 lg:max-w-none">
+        <div className="mx-auto max-w-3xl grid grid-cols-2 gap-3 sm:gap-4 lg:max-w-none">
           {HELP_STEPS.map((item, index) => {
             const stepNo = String(index + 1).padStart(2, "0")
             return (
               <article
                 key={item.title}
-                className="flex flex-col rounded-xl border border-border/60 bg-[#F9FAFA] p-3 sm:p-4"
+                className="flex flex-col rounded-xl border border-border/60 bg-surface-muted p-3 sm:p-4"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-bold tracking-tight text-primary sm:text-base">

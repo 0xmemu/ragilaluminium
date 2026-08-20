@@ -3,7 +3,6 @@ import * as React from "react"
 
 import { rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
-import { Card } from "@/components/admin/ui/card"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -153,7 +152,7 @@ export default function PromotionsIndex({
           </Button>
         </div>
 
-        <Card className="overflow-hidden">
+        <div className="overflow-hidden">
           {rows.length === 0 ? (
             <EmptyState title="Belum ada kampanye" description="Buat kampanye pertama untuk mulai memberikan diskon." />
           ) : (
@@ -257,7 +256,7 @@ export default function PromotionsIndex({
             </Table>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </AdminLayout>
   )

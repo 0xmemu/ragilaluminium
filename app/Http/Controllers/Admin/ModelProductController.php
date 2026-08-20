@@ -91,6 +91,7 @@ class ModelProductController extends Controller
                 'product_model' => $modelProduct->product_model,
                 'image_url' => $modelProduct->image_url,
                 'description' => $modelProduct->description,
+                'keywords' => $modelProduct->keywords ?? [],
                 'menu_href' => $modelProduct->menu_href,
                 'type' => $modelProduct->type,
                 'status' => $modelProduct->status,
@@ -174,6 +175,8 @@ class ModelProductController extends Controller
             'product_model' => ['nullable', 'string', 'max:64'],
             'image_url' => ['nullable', 'string', 'max:2048'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'keywords' => ['nullable', 'array', 'max:6'],
+            'keywords.*' => ['nullable', 'string', 'max:64'],
             'menu_href' => ['nullable', 'string', 'max:2048'],
             'type' => ['required', Rule::in(CmsModelProduct::TYPES)],
             'status' => ['required', Rule::in(CmsModelProduct::STATUSES)],
@@ -189,6 +192,13 @@ class ModelProductController extends Controller
         $validated['menu_href'] = filled($validated['menu_href'] ?? null)
             ? trim((string) $validated['menu_href'])
             : null;
+        $validated['keywords'] = array_values(array_filter(
+            array_map(
+                fn ($row) => trim((string) $row),
+                is_array($validated['keywords'] ?? null) ? $validated['keywords'] : [],
+            ),
+            fn (string $row) => $row !== '',
+        )) ?: null;
         $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
 
         return $validated;

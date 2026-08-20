@@ -26,11 +26,23 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
   - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); untuk COD, omzet hanya diakui saat order mencapai completed (uang belum tertagih di status fulfillment); net dikurangi refund return ledger yang selesai. issue bukan retur.
 
 ### 3. Produk (Catalog)
-- **Daftar Produk** (Tipe: `Operational` & `Content`)
+Satu menu nav **Kelola Produk** (submenu inline, pola Ant Design) memayungi seluruh domain katalog:
+Produk | Kategori | Model Produk | Sub Model | Import | Teruskan Popularitas | Media Library | Riwayat Media.
+URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/categories`,
+`/admin/model-products`, `/admin/sub-models`, `/admin/variants`, `/admin/attributes`) redirect 301.
+
+- **Produk** (Tipe: `Operational` & `Content`) — `/admin/kelola/produk`
   - Daftar SKU Induk, status aktif/arsip.
   - Sub-view: Product Detail (Overview, Variants, Attributes, Media per produk).
   - Shortcut toolbar: Import, Media hub, Export CSV, Tambah Produk.
-- **Import** (Tipe: Operational) — di bawah grup nav **Produk**
+- **Kategori** (Tipe: Operational) — `/admin/kelola/kategori`
+  - CRUD kategori katalog (aktif/nonaktif).
+- **Model Produk** (Tipe: `Content/CMS` showcase katalog) — `/admin/kelola/model-produk`
+  - Showcase/kurasi model katalog (`cms_model_products`): list + stats, reorder, sync dari produk, CRUD, aktif/draft.
+  - Route: `admin.model-products.*` → `Admin/ModelProducts/{Index,Form}`. **Bukan** `admin.products.*` (katalog SKU).
+- **Sub Model** (Tipe: Operational) — `/admin/kelola/sub-model`
+  - CRUD sub model + urutan per model produk. Route: `admin.sub-models.*`.
+- **Import** (Tipe: Operational) — submenu Kelola Produk
   - Daftar job impor Shopee/Internal.
   - Sub-view: Job Detail (Summary, Statistik Bar, Failed Rows Table, Download Correction).
 - **Import Performance** (Tipe: Analytics) — BUKAN nav terpisah; dibuka dari halaman **Import** lewat toolbar Performa Import (Fase 13).
@@ -40,8 +52,8 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
   - Snapshot penjualan valid sumber menjadi seed target; penjualan target tetap dihitung sendiri.
   - Bisa dinonaktifkan dengan alasan; audit dan notifikasi ambang masuk ke Akun & Sistem.
   - Route: admin.products.popularity-boosts.*.
-- **Media Library** (Tipe: Operational) — global shared asset di bawah grup nav **Produk**.
-- **Riwayat Media** (Tipe: Operational) — histori pekerjaan media di bawah grup nav **Produk**
+- **Media Library** (Tipe: Operational) — global shared asset, submenu Kelola Produk.
+- **Riwayat Media** (Tipe: Operational) — histori pekerjaan media, submenu Kelola Produk.
 
 ### 4. Orders & Payments (Pesanan & Pembayaran)
 - **Orders** (Tipe: `Operational`)
@@ -68,9 +80,6 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Beranda Pembeli** (Tipe: `Content/CMS`)
   - Tata letak section beranda (urutan/aktif) + editor Sorotan Layanan & Cara Pesan. Banner → Promo Toko.
   - Route: `admin.beranda.*` → `Admin/Beranda/{Index,ServiceHighlightsForm,HowToOrderForm}`. Data: `cms_pages.beranda` JSON.
-- **Model Produk** (Tipe: `Content/CMS`)
-  - Showcase/kurasi model katalog (`cms_model_products`): list + stats, reorder, sync dari produk, CRUD, aktif/draft.
-  - Route: `admin.model-products.*` → `Admin/ModelProducts/{Index,Form}`. **Bukan** `admin.products.*` (katalog SKU).
 - **Cara Pemesanan** (Tipe: `Content/CMS`)
   - Editor panduan publik `/cara-pemesanan`: hero, langkah (+ checklist), kartu info, catatan HTML.
   - Route: `admin.cara-pemesanan.*` → `Admin/CaraPemesanan/Edit`. Data: `cms_pages.slug = cara-pemesanan`.

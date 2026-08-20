@@ -2,6 +2,7 @@ import { Link, useForm, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { QuantityControl } from "@/components/ui/quantity-control"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -125,32 +126,34 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
   const flashSaleBadge = item.flash_sale ? (
     <span className="inline-flex items-center gap-0.5">
       <Icon name="lightning" weight="fill" className="size-3 shrink-0 text-sale" aria-hidden />
-      <span className="text-[11px] font-extrabold italic tracking-tight text-sale">Flash Sale</span>
+      <span className="text-[11px] font-extrabold italic tracking-tight text-sale">FLASH SALE</span>
     </span>
   ) : null
 
   const priceBlock = (
     <div className="text-left">
-      {(discountBadge || flashSaleBadge) ? (
-        <div className="mb-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          {flashSaleBadge}
-          {discountBadge}
-        </div>
-      ) : null}
       {hasDiscount ? (
         <>
-          <p className="tabular-nums text-xs leading-4 text-muted-foreground line-through">
-            {formatCurrency(lineCompare)}
-          </p>
-          <p className="tabular-nums text-[13px] font-bold leading-4 text-sale">
-            {formatCurrency(lineTotal)}
-          </p>
-          <p className="mt-0.5 text-xs font-semibold leading-3 text-sale">
-            Hemat {formatCurrency(lineDiscount || lineCompare - lineTotal)}
-          </p>
+          {/* Satu baris: harga jual (kiri) · harga coret · label diskon */}
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <p className="tabular-nums text-[13px] font-bold leading-4 text-sale">
+              {formatCurrency(lineTotal)}
+            </p>
+            <p className="tabular-nums text-xs leading-4 text-muted-foreground line-through">
+              {formatCurrency(lineCompare)}
+            </p>
+            {discountBadge}
+          </div>
+          {/* Flash Sale satu baris dgn Hemat, paling kiri */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            {flashSaleBadge}
+            <p className="text-xs font-semibold leading-3 text-destructive/60">
+              Hemat {formatCurrency(lineDiscount || lineCompare - lineTotal)}
+            </p>
+          </div>
         </>
       ) : (
-        <p className="tabular-nums text-[13px] font-bold leading-4 text-foreground">
+        <p className="tabular-nums text-[13px] font-bold leading-4 text-sale">
           {formatCurrency(lineTotal)}
         </p>
       )}
@@ -158,83 +161,102 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
   )
 
   const quantityControls = (
-    <div className="flex items-center gap-1">
-      <QuantityControl
-        value={item.quantity}
-        onChange={updateQuantity}
-        max={typeof item.stock === "number" ? item.stock : undefined}
-        disabled={removeForm.processing}
-      />
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => removeForm.post(routeUrl("cart.remove"), { preserveScroll: true })}
-        disabled={removeForm.processing}
-        aria-label={`Hapus ${item.name}`}
-      >
-        <Icon name="x" className="size-3.5" aria-hidden="true" />
-      </Button>
+    <div className="flex items-center gap-2">
+      <div className="inline-flex items-center gap-1">
+        <button
+          type="button"
+          className="flex size-6 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => updateQuantity(Math.max(1, item.quantity - 1))}
+          disabled={removeForm.processing || item.quantity <= 1}
+          aria-label="Kurangi jumlah"
+        >
+          <Icon name="minus" className="size-3" aria-hidden="true" />
+        </button>
+        <span
+          className="flex h-6 min-w-[24px] items-center justify-center border border-border px-1 text-xs font-semibold tabular-nums"
+          aria-live="polite"
+          aria-label={`Jumlah: ${item.quantity}`}
+        >
+          {item.quantity}
+        </span>
+        <button
+          type="button"
+          className="flex size-6 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => updateQuantity(Math.min(typeof item.stock === "number" ? item.stock : Number.MAX_SAFE_INTEGER, item.quantity + 1))}
+          disabled={removeForm.processing || (typeof item.stock === "number" && item.quantity >= item.stock)}
+          aria-label="Tambah jumlah"
+        >
+          <Icon name="plus" className="size-3" aria-hidden="true" />
+        </button>
+      </div>
       {updateError ? <span role="alert" className="text-xs text-destructive">{updateError}</span> : null}
     </div>
   )
 
   return (
-    <article className="flex min-w-0 items-start gap-3 border-b border-border py-2.5 sm:gap-4 sm:py-3">
-      {selectable ? (
-        <label className="flex shrink-0 items-center self-center pt-0">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={onToggle}
-            className="size-4 cursor-pointer rounded border-border text-primary accent-primary focus:ring-1 focus:ring-primary/50"
+    <article className="flex min-w-0 flex-col gap-3 rounded-[5px] border border-border bg-white p-3">
+      {/* Baris atas: checkbox (mode pilih) di kiri, qty + X selalu di kanan */}
+      <div className={cn("flex shrink-0 items-center gap-3", selectable ? "justify-between" : "justify-end")}>
+        {selectable ? (
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={selected}
+            onClick={onToggle}
+            className={cn(
+              "flex size-[22px] shrink-0 items-center justify-center rounded-[3px] border transition",
+              selected
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-transparent hover:border-primary/60",
+            )}
             aria-label={`Pilih ${item.name}`}
-          />
-        </label>
-      ) : null}
-      <Link
-        href={routeUrl("product.show", { parent_sku: item.parent_sku })}
-        className="shrink-0 self-start"
-      >
-        <ResponsiveImage
-          src={item.image}
-          alt={item.name}
-          wrapperClassName="size-[4.5rem] rounded-md bg-muted sm:size-[5rem]"
-          className="object-cover p-0"
-        />
-      </Link>
+          >
+            <Icon name="check" className="size-3.5" aria-hidden="true" strokeWidth={3} />
+          </button>
+        ) : null}
+        <div className="flex shrink-0 items-center gap-3">
+          {quantityControls}
+          <button
+            type="button"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground transition hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => removeForm.post(routeUrl("cart.remove"), { preserveScroll: true })}
+            disabled={removeForm.processing}
+            aria-label={`Hapus ${item.name}`}
+          >
+            <Icon name="x" className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
 
-      <div className="min-w-0 flex-1">
+      {/* Baris utama: gambar + teks (gambar & nama sejajar di sini) */}
+      <div className="flex min-w-0 items-stretch gap-3 sm:gap-4">
         <Link
           href={routeUrl("product.show", { parent_sku: item.parent_sku })}
-          className="line-clamp-2 block break-words text-xs font-semibold leading-4 text-foreground hover:text-primary sm:text-[13px]"
+          className="shrink-0 self-start"
         >
-          {productName(item.name, item.short_name)}
+          <ResponsiveImage
+            src={item.image}
+            alt={item.name}
+            wrapperClassName="size-[75px] rounded-[5px] bg-muted"
+            className="object-cover p-0"
+          />
         </Link>
 
-        {/* Variants (left) | Price (right) */}
-        <div className="mt-1.5 grid grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4">
-          <dl className="min-w-0 space-y-0.5 text-xs text-muted-foreground">
-            {item.variation_1_option ? (
-              <div className="flex min-w-0 gap-1.5">
-                <dt className="shrink-0">{item.variation_1_name ?? "Pilihan"}:</dt>
-                <dd className="min-w-0 truncate font-semibold text-foreground">{item.variation_1_option}</dd>
-              </div>
-            ) : null}
-            {item.variation_2_option ? (
-              <div className="flex min-w-0 gap-1.5">
-                <dt className="shrink-0">{item.variation_2_name ?? "Pilihan"}:</dt>
-                <dd className="min-w-0 truncate font-semibold text-foreground">{item.variation_2_option}</dd>
-              </div>
-            ) : null}
-          </dl>
-          {priceBlock}
-        </div>
+        <div className="min-w-0 flex-1">
+          <Link
+            href={routeUrl("product.show", { parent_sku: item.parent_sku })}
+            className="line-clamp-2 block break-words text-[13px] font-semibold leading-4 text-foreground hover:text-primary"
+          >
+            {productName(item.name, item.short_name)}
+          </Link>
 
-        {/* Qty controls */}
-        <div className="mt-1.5 flex items-center gap-2">
-          {quantityControls}
-        </div>
+          <p className="mt-0.5 min-w-0 truncate text-xs text-muted-foreground">
+            {[item.variation_1_option, item.variation_2_option].filter(Boolean).join(" - ")}
+          </p>
 
+          {/* Harga paling atas, tepat di bawah pilihan variasi */}
+          <div className="mt-1 shrink-0">{priceBlock}</div>
+        </div>
       </div>
     </article>
   )

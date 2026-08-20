@@ -336,7 +336,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   return (
     <section id="promo" className="scroll-mt-20 bg-surface lg:pt-2" aria-label="Promo dan campaign">
       {/* Slider promo full-width: keluar dari container ber-padding, tanpa rounded. */}
-      <div className="container-page !px-5 md:!px-8 lg:!px-12 py-4">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-4">
         <div
           ref={surfaceRef}
           onMouseEnter={() => setPaused(true)}

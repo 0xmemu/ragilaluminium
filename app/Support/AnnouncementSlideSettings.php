@@ -18,8 +18,8 @@ class AnnouncementSlideSettings
     public const PAGE_SLUG = 'announcement-bar';
 
     public const DEFAULTS = [
-        'enabled' => false,
-        'interval' => 5,
+        'enabled' => true,
+        'interval' => 2.5,
     ];
 
     /**
@@ -32,7 +32,7 @@ class AnnouncementSlideSettings
 
         return [
             'enabled' => (bool) ($stored['enabled'] ?? self::DEFAULTS['enabled']),
-            'interval' => (int) ($stored['interval'] ?? self::DEFAULTS['interval']),
+            'interval' => (float) ($stored['interval'] ?? self::DEFAULTS['interval']),
         ];
     }
 

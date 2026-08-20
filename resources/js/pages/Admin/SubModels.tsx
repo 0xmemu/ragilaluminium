@@ -3,7 +3,6 @@ import * as React from "react"
 
 import { rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
-import { Card } from "@/components/admin/ui/card"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -15,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/admin/ui/table"
+import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
@@ -83,6 +83,7 @@ export default function SubModelsIndex({
   return (
     <AdminLayout title={title} description={description}>
       <Head title={title} />
+      <ManageProductsTabs active="subModels" />
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -112,7 +113,7 @@ export default function SubModelsIndex({
           </div>
         </div>
 
-        <Card>
+        <div>
           {rows.length === 0 ? (
             <EmptyState
               title="Belum ada sub model"
@@ -206,7 +207,7 @@ export default function SubModelsIndex({
               </TableBody>
             </Table>
           )}
-        </Card>
+        </div>
       </div>
     </AdminLayout>
   )

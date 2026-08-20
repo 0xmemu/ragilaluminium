@@ -8,11 +8,11 @@ import {
   FilterSidebarSection,
 } from "@/components/public/filter-sidebar"
 import { GalleryLightbox, toGalleryItems } from "@/components/public/gallery-lightbox"
-import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
+import { Radio } from "@/components/ui/radio"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
@@ -133,21 +133,23 @@ export default function Reviews({
         />
       )
     }
+    // Halaman ulasan = 1 kolom (list vertikal), bukan grid.
     return (
-      <ShowcaseCardGrid>
+      <ul className="flex flex-col gap-3">
         {items.map((testimonial) => {
           const itemIndex = galleryItems.findIndex((g) => g.src === testimonial.image_url)
           return (
-            <TestimonialCard
-              key={testimonial.id}
-              testimonial={testimonial}
-              compact
-              variant={variant}
-              onOpen={itemIndex >= 0 ? () => setLightboxIndex(itemIndex) : undefined}
-            />
+            <li key={testimonial.id} className="min-w-0">
+              <TestimonialCard
+                testimonial={testimonial}
+                compact
+                variant={variant}
+                onOpen={itemIndex >= 0 ? () => setLightboxIndex(itemIndex) : undefined}
+              />
+            </li>
           )
         })}
-      </ShowcaseCardGrid>
+      </ul>
     )
   }return (
     <PublicLayout>
@@ -156,21 +158,23 @@ export default function Reviews({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: heading, href: null },
             ]}
           />
+          </div>
         </div>
-        <div className="container-page flex flex-col gap-4 py-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="container-page flex flex-col gap-4 py-2 sm:flex-row !px-2.5 md:!px-8 lg:!px-12 sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -216,7 +220,7 @@ export default function Reviews({
         />
       </div>
 
-      <section className="container-page !px-5 md:!px-8 lg:!px-12">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <div className="grid min-w-0 gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
           <aside className="hidden lg:block">
             <div className="sticky top-28">
@@ -234,37 +238,31 @@ export default function Reviews({
                   <FilterSidebarSection title="Model Produk" subtitle={activeModelLabel}>
                     <fieldset className="space-y-1">
                       <legend className="sr-only">Filter model produk</legend>
-                      <label className="flex min-h-10 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent">
-                        <input
-                          type="radio"
-                          name="review-model"
-                          value=""
-                          checked={!activeModel}
-                          onChange={() => selectModel(null)}
-                          className="h-4 w-4 accent-primary"
-                        />
+                      <Radio
+                        name="review-model"
+                        value=""
+                        checked={!activeModel}
+                        onChange={() => selectModel(null)}
+                        className="min-h-10 px-1 text-sm hover:bg-accent"
+                      >
                         Semua Model
-                      </label>
+                      </Radio>
                       {modelNav.map((option) => (
-                        <label
+                        <Radio
                           key={option.value}
-                          className="flex min-h-10 cursor-pointer items-center gap-3 px-1 text-sm hover:bg-accent"
+                          name="review-model"
+                          value={option.value}
+                          checked={activeModel === option.value}
+                          onChange={() => selectModel(option.value)}
+                          className="min-h-10 px-1 text-sm hover:bg-accent"
                         >
-                          <input
-                            type="radio"
-                            name="review-model"
-                            value={option.value}
-                            checked={activeModel === option.value}
-                            onChange={() => selectModel(option.value)}
-                            className="h-4 w-4 accent-primary"
-                          />
                           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                             <span className="truncate">{option.label}</span>
                             <span className="tabular-nums text-xs text-muted-foreground">
                               {formatNumber(option.count)}
                             </span>
                           </span>
-                        </label>
+                        </Radio>
                       ))}
                     </fieldset>
                   </FilterSidebarSection>

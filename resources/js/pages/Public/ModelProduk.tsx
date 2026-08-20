@@ -2,6 +2,7 @@ import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { SortArrowsIcon } from "@/components/public/filter-berdasarkan-control"
+import { PageHeader } from "@/components/public/page-header"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import {
@@ -16,7 +17,6 @@ import { ModelCategoryCard } from "@/components/public/model-category-card"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import { focusSiteSearch } from "@/lib/site-search"
 import { cn } from "@/lib/utils"
 import type { ModelCardData } from "@/types"
 
@@ -44,15 +44,15 @@ function SortMenu({ value, onChange }: { value: string; onChange: (value: string
           aria-label="Urutkan model produk"
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md px-1 text-xs font-medium text-[#333333] transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md px-1 text-xs font-medium text-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <span className="truncate">{hasSelection ? selectedLabel : "Urutkan"}</span>
-          <SortArrowsIcon className="size-3.5 shrink-0" />
+          <SortArrowsIcon className="size-4 shrink-0" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-48 rounded-xl border border-[#DEDEDE] bg-surface p-2 shadow-[0_8px_28px_rgba(10,0,0,0.12)]"
+        className="w-48 rounded-xl border border-border bg-surface p-2 shadow-[0_8px_28px_rgba(10,0,0,0.12)]"
       >
         <DropdownMenuLabel className="px-2 pb-1.5 pt-0.5">Urutkan</DropdownMenuLabel>
         {SORT_OPTIONS.map((option) => {
@@ -115,7 +115,7 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
           <Breadcrumbs
             items={[
               { label: "Home", href: routeUrl("home") },
@@ -123,32 +123,11 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
             ]}
           />
         </div>
-      </section>
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+          <PageHeader title="Semua Model Produk" container={false} />
 
-      <section className="bg-white">
-        <div className="container-page">
-          <div className="flex items-center gap-2 border-b border-[#dee3e0] pt-3 pb-2 sm:pt-5 sm:pb-3">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
-              aria-label="Kembali"
-            >
-              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-            </button>
-            <h1 className="text-base font-bold tracking-tight text-[#333333]">Semua Model Produk</h1>
-            <button
-              type="button"
-              onClick={focusSiteSearch}
-              className="-mr-2 ml-auto flex size-11 shrink-0 items-center justify-center rounded-md transition hover:bg-muted/50 sm:-mr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label="Cari produk"
-            >
-              <Icon name="search" className="size-5" aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 pb-3 pt-2.5 sm:pb-4">
-            <p className="text-xs text-[#666666] sm:text-sm">
+          <div className="flex items-center justify-between gap-4 pt-2 pb-1.5 sm:pt-2.5 sm:pb-2">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               {formatNumber(totalCount)} model produk ditemukan
             </p>
             <SortMenu value={sort} onChange={selectSort} />

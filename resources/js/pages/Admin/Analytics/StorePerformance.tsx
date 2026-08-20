@@ -18,6 +18,7 @@ interface Kpi {
   previous: number
   change_percent: number | null
   format: "currency" | "number" | "percent" | "hours" | "days"
+  detail?: string | null
 }
 
 interface Section {
@@ -311,6 +312,9 @@ export default function StorePerformance({
                 >
                   <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">{kpi.label}</p>
                   <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{formatKpiValue(kpi)}</p>
+                  {kpi.detail ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">{kpi.detail}</p>
+                  ) : null}
                   <p
                     className={cn(
                       "mt-2 text-xs font-semibold",

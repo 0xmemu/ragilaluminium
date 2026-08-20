@@ -187,36 +187,36 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/branding', [AdminPageController::class, 'updateBranding'])->name('pages.branding');
 
     // Catalog - Products
-    Route::get('products/export', [AdminProductController::class, 'export'])->name('products.export');
+    Route::get('kelola/produk/export', [AdminProductController::class, 'export'])->name('products.export');
     // Keep this literal path before the resource {product} route below.
-    Route::get('products/popularity-boosts', [ProductPopularityBoostController::class, 'index'])->name('products.popularity-boosts.index');
-    Route::post('products/popularity-boosts', [ProductPopularityBoostController::class, 'store'])->name('products.popularity-boosts.store');
-    Route::resource('products', AdminProductController::class)->except(['destroy']);
-    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
-    Route::get('categories/create', [CategoryController::class, 'create'])->name('categories.create');
-    Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
-    Route::get('categories/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
-    Route::put('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
-    Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-    Route::post('products/{product}/archive', [AdminProductController::class, 'archive'])->name('products.archive');
-    Route::post('products/{product}/unarchive', [AdminProductController::class, 'unarchive'])->name('products.unarchive');
-    Route::post('products/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
-    Route::post('products/{product}/duplicate', [AdminProductController::class, 'duplicate'])->name('products.duplicate');
-    Route::post('products/popularity-boosts/{boost}/disable', [ProductPopularityBoostController::class, 'disable'])->name('products.popularity-boosts.disable');
-    Route::post('products/popularity-boosts/{boost}/enable', [ProductPopularityBoostController::class, 'enable'])->name('products.popularity-boosts.enable');
+    Route::get('kelola/produk/popularity-boosts', [ProductPopularityBoostController::class, 'index'])->name('products.popularity-boosts.index');
+    Route::post('kelola/produk/popularity-boosts', [ProductPopularityBoostController::class, 'store'])->name('products.popularity-boosts.store');
+    Route::resource('kelola/produk', AdminProductController::class)->except(['destroy'])->names('products');
+    Route::get('kelola/kategori', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('kelola/kategori/create', [CategoryController::class, 'create'])->name('categories.create');
+    Route::post('kelola/kategori', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('kelola/kategori/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+    Route::put('kelola/kategori/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('kelola/kategori/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::post('kelola/produk/{product}/archive', [AdminProductController::class, 'archive'])->name('products.archive');
+    Route::post('kelola/produk/{product}/unarchive', [AdminProductController::class, 'unarchive'])->name('products.unarchive');
+    Route::post('kelola/produk/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
+    Route::post('kelola/produk/{product}/duplicate', [AdminProductController::class, 'duplicate'])->name('products.duplicate');
+    Route::post('kelola/produk/popularity-boosts/{boost}/disable', [ProductPopularityBoostController::class, 'disable'])->name('products.popularity-boosts.disable');
+    Route::post('kelola/produk/popularity-boosts/{boost}/enable', [ProductPopularityBoostController::class, 'enable'])->name('products.popularity-boosts.enable');
 
     // Variants
-    Route::get('products/{product}/variants', [ProductVariantController::class, 'index'])->name('products.variants.index');
-    Route::post('products/{product}/variants', [ProductVariantController::class, 'store'])->name('products.variants.store');
-    Route::post('products/{product}/variants/bulk', [ProductVariantController::class, 'bulkStore'])->name('products.variants.bulk');
-    Route::get('variants/{variant}/edit', [ProductVariantController::class, 'edit'])->name('variants.edit');
-    Route::put('variants/{variant}', [ProductVariantController::class, 'update'])->name('variants.update');
-    Route::post('variants/{variant}/archive', [ProductVariantController::class, 'archive'])->name('variants.archive');
+    Route::get('kelola/produk/{product}/variants', [ProductVariantController::class, 'index'])->name('products.variants.index');
+    Route::post('kelola/produk/{product}/variants', [ProductVariantController::class, 'store'])->name('products.variants.store');
+    Route::post('kelola/produk/{product}/variants/bulk', [ProductVariantController::class, 'bulkStore'])->name('products.variants.bulk');
+    Route::get('kelola/varian/{variant}/edit', [ProductVariantController::class, 'edit'])->name('variants.edit');
+    Route::put('kelola/varian/{variant}', [ProductVariantController::class, 'update'])->name('variants.update');
+    Route::post('kelola/varian/{variant}/archive', [ProductVariantController::class, 'archive'])->name('variants.archive');
 
     // Attributes
-    Route::get('products/{product}/attributes', [ProductAttributeController::class, 'index'])->name('products.attributes.index');
-    Route::post('products/{product}/attributes', [ProductAttributeController::class, 'store'])->name('products.attributes.store');
-    Route::put('attributes/{attribute}', [ProductAttributeController::class, 'update'])->name('attributes.update');
+    Route::get('kelola/produk/{product}/attributes', [ProductAttributeController::class, 'index'])->name('products.attributes.index');
+    Route::post('kelola/produk/{product}/attributes', [ProductAttributeController::class, 'store'])->name('products.attributes.store');
+    Route::put('kelola/atribut/{attribute}', [ProductAttributeController::class, 'update'])->name('attributes.update');
 
     // Media (upload langsung browser -> R2 via presigned PUT + finalize)
     Route::post('media/presign', [MediaUploadController::class, 'presign'])->name('media.presign');
@@ -230,9 +230,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('media/logs/prune', [ProductMediaController::class, 'pruneLogs'])->name('media.logs.prune');
     Route::get('media/status', [ProductMediaController::class, 'status'])->name('media.status');
     Route::get('media', [ProductMediaController::class, 'index'])->name('media.index');
-    Route::get('products/{product}/media', [ProductMediaController::class, 'byProduct'])->name('products.media.byProduct');
-    Route::post('products/{product}/media', [ProductMediaController::class, 'store'])->name('products.media.store');
-    Route::post('products/{product}/media/bulk', [ProductMediaController::class, 'bulkProductMedia'])->name('products.media.bulk');
+    Route::get('kelola/produk/{product}/media', [ProductMediaController::class, 'byProduct'])->name('products.media.byProduct');
+    Route::post('kelola/produk/{product}/media', [ProductMediaController::class, 'store'])->name('products.media.store');
+    Route::post('kelola/produk/{product}/media/bulk', [ProductMediaController::class, 'bulkProductMedia'])->name('products.media.bulk');
     Route::put('media/{media}', [ProductMediaController::class, 'update'])->name('media.update');
     Route::post('media/{media}/set-main', [ProductMediaController::class, 'setMain'])->name('media.set-main');
     Route::post('media/{media}/archive', [ProductMediaController::class, 'archive'])->name('media.archive');
@@ -380,13 +380,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('beranda/how-to-order', [BerandaController::class, 'editHowToOrder'])->name('beranda.how-to-order.edit');
     Route::put('beranda/how-to-order', [BerandaController::class, 'updateHowToOrder'])->name('beranda.how-to-order.update');
 
-    Route::get('sub-models', [SubModelController::class, 'index'])->name('sub-models.index');
-    Route::get('sub-models/create', [SubModelController::class, 'create'])->name('sub-models.create');
-    Route::post('sub-models', [SubModelController::class, 'store'])->name('sub-models.store');
-    Route::get('sub-models/{subModel}/edit', [SubModelController::class, 'edit'])->name('sub-models.edit');
-    Route::put('sub-models/{subModel}', [SubModelController::class, 'update'])->name('sub-models.update');
-    Route::post('sub-models/{subModel}/toggle', [SubModelController::class, 'toggle'])->name('sub-models.toggle');
-    Route::post('sub-models/reorder', [SubModelController::class, 'reorder'])->name('sub-models.reorder');
+    Route::get('kelola/sub-model', [SubModelController::class, 'index'])->name('sub-models.index');
+    Route::get('kelola/sub-model/create', [SubModelController::class, 'create'])->name('sub-models.create');
+    Route::post('kelola/sub-model', [SubModelController::class, 'store'])->name('sub-models.store');
+    Route::get('kelola/sub-model/{subModel}/edit', [SubModelController::class, 'edit'])->name('sub-models.edit');
+    Route::put('kelola/sub-model/{subModel}', [SubModelController::class, 'update'])->name('sub-models.update');
+    Route::post('kelola/sub-model/{subModel}/toggle', [SubModelController::class, 'toggle'])->name('sub-models.toggle');
+    Route::post('kelola/sub-model/reorder', [SubModelController::class, 'reorder'])->name('sub-models.reorder');
     Route::get('promotions', [PromotionController::class, 'index'])->name('promotions.index');
     Route::get('promotions/create', [PromotionController::class, 'create'])->name('promotions.create');
     Route::post('promotions', [PromotionController::class, 'store'])->name('promotions.store');
@@ -396,15 +396,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('promotions/{promotion}/end', [PromotionController::class, 'end'])->name('promotions.end');
     Route::post('promotions/{promotion}/activate', [PromotionController::class, 'activate'])->name('promotions.activate');
     Route::post('promotions/{promotion}/impact', [PromotionController::class, 'impact'])->name('promotions.impact');
-    Route::get('model-products', [ModelProductController::class, 'index'])->name('model-products.index');
-    Route::get('model-products/create', [ModelProductController::class, 'create'])->name('model-products.create');
-    Route::post('model-products', [ModelProductController::class, 'store'])->name('model-products.store');
-    Route::post('model-products/sync', [ModelProductController::class, 'sync'])->name('model-products.sync');
-    Route::put('model-products/reorder', [ModelProductController::class, 'reorder'])->name('model-products.reorder');
-    Route::get('model-products/{modelProduct}/edit', [ModelProductController::class, 'edit'])->name('model-products.edit');
-    Route::put('model-products/{modelProduct}', [ModelProductController::class, 'update'])->name('model-products.update');
-    Route::post('model-products/{modelProduct}/activate', [ModelProductController::class, 'activate'])->name('model-products.activate');
-    Route::post('model-products/{modelProduct}/deactivate', [ModelProductController::class, 'deactivate'])->name('model-products.deactivate');
+    Route::get('kelola/model-produk', [ModelProductController::class, 'index'])->name('model-products.index');
+    Route::get('kelola/model-produk/create', [ModelProductController::class, 'create'])->name('model-products.create');
+    Route::post('kelola/model-produk', [ModelProductController::class, 'store'])->name('model-products.store');
+    Route::post('kelola/model-produk/sync', [ModelProductController::class, 'sync'])->name('model-products.sync');
+    Route::put('kelola/model-produk/reorder', [ModelProductController::class, 'reorder'])->name('model-products.reorder');
+    Route::get('kelola/model-produk/{modelProduct}/edit', [ModelProductController::class, 'edit'])->name('model-products.edit');
+    Route::put('kelola/model-produk/{modelProduct}', [ModelProductController::class, 'update'])->name('model-products.update');
+    Route::post('kelola/model-produk/{modelProduct}/activate', [ModelProductController::class, 'activate'])->name('model-products.activate');
+    Route::post('kelola/model-produk/{modelProduct}/deactivate', [ModelProductController::class, 'deactivate'])->name('model-products.deactivate');
 
     Route::get('cara-pemesanan', [CaraPemesananController::class, 'edit'])->name('cara-pemesanan.edit');
     Route::put('cara-pemesanan', [CaraPemesananController::class, 'update'])->name('cara-pemesanan.update');
@@ -484,6 +484,20 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
 
+    // Redirect 301: URL lama -> /admin/kelola/* (restruktur sitemap admin 2026-08-20)
+    Route::redirect('products', 'kelola/produk')->name('products.legacy-redirect');
+    Route::redirect('products/{any}', 'kelola/produk/{any}')->where('any', '.*')->name('products.legacy-redirect-any');
+    Route::redirect('categories', 'kelola/kategori')->name('categories.legacy-redirect');
+    Route::redirect('categories/{any}', 'kelola/kategori/{any}')->where('any', '.*')->name('categories.legacy-redirect-any');
+    Route::redirect('model-products', 'kelola/model-produk')->name('model-products.legacy-redirect');
+    Route::redirect('model-products/{any}', 'kelola/model-produk/{any}')->where('any', '.*')->name('model-products.legacy-redirect-any');
+    Route::redirect('sub-models', 'kelola/sub-model')->name('sub-models.legacy-redirect');
+    Route::redirect('sub-models/{any}', 'kelola/sub-model/{any}')->where('any', '.*')->name('sub-models.legacy-redirect-any');
+    Route::redirect('variants', 'kelola/varian')->name('variants.legacy-redirect');
+    Route::redirect('variants/{any}', 'kelola/varian/{any}')->where('any', '.*')->name('variants.legacy-redirect-any');
+    Route::redirect('attributes', 'kelola/atribut')->name('attributes.legacy-redirect');
+    Route::redirect('attributes/{any}', 'kelola/atribut/{any}')->where('any', '.*')->name('attributes.legacy-redirect-any');
+
     // Catch-all: URL admin yang tidak dikenal -> abort 404 agar exceptions->respond
     // merender Admin/Error. Middleware auth+admin tetap berjalan (shared props lengkap,
     // admin yang belum login diarahkan ke /login) sehingga tidak ada error page polos
@@ -498,8 +512,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 */
 
 Route::middleware('throttle:120,1')->group(function () {
-    Route::get('/webhook/whatsapp', [WhatsAppController::class, 'verify'])->name('webhook.whatsapp.verify');
-    Route::post('/webhook/whatsapp', [WhatsAppController::class, 'handle'])->name('webhook.whatsapp.handle');
 Route::post('/webhook/whatsapp/baileys', [WhatsAppController::class, 'handleBaileys'])->name('webhook.whatsapp.baileys');
     Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])->name('webhook.shipping.jnt');
 });

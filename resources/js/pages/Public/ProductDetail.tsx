@@ -1,11 +1,13 @@
-import { Head } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { ProductBuyBox } from "@/components/public/product-buy-box"
+import { ShareActionButton } from "@/components/public/share-action-button"
 import { ProductGallery } from "@/components/public/product-gallery"
 import { ProductInfoSections } from "@/components/public/product-info-sections"
 import { ProductRelatedSection } from "@/components/public/product-related-section"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { Icon } from "@/components/shared/icon"
 import { useProductPurchase } from "@/hooks/use-product-purchase"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
@@ -74,6 +76,16 @@ export default function ProductDetail({
   // Media yang sedang dilihat di galeri — dipakai gambar "produk terbang" saat add-to-cart.
   const [activeMedia, setActiveMedia] = React.useState<ProductMedia | null>(variantMedia[0] ?? null)
 
+  const handlePdpBack = React.useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back()
+    } else {
+      router.visit(routeUrl("catalog.index"))
+    }
+  }, [])
+
+
+
   return (
     <PublicLayout>
       <Head title={title}>
@@ -101,8 +113,9 @@ export default function ProductDetail({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               ...(product.model_href && product.model_label
@@ -111,10 +124,23 @@ export default function ProductDetail({
               { label: title, href: null },
             ]}
           />
+          </div>
         </div>
       </section>
 
-      <section className="container-page pb-4 pt-4 lg:pb-6 sm:pt-0 lg:pt-6">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 flex h-11 items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.08)] lg:hidden">
+          <button
+            type="button"
+            onClick={handlePdpBack}
+            className="-ml-2 inline-flex size-11 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Kembali"
+          >
+            <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+          </button>
+          <ShareActionButton title={title} url={shareUrl} />
+      </div>
+
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-4 pt-0 lg:pt-10 lg:pb-10">
         <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
           <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} />
 

@@ -3,6 +3,7 @@ import { Lightning } from "@phosphor-icons/react"
 import * as React from "react"
 
 import { ProductCard } from "@/components/public/product-card"
+import { MobileEndActionReveal, useEndActionReveal } from "@/components/public/home-carousels"
 import { Icon } from "@/components/shared/icon"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -106,7 +107,7 @@ export function FlashSaleNavCountdown({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-baseline gap-1.5 font-semibold italic tabular-nums tracking-tight text-[#FFB020]/50",
+        "inline-flex shrink-0 items-baseline gap-1.5 font-semibold italic tabular-nums tracking-tight text-warning/50",
         className,
       )}
       aria-live="polite"
@@ -259,7 +260,7 @@ export function FlashSaleRedBanner({
     <div className="bg-primary text-white">
       <div
         className={cn(
-          "container-page flex items-center gap-3 sm:gap-6",
+          "container-page !px-2.5 md:!px-8 lg:!px-12 flex items-center gap-3 sm:gap-6",
           compact ? "py-3.5 sm:py-4" : "py-4 sm:py-5",
         )}
       >
@@ -268,11 +269,11 @@ export function FlashSaleRedBanner({
           <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
             <h1
               className={cn(
-                "min-w-0 font-display font-extrabold italic leading-none tracking-tight",
+                "flash-sale-headline min-w-0 font-display font-extrabold italic leading-none tracking-tight",
                 compact ? "text-xl sm:text-3xl" : "text-[1.65rem] sm:text-3xl lg:text-4xl",
               )}
             >
-              Flash Sale
+              FLASH SALE
             </h1>
             {countdownSeconds !== null ? (
               <FlashSaleCountdownClock
@@ -322,7 +323,7 @@ export function FlashSaleHero({
 
   return (
     <section className="bg-white">
-      <div className="container-page !px-5 md:!px-8 lg:!px-12">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <Breadcrumbs
           items={[
             { label: "Home", href: routeUrl("home") },
@@ -693,7 +694,7 @@ export function FlashSaleListingToolbar({
 
 /** Carousel styles for flash sale strip — same pattern as Home/ProductCardCarousel. */
 const flashCarouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
 const flashCarouselCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
@@ -781,6 +782,7 @@ export function PromoFlashSaleSection({
   const resolved = useFlashSalePeriod(period)
   const items = products.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useFlashCarousel(items.length)
+  const reveal = useEndActionReveal(trackRef)
 
   if (!resolved?.live || !items.length) {
     return null
@@ -790,9 +792,21 @@ export function PromoFlashSaleSection({
     <section className="bg-white">
       <FlashSaleRedBanner period={resolved} compact />
 
-      <div className="container-page pb-6 lg:pb-8">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-6 lg:pb-8">
         <div className="relative mt-0 px-1">
-          <div ref={trackRef} id={trackId} className={flashCarouselTrackClass}>
+          <div
+            ref={trackRef}
+            id={trackId}
+            className={flashCarouselTrackClass}
+            style={{
+              transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+              transition: reveal.pull ? "none" : "transform 360ms ease-out",
+            }}
+            onPointerDown={reveal.onPointerDown}
+            onPointerMove={reveal.onPointerMove}
+            onPointerUp={reveal.onPointerUp}
+            onPointerCancel={reveal.onPointerUp}
+          >
             {items.map((product, index) => (
               <div key={product.id} className={flashCarouselCardClass}>
                 <ProductCard
@@ -802,21 +816,15 @@ export function PromoFlashSaleSection({
                 />
               </div>
             ))}
-            <div className="flex w-[4.75rem] shrink-0 snap-end items-center justify-center self-stretch px-0.5 md:hidden sm:w-20">
-              <Link
-                href={routeUrl("catalog.flash-sale")}
-                className="inline-flex flex-col items-center justify-center gap-1 text-[#474747] transition hover:text-[#333333] active:scale-95"
-                aria-label="Lihat Semua"
-              >
-                <span className="inline-flex size-11 items-center justify-center rounded-full border border-[#474747]/40 bg-white text-[#474747] shadow-sm transition hover:border-[#474747] sm:size-12">
-                  <Icon name="arrow-right" className="size-5 sm:size-6" weight="bold" aria-hidden="true" />
-                </span>
-                <span className="max-w-full text-center text-xs font-semibold leading-tight tracking-tight">
-                  Lihat Semua
-                </span>
-              </Link>
-            </div>
+
           </div>
+          {items.length > 0 ? (
+            <MobileEndActionReveal
+              href={routeUrl("catalog.flash-sale")}
+              pull={reveal.pull}
+              revealed={reveal.revealed}
+            />
+          ) : null}
           <FlashCarouselNavButton
             trackId={trackId}
             side="left"

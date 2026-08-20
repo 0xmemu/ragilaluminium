@@ -315,8 +315,8 @@ export function PublicHeader() {
 
   return (
     <>
-    <header className="sticky top-0 z-header border-b border-white/10 bg-[#1a1e1c] text-background">
-      <div className="container-page relative flex h-14 items-center gap-1.5 py-0 md:min-h-14 md:gap-3 md:py-2 !px-5 md:!px-8 lg:!px-12">
+    <header className="sticky top-0 z-header border-b border-white/10 bg-header-bg text-background shadow-[0_2px_16px_rgba(0,0,0,0.22)]">
+      <div className="container-page relative flex h-14 items-center gap-1.5 py-0 md:min-h-14 md:gap-3 md:py-2 !px-2.5 md:!px-8 lg:!px-12">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
             <button
@@ -597,7 +597,7 @@ export function PublicHeader() {
               )}
               aria-hidden={!cartPreviewOpen}
             >
-              <div className="border border-[#dfdfdf] bg-white shadow-[0_8px_24px_rgba(10,0,0,0.16)]">
+              <div className="border border-border bg-white shadow-[0_8px_24px_rgba(10,0,0,0.16)]">
                 {previewItems.length > 0 ? (
                   <>
                     <div className="flex min-h-[72px] items-center justify-between bg-primary px-3 py-6 text-white">
@@ -705,8 +705,8 @@ export function PublicHeader() {
     </header>
 
     {desktopItems.length ? (
-      <nav className="hidden border-b border-white/10 bg-[#1a1e1c] text-background md:block" aria-label="Navigasi utama">
-        <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10 !px-5 md:!px-8 lg:!px-12">
+      <nav className="hidden border-b border-white/10 bg-header-bg text-background md:block" aria-label="Navigasi utama">
+        <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10 !px-2.5 md:!px-8 lg:!px-12">
           {desktopItems.map((item) => {
             const listingActive =
               isRouteActive(["catalog.all", "catalog.category", "catalog.design", "product.show"]) ||
@@ -738,7 +738,7 @@ export function PublicHeader() {
                       )
                     : cn(
                         "hover:text-background",
-                        active ? "text-[#ff8a8a]" : "text-background/75",
+                        active ? "text-primary/60" : "text-background/75",
                       ),
                 )}
                 aria-current={active ? "page" : undefined}

@@ -56,7 +56,7 @@ export function SortOptionRows({
   return (
     <ul
       className={cn(
-        "overflow-hidden rounded-xl border border-[#DEDEDE] bg-surface divide-y divide-[#ECECEC]",
+        "overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border",
         className,
       )}
       role="group"
@@ -127,7 +127,7 @@ export function FilterBerdasarkanControl({
           className={cn(
             plain
               ? "inline-flex min-h-11 max-w-full items-center gap-1 rounded-md px-0.5 text-xs font-semibold text-foreground sm:text-sm transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              : "inline-flex min-h-11 max-w-full items-stretch rounded-lg border border-[#DEDEDE] bg-surface transition hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              : "inline-flex min-h-11 max-w-full items-stretch rounded-lg border border-border bg-surface transition hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             !plain && open && "border-foreground/25 shadow-soft",
             className,
           )}
@@ -153,7 +153,7 @@ export function FilterBerdasarkanControl({
       <DropdownMenuContent
         align="end"
         sideOffset={10}
-        className="w-[13.75rem] rounded-xl border border-[#DEDEDE] bg-surface p-2 shadow-[0_8px_28px_rgba(10,0,0,0.12)]"
+        className="w-[13.75rem] rounded-xl border border-border bg-surface p-2 shadow-[0_8px_28px_rgba(10,0,0,0.12)]"
       >
         <p className="px-2 pb-1.5 pt-0.5 text-xs font-bold tracking-tight text-muted-foreground">
           {menuLabel}

@@ -210,7 +210,7 @@ function RichSolutionPanel({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-semibold text-[#25D366] underline-offset-2 hover:underline"
+                  className="font-semibold text-whatsapp underline-offset-2 hover:underline"
                 >
                   WhatsApp
                 </a>
@@ -255,20 +255,22 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden py-2 sm:block">
-          <Breadcrumbs
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-3">
+                        <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
               { label: "Masalah & solusi", href: null },
             ]}
           />
+          </div>
         </div>
-        <div className="container-page py-2">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center sm:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -281,7 +283,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       </section>
 
       <section>
-        <div className="container-page !px-5 md:!px-8 lg:!px-12">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           {items.length ? (
             <ol className="mx-auto grid max-w-3xl gap-3">
               {items.map((item, index) => {
