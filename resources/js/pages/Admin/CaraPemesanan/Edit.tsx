@@ -122,7 +122,7 @@ export default function CaraPemesananEdit({
         <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="cp-title" label="Judul CMS" required error={form.errors.title}>
+            <Field id="cmspage-title" label="Judul CMS" required error={form.errors.title}>
               <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
             </Field>
             <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
@@ -134,10 +134,10 @@ export default function CaraPemesananEdit({
               />
               Terbitkan halaman
             </label>
-            <Field id="cp-heading" label="Judul hero" required error={form.errors.heading} className="sm:col-span-2">
+            <Field id="cmspage-heading" label="Judul hero" required error={form.errors.heading} className="sm:col-span-2">
               <Input value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
             </Field>
-            <Field id="cp-subtitle" label="Subjudul hero" error={form.errors.subtitle} className="sm:col-span-2">
+            <Field id="cmspage-subtitle" label="Subjudul hero" error={form.errors.subtitle} className="sm:col-span-2">
               <Textarea
                 rows={2}
                 value={form.data.subtitle}

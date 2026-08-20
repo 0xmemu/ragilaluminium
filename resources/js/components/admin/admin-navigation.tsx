@@ -10,7 +10,7 @@ import type { SharedPageProps } from "@/types"
 interface AdminNavItemData {
   label: string
   route: string
-  params?: Record<string, string | number>
+  params?: Record<string, string | number | boolean | null>
   icon?: string
   active?: string[]
   /** Filter tambahan berbasis query string (mis. type=flash_sale pada route yang sama). */
