@@ -180,7 +180,7 @@ ready to receive real orders.
 
 ### Sessions, cache, and queue state
 
-- `[~]` Sessions are database-backed by decision (cart 5 days,
+- `[x]` Sessions are database-backed by decision (cart 14 days, 2026-08-21); weekly cleanup deletes last_activity > 14 days. `performance_visitor_events` kept intact (KPI lifetime reads from it).
   `SESSION_LIFETIME=7200`); cache/queue use Redis (volatile — acceptable while
   sessions live in DB). Load-tested high-traffic posture still a release gate.
 - `[x]` Redis 7.0.15 local VPS (single-VPS phase 1): bind 127.0.0.1, protected-mode yes, maxmemory 256mb allkeys-lru (2026-08-21). No password (localhost-only, documented).
