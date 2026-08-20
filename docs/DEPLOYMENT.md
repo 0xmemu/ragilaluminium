@@ -294,7 +294,15 @@ Cron root (ringkasan):
 0 5 1 * * /root/scripts_monthly_mysql_archive.sh
 */5 * * * * /root/scripts_alert_aggregator.sh
 */5 * * * * /usr/bin/python3 /root/scripts_health_check.py
+0 6 * * 1 /root/scripts_weekly_cleanup.sh
 ```
+
+Cleanup mingguan (Senin 06:00, `/root/scripts_weekly_cleanup.sh`): hapus `sessions`
+dengan `last_activity` > 5 hari (keputusan cart 5 hari) dan detail
+`performance_visitor_events` > 30 hari. Agregat harian `PerformanceMetric`
+(`storefront_unique_visitors`) TIDAK dihapus — KPI "Jumlah Pengunjung" tetap utuh
+(`visitorsBetween` fallback ke agregat saat detail mentah tidak ada). Data bisnis
+inti (orders/order_items/payments/customers) tidak pernah disentuh cleanup.
 
 ### Uji restore dan batas validasi
 
