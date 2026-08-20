@@ -30,18 +30,19 @@ function CheckoutItemNoteRow({
   const page = usePage<SharedPageProps>()
   const [value, setValue] = React.useState(item.note ?? "")
   const [saving, setSaving] = React.useState(false)
+  const [saved, setSaved] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [showNoteInput, setShowNoteInput] = React.useState(Boolean(item.note))
   const timer = React.useRef<number | null>(null)
+  const savedTimer = React.useRef<number | null>(null)
   const abortRef = React.useRef<AbortController | null>(null)
 
   React.useEffect(() => {
     setValue(item.note ?? "")
-    if (item.note) setShowNoteInput(true)
   }, [item.note])
 
   React.useEffect(() => () => {
     if (timer.current !== null) window.clearTimeout(timer.current)
+    if (savedTimer.current !== null) window.clearTimeout(savedTimer.current)
     abortRef.current?.abort()
   }, [])
 
@@ -50,6 +51,8 @@ function CheckoutItemNoteRow({
     const controller = new AbortController()
     abortRef.current = controller
     setSaving(true)
+    setError(null)
+    setSaved(false)
     fetch(routeUrl("cart.update"), {
       method: "POST",
       headers: {
@@ -69,9 +72,15 @@ function CheckoutItemNoteRow({
         if (!response.ok) throw new Error("save failed")
         onChange(item.line_id, next.trim())
         setError(null)
+        setSaved(true)
+        if (savedTimer.current !== null) window.clearTimeout(savedTimer.current)
+        savedTimer.current = window.setTimeout(() => {
+          savedTimer.current = null
+          setSaved(false)
+        }, 2000)
       })
       .catch((reason: unknown) => {
-        if ((reason as Error)?.name !== "AbortError") setError("Catatan gagal disimpan. Coba lagi.")
+        if ((reason as Error)?.name !== "AbortError") setError("Gagal simpan")
       })
       .finally(() => {
         if (!controller.signal.aborted) setSaving(false)
@@ -81,12 +90,24 @@ function CheckoutItemNoteRow({
   function update(next: string) {
     setValue(next)
     setError(null)
+    setSaved(false)
     onChange(item.line_id, next)
     if (timer.current !== null) window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => {
       timer.current = null
       save(next)
-    }, 450)
+    }, 500)
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      if (timer.current !== null) {
+        window.clearTimeout(timer.current)
+        timer.current = null
+      }
+      save(value)
+    }
   }
 
   const variantLabel = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
@@ -125,36 +146,43 @@ function CheckoutItemNoteRow({
         </div>
       </div>
 
-      {!showNoteInput && !value ? (
-        <div className="pl-[4.75rem]">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-            onClick={() => setShowNoteInput(true)}
-          >
-            <Icon name="pen-line" className="size-3" aria-hidden="true" />
-            Tulis catatan
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 rounded-md border border-border bg-surface-muted/50 px-2.5 py-1.5 focus-within:border-primary/60 focus-within:bg-surface">
-          <Icon name="pen-line" className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <input
-            id={`checkout-note-${item.line_id}`}
-            type="text"
-            className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
-            value={value}
-            onChange={(event) => update(event.target.value)}
-            placeholder="Catatan untuk produk ini (opsional)"
-            maxLength={2000}
-          />
-          {saving ? (
-            <span className="shrink-0 text-[10px] text-muted-foreground">Menyimpan...</span>
-          ) : error ? (
-            <span className="shrink-0 text-[10px] text-destructive">{error}</span>
-          ) : null}
-        </div>
-      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (timer.current !== null) {
+            window.clearTimeout(timer.current)
+            timer.current = null
+          }
+          save(value)
+        }}
+        className="flex items-center gap-2 rounded-md border border-border bg-surface-muted/50 px-2.5 py-1.5 focus-within:border-primary/60 focus-within:bg-surface"
+      >
+        <Icon name="pencil" className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <input
+          id={`checkout-note-${item.line_id}`}
+          type="text"
+          className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+          value={value}
+          onChange={(event) => update(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Catatan untuk produk ini (opsional)"
+          maxLength={2000}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (timer.current !== null) {
+              window.clearTimeout(timer.current)
+              timer.current = null
+            }
+            save(value)
+          }}
+          disabled={saving}
+          className="shrink-0 bg-transparent border-0 p-0 text-xs font-semibold text-primary hover:underline focus:outline-none disabled:opacity-50"
+        >
+          {saving ? "Menyimpan..." : saved ? "Tersimpan" : error ? "Coba lagi" : "Simpan"}
+        </button>
+      </form>
     </div>
   )
 }

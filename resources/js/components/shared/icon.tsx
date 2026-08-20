@@ -153,6 +153,9 @@ const iconRegistry: Record<string, ComponentType<IconProps>> = {
   package: Package,
   "panel-left": Sidebar,
   pencil: PencilSimple,
+  "pencil-simple": PencilSimple,
+  "pen-line": PencilSimple,
+  pen: PencilSimple,
   phone: Phone,
   play: Play,
   plus: Plus,
@@ -205,4 +208,3 @@ export function Icon({ name, weight = "regular", ...props }: RagilIconProps) {
 export function hasIcon(name: string): boolean {
   return name in iconRegistry
 }
-
