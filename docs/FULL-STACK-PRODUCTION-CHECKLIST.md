@@ -103,7 +103,7 @@ ready to receive real orders.
 
 ### Database and transaction safety
 
-- `[ ]` Provision production MySQL with the supported version, UTF-8/UTC policy,
+- `[x]` MySQL 8.0.46 (Ubuntu 24.04) on VPS, utf8mb4 + InnoDB, time_zone +00:00 UTC (zz-ragil-timezone.cnf), 73 FKs verified (2026-08-21).
   strict SQL mode, TLS connection where available, and a least-privileged app user.
 - `[ ]` Run migrations forward-only on a disposable production clone first;
   capture duration, locks, row counts, and rollback/forward recovery notes.
@@ -183,7 +183,7 @@ ready to receive real orders.
 - `[~]` Sessions are database-backed by decision (cart 5 days,
   `SESSION_LIFETIME=7200`); cache/queue use Redis (volatile — acceptable while
   sessions live in DB). Load-tested high-traffic posture still a release gate.
-- `[ ]` Choose and document production Redis or managed equivalent for cache,
+- `[x]` Redis 7.0.15 local VPS (single-VPS phase 1): bind 127.0.0.1, protected-mode yes, maxmemory 256mb allkeys-lru (2026-08-21). No password (localhost-only, documented).
   queue coordination, rate limits, and sessions where operationally justified.
 - `[ ]` If database drivers remain, provision indexes, retention cleanup, worker
   capacity, and lock/deadlock monitoring for `jobs`, `failed_jobs`, `sessions`,
@@ -223,7 +223,7 @@ ready to receive real orders.
 - `[ ]` Provision a dedicated production VPS or managed compute target separate
   from preview. Record region, CPU/RAM/disk, supported OS, PHP-FPM, MySQL/Redis,
   Node build environment, and expected traffic envelope.
-- `[~]` Existing Nginx/systemd scripts are preview-oriented: port `8200`, local
+- `[~]` Existing Nginx/systemd scripts are preview-oriented: port `8200`, local (hardened 2026-08-21: server_tokens off, PHP-FPM slowlog 15s, client_max_body_size 64M, fastcgi_read_timeout 300).
   paths, and no production TLS/cutover automation.
 - `[ ]` Production ingress is HTTPS on the approved domain; port 8200 is not
   publicly exposed unless explicitly required and restricted by firewall.
@@ -236,9 +236,9 @@ ready to receive real orders.
   worker counts, OPcache, gzip/brotli as appropriate, and safe dotfile blocking.
 - `[ ]` Run the app under a non-root service account with read-only code and
   write access only to required storage/cache/log paths.
-- `[ ]` Set filesystem ownership/permissions and confirm `.env`, backups, logs,
+- `[x]` `.env` chmod 640 root:www-data; storage + bootstrap/cache milik www-data (2026-08-21).
   `.baileys-sessions`, and uploaded files cannot be downloaded via the web root.
-- `[ ]` Add disk/inode/RAM/CPU/PHP-FPM/queue/database monitoring and alert thresholds.
+- `[~]` Aggregator alert cron */5: disk/inode >85%, RAM >90%, queue depth >500, HTTP / /products /cart, service systemd (nginx/php8.3-fpm/ragil-queue/redis/mysql/baileys-bot), cloudflared docker, stale markers; kirim via Telegram bot (2026-08-21). CPU/DB detail belum.
 
 ### Cloudflare and edge
 
