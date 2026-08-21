@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { useCheckout, type CheckoutCodConfig } from "@/hooks/use-checkout"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 import type { CheckoutDetails, OrderEta, SharedPageProps } from "@/types"
 
 export interface CheckoutShipping {
@@ -135,6 +136,12 @@ export default function Checkout({
     )
   }
 
+  const steps = [
+    { n: 1, label: "Detail pesanan", done: items.length > 0 },
+    { n: 2, label: "Alamat pengiriman", done: details != null && !c.editingDetails },
+    { n: 3, label: "Pembayaran", done: false },
+  ]
+
   return (
     <PublicLayout>
       <Head title="Checkout" />
@@ -157,6 +164,42 @@ export default function Checkout({
               Proses pesanan
             </h1>
           </div>
+        </div>
+      </section>
+
+      {/* Indikator langkah checkout */}
+      <section className="border-b border-border bg-surface">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+          <ol className="flex items-center justify-between gap-2 py-3" aria-label="Langkah checkout">
+            {steps.map((step, idx) => {
+              const active = !step.done && (idx === 0 || [0, 1].slice(0, idx).every((i) => steps[i].done))
+              return (
+                <li key={step.n} className="flex min-w-0 flex-1 items-center gap-2">
+                  {idx > 0 ? <span className="h-px flex-1 bg-border" aria-hidden="true" /> : null}
+                  <span
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                      step.done
+                        ? "bg-primary text-primary-foreground"
+                        : active
+                          ? "border-2 border-primary text-primary"
+                          : "border border-border text-muted-foreground",
+                    )}
+                  >
+                    {step.done ? <Icon name="check" className="size-3" weight="bold" /> : step.n}
+                  </span>
+                  <span
+                    className={cn(
+                      "truncate text-xs font-semibold",
+                      step.done || active ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
         </div>
       </section>
 

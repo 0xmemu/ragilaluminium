@@ -10,6 +10,7 @@ import { MobileBottomNav } from "@/components/public/mobile-bottom-nav"
 import { PublicFooter } from "@/components/public/public-footer"
 import { PublicHeader } from "@/components/public/public-header"
 import { PageSkeleton } from "@/components/public/page-skeleton"
+import { BackToTop } from "@/components/public/back-to-top"
 import { FlashMessages } from "@/components/shared/flash-messages"
 
 export function PublicLayout({ children }: { children: ReactNode }) {
@@ -53,6 +54,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         {navigating ? <PageSkeleton /> : children}
       </main>
       <FlyingCart />
+      <BackToTop />
       <PublicFooter className="hidden lg:block" />
       {/* Clears fixed MobileBottomNav (no mobile footer per Figma) */}
       <div id="cta-bottom-marker" className="pb-mobile-nav lg:hidden" aria-hidden="true" />

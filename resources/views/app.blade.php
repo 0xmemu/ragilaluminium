@@ -49,6 +49,7 @@
         <link rel="icon" href="{{ asset('favicon.ico') }}">
     @endif
     <link rel="apple-touch-icon" href="{{ asset('images/site-logo.png') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
     @routes
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
@@ -56,6 +57,14 @@
 </head>
 <body class="min-h-screen bg-background text-body antialiased">
     @inertia
+    <script>
+      // Service Worker (PWA) — hanya production & bila didukung
+      if ("serviceWorker" in navigator && location.hostname !== "localhost") {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("{{ asset('sw.js') }}").catch(function () {});
+        });
+      }
+    </script>
     <script>
       // Skeleton first-load: tampil sebelum bundle React mount, otomatis diganti React.
       (function () {
