@@ -27,7 +27,7 @@ export function CheckoutPaymentSection({
     <section className="surface-panel min-w-0 p-4 sm:p-5">
       <h2 className="text-sm sm:text-base font-bold text-foreground">Metode Pembayaran</h2>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        Pilih metode sekarang — pilihan tersimpan otomatis dan dipakai saat pesanan dibuat.
+        Pilih metode sekarang. Pilihan tersimpan otomatis dan dipakai saat pesanan dibuat.
       </p>
       {!details ? (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs leading-5 text-destructive">

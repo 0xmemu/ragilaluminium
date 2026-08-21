@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Notifikasi admin otomatis saat job pemrosesan media gagal.
- * Dedupe: hanya satu notifikasi belum dibaca per entitas media —
+ * Dedupe: hanya satu notifikasi belum dibaca per entitas media -
  * kegagalan berulang (retry) memperbarui notifikasi lama, tidak menumpuk.
  */
 class MediaFailureNotifier

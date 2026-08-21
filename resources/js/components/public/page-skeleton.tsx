@@ -117,7 +117,7 @@ export function CartPageSkeleton() {
   )
 }
 
-/** CHECKOUT: form kiri + ringkasan kanan — BUKAN grid produk. */
+/** CHECKOUT: form kiri + ringkasan kanan - BUKAN grid produk. */
 export function CheckoutPageSkeleton() {
   return (
     <div aria-busy="true">
@@ -162,7 +162,7 @@ export function CheckoutPageSkeleton() {
   )
 }
 
-/** Halaman lain (FAQ, info, dll): konten blok ringan — bukan grid produk. */
+/** Halaman lain (FAQ, info, dll): konten blok ringan - bukan grid produk. */
 export function GenericPageSkeleton() {
   return (
     <div aria-busy="true">

@@ -19,7 +19,7 @@ const BENEFIT_TINTS = ["bg-destructive/10", "bg-success/10", "bg-info/10"] as co
 /**
  * Kolom beli di halaman detail produk: nama, rating, harga + promo, form varian,
  * CTA (desktop satu baris + sticky mobile), pengiriman, dan alasan belanja.
- * Semua state & aksi datang dari `useProductPurchase` (§5 R — page tipis, section props-only).
+ * Semua state & aksi datang dari `useProductPurchase` (§5 R - page tipis, section props-only).
  */
 export function ProductBuyBox({
   product,
@@ -29,7 +29,7 @@ export function ProductBuyBox({
 }: {
   product: ProductDetailData
   purchase: ProductPurchase
-  /** Media yang sedang dilihat di galeri — dipakai gambar produk "terbang" saat add-to-cart. */
+  /** Media yang sedang dilihat di galeri - dipakai gambar produk "terbang" saat add-to-cart. */
   activeMedia: ProductMedia | null
   shareUrl: string
 }) {
@@ -74,7 +74,7 @@ export function ProductBuyBox({
 
   return (
     <>
-      {/* Nama produk — baris 1 ukuran, baris 2 model (split otomatis), font body */}
+      {/* Nama produk - baris 1 ukuran, baris 2 model (split otomatis), font body */}
       <div className="mt-0.5 flex items-start justify-between gap-3">
         <h1 className="min-w-0 flex-1 text-sm lg:text-[21px] font-normal tracking-tight text-foreground [text-wrap:normal]">
           <span className="block">
@@ -203,7 +203,7 @@ export function ProductBuyBox({
           </Alert>
         ) : null}
 
-        {/* CTA — desktop / tablet satu baris horizontal: qty + keranjang + beli sekarang */}
+        {/* CTA - desktop / tablet satu baris horizontal: qty + keranjang + beli sekarang */}
         <div className="mt-0 hidden gap-2 lg:flex">
           <ShareActionButton title={title} url={shareUrl} />
           <QuantityControl

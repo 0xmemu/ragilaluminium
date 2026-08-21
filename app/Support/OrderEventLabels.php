@@ -25,7 +25,7 @@ class OrderEventLabels
     public static function orderStatus(?string $code): string
     {
         if ($code === null || $code === '') {
-            return '—';
+            return '-';
         }
 
         return self::ORDER_STATUSES[$code] ?? str_replace('_', ' ', $code);

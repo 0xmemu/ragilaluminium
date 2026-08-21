@@ -43,7 +43,7 @@ export function MobileStickyCta({
   }, [hideOnTarget])
 
   // Sembunyikan bar terus-menerus selama puncak section ini sudah melewati viewport
-  // (kontinu via getBoundingClientRect — tidak ada flicker saat scroll naik/turun).
+  // (kontinu via getBoundingClientRect - tidak ada flicker saat scroll naik/turun).
   useEffect(() => {
     if (!hideBelowSection) return
     const selectors = Array.isArray(hideBelowSection) ? hideBelowSection : [hideBelowSection]

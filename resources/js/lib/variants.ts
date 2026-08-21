@@ -20,7 +20,7 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Normalize Shopee typos only — do not reinterpret door finishing as window axes.
+ * Normalize Shopee typos only - do not reinterpret door finishing as window axes.
  * "KcaBening" / "KacaRiben" → spaced "Kaca …".
  */
 export function normalizeVariationOption(value: string | null | undefined): string | null {
@@ -110,7 +110,7 @@ export function variantPairs(variant: ProductVariant): Array<[string, string]> {
   const secondName = axisNameForPair(variant.variation_2_name, variant.variation_2_option)
   const secondOption = normalizeVariationOption(variant.variation_2_option)
   if (secondName && secondOption) {
-    // Keep door finishing as one axis — same two Shopee slots, different semantics than window.
+    // Keep door finishing as one axis - same two Shopee slots, different semantics than window.
     pairs.push([secondName, normalizeAxisOption(secondName, secondOption)])
   }
 

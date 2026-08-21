@@ -10,7 +10,7 @@ import type { ProductMedia } from "@/types"
 /**
  * Galeri produk: strip horizontal sejajar dengan swipe real-time, thumbnail,
  * panah prev/next, dan lightbox. Semua state galeri (index, drag, lightbox)
- * hidup di sini — ProductDetail cukup mengirim `items` + judul.
+ * hidup di sini - ProductDetail cukup mengirim `items` + judul.
  */
 export function ProductGallery({
   items,
@@ -34,7 +34,7 @@ export function ProductGallery({
     [items, title],
   )
 
-  // Swipe galeri — pakai touch events native + drag real-time.
+  // Swipe galeri - pakai touch events native + drag real-time.
   const [galleryDrag, setGalleryDrag] = React.useState(0)
   const [galleryDragging, setGalleryDragging] = React.useState(false)
   const galleryStartX = React.useRef(0)
@@ -113,7 +113,7 @@ export function ProductGallery({
             onTouchCancel={onGalleryTouchEnd}
             className="relative mx-auto aspect-square w-full overflow-hidden bg-white"
           >
-            {/* Horizontal strip: semua gambar sejajar — swipe real-time */}
+            {/* Horizontal strip: semua gambar sejajar - swipe real-time */}
             <div
               className="flex h-full touch-pan-y"
               onClick={(event) => {

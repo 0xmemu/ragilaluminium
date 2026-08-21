@@ -740,7 +740,7 @@ export default function OrderShow({
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
 
-      {/* Ringkasan order — 4 sel dengan hairline divider */}
+      {/* Ringkasan order - 4 sel dengan hairline divider */}
       <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
@@ -850,7 +850,7 @@ export default function OrderShow({
         ) : null}
       </Card>
 
-      {/* Riwayat — 3 kolom */}
+      {/* Riwayat - 3 kolom */}
       <section className="mt-4 grid gap-4 lg:grid-cols-3">
         <SectionCard title="Riwayat pesanan">
           <ol className="space-y-2.5 text-[13px]">
@@ -1157,7 +1157,7 @@ export default function OrderShow({
 
           <SectionCard
             title="Catatan internal"
-            description="Hanya terlihat admin — tidak masuk invoice atau WhatsApp."
+            description="Hanya terlihat admin - tidak masuk invoice atau WhatsApp."
           >
             <div className="space-y-2.5">
               <Textarea
@@ -1220,7 +1220,7 @@ export default function OrderShow({
 
             {isCod && order.order_status === "delivered" ? (
               <p className="rounded-lg border border-warning/25 bg-warning/10 px-4 py-3 text-xs font-medium leading-5 text-warning-foreground">
-                Paket diterima — pastikan pembayaran COD sudah dikonfirmasi.
+                Paket diterima - pastikan pembayaran COD sudah dikonfirmasi.
               </p>
             ) : null}
 

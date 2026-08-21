@@ -133,7 +133,7 @@ const DEFAULT_ORDER_STEPS = [
 
 const ORDER_STEP_ICONS = ["package", "ruler", "whatsapp"] as const
 
-/** Shared step index chip — filled hitam (Kami bantu); dipakai juga di Cara pesan. */
+/** Shared step index chip - filled hitam (Kami bantu); dipakai juga di Cara pesan. */
 function orderStepIcon(title: string, index: number): string {
   const t = title.toLowerCase()
   if (t.includes("model")) return "package"

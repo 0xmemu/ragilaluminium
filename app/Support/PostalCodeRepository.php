@@ -27,7 +27,7 @@ class PostalCodeRepository
         }
 
         // Spesifikasi: kode pos Indonesia pada dasarnya LINGKUP KECAMATAN.
-        // Validasi utama mencocokkan (district + kode pos), bukan per-desa —
+        // Validasi utama mencocokkan (district + kode pos), bukan per-desa -
         // menghindari penolakan order yang sah akibat beda ejaan nama desa antar
         // sumber (Kemendagri vs Pos Indonesia). Desa hanya dipakai bila identitas
         // kecamatan tidak diberikan (fallback granular).

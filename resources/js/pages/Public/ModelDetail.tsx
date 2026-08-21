@@ -113,7 +113,7 @@ function CarouselNavButton({
       aria-controls={trackId}
       className={cn(
         carouselNavBtnClass,
-        // Inset di dalam track — jangan half-outside (overflow parent memotong tombol).
+        // Inset di dalam track - jangan half-outside (overflow parent memotong tombol).
         side === "left" ? "md:left-2" : "md:right-2",
       )}
     >

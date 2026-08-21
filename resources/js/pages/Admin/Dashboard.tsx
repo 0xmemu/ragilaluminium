@@ -354,7 +354,7 @@ export default function Dashboard({
       <h1 className="sr-only">Dashboard</h1>
 
       <div className="space-y-4 pt-4">
-        {/* Header — sapaan */}
+        {/* Header - sapaan */}
         <div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -384,7 +384,7 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Antrean kerja utama — order selalu didahulukan dari alert pendukung */}
+        {/* Antrean kerja utama - order selalu didahulukan dari alert pendukung */}
         <section className="grid gap-4">
           <SectionCard
             title="Antrean tindakan hari ini"
@@ -425,7 +425,7 @@ export default function Dashboard({
           </SectionCard>
         </section>
 
-        {/* Row 1 — Omzet | Performa Toko */}
+        {/* Row 1 - Omzet | Performa Toko */}
         <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           {hasOrders ? (
             <Card className="flex h-full flex-col">
@@ -591,7 +591,7 @@ export default function Dashboard({
 
         {hasOrders ? (
           <>
-        {/* Row 2 — Status Order */}
+        {/* Row 2 - Status Order */}
         <SectionCard
           title="Status order"
           icon="clipboard-list"
@@ -634,7 +634,7 @@ export default function Dashboard({
         ) : null}
 
 
-        {/* Pesanan terbaru — ringkasan dengan tautan detail */}
+        {/* Pesanan terbaru - ringkasan dengan tautan detail */}
         <SectionCard
           title="Pesanan terbaru"
           description="Order terakhir yang masuk untuk tindak lanjut cepat."

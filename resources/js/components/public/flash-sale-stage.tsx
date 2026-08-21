@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { FlashSalePeriod, ProductCardData, SelectOption, SharedPageProps } from "@/types"
 
-/** Sort chips for `/flash-sale` — maps to existing `?sort=` contract (+ `terlaris` alias). */
+/** Sort chips for `/flash-sale` - maps to existing `?sort=` contract (+ `terlaris` alias). */
 export const FLASH_SALE_SORT_OPTIONS = [
   { value: "popular", label: "Populer" },
   { value: "newest", label: "Terbaru" },
@@ -86,7 +86,7 @@ function formatHms(totalSeconds: number): string {
   return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":")
 }
 
-/** Timer nav Flash Sale — hh:mm:ss, kuning 50%, italic; hidden bila tidak live. */
+/** Timer nav Flash Sale - hh:mm:ss, kuning 50%, italic; hidden bila tidak live. */
 export function FlashSaleNavCountdown({
   period,
   className,
@@ -462,7 +462,7 @@ function flashChipClass(active: boolean): string {
 
 /**
  * Flash Sale listing controls: Populer / Terbaru / Terlaris, filter harga, cari ukuran (`?q=`).
- * Wired to `/flash-sale` query params — not decorative.
+ * Wired to `/flash-sale` query params - not decorative.
  */
 export function FlashSaleListingToolbar({
   sort,
@@ -692,7 +692,7 @@ export function FlashSaleListingToolbar({
 }
 
 
-/** Carousel styles for flash sale strip — same pattern as Home/ProductCardCarousel. */
+/** Carousel styles for flash sale strip - same pattern as Home/ProductCardCarousel. */
 const flashCarouselTrackClass =
   "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 

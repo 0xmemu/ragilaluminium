@@ -10,7 +10,7 @@ import { routeUrl } from "@/lib/routes"
 import type { ProductCardData } from "@/types"
 
 /**
- * Section penutup halaman produk: "Anda mungkin juga suka" — grid rekomendasi
+ * Section penutup halaman produk: "Anda mungkin juga suka" - grid rekomendasi
  * produk terkait (atau empty state dengan aksi ke katalog).
  * Heading + aksi memakai pola `items-center` yang sama dengan SectionHeading
  * di seluruh website (home, katalog, paling banyak dipesan).

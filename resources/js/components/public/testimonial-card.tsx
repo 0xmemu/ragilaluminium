@@ -94,7 +94,7 @@ export function TestimonialCard({
     : cardHref
 
   // Hitung berapa foto 56px yang muat dalam lebar kartu; sisanya jadi badge "+N"
-  // pada foto terakhir yang ditampilkan (overlay gelap) — bukan scroll.
+  // pada foto terakhir yang ditampilkan (overlay gelap) - bukan scroll.
   React.useEffect(() => {
     const el = photoRowRef.current
     if (!el || photos.length === 0) return

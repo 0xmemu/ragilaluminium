@@ -22,7 +22,7 @@ export function BrandWordmark({
   onClick,
 }: {
   compact?: boolean
-  /** Emblem only — mobile header beside search. */
+  /** Emblem only - mobile header beside search. */
   mark?: boolean
   /** `light` = for light backgrounds; `dark` = for dark backgrounds */
   variant?: keyof typeof LOGO

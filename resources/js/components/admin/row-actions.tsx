@@ -9,7 +9,7 @@ import {
 } from "@/components/admin/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
-/** Compact action cluster for table/card rows — wraps cleanly, never overlaps. */
+/** Compact action cluster for table/card rows - wraps cleanly, never overlaps. */
 export function RowActions({
   className,
   children,

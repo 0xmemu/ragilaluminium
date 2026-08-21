@@ -38,7 +38,7 @@ function dateForStep(
  * Lacak pesanan sisi pembeli.
  *
  * Checklist DINAMIS: bila order punya tracking (resi + timeline), setiap event
- * dari timeline (sistem toko + API J&T) menjadi satu langkah — tidak dibatasi
+ * dari timeline (sistem toko + API J&T) menjadi satu langkah - tidak dibatasi
  * 5 step. Fallback: bila belum ada timeline (order tanpa resi), tampilkan
  * 5 milestone statis (pesanan → diproses → dikirim → sampai → selesai).
  */

@@ -7,14 +7,14 @@ use App\Models\EventLog;
 
 /**
  * Notifikasi admin otomatis saat sesi WhatsApp gateway berubah (Baileys).
- * Dedupe: hanya satu notifikasi belum dibaca per jenis — kejadian berulang
+ * Dedupe: hanya satu notifikasi belum dibaca per jenis - kejadian berulang
  * (mis. logout berulang) memperbarui notifikasi lama, tidak menumpuk.
  */
 class WhatsAppSessionNotifier
 {
     public static function notifyLoggedOut(): void
     {
-        $title = 'WhatsApp terputus — sesi logout';
+        $title = 'WhatsApp terputus - sesi logout';
         $body = 'Sesi gateway WhatsApp di-logout server. Scan ulang QR di halaman Pairing untuk menghubungkan kembali.';
         $href = route('admin.whatsapp.pairing');
 

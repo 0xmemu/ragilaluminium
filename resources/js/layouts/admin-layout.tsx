@@ -34,7 +34,7 @@ function useSearchShortcut(onOpen: () => void) {
       const isEditable =
         ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable
 
-      // Cmd/Ctrl + K — pola command palette ala AI app.
+      // Cmd/Ctrl + K - pola command palette ala AI app.
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault()
         onOpen()

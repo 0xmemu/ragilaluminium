@@ -47,7 +47,7 @@ class CatalogTaxonomy
         Cache::forget('catalog.taxonomy.v2.megaNav');
         Cache::forget('catalog.taxonomy.v2.modelCards.8');
         Cache::forget('catalog.taxonomy.v2.modelCards.v2.8');
-        // Home & katalog cache (2026-08-21) — invalidasi saat CMS produk berubah.
+        // Home & katalog cache (2026-08-21) - invalidasi saat CMS produk berubah.
         Cache::forget('home.popular_cards');
         Cache::forget('home.featured_products');
         Cache::forget('home.promo_slides');
@@ -174,7 +174,7 @@ class CatalogTaxonomy
             );
         });
 
-        // Sortir default "popular" — dihitung segar tiap request agar tidak stale di cache.
+        // Sortir default "popular" - dihitung segar tiap request agar tidak stale di cache.
         return self::sortByPopularity($cards);
     }
 

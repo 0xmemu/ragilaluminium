@@ -145,7 +145,7 @@ class OrderTrackingPresenter
         $to = isset($payload['to']) ? (string) $payload['to'] : null;
 
         return match ($to) {
-            // Pipeline tracking J&T — docs open.jtcargo.co.id
+            // Pipeline tracking J&T - docs open.jtcargo.co.id
             'tracking_pending' => 'Paket menunggu penjemputan kurir.',
             'picked_up' => 'Paket dijemput kurir.',
             'in_transit' => 'Paket sedang dalam perjalanan.',
@@ -166,7 +166,7 @@ class OrderTrackingPresenter
      */
     /**
      * Label lokal Indonesia per scanType J&T (docs open.jtcargo.co.id).
-     * Return null bila scanType tidak dikenal — UI memakai teks asli kurir.
+     * Return null bila scanType tidak dikenal - UI memakai teks asli kurir.
      */
     private static function trackingScanLabel(string $scanType, ?string $location): ?string
     {

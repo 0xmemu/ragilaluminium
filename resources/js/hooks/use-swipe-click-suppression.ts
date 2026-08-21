@@ -5,7 +5,7 @@ import * as React from "react"
  *
  * Without this, a swipe that starts on a button inside the row (e.g. the
  * Filter / Kategori / Model / Desain triggers) can register as a click once
- * the gesture ends — dropping open a dropdown sheet mid-swipe. We mark the
+ * the gesture ends - dropping open a dropdown sheet mid-swipe. We mark the
  * gesture as a swipe once horizontal movement dominates, then swallow the
  * follow-up click for a short window.
  */

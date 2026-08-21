@@ -2,10 +2,10 @@
  * Kontrak terpusat untuk event cart berbasis `window` CustomEvent.
  *
  * Sebelumnya setiap komponen membuat/membaca payload dengan cast manual
- * (`(event as CustomEvent<...>).detail`) — mengganti field payload lolos
+ * (`(event as CustomEvent<...>).detail`) - mengganti field payload lolos
  * typecheck tapi runtime diam-diam rusak. Di sini payload didefinisikan
  * sekali, divalidasi di tepi (type guard), dan dipancarkan/didengarkan
- * lewat helper — §1 "errors are named, not strings" + §6 trust at boundary.
+ * lewat helper - §1 "errors are named, not strings" + §6 trust at boundary.
  */
 
 export interface CartUpdatedPayload {
@@ -38,7 +38,7 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value)
 }
 
-/** Validasi runtime payload di tepi — data dari event tak tepercaya. */
+/** Validasi runtime payload di tepi - data dari event tak tepercaya. */
 export function isCartUpdatedPayload(value: unknown): value is CartUpdatedPayload {
   return (
     isRecord(value) &&
@@ -76,7 +76,7 @@ export function dispatchCartFly(payload: CartFlyPayload): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* Subscribe — mengembalikan unsubscribe agar pas untuk useEffect     */
+/* Subscribe - mengembalikan unsubscribe agar pas untuk useEffect     */
 /* ------------------------------------------------------------------ */
 
 export function onCartUpdated(handler: (payload: CartUpdatedPayload) => void): () => void {

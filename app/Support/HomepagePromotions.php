@@ -256,7 +256,7 @@ class HomepagePromotions
 
     /**
      * Campaign slides when CMS + auto promos empty.
-     * Prefer real newest BOUVEN (then DOOR) product photos — never static dummy promo art.
+     * Prefer real newest BOUVEN (then DOOR) product photos - never static dummy promo art.
      *
      * @return array<int, array<string, mixed>>
      */

@@ -238,7 +238,7 @@ export default function Cart({
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
         {cartItems.length ? (
           <div className="space-y-3 py-3">
-            {/* Item list — padding antar kartu */}
+            {/* Item list - padding antar kartu */}
             <div className="flex flex-col gap-2">
               {cartItems.map((item) => (
                 <CartLineItem

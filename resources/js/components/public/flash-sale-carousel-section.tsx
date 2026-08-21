@@ -74,11 +74,11 @@ function FlashSaleCarouselCard({ product }: { product: ProductCardData }) {
   )
 }
 
-/** Lebar kartu — pola sama dengan carousel homepage (5 kartu penuh di desktop). */
+/** Lebar kartu - pola sama dengan carousel homepage (5 kartu penuh di desktop). */
 const flashSaleCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-2.5rem)/3.5)] md:w-[calc((100%-3rem)/4)] xl:w-[calc((100%-4rem)/5)]"
 
-/** Track carousel horizontal — swipe mobile, scroll + tombol di desktop. */
+/** Track carousel horizontal - swipe mobile, scroll + tombol di desktop. */
 const flashSaleTrackClass =
   "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
@@ -130,7 +130,7 @@ function useFlashSaleNav(itemCount: number) {
 }
 
 /**
- * Section "FLASH SALE" berdiri sendiri — muncul di halaman Paling Banyak
+ * Section "FLASH SALE" berdiri sendiri - muncul di halaman Paling Banyak
  * Dipesan. Carousel penuh di semua breakpoint: swipe di mobile, tombol
  * back/next + scroll di desktop (5 kartu per layar), konsisten dengan
  * carousel homepage. Tipografi kartu mengikuti standar product-card website.

@@ -7,7 +7,7 @@ const READY_EVENT = "ragil:media-ready"
 
 let audioCtx: AudioContext | null = null
 
-/** Chime dua nada (A5 -> D6) via Web Audio — tanpa file aset. */
+/** Chime dua nada (A5 -> D6) via Web Audio - tanpa file aset. */
 export function playReadySound(): void {
   try {
     if (typeof window === "undefined") return
@@ -34,7 +34,7 @@ export function playReadySound(): void {
       osc.stop(t + 0.4)
     })
   } catch {
-    // Audio diblokir autoplay/kebijakan browser — abaikan, badge tetap jalan.
+    // Audio diblokir autoplay/kebijakan browser - abaikan, badge tetap jalan.
   }
 }
 

@@ -36,7 +36,7 @@ class CaraPemesananSettings
         [
             'icon' => 'package',
             'title' => 'Pilih varian produk',
-            'description' => 'Pilih warna, jenis kaca, dan opsi lain yang tersedia langsung di halaman produk. Ukuran sudah ditentukan per produk — butuh ukuran khusus? Sampaikan model dan ukurannya saat chat WhatsApp.',
+            'description' => 'Pilih warna, jenis kaca, dan opsi lain yang tersedia langsung di halaman produk. Ukuran sudah ditentukan per produk. Butuh ukuran khusus? Sampaikan model dan ukurannya saat chat WhatsApp.',
             'points' => ['Pilih warna & varian yang tersedia', 'Butuh ukuran khusus? Chat WhatsApp'],
         ],
         [

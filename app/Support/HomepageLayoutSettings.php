@@ -43,7 +43,7 @@ class HomepageLayoutSettings
         ],
     ];
 
-    /** Legacy CMS payload only — tidak ditampilkan di beranda publik. */
+    /** Legacy CMS payload only - tidak ditampilkan di beranda publik. */
     public const DEFAULT_SERVICE_HIGHLIGHTS = [
         'title' => 'Sorotan layanan',
         'subtitle' => 'Keunggulan yang membuat belanja aluminium lebih tenang.',

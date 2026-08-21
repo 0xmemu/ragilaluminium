@@ -92,7 +92,7 @@ function CarouselNavButton({
       aria-controls={trackId}
       className={cn(
         carouselNavBtnClass,
-        // Inset di dalam track — jangan half-outside (overflow parent memotong tombol).
+        // Inset di dalam track - jangan half-outside (overflow parent memotong tombol).
         side === "left" ? "md:-left-5" : "md:-right-5",
       )}
     >
@@ -160,7 +160,7 @@ function ProductCardCarousel({
   )
 }
 
-/** Strip kurasi “Paling banyak dipesan” — data dari `InertiaCatalog::popularProductCards`. */
+/** Strip kurasi “Paling banyak dipesan” - data dari `InertiaCatalog::popularProductCards`. */
 export function PalingBanyakDipesanSection({
   products,
   className,

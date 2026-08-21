@@ -17,7 +17,7 @@ export function writeAdminTheme(theme: AdminTheme): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, theme)
   } catch {
-    // private mode / blocked storage — ignore
+    // private mode / blocked storage - ignore
   }
 }
 

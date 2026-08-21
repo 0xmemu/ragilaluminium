@@ -100,7 +100,7 @@ export function ShippingTrackPanel({
               size="xs"
               disabled={refreshBusy || !jntEnabled}
               onClick={onRefresh}
-              title={jntEnabled ? "Refresh status dari J&T" : "J&T belum aktif — refresh nonaktif"}
+              title={jntEnabled ? "Refresh status dari J&T" : "J&T belum aktif, refresh nonaktif"}
             >
               {refreshBusy ? "Memuat..." : "Refresh J&T"}
             </Button>
@@ -215,7 +215,7 @@ export function ShippingTrackPanel({
         {hasWaybill
           ? jntEnabled
             ? "Status di atas mengikuti catatan pengiriman toko; refresh J&T memperbarui dari kurir bila tersedia."
-            : "Resi tersimpan di sistem. Integrasi J&T belum aktif — status kurir live belum ditarik otomatis."
+            : "Resi tersimpan di sistem. Integrasi J&T belum aktif. Status kurir live belum ditarik otomatis."
           : isCancelled
             ? "Pengiriman dibatalkan; tidak ada resi aktif untuk dilacak."
             : isReturned

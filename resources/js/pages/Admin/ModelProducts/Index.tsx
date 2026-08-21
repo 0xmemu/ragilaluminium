@@ -245,7 +245,7 @@ export default function ModelProductsIndex({
                     <td className="px-3 py-3">
                       <p className="font-semibold tabular-nums">{formatNumber(row.sub_model_count)}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {row.sub_models.length ? row.sub_models.join(", ") : "—"}
+                        {row.sub_models.length ? row.sub_models.join(", ") : "-"}
                       </p>
                     </td>
                     <td className="px-3 py-3 tabular-nums font-semibold">{formatNumber(row.active_count)}</td>

@@ -33,7 +33,7 @@ interface ProductDetailProps {
 }
 
 /**
- * Halaman detail produk — murni komposisi. State & aksi beli di `useProductPurchase`,
+ * Halaman detail produk - murni komposisi. State & aksi beli di `useProductPurchase`,
  * tiap section (galeri, buy box, info, terkait) adalah komponen props-only (§5 R).
  */
 export default function ProductDetail({
@@ -73,7 +73,7 @@ export default function ProductDetail({
     return new URL(socialImage, window.location.origin).toString()
   }, [socialImage])
 
-  // Media yang sedang dilihat di galeri — dipakai gambar "produk terbang" saat add-to-cart.
+  // Media yang sedang dilihat di galeri - dipakai gambar "produk terbang" saat add-to-cart.
   const [activeMedia, setActiveMedia] = React.useState<ProductMedia | null>(variantMedia[0] ?? null)
 
   const handlePdpBack = React.useCallback(() => {

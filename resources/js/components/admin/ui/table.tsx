@@ -3,7 +3,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Admin table — hairline rows, header micro uppercase, hover halus.
+ * Admin table - hairline rows, header micro uppercase, hover halus.
  * Bungkus dengan <div className="overflow-x-auto"> bila kolom banyak.
  */
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(

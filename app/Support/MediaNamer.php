@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Storage;
  * Penamaan otomatis file media dengan pola {context}_{nomor}_{tanggal}.{ext}.
  * Contoh: banner_1_20260814.png, logo_3_20260814.png, testimonial_2_20260814.jpg.
  *
- * - asset(): untuk alur presigned (MediaAsset) — nomor dihitung dari label
+ * - asset(): untuk alur presigned (MediaAsset) - nomor dihitung dari label
  *   asset sejenis di DB sehingga monotonik dan tidak reset saat pending dibersihkan.
- * - onDisk(): untuk penyimpanan file langsung di disk (R2/local) — nomor dari
+ * - onDisk(): untuk penyimpanan file langsung di disk (R2/local) - nomor dari
  *   file sejenis di folder tujuan.
  * - local(): untuk direktori lokal (mis. public/images) lewat glob().
  */
@@ -34,7 +34,7 @@ final class MediaNamer
         return self::build($context, $max + 1, $extension);
     }
 
-    /** Nama file di disk Laravel (R2/local) — nomor dari file sejenis di folder. */
+    /** Nama file di disk Laravel (R2/local) - nomor dari file sejenis di folder. */
     public static function onDisk(string $context, string $extension, string $diskName, string $directory): string
     {
         $context = self::slug($context);

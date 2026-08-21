@@ -27,6 +27,7 @@ queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, 
 - Do NOT port UI from `website_2.0/ui` (Next.js). `resources/` is a real folder, not a junction.
 - Archive instead of hard-delete. Guest-only checkout (no customer accounts).
 - Customer-facing copy in Bahasa Indonesia; currency IDR.
+- **DILARANG em dash (—) dan en dash (–) di SEMUA teks**: copy storefront/admin, placeholder, pesan error, tooltip, hint, komentar kode, dokumen. Ganti dengan koma, titik, titik dua, atau "·"; placeholder kosong pakai "-" (hyphen). (KONTRAK 2026-08-21, user menuntut: jangan pernah menulis em dash.)
 
 ---
 

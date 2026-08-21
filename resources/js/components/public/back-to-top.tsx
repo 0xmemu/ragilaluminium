@@ -3,7 +3,7 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 
-/** Tombol kembali ke atas — muncul setelah scroll, sembunyi saat di atas. */
+/** Tombol kembali ke atas - muncul setelah scroll, sembunyi saat di atas. */
 export function BackToTop() {
   const [visible, setVisible] = React.useState(false)
 

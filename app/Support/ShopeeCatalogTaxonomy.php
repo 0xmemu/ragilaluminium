@@ -5,7 +5,7 @@ namespace App\Support;
 /**
  * Taxonomy dari judul produk Shopee (xlsx tidak punya kolom category terisi).
  *
- * Kategori saling eksklusif — tidak ada “Jendela Boven”:
+ * Kategori saling eksklusif - tidak ada “Jendela Boven”:
  * - kata Boven/Bouven → BOUVEN (meski judul diawali “Jendela …”)
  * - kata Pintu → DOOR
  * - kata Jendela (tanpa Boven) → WINDOW

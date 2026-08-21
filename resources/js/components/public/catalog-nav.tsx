@@ -143,7 +143,7 @@ export function CatalogNav({
       {/* Baris 2 ??? Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis */}
       <div className="border-y border-border bg-surface">
         <div className="container-page flex items-center justify-between gap-1 sm:gap-1.5 !px-2.5 md:!px-8 lg:!px-12 py-2">
-          {/* Pill 1: Filter — mobile: sheet bottom; desktop: dropdown ringkas */}
+          {/* Pill 1: Filter - mobile: sheet bottom; desktop: dropdown ringkas */}
           <Sheet open={sheetOpen} onOpenChange={onSheetOpenChange}>
             <SheetTrigger asChild>
               <button

@@ -33,7 +33,7 @@ function StarRow({
   )
 }
 
-/** Semua foto satu ulasan — `images` multi-gambar, fallback ke `image_url`. */
+/** Semua foto satu ulasan - `images` multi-gambar, fallback ke `image_url`. */
 function reviewImages(review: Testimonial): string[] {
   const images = (review.images ?? []).filter((url): url is string => Boolean(url))
   return images.length ? images : review.image_url ? [review.image_url] : []

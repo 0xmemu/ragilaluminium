@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 
-/** Admin status badge — pill tonal lembut dengan dot berwarna (gaya AI-app). */
+/** Admin status badge - pill tonal lembut dengan dot berwarna (gaya AI-app). */
 const badgeVariants = cva(
   "inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium leading-none",
   {

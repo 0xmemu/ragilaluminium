@@ -3,7 +3,7 @@ import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 /**
- * DeltaBadge — indikator perubahan (naik/turun) untuk metrik admin.
+ * DeltaBadge - indikator perubahan (naik/turun) untuk metrik admin.
  * Hijau untuk naik, merah untuk turun, muted bila tak ada pembanding.
  */
 export function DeltaBadge({

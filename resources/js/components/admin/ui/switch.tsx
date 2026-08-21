@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 
 /**
- * Admin switch — track rounded-full; aktif = aksen teal (primary), knob putih.
+ * Admin switch - track rounded-full; aktif = aksen teal (primary), knob putih.
  */
 export function Switch({
   checked,

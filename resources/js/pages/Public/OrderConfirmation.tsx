@@ -43,7 +43,7 @@ export default function OrderConfirmation({
   const accountTimerRef = React.useRef<number | null>(null)
   const isTransfer = order.payment_method === "transfer"
 
-  // §8: bersihkan timer saat unmount — jangan setState setelah halaman ditutup.
+  // §8: bersihkan timer saat unmount - jangan setState setelah halaman ditutup.
   React.useEffect(() => () => {
     if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current)
     if (accountTimerRef.current !== null) window.clearTimeout(accountTimerRef.current)

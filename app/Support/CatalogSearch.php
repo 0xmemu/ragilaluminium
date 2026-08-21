@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Storefront / API product text search (name, SKU, model, category, attributes,
- * dimensi, warna) — deterministik, explainable, tanpa AI.
+ * dimensi, warna) - deterministik, explainable, tanpa AI.
  *
  * Pipeline: trim → escape wildcard LIKE → normalisasi (typo + sinonim, whole-word,
  * case-insensitive; query asli tetap tersedia via normalizeQuery) → tokenisasi →
@@ -111,7 +111,7 @@ class CatalogSearch
         }
 
         // §6 boundary: input user bukan pola LIKE. Wildcard `%`, `_`, `\` di-escape
-        // agar diperlakukan literal — `?q=%` tidak lagi cocok dengan seluruh katalog.
+        // agar diperlakukan literal - `?q=%` tidak lagi cocok dengan seluruh katalog.
         // Panjang dibatasi supaya query tidak membengkak dengan pola raksasa.
         $escaped = mb_substr(self::escapeLikeWildcards($original), 0, 120);
 
@@ -127,13 +127,13 @@ class CatalogSearch
         $colorOptions = self::colorOptionsMatching($tokens);
         $hasTaxonomyCombo = $modelCodes !== [] && $categoryCodes !== [];
 
-        // Pola ukuran: "100x50" / "100 x 50" / "100×50" — termasuk pasangan
+        // Pola ukuran: "100x50" / "100 x 50" / "100×50" - termasuk pasangan
         // terbalik (50x100) supaya pencarian dimensi menemukan produk yang
         // namanya ditulis "Tinggi 100 x Panjang 50 cm" (§6 deliberate).
         $sizePatterns = self::sizeLikePatterns($term);
         $dimensionPairs = self::dimensionPairs($term);
 
-        // Range dimensi: "80x100 sampai 85x110" — orientasi dipertahankan.
+        // Range dimensi: "80x100 sampai 85x110" - orientasi dipertahankan.
         // Saat range terdeteksi, pola ukuran tunggal & pasangan dinonaktifkan;
         // hanya pencocokan rentang (product_variants height/width) yang dipakai,
         // supaya tidak membalik orientasi atau melewatkan ukuran tengah range.
@@ -151,7 +151,7 @@ class CatalogSearch
 
         $query->where(function ($inner) use ($term, $sizePatterns, $dimensionPairs, $dimensionRange, $modelCodes, $categoryCodes, $designCodes, $colorOptions, $hasTaxonomyCombo, $isSizeTerm, $isRangeTerm) {
             // LIKE selalu pakai ESCAPE eksplisit: tanpa itu, backslash-escape (`\%`)
-            // hanya default di MySQL — SQLite/PostgreSQL memperlakukan `\` sebagai
+            // hanya default di MySQL - SQLite/PostgreSQL memperlakukan `\` sebagai
             // karakter literal sehingga pola yang sudah di-escape jadi salah.
             if (! $isSizeTerm && ! $isRangeTerm) {
                 self::likeClause($inner, 'name', '%'.$term.'%');
@@ -211,7 +211,7 @@ class CatalogSearch
             });
 
             // Warna resmi dari DB: hanya nilai official color (variation option
-            // yang berlabel "Warna") yang dipakai — tidak pernah menginventaris.
+            // yang berlabel "Warna") yang dipakai - tidak pernah menginventaris.
             if ($colorOptions !== []) {
                 $inner->orWhereHas('activeVariants', function ($cv) use ($colorOptions) {
                     $cv->where(function ($color) use ($colorOptions) {
@@ -241,7 +241,7 @@ class CatalogSearch
             }
         });
 
-        // Desain resmi (design_variant) AND dengan SELURUH hasil group OR —
+        // Desain resmi (design_variant) AND dengan SELURUH hasil group OR -
         // diletakkan DI LUAR group agar tidak ikut ter-OR (Laravel boolean
         // chain pada nested group). "seri a" / "ornamen" diarahkan ke desain
         // yang benar-benar tersedia, bukan match samar.
@@ -289,7 +289,7 @@ class CatalogSearch
     /**
      * Nilai warna RESMI yang tersedia di DB: variation option aktif yang berlabel
      * "Warna" (variation_*_name), di kedua sumbu bila ada. Tidak pernah meng-invent
-     * warna — sumber kebenaran = product_variants.
+     * warna - sumber kebenaran = product_variants.
      *
      * @return list<string>
      */
@@ -480,7 +480,7 @@ class CatalogSearch
      * Token yang TIDAK boleh dipakai untuk me-resolve taxonomy (model/kategori/
      * desain/warna): kosong, ≤2 karakter, stopword, deskriptor ambigu, atau angka.
      * (Panjang 1-2 char seperti "a" di "seri a" memicu substring-containment palsu
-     * ke semua model/desain — itulah "match samar" yang harus dihindari.)
+     * ke semua model/desain - itulah "match samar" yang harus dihindari.)
      */
     protected static function ignorableTaxonomyToken(string $piece): bool
     {
@@ -548,7 +548,7 @@ class CatalogSearch
     public static function dimensionRange(string $term): ?array
     {
         $pattern = '/(\d+(?:\.\d+)?)\s*(?:cm)?\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:cm)?'
-            .'\s*(?:sampai|hingga|s\/d|sd|s\.d|-|–|—|sampai dengan|to)\s*'
+            .'\s*(?:sampai|hingga|s\/d|sd|s\.d|-|–|-|sampai dengan|to)\s*'
             .'(\d+(?:\.\d+)?)\s*(?:cm)?\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:cm)?/iu';
 
         if (preg_match($pattern, trim($term), $m) !== 1) {
@@ -581,7 +581,7 @@ class CatalogSearch
      * Pasangan terbalik (120x60) tetap dicari oleh desain (§6 deliberate,
      * lihat CatalogSearchBoundaryTest::test_dimension_search_matches_reversed_pair).
      *
-     * CATATAN: tidak boleh pakai karakter class LIKE `[^0-9]` — test suite
+     * CATATAN: tidak boleh pakai karakter class LIKE `[^0-9]` - test suite
      * berjalan di SQLite yang tidak mendukungnya (hanya `%` dan `_`).
      *
      * @return list<string>
@@ -619,7 +619,7 @@ class CatalogSearch
 
     /**
      * Varian aktif terdekat (berdasarkan jarak |ΔTinggi| + |ΔPanjang|) terhadap
-     * ukuran target — dipakai sebagai rekomendasi ukuran terdekat yang RELEVAN,
+     * ukuran target - dipakai sebagai rekomendasi ukuran terdekat yang RELEVAN,
      * tanpa memaksa balik orientasi. Hanya varian produk aktif yang dipertimbangkan.
      *
      * @return list<array{
@@ -714,7 +714,7 @@ class CatalogSearch
     }
 
     /**
-     * WHERE col LIKE ? ESCAPE '\' — portabel lintas driver (MySQL/SQLite/PgSQL).
+     * WHERE col LIKE ? ESCAPE '\' - portabel lintas driver (MySQL/SQLite/PgSQL).
      * Kolom hardcoded (bukan input user); pattern sebagai binding → aman injection.
      */
     protected static function likeClause(Builder $query, string $column, string $pattern, bool $or = false): void

@@ -101,7 +101,7 @@ export default function CodSettingsEdit({
                     <p className="mt-1 text-xs text-destructive">{form.errors.fee_value}</p>
                   ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Nilai biaya (%). Ditambahkan ke total tagihan saat pelanggan memilih COD — dihitung dari subtotal setelah voucher.
+                    Nilai biaya (%). Ditambahkan ke total tagihan saat pelanggan memilih COD - dihitung dari subtotal setelah voucher.
                   </p>
                 </td>
               </tr>

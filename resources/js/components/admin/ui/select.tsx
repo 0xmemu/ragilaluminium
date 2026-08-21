@@ -3,7 +3,7 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 
-/** Admin select — native select dengan chevron konsisten, hairline + focus teal. */
+/** Admin select - native select dengan chevron konsisten, hairline + focus teal. */
 const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
   ({ className, children, ...props }, ref) => (
     <span className={cn("relative inline-flex w-full items-center", className)}>

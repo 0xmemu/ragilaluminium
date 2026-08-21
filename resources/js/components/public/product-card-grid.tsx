@@ -2,7 +2,7 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-/** Grid kartu non-produk (Model Produk / Hasil Pemasangan) — max 4 kolom. */
+/** Grid kartu non-produk (Model Produk / Hasil Pemasangan) - max 4 kolom. */
 export const showcaseCardGridClassName =
   "grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
 

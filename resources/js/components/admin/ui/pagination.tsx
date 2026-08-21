@@ -25,7 +25,7 @@ function parsePaginationLink(label: string): { kind: PaginationLinkKind; text: s
   return { kind: "page", text: cleaned }
 }
 
-/** Admin pagination — kompak, rounded-md, aktif = aksen teal. */
+/** Admin pagination - kompak, rounded-md, aktif = aksen teal. */
 export function Pagination({
   pagination,
   className,

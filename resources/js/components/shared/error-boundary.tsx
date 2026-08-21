@@ -5,7 +5,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react"
  * komponen ini menangkap error render apa pun dan menampilkan fallback.
  *
  * Catatan: fallback sengaja TIDAK memakai Inertia (<Link>, routeUrl) karena
- * error bisa saja terjadi di dalam Inertia router sendiri — fallback hanya
+ * error bisa saja terjadi di dalam Inertia router sendiri - fallback hanya
  * memakai anchor/button native agar selalu berfungsi.
  */
 interface ErrorBoundaryProps {

@@ -8,7 +8,7 @@ import type { SharedPageProps } from "@/types"
 
 type NavGlyph = ComponentType<IconProps>
 
-/** Static map — avoids shared Icon registry miss / remount flicker. */
+/** Static map - avoids shared Icon registry miss / remount flicker. */
 const NAV_ICONS: Record<string, NavGlyph> = {
   house: House,
   home: House,

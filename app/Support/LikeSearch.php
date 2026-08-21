@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
  * Input user bukan pola LIKE: wildcard `%`, `_`, `\` di-escape agar dicari literal,
  * panjang dibatasi, dan klausa memakai `ESCAPE '\'` eksplisit supaya benar di semua
  * driver (MySQL default `\`, SQLite/PgSQL tidak). Ini satu-satunya titik escape untuk
- * seluruh pencarian (storefront + admin) — jangan tulis `like "%{$q}%"` manual lagi.
+ * seluruh pencarian (storefront + admin) - jangan tulis `like "%{$q}%"` manual lagi.
  */
 class LikeSearch
 {
@@ -32,7 +32,7 @@ class LikeSearch
         return '%'.self::limit(self::escape($term)).'%';
     }
 
-    /** WHERE col LIKE ? ESCAPE '\' — kolom hardcoded, pattern sebagai binding. */
+    /** WHERE col LIKE ? ESCAPE '\' - kolom hardcoded, pattern sebagai binding. */
     public static function whereLike(Builder $query, string $column, string $term): Builder
     {
         return $query->whereRaw(self::expression($column), [self::pattern($term), '\\']);

@@ -7,8 +7,8 @@ use App\Models\CmsPage;
 /**
  * Long-form CMS documents on cms_pages (Informasi Toko, Ketentuan, Privasi).
  *
- * content.heading — optional hero label
- * content.body — HTML or plain text (stage-9a)
+ * content.heading - optional hero label
+ * content.body - HTML or plain text (stage-9a)
  */
 class CmsDocumentSettings
 {

@@ -19,7 +19,7 @@ export interface CategoryMenuItem {
 }
 
 /**
- * Menu kategori horizontal homepage — gaya "segment tab" ala Zalora:
+ * Menu kategori horizontal homepage - gaya "segment tab" ala Zalora:
  * pill abu muda tanpa border, pill aktif hitam + teks putih (cursor-default),
  * scroll horizontal tanpa scrollbar, rata tengah di layar besar. Pill = model
  * produk saja (Boven Jungkit, Jendela Swing, …); urutan dikelola admin di
@@ -70,7 +70,7 @@ export function CategoryMenu({
           })}
         </nav>
 
-        {/* Edge fade ala Zalora — hanya mobile/tablet, menandakan konten bisa discroll */}
+        {/* Edge fade ala Zalora - hanya mobile/tablet, menandakan konten bisa discroll */}
         <div
           className="pointer-events-none absolute inset-y-0 left-0 w-11 bg-gradient-to-r from-background to-transparent md:hidden"
           aria-hidden="true"

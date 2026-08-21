@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
  * Flash Sale di ticker = event jangka waktu (cms_pages.flash-sale.content.period),
  * bukan daftar produk. Produk Flash Sale dipilih pelanggan di /flash-sale atau hasil cari.
  *
- * Copy: jangan pakai "obral" / "stok terbatas" — stok selalu ada;
+ * Copy: jangan pakai "obral" / "stok terbatas" - stok selalu ada;
  * yang boleh limited-time hanya promo, diskon, flash sale (periode), subsidi ongkir.
  */
 class ActiveAnnouncements
@@ -38,7 +38,7 @@ class ActiveAnnouncements
         // Bar promo yang dikelola admin (dashboard) lebih diutamakan.
         // Begitu tabel pernah terisi, hasil DB otoritatif: item yang tidak aktif
         // atau periode berakhir berarti bar tidak menampilkan apa pun (tidak
-        // kembali ke sumber lama) — "nonaktifkan semua" benar-benar menyembunyikan bar.
+        // kembali ke sumber lama) - "nonaktifkan semua" benar-benar menyembunyikan bar.
         if (Announcement::query()->exists()) {
             return self::fromAdminAnnouncements();
         }
@@ -193,7 +193,7 @@ class ActiveAnnouncements
     }
 
     /**
-     * Model-first ticker line — sentence case, no ALL CAPS dump / Flash Sale shout.
+     * Model-first ticker line - sentence case, no ALL CAPS dump / Flash Sale shout.
      *
      * @param  array<string, mixed>  $slide
      */

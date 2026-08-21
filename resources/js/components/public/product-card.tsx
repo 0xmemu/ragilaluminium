@@ -55,7 +55,7 @@ function FitOneLine({
 function CodBadge() {
   return (
     <span className="product-card__cod">
-      {/* Single composite SVG — avoid layered scale (subpixel breaks thin strokes). ~lightning height. */}
+      {/* Single composite SVG - avoid layered scale (subpixel breaks thin strokes). ~lightning height. */}
       <img
         src="/images/icons/cod.svg"
         alt=""
@@ -70,7 +70,7 @@ function CodBadge() {
 }
 
 /**
- * Product card — BEM visual system (Zalora-inspired guideline).
+ * Product card - BEM visual system (Zalora-inspired guideline).
  *
  * Block: `.product-card` (+ modifier `--discounted/--flash/--unavailable/--model`)
  * Elements: `__media __link __image __badge __availability __favorite
@@ -80,7 +80,7 @@ function CodBadge() {
  *
  * Seluruh chrome visual hidup di `@layer components` (resources/css/app.css)
  * berbasis token :root; komponen ini hanya data-driven + state. Interaksi
- * memakai dua link terpisah (media + body) — pola multi-link standar —
+ * memakai dua link terpisah (media + body) - pola multi-link standar -
  * sehingga overlay wishlist tetap sibling link (HTML valid).
  */
 export function ProductCard({
@@ -102,7 +102,7 @@ export function ProductCard({
   titleStyle?: "default" | "model"
   /** Override image crop behavior for contexts that must show the whole asset. */
   imageFit?: "cover" | "contain"
-  /** State wishlist — hanya berpengaruh bila `onWishlistChange` disediakan. */
+  /** State wishlist - hanya berpengaruh bila `onWishlistChange` disediakan. */
   isWishlisted?: boolean
   /** Tanpa handler, tombol wishlist tidak dirender. */
   onWishlistChange?: (next: boolean) => void

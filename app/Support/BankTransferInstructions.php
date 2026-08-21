@@ -4,7 +4,7 @@ namespace App\Support;
 
 /**
  * Bank transfer instructions for public checkout confirmation.
- * Source: config (sitemap.brand.bank / env) — no extra schema table.
+ * Source: config (sitemap.brand.bank / env) - no extra schema table.
  */
 class BankTransferInstructions
 {

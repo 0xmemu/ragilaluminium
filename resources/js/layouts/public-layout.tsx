@@ -24,7 +24,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   React.useEffect(() => {
     const onStart = (e: GlobalEvent<"start">) => {
       const visit = e.detail?.visit
-      // Skip prefetch, form submit (POST), dan partial reload — bukan pindah halaman.
+      // Skip prefetch, form submit (POST), dan partial reload - bukan pindah halaman.
       if (visit?.prefetch || (visit?.method ?? "get") !== "get" || (visit?.only?.length ?? 0) > 0) {
         return
       }

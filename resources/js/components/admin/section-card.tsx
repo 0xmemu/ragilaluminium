@@ -5,7 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 
 /**
- * SectionCard — pola standar "kartu ber-section" untuk seluruh admin:
+ * SectionCard - pola standar "kartu ber-section" untuk seluruh admin:
  * header (judul + deskripsi + aksi opsional) dengan hairline divider, lalu konten.
  * Membuat banyak kartu tetap rapi dan konsisten.
  */

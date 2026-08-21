@@ -544,7 +544,7 @@ export default function Catalog({
     </section>
   ) : (
     <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
-      {/* Filter desktop via topnav (pill) — sidebar dihapus; sheet tetap utk mobile. */}
+      {/* Filter desktop via topnav (pill) - sidebar dihapus; sheet tetap utk mobile. */}
       {productGallery}
     </section>
   )

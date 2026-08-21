@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
  *
  * Explicit product attributes are the source of truth for "promo sedang berjalan".
  * Global STOREFRONT_PRODUCT_CARD_DISCOUNT_PERCENT only fills compare price / flash badge
- * for product cards — it does not make a product eligible for automatic banners.
+ * for product cards - it does not make a product eligible for automatic banners.
  */
 class ProductPromotionMetadata
 {
