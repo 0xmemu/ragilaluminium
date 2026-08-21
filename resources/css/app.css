@@ -692,7 +692,7 @@
     inset-block-end: 0;
     inset-inline-end: 0;
     z-index: 10;
-    padding: 4px 8px;
+    padding: 4px 8px 6px;
     border-start-start-radius: 6px;
     background: hsl(var(--surface) / 0.9);
     color: hsl(var(--muted-foreground));
