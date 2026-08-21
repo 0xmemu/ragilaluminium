@@ -235,11 +235,6 @@ export function ShippingTrackPanel({
                 )}
               />
               <p className="text-xs font-semibold text-foreground">{entry.message}</p>
-              {entry.detail ? (
-                <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-                  {entry.detail}
-                </p>
-              ) : null}
               <p className="mt-0.5 text-[10px] text-muted-foreground/80">
                 {[entry.location, entry.at ? formatDateTime(entry.at) : null]
                   .filter(Boolean)
