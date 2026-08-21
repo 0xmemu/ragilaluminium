@@ -23,6 +23,7 @@ class ShippingQuoteRequest extends FormRequest
             'village_name' => ['nullable', 'string', 'max:160'],
             'district_id' => ['nullable', 'string', 'max:32'],
             'district_name' => ['nullable', 'string', 'max:120'],
+            'insurance' => ['sometimes', 'boolean'],
         ];
     }
 

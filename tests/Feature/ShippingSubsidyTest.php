@@ -113,6 +113,8 @@ class ShippingSubsidyTest extends TestCase
             round($gross - (float) $order->shipping_subsidy_amount, 2),
             (float) $order->shipping_amount
         );
+        // Tanpa asuransi (default): snapshot asuransi 0.
+        $this->assertEquals(0.0, (float) $order->shipping_insurance_amount);
         $this->assertEquals(
             (float) $order->subtotal_amount
                 + (float) $order->shipping_amount
@@ -135,5 +137,93 @@ class ShippingSubsidyTest extends TestCase
         $this->assertFalse($applied['applied']);
         $this->assertEquals(0.0, $applied['subsidy']);
         $this->assertEquals(50000.0, $applied['net']);
+    }
+
+    /**
+     * Asuransi pengiriman opsional (pilihan pembeli): quote dengan asuransi
+     * memisahkan freight & insurance; subsidi hanya atas freight; net =
+     * freight - subsidi + asuransi. Order menyimpan snapshot insurance.
+     */
+    public function test_checkout_with_insurance_snapshot_and_total_consistency(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 50,
+            'jnt_enabled' => true,
+        ]);
+
+        // Struktur quote dengan asuransi: insurance >= 0 dan net konsisten.
+        $withInsurance = app(\App\Services\ShippingService::class)->quote(1.0, 'KOTA SEMARANG', 'JAWA TENGAH', '50254', 'Candisari', true);
+        $this->assertArrayHasKey('insurance', $withInsurance);
+        $this->assertArrayHasKey('freight', $withInsurance);
+        $this->assertGreaterThanOrEqual(0.0, (float) $withInsurance['insurance']);
+        $this->assertEqualsWithDelta(
+            max(0, (float) $withInsurance['freight'] - (float) $withInsurance['subsidy']) + (float) $withInsurance['insurance'],
+            (float) $withInsurance['net'],
+            0.01,
+        );
+
+        $product = Product::create([
+            'parent_sku' => 'WIN-INS-1',
+            'name' => 'Jendela Asuransi',
+            'short_name' => 'INS',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'WIN-INS-1-100',
+            'price' => 1000000,
+            'stock' => 5,
+            'status' => 'active',
+        ]);
+
+        $this->withSession(['ragil_cart' => [
+            'WIN-INS-1-100' => [
+                'line_id' => 'WIN-INS-1-100',
+                'parent_sku' => 'WIN-INS-1',
+                'variant_sku' => 'WIN-INS-1-100',
+                'name' => 'Jendela Asuransi',
+                'unit_price' => 1000000,
+                'quantity' => 1,
+            ],
+        ]]);
+
+        $this->post(route('checkout.validate'), [
+            'name' => 'Budi',
+            'phone' => '081234567890',
+            'email' => 'budi@example.com',
+            'province' => 'Jawa Tengah',
+            'city' => 'Semarang',
+            'district' => 'Candisari',
+            'village' => 'Jatingaleh',
+            'province_id' => '33',
+            'city_id' => '3374',
+            'district_id' => '337401',
+            'village_id' => '3374011001',
+            'address_line1' => 'Jl. Contoh 1',
+            'postal_code' => '50254',
+        ])->assertRedirect();
+
+        $this->post(route('checkout.place-order'), [
+            'payment_method' => 'transfer',
+            'insurance' => 1,
+        ])->assertRedirect();
+
+        $order = Order::query()->latest('id')->first();
+        $this->assertNotNull($order);
+        $this->assertGreaterThanOrEqual(0.0, (float) $order->shipping_insurance_amount);
+        $this->assertEquals(
+            (float) $order->subtotal_amount
+                + (float) $order->shipping_amount
+                + (float) $order->shipping_insurance_amount
+                - (float) $order->voucher_discount_amount
+                + (float) $order->cod_fee_amount,
+            (float) $order->total_amount
+        );
     }
 }

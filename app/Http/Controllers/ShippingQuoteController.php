@@ -14,6 +14,11 @@ class ShippingQuoteController extends Controller
     {
         $validated = $request->validated();
 
+        // Pilihan asuransi pembeli disimpan ke session agar preview checkout
+        // konsisten; place-order memakai nilai dari form (authoritative).
+        $withInsurance = $request->boolean('insurance');
+        $request->session()->put('checkout_insurance', $withInsurance);
+
         return response()->json([
             'data' => $this->shipping->quote(
                 (float) $validated['weight_kg'],
@@ -21,6 +26,7 @@ class ShippingQuoteController extends Controller
                 $validated['destination_province'] ?? null,
                 $validated['postal_code'] ?? null,
                 $validated['destination_area'] ?? null,
+                $withInsurance,
             ),
         ]);
     }

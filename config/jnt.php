@@ -105,6 +105,9 @@ return [
         // paymentType utk agingCost/get: 1 cash by post, 2 monthly, 3 cod
         'payment_type' => (int) env('JNT_PAYMENT_TYPE', 1),
         'price_currency' => env('JNT_PRICE_CURRENCY', 'IDR'),
+        // offerFee = komponen asuransi pengiriman. HANYA dikirim ke J&T saat
+        // pembeli memilih asuransi di checkout (opsional); nilai mis. '200'
+        // menghasilkan estimateInsuranceCost (contoh: 5.000).
         'offer_fee' => env('JNT_OFFER_FEE', '200'),
     ],
 

@@ -82,6 +82,7 @@ class CheckoutController extends Controller
                 $details['province'] ?? null,
                 $details['postal_code'] ?? null,
                 $details['district'] ?? null,
+                (bool) $request->session()->get('checkout_insurance', false),
             );
             $shippingPreview = [
                 'gross' => $breakdown['gross'],
@@ -134,6 +135,7 @@ class CheckoutController extends Controller
                 'max_order_amount' => $cod['max_order_amount'],
             ],
             'shipping' => $shippingPreview,
+            'insurance' => (bool) $request->session()->get('checkout_insurance', false),
             'eta' => OrderEta::forOrder(),
             'defaultPayment' => $defaultPayment,
             'details' => $details,
@@ -251,12 +253,16 @@ class CheckoutController extends Controller
                 ->withErrors(['payment_method' => 'Layanan COD sedang tidak tersedia. Pilih transfer bank.']);
         }
 
+        $withInsurance = $request->boolean('insurance');
+        $request->session()->put('checkout_insurance', $withInsurance);
+
         $shipping = $this->shipping->estimateBreakdown(
             $this->orders->cartWeightKg(),
             $details['city'],
             $details['province'] ?? null,
             $details['postal_code'] ?? null,
             $details['district'] ?? null,
+            $withInsurance,
         );
 
         $sessionVoucher = $request->session()->get(VoucherService::SESSION_KEY);
@@ -270,6 +276,7 @@ class CheckoutController extends Controller
                 shippingCost: $shipping['net'],
                 voucher: $voucher,
                 shippingSubsidy: $shipping['subsidy'],
+                shippingInsurance: (float) ($shipping['insurance'] ?? 0),
                 idempotencyKey: $idempotencyKey,
             );
         } catch (\DomainException $e) {

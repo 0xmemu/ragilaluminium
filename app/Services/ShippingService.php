@@ -34,7 +34,7 @@ class ShippingService
     }
 
     /**
-     * @return array{gross: float, subsidy: float, net: float, applied: bool, carrier: string}
+     * @return array{gross: float, subsidy: float, net: float, applied: bool, carrier: string, freight: float, insurance: float, insurance_available: bool}
      */
     public function estimateBreakdown(
         float $weightKg,
@@ -42,13 +42,19 @@ class ShippingService
         ?string $destinationProvince = null,
         ?string $postalCode = null,
         ?string $destinationArea = null,
+        bool $withInsurance = false,
     ): array {
-        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea);
+        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea, $withInsurance);
     }
 
     /**
      * Customer-facing quote contract shared by checkout and the quote endpoint.
      * Provisional states never pretend to be a final carrier tariff.
+     *
+     * Asuransi pengiriman (opsional, pilihan pembeli): saat `$withInsurance`,
+     * payload menyertakan `offerFee` sehingga J&T menghitung komponen
+     * `estimateInsuranceCost`. Ongkir (freight) tetap basis subsidi;
+     * asuransi ditambahkan di atas ongkir net: net = freight - subsidi + asuransi.
      *
      * @return array<string, mixed>
      */
@@ -58,14 +64,19 @@ class ShippingService
         ?string $destinationProvince = null,
         ?string $postalCode = null,
         ?string $destinationArea = null,
+        bool $withInsurance = false,
     ): array {
         $weightKg = max($weightKg, 1.0);
 
         if (! $this->jnt->isEnabled()) {
-            $applied = ShippingSubsidySettings::apply($this->localEstimate($weightKg), 'jnt');
+            $freight = $this->localEstimate($weightKg);
+            $applied = ShippingSubsidySettings::apply($freight, 'jnt');
 
             return [
                 ...$applied,
+                'freight' => $freight,
+                'insurance' => 0.0,
+                'insurance_available' => false,
                 'carrier' => 'jnt',
                 'state' => 'fallback',
                 'is_final' => false,
@@ -76,12 +87,11 @@ class ShippingService
         }
 
         try {
-            $resp = $this->jnt->tariff([
+            $payload = [
                 'paymentType' => config('jnt.defaults.payment_type'),
                 'expressType' => config('jnt.defaults.express_type'),
                 'deliveryType' => config('jnt.defaults.delivery_type'),
                 'goodsType' => config('jnt.defaults.goods_type'),
-                'offerFee' => config('jnt.defaults.offer_fee'),
                 'weight' => (string) $weightKg,
                 'totalQuantity' => 1,
                 'sendProv' => config('jnt.sender.prov'),
@@ -90,25 +100,43 @@ class ShippingService
                 'receiveProv' => $destinationProvince,
                 'receiveCity' => $destinationCity,
                 'receiveArea' => $destinationArea ?? $destinationCity,
-            ]);
+            ];
+            // offerFee (asuransi) HANYA dikirim saat pembeli memilih asuransi.
+            $offerFee = config('jnt.defaults.offer_fee');
+            if ($withInsurance && filled($offerFee)) {
+                $payload['offerFee'] = (string) $offerFee;
+            }
+
+            $resp = $this->jnt->tariff($payload);
 
             if ($resp->ok) {
-                $cost = $resp->get('estimateSumFreight')
-                    ?? $resp->get('estimateCustomerCost')
+                // Basis tarif = estimateCustomerCost (yang dibayar pelanggan);
+                // estimateSumFreight = freight + asuransi saat offerFee dikirim.
+                $freight = $resp->get('estimateCustomerCost')
+                    ?? $resp->get('estimateSumFreight')
                     ?? $resp->get('totalFreight');
                 // Guard: freight 0 dianggap tarif tidak valid (J&T dapat
                 // mengembalikan 0 untuk kombinasi produk/area yang tidak
                 // tersedia) -> jatuh ke estimasi provisional + manual review,
                 // ongkir Rp 0 tidak pernah tampil ke pembeli.
-                if (is_numeric($cost) && (float) $cost > 0) {
-                    $applied = ShippingSubsidySettings::apply(round((float) $cost, 2), 'jnt');
+                if (is_numeric($freight) && (float) $freight > 0) {
+                    $freight = round((float) $freight, 2);
+                    $insurance = max(0, round((float) ($resp->get('estimateInsuranceCost') ?? 0), 2));
+                    $gross = round($freight + $insurance, 2);
+                    $applied = ShippingSubsidySettings::apply($freight, 'jnt');
+                    $net = round(max(0, (float) $applied['net']) + $insurance, 2);
 
                     return [
                         ...$applied,
+                        'gross' => $gross,
+                        'net' => $net,
+                        'freight' => $freight,
+                        'insurance' => $insurance,
+                        'insurance_available' => $insurance > 0,
                         'carrier' => 'jnt',
                         'state' => 'ready',
                         'is_final' => true,
-                        'rough_estimate' => (float) $applied['net'],
+                        'rough_estimate' => $net,
                         'manual_review' => false,
                         'message' => 'Tarif ongkir J&T berhasil dihitung.',
                     ];
@@ -127,6 +155,9 @@ class ShippingService
 
         return [
             ...$provisional,
+            'freight' => (float) $this->localEstimate($weightKg),
+            'insurance' => 0.0,
+            'insurance_available' => false,
             'carrier' => 'jnt',
             'state' => 'manual_review',
             'is_final' => false,

@@ -147,7 +147,9 @@ php artisan jnt:joint-debug --interface=track --times=3
 Lihat blok **J&T Cargo Open Platform** di `.env.example`. Minimal yang wajib diisi dari console:
 `JNT_ENABLED=true`, `JNT_ENV`, `JNT_API_ACCOUNT`, `JNT_PRIVATE_KEY`, `JNT_CUSTOMER_CODE`, `JNT_CUSTOMER_PASSWORD`, data `JNT_SENDER_*`, dan default order (`JNT_EXPRESS_TYPE`, `JNT_GOODS_TYPE`, dll — sesuaikan dengan tipe layanan akun).
 
-> **Catatan `goodsType` & `expressType` (terverifikasi 2026-08-21):** contoh resmi doc `agingCost/get` memakai `expressType="FT"`, `goodsType="bm000005"`, `paymentType=1`, `offerFee="200"`. Kombinasi inilah yang mengembalikan tarif nyata untuk akun ini (Banjarnegara→Semarang 1 kg = freight 60.000 / +asuransi 65.000). **`expressType="FTAIR"` mengembalikan `estimateSumFreight=0`** (SUCCESS tapi 0) — jangan dipakai. Nilai ini sudah menjadi default `config/jnt.php`; hanya ubah bila kontrak akun berbeda (konfirmasi ke outlet J&T).
+> **Catatan `goodsType` & `expressType` (terverifikasi 2026-08-21):** contoh resmi doc `agingCost/get` memakai `expressType="FT"`, `goodsType="bm000005"`, `paymentType=1`. Kombinasi inilah yang mengembalikan tarif nyata untuk akun ini (Banjarnegara→Semarang 1 kg = freight 60.000, ETA 1-3 hari). **`expressType="FTAIR"` mengembalikan `estimateSumFreight=0`** (SUCCESS tapi 0) — jangan dipakai. Nilai ini sudah menjadi default `config/jnt.php`; hanya ubah bila kontrak akun berbeda (konfirmasi ke outlet J&T).
+>
+> **Asuransi pengiriman (opsional, pilihan pembeli, 2026-08-21):** `offerFee` (mis. `"200"`) mengaktifkan komponen `estimateInsuranceCost` (contoh rute di atas: 5.000). App mengirim `offerFee` **hanya saat pembeli mencentang asuransi di checkout**; snapshot order disimpan terpisah di `orders.shipping_insurance_amount` (subsidi ongkir hanya atas freight; asuransi ditambahkan di atas ongkir net).
 
 ---
 

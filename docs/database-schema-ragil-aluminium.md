@@ -346,6 +346,7 @@ Indexes:
 - `voucher_discount_amount` (`NUMERIC`), NN, default '0'
 - `cod_fee_amount` (`NUMERIC`), NN, default '0'
 - `shipping_subsidy_amount` (`NUMERIC`), NN, default '0'
+- `shipping_insurance_amount` (`NUMERIC`), NN, default '0' — asuransi pengiriman opsional (pilihan pembeli, keputusan 2026-08-21); terpisah dari ongkir net
 - `checkout_idempotency_key` (`VARCHAR`), nullable, UQ
 
 Indexes:

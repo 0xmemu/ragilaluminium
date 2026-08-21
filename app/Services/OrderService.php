@@ -42,6 +42,7 @@ class OrderService
         ?float $shippingCost = 0,
         ?array $voucher = null,
         float $shippingSubsidy = 0,
+        float $shippingInsurance = 0,
         ?string $idempotencyKey = null,
     ): Order {
         $idempotencyKey = trim((string) $idempotencyKey);
@@ -63,10 +64,11 @@ class OrderService
 
         $shippingCost = (float) ($shippingCost ?? 0);
         $shippingSubsidy = max(0, (float) $shippingSubsidy);
+        $shippingInsurance = max(0, (float) $shippingInsurance);
 
         try {
-            return $this->createWithRetryOnDuplicateNumber(function (string $orderNumber) use ($customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy, $idempotencyKey) {
-                return DB::transaction(function () use ($orderNumber, $customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy, $idempotencyKey) {
+            return $this->createWithRetryOnDuplicateNumber(function (string $orderNumber) use ($customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy, $shippingInsurance, $idempotencyKey) {
+                return DB::transaction(function () use ($orderNumber, $customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy, $shippingInsurance, $idempotencyKey) {
                     $subtotal = 0.0;
                     $discountTotal = 0.0;
                     $resolved = [];
@@ -183,6 +185,7 @@ class OrderService
                         'subtotal_amount' => $subtotal,
                         'shipping_amount' => $shippingCost,
                         'shipping_subsidy_amount' => round($shippingSubsidy, 2),
+                        'shipping_insurance_amount' => round($shippingInsurance, 2),
                         'discount_amount' => round($discountTotal, 2),
                         'voucher_code' => $voucherCode,
                         'voucher_discount_amount' => round($voucherDiscount, 2),
@@ -572,11 +575,14 @@ class OrderService
                 $codFee = CodSettings::calculateFee($subtotalAfterVoucher);
             }
 
+            $shippingInsurance = max(0, (float) ($locked->shipping_insurance_amount ?? 0));
+
             $breakdown = $this->shipping->estimateBreakdown(
                 $this->cartWeightForLines($lines),
                 (string) $data['city'],
                 $data['province'] ?? null,
                 $data['postal_code'] ?? null,
+                $shippingInsurance > 0,
             );
             $shippingCost = $breakdown['net'];
             $shippingSubsidy = $breakdown['subsidy'];
@@ -658,6 +664,7 @@ class OrderService
                 'subtotal_amount' => $subtotal,
                 'shipping_amount' => $shippingCost,
                 'shipping_subsidy_amount' => $shippingSubsidy,
+                'shipping_insurance_amount' => $shippingInsurance,
                 'discount_amount' => $discountTotal,
                 'voucher_code' => $voucherCode,
                 'voucher_discount_amount' => $voucherDiscount,

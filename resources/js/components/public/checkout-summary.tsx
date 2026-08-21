@@ -37,6 +37,9 @@ export interface CheckoutShipping {
   applied: boolean
   status?: string
   provisional?: boolean
+  freight?: number
+  insurance?: number
+  insurance_available?: boolean
   message?: string | null
 }
 
@@ -76,6 +79,8 @@ export function CheckoutSummary({
     shippingQuote,
     shippingQuoteLoading,
     shippingQuoteAttempted,
+    insurance,
+    setInsurance,
   } = c
   const effectiveShipping = shippingQuote ?? (!shippingQuoteAttempted ? shipping : null)
   const hasDiscount = discountTotal > 0
@@ -325,6 +330,25 @@ export function CheckoutSummary({
             </dd>
           </div>
         )}
+
+        {effectiveShipping && !effectiveShipping.provisional && !shippingQuoteLoading && (effectiveShipping.insurance_available || (effectiveShipping.insurance ?? 0) > 0) ? (
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-2.5">
+            <label className="flex min-w-0 cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border accent-primary"
+                checked={Boolean(insurance)}
+                onChange={(event) => setInsurance(event.target.checked)}
+              />
+              <span className="min-w-0 break-words">Lindungi paket dengan asuransi pengiriman</span>
+            </label>
+            {(effectiveShipping.insurance ?? 0) > 0 ? (
+              <span className="tabular-nums shrink-0 font-semibold text-foreground">
+                +{formatCurrency(effectiveShipping.insurance ?? 0)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {eta ? (
           <div className="flex justify-between gap-4 border-t border-border pt-2.5">
