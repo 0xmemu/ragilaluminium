@@ -2,7 +2,7 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { formatDateTime } from "@/lib/format"
-import { SHIPPING_STEPS, shippingStepIndex, statusMeta } from "@/lib/status"
+import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 
 export type ShippingTrackData = {
@@ -48,22 +48,20 @@ export function ShippingTrackPanel({
   const activeStatus = (track.record_status || track.shipping_status || "").trim() || "unknown"
   const normalizedStatus = activeStatus.toLowerCase()
   const knownStatuses = new Set([
-    ...SHIPPING_STEPS,
+    "tracking_pending",
+    "picked_up",
+    "in_transit",
+    "delivered",
     "pending_pickup",
     "in_process",
     "returned",
     "cancelled",
-    "return_initiated",
-    "returned_to_sender",
-    "lost",
-    "damaged",
     "exception",
     "unknown",
   ])
   const isCancelled = normalizedStatus === "cancelled"
   const isReturned = normalizedStatus === "returned"
   const isUnknown = !knownStatuses.has(normalizedStatus)
-  const stepIndex = shippingStepIndex(activeStatus)
   const hasWaybill = Boolean(track.waybill_number)
   const orderMeta = statusMeta(track.order_status || "")
 
@@ -129,45 +127,6 @@ export function ShippingTrackPanel({
           </p>
         </div>
       ) : null}
-
-      <ol className="grid grid-cols-1 gap-1 min-[480px]:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-4">
-        {SHIPPING_STEPS.map((step, index) => {
-          const meta = statusMeta(step)
-          const done = stepIndex >= 0 && index <= stepIndex
-          const current = stepIndex === index
-
-          return (
-            <li
-              key={step}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-2 py-1.5",
-                current ? "bg-primary/10" : "bg-transparent",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "size-1.5 shrink-0 rounded-full",
-                  current
-                    ? "bg-primary"
-                    : done
-                      ? "bg-muted-foreground/50"
-                      : "bg-border",
-                )}
-              />
-              <p
-                className={cn(
-                  "truncate text-[11px] font-medium leading-tight",
-                  current ? "text-foreground" : "text-muted-foreground",
-                )}
-                title={meta.label}
-              >
-                {meta.label}
-              </p>
-            </li>
-          )
-        })}
-      </ol>
 
       <dl className="grid gap-2 text-sm">
         <div className="flex justify-between gap-3">

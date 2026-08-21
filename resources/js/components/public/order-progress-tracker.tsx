@@ -15,8 +15,11 @@ const STEPS = [
 const MESSAGE_KEYWORDS: Record<(typeof STEPS)[number]["status"], string[]> = {
   pending_payment: ["menunggu konfirmasi", "dibuat"],
   processing: ["diproses oleh admin gudang", "diproses oleh toko", "diproses"],
-  shipped: ["sedang dikirim", "resi pengiriman", "diterbitkan"],
-  delivered: ["berhasil diterima", "paket diterima"],
+  // "Dikirim" terisi otomatis dari J&T (cascade in_transit → shipped):
+  // event shipping.created (resi) atau scan kurir (dijemput / perjalanan / keluar sortir).
+  shipped: ["sedang dikirim", "resi pengiriman", "diterbitkan", "dijemput", "dalam perjalanan", "keluar dari pusat"],
+  // "Sampai" terisi otomatis dari J&T (scanType 10 → delivered).
+  delivered: ["berhasil diterima", "paket diterima", "telah diterima"],
   completed: ["selesai"],
 }
 
