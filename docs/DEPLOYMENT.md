@@ -296,6 +296,7 @@ Cron root (ringkasan):
 */5 * * * * /usr/bin/python3 /root/scripts_health_check.py
 0 6 * * 1 /root/scripts_weekly_cleanup.sh
 30 6 * * * /root/scripts_db_live_health.sh
+0 7 * * 1 /root/scripts_drill_pitr.sh
 ```
 
 Cleanup mingguan (Senin 06:00, `/root/scripts_weekly_cleanup.sh`): hapus `sessions`
@@ -316,6 +317,20 @@ Deteksi dini masalah DB live (read-only: SELECT/CHECK TABLE saja):
   fluktuasi normal). Baseline di `/root/backups/rowcount-last.txt`.
 Gagal → `ALERT-db-live-health` → aggregator → Telegram. Terbukti (drill 2026-08-21): hapus 1 order
 → alert 3 tabel; restore dari dump harian via DB sementara → data kembali, app 200.
+
+### PITR drill (mingguan Senin 07:00, `/root/scripts_drill_pitr.sh`)
+
+Membuktikan binlog di R2 benar-benar bisa memulihkan DB ke titik waktu:
+- dump harian kini memakai `--source-data=2` (mencatat `MASTER_LOG_FILE`/`MASTER_LOG_POS`
+  di header dump) — prasyarat PITR;
+- drill: restore dump LATEST ke `ragil_pitr_test` → download binlog dari R2
+  (`/root/scripts_r2_download.py`, SigV4) → replay `mysqlbinlog --start-position=<posisi dump>`
+  → verifikasi rowcount test >= prod + CHECK TABLE + audit semantik;
+- PASS → marker `last-pitr-pass`; GAGAL → `ALERT-drill-pitr`.
+Terbukti (drill 2026-08-21 07:38): rowcount 2/2/2/50/612 cocok, CHECK TABLE OK, audit 22/22 PASS.
+
+Catatan operasional: setelah restart MySQL, jalankan `/root/scripts_backup_mysql_binlog.sh`
+secara manual (restart membuat file binlog baru yang belum di-upload ke R2).
 
 ### Uji restore dan batas validasi
 
