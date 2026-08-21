@@ -22,6 +22,19 @@ class SecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        // CSP report-only (2026-08-21): observasi pelanggaran dulu sebelum enforce.
+        // Inertia butuh 'unsafe-inline' untuk page-data script & Tailwind inline style.
+        $response->headers->set('Content-Security-Policy-Report-Only',
+            "default-src 'self'; "
+            ."script-src 'self' 'unsafe-inline'; "
+            ."style-src 'self' 'unsafe-inline'; "
+            ."img-src 'self' data: https:; "
+            ."connect-src 'self'; "
+            ."font-src 'self'; "
+            ."frame-src 'none'; "
+            ."object-src 'none'; "
+            ."base-uri 'self'; "
+            ."form-action 'self'");
 
         if ($request->isSecure() || $request->header('X-Forwarded-Proto') === 'https') {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

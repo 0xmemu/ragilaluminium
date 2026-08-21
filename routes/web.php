@@ -104,15 +104,16 @@ Route::get('/search', function (Request $request) {
 
 Route::get('/product/{parent_sku}', [ProductController::class, 'show'])->name('product.show');
 Route::post('/product/{product}/engage', [ProductEngagementController::class, 'store'])
+    ->middleware('throttle:30,1')
     ->middleware('throttle:120,1')
     ->name('product.engage');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::get('/cart/preview', [CartController::class, 'preview'])->name('cart.preview');
 Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
-Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
-Route::post('/cart/update', [CartController::class, 'update'])->name('cart.update');
-Route::post('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
+Route::post('/cart/add', [CartController::class, 'add'])->middleware('throttle:30,1')->name('cart.add');
+Route::post('/cart/update', [CartController::class, 'update'])->middleware('throttle:30,1')->name('cart.update');
+Route::post('/cart/remove', [CartController::class, 'remove'])->middleware('throttle:30,1')->name('cart.remove');
 Route::post('/cart/restore', [CartController::class, 'restore'])->name('cart.restore');
 Route::post('/cart/select', [CartController::class, 'select'])->name('cart.select');
 Route::post('/cart/remove-selected', [CartController::class, 'removeSelected'])->name('cart.remove-selected');
@@ -140,10 +141,10 @@ Route::get('/hasil-pemasangan/{parent_sku}', [PageController::class, 'installati
     ->name('installation.show');
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-Route::post('/checkout/validate', [CheckoutController::class, 'validateDetails'])->name('checkout.validate');
+Route::post('/checkout/validate', [CheckoutController::class, 'validateDetails'])->middleware('throttle:20,1')->name('checkout.validate');
 Route::post('/checkout/voucher', [CheckoutController::class, 'applyVoucher'])
     ->middleware('throttle:20,1')->name('checkout.voucher.apply');
-Route::post('/checkout/voucher/remove', [CheckoutController::class, 'removeVoucher'])->name('checkout.voucher.remove');
+Route::post('/checkout/voucher/remove', [CheckoutController::class, 'removeVoucher'])->middleware('throttle:20,1')->name('checkout.voucher.remove');
 Route::post('/checkout/place-order', [CheckoutController::class, 'placeOrder'])
     ->middleware('throttle:10,1')->name('checkout.place-order');
 
