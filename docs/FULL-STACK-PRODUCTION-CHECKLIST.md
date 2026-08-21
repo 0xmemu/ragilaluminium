@@ -238,7 +238,7 @@ ready to receive real orders.
   write access only to required storage/cache/log paths.
 - `[x]` `.env` chmod 640 root:www-data; storage + bootstrap/cache milik www-data (2026-08-21).
   `.baileys-sessions`, and uploaded files cannot be downloaded via the web root.
-- `[~]` Aggregator alert cron */5: disk/inode >85%, RAM >90%, queue depth >500, HTTP / /products /cart, service systemd (nginx/php8.3-fpm/ragil-queue/redis/mysql/baileys-bot), cloudflared docker, stale markers; kirim via Telegram bot (2026-08-21). CPU/DB detail belum.
+- `[x]` Aggregator alert cron */5: disk/inode >85%, RAM >90%, queue depth >500, HTTP / /products /cart, service systemd, cloudflared docker, stale markers; kirim via Telegram bot. + metrik CSV tiap 5 menit (load, CPU, mem, disk, redis, mysql, queue, http) di /root/backups/metrics/ (2026-08-21).
 
 ### Cloudflare and edge
 

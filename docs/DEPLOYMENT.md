@@ -350,6 +350,15 @@ Membuktikan arsip mingguan/bulanan di R2 bisa direstore: listing prefix `weekly/
 `last-archive-pass`; GAGAL → `ALERT-drill-archive`.
 Terbukti (drill 2026-08-21 07:48): arsip `weekly/2026-W34` rowcount cocok, audit 22/22 PASS.
 
+### Observability & log hygiene (F5, 2026-08-21)
+
+- `LOG_LEVEL=info` (bukan debug) di produksi; `APP_DEBUG=false`; rotasi log harian 14 hari.
+- `X-Request-ID` ditambahkan `RequestContext` middleware → response header + konteks log
+  (korelasi request ↔ log ↔ queue job).
+- Metrik CSV tiap 5 menit (`/root/scripts_metrics.sh` → `/root/backups/metrics/YYYY-MM-DD.csv`):
+  load, CPU, mem, disk, inode, redis mem/keys, MySQL threads/slow queries, queue depth, HTTP.
+  Retensi 90 hari.
+
 ### Uji restore dan batas validasi
 
 Restore test mingguan dilakukan ke database sementara, bukan ke database produksi. Sumber arsip mingguan/bulanan berasal dari dump harian yang sudah ada dan hanya boleh diarsipkan setelah marker restore test PASS masih baru.
