@@ -536,7 +536,7 @@
   /* Badge "X terjual" menempati area padding bawah; meta (garansi, COD)
      naik supaya tidak tertimpa badge. */
   .product-card__content:has(.product-card__sold) {
-    padding-bottom: 27px;
+    padding-bottom: 17px;
   }
 
   .product-card__title {
