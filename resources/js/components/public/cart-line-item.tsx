@@ -316,7 +316,8 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault()
-                saveNote()
+                // Enter = simpan + langsung nonaktifkan input (blur memicu saveNote sekali).
+                event.currentTarget.blur()
               }
             }}
             onBlur={saveNote}
