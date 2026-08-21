@@ -11,6 +11,7 @@ use App\Support\InertiaCatalog;
 use App\Support\InstallationGallery;
 use App\Support\InstallationPageSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,14 +26,18 @@ class HomeController extends Controller
 
         try {
             // Home “Paling Banyak Dipesan”: kurasi admin (max 10), fallback penjualan website.
-            $popularProductCards = InertiaCatalog::popularProductCards(10);
+            // Cache Redis 120s — data statis (tidak berubah per request user).
+            $popularProductCards = Cache::remember('home.popular_cards', 120,
+                fn () => InertiaCatalog::popularProductCards(10));
 
-            $featuredProducts = Product::visible()
-                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                ->withPopularityScore()
-                ->latest()
-                ->limit(8)
-                ->get();
+            $featuredProducts = Cache::remember('home.featured_products', 120, function () {
+                return Product::visible()
+                    ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                    ->withPopularityScore()
+                    ->latest()
+                    ->limit(8)
+                    ->get();
+            });
 
             $modelCards = app(ModelProductService::class)->storefrontCards(8);
             $categoryMenu = app(ModelProductService::class)->storefrontCategoryMenu();

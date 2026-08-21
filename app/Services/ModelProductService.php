@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
+
 use App\Models\CmsModelProduct;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -195,12 +197,15 @@ class ModelProductService
                 ->where('product_model', $row->product_model)
                 ->when($design, fn ($q) => $q->where('design_variant', $design));
 
-            $count = (int) (clone $productQuery)->count();
+            $key = $this->pairKey($row->product_category, $row->product_model);
+            // Optimasi (2026-08-21): tanpa filter design, ambil count dari stats
+            // yang sudah dihitung satu kali (GROUP BY) — hindari 1 query COUNT per baris.
+            $count = $design === null
+                ? (int) ($stats[$key]['active_count'] ?? 0)
+                : (int) (clone $productQuery)->count();
             if ($design && $count === 0) {
                 continue;
             }
-
-            $key = $this->pairKey($row->product_category, $row->product_model);
             $designs = $stats[$key]['designs'] ?? [];
 
             $categorySlug = CategoryUrl::categoryToSlug((string) $row->product_category);
@@ -299,6 +304,13 @@ class ModelProductService
      * @return list<array{key:string,label:string,href:string,category:?string,model:?string,subs:list<array{label:string,href:string}>}>
      */
     public function storefrontCategoryMenu(): array
+    {
+        return Cache::remember('catalog.category_menu', 300, function (): array {
+            return $this->buildCategoryMenu();
+        });
+    }
+
+    protected function buildCategoryMenu(): array
     {
         $rows = CmsModelProduct::query()->active()->get();
         if ($rows->isEmpty()) {

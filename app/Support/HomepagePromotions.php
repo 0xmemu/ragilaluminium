@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Cache;
+
 use App\Models\CmsBanner;
 use App\Models\Product;
 use Illuminate\Support\Collection;
@@ -43,6 +45,11 @@ class HomepagePromotions
      * @return array<int, array<string, mixed>>
      */
     public static function slides(): array
+    {
+        return Cache::remember('home.promo_slides', 300, fn () => self::buildSlides());
+    }
+
+    protected static function buildSlides(): array
     {
         // 10 slot banner: banner manual dari admin (cms_banners) tampil lebih
         // dulu, sisanya placeholder polos sampai total 10. Admin tinggal mengisi
