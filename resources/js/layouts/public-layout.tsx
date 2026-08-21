@@ -1,17 +1,42 @@
 import type { ReactNode } from "react"
+import React from "react"
 
-import { usePage } from "@inertiajs/react"
+import { router, usePage } from "@inertiajs/react"
+import type { GlobalEvent } from "@inertiajs/core"
 import { AnnouncementBar } from "@/components/public/announcement-bar"
 import { FlyingCart } from "@/components/public/flying-cart"
 
 import { MobileBottomNav } from "@/components/public/mobile-bottom-nav"
 import { PublicFooter } from "@/components/public/public-footer"
 import { PublicHeader } from "@/components/public/public-header"
+import { PageSkeleton } from "@/components/public/page-skeleton"
 import { FlashMessages } from "@/components/shared/flash-messages"
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   const { component } = usePage()
   const isHome = component === "Public/Home"
+  const pathRef = React.useRef(window.location.pathname)
+
+  const [navigating, setNavigating] = React.useState(false)
+
+  React.useEffect(() => {
+    const onStart = (e: GlobalEvent<"start">) => {
+      const target = new URL(e.detail?.visit?.url ?? window.location.href).pathname
+      if (target && target !== pathRef.current) {
+        setNavigating(true)
+      }
+    }
+    const onFinish = () => {
+      setNavigating(false)
+      pathRef.current = window.location.pathname
+    }
+    const offStart = router.on("start", onStart)
+    const offFinish = router.on("finish", onFinish)
+    return () => {
+      offStart()
+      offFinish()
+    }
+  }, [])
 
   return (
     <div className="public-title-case min-h-screen overflow-x-clip bg-background text-body">
@@ -25,7 +50,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       <PublicHeader />
       <FlashMessages />
       <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full overflow-x-hidden outline-none">
-        {children}
+        {navigating ? <PageSkeleton /> : children}
       </main>
       <FlyingCart />
       <PublicFooter className="hidden lg:block" />
