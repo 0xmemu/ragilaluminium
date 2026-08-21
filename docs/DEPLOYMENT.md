@@ -297,6 +297,7 @@ Cron root (ringkasan):
 0 6 * * 1 /root/scripts_weekly_cleanup.sh
 30 6 * * * /root/scripts_db_live_health.sh
 0 7 * * 1 /root/scripts_drill_pitr.sh
+30 7 * * 1 /root/scripts_drill_archive.sh
 ```
 
 Cleanup mingguan (Senin 06:00, `/root/scripts_weekly_cleanup.sh`): hapus `sessions`
@@ -331,6 +332,23 @@ Terbukti (drill 2026-08-21 07:38): rowcount 2/2/2/50/612 cocok, CHECK TABLE OK, 
 
 Catatan operasional: setelah restart MySQL, jalankan `/root/scripts_backup_mysql_binlog.sh`
 secara manual (restart membuat file binlog baru yang belum di-upload ke R2).
+
+### Live rescue (G3) — `/root/scripts_restore_live_rescue.sh`
+
+Prosedur menyelamatkan DB live dari backup (terbukti 2026-08-21 saat insiden test):
+- **Default = dry-run**: restore dump ke `ragil_rescue_stage` + rowcount + CHECK TABLE + audit
+  semantik; live TIDAK disentuh. PASS = bukti dump bisa menyelamatkan live.
+- **`--apply`**: backup live dulu (`live-before-rescue-*.sql.gz`), arsip live lama ke
+  `ragil_rescue_old`, salin stage ke live, verifikasi akhir. Hanya dipakai saat benar-benar
+  butuh swap — dengan backup pra-swap yang diarsipkan.
+
+### Archive drill (G5) — `/root/scripts_drill_archive.sh`
+
+Membuktikan arsip mingguan/bulanan di R2 bisa direstore: listing prefix `weekly/`+`monthly/`
+(SigV4, prefix di-URL-encode `%2F`) → pilih arsip terbaru → download → restore ke
+`ragil_archive_test` → rowcount + CHECK TABLE + audit semantik. PASS → marker
+`last-archive-pass`; GAGAL → `ALERT-drill-archive`.
+Terbukti (drill 2026-08-21 07:48): arsip `weekly/2026-W34` rowcount cocok, audit 22/22 PASS.
 
 ### Uji restore dan batas validasi
 
