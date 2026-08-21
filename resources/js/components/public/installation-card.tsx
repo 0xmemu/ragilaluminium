@@ -44,7 +44,7 @@ export function InstallationCard({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2.5">
-        <h3 className="line-clamp-2 shrink-0 text-[13px] font-semibold leading-snug text-foreground">
+        <h3 className="line-clamp-2 min-h-[2.75em] shrink-0 text-[13px] font-semibold leading-snug text-foreground">
           {title}
         </h3>
         <div className="flex-1" aria-hidden="true" />
