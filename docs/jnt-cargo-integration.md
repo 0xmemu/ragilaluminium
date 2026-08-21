@@ -1,3 +1,5 @@
+.env
+ENV_IGNORED
 # Integrasi J&T Cargo — Ragil Aluminium
 
 > **Sumber:** [J&T Cargo Open Platform](https://open.jtcargo.co.id/#/apiDoc) (spesifikasi resmi console).
@@ -145,7 +147,7 @@ php artisan jnt:joint-debug --interface=track --times=3
 Lihat blok **J&T Cargo Open Platform** di `.env.example`. Minimal yang wajib diisi dari console:
 `JNT_ENABLED=true`, `JNT_ENV`, `JNT_API_ACCOUNT`, `JNT_PRIVATE_KEY`, `JNT_CUSTOMER_CODE`, `JNT_CUSTOMER_PASSWORD`, data `JNT_SENDER_*`, dan default order (`JNT_EXPRESS_TYPE`, `JNT_GOODS_TYPE`, dll — sesuaikan dengan tipe layanan akun).
 
-> **Catatan `goodsType`:** produk aluminium (jendela/pintu) → default `bm000010` (bahan bangunan). Konfirmasi kategori yang benar dengan outlet J&T dan sesuaikan `JNT_GOODS_TYPE`.
+> **Catatan `goodsType` & `expressType` (terverifikasi 2026-08-21):** contoh resmi doc `agingCost/get` memakai `expressType="FT"`, `goodsType="bm000005"`, `paymentType=1`, `offerFee="200"`. Kombinasi inilah yang mengembalikan tarif nyata untuk akun ini (Banjarnegara→Semarang 1 kg = freight 60.000 / +asuransi 65.000). **`expressType="FTAIR"` mengembalikan `estimateSumFreight=0`** (SUCCESS tapi 0) — jangan dipakai. Nilai ini sudah menjadi default `config/jnt.php`; hanya ubah bila kontrak akun berbeda (konfirmasi ke outlet J&T).
 
 ---
 

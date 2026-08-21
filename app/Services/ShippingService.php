@@ -81,6 +81,7 @@ class ShippingService
                 'expressType' => config('jnt.defaults.express_type'),
                 'deliveryType' => config('jnt.defaults.delivery_type'),
                 'goodsType' => config('jnt.defaults.goods_type'),
+                'offerFee' => config('jnt.defaults.offer_fee'),
                 'weight' => (string) $weightKg,
                 'totalQuantity' => 1,
                 'sendProv' => config('jnt.sender.prov'),
@@ -95,7 +96,11 @@ class ShippingService
                 $cost = $resp->get('estimateSumFreight')
                     ?? $resp->get('estimateCustomerCost')
                     ?? $resp->get('totalFreight');
-                if (is_numeric($cost)) {
+                // Guard: freight 0 dianggap tarif tidak valid (J&T dapat
+                // mengembalikan 0 untuk kombinasi produk/area yang tidak
+                // tersedia) -> jatuh ke estimasi provisional + manual review,
+                // ongkir Rp 0 tidak pernah tampil ke pembeli.
+                if (is_numeric($cost) && (float) $cost > 0) {
                     $applied = ShippingSubsidySettings::apply(round((float) $cost, 2), 'jnt');
 
                     return [

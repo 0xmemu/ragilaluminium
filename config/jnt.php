@@ -92,16 +92,20 @@ return [
     |    (bahan bangunan) / bm000006 (furnitur). Sesuaikan dgn akun.
     */
     'defaults' => [
-        'express_type' => env('JNT_EXPRESS_TYPE', 'FTAIR'),
+        // expressType/goodsType/paymentType/offerFee disamakan dengan contoh
+        // resmi doc agingCost/get (2026-08-21): FTAIR mengembalikan freight 0
+        // untuk akun ini — FT (produk darat) yang valid.
+        'express_type' => env('JNT_EXPRESS_TYPE', 'FT'),
         'order_type' => env('JNT_ORDER_TYPE', '2'),
         'service_type' => env('JNT_SERVICE_TYPE', '01'),
         'delivery_type' => env('JNT_DELIVERY_TYPE', '101'),
         'pay_type' => env('JNT_PAY_TYPE', 'PP_PM'),
         'pay_type_cod' => env('JNT_PAY_TYPE_COD', 'CC_CASH'),
-        'goods_type' => env('JNT_GOODS_TYPE', 'bm000010'),
+        'goods_type' => env('JNT_GOODS_TYPE', 'bm000005'),
         // paymentType utk agingCost/get: 1 cash by post, 2 monthly, 3 cod
-        'payment_type' => (int) env('JNT_PAYMENT_TYPE', 2),
+        'payment_type' => (int) env('JNT_PAYMENT_TYPE', 1),
         'price_currency' => env('JNT_PRICE_CURRENCY', 'IDR'),
+        'offer_fee' => env('JNT_OFFER_FEE', '200'),
     ],
 
     'sender' => [
