@@ -85,23 +85,25 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       {/* Bagian 1: 4 Langkah Pemesanan (Mobile-optimized Horizontal Cards) */}
       <section className="py-4 sm:py-6 bg-surface">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <ol className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+          {/* Timeline alur pemesanan — titik ikon + garis penghubung kontinyu */}
+          <ol className="relative mx-auto max-w-2xl">
+            <span
+              aria-hidden="true"
+              className="absolute bottom-4 left-[22px] top-4 w-px bg-border sm:left-[24px]"
+            />
             {guide.steps.map((step, index) => (
-              <li
-                key={`${step.title}-${index}`}
-                className="flex items-start gap-3.5 sm:gap-4 rounded-xl border border-border/80 bg-background p-4 sm:p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
-              >
-                {/* Icon & Step Number */}
-                <div className="relative flex size-11 sm:size-13 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <li key={`${step.title}-${index}`} className="relative flex gap-3.5 pb-6 last:pb-0 sm:gap-5 sm:pb-8">
+                {/* Titik ikon di garis */}
+                <div className="relative z-10 flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-primary shadow-xs sm:size-12">
                   <Icon name={step.icon} className="size-5 sm:size-6" aria-hidden="true" />
-                  <span className="tabular-nums absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-xs">
-                    {index + 1}
-                  </span>
                 </div>
 
                 {/* Content */}
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-bold tracking-tight text-foreground sm:text-base">
+                <div className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md sm:p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Langkah {index + 1}
+                  </p>
+                  <h2 className="mt-0.5 text-sm font-bold tracking-tight text-foreground sm:text-base">
                     {step.title}
                   </h2>
                   {step.description ? (
