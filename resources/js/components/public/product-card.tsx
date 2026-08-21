@@ -167,6 +167,11 @@ export function ProductCard({
           />
         </Link>
 
+        {soldCount > 0 ? (
+          <span className="product-card__sold">
+            {soldCount.toLocaleString("id-ID")} terjual
+          </span>
+        ) : null}
         {flashEmphasis ? (
           <span className="product-card__badge">
             <Lightning weight="fill" className="size-3 shrink-0" aria-hidden />
@@ -248,13 +253,6 @@ export function ProductCard({
               <span className="truncate">{warrantyLabel}</span>
             </span>
             </span>
-            {soldCount > 0 ? (
-              <span className="product-card__sold">
-                {soldCount.toLocaleString("id-ID")} terjual
-              </span>
-            ) : (
-              <span className="shrink-0" aria-hidden="true" />
-            )}
           </div>
         </div>
       </Link>
