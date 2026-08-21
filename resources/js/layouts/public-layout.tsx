@@ -23,7 +23,12 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
   React.useEffect(() => {
     const onStart = (e: GlobalEvent<"start">) => {
-      const target = new URL(e.detail?.visit?.url ?? window.location.href).pathname
+      const visit = e.detail?.visit
+      // Skip prefetch, form submit (POST), dan partial reload — bukan pindah halaman.
+      if (visit?.prefetch || (visit?.method ?? "get") !== "get" || (visit?.only?.length ?? 0) > 0) {
+        return
+      }
+      const target = new URL(visit?.url ?? window.location.href).pathname
       if (target && target !== pathRef.current) {
         setPendingPath(target)
         setNavigating(true)
