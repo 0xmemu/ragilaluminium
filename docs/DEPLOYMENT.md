@@ -359,6 +359,19 @@ Terbukti (drill 2026-08-21 07:48): arsip `weekly/2026-W34` rowcount cocok, audit
   load, CPU, mem, disk, inode, redis mem/keys, MySQL threads/slow queries, queue depth, HTTP.
   Retensi 90 hari.
 
+### CI/CD (F3, 2026-08-21)
+
+- `ci.yml` (6 job): frontend quality (`npm run quality`), PHPUnit + Pint, dependency audit
+  (`composer audit` + `npm audit`), supply-chain (gitleaks secret scan, dependency-review,
+  CycloneDX SBOM), e2e Playwright 4 viewport. Push ke main + PR trigger.
+- `release.yml` (baru): tag `v*` → composer --no-dev + build → `manifest.json` (git sha,
+  ref, build time, PHP/Node/Composer version, asset manifest checksum) → upload artifact.
+- `scripts/prod/deploy.sh` (baru): dry-run default (verifikasi target tanpa mengubah),
+  backup .env + pre-deploy DB dump, checkout tag/sha/branch, composer --no-dev, npm build,
+  hapus `public/hot`, `migrate --force` (forward-only), config/route/view cache,
+  `queue:restart` graceful, reload php-fpm, verifikasi health.
+- Branch protection + required checks: perlu diset di dashboard GitHub (dokumentasikan di release ticket).
+
 ### Smoke test harian + load test (F7, 2026-08-21)
 
 - `/root/scripts_smoke_test.sh` — cron harian 08:00; 24 cek: 16 route publik (200), 404 page,

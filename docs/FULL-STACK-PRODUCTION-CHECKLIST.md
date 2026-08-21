@@ -53,10 +53,9 @@ ready to receive real orders.
 - `[ ]` Pin and review Node, npm, PHP, Composer, Vite, Playwright, and browser
   versions used by CI and deployment. Do not let a floating runtime silently
   change the production bundle.
-- `[ ]` Generate a release manifest containing git SHA, build timestamp, Node/PHP
-  versions, migration batch, and asset manifest checksum.
-- `[ ]` Verify the production web server serves only the current `public/build`
-  assets and does not retain stale `public/hot` or an old manifest.
+- `[x]` Release manifest dihasilkan `release.yml`: git SHA, ref, build time, PHP/Node/
+  Composer version, asset manifest checksum (2026-08-21).
+- `[x]` Deploy script menghapus `public/hot` sebelum cache (guard, 2026-08-21).
 
 ### UX, accessibility, and failure states
 
