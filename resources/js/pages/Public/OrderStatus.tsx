@@ -135,6 +135,7 @@ function OrderDetail({
           <OrderProgressTracker order={order} />
           <div className="mt-4 border-t border-border pt-4">
             <ShippingTrackPanel
+              embedded
               track={
                 order.tracking ?? {
                   shipping_status: order.shipping_status,

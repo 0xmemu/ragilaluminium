@@ -27,6 +27,8 @@ export interface ShippingTrackTimelineEntry {
 type ShippingTrackPanelProps = {
   track: ShippingTrackData
   timeline?: ShippingTrackTimelineEntry[]
+  /** Embedded: sembunyikan judul "Status pengiriman" — dipakai di dalam card tracking. */
+  embedded?: boolean
   jntEnabled?: boolean
   compact?: boolean
   className?: string
@@ -38,6 +40,7 @@ type ShippingTrackPanelProps = {
 export function ShippingTrackPanel({
   track,
   timeline,
+  embedded = false,
   jntEnabled = false,
   compact = false,
   className,
@@ -80,26 +83,30 @@ export function ShippingTrackPanel({
 
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground">Status pengiriman</p>
-          <div className="mt-1.5">
-            <StatusBadge status={activeStatus} />
+      {embedded ? (
+        <StatusBadge status={activeStatus} />
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground">Status pengiriman</p>
+            <div className="mt-1.5">
+              <StatusBadge status={activeStatus} />
+            </div>
           </div>
+          {hasWaybill && onRefresh ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="xs"
+              disabled={refreshBusy || !jntEnabled}
+              onClick={onRefresh}
+              title={jntEnabled ? "Refresh status dari J&T" : "J&T belum aktif — refresh nonaktif"}
+            >
+              {refreshBusy ? "Memuat..." : "Refresh J&T"}
+            </Button>
+          ) : null}
         </div>
-        {hasWaybill && onRefresh ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="xs"
-            disabled={refreshBusy || !jntEnabled}
-            onClick={onRefresh}
-            title={jntEnabled ? "Refresh status dari J&T" : "J&T belum aktif — refresh nonaktif"}
-          >
-            {refreshBusy ? "Memuat..." : "Refresh J&T"}
-          </Button>
-        ) : null}
-      </div>
+      )}
 
       {isCancelled ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs leading-5 text-destructive">
