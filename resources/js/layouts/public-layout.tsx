@@ -9,7 +9,7 @@ import { FlyingCart } from "@/components/public/flying-cart"
 import { MobileBottomNav } from "@/components/public/mobile-bottom-nav"
 import { PublicFooter } from "@/components/public/public-footer"
 import { PublicHeader } from "@/components/public/public-header"
-import { PageSkeleton } from "@/components/public/page-skeleton"
+import { GenericPageSkeleton, skeletonForPath } from "@/components/public/page-skeleton"
 import { BackToTop } from "@/components/public/back-to-top"
 import { FlashMessages } from "@/components/shared/flash-messages"
 
@@ -19,11 +19,13 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   const pathRef = React.useRef(window.location.pathname)
 
   const [navigating, setNavigating] = React.useState(false)
+  const [pendingPath, setPendingPath] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const onStart = (e: GlobalEvent<"start">) => {
       const target = new URL(e.detail?.visit?.url ?? window.location.href).pathname
       if (target && target !== pathRef.current) {
+        setPendingPath(target)
         setNavigating(true)
       }
     }
@@ -51,7 +53,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       <PublicHeader />
       <FlashMessages />
       <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full overflow-x-hidden outline-none">
-        {navigating ? <PageSkeleton /> : children}
+        {navigating ? (pendingPath ? skeletonForPath(pendingPath) : <GenericPageSkeleton />) : children}
       </main>
       <FlyingCart />
       <BackToTop />
