@@ -533,6 +533,12 @@
     padding: 5px;
   }
 
+  /* Badge "X terjual" menempati area padding bawah; meta (garansi, COD)
+     naik supaya tidak tertimpa badge. */
+  .product-card__content:has(.product-card__sold) {
+    padding-bottom: 27px;
+  }
+
   .product-card__title {
     display: -webkit-box !important;
     overflow: hidden !important;
@@ -692,15 +698,11 @@
     inset-block-end: 0;
     inset-inline-end: 0;
     z-index: 10;
-    /* Padding em-based agar proporsional dengan ukuran teks "X terjual". */
-    padding: 0.55em 0.85em 0.65em;
-    border-start-start-radius: 6px;
-    background: hsl(var(--surface) / 0.9);
+    padding: 2px;
     color: hsl(var(--muted-foreground));
     font-size: 10px;
     font-weight: 400;
     line-height: 1;
-    backdrop-filter: blur(2px);
   }
 
   @media (min-width: 40rem) {
