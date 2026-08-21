@@ -136,12 +136,18 @@ class OrderTrackingPresenter
         $to = isset($payload['to']) ? (string) $payload['to'] : null;
 
         return match ($to) {
+            // Pipeline tracking J&T — docs open.jtcargo.co.id
+            'tracking_pending' => 'Paket menunggu penjemputan kurir.',
+            'picked_up' => 'Paket dijemput kurir.',
+            'in_transit' => 'Paket sedang dalam perjalanan.',
+            'delivered' => 'Pesanan telah diterima.',
+            'returned' => 'Paket dikembalikan ke pengirim.',
+            'cancelled' => 'Pengiriman dibatalkan.',
+            'exception' => 'Ada kendala pengiriman.',
+            'unknown' => 'Status pengiriman diperbarui.',
+            // Legacy
             'pending_pickup' => 'Paket menunggu penjemputan kurir.',
             'in_process' => 'Paket sedang disiapkan di gudang.',
-            'in_transit' => 'Paket dalam perjalanan menuju alamat Anda.',
-            'delivered' => 'Paket berhasil diterima.',
-            'returned' => 'Paket dalam proses retur.',
-            'cancelled' => 'Pengiriman dibatalkan.',
             default => 'Status pengiriman diperbarui.',
         };
     }

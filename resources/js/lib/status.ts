@@ -31,9 +31,13 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   cancelled: { label: "Dibatalkan", tone: "danger" },
   paid: { label: "Lunas", tone: "success" },
   refunded: { label: "Dikembalikan", tone: "neutral" },
+  tracking_pending: { label: "Menunggu resi", tone: "neutral" },
+  picked_up: { label: "Paket dijemput kurir", tone: "info" },
+  in_transit: { label: "Dalam perjalanan", tone: "info" },
+  exception: { label: "Kendala pengiriman", tone: "danger" },
+  unknown: { label: "Status belum terbaca", tone: "neutral" },
   pending_pickup: { label: "Menunggu penjemputan", tone: "warning" },
   in_process: { label: "Disiapkan", tone: "info" },
-  in_transit: { label: "Dalam perjalanan", tone: "info" },
   returned: { label: "Dikembalikan", tone: "warning" },
   sent: { label: "Terkirim", tone: "info" },
   read: { label: "Dibaca", tone: "success" },
@@ -62,8 +66,8 @@ export const ORDER_STEPS = [
 
 /** Milestone pengiriman (orders.shipping_status / shipping_records.status). */
 export const SHIPPING_STEPS = [
-  "pending_pickup",
-  "in_process",
+  "tracking_pending",
+  "picked_up",
   "in_transit",
   "delivered",
 ] as const

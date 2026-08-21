@@ -31,12 +31,19 @@ class OrderStateMachine
 
     /** @var array<string, list<string>> */
     private const SHIPPING_TRANSITIONS = [
-        'pending_pickup' => ['in_process', 'in_transit', 'delivered', 'returned', 'cancelled'],
-        'in_process' => ['in_transit', 'delivered', 'returned', 'cancelled'],
-        'in_transit' => ['delivered', 'returned', 'cancelled'],
+        // Pipeline tracking J&T — status internal sesuai docs open.jtcargo.co.id
+        // (orderStatus 100-105 + scanType 1/3/4/5/10/11/12/13 + scanTypeCode 100/101)
+        'tracking_pending' => ['picked_up', 'in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        'picked_up' => ['in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        'in_transit' => ['delivered', 'returned', 'cancelled', 'exception'],
         'delivered' => ['returned'],
         'returned' => [],
         'cancelled' => [],
+        'exception' => ['in_transit', 'delivered', 'returned', 'cancelled'],
+        'unknown' => ['tracking_pending', 'picked_up', 'in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        // Legacy (data lama tetap bisa lanjut ke pipeline baru)
+        'pending_pickup' => ['picked_up', 'in_process', 'in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        'in_process' => ['in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
     ];
 
     public function canTransition(Order|string $order, string $to, string $source = 'admin'): bool

@@ -124,30 +124,33 @@ return [
     | Internal: pending_pickup | in_process | in_transit | delivered | returned | cancelled
     */
     'status_map' => [
-        // Order-level status (getOrders / order status push)
-        '100' => 'pending_pickup', // not dispatched
-        '101' => 'pending_pickup', // outlets dispatched
-        '102' => 'pending_pickup', // salesperson dispatched
-        '103' => 'in_process',     // picked up
-        '104' => 'cancelled',      // cancelled
-        '105' => 'cancelled',      // pickupFail
+        // Order-level status (getOrders / order status push) — docs open.jtcargo.co.id
+        // 100 not dispatched | 101 outlets dispatched | 102 salesperson dispatched
+        // 103 picked up | 104 cancelled | 105 pickupFail
+        '100' => 'tracking_pending', // belum ada penjemputan (resi sudah terbit)
+        '101' => 'tracking_pending', // sudah di-dispatch ke outlet
+        '102' => 'tracking_pending', // salesperson di-dispatch
+        '103' => 'picked_up',        // paket dijemput kurir
+        '104' => 'cancelled',        // dibatalkan
+        '105' => 'exception',        // pickupFail
         // Trace scanType (logistics/trace + trajectory push)
-        '1' => 'in_process',       // express mail collection
-        '3' => 'in_transit',       // outgoing scan
-        '4' => 'in_transit',       // incoming scan
-        '5' => 'in_transit',       // outbound scan
-        '10' => 'delivered',       // express delivery (refine via scanTypeCode)
-        '11' => 'in_transit',      // problem scan
-        '12' => 'returned',        // return scan
-        '13' => 'cancelled',       // pickup failed
+        '1' => 'picked_up',          // 1 pengambilan paket (express mail collection)
+        '3' => 'in_transit',         // 3 scan kirim (outgoing)
+        '4' => 'in_transit',         // 4 scan paket sampai (incoming)
+        '5' => 'in_transit',         // 5 scan keluar gudang (outbound)
+        '10' => 'delivered',         // 10 tanda terima (refine via scanTypeCode 100/101)
+        '11' => 'exception',         // 11 scan paket bermasalah (problem)
+        '12' => 'returned',          // 12 scan retur
+        '13' => 'exception',         // 13 pick up failed
         // Fallback teks (order status push memakai teks)
-        'picked up' => 'in_process',
-        'pickup and collecting' => 'in_process',
-        'deployed salesperson' => 'pending_pickup',
+        'picked up' => 'picked_up',
+        'pickup and collecting' => 'picked_up',
+        'deployed salesperson' => 'tracking_pending',
         'delivered' => 'delivered',
         'returned' => 'returned',
+        'return initiated' => 'returned',
         'cancelled' => 'cancelled',
-        'pickupfail' => 'cancelled',
+        'pickupfail' => 'exception',
     ],
 
     // scanTypeCode (hanya membedakan tipe tanda tangan pada scanType=10).

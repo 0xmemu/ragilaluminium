@@ -37,7 +37,19 @@ export function ShippingTrackPanel({
 }: ShippingTrackPanelProps) {
   const activeStatus = (track.record_status || track.shipping_status || "").trim() || "unknown"
   const normalizedStatus = activeStatus.toLowerCase()
-  const knownStatuses = new Set([...SHIPPING_STEPS, "cancelled", "returned"])
+  const knownStatuses = new Set([
+    ...SHIPPING_STEPS,
+    "pending_pickup",
+    "in_process",
+    "returned",
+    "cancelled",
+    "return_initiated",
+    "returned_to_sender",
+    "lost",
+    "damaged",
+    "exception",
+    "unknown",
+  ])
   const isCancelled = normalizedStatus === "cancelled"
   const isReturned = normalizedStatus === "returned"
   const isUnknown = !knownStatuses.has(normalizedStatus)
