@@ -27,6 +27,21 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
   const latestQuantity = React.useRef(item.quantity)
   const confirmedQuantity = React.useRef(item.quantity)
 
+  // Catatan per-produk (keputusan #11): disimpan debounce ke /cart/update.
+  const [note, setNote] = React.useState(item.note ?? "")
+  const [noteSaving, setNoteSaving] = React.useState(false)
+  const [noteError, setNoteError] = React.useState<string | null>(null)
+  const noteTimer = React.useRef<number | null>(null)
+  const noteAbortRef = React.useRef<AbortController | null>(null)
+  const noteDraft = React.useRef(item.note ?? "")
+
+  React.useEffect(() => {
+    noteDraft.current = item.note ?? ""
+    // Sync state catatan dengan prop terbaru (data dari server / item lain).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNote(item.note ?? "")
+  }, [item.note])
+
 
   React.useEffect(() => {
     if (!saving && timer.current === null && latestQuantity.current !== item.quantity) {
@@ -37,7 +52,9 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
 
   React.useEffect(() => () => {
     if (timer.current !== null) window.clearTimeout(timer.current)
+    if (noteTimer.current !== null) window.clearTimeout(noteTimer.current)
     quantityAbortRef.current?.abort()
+    noteAbortRef.current?.abort()
   }, [])
 
   const unitPrice = money(item.unit_price)
@@ -70,6 +87,44 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
       timer.current = null
       void persistQuantity(quantity, currentSequence)
     }, 220)
+  }
+
+  async function persistNote(value: string) {
+    // §8: request baru membatalkan yang masih berjalan (ketik cepat → response basi tidak menimpa).
+    noteAbortRef.current?.abort()
+    const controller = new AbortController()
+    noteAbortRef.current = controller
+    try {
+      const response = await fetch(routeUrl("cart.update"), {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": page.props.csrf,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ line_id: item.line_id, quantity: latestQuantity.current, note: value }),
+        signal: controller.signal,
+      })
+      if (!response.ok) throw new Error("Cart note update failed")
+    } catch (_error) {
+      if (controller.signal.aborted) return
+      setNoteError("Gagal menyimpan catatan. Coba lagi.")
+    } finally {
+      if (!controller.signal.aborted) setNoteSaving(false)
+    }
+  }
+
+  function updateNote(value: string) {
+    setNote(value)
+    noteDraft.current = value
+    setNoteError(null)
+    if (noteTimer.current !== null) window.clearTimeout(noteTimer.current)
+    noteTimer.current = window.setTimeout(() => {
+      noteTimer.current = null
+      setNoteSaving(true)
+      void persistNote(value.trim())
+    }, 450)
   }
 
   async function persistQuantity(quantity: number, currentSequence: number) {
@@ -245,18 +300,28 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
         </div>
       </div>
 
-      {/* Baris bawah: catatan produk rata kiri · qty + X grouped rata kanan */}
+      {/* Baris bawah: input catatan produk rata kiri · qty + X grouped rata kanan */}
       <div className="flex shrink-0 items-center gap-3 border-t border-border pt-3">
-        {item.note?.trim() ? (
-          <p
-            className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground"
-            title={item.note}
-          >
-            {item.note}
-          </p>
-        ) : (
-          <span className="min-w-0 flex-1" aria-hidden="true" />
-        )}
+        <label className="min-w-0 flex-1 text-left">
+          <span className="sr-only">Catatan untuk produk ini</span>
+          <input
+            id={`cart-note-${item.line_id}`}
+            type="text"
+            className="w-full rounded-[5px] border border-border bg-surface-muted/50 px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none"
+            value={note}
+            onChange={(event) => updateNote(event.target.value)}
+            placeholder="Catatan untuk produk ini (opsional)"
+            maxLength={2000}
+            aria-label={`Catatan untuk ${item.name}`}
+          />
+          {noteSaving ? (
+            <span className="mt-0.5 block text-[10px] text-muted-foreground">Menyimpan…</span>
+          ) : noteError ? (
+            <span role="alert" className="mt-0.5 block text-[10px] font-medium text-destructive">
+              {noteError}
+            </span>
+          ) : null}
+        </label>
         <div className="flex shrink-0 items-center gap-2.5">
           {quantityControls}
           <button
