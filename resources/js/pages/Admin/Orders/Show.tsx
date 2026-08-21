@@ -1202,6 +1202,7 @@ export default function OrderShow({
                   total_amount: order.total_amount,
                 }
               }
+              timeline={tracking?.timeline}
               jntEnabled={shippingActions.jntEnabled}
               refreshBusy={refreshBusy}
               onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}

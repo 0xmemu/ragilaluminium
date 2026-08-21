@@ -16,8 +16,17 @@ export type ShippingTrackData = {
   order_status?: string | null
 }
 
+export interface ShippingTrackTimelineEntry {
+  message: string
+  detail?: string | null
+  location?: string | null
+  at?: string | null
+  source?: string
+}
+
 type ShippingTrackPanelProps = {
   track: ShippingTrackData
+  timeline?: ShippingTrackTimelineEntry[]
   jntEnabled?: boolean
   compact?: boolean
   className?: string
@@ -28,6 +37,7 @@ type ShippingTrackPanelProps = {
 
 export function ShippingTrackPanel({
   track,
+  timeline,
   jntEnabled = false,
   compact = false,
   className,
@@ -211,6 +221,33 @@ export function ShippingTrackPanel({
           Buka tracking kurir
           <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
         </a>
+      ) : null}
+
+      {timeline && timeline.length > 0 ? (
+        <ol className="space-y-3 border-t border-border pt-3">
+          {timeline.map((entry, index) => (
+            <li key={`${entry.at ?? "t"}-${index}`} className="relative pl-5">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "absolute left-0 top-1.5 size-2 rounded-full",
+                  index === 0 ? "bg-primary" : "bg-border",
+                )}
+              />
+              <p className="text-xs font-semibold text-foreground">{entry.message}</p>
+              {entry.detail ? (
+                <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                  {entry.detail}
+                </p>
+              ) : null}
+              <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+                {[entry.location, entry.at ? formatDateTime(entry.at) : null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </li>
+          ))}
+        </ol>
       ) : null}
 
       <p className="text-[11px] leading-5 text-muted-foreground">

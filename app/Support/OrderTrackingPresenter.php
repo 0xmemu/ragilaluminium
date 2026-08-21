@@ -48,11 +48,20 @@ class OrderTrackingPresenter
                 'source' => (string) $log->event_type,
             ];
         })->merge($tracking->map(function (ShippingTrackingEvent $event): array {
+            $raw = $event->description ?: $event->provider_status;
+            $local = self::trackingScanLabel((string) $event->provider_status, $event->location);
+
             return [
-                'message' => self::timelineMessage('shipping.status_updated', [
-                    'raw' => $event->description ?: $event->provider_status,
+                // Label lokal Indonesia per scanType; fallback ke teks asli kurir.
+                'message' => $local ?? self::timelineMessage('shipping.status_updated', [
+                    'raw' => $raw,
                     'to' => $event->normalized_status,
                 ]),
+                // Teks asli dari J&T tetap disertakan sebagai detail.
+                'detail' => $local !== null && $raw !== '' && $raw !== (string) $event->provider_status
+                    ? $raw
+                    : null,
+                'location' => $event->location,
                 'at' => optional($event->occurred_at)?->toIso8601String(),
                 'source' => 'tracking:'.$event->source,
             ];
@@ -155,6 +164,27 @@ class OrderTrackingPresenter
     /**
      * @param  array<string, mixed>  $payload
      */
+    /**
+     * Label lokal Indonesia per scanType J&T (docs open.jtcargo.co.id).
+     * Return null bila scanType tidak dikenal — UI memakai teks asli kurir.
+     */
+    private static function trackingScanLabel(string $scanType, ?string $location): ?string
+    {
+        $loc = $location !== null && trim($location) !== '' ? ' '.trim($location) : '';
+
+        return match ($scanType) {
+            '1' => 'Paket dijemput kurir'.$loc,
+            '3' => 'Paket dikirim dari pusat sortir'.$loc,
+            '4' => 'Paket tiba di pusat sortir'.$loc,
+            '5' => 'Paket keluar dari pusat sortir'.$loc,
+            '10' => 'Paket telah diterima'.$loc,
+            '11' => 'Paket bermasalah, sedang ditangani'.$loc,
+            '12' => 'Paket dikembalikan ke pengirim'.$loc,
+            '13' => 'Penjemputan paket gagal'.$loc,
+            default => null,
+        };
+    }
+
     private static function orderStatusChangeMessage(array $payload): string
     {
         $to = isset($payload['order_status']) ? (string) $payload['order_status'] : null;

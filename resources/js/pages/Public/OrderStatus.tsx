@@ -205,6 +205,7 @@ function OrderDetail({
               total_amount: order.total_amount,
             }
           }
+          timeline={order.tracking?.timeline}
         />
       </div>
 

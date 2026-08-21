@@ -430,7 +430,7 @@ export interface PublicOrderTracking {
   paid?: boolean
   latest_message?: string | null
   latest_at?: string | null
-  timeline?: Array<{ message: string; at?: string | null; source?: string }>
+  timeline?: Array<{ message: string; detail?: string | null; location?: string | null; at?: string | null; source?: string }>
 }
 
 export interface PublicOrderReview {
