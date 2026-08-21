@@ -245,18 +245,30 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
         </div>
       </div>
 
-      {/* Baris bawah: qty di kiri, X hapus di kanan */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border pt-3">
-        {quantityControls}
-        <button
-          type="button"
-          className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground transition hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => removeForm.post(routeUrl("cart.remove"), { preserveScroll: true })}
-          disabled={removeForm.processing}
-          aria-label={`Hapus ${item.name}`}
-        >
-          <Icon name="x" className="size-4" aria-hidden="true" />
-        </button>
+      {/* Baris bawah: catatan produk rata kiri · qty + X grouped rata kanan */}
+      <div className="flex shrink-0 items-center gap-3 border-t border-border pt-3">
+        {item.note?.trim() ? (
+          <p
+            className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground"
+            title={item.note}
+          >
+            {item.note}
+          </p>
+        ) : (
+          <span className="min-w-0 flex-1" aria-hidden="true" />
+        )}
+        <div className="flex shrink-0 items-center gap-2.5">
+          {quantityControls}
+          <button
+            type="button"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground transition hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => removeForm.post(routeUrl("cart.remove"), { preserveScroll: true })}
+            disabled={removeForm.processing}
+            aria-label={`Hapus ${item.name}`}
+          >
+            <Icon name="x" className="size-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </article>
   )
