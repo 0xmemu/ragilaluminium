@@ -85,10 +85,10 @@ ready to receive real orders.
   status values are covered by the role/status contract.
 - `[x]` Import, media, WhatsApp webhook, J&T webhook, payment, and order privacy
   tests exist in `tests/Feature`.
-- `[ ]` Run a production-like smoke suite against the deployed release: home,
-  catalog, PDP, cart, checkout validation, order placement, confirmation,
-  order lookup, admin login, admin order update, media upload, queue job, and
-  webhook signature rejection.
+- `[~]` Smoke suite harian (`/root/scripts_smoke_test.sh`, cron 08:00, 24 cek: 16 route
+  publik + 404 + admin login + artisan + queue + 4 security headers) — 24/24 PASS
+  (2026-08-21). Belum mencakup: order placement end-to-end, media upload, queue job,
+  webhook signature rejection (butuh akun admin otomatis — fase cutover).
 - `[ ]` Confirm every public JSON endpoint returns the documented content type,
   status code, error shape, pagination shape, and cache headers.
 - `[~]` Checkout now uses a session-scoped UUID plus unique database constraint;
