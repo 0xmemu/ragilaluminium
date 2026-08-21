@@ -227,11 +227,8 @@ ready to receive real orders.
   paths, and no production TLS/cutover automation.
 - `[ ]` Production ingress is HTTPS on the approved domain; port 8200 is not
   publicly exposed unless explicitly required and restricted by firewall.
-- `[ ]` Configure firewall with SSH key-only access, restricted source IPs where
-  possible, HTTP/HTTPS only, no public database/Redis/BAILEYS ports, and automatic
-  security updates.
-- `[ ]` Disable password SSH login/root login, install intrusion protection,
-  rotate keys, and record break-glass access securely.
+- `[x]` ufw aktif (2026-08-21): deny incoming, allow 22/443 only; port 8200, DB/Redis/Baileys tertutup dari luar; postfix (SMTP publik) dimatikan; verifikasi dari luar: 8200 refused, domain via tunnel 200.
+- `[x]` SSH password-auth off + root key-only (sudah), fail2ban sshd terpasang (5 retry, ban 1 jam, 2026-08-21). Rotasi key break-glass menyusul di fase cutover.
 - `[ ]` Configure Nginx/PHP-FPM limits, upload size, request timeout, slowlog,
   worker counts, OPcache, gzip/brotli as appropriate, and safe dotfile blocking.
 - `[ ]` Run the app under a non-root service account with read-only code and
@@ -291,8 +288,7 @@ ready to receive real orders.
 
 - `[x]` Baseline security headers exist: frame, content type, referrer, permissions,
   and conditional HSTS.
-- `[ ]` Add a reviewed Content Security Policy compatible with Inertia/Vite,
-  Cloudflare, R2 media, Meta/WhatsApp, and any analytics actually used.
+- `[~]` CSP report-only terpasang (2026-08-21): default-src 'self', script/style unsafe-inline (Inertia), img https, frame/object none. Belum di-enforce — observasi pelanggaran dulu.
 - `[ ]` Run OWASP-style review for XSS, CSRF, SSRF, SQL injection, mass assignment,
   file upload, open redirects, session fixation, IDOR, webhook replay, and log injection.
 - `[ ]` Verify secrets are absent from git history, Docker layers, CI logs, browser
