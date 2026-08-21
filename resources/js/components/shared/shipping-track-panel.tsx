@@ -189,7 +189,7 @@ export function ShippingTrackPanel({
         </a>
       ) : null}
 
-      {timeline && timeline.length > 0 ? (
+      {timeline && timeline.length > 0 && !embedded ? (
         <ol className="space-y-3 border-t border-border pt-3">
           {timeline.map((entry, index) => (
             <li key={`${entry.at ?? "t"}-${index}`} className="relative pl-5">

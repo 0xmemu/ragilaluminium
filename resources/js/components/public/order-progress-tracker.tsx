@@ -1,6 +1,6 @@
 import { Icon } from "@/components/shared/icon"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { formatDate } from "@/lib/format"
+import { formatDate, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { PublicOrder } from "@/types"
 
@@ -35,12 +35,19 @@ function dateForStep(
 }
 
 /**
- * Lacak pesanan sisi pembeli: milestone status pesanan (dari order_status asli)
- * dengan tanggal dari timeline event, plus banner status khusus (batal/retur/issue).
- * Terintegrasi penuh dengan data nyata — bukan dummy.
+ * Lacak pesanan sisi pembeli.
+ *
+ * Checklist DINAMIS: bila order punya tracking (resi + timeline), setiap event
+ * dari timeline (sistem toko + API J&T) menjadi satu langkah — tidak dibatasi
+ * 5 step. Fallback: bila belum ada timeline (order tanpa resi), tampilkan
+ * 5 milestone statis (pesanan → diproses → dikirim → sampai → selesai).
  */
 export function OrderProgressTracker({ order }: { order: PublicOrder }) {
+  const timeline = order.tracking?.timeline
+  const tl = timeline ?? []
+  const dynamicEntries = tl.length > 0 ? [...tl].reverse() : null
   const currentIndex = STEPS.findIndex((step) => step.status === order.order_status)
+  const activeShipping = order.tracking?.record_status || order.shipping_status || ""
 
   const specialMeta: Record<
     string,
@@ -73,10 +80,13 @@ export function OrderProgressTracker({ order }: { order: PublicOrder }) {
   }
   const special = specialMeta[order.order_status] ?? null
 
-  const timeline = order.tracking?.timeline
-
   return (
     <div className="space-y-4">
+      {activeShipping ? (
+        <div>
+          <StatusBadge status={activeShipping} />
+        </div>
+      ) : null}
       {special ? (
         <div
           className={cn(
@@ -104,59 +114,114 @@ export function OrderProgressTracker({ order }: { order: PublicOrder }) {
         </div>
       ) : null}
 
-      <ol className="space-y-0">
-        {STEPS.map((step, index) => {
-          const done = currentIndex >= 0 && index < currentIndex
-          const current = currentIndex === index
-          const date = dateForStep(step.status, timeline)
+      {dynamicEntries ? (
+        <ol className="space-y-0">
+          {dynamicEntries.map((entry, index) => {
+            const isLast = index === dynamicEntries.length - 1
+            const done = !isLast
+            const current = isLast
+            const when = entry.at ? formatDateTime(entry.at) : null
 
-          return (
-            <li key={step.status} className="relative flex gap-3 pb-5 last:pb-0">
-              {index < STEPS.length - 1 ? (
+            return (
+              <li key={`${entry.at ?? "e"}-${index}`} className="relative flex gap-3 pb-5 last:pb-0">
+                {index < dynamicEntries.length - 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
+                      index < dynamicEntries.length - 1 ? "bg-primary/50" : "bg-border",
+                    )}
+                  />
+                ) : null}
                 <span
-                  aria-hidden="true"
                   className={cn(
-                    "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
-                    index < currentIndex ? "bg-primary/50" : "bg-border",
+                    "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
+                    done && "border-primary bg-primary text-primary-foreground",
+                    current && "border-primary bg-primary text-primary-foreground ring-4 ring-primary/15",
+                    !done && !current && "border-border bg-surface text-muted-foreground",
                   )}
-                />
-              ) : null}
-              <span
-                className={cn(
-                  "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
-                  done && "border-primary bg-primary text-primary-foreground",
-                  current && "border-primary bg-primary text-primary-foreground ring-4 ring-primary/15",
-                  !done && !current && "border-border bg-surface text-muted-foreground",
-                )}
-                aria-hidden="true"
-              >
-                {done ? (
-                  <Icon name="check" className="size-3.5" weight="bold" />
-                ) : (
-                  <span className="size-1.5 rounded-full bg-current" />
-                )}
-              </span>
-              <div className="min-w-0 pt-0.5">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  aria-hidden="true"
+                >
+                  {done ? (
+                    <Icon name="check" className="size-3.5" weight="bold" />
+                  ) : (
+                    <span className="size-1.5 rounded-full bg-current" />
+                  )}
+                </span>
+                <div className="min-w-0 pt-0.5">
                   <p
                     className={cn(
                       "text-sm font-semibold",
                       current ? "text-foreground" : done ? "text-foreground/80" : "text-muted-foreground",
                     )}
                   >
-                    {step.label}
+                    {entry.message}
                   </p>
-                  {current ? <StatusBadge status={order.order_status} /> : null}
+                  {when ? (
+                    <p className={cn("mt-0.5 text-xs", current ? "font-medium text-primary" : "text-muted-foreground")}>
+                      {[entry.location, when].filter(Boolean).join(" · ")}
+                    </p>
+                  ) : null}
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">{step.hint}</p>
-                {date ? (
-                  <p className="mt-0.5 text-xs font-medium text-primary">{formatDate(date)}</p>
+              </li>
+            )
+          })}
+        </ol>
+      ) : (
+        <ol className="space-y-0">
+          {STEPS.map((step, index) => {
+            const done = currentIndex >= 0 && index < currentIndex
+            const current = currentIndex === index
+            const date = dateForStep(step.status, timeline)
+
+            return (
+              <li key={step.status} className="relative flex gap-3 pb-5 last:pb-0">
+                {index < STEPS.length - 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
+                      index < currentIndex ? "bg-primary/50" : "bg-border",
+                    )}
+                  />
                 ) : null}
-              </div>
-            </li>
-          )
-        })}
-      </ol>
+                <span
+                  className={cn(
+                    "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
+                    done && "border-primary bg-primary text-primary-foreground",
+                    current && "border-primary bg-primary text-primary-foreground ring-4 ring-primary/15",
+                    !done && !current && "border-border bg-surface text-muted-foreground",
+                  )}
+                  aria-hidden="true"
+                >
+                  {done ? (
+                    <Icon name="check" className="size-3.5" weight="bold" />
+                  ) : (
+                    <span className="size-1.5 rounded-full bg-current" />
+                  )}
+                </span>
+                <div className="min-w-0 pt-0.5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        current ? "text-foreground" : done ? "text-foreground/80" : "text-muted-foreground",
+                      )}
+                    >
+                      {step.label}
+                    </p>
+                    {current ? <StatusBadge status={order.order_status} /> : null}
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{step.hint}</p>
+                  {date ? (
+                    <p className="mt-0.5 text-xs font-medium text-primary">{formatDate(date)}</p>
+                  ) : null}
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
     </div>
   )
 }
