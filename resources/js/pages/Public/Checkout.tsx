@@ -3,7 +3,6 @@ import * as React from "react"
 
 import { CheckoutAddressForm } from "@/components/public/checkout-address-form"
 import { CheckoutItemNotes } from "@/components/public/checkout-item-notes"
-import { ValuePropositionsCard } from "@/components/public/value-propositions-card"
 import { CheckoutPaymentSection } from "@/components/public/checkout-payment-section"
 import { CheckoutSummary, type CheckoutItem } from "@/components/public/checkout-summary"
 import { Icon } from "@/components/shared/icon"
@@ -222,7 +221,6 @@ export default function Checkout({
               pageErrors={pageErrors}
               c={c}
             />
-            <ValuePropositionsCard />
           </div>
 
           <CheckoutSummary

@@ -4,7 +4,6 @@ import * as React from "react"
 import { CartLineItem } from "@/components/public/cart-line-item"
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
-import { ValuePropositionsCard } from "@/components/public/value-propositions-card"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -254,7 +253,6 @@ export default function Cart({
             </div>
 
             <TrustAssuranceCard />
-            <ValuePropositionsCard className="mt-3" />
 
             {/* Ringkasan flat (prototype Sum) */}
             <div className="border-t border-border pt-3">
