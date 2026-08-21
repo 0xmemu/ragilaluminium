@@ -31,9 +31,9 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
   const [note, setNote] = React.useState(item.note ?? "")
   const [noteSaving, setNoteSaving] = React.useState(false)
   const [noteError, setNoteError] = React.useState<string | null>(null)
-  const noteTimer = React.useRef<number | null>(null)
   const noteAbortRef = React.useRef<AbortController | null>(null)
   const noteDraft = React.useRef(item.note ?? "")
+  const lastSavedNote = React.useRef(item.note ?? "")
 
   React.useEffect(() => {
     noteDraft.current = item.note ?? ""
@@ -52,7 +52,6 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
 
   React.useEffect(() => () => {
     if (timer.current !== null) window.clearTimeout(timer.current)
-    if (noteTimer.current !== null) window.clearTimeout(noteTimer.current)
     quantityAbortRef.current?.abort()
     noteAbortRef.current?.abort()
   }, [])
@@ -107,6 +106,7 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
         signal: controller.signal,
       })
       if (!response.ok) throw new Error("Cart note update failed")
+      lastSavedNote.current = value
     } catch (_error) {
       if (controller.signal.aborted) return
       setNoteError("Gagal menyimpan catatan. Coba lagi.")
@@ -119,12 +119,15 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
     setNote(value)
     noteDraft.current = value
     setNoteError(null)
-    if (noteTimer.current !== null) window.clearTimeout(noteTimer.current)
-    noteTimer.current = window.setTimeout(() => {
-      noteTimer.current = null
-      setNoteSaving(true)
-      void persistNote(value.trim())
-    }, 450)
+  }
+
+  // Simpan hanya saat Enter ditekan atau input kehilangan fokus (blur),
+  // bukan saat sedang mengetik.
+  function saveNote() {
+    const value = noteDraft.current.trim()
+    if (value === lastSavedNote.current) return
+    setNoteSaving(true)
+    void persistNote(value)
   }
 
   async function persistQuantity(quantity: number, currentSequence: number) {
@@ -310,6 +313,13 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
             className="w-full rounded-[5px] border border-border bg-surface-muted/50 px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none"
             value={note}
             onChange={(event) => updateNote(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault()
+                saveNote()
+              }
+            }}
+            onBlur={saveNote}
             placeholder="Catatan untuk produk ini (opsional)"
             maxLength={2000}
             aria-label={`Catatan untuk ${item.name}`}
