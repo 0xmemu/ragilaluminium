@@ -685,7 +685,8 @@
     line-height: 1;
   }
 
-  /* Overlay: "X terjual" — floating kanan atas media, di atas gambar. */
+  /* Overlay: "X terjual" — floating pojok kanan atas card text (content),
+     di atas nama produk. Flow layout lain (padding/space) tidak diubah. */
   .product-card__sold {
     position: absolute;
     inset-block-start: 0;
@@ -693,7 +694,7 @@
     z-index: 10;
     padding: 4px 8px;
     border-start-start-radius: 6px;
-    background: hsl(var(--surface) / 0.85);
+    background: hsl(var(--surface) / 0.9);
     color: hsl(var(--muted-foreground));
     font-size: 10px;
     font-weight: 400;
