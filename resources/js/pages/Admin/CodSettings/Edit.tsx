@@ -2,7 +2,7 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
@@ -28,7 +28,8 @@ export default function CodSettingsEdit({
   const form = useForm({
     enabled: settings.enabled,
     fee_type: settings.fee_type,
-    fee_value: settings.fee_value,
+    // String state supaya input bisa dikosongkan (Number("")=0 membuat "0" menempel).
+    fee_value: String(settings.fee_value ?? 0),
     max_order_amount: settings.max_order_amount ?? "",
   })
 
@@ -36,6 +37,9 @@ export default function CodSettingsEdit({
     event.preventDefault()
     form.transform((data) => ({
         ...data,
+        fee_value: data.fee_value === "" || data.fee_value === null
+          ? 0
+          : Number(data.fee_value),
         max_order_amount:
           data.max_order_amount === "" || data.max_order_amount === null
             ? null
@@ -52,72 +56,81 @@ export default function CodSettingsEdit({
     >
       <Head title={`${title} | Admin`} />
 
-      <form
-        onSubmit={submit}
-        className="mx-auto max-w-2xl space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm"
-      >
+      <form onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="space-y-3">
-          <h2 className="text-base font-bold">Status layanan COD</h2>
-          <p className="text-sm text-muted-foreground">
-            Aktifkan atau nonaktifkan Bayar di Tempat untuk seluruh pelanggan.
-          </p>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-border"
-              checked={form.data.enabled}
-              onChange={(event) => form.setData("enabled", event.target.checked)}
-            />
-            Layanan COD aktif
-          </label>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-base font-bold">Biaya penanganan (handling fee)</h2>
-          <p className="text-sm text-muted-foreground">
-            Ditambahkan ke total tagihan saat pelanggan memilih COD. Dihitung dari subtotal setelah voucher.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <p className="text-sm text-muted-foreground">Biaya COD dihitung sebagai persentase dari subtotal setelah voucher.</p>
-            <Field
-              id="fee_value"
-              label="Nilai biaya (%)"
-              error={form.errors.fee_value}
-            >
-              <Input
-                id="fee_value"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.data.fee_value}
-                onChange={(event) => form.setData("fee_value", Number(event.target.value))}
-                required
-              />
-            </Field>
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-base font-bold">Limit transaksi</h2>
-          <Field
-            id="max_order_amount"
-            label="Maksimal nilai belanja (opsional)"
-            error={form.errors.max_order_amount}
-            hint="Kosongkan atau 0 = tanpa batas. Di luar batas, COD disembunyikan di checkout."
-          >
-            <Input
-              id="max_order_amount"
-              type="number"
-              min={0}
-              step="1"
-              value={form.data.max_order_amount}
-              onChange={(event) => form.setData("max_order_amount", event.target.value)}
-              placeholder="Contoh: 5000000"
-            />
-          </Field>
-        </section>
+        {/* Table-first: satu baris per pengaturan */}
+        <div className="overflow-hidden rounded-lg border border-border">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Status layanan COD
+                </th>
+                <td className="px-4 py-2.5">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-border"
+                      checked={form.data.enabled}
+                      onChange={(event) => form.setData("enabled", event.target.checked)}
+                    />
+                    Layanan COD aktif
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Aktifkan atau nonaktifkan Bayar di Tempat untuk seluruh pelanggan.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Biaya penanganan (handling fee)
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    id="fee_value"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.data.fee_value}
+                    onChange={(event) => form.setData("fee_value", event.target.value)}
+                    className="h-8 w-44 text-xs"
+                    required
+                  />
+                  {form.errors.fee_value ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.fee_value}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Nilai biaya (%). Ditambahkan ke total tagihan saat pelanggan memilih COD — dihitung dari subtotal setelah voucher.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Limit transaksi
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    id="max_order_amount"
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={form.data.max_order_amount}
+                    onChange={(event) => form.setData("max_order_amount", event.target.value)}
+                    className="h-8 w-44 text-xs"
+                    placeholder="Contoh: 5000000"
+                  />
+                  {form.errors.max_order_amount ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.max_order_amount}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Maksimal nilai belanja (opsional). Kosongkan atau 0 = tanpa batas. Di luar batas, COD disembunyikan di checkout.
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={form.processing}>
