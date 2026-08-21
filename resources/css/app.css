@@ -689,7 +689,7 @@
      di atas nama produk. Flow layout lain (padding/space) tidak diubah. */
   .product-card__sold {
     position: absolute;
-    inset-block-start: 0;
+    inset-block-end: 0;
     inset-inline-end: 0;
     z-index: 10;
     padding: 4px 8px;
