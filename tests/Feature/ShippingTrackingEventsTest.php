@@ -77,7 +77,7 @@ class ShippingTrackingEventsTest extends TestCase
             'shipping_record_id' => $record->id,
             'order_id' => $order->id,
             'source' => 'webhook',
-            'provider_status' => 'Paket diterima',
+            'provider_status' => 'delivered',
             'normalized_status' => 'delivered',
         ]);
     }
@@ -98,13 +98,13 @@ class ShippingTrackingEventsTest extends TestCase
         $this->assertSame(3, ShippingTrackingEvent::where('shipping_record_id', $record->id)->count());
         $this->assertDatabaseHas('shipping_tracking_events', [
             'shipping_record_id' => $record->id,
-            'provider_status' => 'Scan terlambat',
+            'provider_status' => '3',
             'normalized_status' => 'in_transit',
             'source' => 'poll',
         ]);
         $this->assertDatabaseHas('shipping_tracking_events', [
             'shipping_record_id' => $record->id,
-            'provider_status' => 'Status baru carrier',
+            'provider_status' => 'UNKNOWN_SCAN',
             'normalized_status' => null,
             'source' => 'webhook',
         ]);

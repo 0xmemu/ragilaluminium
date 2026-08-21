@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\ShippingRecord;
+use App\Models\ShippingTrackingEvent;
 use App\Models\User;
+use App\Services\Shipping\JntCargoClient;
+use App\Services\Shipping\JntResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -81,6 +84,7 @@ class AdminShippingWorkflowTest extends TestCase
 
     public function test_order_shipping_accepts_manual_waybill_and_rejects_jnt_creation_mode(): void
     {
+        config(['jnt.enabled' => false]);
         $admin = $this->admin();
         $order = $this->order();
 
@@ -102,6 +106,50 @@ class AdminShippingWorkflowTest extends TestCase
             'order_id' => $order->id,
             'waybill_number' => 'JT-MANUAL-1',
         ]);
+    }
+
+    public function test_manual_waybill_attach_pulls_real_carrier_events_and_advances_status(): void
+    {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('track')->andReturn(new JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: [
+                    'code' => '1',
+                    'msg' => 'success',
+                    'data' => [[
+                        'billCode' => 'JT-MANUAL-LIVE',
+                        'details' => [
+                            ['scanCode' => 1, 'scanType' => 'pengambilan paket', 'desc' => 'Kurir mengambil paket', 'scanTime' => '2026-08-21 13:38:24'],
+                            ['scanCode' => 3, 'scanType' => 'Scan Kirim', 'desc' => 'Paket meninggalkan outlet', 'scanTime' => '2026-08-21 17:28:48'],
+                            ['scanCode' => 4, 'scanType' => 'Scan Sampai', 'desc' => 'Paket tiba di gateway', 'scanTime' => '2026-08-21 18:53:58'],
+                        ],
+                    ]],
+                ],
+                requestId: 'req-manual-live',
+                elapsedMs: 12,
+            ));
+        });
+
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-MANUAL-LIVE',
+                'mark_shipped' => false,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $record = ShippingRecord::where('waybill_number', 'JT-MANUAL-LIVE')->first();
+        $this->assertNotNull($record);
+        $this->assertSame('in_transit', $record->status);
+        $this->assertSame('2026-08-21 18:53:58', $record->last_status_at->format('Y-m-d H:i:s'));
+        $this->assertSame(3, ShippingTrackingEvent::where('shipping_record_id', $record->id)->count());
+        $this->assertSame('in_transit', $order->fresh()->shipping_status);
+        // cascadeOrderStatus: in_transit -> order_status shipped
+        $this->assertSame('shipped', $order->fresh()->order_status);
     }
 
     public function test_refresh_reports_unavailable_integration_as_stale_status(): void

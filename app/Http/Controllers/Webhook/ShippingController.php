@@ -66,7 +66,8 @@ class ShippingController extends Controller
         $details = $payload['details'] ?? null;
         $scan = is_array($details) && ! empty($details) ? end($details) : $payload;
 
-        $scanType = (string) ($scan['scanType'] ?? $scan['scanCode'] ?? '');
+        // Kunci mapping = scanCode numerik (status_map), fallback teks scanType.
+        $scanType = (string) ($scan['scanCode'] ?? $scan['scanType'] ?? '');
         $scanTypeCode = isset($scan['scanTypeCode']) ? (string) $scan['scanTypeCode'] : null;
         $desc = $scan['desc'] ?? $scan['remark'] ?? null;
         $occurredAt = $scan['scanTime'] ?? $scan['time'] ?? null;
@@ -82,6 +83,11 @@ class ShippingController extends Controller
         if (! $record) {
             // Balas sukses agar J&T tidak retry tak berujung utk resi tak dikenal.
             return $this->ack(true);
+        }
+
+        // Simpan seluruh riwayat scan push (idempoten) lalu majukan status.
+        if (is_array($details) && ! empty($details)) {
+            $this->shipping->persistTraceEvents($record, $details, 'webhook');
         }
 
         if ($scanType !== '' || $scanTypeCode !== null) {

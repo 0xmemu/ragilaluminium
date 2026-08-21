@@ -158,6 +158,10 @@ return [
         'return initiated' => 'returned',
         'cancelled' => 'cancelled',
         'pickupfail' => 'exception',
+        // Label teks Indonesia dari trace J&T (fallback bila scanCode absen)
+        'pengambilan paket' => 'picked_up',
+        'scan kirim' => 'in_transit',
+        'scan sampai' => 'in_transit',
     ],
 
     // scanTypeCode (hanya membedakan tipe tanda tangan pada scanType=10).

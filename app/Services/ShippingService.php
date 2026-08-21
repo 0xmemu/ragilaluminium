@@ -283,36 +283,53 @@ class ShippingService
         $waybillNumber = trim($waybillNumber);
         $existing = $order->shippingRecords()->whereNotIn('status', ['cancelled'])->first();
         if ($existing) {
+            // Ganti nomor resi = baseline polling lama tidak berlaku lagi
+            // (milik resi sebelumnya); null agar event J&T resi baru tidak
+            // dianggap stale oleh guard di applyCarrierUpdate.
+            $waybillChanged = $existing->waybill_number !== $waybillNumber;
             $existing->update([
                 'waybill_number' => $waybillNumber,
                 'carrier_name' => $carrierName,
-                'last_status_at' => now(),
+                'last_status_at' => $waybillChanged ? null : $existing->last_status_at,
             ]);
 
-            return $existing->fresh();
+            $record = $existing->fresh();
+        } else {
+            $record = DB::transaction(function () use ($order, $waybillNumber, $carrierName) {
+                $record = ShippingRecord::create([
+                    'order_id' => $order->id,
+                    'carrier_name' => $carrierName,
+                    'service_name' => config('jnt.defaults.express_type'),
+                    'waybill_number' => $waybillNumber,
+                    'shipping_cost' => $order->shipping_amount,
+                    'status' => 'pending_pickup',
+                    'status_raw' => 'manual',
+                ]);
+
+                $order->update(['shipping_status' => 'pending_pickup']);
+
+                $this->logEvent('shipping.created', $order, [
+                    'waybill' => $record->waybill_number,
+                    'source' => 'manual',
+                ]);
+
+                return $record;
+            });
         }
 
-        return DB::transaction(function () use ($order, $waybillNumber, $carrierName) {
-            $record = ShippingRecord::create([
-                'order_id' => $order->id,
-                'carrier_name' => $carrierName,
-                'service_name' => config('jnt.defaults.express_type'),
-                'waybill_number' => $waybillNumber,
-                'shipping_cost' => $order->shipping_amount,
-                'status' => 'pending_pickup',
-                'status_raw' => 'manual',
-                'last_status_at' => now(),
-            ]);
-
-            $order->update(['shipping_status' => 'pending_pickup']);
-
-            $this->logEvent('shipping.created', $order, [
+        // Tarik status terkini dari J&T segera (best-effort) agar timeline
+        // tracking langsung terisi; kegagalan tidak menggagalkan penyimpanan.
+        try {
+            $this->refreshStatus($record);
+            $record->refresh();
+        } catch (\Throwable $exception) {
+            Log::channel('jnt')->warning('manual waybill initial refresh failed', [
                 'waybill' => $record->waybill_number,
-                'source' => 'manual',
+                'message' => $exception->getMessage(),
             ]);
+        }
 
-            return $record;
-        });
+        return $record;
     }
 
     public function refreshStatus(ShippingRecord $record): void
@@ -334,6 +351,14 @@ class ShippingService
             ]);
 
             return;
+        }
+
+        $details = $this->extractTraceDetails($resp);
+
+        // Simpan SELURUH riwayat scan (dedup idempoten per event_hash) agar
+        // timeline tracking langsung lengkap, bukan hanya scan terakhir.
+        if (! empty($details)) {
+            $this->persistTraceEvents($record, $details, 'poll');
         }
 
         [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractLatestTrace($resp);
@@ -383,13 +408,13 @@ class ShippingService
         $mapped = $this->mapCarrierStatus($rawStatus, $scanTypeCode);
         $providerStatus = $statusRaw ?? $rawStatus;
         $eventTime = $this->carrierEventTime($occurredAt);
-        $eventHash = hash('sha256', implode('|', [
-            (string) $record->waybill_number,
-            (string) ($rawStatus ?? ''),
-            (string) ($scanTypeCode ?? ''),
-            (string) ($statusRaw ?? ''),
-            (string) ($occurredAt ?? ''),
-        ]));
+        $eventHash = $this->traceEventHash(
+            $record->waybill_number,
+            $rawStatus,
+            $scanTypeCode,
+            $statusRaw,
+            $occurredAt,
+        );
 
         DB::transaction(function () use (
             $record,
@@ -413,10 +438,10 @@ class ShippingService
                         'order_id' => $record->order_id,
                         'provider' => 'jnt',
                         'waybill_number' => $record->waybill_number,
-                        'provider_status' => $providerStatus,
+                        'provider_status' => (string) ($rawStatus ?? ''), // label pendek, varchar(80)
                         'normalized_status' => $mapped,
                         'source' => in_array($source, ['webhook', 'poll', 'manual'], true) ? $source : 'manual',
-                        'description' => $providerStatus,
+                        'description' => $statusRaw ?? $rawStatus,
                         'occurred_at' => $eventTime,
                     ],
                 );
@@ -563,30 +588,113 @@ class ShippingService
     }
 
     /**
-     * Ambil trace terbaru dari respons trace J&T.
+     * Ambil daftar scan dari respons trace J&T.
      * data.details[] : { scanType, scanCode, scanTypeCode, desc, scanTime }.
      */
-    protected function extractLatestTrace(JntResponse $resp): array
+    protected function extractTraceDetails(JntResponse $resp): array
     {
         $details = $resp->get('details')
             ?? data_get($resp->data, 'data.0.details')
             ?? data_get($resp->data, 'data.details')
             ?? [];
 
-        if (! is_array($details) || empty($details)) {
-            $status = $resp->get('scanType') ?? $resp->get('scanCode');
+        return is_array($details) ? $details : [];
+    }
+
+    /**
+     * Ambil trace terbaru dari respons trace J&T (untuk memajukan status).
+     */
+    protected function extractLatestTrace(JntResponse $resp): array
+    {
+        $details = $this->extractTraceDetails($resp);
+
+        if (empty($details)) {
+            // Kunci mapping = scanCode numerik (status_map), fallback teks scanType.
+            $status = $resp->get('scanCode') ?? $resp->get('scanType');
 
             return [$status !== null ? (string) $status : null, $resp->get('scanTypeCode'), $resp->get('desc'), $resp->get('scanTime')];
         }
 
+        // J&T mengembalikan details urut TERBARU dahulu; jangan andalkan
+        // urutan — pilih scan dengan scanTime paling akhir.
+        usort($details, fn ($a, $b) => strcmp(
+            (string) ($a['scanTime'] ?? $a['time'] ?? ''),
+            (string) ($b['scanTime'] ?? $b['time'] ?? ''),
+        ));
         $latest = end($details);
 
         return [
-            (string) (data_get($latest, 'scanType') ?? data_get($latest, 'scanCode') ?? ''),
+            // scanCode numerik = kunci status_map (1/3/4/5/10...); scanType teks
+            // sebagai fallback untuk payload yang tidak membawa scanCode.
+            (string) (data_get($latest, 'scanCode') ?? data_get($latest, 'scanType') ?? ''),
             data_get($latest, 'scanTypeCode'),
             data_get($latest, 'desc'),
             data_get($latest, 'scanTime') ?? data_get($latest, 'time'),
         ];
+    }
+
+    /**
+     * Simpan seluruh riwayat scan sebagai tracking events (idempoten via
+     * event_hash — hash sama dengan applyCarrierUpdate, jadi tidak duplikat).
+     * Urutan lama -> baru agar timeline konsisten.
+     */
+    public function persistTraceEvents(ShippingRecord $record, array $details, string $source = 'poll'): void
+    {
+        if (empty($details)) {
+            return;
+        }
+
+        $details = array_values($details);
+        usort($details, fn ($a, $b) => strcmp(
+            (string) ($a['scanTime'] ?? $a['time'] ?? ''),
+            (string) ($b['scanTime'] ?? $b['time'] ?? ''),
+        ));
+
+        foreach ($details as $detail) {
+            $raw = (string) ($detail['scanCode'] ?? $detail['scanType'] ?? '');
+            if ($raw === '') {
+                continue;
+            }
+            $code = isset($detail['scanTypeCode']) ? (string) $detail['scanTypeCode'] : null;
+            $desc = $detail['desc'] ?? null;
+            $at = $detail['scanTime'] ?? $detail['time'] ?? null;
+
+            ShippingTrackingEvent::firstOrCreate(
+                [
+                    'shipping_record_id' => $record->id,
+                    'event_hash' => $this->traceEventHash($record->waybill_number, $raw, $code, $desc, $at),
+                ],
+                [
+                    'order_id' => $record->order_id,
+                    'provider' => 'jnt',
+                    'waybill_number' => $record->waybill_number,
+                    'provider_status' => $raw, // label pendek (scanCode/scanType)
+                    'normalized_status' => $this->mapCarrierStatus($raw, $code),
+                    'source' => in_array($source, ['webhook', 'poll', 'manual'], true) ? $source : 'manual',
+                    'description' => $desc,
+                    'occurred_at' => $this->carrierEventTime($at),
+                ],
+            );
+        }
+    }
+
+    /**
+     * Hash identitas event (dipakai applyCarrierUpdate & persistTraceEvents).
+     */
+    protected function traceEventHash(
+        string $waybill,
+        ?string $rawStatus,
+        ?string $scanTypeCode,
+        ?string $statusRaw,
+        ?string $occurredAt,
+    ): string {
+        return hash('sha256', implode('|', [
+            $waybill,
+            (string) ($rawStatus ?? ''),
+            (string) ($scanTypeCode ?? ''),
+            (string) ($statusRaw ?? ''),
+            (string) ($occurredAt ?? ''),
+        ]));
     }
 
     /** bizContent untuk /api/order/addOrder (spesifikasi resmi J&T Cargo). */
