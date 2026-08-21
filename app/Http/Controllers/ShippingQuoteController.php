@@ -14,10 +14,9 @@ class ShippingQuoteController extends Controller
     {
         $validated = $request->validated();
 
-        // Pilihan asuransi pembeli disimpan ke session agar preview checkout
-        // konsisten; place-order memakai nilai dari form (authoritative).
+        // Nilai dari form (authoritative); preview checkout disinkronkan via
+        // CheckoutController::validateDetails (route web, session tersedia).
         $withInsurance = $request->boolean('insurance');
-        $request->session()->put('checkout_insurance', $withInsurance);
 
         return response()->json([
             'data' => $this->shipping->quote(
