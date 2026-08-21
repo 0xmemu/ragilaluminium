@@ -195,9 +195,8 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
 
   return (
     <article className="flex min-w-0 flex-col gap-3 rounded-[5px] border border-border bg-white p-3">
-      {/* Baris atas: checkbox (mode pilih) di kiri, qty + X selalu di kanan */}
-      <div className={cn("flex shrink-0 items-center gap-3", selectable ? "justify-between" : "justify-end")}>
-        {selectable ? (
+      {/* Baris atas: hanya checkbox (mode pilih) */}
+      {selectable ? (
           <button
             type="button"
             role="checkbox"
@@ -214,19 +213,6 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
             <Icon name="check" className="size-3.5" aria-hidden="true" strokeWidth={3} />
           </button>
         ) : null}
-        <div className="flex shrink-0 items-center gap-3">
-          {quantityControls}
-          <button
-            type="button"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground transition hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => removeForm.post(routeUrl("cart.remove"), { preserveScroll: true })}
-            disabled={removeForm.processing}
-            aria-label={`Hapus ${item.name}`}
-          >
-            <Icon name="x" className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
 
       {/* Baris utama: gambar + teks (gambar & nama sejajar di sini) */}
       <div className="flex min-w-0 items-stretch gap-3 sm:gap-4">
@@ -257,6 +243,20 @@ export function CartLineItem({ item, selected, onToggle, onQuantityChange, selec
           {/* Harga paling atas, tepat di bawah pilihan variasi */}
           <div className="mt-1 shrink-0">{priceBlock}</div>
         </div>
+      </div>
+
+      {/* Baris bawah: qty di kiri, X hapus di kanan */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border pt-3">
+        {quantityControls}
+        <button
+          type="button"
+          className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground transition hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => removeForm.post(routeUrl("cart.remove"), { preserveScroll: true })}
+          disabled={removeForm.processing}
+          aria-label={`Hapus ${item.name}`}
+        >
+          <Icon name="x" className="size-4" aria-hidden="true" />
+        </button>
       </div>
     </article>
   )
