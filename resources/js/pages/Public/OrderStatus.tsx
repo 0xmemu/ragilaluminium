@@ -134,13 +134,24 @@ function OrderDetail({
           </p>
           <OrderProgressTracker order={order} />
           <div className="mt-4 border-t border-border pt-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">Status pengiriman</span>
-              <StatusBadge status={order.shipping_status} />
-            </div>
-            {order.tracking?.latest_message ? (
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{order.tracking.latest_message}</p>
-            ) : null}
+            <ShippingTrackPanel
+              track={
+                order.tracking ?? {
+                  shipping_status: order.shipping_status,
+                  carrier_name: order.shipping?.carrier_name,
+                  waybill_number: order.shipping?.waybill_number,
+                  record_status: order.shipping?.status,
+                  status_raw: order.shipping?.status_raw,
+                  last_status_at: order.shipping?.last_status_at,
+                  tracking_url: order.shipping?.tracking_url,
+                  order_status: order.order_status,
+                  payment_status: order.payment_status,
+                  payment_method: order.payment_method,
+                  total_amount: order.total_amount,
+                }
+              }
+              timeline={order.tracking?.timeline}
+            />
           </div>
         </div>
 
@@ -151,17 +162,6 @@ function OrderDetail({
                 Estimasi tiba
               </p>
               <p className="mt-2 text-base font-bold text-foreground">{displayEtaRangeLabel(order.eta)}</p>
-            </div>
-          ) : null}
-
-          {order.tracking?.latest_message ? (
-            <div className="rounded-lg border border-border bg-surface p-5">
-              <p className="text-xs font-bold tracking-tight text-muted-foreground">
-                Kabar terbaru
-              </p>
-              <p className="mt-2 text-sm leading-5 text-foreground">
-                {order.tracking.latest_message}
-              </p>
             </div>
           ) : null}
 
@@ -186,27 +186,6 @@ function OrderDetail({
             </div>
           ) : null}
         </div>
-      </div>
-
-      <div className="mt-8">
-        <ShippingTrackPanel
-          track={
-            order.tracking ?? {
-              shipping_status: order.shipping_status,
-              carrier_name: order.shipping?.carrier_name,
-              waybill_number: order.shipping?.waybill_number,
-              record_status: order.shipping?.status,
-              status_raw: order.shipping?.status_raw,
-              last_status_at: order.shipping?.last_status_at,
-              tracking_url: order.shipping?.tracking_url,
-              order_status: order.order_status,
-              payment_status: order.payment_status,
-              payment_method: order.payment_method,
-              total_amount: order.total_amount,
-            }
-          }
-          timeline={order.tracking?.timeline}
-        />
       </div>
 
       <section className="mt-8">
