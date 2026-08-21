@@ -359,6 +359,15 @@ Terbukti (drill 2026-08-21 07:48): arsip `weekly/2026-W34` rowcount cocok, audit
   load, CPU, mem, disk, inode, redis mem/keys, MySQL threads/slow queries, queue depth, HTTP.
   Retensi 90 hari.
 
+### Smoke test harian + load test (F7, 2026-08-21)
+
+- `/root/scripts_smoke_test.sh` — cron harian 08:00; 24 cek: 16 route publik (200), 404 page,
+  login admin, artisan, queue worker, 4 security headers. Gagal → `ALERT-smoke-test` → aggregator.
+  Hasil: 24/24 PASS (2026-08-21).
+- Load test (ab): /products 46 req/s @50 conc, 0 failed; home 14 req/s; stress 200 conc
+  → 42 req/s, 0 failed, p50 4,1s (saturasi FPM pm.max_children=16 — naikkan di produksi),
+  RAM 2,4/7,9GB, app tetap 200.
+
 ### Uji restore dan batas validasi
 
 Restore test mingguan dilakukan ke database sementara, bukan ke database produksi. Sumber arsip mingguan/bulanan berasal dari dump harian yang sudah ada dan hanya boleh diarsipkan setelah marker restore test PASS masih baru.
