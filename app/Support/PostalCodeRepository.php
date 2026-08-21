@@ -54,6 +54,28 @@ class PostalCodeRepository
         }
 
         $mapping = $query->first();
+
+        // Fallback NAMA (keputusan: nama adalah sumber kebenaran). Dataset aktif
+        // (data.go.id/pentagonal) tidak membawa kode Kemendagri untuk
+        // kecamatan/desa (district_id/village_id NULL di prod), sedangkan
+        // dropdown checkout mengirim district_id/village_id dari CSV Kemendagri.
+        // Bila pencocokan ID gagal, cocokkan nama kecamatan (lingkup validasi)
+        // agar alamat sah tidak ditolak palsu.
+        if ($mapping === null && $hasDistrict && filled($districtName)) {
+            $mapping = PostalCodeMapping::query()
+                ->where('postal_dataset_id', $dataset->id)
+                ->where('postal_code', $postal)
+                ->whereRaw('LOWER(TRIM(district_name)) = ?', [Str::lower(trim((string) $districtName))])
+                ->first();
+        }
+        if ($mapping === null && ! $hasDistrict && $hasVillage && filled($villageName)) {
+            $mapping = PostalCodeMapping::query()
+                ->where('postal_dataset_id', $dataset->id)
+                ->where('postal_code', $postal)
+                ->whereRaw('LOWER(TRIM(village_name)) = ?', [Str::lower(trim((string) $villageName))])
+                ->first();
+        }
+
         if ($mapping === null && ! $identityGiven) {
             $mapping = PostalCodeMapping::query()
                 ->where('postal_dataset_id', $dataset->id)

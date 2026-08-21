@@ -119,6 +119,81 @@ class PostalCodeDatasetTest extends TestCase
             'postal_code' => '40134',
         ])->assertRedirect('/checkout')->assertSessionHasErrors('postal_code');
     }
+    public function test_validate_falls_back_to_district_name_when_dataset_has_no_kemendagri_ids(): void
+    {
+        // Simulasi dataset prod (data.go.id/pentagonal): hanya nama + kode pos,
+        // tanpa kode Kemendagri untuk kecamatan/desa (kolom ID NULL).
+        $dataset = PostalDataset::create([
+            'source' => 'data.go.id/pentagonal',
+            'version' => 'test-noid-2026',
+            'status' => 'active',
+            'row_count' => 2,
+            'retrieved_at' => now(),
+        ]);
+        $dataset->mappings()->create([
+            'province_id' => '11', 'province_name' => 'ACEH',
+            'regency_id' => null, 'regency_name' => 'ACEH SELATAN',
+            'district_id' => null, 'district_name' => 'TRUMON TENGAH',
+            'village_id' => null, 'village_name' => 'COT BAYU',
+            'postal_code' => '23774',
+        ]);
+        $dataset->mappings()->create([
+            'province_id' => '11', 'province_name' => 'ACEH',
+            'regency_id' => null, 'regency_name' => 'ACEH SELATAN',
+            'district_id' => null, 'district_name' => 'TRUMON TENGAH',
+            'village_id' => null, 'village_name' => 'NACA',
+            'postal_code' => '23774',
+        ]);
+
+        // Dropdown checkout mengirim ID Kemendagri yang TIDAK ada di dataset:
+        // validasi harus jatuh ke nama kecamatan, bukan menolak palsu.
+        $valid = app(PostalCodeRepository::class)->validate(
+            '23774', '1103082005', 'Cot Bayu', '110308', 'Trumon Tengah',
+        );
+        $this->assertSame('valid', $valid['status']);
+        $this->assertTrue($valid['valid']);
+
+        // Kode pos di luar kecamatan tetap ditolak.
+        $invalid = app(PostalCodeRepository::class)->validate(
+            '23776', '1103082005', 'Cot Bayu', '110308', 'Trumon Tengah',
+        );
+        $this->assertSame('invalid', $invalid['status']);
+        $this->assertFalse($invalid['valid']);
+    }
+
+    public function test_checkout_accepts_postal_when_dataset_has_no_ids(): void
+    {
+        $dataset = PostalDataset::create([
+            'source' => 'data.go.id/pentagonal',
+            'version' => 'test-checkout-noid-2026',
+            'status' => 'active',
+            'row_count' => 1,
+            'retrieved_at' => now(),
+        ]);
+        $dataset->mappings()->create([
+            'province_id' => '11', 'province_name' => 'ACEH',
+            'regency_id' => null, 'regency_name' => 'ACEH SELATAN',
+            'district_id' => null, 'district_name' => 'TRUMON TENGAH',
+            'village_id' => null, 'village_name' => 'COT BAYU',
+            'postal_code' => '23774',
+        ]);
+
+        // Kotak pos 23774 + kecamatan Trumon Tengah (via dropdown dengan ID
+        // Kemendagri) harus diterima — kode pos benar milik kecamatan tersebut.
+        $this->from('/checkout')->post('/checkout/validate', [
+            'name' => 'Budi',
+            'phone' => '0812',
+            'province' => 'ACEH',
+            'city' => 'ACEH SELATAN',
+            'district' => 'TRUMON TENGAH',
+            'village' => 'COT BAYU',
+            'district_id' => '110308',
+            'village_id' => '1103082005',
+            'address_line1' => 'Jl A',
+            'postal_code' => '23774',
+        ])->assertRedirect('/checkout')->assertSessionHasNoErrors();
+    }
+
     public function test_village_mapping_feeds_postal_autofill_for_district(): void
     {
         $dataset = PostalDataset::create([
