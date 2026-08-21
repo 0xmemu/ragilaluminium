@@ -24,6 +24,16 @@ createInertiaApp({
       "./pages/Public/Cart.tsx",
       "./pages/Public/Home.tsx",
       "./pages/Public/ModelDetail.tsx",
+      "./pages/Admin/Dashboard.tsx",
+      "./pages/Admin/Orders/Index.tsx",
+      "./pages/Admin/Analytics/StorePerformance.tsx",
+      "./pages/Admin/Products/Index.tsx",
+      "./pages/Admin/Notifications.tsx",
+      "./pages/Public/About.tsx",
+      "./pages/Public/FAQ.tsx",
+      "./pages/Public/OrderStatus.tsx",
+      "./pages/Public/HowToOrder.tsx",
+      "./pages/Public/Gallery.tsx",
     ]
 
     const schedulePreload = () =>
@@ -32,7 +42,7 @@ createInertiaApp({
           const loader = pages[key] as (() => Promise<unknown>) | undefined
           if (loader) void loader()
         })
-      }, 3000)
+      }, 500)
 
     if (typeof window !== "undefined") {
       if (document.readyState === "complete") {
@@ -43,7 +53,7 @@ createInertiaApp({
     }
   },
   progress: {
-    delay: 250,
+    delay: 100,
     color: "#F5C518",
     includeCSS: false,
     showSpinner: false,
