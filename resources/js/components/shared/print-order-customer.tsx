@@ -49,6 +49,7 @@ export interface OrderPrintData {
   subtotal_amount?: number
   shipping_amount?: number
   shipping_subsidy_amount?: number
+  shipping_insurance_amount?: number
   discount_amount?: number
   voucher_code?: string | null
   voucher_discount_amount?: number
@@ -423,6 +424,12 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
             <span style={{ fontSize: 10, fontWeight: 600, color: "#C20000" }}>
               − {formatCurrency(data.shipping_subsidy_amount)}
             </span>
+          </div>
+        ) : null}
+        {data.shipping_insurance_amount && data.shipping_insurance_amount > 0 ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#666666" }}>ASURANSI PENGIRIMAN</span>
+            <span style={{ fontSize: 10, color: "#333333" }}>{formatCurrency(data.shipping_insurance_amount)}</span>
           </div>
         ) : null}
         {data.cod_fee_amount && data.cod_fee_amount > 0 ? (

@@ -63,6 +63,7 @@ interface OrderDetail {
   subtotal_amount: number
   shipping_amount: number
   shipping_subsidy_amount?: number
+  shipping_insurance_amount?: number
   discount_amount: number
   voucher_code?: string | null
   voucher_discount_amount?: number
@@ -1042,6 +1043,14 @@ export default function OrderShow({
                   <dt className="text-muted-foreground">Subsidi ongkir</dt>
                   <dd className="tabular-nums font-medium text-muted-foreground">
                     −{formatCurrency(order.shipping_subsidy_amount ?? 0)}
+                  </dd>
+                </div>
+              ) : null}
+              {(order.shipping_insurance_amount ?? 0) > 0 ? (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Asuransi pengiriman</dt>
+                  <dd className="tabular-nums font-medium">
+                    {formatCurrency(order.shipping_insurance_amount ?? 0)}
                   </dd>
                 </div>
               ) : null}
