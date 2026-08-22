@@ -46,6 +46,26 @@
 - Sessions DB: 14 hari (cleanup).
 - `performance_visitor_events`: **jangan hapus** (KPI lifetime).
 
+### Antisipasi freeze VPS (resource) — 2026-08-22
+
+Lapis pencegahan sebelum VPS freeze karena disk/memory penuh (masalah umum yg jarang ter-monitor):
+
+| Ambang | Tindakan |
+|---|---|
+| **Disk ≥75%** | Alert WARNING (pantau trend) |
+| **Disk ≥85%** | Alert CRITICAL |
+| **Disk ≥95%** | Alert EMERGENCY ("VPS berisiko FREEZE") |
+| **Disk ≥80% & sisa <10G** | **AUTO-CLEANUP**: hapus backup lokal >7 hari (aman, sudah diarsip R2 weekly/monthly), log .gz >14 hari, metric CSV >30 hari, .env.backup-deploy >14 hari |
+| **Inode ≥80/90%** | Alert WARNING/EMERGENCY (inode penuh juga bisa freeze) |
+| **RAM ≥80/90/95%** | Alert WARNING/CRITICAL/EMERGENCY (OOM risk) |
+| **Swap ≥90%** | Alert CRITICAL (jejak OOM) |
+| **OOM historis** (dmesg) | Alert "OOM lockdown historis" (pernah freeze) |
+| **Trend disk sentak ±15%/5menit** | Alert "pertumbuhan anomali" |
+
+Script: aggregator (`/root/scripts_alert_aggregator.sh`) sudah inline-resource-check bertingkat;
+auto-cleanup di `/root/scripts_auto_cleanup.sh`. Subscriber TG dipersistenkan di
+`/root/backups/.tg-subscribers` (bukan getUpdates yang expanz 24 jam). Tambah: `/root/scripts_tg_add_subscriber.sh <chat_id>`.
+
 ### Alert channel
 
 - Bot Telegram `@ragilaluminium_bot` (publik — siapa pun Start = subscriber).
