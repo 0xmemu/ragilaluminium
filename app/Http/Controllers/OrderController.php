@@ -83,7 +83,7 @@ class OrderController extends Controller
 
     /**
      * Pembatalan oleh pembeli: hanya saat status masih "menunggu konfirmasi"
-     * (pending_payment). Identitas harus cocok (nomor order + HP), sama
+     * (pending). Identitas harus cocok (nomor order + HP), sama
      * seperti pencarian status, agar orang lain tidak bisa membatalkan pesanan.
      */
     public function cancel(LookupOrderStatusRequest $request, string $order_number): RedirectResponse
@@ -101,7 +101,7 @@ class OrderController extends Controller
             ]);
         }
 
-        if ($order->order_status !== 'pending_payment') {
+        if ($order->order_status !== 'awaiting_confirmation') {
             return back()->withErrors([
                 'cancel' => 'Pesanan sudah diproses dan tidak dapat dibatalkan dari halaman ini.',
             ]);

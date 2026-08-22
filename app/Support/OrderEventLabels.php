@@ -9,7 +9,7 @@ class OrderEventLabels
 {
     /** @var array<string, string> */
     private const ORDER_STATUSES = [
-        'pending_payment' => 'Menunggu pembayaran',
+        'awaiting_confirmation' => 'Menunggu konfirmasi',
         'pending' => 'Menunggu',
         'pending_pickup' => 'Menunggu penjemputan',
         'processing' => 'Diproses',

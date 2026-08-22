@@ -390,7 +390,7 @@ class WhatsAppService
     }
 
     /**
-     * Tombol / balasan konfirmasi COD → pending_payment → processing + WA "pesanan diproses".
+     * Tombol / balasan konfirmasi COD → pending → processing + WA "pesanan diproses".
      *
      * @param  array<string, mixed>  $msg
      */
@@ -514,7 +514,7 @@ class WhatsAppService
         if (preg_match('/(?:RA-\d{6}-[A-Z0-9]+|ORD\d{8})/i', $haystack, $match)) {
             $order = Order::query()
                 ->where('order_number', strtoupper($match[0]))
-                ->where('order_status', 'pending_payment')
+                ->where('order_status', 'awaiting_confirmation')
                 ->first();
             if ($order) {
                 return $order;
@@ -536,7 +536,7 @@ class WhatsAppService
         if ($recentOutbound) {
             $order = Order::query()
                 ->where('id', $recentOutbound->order_id)
-                ->where('order_status', 'pending_payment')
+                ->where('order_status', 'awaiting_confirmation')
                 ->first();
             if ($order) {
                 return $order;
@@ -544,7 +544,7 @@ class WhatsAppService
         }
 
         return Order::query()
-            ->where('order_status', 'pending_payment')
+            ->where('order_status', 'awaiting_confirmation')
             ->where(function ($q) use ($phone) {
                 $q->where('customer_phone', $phone);
                 if (str_starts_with($phone, '62')) {

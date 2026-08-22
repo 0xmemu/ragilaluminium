@@ -13,7 +13,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   baru: { label: "Baru", tone: "info" },
   archived: { label: "Diarsipkan", tone: "neutral" },
   draft: { label: "Draft", tone: "neutral" },
-  pending: { label: "Menunggu", tone: "warning" },
+  awaiting_confirmation: { label: "Menunggu Konfirmasi", tone: "warning" },
   running: { label: "Sedang diproses", tone: "info" },
   completed: { label: "Selesai", tone: "success" },
   failed: { label: "Gagal", tone: "danger" },
@@ -21,7 +21,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   downloading: { label: "Mengunduh", tone: "info" },
   visible: { label: "Tampil", tone: "success" },
   hidden: { label: "Disembunyikan", tone: "neutral" },
-  pending_payment: { label: "Perlu konfirmasi", tone: "danger" },
+
   processing: { label: "Diproses", tone: "info" },
   shipped: { label: "Dikirim", tone: "success" },
   delivered: { label: "Sampai", tone: "success" },
@@ -57,7 +57,7 @@ export function statusMeta(status: unknown): StatusMeta {
 }
 
 export const ORDER_STEPS = [
-  "pending_payment",
+  "awaiting_confirmation",
   "processing",
   "shipped",
   "delivered",

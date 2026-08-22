@@ -90,7 +90,7 @@ class Order extends Model
 
     public function scopePendingPayment(Builder $query): Builder
     {
-        return $query->where('order_status', 'pending_payment');
+        return $query->where('order_status', 'awaiting_confirmation');
     }
 
     public function scopeNeedsAttention(Builder $query): Builder

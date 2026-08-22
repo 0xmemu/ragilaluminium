@@ -11,7 +11,7 @@ return new class extends Migration
         // SPESIFIKASI-FINAL §A/E: status baru Retur Selesai.
         Schema::table('orders', function (Blueprint $table) {
             $table->enum('order_status', [
-                'pending_payment',
+                'awaiting_confirmation',
                 'processing',
                 'shipped',
                 'delivered',
@@ -28,7 +28,7 @@ return new class extends Migration
     {
         Schema::table('orders', function (Blueprint $table) {
             $table->enum('order_status', [
-                'pending_payment',
+                'awaiting_confirmation',
                 'processing',
                 'shipped',
                 'delivered',

@@ -166,7 +166,7 @@ function OrderDetail({
             </div>
           ) : null}
 
-          {onCancel && order.order_status === "pending_payment" ? (
+          {onCancel && order.order_status === "awaiting_confirmation" ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
               <p className="text-xs font-bold tracking-tight text-destructive">
                 Batalkan Pesanan

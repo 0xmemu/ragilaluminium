@@ -66,7 +66,7 @@ class PaymentService
                 'updated_by_user_id' => $userId,
             ]);
 
-            if ($order->order_status === 'pending_payment') {
+            if ($order->order_status === 'awaiting_confirmation') {
                 $this->states->transition(
                     $order,
                     'processing',

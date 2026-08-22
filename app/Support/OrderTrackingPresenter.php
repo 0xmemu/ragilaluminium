@@ -196,7 +196,7 @@ class OrderTrackingPresenter
         $to = isset($payload['order_status']) ? (string) $payload['order_status'] : null;
 
         return match ($to) {
-            'pending' => 'Menunggu konfirmasi pembayaran.',
+            'awaiting_confirmation' => 'Menunggu konfirmasi pembayaran.',
             'processing' => 'Pesanan sedang diproses oleh admin gudang.',
             'shipped' => 'Pesanan sedang dikirim oleh ekspedisi.',
             'delivered' => 'Paket berhasil diterima.',

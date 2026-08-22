@@ -184,7 +184,7 @@ class OrderService
                         'shipping_postal_code' => $shipping['postal_code'],
                         'shipping_country' => $shipping['country'] ?? 'Indonesia',
                         // COD bayar di tempat: langsung antrean produksi, bukan menunggu pembayaran.
-                        'order_status' => $paymentMethod === 'cod' ? 'processing' : 'pending_payment',
+                        'order_status' => 'awaiting_confirmation',
                         'payment_status' => 'pending',
                         'shipping_status' => 'pending_pickup',
                         'subtotal_amount' => $subtotal,
@@ -266,7 +266,7 @@ class OrderService
     }
 
     /**
-     * Mulai fulfillment: pending_payment → processing (tanpa menandai lunas).
+     * Mulai fulfillment: pending → processing (tanpa menandai lunas).
      * Dipakai COD (admin "Proses" atau konfirmasi tombol WhatsApp pelanggan).
      *
      * @return bool true jika status berubah ke processing
@@ -275,7 +275,7 @@ class OrderService
     {
         $order = $order->fresh() ?? $order;
 
-        if ($order->order_status !== 'pending_payment') {
+        if ($order->order_status !== 'awaiting_confirmation') {
             return false;
         }
 
@@ -418,7 +418,7 @@ class OrderService
      */
     public function editPolicy(Order $order): array
     {
-        if ($order->order_status !== 'pending_payment') {
+        if ($order->order_status !== 'awaiting_confirmation') {
             return ['allowed' => false, 'require_note' => false, 'reason' => 'Pesanan hanya dapat diedit saat Menunggu Konfirmasi.'];
         }
 

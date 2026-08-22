@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import type { PublicOrder } from "@/types"
 
 const STEPS = [
-  { status: "pending_payment", label: "Pesanan dibuat", hint: "Menunggu konfirmasi" },
+  { status: "awaiting_confirmation", label: "Pesanan dibuat", hint: "Menunggu konfirmasi" },
   { status: "processing", label: "Diproses", hint: "Sedang diproses oleh admin gudang" },
   { status: "shipped", label: "Dikirim", hint: "Dalam perjalanan" },
   { status: "delivered", label: "Sampai", hint: "Paket diterima" },
@@ -13,7 +13,7 @@ const STEPS = [
 ] as const
 
 const MESSAGE_KEYWORDS: Record<(typeof STEPS)[number]["status"], string[]> = {
-  pending_payment: ["menunggu konfirmasi", "dibuat"],
+  awaiting_confirmation: ["menunggu konfirmasi", "dibuat"],
   processing: ["diproses oleh admin gudang", "diproses oleh toko", "diproses"],
   // "Dikirim" terisi otomatis dari J&T (cascade in_transit → shipped):
   // event shipping.created (resi) atau scan kurir (dijemput / perjalanan / keluar sortir).

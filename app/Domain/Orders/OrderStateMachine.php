@@ -12,7 +12,7 @@ class OrderStateMachine
 {
     /** @var array<string, list<string>> */
     private const ORDER_TRANSITIONS = [
-        'pending_payment' => ['processing', 'issue', 'cancelled'],
+        'awaiting_confirmation' => ['processing', 'issue', 'cancelled'],
         'processing' => ['shipped', 'issue', 'cancelled'],
         'shipped' => ['delivered', 'issue'],
         'delivered' => ['completed', 'issue', 'return_in_process'],
