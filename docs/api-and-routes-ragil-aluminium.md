@@ -36,6 +36,7 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /checkout` -> `CheckoutController@index`  (name: `checkout.index`)
 - `POST /checkout/place-order` -> `CheckoutController@placeOrder`  (name: `checkout.place-order`)  [Illuminate\Routing\Middleware\ThrottleRequests:10,1]
 - `POST /checkout/validate` -> `CheckoutController@validateDetails`  (name: `checkout.validate`)
+- `POST /checkout/last-details` -> `CheckoutController@lastDetails`  (name: `checkout.last-details`, throttle 20/menit; prefill detail pengiriman dari order terakhir per HP)
 - `POST /checkout/voucher` -> `CheckoutController@applyVoucher`  (name: `checkout.voucher.apply`)  [Illuminate\Routing\Middleware\ThrottleRequests:20,1]
 - `POST /checkout/voucher/remove` -> `CheckoutController@removeVoucher`  (name: `checkout.voucher.remove`)
 - `POST /consultation/whatsapp` -> `ConsultationController@send`  (name: `consultation.whatsapp.send`)  [Illuminate\Routing\Middleware\ThrottleRequests:10,1]

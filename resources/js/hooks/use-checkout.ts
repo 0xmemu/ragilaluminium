@@ -163,6 +163,9 @@ export function useCheckout({
   const [shippingQuote, setShippingQuote] = React.useState<CheckoutShippingQuote | null>(null)
   const [shippingQuoteLoading, setShippingQuoteLoading] = React.useState(false)
   const [shippingQuoteAttempted, setShippingQuoteAttempted] = React.useState(false)
+  const [prefillNotice, setPrefillNotice] = React.useState<string | null>(null)
+  const [prefillLoading, setPrefillLoading] = React.useState(false)
+  const prefillAbortRef = React.useRef<AbortController | null>(null)
   const shippingQuoteAbortRef = React.useRef<AbortController | null>(null)
 
   React.useEffect(() => {
@@ -524,6 +527,64 @@ export function useCheckout({
     paymentForm.post(routeUrl("checkout.place-order"))
   }
 
+  async function prefillFromLastOrder() {
+    const phone = detailForm.data.phone.trim()
+    if (phone.length < 9) {
+      setPrefillNotice(null)
+      return
+    }
+    prefillAbortRef.current?.abort()
+    const controller = new AbortController()
+    prefillAbortRef.current = controller
+    setPrefillLoading(true)
+    try {
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? ""
+      const response = await fetch(
+        routeUrl("checkout.last-details", undefined, "/checkout/last-details"),
+        {
+          method: "POST",
+          credentials: "same-origin",
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
+          },
+          body: JSON.stringify({ phone }),
+        },
+      )
+      if (!response.ok) return
+      const payload = (await response.json()) as { found?: boolean; details?: Partial<CheckoutDetails> }
+      if (!payload.found || !payload.details) {
+        setPrefillNotice(null)
+        return
+      }
+      const d = payload.details
+      detailForm.setData({
+        ...detailForm.data,
+        name: d.name ?? detailForm.data.name,
+        phone: d.phone ?? phone,
+        province: d.province ?? "",
+        city: d.city ?? "",
+        district: d.district ?? "",
+        village: d.village ?? "",
+        province_id: d.province_id ?? "",
+        city_id: d.city_id ?? "",
+        district_id: d.district_id ?? "",
+        village_id: d.village_id ?? "",
+        address_line1: d.address_line1 ?? "",
+        address_line2: d.address_line2 ?? "",
+        postal_code: d.postal_code ?? "",
+      })
+      setPrefillNotice("Detail diisi otomatis dari pesanan sebelumnya. Ubah jika perlu.")
+    } catch (error) {
+      if ((error as Error)?.name !== "AbortError") setPrefillNotice(null)
+    } finally {
+      if (!controller.signal.aborted) setPrefillLoading(false)
+    }
+  }
+
   const addressSummary = details
     ? [
         details.address_line1,
@@ -564,6 +625,9 @@ export function useCheckout({
     loadingVillages,
     wilayahError,
     setWilayahRetry,
+    prefillFromLastOrder,
+    prefillNotice,
+    prefillLoading,
     shippingQuote,
     shippingQuoteLoading,
     shippingQuoteAttempted,

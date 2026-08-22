@@ -142,6 +142,8 @@ Route::get('/hasil-pemasangan/{parent_sku}', [PageController::class, 'installati
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/validate', [CheckoutController::class, 'validateDetails'])->middleware('throttle:20,1')->name('checkout.validate');
+Route::post('/checkout/last-details', [CheckoutController::class, 'lastDetails'])
+    ->middleware('throttle:20,1')->name('checkout.last-details');
 Route::post('/checkout/voucher', [CheckoutController::class, 'applyVoucher'])
     ->middleware('throttle:20,1')->name('checkout.voucher.apply');
 Route::post('/checkout/voucher/remove', [CheckoutController::class, 'removeVoucher'])->middleware('throttle:20,1')->name('checkout.voucher.remove');

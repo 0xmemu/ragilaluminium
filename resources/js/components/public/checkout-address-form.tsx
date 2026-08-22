@@ -93,12 +93,16 @@ export function CheckoutAddressForm({
                 type="tel"
                 value={detailForm.data.phone}
                 onChange={(event) => detailForm.setData("phone", event.target.value)}
+                onBlur={() => c.prefillFromLastOrder()}
                 autoComplete="tel"
                 inputMode="tel"
                 placeholder="08XXXXXXXXXX"
                 className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
               />
             </Field>
+            {c.prefillNotice ? (
+              <p className="col-span-full text-xs text-muted-foreground">{c.prefillNotice}</p>
+            ) : null}
           </div>
 
           <div className="grid gap-2.5 sm:grid-cols-2">

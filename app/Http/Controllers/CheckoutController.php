@@ -13,7 +13,9 @@ use App\Services\VoucherService;
 use App\Support\CodSettings;
 use App\Support\OperationalTelemetry;
 use App\Support\OrderEta;
+use App\Support\PhoneNumber;
 use App\Support\ShippingQuoteManualReviewNotifier;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -294,11 +296,54 @@ class CheckoutController extends Controller
         $this->rememberConfirmedOrder($request, $order);
 
         $this->cart->clear();
-        $request->session()->forget('checkout_details');
-        $request->session()->forget('checkout_payment_method');
+        // Detail pengiriman & metode bayar dipertahankan agar checkout ulang
+        // (order berikutnya) tidak perlu mengisi dari nol. Voucher dibersihkan.
         $request->session()->forget(VoucherService::SESSION_KEY);
 
         return redirect()->route('order.confirmation', $order->order_number);
+    }
+
+    /**
+     * Detail pengiriman dari order terakhir untuk nomor HP tertentu.
+     * Dipakai checkout untuk prefill otomatis saat checkout ulang
+     * (sesi/device baru); phone dinormalisasi seperti saat order disimpan.
+     */
+    public function lastDetails(Request $request): JsonResponse
+    {
+        $phone = trim((string) $request->input('phone', ''));
+        if ($phone === '') {
+            return response()->json(['found' => false]);
+        }
+
+        $normalized = PhoneNumber::normalize($phone) ?? $phone;
+        $order = Order::query()
+            ->where('customer_phone', $normalized)
+            ->whereNotNull('shipping_address_line1')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $order) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json([
+            'found' => true,
+            'details' => [
+                'name' => $order->customer_name,
+                'phone' => $order->customer_phone,
+                'province' => $order->shipping_province,
+                'city' => $order->shipping_city,
+                'district' => $order->shipping_district,
+                'village' => $order->shipping_village,
+                'province_id' => $order->shipping_province_id,
+                'city_id' => $order->shipping_city_id,
+                'district_id' => $order->shipping_district_id,
+                'village_id' => $order->shipping_village_id,
+                'address_line1' => $order->shipping_address_line1,
+                'address_line2' => $order->shipping_address_line2,
+                'postal_code' => $order->shipping_postal_code,
+            ],
+        ]);
     }
 
     private function prepareCheckoutIdempotencyKey(Request $request, bool $rotateCompleted = false): string

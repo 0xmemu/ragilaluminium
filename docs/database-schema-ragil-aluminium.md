@@ -323,6 +323,10 @@ Indexes:
 - `shipping_address_line2` (`VARCHAR`), nullable
 - `shipping_city` (`VARCHAR`), NN
 - `shipping_province` (`VARCHAR`), NN
+- `shipping_province_id` (`VARCHAR`), nullable (ID Kemendagri, utk prefill checkout ulang)
+- `shipping_city_id` (`VARCHAR`), nullable
+- `shipping_district_id` (`VARCHAR`), nullable
+- `shipping_village_id` (`VARCHAR`), nullable
 - `shipping_postal_code` (`VARCHAR`), NN
 - `shipping_country` (`VARCHAR`), NN, default 'Indonesia'
 - `order_status` (`VARCHAR`), NN
