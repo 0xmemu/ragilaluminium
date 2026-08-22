@@ -2,11 +2,12 @@ import { Head } from "@inertiajs/react"
 import * as React from "react"
 
 import { InstallationCard } from "@/components/public/installation-card"
-import { InstallationFeaturedCard } from "@/components/public/installation-featured-card"
 import { InstallationMediaGallery } from "@/components/public/installation-media-gallery"
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageHeader } from "@/components/public/page-header"
+import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
@@ -109,21 +110,21 @@ export default function Installations({
       <section className="border-b border-border bg-surface">
         <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
           <div className="flex items-center gap-3">
-                        <Breadcrumbs
-            singleLine={!isModelLevel}
-            items={
-              isModelLevel
-                ? [
-                    { label: "Home", href: routeUrl("home") },
-                    { label: "Hasil Pemasangan" },
-                  ]
-                : [
-                    { label: "Home", href: routeUrl("home") },
-                    { label: "Hasil Pemasangan", href: listingHref },
-                    { label: modelMeta?.label || heading },
-                  ]
-            }
-          />
+            <Breadcrumbs
+              singleLine={!isModelLevel}
+              items={
+                isModelLevel
+                  ? [
+                      { label: "Home", href: routeUrl("home") },
+                      { label: "Hasil Pemasangan" },
+                    ]
+                  : [
+                      { label: "Beranda", href: routeUrl("home") },
+                      { label: "Hasil Pemasangan", href: listingHref },
+                      { label: modelMeta?.label || heading },
+                    ]
+              }
+            />
           </div>
         </div>
 
@@ -147,23 +148,10 @@ export default function Installations({
             </div>
           </div>
         ) : (
-          <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
-                aria-label="Kembali"
-              >
-                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-              </button>
-              <h1 className="text-base font-bold tracking-tight text-foreground">
-                Hasil Pemasangan Produk
-              </h1>
-            </div>
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+            <PageHeader title="Hasil Pemasangan" container={false} />
           </div>
         )}
-
       </section>
 
       <section className={isModelLevel ? "pt-4 pb-4 sm:pt-6 sm:pb-6" : "pt-0 pb-4 sm:pb-6"}>
@@ -195,15 +183,27 @@ export default function Installations({
           </div>
         ) : (
           <div className="space-y-6 lg:space-y-8">
-            {featured ? (
-              <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-                <InstallationFeaturedCard
-                  className="w-full"
-                  item={{
-                    ...featured,
-                    image: featured.image ?? featured.image_url,
-                  }}
+            {/* Hero — mengikuti halaman model produk: aspect-square + overlay judul */}
+            {featured?.image_url ? (
+              <div className="relative aspect-square w-full overflow-hidden">
+                <ResponsiveImage
+                  src={featured.image_url}
+                  alt={heading}
+                  loading="lazy"
+                  wrapperClassName="absolute inset-0 size-full !aspect-auto bg-surface-muted"
+                  className="h-full w-full object-cover"
                 />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5">
+                  <h1 className="font-bold leading-tight tracking-tight text-white text-sm sm:text-base">
+                    {heading}
+                  </h1>
+                  {subtitle ? (
+                    <p className="mt-1.5 max-w-xl truncate text-[11px] leading-snug text-white/90 sm:text-[13px]">
+                      {subtitle}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
