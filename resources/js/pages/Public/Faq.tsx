@@ -74,7 +74,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
       </section>
 
       <section>
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
           {guide.groups.length ? (
             <div className="mx-auto max-w-3xl">
               {guide.groups.map((group, groupIndex) => (
