@@ -308,7 +308,7 @@ export default function ModelDetail({
         </div>
       </section>
 
-      <section className="py-5">
+      <section className="pb-5">
         <div className="relative aspect-square w-full overflow-hidden">
             <div
               ref={heroThumbsRef}
