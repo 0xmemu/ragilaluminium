@@ -201,7 +201,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
             <h2 className="text-balance text-[17px] font-bold leading-snug tracking-tight text-primary-foreground sm:text-xl">
               Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu
             </h2>
-            <div className="mt-3 flex w-full flex-col items-center gap-2 sm:w-auto sm:flex-row">
+            <div className="mt-3 flex w-full flex-wrap items-center justify-center gap-2">
               <Button
                 asChild
                 className="h-9 min-w-0 whitespace-nowrap bg-background px-4 text-xs text-primary hover:bg-background/90 sm:text-sm sm:min-w-[160px]"
