@@ -33,7 +33,15 @@ createInertiaApp({
       "./pages/Public/FAQ.tsx",
       "./pages/Public/OrderStatus.tsx",
       "./pages/Public/HowToOrder.tsx",
-      "./pages/Public/Gallery.tsx",
+      "./pages/Public/ModelProduk.tsx",
+      "./pages/Public/Reviews.tsx",
+      "./pages/Public/InformasiToko.tsx",
+      "./pages/Public/Installations.tsx",
+      "./pages/Public/InstallationDetail.tsx",
+      "./pages/Public/OrderConfirmation.tsx",
+      "./pages/Public/Checkout.tsx",
+      "./pages/Public/MasalahSolusi.tsx",
+      "./pages/Public/CmsPage.tsx",
     ]
 
     const schedulePreload = () =>
