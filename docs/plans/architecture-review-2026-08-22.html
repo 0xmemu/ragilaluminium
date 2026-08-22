@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Review — Ragil Aluminium codebase</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;background:#0f1115;color:#e6e8ee;}
+  .card{background:#171a21;border:1px solid #252a35;border-radius:12px;padding:20px;margin-bottom:20px;}
+  .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;}
+  .strong{background:#1d4ed8;color:#fff;}
+  .worth{background:#b45309;color:#fff;}
+  .spec{background:#374151;color:#cbd5e1;}
+  .mono{font-family:ui-monospace,monospace;font-size:12px;}
+  .pane{display:flex;gap:12px;flex-wrap:wrap;}
+  .box{background:#0d1016;border:1px solid #333a4a;border-radius:8px;padding:12px;flex:1;min-width:200px;}
+  .thin{background:repeating-linear-gradient(45deg,#1f2430,#1f2430 6px,#262c3a 6px,#262c3a 12px);}
+  .deep{background:repeating-linear-gradient(45deg,#1d3a5f,#1d3a5f 6px,#23518f 6px,#23518f 12px);}
+  h2{font-size:20px;margin-bottom:6px;}h3{font-size:15px;margin:0 0 8px;}
+</style>
+</head>
+<body class="p-6 max-w-5xl mx-auto">
+<h1 class="text-2xl font-bold mb-1">Arsitektur Review — Ragil Aluminium</h1>
+<p class="text-sm text-gray-400 mb-6">Metodologi "improve-codebase-architecture" (manual). Tanggal 2026-08-22. Scan hot-spot via 60 commit terakhir.</p>
+
+<div class="card">
+<h2>📌 Ringkasan Hot-Spot</h2>
+<p class="text-sm">Area yang paling sering berubah (60 commit) menunjukkan di mana <b>deepening</b> paling membayar.</p>
+<div class="mono mt-2">
+  resources/js/components/public → 40 perubahan<br>
+  resources/js/pages/Public → 36<br>
+  app/Support → 21
+</div>
+<p class="text-sm text-gray-400 mt-2">Domain vocabulary: modul "katalog produk", "render toko" (storefront), "pengaturan tampilan" (settings), "kartu produk". Pakai istilah ini persis.</p>
+</div>
+
+<!-- ============ KANDIDAT 1 ============ -->
+<div class="card">
+<span class="badge strong">STRONG</span>
+<h2 class="mt-2">Kandidat A — Perdalam "pengaturan tampilan" menjadi 1 modul (bukan 14 shallow)</h2>
+<p class="text-sm mono">app/Support/*Settings.php (14 file, total 2854 baris, rata-rata ~204/klas)</p>
+<div class="mt-3 text-sm">
+<p><b>Problem:</b> Ada 14 kelas <b>shallow</b> berpola (AnnouncementSlideSettings, FlashSalePeriodSettings, CaraPemesananSettings, dll.), masing-masing hanya bungkus getter dari `cms_pages` content. Interface-nya hampir serumit implementasi → menerapkan <b>deletion test</b>: menghapus semua 14 lalu menggabungnya memusatkan kompleksitas (bagus), bukan memindahkannya.</p>
+<p class="mt-2"><b>Solution:</b> Satu modul dalam "pengaturan tampilan toko" (mis. `StorefrontSettings`) dengan interface `get(slug)`, menyembunyikan detail penyimpanan CMS di balik satu seam. 14 kelas jadi 1 modul dalam.</p>
+<p class="mt-2"><b>Benefit:</b> Locality naik (konsep "setting toko" di satu tempat); test cukup di 1 interface; perubahan skema CMS hanya di 1 adapter.</p>
+</div>
+<div class="pane mt-3">
+  <div class="box thin"><b class="text-xs text-gray-400">SEBELUM (shallow)</b><div class="mt-2 mono text-xs">14 kelas × getter<br>repetisi load/page/slug<br>perubahan CMS = edit 14 tempat</div></div>
+  <div class="box deep"><b class="text-xs text-gray-300">SESUDAH (dalam)</b><div class="mt-2 mono text-xs">1 modul StorefrontSettings<br>interface: get($slug)<br>1 adapter untuk seluruh CMS</div></div>
+</div>
+</div>
+
+<!-- ============ KANDIDAT 2 ============ -->
+<div class="card">
+<span class="badge strong">STRONG</span>
+<h2 class="mt-2">Kandidat B — Bagi "katalog produk" controller 697 baris</h2>
+<p class="text-sm mono">app/Http/Controllers/CatalogController.php (697 baris, 15 method)</p>
+<div class="mt-3 text-sm">
+<p><b>Problem:</b> Fat controller menampung render katalog + model + design + filter + rails + flash-sale scope → <b>lemah locality</b>: memahami satu konsep (mis. "kartu model") memaksa membaca banyak method dalam 1 file besar. Interface mengungkap seluruh detail, bukan menyembunyikan.</p>
+<p><b>Solution:</b> Pisahkan render "rak model" (model rails) & "filter katalog" dari controller ke modul/method dalam, controller jadi tipis (delegasi). Interface publik tetap sama.</p>
+<p><b>Benefit:</b> Katalog jadi 1 front yang dalam; logika rails & filter di-test via interface sndiri; controller 697→~200 baris delegasi.</p>
+</div>
+<div class="pane mt-3">
+  <div class="box thin"><b class="text-xs text-gray-400">SEBELUM</b><div class="mono text-xs mt-2">CatalogController (697)<br>├ index / modelHub<br>├ designRailsForModel<br>├ scopeFlashSaleActive…<br>semua di 1 flat file</div></div>
+  <div class="box deep"><b class="text-xs text-gray-300">SESUDAH</b><div class="mono text-xs mt-2">CatalogController (tipis)<br>└ CatalogCatalogRenderer<br>└ CatalogFilterSet<br>masing2 punya interface & test</div></div>
+</div>
+</div>
+
+<!-- ============ KANDIDAT 3 ============ -->
+<div class="card">
+<span class="badge worth">WORTH EXPLORING</span>
+<h2 class="mt-2">Kandidat C — Perdalam "kartu produk" frontend (komponen terpanas)</h2>
+<p class="text-sm mono">resources/js/components/public/* (51 file flat) — cart-line-item.tsx 351 baris, 5× berubah</p>
+<div class="mt-3 text-sm">
+<p><b>Problem:</b> 51 komponen publik dalam 1 folder flat, paling sering berubah di antara semua (kartu produk, cart-line-item). Kartu & item keranjang berbagi logika harga/opsi tetapi tersebar → shift kecil memaksa touch multi-file.</p>
+<p><b>Solution:</b> Kelompokkan komponen terkait "katalog render" & "keranjang" ke modul berpola (mis. `catalog/` & `cart/`), dengan hook/helper harga bersama sebagai modul dalam.</p>
+<p><b>Benefit:</b> Perubahan harga/opsi produk jadi 1 tempat (locality), UI instant setelah render (leverage).</p>
+</div>
+</div>
+
+<!-- ============ KANDIDAT 4 ============ -->
+<div class="card">
+<span class="badge spec">SPECULATIVE</span>
+<h2 class="mt-2">Kandidat D — Halaman katalog 628 baris</h2>
+<p class="text-sm mono">resources/js/pages/Public/Catalog.tsx (628 baris)</p>
+<div class="mt-3 text-sm">
+<p><b>Problem:</b> Halaman Catalog besar mencampur state filter + render grid + sort. Perubahan filter merambah bagian render.</p>
+<p><b>Solution:</b> Ekstrak state-filter ke hook dalam (`useCatalogFilter`) agar halaman jadi pembaca, filter jadi modul dalam.</p>
+<p><b>Benefit:</b> Memisahkan data-fetching & render; test state filter tanpa DOM.</p>
+</div>
+</div>
+
+<!-- ============ TOP ============ -->
+<div class="card" style="border-color:#1d4ed8">
+<h2>🎯 Rekomendasi Utama — Mulai dari Kandidat A</h2>
+<p class="text-sm">Kandidat A (perdalam 14 *Settings jadi 1 modul) memberi leverage tertinggi dengan biaya sebanding: menghilangkan 13 kelas shallow repetitif pada hot-spot paling intensif (app/Support, 21 perubahan). Ini yang paling "AI-navigable": satu seam CMS yang jelas mengurangi bounce antar modul untuk siapa pun (manusia atau agen) yang menyentuh pengaturan toko.</p>
+</div>
+
+</body>
+</html>
