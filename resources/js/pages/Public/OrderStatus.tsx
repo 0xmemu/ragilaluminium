@@ -634,6 +634,7 @@ export default function OrderStatus({
                               total_amount: row.total_amount,
                             }
                           }
+                          timeline={row.tracking?.timeline}
                         />
                       </button>
                     </li>

@@ -307,7 +307,7 @@ class OrderController extends Controller
             'customer_phone' => $order->customer_phone,
             'eta' => OrderEta::forOrder($order),
             'items' => $order->items->map(fn ($i) => [
-                'product_name' => $i->product_name,
+                'product_name' => $i->product_name ?: $i->product?->name,
                     'product_id' => $i->product_id ? (int) $i->product_id : null,
                 'quantity' => $i->quantity,
                 'line_total' => isset($i->line_total) ? (float) $i->line_total : null,

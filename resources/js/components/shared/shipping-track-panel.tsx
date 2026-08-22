@@ -48,7 +48,14 @@ export function ShippingTrackPanel({
   refreshBusy = false,
   onCopyWaybill,
 }: ShippingTrackPanelProps) {
-  const activeStatus = (track.record_status || track.shipping_status || "").trim() || "unknown"
+  // Sinkron dgn checklist: badge pakai status kurir (J&T) saat ada timeline,
+  // selain itu (fallback alur pesanan) pakai status order supaya tidak beda-dua.
+  const hasTimeline = Array.isArray(timeline) && timeline.length > 0
+  const activeStatus = (
+    hasTimeline
+      ? track.record_status || track.shipping_status || ""
+      : track.order_status || ""
+  ).trim() || "unknown"
   const normalizedStatus = activeStatus.toLowerCase()
   const knownStatuses = new Set([
     "tracking_pending",

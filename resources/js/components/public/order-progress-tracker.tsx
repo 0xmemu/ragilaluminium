@@ -82,11 +82,6 @@ export function OrderProgressTracker({ order }: { order: PublicOrder }) {
 
   return (
     <div className="space-y-4">
-      {activeShipping ? (
-        <div>
-          <StatusBadge status={activeShipping} />
-        </div>
-      ) : null}
       {special ? (
         <div
           className={cn(
