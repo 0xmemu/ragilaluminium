@@ -137,14 +137,13 @@ class PageController extends Controller
         $websiteTotal = (clone $published)->count();
         $avgRating = (clone $published)->whereNotNull('rating')->avg('rating');
 
-        $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
+        $testimonials = (clone $published)
+            ->with('product:id,parent_sku,name,short_name')
             ->orderBy('sort_order')
             ->orderByDesc('id')
-            ->limit(120)
-            ->get()
-            ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
-            ->values()
-            ->all();
+            ->paginate(12)
+            ->withQueryString()
+            ->through(fn (CmsTestimonial $t) => $t->toPublicArray());
 
         return Inertia::render('Public/Reviews', [
             'type' => 'web',

@@ -40,7 +40,16 @@ export default function Reviews({
 }: {
   type?: "ss" | "web"
   pageMeta?: { title: string; heading: string; subtitle: string } | null
-  testimonials?: Testimonial[]
+  testimonials?:
+    | Testimonial[]
+    | {
+        data: Testimonial[]
+        current_page: number
+        last_page: number
+        total: number
+        next_page_url: string | null
+        prev_page_url: string | null
+      }
   modelNav?: ModelNavOption[]
   activeModel?: string | null
   stats?: { website_total?: number; average_rating?: number | null }
@@ -57,13 +66,23 @@ export default function Reviews({
       : "Ulasan pelanggan yang memesan lewat website.")
   const docTitle = pageMeta?.title?.trim() || heading
 
+  const testimonialList = Array.isArray(testimonials) ? testimonials : testimonials?.data ?? []
+  const pagination = !Array.isArray(testimonials)
+    ? {
+        current_page: testimonials?.current_page ?? 1,
+        last_page: testimonials?.last_page ?? 1,
+        next_page_url: testimonials?.next_page_url ?? null,
+        prev_page_url: testimonials?.prev_page_url ?? null,
+      }
+    : null
+
   const marketplace = React.useMemo(() => {
-    const marketplaceItems = testimonials.filter((t) => t.source !== "website")
-    return marketplaceItems.length ? marketplaceItems : testimonials
-  }, [testimonials])
+    const marketplaceItems = testimonialList.filter((t) => t.source !== "website")
+    return marketplaceItems.length ? marketplaceItems : testimonialList
+  }, [testimonialList])
   const website = React.useMemo(
-    () => testimonials.filter((t) => t.source === "website"),
-    [testimonials],
+    () => testimonialList.filter((t) => t.source === "website"),
+    [testimonialList],
   )
 
   // Ulasan website: default "Semua" (terbaru dulu); dropdown bintang 1–5 memfilter.
@@ -89,7 +108,7 @@ export default function Reviews({
   const total = isSs ? marketplace.length : (stats?.website_total ?? website.length)
   const averageRating = stats?.average_rating ?? null
 
-  const galleryItems = React.useMemo(() => toGalleryItems(testimonials), [testimonials])
+  const galleryItems = React.useMemo(() => toGalleryItems(testimonialList), [testimonialList])
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
 
   const activeModelLabel =
@@ -316,6 +335,35 @@ export default function Reviews({
                     ? "Ulasan dengan rating tersebut belum tersedia. Coba bintang lain atau Semua."
                     : "Ulasan dari pembeli website akan tampil di sini.",
                 )}
+                {pagination && pagination.last_page > 1 ? (
+                  <nav className="mt-6 flex items-center justify-center gap-2" aria-label="Pagination ulasan">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={!pagination.prev_page_url}
+                      onClick={() =>
+                        pagination.prev_page_url &&
+                        router.get(pagination.prev_page_url, {}, { preserveScroll: true })
+                      }
+                    >
+                      Sebelumnya
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Halaman {pagination.current_page} dari {pagination.last_page}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={!pagination.next_page_url}
+                      onClick={() =>
+                        pagination.next_page_url &&
+                        router.get(pagination.next_page_url, {}, { preserveScroll: true })
+                      }
+                    >
+                      Berikutnya
+                    </Button>
+                  </nav>
+                ) : null}
               </section>
             )}
           </div>
