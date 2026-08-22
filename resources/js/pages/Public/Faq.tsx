@@ -80,7 +80,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
               {guide.groups.map((group, groupIndex) => (
                 <div
                   key={group.category}
-                  className={groupIndex > 0 ? "mt-8 pt-6 sm:mt-10 sm:pt-8" : ""}
+                  className={groupIndex > 0 ? "mt-6 pt-4 sm:mt-8 sm:pt-6" : ""}
                 >
                   <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
                     {group.category}
