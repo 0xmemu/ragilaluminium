@@ -66,6 +66,22 @@ Script: aggregator (`/root/scripts_alert_aggregator.sh`) sudah inline-resource-c
 auto-cleanup di `/root/scripts_auto_cleanup.sh`. Subscriber TG dipersistenkan di
 `/root/backups/.tg-subscribers` (bukan getUpdates yang expanz 24 jam). Tambah: `/root/scripts_tg_add_subscriber.sh <chat_id>`.
 
+### Proteksi trafik tinggi / bot (2026-08-22)
+
+Melindungi server agar tidak lambat saat banjir trafik (bot/scraper/refresh massal), tanpa salah
+memengaruhi admin:
+
+| Lapis | Public (toko) | Admin (kantor) |
+|---|---|---|
+| **nginx limit_req** | 20r/s, burst 40, nodelay (zone `ragil_global`) | **EXEMPT** — `location /admin/` tanpa limit (banyak admin 1 IP/NAT) |
+| **nginx limit_conn** | 30 conn/IP (zone `ragil_conn`) | tidak diterapkan |
+| **fail2ban** | 4 jail aktif: sshd, nginx-http-auth, nginx-bad-request, nginx-botsearch | sama |
+| **Laravel throttle** | route sensitif (cart 30, checkout 20, place-order 10) | 120/menit global + login throttle |
+
+Note: admin dilindungi auth + EnsureUserIsAdmin + CSRF + Laravel throttle — cukup tanpa nginx limit.
+Rate-limit nginx hanya di public (path rentan bot). Config: nginx.conf (zone) + sites-enabled/ragil
+(location /admin/ exempt; location / limit_req+limit_conn). Backup di /root/backups/ragil-nginx.bak-*.
+
 ### Alert channel
 
 - Bot Telegram `@ragilaluminium_bot` (publik — siapa pun Start = subscriber).
