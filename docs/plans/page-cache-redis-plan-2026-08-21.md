@@ -1,7 +1,11 @@
 # Rencana Optimasi — Cache Halaman Penuh Redis untuk Navigasi Mendekati Instan
 
 **Tanggal:** 2026-08-21
-**Status:** RENCANA (belum dieksekusi — menunggu kesepakatan topik lain)
+**Status:** SEBAGIAN DIEKSEKUSI (2026-08-21) — Lapis A full-response cache **DIBATALKAN**
+(karena CSRF token Inertia berputar per request → cache response basi menyebabkan 419/keamanan;
+lihat ADR-013 "Execution result"). Komponen berat (storefrontCards/categoryMenu/promo_slides/home)
+sudah di-cache Redis + query dioptimasi (catalog 15→7, home 69→30). Alternatif cache props-data (tanpa
+CSRF) atau Nginx microcache untuk halaman statis di-defer; tidak dieksekusi.
 **Tujuan:** Membuat pindah menu Inertia mendekati instan (seperti SPA murni) tanpa pindah arsitektur
 ke Laravel API + frontend terpisah. Tetap Laravel/Inertia, tapi bobot server per navigasi diminalkan.
 
