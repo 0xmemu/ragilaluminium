@@ -962,6 +962,25 @@ Negatif:
 ## References / Evidence
 
 - Pengukuran: navigasi https 150–270ms; HTTP:8200 aset https → ERR_SSL_PROTOCOL_ERROR (app.js gagal).
+
+## Execution result (2026-08-21) — Lapis A full-response cache DIBATALKAN
+
+Saat implementasi, ditemukan bahwa **response halaman Inertia berisi CSRF token yang berputar
+tiap request** (`meta csrf-token` + prop `csrf`). Cache full-response akan menyajikan token basi
+kepada user lain → form POST / request AJAX bergantung CSRF gagal (419) & membuka celah keamanan.
+Oleh karena itu **approach cache seluruh Response dibatalkan** (revert middleware + service;
+`bootstrap/app.php` & `CatalogTaxonomy.php` dikembalikan bersih).
+
+**Yang TETAP dipertahankan (aman, sudah sesi ini):**
+- Optimasi komponen berat: `storefrontCards` (0 COUNT), `storefrontCategoryMenu`, `promo_slides`,
+  home `popular_cards`/`featured_products` → cache Redis.
+- Optimasi query: catalog 15→7, home 69→30.
+- Prefetch dini (500ms) + progress 100ms (app.tsx).
+
+**Alternatif aman untuk performa lebih lanjut (belum dieksekusi):** cache **props data** di level
+controller (tanpa CSRF token), bukan Response penuh; atau Nginx microcache hanya untuk halaman
+CMS/landing statis tanpa sesi. Keputusan di-defer ke sesi lanjutan bila masih butuh.
+
 - Optimasi sesi: catalog 15→7 query (8 COUNT eliminated), home 69→30 query (cache Redis).
 - `routes/api.php`, `docs/plans/page-cache-redis-plan-2026-08-21.md`, `ADR-010`, `ADR-012`.
 
