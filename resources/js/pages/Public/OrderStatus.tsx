@@ -192,22 +192,34 @@ function OrderDetail({
       <section className="mt-8">
         <h3 className="text-lg font-semibold">Item pesanan</h3>
         <ul className="mt-4 divide-y divide-border border-y border-border">
-          {order.items.map((item, index) => (
-            <li
-              key={`${item.product_name}-${index}`}
-              className="flex justify-between gap-4 py-4 text-sm"
-            >
-              <span className="min-w-0">
-                <span className="font-semibold">{item.product_name ?? item.name}</span>
-                {item.note ? (
-                  <span className="mt-1 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
-                    <span className="font-semibold">Catatan:</span> {item.note}
+          {order.items.map((item, index) => {
+            const unit = item.line_total ? Number(item.line_total) / item.quantity : null
+            return (
+              <li
+                key={`${item.product_name}-${index}`}
+                className="flex justify-between gap-4 py-4 text-sm"
+              >
+                <span className="min-w-0">
+                  <span className="font-semibold">{item.product_name ?? item.name}</span>
+                  {item.note ? (
+                    <span className="mt-1 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
+                      <span className="font-semibold">Catatan:</span> {item.note}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block tabular-nums font-semibold text-foreground">
+                    {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
                   </span>
-                ) : null}
-              </span>
-              <span className="tabular-nums shrink-0 text-muted-foreground">{item.quantity} item</span>
-            </li>
-          ))}
+                  {item.line_total ? (
+                    <span className="mt-0.5 block tabular-nums text-xs text-muted-foreground">
+                      {item.quantity} item{unit !== null ? ` × ${formatCurrency(unit)}` : ""}
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       </section>
 
