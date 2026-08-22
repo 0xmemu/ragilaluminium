@@ -119,8 +119,14 @@ class OrderTrackingPresenter
      */
     public static function timelineMessage(string $eventType, array $payload = []): string
     {
+        $isCod = filled($payload['payment_method'] ?? null)
+            ? ($payload['payment_method'] === 'cod' || ($payload['cod_flag'] ?? false))
+            : false;
+
         return match ($eventType) {
-            'order.created' => 'Pesanan Anda telah dibuat dan menunggu konfirmasi.',
+            'order.created' => $isCod
+                ? 'Pesanan diterima. Produk masuk antrean produksi (bayar di tempat).'
+                : 'Pesanan Anda telah dibuat dan menunggu konfirmasi.',
             'payment.confirmed' => 'Pembayaran dikonfirmasi. Pesanan siap diproses.',
             'shipping.created' => filled($payload['waybill'] ?? null)
                 ? 'Resi pengiriman diterbitkan: '.$payload['waybill']
@@ -190,7 +196,7 @@ class OrderTrackingPresenter
         $to = isset($payload['order_status']) ? (string) $payload['order_status'] : null;
 
         return match ($to) {
-            'pending_payment' => 'Menunggu konfirmasi pembayaran.',
+            'pending' => 'Menunggu konfirmasi pembayaran.',
             'processing' => 'Pesanan sedang diproses oleh admin gudang.',
             'shipped' => 'Pesanan sedang dikirim oleh ekspedisi.',
             'delivered' => 'Paket berhasil diterima.',
@@ -231,8 +237,11 @@ class OrderTrackingPresenter
             'source' => 'order_status',
         ];
 
+        $isCod = $order->cod_flag || $order->payment_method === 'cod';
         $entries[] = [
-            'message' => 'Pesanan Anda telah dibuat dan menunggu konfirmasi.',
+            'message' => $isCod
+                ? 'Pesanan diterima. Produk masuk antrean produksi (bayar di tempat).'
+                : 'Pesanan Anda telah dibuat dan menunggu konfirmasi.',
             'at' => optional($order->created_at)?->toIso8601String(),
             'source' => 'order.created',
         ];
