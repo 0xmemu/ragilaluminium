@@ -14,6 +14,7 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Radio } from "@/components/ui/radio"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Pagination } from "@/components/ui/pagination"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -49,6 +50,7 @@ export default function Reviews({
         total: number
         next_page_url: string | null
         prev_page_url: string | null
+        links?: Array<{ url: string | null; label: string; active: boolean }>
       }
   modelNav?: ModelNavOption[]
   activeModel?: string | null
@@ -73,6 +75,8 @@ export default function Reviews({
         last_page: testimonials?.last_page ?? 1,
         next_page_url: testimonials?.next_page_url ?? null,
         prev_page_url: testimonials?.prev_page_url ?? null,
+        total: testimonials?.total ?? 0,
+        links: testimonials?.links ?? [],
       }
     : null
 
@@ -335,35 +339,7 @@ export default function Reviews({
                     ? "Ulasan dengan rating tersebut belum tersedia. Coba bintang lain atau Semua."
                     : "Ulasan dari pembeli website akan tampil di sini.",
                 )}
-                {pagination && pagination.last_page > 1 ? (
-                  <nav className="mt-6 flex items-center justify-center gap-2" aria-label="Pagination ulasan">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={!pagination.prev_page_url}
-                      onClick={() =>
-                        pagination.prev_page_url &&
-                        router.get(pagination.prev_page_url, {}, { preserveScroll: true })
-                      }
-                    >
-                      Sebelumnya
-                    </Button>
-                    <span className="text-xs text-muted-foreground">
-                      Halaman {pagination.current_page} dari {pagination.last_page}
-                    </span>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={!pagination.next_page_url}
-                      onClick={() =>
-                        pagination.next_page_url &&
-                        router.get(pagination.next_page_url, {}, { preserveScroll: true })
-                      }
-                    >
-                      Berikutnya
-                    </Button>
-                  </nav>
-                ) : null}
+                {pagination ? <Pagination pagination={pagination} /> : null}
               </section>
             )}
           </div>
