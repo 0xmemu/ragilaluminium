@@ -92,7 +92,7 @@ class Fase13NotificationRulesTest extends TestCase
             'shipping_city' => 'Bandung',
             'shipping_province' => 'Jawa Barat',
             'shipping_postal_code' => '40111',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending',
             'subtotal_amount' => 100000,

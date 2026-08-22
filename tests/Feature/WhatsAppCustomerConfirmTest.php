@@ -57,7 +57,7 @@ class WhatsAppCustomerConfirmTest extends TestCase
             'shipping_province' => 'Jawa Tengah',
             'shipping_postal_code' => '50254',
             'shipping_country' => 'Indonesia',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 100000,
@@ -101,7 +101,7 @@ class WhatsAppCustomerConfirmTest extends TestCase
             'shipping_province' => 'DKI Jakarta',
             'shipping_postal_code' => '12190',
             'shipping_country' => 'Indonesia',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 200000,
@@ -116,6 +116,6 @@ class WhatsAppCustomerConfirmTest extends TestCase
             ->assertOk();
 
         $order->refresh();
-        $this->assertSame('pending_payment', $order->order_status);
+        $this->assertSame('awaiting_confirmation', $order->order_status);
     }
 }

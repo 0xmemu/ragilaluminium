@@ -50,7 +50,7 @@ class CheckoutFlowTest extends TestCase
 
         $order = Order::latest()->first();
         $this->assertNotNull($order);
-        $this->assertEquals('pending_payment', $order->order_status);
+        $this->assertEquals('awaiting_confirmation', $order->order_status);
         $this->assertEquals('pending', $order->payment_status);
         $this->assertEquals('KEBAYORAN BARU', $order->shipping_district);
         $this->assertEquals('SENAYAN', $order->shipping_village);

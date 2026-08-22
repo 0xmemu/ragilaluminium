@@ -33,7 +33,7 @@ class OrderStateMachineTest extends TestCase
             'shipping_city' => 'Bandung',
             'shipping_province' => 'Jawa Barat',
             'shipping_postal_code' => '40111',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 100000,
@@ -71,7 +71,7 @@ class OrderStateMachineTest extends TestCase
         $this->assertSame('admin_status', $event->payload['source']);
     }
 
-    public function test_admin_cannot_jump_from_pending_payment_to_completed(): void
+    public function test_admin_cannot_jump_from_pending_to_completed(): void
     {
         $order = $this->makeOrder();
 
@@ -79,7 +79,7 @@ class OrderStateMachineTest extends TestCase
             ->put(route('admin.orders.status', $order), ['order_status' => 'completed'])
             ->assertSessionHasErrors('order_status');
 
-        $this->assertSame('pending_payment', $order->fresh()->order_status);
+        $this->assertSame('awaiting_confirmation', $order->fresh()->order_status);
     }
 
     public function test_direct_status_url_hands_off_to_order_detail_instead_of_not_found(): void

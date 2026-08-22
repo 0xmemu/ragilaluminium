@@ -26,7 +26,7 @@ class ProductPopularityBoostTest extends TestCase
         $target = $this->product('BOOST-B', 'MODEL-B');
 
         $this->orderItem($source, 'completed', 7);
-        $this->orderItem($source, 'pending_payment', 99);
+        $this->orderItem($source, 'awaiting_confirmation', 99);
         $this->orderItem($target, 'completed', 2);
 
         $result = app(ProductPopularityService::class)->enable($source->id, $target->id, null, $admin->id);
@@ -153,7 +153,7 @@ class ProductPopularityBoostTest extends TestCase
             'shipping_province' => 'DKI Jakarta',
             'shipping_postal_code' => '12190',
             'order_status' => $status,
-            'payment_status' => $status === 'pending_payment' ? 'pending' : 'paid',
+            'payment_status' => $status === 'pending' ? 'pending' : 'paid',
             'shipping_status' => 'pending_pickup',
             'payment_method' => 'transfer',
             'subtotal_amount' => 100000,

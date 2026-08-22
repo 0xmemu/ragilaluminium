@@ -90,7 +90,7 @@ class PaymentReferenceIntegrityTest extends TestCase
             'discount_amount' => 0,
             'total_amount' => 100000,
             'payment_method' => 'transfer',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
         ]);

@@ -32,7 +32,7 @@ class TransactionIntegrityTest extends TestCase
             'shipping_city' => 'Bandung',
             'shipping_province' => 'Jawa Barat',
             'shipping_postal_code' => '40111',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 100000,
@@ -75,7 +75,7 @@ class TransactionIntegrityTest extends TestCase
             ->assertRedirect(route('admin.orders.show', $order));
 
         $this->assertSame('pending', $order->fresh()->payment_status);
-        $this->assertSame('pending_payment', $order->fresh()->order_status);
+        $this->assertSame('awaiting_confirmation', $order->fresh()->order_status);
         Event::assertNotDispatched(PaymentConfirmed::class);
 
         $this->actingAs($admin)

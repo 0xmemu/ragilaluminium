@@ -38,8 +38,8 @@ class OrderLifecycleReturnRefundTest extends TestCase
             'shipping_province' => 'Jawa Barat',
             'shipping_postal_code' => '40111',
             'order_status' => $status,
-            'payment_status' => $status === 'pending_payment' ? 'pending' : 'paid',
-            'shipping_status' => $status === 'pending_payment' ? 'pending' : 'delivered',
+            'payment_status' => $status === 'awaiting_confirmation' ? 'pending' : 'paid',
+            'shipping_status' => $status === 'awaiting_confirmation' ? 'pending' : 'delivered',
             'subtotal_amount' => 100000,
             'shipping_amount' => 10000,
             'discount_amount' => 0,
@@ -87,7 +87,7 @@ class OrderLifecycleReturnRefundTest extends TestCase
     {
         $service = app(OrderService::class);
 
-        $this->assertTrue($service->editPolicy($this->makeOrder('pending_payment'))['allowed']);
+        $this->assertTrue($service->editPolicy($this->makeOrder('awaiting_confirmation'))['allowed']);
         $this->assertFalse($service->editPolicy($this->makeOrder('processing'))['allowed']);
         $this->assertFalse($service->editPolicy($this->makeOrder('completed'))['allowed']);
     }
@@ -99,7 +99,7 @@ class OrderLifecycleReturnRefundTest extends TestCase
         $variant = $product->variants()->first();
         $variant->update(['stock' => 3]);
 
-        $pending = $this->makeOrder('pending_payment');
+        $pending = $this->makeOrder('awaiting_confirmation');
         $this->attachItem($pending, $product, $variant, 2, 50000);
 
         $this->post(route('order.cancel', $pending->order_number), [

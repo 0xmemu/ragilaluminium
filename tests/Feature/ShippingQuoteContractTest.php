@@ -165,7 +165,7 @@ class ShippingQuoteContractTest extends TestCase
             'shipping_city' => 'KOTA BANDUNG',
             'shipping_province' => 'JAWA BARAT',
             'shipping_postal_code' => '40132',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 100000,

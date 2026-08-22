@@ -61,7 +61,7 @@ class OrderConfirmationTest extends TestCase
             'discount_amount' => 0,
             'total_amount' => 1,
             'payment_method' => 'transfer',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending',
             'updated_at' => now()->subDays(2),
@@ -78,7 +78,7 @@ class OrderConfirmationTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Dashboard')
                 ->where('statusOrder.0.href', fn ($href) => is_string($href) && str_contains($href, 'order_status='))
-                ->where('attention.0.href', fn ($href) => is_string($href) && str_contains($href, 'order_status=pending_payment')));
+                ->where('attention.0.href', fn ($href) => is_string($href) && str_contains($href, 'order_status=awaiting_confirmation')));
     }
 
     /** @return array{0: Order, 1: Product} */
@@ -115,7 +115,7 @@ class OrderConfirmationTest extends TestCase
             'total_amount' => $total,
             'payment_method' => $paymentMethod,
             'cod_flag' => $paymentMethod === 'cod',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending',
         ]);
