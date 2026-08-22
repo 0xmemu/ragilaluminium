@@ -7,6 +7,7 @@ import {
 } from "@/components/public/home-carousels"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
+import { ClosingCTASection } from "@/components/public/closing-cta"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { PageHeader } from "@/components/public/page-header"
@@ -456,24 +457,7 @@ export default function ModelDetail({
           )}
         </div>
 
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 mt-6 sm:mt-8">
-          <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-primary px-5 py-5 text-center">
-            <p className="text-sm font-bold leading-tight tracking-tight text-primary-foreground">
-              Butuh bantuan pilih jendela?
-            </p>
-            <p className="text-[10px] leading-snug text-primary-foreground/80 sm:text-[11px]">
-              Konsultasi gratis via WhatsApp, admin balas cepat
-            </p>
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex h-7 items-center justify-center whitespace-nowrap rounded-full bg-background px-5 text-[11px] font-semibold text-primary transition hover:bg-background/90"
-            >
-              Chat WhatsApp
-            </a>
-          </div>
-        </div>
+      <ClosingCTASection />
       </section>
     </PublicLayout>
   )
