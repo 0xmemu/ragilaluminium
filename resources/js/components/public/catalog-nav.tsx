@@ -123,7 +123,7 @@ export function CatalogNav({
           <Breadcrumbs items={breadcrumbItems} />
         </div>
       ) : null}
-      {/* Baris 1 ??? Judul halaman: Back button & Category Name */}
+      {/* Baris 1 -> Judul halaman: Back button & Category Name */}
       <div className="container-page flex items-center justify-between gap-3 !px-2.5 md:!px-8 lg:!px-12 py-2.5 sm:py-3">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -140,7 +140,7 @@ export function CatalogNav({
         </div>
       </div>
 
-      {/* Baris 2 ??? Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis */}
+      {/* Baris 2 -> Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis */}
       <div className="border-y border-border bg-surface">
         <div className="container-page flex items-center justify-between gap-1 sm:gap-1.5 !px-2.5 md:!px-8 lg:!px-12 py-2">
           {/* Pill 1: Filter - mobile: sheet bottom; desktop: dropdown ringkas */}
@@ -520,7 +520,7 @@ export function CatalogNav({
         </div>
       </div>
 
-      {/* Baris 3 ??? Ringkasan Filter & Jumlah Barang + Garis Inset Bawah */}
+      {/* Baris 3 -> Ringkasan Filter & Jumlah Barang + Garis Inset Bawah */}
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-2.5 pb-0">
         <div className="flex items-center justify-between gap-2 text-xs font-normal">
           <span className="truncate font-medium text-foreground">{summaryFilterLabel}</span>
@@ -528,7 +528,7 @@ export function CatalogNav({
             {formatNumber(total)} Barang ditemukan
           </span>
         </div>
-        <div className="mt-2.5 border-b border-border" />
+        <div className="mt-2.5" aria-hidden="true" />
       </div>
     </section>
   )
