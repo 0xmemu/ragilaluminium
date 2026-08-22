@@ -223,12 +223,14 @@ export default function ModelDetail({
   designRails = [],
   designVariants = [],
   hubHref,
+  soldCount = 0,
 }: {
   model: ModelCardData
   products?: ProductCardData[]
   designRails?: DesignVariantCard[]
   designVariants?: DesignVariantCard[]
   hubHref?: string
+  soldCount?: number
 }) {
   const highlights =
     model.highlights?.length === 3
@@ -393,13 +395,13 @@ export default function ModelDetail({
               <span className="text-base font-bold leading-tight tracking-tight text-foreground">
                 {rails.length}
               </span>
-              <span className="text-[10px] font-medium text-muted-foreground">Varian Desain</span>
+              <span className="text-[10px] font-medium text-muted-foreground">Varian Model</span>
             </div>
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-base font-bold leading-tight tracking-tight text-foreground">
-                {(model.inspiration_count || rails.reduce((sum, rail) => sum + (rail.products?.length ?? 0), 0))}+
+                {soldCount}
               </span>
-              <span className="text-[10px] font-medium text-muted-foreground">Foto Terpasang</span>
+              <span className="text-[10px] font-medium text-muted-foreground">Terjual</span>
             </div>
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>

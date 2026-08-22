@@ -556,6 +556,7 @@ protected function category(?string $category, Request $request, string $mode = 
             'products' => InertiaCatalog::productCards($products),
             'designRails' => $designRails,
             'hubHref' => route('catalog.index', absolute: false),
+            'soldCount' => (int) $products->sum('sold_count'),
         ]);
     }
 
