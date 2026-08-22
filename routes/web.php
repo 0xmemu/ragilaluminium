@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\BerandaController;
 use App\Http\Controllers\Admin\CaraPemesananController;
+use App\Http\Controllers\Admin\ApaKataController;
 use App\Http\Controllers\Admin\CodSettingsController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\FlashSaleController;
 use App\Http\Controllers\Admin\GalleryItemController;
 use App\Http\Controllers\Admin\ImportJobController;
+use App\Http\Controllers\Admin\InstallationGalleryController;
 use App\Http\Controllers\Admin\KebijakanPrivasiController;
 use App\Http\Controllers\Admin\KetentuanLayananController;
 use App\Http\Controllers\Admin\MasalahSolusiController;
@@ -446,11 +448,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('documents', ['App\\Http\\Controllers\\Admin\\DocumentPagesController', 'index'])->name('documents.index');
     Route::put('documents', ['App\\Http\\Controllers\\Admin\\DocumentPagesController', 'update'])->name('documents.update');
 
-    Route::get('apa-kata-pelanggan', [TestimonialController::class, 'apaKata'])->name('apa-kata-pelanggan.index');
-    Route::put('apa-kata-pelanggan/meta', [TestimonialController::class, 'updateApaKataMeta'])->name('apa-kata-pelanggan.meta.update');
-    Route::put('apa-kata-pelanggan/reorder', [TestimonialController::class, 'reorderApaKata'])->name('apa-kata-pelanggan.reorder');
-    Route::get('hasil-pemasangan', [TestimonialController::class, 'hasilPemasangan'])->name('hasil-pemasangan.index');
-    Route::put('hasil-pemasangan/meta', [TestimonialController::class, 'updateHasilPemasanganMeta'])->name('hasil-pemasangan.meta.update');
+    Route::get('apa-kata-pelanggan', [ApaKataController::class, 'index'])->name('apa-kata-pelanggan.index');
+    Route::put('apa-kata-pelanggan/meta', [ApaKataController::class, 'updateMeta'])->name('apa-kata-pelanggan.meta.update');
+    Route::put('apa-kata-pelanggan/reorder', [ApaKataController::class, 'reorder'])->name('apa-kata-pelanggan.reorder');
+    Route::get('hasil-pemasangan', [InstallationGalleryController::class, 'index'])->name('hasil-pemasangan.index');
+    Route::put('hasil-pemasangan/meta', [InstallationGalleryController::class, 'updateMeta'])->name('hasil-pemasangan.meta.update');
 
     Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
     Route::get('testimonials/create', [TestimonialController::class, 'create'])->name('testimonials.create');
