@@ -27,7 +27,6 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
-import { ProductGridSkeleton } from "@/components/ui/skeleton"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -389,9 +388,7 @@ export default function Catalog({
       <div className="sr-only" role="status" aria-live="polite">
         {loading ? "Memuat produk" : "Daftar produk selesai dimuat"}
       </div>
-      {loading ? (
-        <ProductGridSkeleton />
-      ) : showYouMightLike || products.length ? (
+      {showYouMightLike || products.length ? (
         <>
           {showYouMightLike ? (
             <section className="mb-8" aria-labelledby="you-might-like-heading">

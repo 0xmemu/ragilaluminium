@@ -65,29 +65,5 @@
         });
       }
     </script>
-    <script>
-      // Skeleton first-load: tampil sebelum bundle React mount, otomatis diganti React.
-      (function () {
-        var app = document.getElementById("app");
-        if (app && !app.hasChildNodes()) {
-          app.innerHTML =
-            '<div class="mx-auto w-full max-w-7xl px-4 py-6" aria-busy="true">' +
-              '<div class="sr-only" role="status" aria-live="polite">Memuat halaman</div>' +
-              '<div class="mb-6 flex items-center gap-2">' +
-                '<span class="skeleton-shimmer block h-4 w-14 rounded-md bg-muted"></span>' +
-                '<span class="skeleton-shimmer block h-4 w-3 rounded-md bg-muted"></span>' +
-                '<span class="skeleton-shimmer block h-4 w-24 rounded-md bg-muted"></span>' +
-              '</div>' +
-              '<span class="skeleton-shimmer mb-6 block h-8 w-56 rounded-md bg-muted"></span>' +
-              '<span class="skeleton-shimmer mb-4 block h-36 w-full rounded-md bg-muted"></span>' +
-              '<div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">' +
-                Array.from({ length: 10 }).map(function () {
-                  return '<span class="skeleton-shimmer block h-40 w-full rounded-md bg-muted"></span>';
-                }).join("") +
-              '</div>' +
-            '</div>';
-        }
-      })();
-    </script>
 </body>
 </html>

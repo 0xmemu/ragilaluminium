@@ -24,7 +24,6 @@ export function ProductGallery({
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
-  const [loadedMediaIds, setLoadedMediaIds] = React.useState<Set<number>>(() => new Set())
 
   const lightboxItems = React.useMemo(
     () =>
@@ -90,16 +89,6 @@ export function ProductGallery({
     }
   }, [activeMediaIndex, items.length])
 
-  React.useEffect(() => {
-    // A variant can swap the gallery while keeping the same PDP mounted.
-    // Do not leave the previous variant's loading state on the new media.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadedMediaIds((current) => {
-      const availableIds = new Set(items.map((item) => item.id))
-      const next = new Set([...current].filter((id) => availableIds.has(id)))
-      return next.size === current.size ? current : next
-    })
-  }, [items])
 
   return (
     <div className="group/gallery -mx-5 min-w-0 sm:-mx-10 lg:mx-0" aria-label="Galeri produk">
@@ -135,13 +124,6 @@ export function ProductGallery({
                     className="relative size-full select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     aria-label={`Perbesar foto produk ${index + 1}`}
                   >
-                    <span
-                      className={cn(
-                        "pointer-events-none absolute inset-0 z-10 skeleton-shimmer bg-muted transition-opacity duration-200",
-                        loadedMediaIds.has(item.id) && "opacity-0",
-                      )}
-                      aria-hidden="true"
-                    />
                     <ResponsiveImage
                       src={item.url}
                       alt={`${title}, foto ${index + 1}`}
@@ -149,9 +131,6 @@ export function ProductGallery({
                       fetchPriority={index === 0 ? "high" : undefined}
                       wrapperClassName="size-full bg-white"
                       className="!object-contain"
-                      skeleton={false}
-                      onLoad={() => setLoadedMediaIds((current) => new Set(current).add(item.id))}
-                      onError={() => setLoadedMediaIds((current) => new Set(current).add(item.id))}
                     />
                   </button>
                 </div>

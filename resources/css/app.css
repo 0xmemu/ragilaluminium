@@ -875,17 +875,6 @@
     animation: reveal-up 420ms var(--ease-standard) both;
   }
 
-  .skeleton-shimmer {
-    background:
-      linear-gradient(
-        100deg,
-        hsl(var(--muted)) 20%,
-        hsl(var(--secondary)) 42%,
-        hsl(var(--muted)) 64%
-      );
-    background-size: 240% 100%;
-    animation: skeleton-shimmer 1.4s var(--ease-standard) infinite;
-  }
 }
 
 @keyframes reveal-up {
@@ -897,12 +886,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes skeleton-shimmer {
-  to {
-    background-position: -240% 0;
   }
 }
 
