@@ -10,9 +10,9 @@ use Illuminate\Support\Collection;
 
 /**
  * Public Hasil Pemasangan hierarchy:
- * 1) /hasil-pemasangan ??? kartu per model (total produk / foto / video)
- * 2) /hasil-pemasangan/{category}/{model} ??? kartu produk dalam model
- * 3) /hasil-pemasangan/{parent_sku} ??? galeri foto satu produk
+ * 1) /hasil-pemasangan -> kartu per model (total produk / foto / video)
+ * 2) /hasil-pemasangan/{category}/{model} -> kartu produk dalam model
+ * 3) /hasil-pemasangan/{parent_sku} -> galeri foto satu produk
  */
 class InstallationGallery
 {
@@ -283,6 +283,7 @@ class InstallationGallery
                     'is_video' => self::isVideoMedia($m),
                     'product_sku' => (string) ($m->product?->parent_sku ?? ''),
                     'product_name' => (string) ($m->product?->name ?? ''),
+                    'caption' => (string) ($m->product?->name ?? ''),
                 ];
             })
             ->filter(fn (array $i) => filled($i['url']))
