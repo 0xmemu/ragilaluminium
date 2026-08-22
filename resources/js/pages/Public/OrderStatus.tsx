@@ -487,9 +487,7 @@ export default function OrderStatus({
         >
           <Icon name="arrow-left" className="size-5" aria-hidden="true" />
         </button>
-        <h1 className="text-base font-bold text-foreground">
-          {hasBrowserOrders ? "Pesanan Anda" : "Cek pesanan"}
-        </h1>
+        <h1 className="text-base font-bold text-foreground">Cek Status Pesanan</h1>
         </div>
       </section>
 
@@ -548,13 +546,11 @@ export default function OrderStatus({
                 <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
               ) : null}
               {!searched ? (
-                <div className="flex min-h-[22rem] flex-col justify-center border-y border-border py-10">
+                <div className="flex min-h-[22rem] flex-col items-center justify-center border-y border-border py-10 text-center">
                   <span className="flex h-12 w-12 items-center justify-center rounded-md bg-surface-muted text-primary">
                     <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
                   </span>
-                  <h2 className="mt-6 text-xl font-semibold sm:text-2xl">
-                    Cek pesanan Anda
-                  </h2>
+                  <h2 className="mt-6 text-xl font-semibold sm:text-2xl">Cek pesanan Anda</h2>
                   <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
                     Setelah checkout di perangkat yang sama, pesanan biasanya tampil otomatis.
                     Jika daftar kosong, isi formulir di samping dengan nomor pesanan dan nomor HP.
@@ -636,21 +632,24 @@ export default function OrderStatus({
 
             <div>
               {storedLoading ? (
-                <div className="flex min-h-[22rem] items-center justify-center border-y border-border py-10">
+                <div className="flex min-h-[22rem] flex-col items-center justify-center gap-3 border-y border-border py-10 text-center">
+                  <Icon name="dots-three" className="size-6 animate-pulse text-primary" aria-hidden="true" />
                   <p className="text-sm text-muted-foreground">Memuat pesanan yang tersimpan di browser ini...</p>
                 </div>
               ) : shownOrder ? (
                 <OrderDetail
                   order={shownOrder}
-                  eyebrow={sessionList.length > 1 ? "Pesanan dipilih" : "Pesanan perangkat ini"}
+                  eyebrow={sessionList.length > 1 ? "Pesanan dipilih" : "Pesanan tersimpan"}
                   onCancel={cancelOrder}
                   cancelBusy={cancelForm.processing}
                 />
               ) : sessionList.length ? (
-                <div className="flex min-h-[18rem] flex-col justify-center border-y border-border py-10">
-                  <Icon name="clipboard-list" className="size-8 text-primary" aria-hidden="true" />
-                  <h2 className="mt-4 text-xl font-semibold">Pesanan Anda</h2>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Pilih pesanan dari daftar untuk melihat detail status pesanan dan pengirimannya.</p>
+                <div className="flex min-h-[18rem] flex-col items-center justify-center border-y border-border py-10 text-center">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-md bg-surface-muted text-primary">
+                    <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
+                  </span>
+                  <h2 className="mt-6 text-xl font-semibold sm:text-2xl">Pesanan Anda</h2>
+                  <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">Pilih pesanan dari daftar untuk melihat detail status pesanan dan pengirimannya.</p>
                 </div>
               ) : (
                 <EmptyState
