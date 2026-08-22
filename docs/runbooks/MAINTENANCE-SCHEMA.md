@@ -55,7 +55,7 @@ Lapis pencegahan sebelum VPS freeze karena disk/memory penuh (masalah umum yg ja
 | **Disk ≥75%** | Alert WARNING (pantau trend) |
 | **Disk ≥85%** | Alert CRITICAL |
 | **Disk ≥95%** | Alert EMERGENCY ("VPS berisiko FREEZE") |
-| **Disk ≥80% & sisa <10G** | **AUTO-CLEANUP**: hapus backup lokal >7 hari (aman, sudah diarsip R2 weekly/monthly), log .gz >14 hari, metric CSV >30 hari, .env.backup-deploy >14 hari |
+| **Disk ≥80% & sisa <10G** | ALERT MANUAL (🛑). **AUTO-CLEANUP DINONAKTIFKAN** (2026-08-22, keputusan user) — risiko penghapusan data belum dipahami; jaring pengaman = alert + tindakan manual. Script `/root/scripts_auto_cleanup.sh` ada tapi TIDAK di-cron & tidak dieksekusi otomatis |
 | **Inode ≥80/90%** | Alert WARNING/EMERGENCY (inode penuh juga bisa freeze) |
 | **RAM ≥80/90/95%** | Alert WARNING/CRITICAL/EMERGENCY (OOM risk) |
 | **Swap ≥90%** | Alert CRITICAL (jejak OOM) |
