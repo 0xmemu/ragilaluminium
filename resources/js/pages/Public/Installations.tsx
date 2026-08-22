@@ -207,6 +207,28 @@ export default function Installations({
               </div>
             ) : null}
 
+            {/* Statistik — mengikuti halaman model produk */}
+            <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">
+                    {installations.length}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Produk</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">
+                    {(featured?.photo_count ?? 0) + (featured?.video_count ?? 0)}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Hasil pemasangan</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
+                </div>
+              </div>
+            </div>
+
             <div id="inspirasi-pemasangan" className="container-page !px-2.5 md:!px-8 lg:!px-12 scroll-mt-24">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
                 <h2 className="text-lg font-bold tracking-tight text-foreground">
