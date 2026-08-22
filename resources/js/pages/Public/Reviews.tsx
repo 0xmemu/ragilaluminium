@@ -206,82 +206,35 @@ export default function Reviews({
       {total ? (
         <section className="border-b border-border bg-surface">
           <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
-            <p className="text-sm text-muted-foreground">
-              <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
-              {averageRating ? (
-                <span className="inline-flex items-center gap-1">
-                  <span className="mx-1.5 text-muted-foreground">·</span>
-                  <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
-                  <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
-                </span>
-              ) : null}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-muted-foreground">
+                <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
+                {averageRating ? (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="mx-1.5 text-muted-foreground">·</span>
+                    <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
+                    <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
+                  </span>
+                ) : null}
+              </p>
+              <FilterBerdasarkanControl
+                id="reviews-sort"
+                variant="plain"
+                value={sortFilter}
+                options={sortOptions}
+                onChange={setSortFilter}
+                ariaLabel="Urutkan ulasan"
+                menuLabel="Urutkan"
+              />
+            </div>
           </div>
         </section>
       ) : null}
 
-      <div className="container-page flex justify-end py-3 lg:hidden">
-        <FilterBerdasarkanControl
-          id="reviews-model"
-          variant="plain"
-          value={activeModel ?? ""}
-          options={modelOptions}
-          onChange={(value) => selectModel(value || null)}
-          ariaLabel="Filter model produk"
-          menuLabel="Model Produk"
-        />
-      </div>
 
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
-        <div className="grid min-w-0 gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
-          <aside className="hidden lg:block">
-            <div className="sticky top-28">
-              <FilterSidebar>
-                <AppliedFiltersCard
-                  chips={
-                    activeModel && activeModelLabel
-                      ? [{ id: activeModel, label: activeModelLabel }]
-                      : []
-                  }
-                  onRemove={() => selectModel(null)}
-                  onClearAll={() => selectModel(null)}
-                />
-                {modelNav.length ? (
-                  <FilterSidebarSection title="Model Produk" subtitle={activeModelLabel}>
-                    <fieldset className="space-y-1">
-                      <legend className="sr-only">Filter model produk</legend>
-                      <Radio
-                        name="review-model"
-                        value=""
-                        checked={!activeModel}
-                        onChange={() => selectModel(null)}
-                        className="min-h-10 px-1 text-sm hover:bg-accent"
-                      >
-                        Semua Model
-                      </Radio>
-                      {modelNav.map((option) => (
-                        <Radio
-                          key={option.value}
-                          name="review-model"
-                          value={option.value}
-                          checked={activeModel === option.value}
-                          onChange={() => selectModel(option.value)}
-                          className="min-h-10 px-1 text-sm hover:bg-accent"
-                        >
-                          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                            <span className="truncate">{option.label}</span>
-                            <span className="tabular-nums text-xs text-muted-foreground">
-                              {formatNumber(option.count)}
-                            </span>
-                          </span>
-                        </Radio>
-                      ))}
-                    </fieldset>
-                  </FilterSidebarSection>
-                ) : null}
-              </FilterSidebar>
-            </div>
-          </aside><div className="flex flex-col gap-8">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
+        <div className="min-w-0">
+          <div className="flex flex-col gap-8">
             {isSs ? (
               <section id="apa-kata-pelanggan" className="scroll-mt-20">
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -299,25 +252,6 @@ export default function Reviews({
               </section>
             ) : (
               <section id="ulasan-website" className="scroll-mt-20">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-base font-bold text-foreground">
-                      Ulasan pelanggan di website
-                    </h2>
-                    <span className="tabular-nums text-sm text-muted-foreground">
-                      {formatNumber(websiteFiltered.length)}
-                    </span>
-                  </div>
-                  <FilterBerdasarkanControl
-                    id="reviews-sort"
-                    variant="plain"
-                    value={sortFilter}
-                    options={sortOptions}
-                    onChange={setSortFilter}
-                    ariaLabel="Urutkan ulasan"
-                    menuLabel="Urutkan"
-                  />
-                </div>
                 {renderGrid(
                   websiteFiltered,
                   "review",
