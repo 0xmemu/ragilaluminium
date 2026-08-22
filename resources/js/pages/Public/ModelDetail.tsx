@@ -304,7 +304,7 @@ export default function ModelDetail({
           </div>
         </div>
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <PageHeader title="Model Produk" container={false} />
+          <PageHeader title="Model Produk" container={false} className="border-b-0" />
         </div>
       </section>
 

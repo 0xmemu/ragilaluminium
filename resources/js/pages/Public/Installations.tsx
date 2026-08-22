@@ -149,7 +149,7 @@ export default function Installations({
           </div>
         ) : (
           <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-            <PageHeader title="Hasil Pemasangan" container={false} />
+            <PageHeader title="Hasil Pemasangan" container={false} className="border-b-0" />
           </div>
         )}
       </section>
