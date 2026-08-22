@@ -164,6 +164,14 @@
 **Verifikasi:** log drill dengan timestamp; hasil dibandingkan target RPO ≤ 1 jam.
 
 ### 4.3. Graceful degradation test (baris 359)
+**HASIL UJI (2026-08-22):** Saat `CACHE_STORE=redis` dan Redis di-stop, app response **500**
+(tanpa fallback — PhpRedisConnector lempar exception, semua `Cache::get/remember` gagal). Kesimpulan
+arsitektur: **Redis = dependency critical** (setara MySQL), BUKAN graceful-degradable. Pendekatan yang
+benar = **deteksi + monitoring + cepat pulih**, bukan fallback cache (biaya & risiko > manfaat).
+Aggregator sudah memonitor `redis-server.service` (alert 🔴 saat down). Grafis graceful-degradation
+berlaku untuk media/R2 (MediaDisk sudah punya fallback sementara di media R2 down), bukan untuk cache
+store. Redis pulih di-stop → app kembali 200 (terverifikasi).
+
 **Langkah:**
 1. Matikan Baileys (`systemctl stop baileys`) → katalog tetap terbaca (storefront tidak boleh bergantung WA).
 2. Matikan J&T (`JNT_ENABLED=false` sementara) → checkout tetap jalan (fallback ongkir manual? verifikasi kode ShippingService).
