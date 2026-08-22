@@ -12,6 +12,7 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import PublicLayout from "@/layouts/public-layout"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
+import { formatCurrency } from "@/lib/format"
 
 export default function InstallationDetail({
   pageMeta,
@@ -29,6 +30,8 @@ export default function InstallationDetail({
     href: string
     category?: string | null
     model?: string | null
+    image?: string | null
+    min_price?: number | null
   }
   media: InstallationLightboxItem[]
   indexHref: string
@@ -107,6 +110,44 @@ export default function InstallationDetail({
               </Button>
             </div>
           </div>
+      </section>
+
+      {/* Item pemasangan — card gaya checkout: gambar + nama + kategori/model + harga */}
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
+        <h2 className="text-sm font-bold tracking-tight text-foreground">Item pemasangan</h2>
+        <article className="mt-2 flex items-center gap-3 rounded-xl border border-border bg-surface p-3 sm:gap-4 sm:p-4">
+          {product.image ? (
+            <ResponsiveImage
+              src={product.image}
+              alt={product.name}
+              wrapperClassName="size-[75px] shrink-0 rounded-[5px] bg-muted"
+              className="object-cover"
+            />
+          ) : (
+            <span className="flex size-[75px] shrink-0 items-center justify-center rounded-[5px] bg-muted text-muted-foreground">
+              <Icon name="images" className="size-6" aria-hidden="true" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <Link
+              href={product.href}
+              className="line-clamp-2 block text-[13px] font-semibold leading-4 text-foreground hover:text-primary"
+            >
+              {product.name}
+            </Link>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {[product.category, product.model].filter(Boolean).join(" · ")}
+            </p>
+            {typeof product.min_price === "number" ? (
+              <p className="mt-1 text-[13px] font-bold text-sale">
+                Mulai {formatCurrency(product.min_price)}
+              </p>
+            ) : null}
+          </div>
+          <Button asChild size="sm" className="shrink-0">
+            <Link href={product.href}>Lihat Produk</Link>
+          </Button>
+        </article>
       </section>
 
       <section className="pt-4 pb-4 sm:pt-6 sm:pb-6 lg:pt-6">

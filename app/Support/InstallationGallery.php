@@ -237,6 +237,8 @@ class InstallationGallery
             return null;
         }
 
+        $firstImage = collect($items)->first(fn (array $i) => ! $i['is_video']) ?? $items[0] ?? null;
+
         return [
             'product' => [
                 'id' => $product->id,
@@ -245,6 +247,8 @@ class InstallationGallery
                 'href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
                 'category' => $product->product_category ? strtoupper((string) $product->product_category) : null,
                 'model' => $product->product_model ? strtoupper((string) $product->product_model) : null,
+                'image' => $firstImage['url'] ?? null,
+                'min_price' => $product->min_price !== null ? (float) $product->min_price : null,
             ],
             'media' => $items,
         ];
