@@ -125,7 +125,11 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
         </div>
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           <PageHeader title="Semua Model Produk" container={false} className="border-b-0" />
+        </div>
+      </section>
 
+      <section className="border-b border-border bg-surface">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           <div className="flex items-center justify-between gap-4 pt-2 pb-1.5 sm:pt-2.5 sm:pb-2">
             <p className="text-xs text-muted-foreground sm:text-sm">
               {formatNumber(totalCount)} model produk ditemukan

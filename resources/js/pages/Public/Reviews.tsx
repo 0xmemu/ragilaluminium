@@ -89,22 +89,24 @@ export default function Reviews({
     [testimonialList],
   )
 
-  // Ulasan website: default "Semua" (terbaru dulu); dropdown bintang 1–5 memfilter.
-  const [starFilter, setStarFilter] = React.useState("")
+  // Ulasan website: terbaru (default), terlama, atau terbaik (rating 4-5).
+  const [sortFilter, setSortFilter] = React.useState("")
   const websiteFiltered = React.useMemo(() => {
+    if (sortFilter === "oldest") {
+      return [...website].sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+    }
     const sorted = [...website].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
-    if (!starFilter) return sorted
-    const target = Number(starFilter)
-    return sorted.filter((testimonial) => (testimonial.rating ?? 0) === target)
-  }, [starFilter, website])
+    if (sortFilter === "best") {
+      return sorted.filter((testimonial) => (testimonial.rating ?? 0) >= 4)
+    }
+    return sorted
+  }, [sortFilter, website])
 
-  const starOptions = React.useMemo(
+  const sortOptions = React.useMemo(
     () => [
-      { value: "", label: "Semua" },
-      ...([5, 4, 3, 2, 1] as const).map((stars) => ({
-        value: String(stars),
-        label: `Bintang ${stars}`,
-      })),
+      { value: "", label: "Ulasan terbaru" },
+      { value: "oldest", label: "Ulasan terlama" },
+      { value: "best", label: "Ulasan terbaik" },
     ],
     [],
   )
@@ -146,13 +148,6 @@ export default function Reviews({
           icon="message-circle"
           title={emptyTitle}
           description={emptyDesc}
-          action={
-            <Button asChild variant="secondary">
-              <Link href={installationsHref ?? routeUrl("installation.index")}>
-                Hasil pemasangan
-              </Link>
-            </Button>
-          }
         />
       )
     }
@@ -205,31 +200,25 @@ export default function Reviews({
               <h1 className="text-base font-bold tracking-tight text-foreground">{heading}</h1>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            {total ? (
-              <div className="flex items-center gap-4 text-sm">
-                <span className="tabular-nums font-semibold text-foreground">
-                  {formatNumber(total)}
-                </span>
-                <span className="text-muted-foreground">ulasan</span>
-                {averageRating ? (
-                  <span className="inline-flex items-center gap-1 text-muted-foreground">
-                    <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
-                    <span className="tabular-nums font-semibold text-foreground">
-                      {averageRating.toFixed(1)}
-                    </span>
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-            <Button asChild variant="ghost" size="md">
-              <Link href={installationsHref ?? routeUrl("installation.index")}>
-                Hasil pemasangan
-              </Link>
-            </Button>
-          </div>
         </div>
       </section>
+
+      {total ? (
+        <section className="border-b border-border bg-surface">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
+            <p className="text-sm text-muted-foreground">
+              <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
+              {averageRating ? (
+                <span className="inline-flex items-center gap-1">
+                  <span className="mx-1.5 text-muted-foreground">·</span>
+                  <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
+                  <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
+                </span>
+              ) : null}
+            </p>
+          </div>
+        </section>
+      ) : null}
 
       <div className="container-page flex justify-end py-3 lg:hidden">
         <FilterBerdasarkanControl
@@ -320,23 +309,23 @@ export default function Reviews({
                     </span>
                   </div>
                   <FilterBerdasarkanControl
-                    id="reviews-star"
+                    id="reviews-sort"
                     variant="plain"
-                    value={starFilter}
-                    options={starOptions}
-                    onChange={setStarFilter}
-                    ariaLabel="Filter ulasan berdasarkan bintang"
-                    menuLabel="Urutkan / Filter"
+                    value={sortFilter}
+                    options={sortOptions}
+                    onChange={setSortFilter}
+                    ariaLabel="Urutkan ulasan"
+                    menuLabel="Urutkan"
                   />
                 </div>
                 {renderGrid(
                   websiteFiltered,
                   "review",
-                  starFilter
-                    ? `Belum ada ulasan bintang ${starFilter}`
+                  sortFilter === "best"
+                    ? "Belum ada ulasan terbaik"
                     : "Belum ada ulasan website",
-                  starFilter
-                    ? "Ulasan dengan rating tersebut belum tersedia. Coba bintang lain atau Semua."
+                  sortFilter === "best"
+                    ? "Ulasan dengan rating 4-5 belum tersedia. Coba urutan lain."
                     : "Ulasan dari pembeli website akan tampil di sini.",
                 )}
                 {pagination ? <Pagination pagination={pagination} /> : null}
