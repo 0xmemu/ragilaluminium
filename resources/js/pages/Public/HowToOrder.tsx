@@ -3,9 +3,9 @@ import DOMPurify from "dompurify"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { ClosingCTASection } from "@/components/public/closing-cta"
 import { SectionHeading } from "@/components/shared/section-heading"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
-import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -191,44 +191,22 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       )}
 
-      {/* Bagian 4: Call to Action (CTA) — mengikuti gaya ClosingCTASection homepage */}
-      <section id="closing-cta" className="scroll-mt-20">
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-          <div className="flex flex-col items-center gap-2 rounded-xl bg-primary px-5 py-5 text-center shadow-sm sm:px-8">
-            <p className="text-xs font-semibold tracking-tight text-primary-foreground/90 sm:text-sm">
-              Siap memesan?
-            </p>
-            <h2 className="text-balance text-[17px] font-bold leading-snug tracking-tight text-primary-foreground sm:text-xl">
-              Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu
-            </h2>
-            <div className="mt-3 flex w-full flex-wrap items-center justify-center gap-2">
-              <Button
-                asChild
-                className="h-9 min-w-0 whitespace-nowrap bg-background px-4 text-xs text-primary hover:bg-background/90 sm:text-sm sm:min-w-[160px]"
-              >
-                <Link href={routeUrl("catalog.index")}>Pilih Model Produk</Link>
-              </Button>
-              <Button
-                asChild
-                variant="secondary"
-                className="h-9 min-w-0 whitespace-nowrap border border-white/20 bg-white/5 px-4 text-xs text-white hover:bg-white/10 sm:text-sm sm:min-w-[160px]"
-              >
-                {whatsappUrl ? (
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-                    <Icon name="whatsapp" className="h-4 w-4 text-whatsapp" aria-hidden="true" />
-                    <span>Konsultasi Sekarang</span>
-                  </a>
-                ) : (
-                  <Link href={routeUrl("contact")} className="flex items-center justify-center gap-2">
-                    <Icon name="whatsapp" className="h-4 w-4 text-whatsapp" aria-hidden="true" />
-                    <span>Konsultasi Sekarang</span>
-                  </Link>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Bagian 4: Call to Action (CTA) — pakai komponen dasar ClosingCTASection */}
+      <ClosingCTASection
+        compact={false}
+        eyebrow="Siap memesan?"
+        heading="Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu"
+        actions={[
+          { label: "Pilih Model Produk", href: routeUrl("catalog.index"), variant: "primary" },
+          {
+            label: "Konsultasi Sekarang",
+            href: whatsappUrl ?? routeUrl("contact"),
+            variant: "secondary",
+            whatsappIcon: true,
+            external: true,
+          },
+        ]}
+      />
     </PublicLayout>
   )
 }

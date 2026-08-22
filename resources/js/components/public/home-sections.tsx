@@ -483,31 +483,7 @@ const HELP_STEPS = [
   },
 ]
 
-export function ClosingCTASection() {
-  const { consultationWhatsApp } = usePage<SharedPageProps>().props
-  const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
-
-  return (
-    <section id="closing-cta" className="scroll-mt-20">
-      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <div className="flex flex-col items-center gap-1 rounded-xl bg-primary px-5 py-5 text-center shadow-sm sm:px-8">
-          <p className="text-xs font-semibold tracking-tight text-primary-foreground/90 sm:text-sm">
-            Butuh bantuan pilih jendela?
-          </p>
-          <h2 className="text-balance text-[17px] font-bold leading-snug tracking-tight text-primary-foreground sm:text-xl">
-            Konsultasi gratis via WhatsApp, admin balas cepat
-          </h2>
-          <Button asChild className="mt-3 h-7 !min-h-7 min-w-0 whitespace-nowrap bg-background px-3.5 text-[11px] text-primary hover:bg-background/90 sm:text-xs">
-            <a href={whatsappUrl} target="_blank" rel="noreferrer">
-              <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-              Chat WhatsApp
-            </a>
-          </Button>
-        </div>
-      </div>
-    </section>
-  )
-}
+export { ClosingCTASection } from "./closing-cta"
 
 export function KamiBantuSection() {
   return (
