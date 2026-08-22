@@ -183,7 +183,8 @@ class OrderService
                         'shipping_village_id' => $shipping['village_id'] ?? null,
                         'shipping_postal_code' => $shipping['postal_code'],
                         'shipping_country' => $shipping['country'] ?? 'Indonesia',
-                        'order_status' => 'pending_payment',
+                        // COD bayar di tempat: langsung antrean produksi, bukan menunggu pembayaran.
+                        'order_status' => $paymentMethod === 'cod' ? 'processing' : 'pending_payment',
                         'payment_status' => 'pending',
                         'shipping_status' => 'pending_pickup',
                         'subtotal_amount' => $subtotal,
