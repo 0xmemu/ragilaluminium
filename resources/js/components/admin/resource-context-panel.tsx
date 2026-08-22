@@ -8,7 +8,7 @@ import { StatusSelect } from "@/components/admin/ui/status-select"
 import { routeUrl } from "@/lib/routes"
 import type { ResourceRow } from "@/types"
 
-const PAYMENT_STATUSES = ["pending", "completed", "failed", "refunded"] as const
+const PAYMENT_STATUSES = ["pending", "completed", "cancelled", "refunded"] as const
 
 function PaymentRowControl({ row }: { row: ResourceRow }) {
   const form = useForm({ status: String(row.status ?? "pending") })

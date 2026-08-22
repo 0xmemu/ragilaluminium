@@ -170,4 +170,57 @@ class TransactionIntegrityTest extends TestCase
 
         $this->assertSame(5, $variant->fresh()->stock);
     }
+
+
+    public function test_cancelling_order_marks_pending_payment_cancelled(): void
+    {
+        $admin = $this->admin();
+        $order = $this->makeOrder(); // awaiting_confirmation, transfer, payment pending
+        Payment::create([
+            'order_id' => $order->id,
+            'payment_method' => 'transfer',
+            'amount' => $order->total_amount,
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.orders.status', $order), [
+                'order_status' => 'cancelled',
+                'cancel_reason' => 'Uji pembatalan payment',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $this->assertSame('cancelled', $order->fresh()->order_status);
+        // Payment pending ikut menjadi cancelled (ADR-006: batal sebelum shipment).
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id,
+            'status' => 'cancelled',
+        ]);
+    }
+
+    public function test_cancelling_paid_order_marks_payment_refunded(): void
+    {
+        $admin = $this->admin();
+        $order = $this->makeOrder(['payment_status' => 'paid']);
+        Payment::create([
+            'order_id' => $order->id,
+            'payment_method' => 'transfer',
+            'amount' => $order->total_amount,
+            'status' => 'completed',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.orders.status', $order), [
+                'order_status' => 'cancelled',
+                'cancel_reason' => 'Uji refund',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $this->assertSame('cancelled', $order->fresh()->order_status);
+        // Payment yang sudah dibayar ikut menjadi refunded saat order batal.
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id,
+            'status' => 'refunded',
+        ]);
+    }
 }

@@ -334,6 +334,19 @@ class OrderService
                         $variant->increment('stock', (int) $quantity);
                     }
                 }
+
+                // Payment sinkron saat order dibatalkan (ADR-006: batal hanya valid
+                // sebelum shipment). Payment yang belum lunas -> cancelled; yang sudah
+                // dibayar -> refunded (perlu pengembalian ke pelanggan).
+                Payment::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
+
+                Payment::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->where('status', 'completed')
+                    ->update(['status' => 'refunded']);
             },
         );
 

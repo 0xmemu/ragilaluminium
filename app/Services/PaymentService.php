@@ -101,7 +101,7 @@ class PaymentService
     }
 
     /**
-     * Sinkronkan status order setelah payment menjadi pending/failed/refunded.
+     * Sinkronkan status order setelah payment menjadi pending/cancelled/refunded.
      * Status order fulfillment tidak diregresikan otomatis.
      */
     public function reconcile(Order $order, int $userId): void
