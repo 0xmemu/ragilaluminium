@@ -63,6 +63,11 @@ export function InstallationLightbox({
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-black/55 to-transparent px-4 pb-10 pt-4 pr-16 sm:px-6 sm:pt-5">
           <p className="pointer-events-auto line-clamp-2 max-w-3xl text-sm font-semibold leading-snug tracking-tight text-white sm:text-base">{productName}</p>
           {active ? <p className="pointer-events-auto mt-1 text-xs text-white/70">{active.is_video ? "Video" : "Foto"} {index + 1} dari {total}</p> : null}
+          {active?.caption ? (
+            <p className="pointer-events-auto mt-1 text-xs font-semibold leading-tight text-white/90">
+              {active.caption}
+            </p>
+          ) : null}
         </div>
         <div className="relative flex min-h-0 flex-1 items-center justify-center px-12 py-16 sm:px-16" onTouchStart={(event) => { touchStartX.current = event.changedTouches[0]?.clientX ?? null }} onTouchEnd={(event) => { const start = touchStartX.current; const end = event.changedTouches[0]?.clientX; touchStartX.current = null; if (start == null || end == null || Math.abs(end - start) < 48) return; go(end > start ? -1 : 1) }}>
           {nextItem ? (
