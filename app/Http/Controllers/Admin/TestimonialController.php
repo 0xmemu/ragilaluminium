@@ -545,7 +545,7 @@ class TestimonialController extends Controller
                 ? 'Foto dari import produk (is_installation) + galeri manual untuk beranda dan /hasil-pemasangan.'
                 : 'Kelola foto hasil pemasangan: import batch produk dan unggah manual.',
             'tab' => 'foto',
-            'tabs' => $this->tabs(),
+            'tabs' => $pengaturanSurface ? [] : $this->tabs(),
             'filters' => [
                 'q' => $q,
                 'sort' => in_array($sort, ['newest', 'oldest', 'sort_order'], true) ? $sort : 'newest',
