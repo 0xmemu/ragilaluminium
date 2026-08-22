@@ -87,12 +87,13 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           {/* Timeline alur pemesanan — titik ikon + garis penghubung kontinyu */}
           <ol className="relative mx-auto max-w-2xl">
-            <span
-              aria-hidden="true"
-              className="absolute bottom-4 left-[22px] top-4 w-px bg-border sm:left-[24px]"
-            />
             {guide.steps.map((step, index) => (
-              <li key={`${step.title}-${index}`} className="relative flex gap-3.5 pb-6 last:pb-0 sm:gap-5 sm:pb-8">
+              <li
+                key={`${step.title}-${index}`}
+                className="relative flex gap-3.5 pb-6 last:pb-0 sm:gap-5 sm:pb-8
+                  after:absolute after:left-[22px] after:top-12 after:bottom-0 after:w-px after:bg-border
+                  last:after:hidden sm:after:left-[24px] sm:after:top-[52px]"
+              >
                 {/* Titik ikon di garis */}
                 <div className="relative z-10 flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-primary shadow-xs sm:size-12">
                   <Icon name={step.icon} className="size-5 sm:size-6" aria-hidden="true" />
