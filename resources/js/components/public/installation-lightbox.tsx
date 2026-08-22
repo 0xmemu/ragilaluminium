@@ -90,11 +90,6 @@ export function InstallationLightbox({
                     playsInline
                     className="max-h-[min(72dvh,52rem)] max-w-full bg-black"
                   />
-                  {active?.caption ? (
-                    <p className="w-full bg-black/55 px-3 py-2 text-center text-sm leading-5 text-white/90">
-                      {active.caption}
-                    </p>
-                  ) : null}
                 </>
               ) : (
                 <div className="flex w-fit max-w-full flex-col items-center">
@@ -104,11 +99,6 @@ export function InstallationLightbox({
                     alt={active.caption || `${productName}, foto ${index + 1}`}
                     className="block max-h-[min(72dvh,52rem)] max-w-full h-auto w-auto"
                   />
-                  {active?.caption ? (
-                    <p className="mt-2 w-full rounded-md bg-black/55 px-3 py-2 text-center text-sm leading-5 text-white/90">
-                      {active.caption}
-                    </p>
-                  ) : null}
                 </div>
               )}
             </div>
