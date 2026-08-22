@@ -76,7 +76,7 @@ export function ClosingCTASection({
               const content = (
                 <>
                   {action.whatsappIcon ? (
-                    <Icon name="whatsapp" className="h-4 w-4 text-primary" aria-hidden="true" />
+                    <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
                   ) : null}
                   {action.label}
                 </>
