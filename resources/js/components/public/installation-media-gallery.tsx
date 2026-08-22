@@ -46,13 +46,6 @@ export function InstallationMediaGallery({
             ) : (
               <ResponsiveImage src={item.thumb ?? item.url} alt="" wrapperClassName="absolute inset-0 size-full !aspect-auto" className="object-cover transition duration-200 group-hover:scale-[1.02]" />
             )}
-            {item.caption ? (
-              <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-2 pb-1.5 pt-7 text-left">
-                <span className="line-clamp-2 text-[10px] font-semibold leading-tight text-white sm:text-[11px]">
-                  {item.caption}
-                </span>
-              </span>
-            ) : null}
           </button>
         ))}
       </div>

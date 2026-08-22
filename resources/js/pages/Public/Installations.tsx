@@ -215,6 +215,22 @@ export default function Installations({
                 {searchControl}
               </div>
 
+              {(() => {
+                const names = [
+                  ...new Set(
+                    gallery
+                      .map((g) => g.caption?.trim())
+                      .filter((c): c is string => Boolean(c)),
+                  ),
+                ]
+                return names.length ? (
+                  <p className="mb-4 text-xs leading-5 text-muted-foreground">
+                    Hasil pemasangan untuk:{" "}
+                    <span className="font-semibold text-foreground">{names.join(" · ")}</span>
+                  </p>
+                ) : null
+              })()}
+
               {filteredGallery.length ? (
                 <InstallationMediaGallery items={filteredGallery} title={modelMeta?.label || heading} />
               ) : (
