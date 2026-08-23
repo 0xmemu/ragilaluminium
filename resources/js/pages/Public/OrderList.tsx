@@ -12,6 +12,24 @@ import { formatCurrency, formatDate } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
 
+function formatShippingLine(order: PublicOrder): string {
+  const courier = order.shipping?.carrier_name
+  const waybill = order.shipping?.waybill_number
+  if (courier && waybill) return `${courier} · Resi ${waybill}`
+  return "Belum ada resi"
+}
+
+function orderFooterNote(order: PublicOrder): string {
+  const s = order.order_status
+  if (s === "completed") return "Pesanan Anda telah selesai, terimakasih."
+  if (s === "delivered") return "Paket sudah diterima. Terimakasih telah berbelanja."
+  if (s === "shipped") return "Pesanan sedang dalam perjalanan menuju alamat Anda."
+  if (s === "processing") return "Pesanan sedang diproses admin gudang."
+  return order.payment_method === "cod"
+    ? "Pesanan diterima dan masuk antrean produksi. Bayar di tempat saat kurir tiba."
+    : "Pesanan dibuat. Silakan selesaikan pembayaran sesuai instruksi."
+}
+
 export default function OrderList({
   orders = [],
   has_session_orders = false,
@@ -57,38 +75,95 @@ export default function OrderList({
               <li key={order.order_number}>
                 <Link
                   href={routeUrl("order.status")}
-                  className="block rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-muted"
+                  className="block overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-primary/40"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  {/* Header: no order + tanggal | status badge */}
+                  <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
                       <p className="break-all font-mono text-sm font-semibold text-foreground">
                         {order.order_number}
                       </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {order.created_at ? formatDate(order.created_at) : ""}
                       </p>
                     </div>
                     <StatusBadge status={order.order_status} />
                   </div>
+                  <div className="h-px w-full bg-border" />
 
-                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
-                    <span className="text-xs text-muted-foreground">
-                      {order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)} item
+                  {/* Detail Pengiriman */}
+                  <div className="p-4">
+                    <p className="text-[11px] font-semibold text-muted-foreground">
+                      Detail Pengiriman
+                    </p>
+                    {order.shipping_address ? (
+                      <p className="mt-1 text-xs text-foreground">{order.shipping_address}</p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatShippingLine(order)}
+                    </p>
+                  </div>
+                  <div className="h-px w-full bg-border" />
+
+                  {/* Item pesanan + harga */}
+                  <ul className="divide-y divide-border">
+                    {order.items.map((item, index) => {
+                      const unit = item.line_total
+                        ? Number(item.line_total) / item.quantity
+                        : null
+                      return (
+                        <li
+                          key={`${item.product_name ?? item.name}-${index}`}
+                          className="flex items-center gap-3 px-4 py-3"
+                        >
+                          <span className="flex size-12 min-w-12 flex-none items-center justify-center rounded-lg bg-surface-muted text-xs font-semibold text-muted-foreground">
+                            {item.quantity}x
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-semibold text-foreground">
+                              {item.product_name ?? item.name}
+                            </span>
+                            {item.note ? (
+                              <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
+                                Catatan: {item.note}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block tabular-nums text-[13px] font-semibold text-foreground">
+                              {item.line_total
+                                ? formatCurrency(item.line_total)
+                                : `${item.quantity} item`}
+                            </span>
+                            {unit !== null ? (
+                              <span className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
+                                {item.quantity} × {formatCurrency(unit)}
+                              </span>
+                            ) : null}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <div className="h-px w-full bg-border" />
+
+                  {/* Total */}
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <span className="text-[13px] text-foreground">
+                      Total{" "}
+                      {order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)} unit
                     </span>
-                    <span className="tabular-nums text-sm font-bold text-foreground">
+                    <span className="tabular-nums text-base font-bold text-primary">
                       {formatCurrency(order.total_amount)}
                     </span>
                   </div>
+                  <div className="h-px w-full bg-border" />
 
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Icon name="map-pin" className="size-3.5 shrink-0" aria-hidden="true" />
-                    {order.shipping?.carrier_name && order.shipping.waybill_number ? (
-                      <span className="truncate">
-                        {order.shipping.carrier_name} · Resi {order.shipping.waybill_number}
-                      </span>
-                    ) : (
-                      <span>Lihat status & pengiriman pesanan ini</span>
-                    )}
+                  {/* Footer note */}
+                  <div className="px-4 py-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      {orderFooterNote(order)}
+                    </p>
                   </div>
                 </Link>
               </li>
