@@ -13,6 +13,25 @@ import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
 
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = React.useState(false)
+  return (
+    <button
+      type="button"
+      aria-label={`Salin ${label}`}
+      title={`Salin ${label}`}
+      onClick={() => {
+        if (navigator.clipboard) void navigator.clipboard.writeText(text)
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1500)
+      }}
+      className="-m-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-primary"
+    >
+      <Icon name={copied ? "check" : "copy"} className="size-4" aria-hidden="true" />
+    </button>
+  )
+}
+
 function paymentLabel(order: PublicOrder): string {
   if (order.payment_method === "cod") return "COD"
   return order.payment_status === "paid" ? "Transfer (lunas)" : "Transfer"
@@ -23,6 +42,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
   const totalUnits = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
   const toggleId = `order-card-toggle-${order.order_number}`
   const waybill = order.shipping?.waybill_number
+  const resiText = waybill || "Belum Dikirim"
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-primary/40">
@@ -32,13 +52,15 @@ function OrderCard({ order }: { order: PublicOrder }) {
           <div className="min-w-0">
             <p className="break-all font-mono text-sm font-bold text-primary">
               No. Order {order.order_number}
+              <CopyButton text={order.order_number} label="No. Order" />
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
               {order.created_at ? formatDate(order.created_at) : ""}
             </p>
-            {waybill ? (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">Resi {waybill}</p>
-            ) : null}
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+              <span>Resi {resiText}</span>
+              {waybill ? <CopyButton text={waybill} label="Nomor Resi" /> : null}
+            </p>
           </div>
           <StatusBadge status={order.order_status} />
         </div>
@@ -163,7 +185,7 @@ export default function OrderList({
         </div>
       </section>
 
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4">
         {noOrders ? (
           <EmptyState
             icon="clipboard-list"
@@ -184,6 +206,21 @@ export default function OrderList({
             ))}
           </ul>
         )}
+      </section>
+
+      {/* CTA Kepercayaan (dsn Lkc5o: Belanja Aman & Terpercaya) */}
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] pt-6 lg:pb-8">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Icon name="shield-check" className="size-6" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground">Belanja Aman & Terpercaya</p>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+              Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
+            </p>
+          </div>
+        </div>
       </section>
     </PublicLayout>
   )
