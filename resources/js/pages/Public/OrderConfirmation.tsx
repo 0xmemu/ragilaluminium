@@ -1,8 +1,6 @@
 import { Head, Link } from "@inertiajs/react"
-import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import PublicLayout from "@/layouts/public-layout"
@@ -25,40 +23,21 @@ function formatOrderTime(value?: string): string {
   }
 }
 
+// Recipe visual mengikuti patokan canvas ILOTu-COD (b3meZk) / ILOTu-Transfer (y6gSKM).
 export default function OrderConfirmation({
   order,
 }: {
   order: PublicOrder
 }) {
   const orderTime = formatOrderTime(order.created_at)
-  const [copied, setCopied] = React.useState(false)
-  const copiedTimerRef = React.useRef<number | null>(null)
   const isTransfer = order.payment_method === "transfer"
-
   const statusLabel = isTransfer ? "Menunggu Pembayaran" : "Menunggu Konfirmasi"
-  const statusColor = isTransfer ? "#2c6d9b" : "#2b734e"
   const helperCopy = isTransfer
     ? "Terima kasih sudah belanja di Ragil Aluminium. Admin kami akan segera menghubungi Anda melalui WhatsApp untuk mengirim info nomor rekening dan konfirmasi pesanan."
     : "Terima kasih sudah belanja di Ragil Aluminium. Admin kami akan menghubungi Anda melalui WhatsApp untuk konfirmasi pesanan."
   const noticeText = isTransfer
     ? `Transfer '${formatCurrency(order.total_amount)}' ke nomor rekening yang kami kirim melalui WhatsApp dan kirim bukti pembayaran. Admin akan konfirmasi pesanan setelah pembayaran diterima.`
     : "Anda memilih pembayaran COD. Siapkan pembayaran tunai saat barang tiba. Balas pesan WhatsApp kami agar pesanan segera diproses."
-
-  // bersihkan timer saat unmount - jangan setState setelah halaman ditutup.
-  React.useEffect(() => () => {
-    if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current)
-  }, [])
-
-  async function copyOrderNumber() {
-    try {
-      await navigator.clipboard.writeText(order.order_number)
-      if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current)
-      setCopied(true)
-      copiedTimerRef.current = window.setTimeout(() => setCopied(false), 1800)
-    } catch {
-      // ignore clipboard failures
-    }
-  }
 
   return (
     <PublicLayout>
@@ -78,75 +57,73 @@ export default function OrderConfirmation({
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
-            <h1 className="text-base font-bold tracking-tight text-foreground">
+            <h1 className="text-base font-bold tracking-tight text-[#333333]">
               Pesanan Berhasil
             </h1>
           </div>
         </div>
       </section>
 
-      <section className="container-page !px-2.5 pt-6 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] md:!px-8 lg:!px-12 sm:pt-10 lg:pb-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
-            <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
+      <section className="container-page !px-2.5 pt-2 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] md:!px-8 lg:!px-12 sm:pt-6 lg:pb-10">
+        <div className="mx-auto max-w-xl">
+          {/* Hero sukses */}
+          <div className="flex flex-col items-center pt-2 text-center">
+            <Icon name="check-circle" weight="fill" className="size-[100px] text-[#2a734d]" aria-hidden="true" />
+            <p className="mt-8 text-xl font-bold tracking-tight text-[#121212]">
+              Pesanan anda berhasil dibuat!
+            </p>
+            <p className="mt-4 w-full text-[13px] leading-[1.78] text-[#666666]">{helperCopy}</p>
           </div>
-          <p className="mt-6 text-xs font-bold tracking-tight text-success">
-            Pesanan anda berhasil dibuat!
-          </p>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">{helperCopy}</p>
 
-          <div className="mt-9 overflow-hidden rounded-2xl border border-border bg-surface">
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-5 py-4 sm:px-6">
-              <h2 className="text-base font-bold tracking-tight text-foreground">Ringkasan Pesanan</h2>
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold"
-                style={{ backgroundColor: `${statusColor}1a`, color: statusColor }}
-              >
-                {statusLabel}
-              </span>
-            </div>
-            <dl className="divide-y divide-border">
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:px-6">
-                <dt className="text-sm text-muted-foreground">No. Pesanan</dt>
-                <dd className="flex items-center gap-2">
-                  <span className="tabular-nums font-semibold text-foreground">{order.order_number}</span>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyOrderNumber}>
-                    <Icon name={copied ? "check" : "clipboard-list"} className="h-4 w-4" aria-hidden="true" />
-                    {copied ? "Tersalin" : "Salin"}
-                  </Button>
-                </dd>
+          {/* Ringkasan Pesanan card */}
+          <div className="mt-9 rounded-2xl border border-[#dee3e0] bg-surface p-5 sm:p-6">
+            <span className="inline-block rounded-full bg-[#d9d9d9] px-3 py-1.5 text-xs font-bold text-[#121212]">
+              {statusLabel}
+            </span>
+            <h2 className="mt-3 text-base font-bold text-[#121212]">Ringkasan Pesanan</h2>
+            <dl className="mt-4 divide-y divide-[#dee3e0]">
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <dt className="text-[13px] text-[#6B7280]">No. Pesanan</dt>
+                <dd className="font-bold text-[#c20000]">{order.order_number}</dd>
               </div>
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:px-6">
-                <dt className="text-sm text-muted-foreground">Metode Pembayaran</dt>
-                <dd className="font-semibold text-foreground">{paymentMethodLabel(order.payment_method)}</dd>
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <dt className="text-[13px] text-[#6B7280]">Metode Pembayaran</dt>
+                <dd className="font-bold text-[#121212]">{paymentMethodLabel(order.payment_method)}</dd>
               </div>
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:px-6">
-                <dt className="text-sm text-muted-foreground">Waktu Pemesanan</dt>
-                <dd className="tabular-nums font-semibold text-foreground">{orderTime}</dd>
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <dt className="text-[13px] text-[#6B7280]">Waktu Pemesanan</dt>
+                <dd className="font-bold text-[#121212]">{orderTime}</dd>
               </div>
             </dl>
           </div>
 
-          <Alert tone="info" className="mt-8">
-            {noticeText}
-          </Alert>
-
-          <div className="mt-8 flex items-center gap-2.5 text-sm text-muted-foreground">
-            <Icon name="check-circle" className="size-5 shrink-0 text-success" aria-hidden="true" />
-            <p>
-              <span className="font-bold text-foreground">Belanja Aman &amp; Terpercaya</span>
-              <span> · Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.</span>
-            </p>
+          {/* Notice metode (kotak merah) */}
+          <div className="mt-5 rounded-2xl border border-[#bd1111] bg-[#bd11110d] p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#ffd9d9]">
+                <Icon name="info" className="size-5 text-[#bd1111]" weight="bold" aria-hidden="true" />
+              </span>
+              <p className="text-sm leading-[1.71] text-[#c20000]">{noticeText}</p>
+            </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3 border-t border-border pt-7">
-            <Button asChild size="lg">
-              <Link href={routeUrl("order.status")}>
-                Cek Pesanan
-                <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-              </Link>
+          {/* Trustline Belanja Aman (kartu abu) */}
+          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-[#dee3e0] bg-[#f7f8f7] p-4">
+            <Icon name="shield-check" className="size-6 shrink-0 text-[#333333]" aria-hidden="true" />
+            <div>
+              <p className="text-xs font-bold leading-[1.33] text-[#333333]">Belanja Aman &amp; Terpercaya</p>
+              <p className="mt-1 text-xs leading-[1.33] text-[#666666]">
+                Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
+              </p>
+            </div>
+          </div>
+
+          {/* CTA: duaduanya outline/ghost */}
+          <div className="mt-5 flex flex-col gap-3 border-t border-[#dee3e0] pt-7 sm:flex-row">
+            <Button asChild variant="secondary" size="lg" className="flex-1">
+              <Link href={routeUrl("order.status")}>Cek Pesanan</Link>
             </Button>
-            <Button asChild variant="secondary" size="lg">
+            <Button asChild variant="secondary" size="lg" className="flex-1">
               <Link href={routeUrl("home")}>Beranda</Link>
             </Button>
           </div>
