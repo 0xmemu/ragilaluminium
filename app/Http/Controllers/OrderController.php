@@ -120,7 +120,12 @@ class OrderController extends Controller
 
     public function index(Request $request): Response
     {
-        return $this->statusForm($request);
+        $orders = $this->sessionOrdersPayload($request);
+
+        return Inertia::render('Public/OrderList', [
+            'has_session_orders' => $orders !== [],
+            'orders' => $orders,
+        ]);
     }
 
     public function statusForm(Request $request): Response
