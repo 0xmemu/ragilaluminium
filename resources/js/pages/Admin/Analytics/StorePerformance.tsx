@@ -30,7 +30,25 @@ interface Kpi {
 }
 
 // KPI yg SEMAKIN NAIK justru BURUK (retur, antrean, waktu) -> warna delta dibalik.
-const GOOD_WHEN_DOWN = new Set(["open_orders", "returns", "return_value", "avg_confirm_hours", "avg_process_days"]);
+const GOOD_WHEN_DOWN = new Set([
+  "open_orders",
+  "returns",
+  "return_value",
+  "avg_confirm_hours",
+  "avg_process_days",
+  // Task 1-2: KPI backlog/cost/pending yang naik = buruk.
+  "returns_created",
+  "returns_open",
+  "returns_completed",
+  "refund_given",
+  "return_rate_created",
+  "return_rate_completed",
+  "payment_pending_count",
+  "cancelled_orders",
+  "cancelled_by_customer",
+  "cancelled_by_store",
+  "cancellation_rate",
+]);
 
 // true = kenaikan perlu tampil merah, penurunan hijau
 function invertColorFor(key: string, changePercent: number | null): boolean {
@@ -99,6 +117,11 @@ interface Report {
     last_order_at: string | null
   }>
   payment_mix: Array<{ method: string; count: number; revenue: number }>
+  product_breakdowns: {
+    most_viewed: Array<{ product_id: number; parent_sku: string; name: string; image: string | null; views: number; clicks: number; total: number }>
+    most_clicked: Array<{ product_id: number; parent_sku: string; name: string; image: string | null; views: number; clicks: number; total: number }>
+    best_sellers: Array<{ product_id: number; parent_sku: string; name: string; units: number; revenue: number; order_count: number }>
+  }
 }
 
 function formatKpiValue(kpi: Kpi): string {
@@ -175,6 +198,139 @@ function TrendChart({ series }: { series: SeriesPoint[] }) {
     </ChartContainer>
   )
 }
+type ProductBreakdown = {
+  product_id: number
+  parent_sku: string
+  name: string
+  image?: string | null
+  units?: number
+  revenue?: number
+  order_count?: number
+  views?: number
+  clicks?: number
+  total?: number
+}
+
+type ProductBreakdownGridProps = {
+  breakdowns: {
+    most_viewed: ProductBreakdown[]
+    most_clicked: ProductBreakdown[]
+    best_sellers: ProductBreakdown[]
+  }
+}
+
+function ProductBreakdownGrid({ breakdowns }: ProductBreakdownGridProps) {
+  const [tab, setTab] = React.useState<"top_sales" | "viewed" | "clicked" | "sellers">("top_sales")
+
+  const tabs = [
+    { key: "top_sales" as const, label: "Produk Terpopuler" },
+    { key: "viewed" as const, label: "Paling Dilihat" },
+    { key: "clicked" as const, label: "Paling Diklik" },
+    { key: "sellers" as const, label: "Terlaris" },
+  ]
+
+  const data =
+    tab === "viewed"
+      ? breakdowns.most_viewed
+      : tab === "clicked"
+        ? breakdowns.most_clicked
+        : tab === "sellers"
+          ? breakdowns.best_sellers
+          : []
+
+  const empty =
+    tab === "viewed" || tab === "clicked" || tab === "sellers"
+      ? data.length === 0
+      : true // top_sales diwakili table top_products existing; kosongkan bukan error
+
+  return (
+    <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-base font-bold">Produk Berdasarkan Interaksi</h3>
+        <div className="flex flex-wrap gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-semibold",
+                tab === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === "viewed" || tab === "clicked" ? (
+        <EngagementList rows={data} />
+      ) : tab === "sellers" ? (
+        <SellersList rows={data} />
+      ) : (
+        <p className="mt-4 text-xs text-muted-foreground">
+          Produk Terpopuler (views + clicks) ditampilkan pada tabel "Penjualan produk" di atas, yaitu produk dengan
+          omzet & unit tertinggi dari pesanan fulfillment. Untuk ranking murni berdasarkan views/clicks, gunakan tab
+          Paling Dilihat / Paling Diklik.
+        </p>
+      )}
+      {empty && tab !== "top_sales" ? (
+        <EmptyState className="min-h-24 border-0 bg-transparent" title="Belum ada data" description="Belum ada data interaksi produk pada periode ini." />
+      ) : null}
+    </section>
+  )
+}
+
+function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
+  if (!rows.length) return null
+  return (
+    <div className="mt-4 divide-y divide-border">
+      {rows.map((p) => (
+        <article key={p.product_id} className="flex items-center gap-3 py-3">
+          {p.image ? (
+            <img src={p.image} alt={p.name} className="h-10 w-10 rounded-md object-cover" />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-xs font-bold text-muted-foreground">
+              {p.name.charAt(0)}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{p.name}</p>
+            <p className="truncate font-mono text-[11px] text-muted-foreground">{p.parent_sku}</p>
+          </div>
+          <div className="text-right text-sm tabular-nums">
+            <p className="font-semibold">{formatNumber(p.views ?? 0)} dilihat</p>
+            <p className="text-xs text-muted-foreground">{formatNumber(p.clicks ?? 0)} klik</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  )
+}
+
+function SellersList({ rows }: { rows: ProductBreakdown[] }) {
+  if (!rows.length) return null
+  return (
+    <div className="mt-4 divide-y divide-border">
+      {rows.map((p) => (
+        <article key={p.product_id} className="flex items-center gap-3 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{p.name}</p>
+            <p className="truncate font-mono text-[11px] text-muted-foreground">{p.parent_sku}</p>
+          </div>
+          <div className="text-right text-sm tabular-nums">
+            <p className="font-semibold">{formatNumber(p.units ?? 0)} unit</p>
+            <p className="text-xs text-muted-foreground">{formatCurrency(p.revenue ?? 0)}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  )
+}
+
 export default function StorePerformance({
   title,
   description,
@@ -565,6 +721,8 @@ export default function StorePerformance({
           )}
         </section>
       </div>
+
+      <ProductBreakdownGrid breakdowns={report.product_breakdowns} />
 
       {report.payment_mix.length ? (
         <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">

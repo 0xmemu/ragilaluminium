@@ -140,6 +140,22 @@ class AnalyticsController extends Controller
         $sheet->setCellValue('D'.$row, $payload['range']['to_date']);
         $row += 2;
 
+        // Task 4: ringkasan financial utama (gross/net/refund) sebelum tabel KPI.
+        $sheet->setCellValue('A'.$row, 'Financial');
+        $sheet->getStyle('A'.$row)->getFont()->setBold(true);
+        $row++;
+        $fin = $payload['financial'] ?? [];
+        $finRows = [
+            ['Penjualan (Gross)', $fin['gross_revenue'] ?? 0],
+            ['Penjualan Bersih', $fin['net_revenue'] ?? 0],
+            ['Refund Diberikan', $fin['refund_adjustments'] ?? 0],
+        ];
+        foreach ($finRows as $fr) {
+            $sheet->fromArray(['Financial', $fr[0], $fr[1], '', ''], null, 'A'.$row);
+            $row++;
+        }
+        $row++;
+
         $headers = ['Bagian', 'Metrik', 'Nilai', 'Periode sebelumnya', 'Perubahan %'];
         $sheet->fromArray($headers, null, 'A'.$row);
         $headerRow = $row;
