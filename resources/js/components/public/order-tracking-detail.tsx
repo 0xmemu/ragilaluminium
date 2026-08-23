@@ -229,28 +229,32 @@ function ExpandableTimeline({ order }: { order: PublicOrder }) {
           <Icon name="chevron-down" className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
         </span>
       </summary>
-      <ol className="order-tracking__carrier-details-list border-t border-border">
-        {timeline.map((entry, index) => (
-          <li
-            key={`${entry.at ?? "e"}-${index}`}
-            className="carrier-event flex gap-3 border-b border-border px-4 py-3 last:border-0"
-          >
-            {entry.at ? (
-              <time dateTime={entry.at} className="w-28 shrink-0 text-xs leading-5 text-muted-foreground">
-                {formatDateTime(entry.at)}
-              </time>
-            ) : (
-              <span className="w-28 shrink-0 text-xs text-muted-foreground">-</span>
-            )}
-            <div className="min-w-0">
-              <p className="text-sm leading-5 text-foreground">{entry.message}</p>
-              {entry.location ? (
-                <p className="carrier-event__location mt-0.5 text-xs text-muted-foreground">{entry.location}</p>
+      <div className="border-t border-border">
+        <ol className="order-tracking__carrier-details-list">
+          {timeline.map((entry, index) => (
+            <React.Fragment key={`${entry.at ?? "e"}-${index}`}>
+              <li className="carrier-event flex gap-3 px-4 py-3">
+                {entry.at ? (
+                  <time dateTime={entry.at} className="w-28 shrink-0 text-xs leading-5 text-muted-foreground">
+                    {formatDateTime(entry.at)}
+                  </time>
+                ) : (
+                  <span className="w-28 shrink-0 text-xs text-muted-foreground">-</span>
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm leading-5 text-foreground">{entry.message}</p>
+                  {entry.location ? (
+                    <p className="carrier-event__location mt-0.5 text-xs text-muted-foreground">{entry.location}</p>
+                  ) : null}
+                </div>
+              </li>
+              {index < timeline.length - 1 ? (
+                <li aria-hidden="true" className="mx-4 h-px bg-border" />
               ) : null}
-            </div>
-          </li>
-        ))}
-      </ol>
+            </React.Fragment>
+          ))}
+        </ol>
+      </div>
     </details>
   )
 }
