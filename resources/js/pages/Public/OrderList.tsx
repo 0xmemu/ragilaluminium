@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { PageHeader } from "@/components/public/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -208,19 +209,9 @@ export default function OrderList({
         )}
       </section>
 
-      {/* CTA Kepercayaan (dsn Lkc5o: Belanja Aman & Terpercaya) */}
+      {/* CTA Kepercayaan — reuse komponen bersama (sama dengan Cart/Checkout) */}
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] pt-6 lg:pb-8">
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Icon name="shield-check" className="size-6" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-foreground">Belanja Aman & Terpercaya</p>
-            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-              Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
-            </p>
-          </div>
-        </div>
+        <TrustAssuranceCard />
       </section>
     </PublicLayout>
   )
