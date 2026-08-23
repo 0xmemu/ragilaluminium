@@ -13,56 +13,64 @@ import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
 
-function orderFooterNote(order: PublicOrder): string {
-  const s = order.order_status
-  if (s === "completed") return "Pesanan Anda telah selesai, terimakasih."
-  if (s === "delivered") return "Paket sudah diterima. Terimakasih telah berbelanja."
-  if (s === "shipped") return "Pesanan sedang dalam perjalanan menuju alamat Anda."
-  if (s === "processing") return "Pesanan sedang diproses admin gudang."
-  return order.payment_method === "cod"
-    ? "Pesanan diterima dan masuk antrean produksi. Bayar di tempat saat kurir tiba."
-    : "Pesanan dibuat. Silakan selesaikan pembayaran sesuai instruksi."
+function paymentLabel(order: PublicOrder): string {
+  if (order.payment_method === "cod") return "COD"
+  return order.payment_status === "paid" ? "Transfer (lunas)" : "Transfer"
 }
 
 function OrderCard({ order }: { order: PublicOrder }) {
   const [open, setOpen] = React.useState(false)
   const totalUnits = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
   const toggleId = `order-card-toggle-${order.order_number}`
+  const waybill = order.shipping?.waybill_number
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-primary/40">
-      {/* Header: no order (merah) + tanggal | status badge */}
-      <div className="flex items-center justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <p className="break-all font-mono text-sm font-bold text-primary">
-            No. Order {order.order_number}
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {order.created_at ? formatDate(order.created_at) : ""}
-          </p>
+      {/* Header: no order (merah) + tanggal + resi | status badge */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="break-all font-mono text-sm font-bold text-primary">
+              No. Order {order.order_number}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {order.created_at ? formatDate(order.created_at) : ""}
+            </p>
+            {waybill ? (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Resi {waybill}</p>
+            ) : null}
+          </div>
+          <StatusBadge status={order.order_status} />
         </div>
-        <StatusBadge status={order.order_status} />
       </div>
-      <div className="h-px w-full bg-border" />
+      <div className="mx-4 h-px bg-border" />
 
-      {/* Total unit (dropdown toggle) + nilai pesanan */}
+      {/* Total unit (dropdown toggle) + nilai pesanan + metode pembayaran */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={toggleId}
-        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-muted"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-muted"
       >
         <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+          Total {totalUnits} unit
           <Icon
-            name={open ? "chevron-down" : "chevron-right"}
-            className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
+            name="chevron-down"
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180",
+            )}
             aria-hidden="true"
           />
-          Total {totalUnits} unit
         </span>
-        <span className="tabular-nums text-base font-bold text-primary">
-          {formatCurrency(order.total_amount)}
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="tabular-nums text-base font-bold text-primary">
+            {formatCurrency(order.total_amount)}
+          </span>
+          <span className="text-[11px] font-medium text-muted-foreground">
+            {paymentLabel(order)}
+          </span>
         </span>
       </button>
 
@@ -115,9 +123,12 @@ function OrderCard({ order }: { order: PublicOrder }) {
         </div>
       </div>
 
-      {/* Footer note status */}
-      <div className="border-t border-border px-4 py-3">
-        <p className="text-[11px] text-muted-foreground">{orderFooterNote(order)}</p>
+      {/* Divider inset + tombol Detail Pesanan */}
+      <div className="mx-4 h-px bg-border" />
+      <div className="p-4">
+        <Button asChild variant="secondary" size="md" className="w-full">
+          <Link href={routeUrl("order.status")}>Detail Pesanan</Link>
+        </Button>
       </div>
     </div>
   )
