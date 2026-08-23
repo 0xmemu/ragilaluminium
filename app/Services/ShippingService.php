@@ -21,6 +21,7 @@ class ShippingService
     public function __construct(
         protected JntCargoClient $jnt,
         protected OrderStateMachine $states,
+        protected ReturnService $returns,
     ) {}
 
     /**
@@ -528,13 +529,18 @@ class ShippingService
 
         if ($target && $order->order_status !== $target) {
             if ($this->states->canTransition($order, $target, 'carrier')) {
-                $this->states->transition(
+                $transitioned = $this->states->transition(
                     $order,
                     $target,
                     null,
                     'carrier',
                     ['shipping_status' => $shippingStatus],
                 );
+
+                // Sprint 2: saat order jadi delivered, lunaskan COD secara idempotent.
+                if ($transitioned && $target === 'delivered') {
+                    $this->returns->markDeliveredAndSettleCod($order->fresh());
+                }
 
                 return;
             }
