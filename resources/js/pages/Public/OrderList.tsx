@@ -77,7 +77,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
         aria-controls={toggleId}
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-muted"
       >
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
           Total {totalUnits} unit
           <Icon
             name="chevron-down"
@@ -89,7 +89,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
           />
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <span className="tabular-nums text-base font-bold text-primary">
+          <span className="tabular-nums text-sm font-bold text-primary">
             {formatCurrency(order.total_amount)}
           </span>
           <span className="text-[11px] font-medium text-muted-foreground">
@@ -120,12 +120,9 @@ function OrderCard({ order }: { order: PublicOrder }) {
                         wrapperClassName="size-full"
                         className="size-full object-cover"
                       />
-                      <span className="absolute -bottom-0.5 -right-0.5 rounded-[3px] bg-foreground/80 px-1 text-[9px] leading-4 font-bold text-background">
-                        {item.quantity}x
-                      </span>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-semibold text-foreground">
+                      <span className="block truncate text-xs font-semibold text-foreground">
                         {item.product_name ?? item.name}
                       </span>
                       {item.note ? (
@@ -135,7 +132,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
                       ) : null}
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className="block tabular-nums text-[13px] font-semibold text-foreground">
+                      <span className="block tabular-nums text-xs font-semibold text-foreground">
                         {item.line_total
                           ? formatCurrency(item.line_total)
                           : `${item.quantity} item`}
