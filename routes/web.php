@@ -12,7 +12,6 @@ use App\Http\Controllers\Admin\CodSettingsController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
-use App\Http\Controllers\Admin\FlashSaleController;
 use App\Http\Controllers\Admin\GalleryItemController;
 use App\Http\Controllers\Admin\ImportJobController;
 use App\Http\Controllers\Admin\InstallationGalleryController;
@@ -157,6 +156,7 @@ Route::post('/consultation/whatsapp', [ConsultationController::class, 'send'])
 
 Route::get('/order/{order_number}/confirmation', [OrderController::class, 'confirmation'])->name('order.confirmation');
 Route::get('/order/count', [OrderController::class, 'count'])->name('order.count');
+Route::get('/order', [OrderController::class, 'index'])->name('order.index');
 Route::get('/order/status', [OrderController::class, 'statusForm'])->name('order.status');
 Route::post('/order/status', [OrderController::class, 'statusLookup'])
     ->middleware('throttle:15,1')->name('order.status.lookup');
@@ -196,7 +196,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Keep this literal path before the resource {product} route below.
     Route::get('kelola/produk/popularity-boosts', [ProductPopularityBoostController::class, 'index'])->name('products.popularity-boosts.index');
     Route::post('kelola/produk/popularity-boosts', [ProductPopularityBoostController::class, 'store'])->name('products.popularity-boosts.store');
-    Route::resource('kelola/produk', AdminProductController::class)->except(['destroy'])->names('products');
+    Route::resource('kelola/produk', AdminProductController::class)->except(['destroy'])->names('products')->parameters(['produk' => 'product']);
     Route::get('kelola/kategori', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('kelola/kategori/create', [CategoryController::class, 'create'])->name('categories.create');
     Route::post('kelola/kategori', [CategoryController::class, 'store'])->name('categories.store');
@@ -350,17 +350,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->name('announcements.publish');
     Route::post('announcements/{announcement}/unpublish', [AnnouncementController::class, 'unpublish'])->name('announcements.unpublish');
 
-    // Flash Sale (product_attributes: promo_flash_sale + promo_compare_price)
-    Route::get('flash-sale', [FlashSaleController::class, 'index'])->name('flash-sale.index');
-    Route::get('flash-sale/create', [FlashSaleController::class, 'create'])->name('flash-sale.create');
-    Route::post('flash-sale', [FlashSaleController::class, 'store'])->name('flash-sale.store');
-    Route::put('flash-sale/period', [FlashSaleController::class, 'updatePeriod'])->name('flash-sale.period');
-    Route::get('flash-sale/{product}/edit', [FlashSaleController::class, 'edit'])->name('flash-sale.edit');
-    Route::put('flash-sale/{product}', [FlashSaleController::class, 'update'])->name('flash-sale.update');
-    Route::post('flash-sale/{product}/enable', [FlashSaleController::class, 'enable'])->name('flash-sale.enable');
-    Route::post('flash-sale/bulk-enable', [FlashSaleController::class, 'bulkEnable'])->name('flash-sale.bulk-enable');
-    Route::post('flash-sale/bulk-disable', [FlashSaleController::class, 'bulkDisable'])->name('flash-sale.bulk-disable');
-    Route::post('flash-sale/{product}/disable', [FlashSaleController::class, 'disable'])->name('flash-sale.disable');
 
     Route::get('vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
     Route::get('vouchers/create', [VoucherController::class, 'create'])->name('vouchers.create');
@@ -487,7 +476,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Settings
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
-    Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
 
     // Redirect 301: URL lama -> /admin/kelola/* (restruktur sitemap admin 2026-08-20)
     Route::redirect('products', 'kelola/produk')->name('products.legacy-redirect');

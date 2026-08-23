@@ -240,9 +240,9 @@ return [
             ],
             [
                 'label' => 'Pesanan',
-                'route' => 'order.status',
+                'route' => 'order.index',
                 'icon' => 'clipboard-list',
-                'active' => ['order.status', 'order.status.lookup'],
+                'active' => ['order.index', 'order.status', 'order.status.lookup'],
             ],
             [
                 'label' => 'Tentang Kami',

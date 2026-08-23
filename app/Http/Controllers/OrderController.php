@@ -118,6 +118,11 @@ class OrderController extends Controller
         );
     }
 
+    public function index(Request $request): Response
+    {
+        return $this->statusForm($request);
+    }
+
     public function statusForm(Request $request): Response
     {
         $orders = $this->sessionOrdersPayload($request);

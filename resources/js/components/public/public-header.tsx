@@ -212,9 +212,13 @@ export function PublicHeader() {
   React.useEffect(() => {
     // Inertia replaces shared props after cart mutations; local preview state must follow it.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setVisibleCartCount(cartCount ?? 0)
+    const next = typeof cartCount === "number" ? cartCount : 0
+    setVisibleCartCount(next)
     setPreviewItems(cartPreview ?? [])
     setPreviewLoaded(Boolean(cartPreview))
+    if (typeof cartCount !== "number") {
+      console.warn("[PublicHeader] cartCount not a number:", cartCount)
+    }
   }, [cartCount, cartPreview])
 
   React.useEffect(() => {
@@ -549,10 +553,10 @@ export function PublicHeader() {
 
         <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-1 md:gap-1.5 lg:gap-3">
           <Link
-            href={routeUrl("order.status")}
+            href={routeUrl("order.index")}
             className="relative hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:inline-flex lg:w-auto lg:min-w-11 lg:gap-1.5 lg:px-3"
             aria-label="Pesanan"
-            aria-current={isRouteActive(["order.status"]) ? "page" : undefined}
+            aria-current={isRouteActive(["order.index", "order.status"]) ? "page" : undefined}
           >
             <Icon name="clipboard-list" className="size-6 shrink-0 lg:size-7" aria-hidden="true" />
             <span className="hidden text-xs font-bold lg:inline">Pesanan</span>
