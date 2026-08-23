@@ -160,6 +160,7 @@ class StorePerformanceService
             $this->kpi('models', 'Model/Sub Model Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
             $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number'),
             $this->kpi('avg_unit_price', 'Harga Rata-rata per Unit', $current['avg_unit_price'], $previous['avg_unit_price'], 'currency'),
+            $this->kpi('aov', 'Rata-rata Nilai Pesanan', $current['aov'], $previous['aov'], 'currency'),
         ];
 
         $trafficKpis = [
@@ -178,6 +179,7 @@ class StorePerformanceService
             ),
             $this->kpi('new_customers', 'Customer Baru', $current['new_customers'], $previous['new_customers'], 'number'),
             $this->kpi('repeat_customers', 'Customer Order Ulang', $current['repeat_customers'], $previous['repeat_customers'], 'number'),
+            $this->kpi('repeat_order_rate', 'Rasio Pembelian Ulang', $current['repeat_order_rate'], $previous['repeat_order_rate'], 'percent'),
             $this->kpi('completed_orders', 'Pesanan Selesai', $current['completed_orders'], $previous['completed_orders'], 'number'),
         ];
 
@@ -185,6 +187,12 @@ class StorePerformanceService
             $this->kpi('open_orders', 'Pesanan Belum Selesai', $current['open_orders'], $previous['open_orders'], 'number'),
             $this->kpi('returns', 'Jumlah Retur', $current['return_orders'], $previous['return_orders'], 'number'),
             $this->kpi('return_value', 'Nilai Retur', $current['return_value'], $previous['return_value'], 'currency'),
+            $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
+            $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
+            $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
+            $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
+            $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk fulfillment.'),
+            $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur selesai dibanding pesanan selesai.'),
             $this->kpi('avg_confirm_hours', 'Rata-rata Waktu Konfirmasi', $current['avg_confirm_hours'], $previous['avg_confirm_hours'], 'hours'),
             $this->kpi('avg_process_days', 'Rata-rata Waktu Proses', $current['avg_process_days'], $previous['avg_process_days'], 'days'),
         ];
@@ -296,6 +304,8 @@ class StorePerformanceService
         $refundAdjustments = (float) $returnCases->sum('refund_amount');
         $netRevenue = $revenue - $refundAdjustments;
 
+        $returnCounts = $this->returnCounts($from, $to);
+
         $visitors = $this->visitorsBetween($from, $to);
         $conversionRate = $visitors > 0 ? round(($orders / $visitors) * 100, 2) : 0.0;
 
@@ -320,12 +330,57 @@ class StorePerformanceService
             'return_value' => round($returnValue, 2),
             'avg_confirm_hours' => $this->avgConfirmHours($from, $to),
             'avg_process_days' => $this->avgProcessDays($from, $to),
+
+            // Task 1 KPI baru (additive)
+            'aov' => $orders > 0 ? round($revenue / $orders, 2) : 0.0,
+            'returns_created' => $returnCounts['created'],
+            'returns_open' => $returnCounts['open'],
+            'returns_completed' => $returnCounts['completed'],
+            'refund_given' => round($returnCounts['refund'], 2),
+            'return_rate_created' => $orders > 0 ? round(($returnCounts['created'] / $orders) * 100, 2) : 0.0,
+            'return_rate_completed' => $completedOrders > 0 ? round(($returnCounts['completed'] / $completedOrders) * 100, 2) : 0.0,
+            'repeat_order_rate' => $this->repeatOrderRate($newCustomers, $repeatCustomers),
         ];
     }
 
     /**
      * @return list<array{bucket: string, label: string, value: float}>
      */
+    /**
+     * KPI retur (Task 1). returns_open adalah SNAPSHOT current (kasus bertatus 'open'
+     * saat laporan dibuat), bukan histori akhir periode.
+     *
+     * @return array{
+     *   created: int, open: int, completed: int, refund: float
+     * }
+     */
+    protected function returnCounts(Carbon $from, Carbon $to): array
+    {
+        $created = (int) OrderReturnCase::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+
+        // Snapshot current: semua kasus yang masih status 'open' sekarang.
+        $open = (int) OrderReturnCase::query()
+            ->where('status', 'open')
+            ->count();
+
+        $completedCases = OrderReturnCase::query()
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereBetween('completed_at', [$from, $to])
+            ->get();
+
+        $completed = $completedCases->count();
+        $refund = (float) $completedCases->sum('refund_amount');
+
+        return [
+            'created' => $created,
+            'open' => $open,
+            'completed' => $completed,
+            'refund' => $refund,
+        ];
+    }
     public function series(Carbon $from, Carbon $to, string $granularity, string $metric): array
     {
         if ($metric === 'visitors') {
@@ -528,6 +583,17 @@ class StorePerformanceService
     /**
      * @return array{0: int, 1: int}
      */
+    /**
+     * Rasio pembelian ulang = repeat / unique valid customers * 100.
+     * $unique = new + repeat (keduanya dari customerCounts: order valid, exclude cancelled).
+     * Normalisasi nomor tetap via customerCounts (dimana pun raw customer_phone dipakai).
+     */
+    protected function repeatOrderRate(int $newCustomers, int $repeatCustomers): float
+    {
+        $unique = $newCustomers + $repeatCustomers;
+
+        return $unique > 0 ? round(($repeatCustomers / $unique) * 100, 2) : 0.0;
+    }
     protected function customerCounts(Carbon $from, Carbon $to): array
     {
         // KPI-011: 'customer' punya order VALID (konsisten dgn KPI-003), exclude pending/cancelled.
