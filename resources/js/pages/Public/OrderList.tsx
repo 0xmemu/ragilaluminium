@@ -122,9 +122,18 @@ function OrderCard({ order }: { order: PublicOrder }) {
                       />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-semibold text-foreground">
-                        {item.product_name ?? item.name}
-                      </span>
+                      {item.parent_sku ? (
+                        <Link
+                          href={routeUrl("product.show", { parent_sku: item.parent_sku })}
+                          className="block truncate text-xs font-semibold text-foreground hover:text-primary"
+                        >
+                          {item.product_name ?? item.name}
+                        </Link>
+                      ) : (
+                        <span className="block truncate text-xs font-semibold text-foreground">
+                          {item.product_name ?? item.name}
+                        </span>
+                      )}
                       {item.note ? (
                         <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
                           Catatan: {item.note}

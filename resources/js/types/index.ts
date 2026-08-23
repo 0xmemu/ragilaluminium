@@ -391,6 +391,7 @@ export interface PublicOrderItem {
   product_name?: string | null
   name?: string | null
   product_id?: number | null
+  parent_sku?: string | null
   quantity: number
   line_total?: number
   image?: string | null

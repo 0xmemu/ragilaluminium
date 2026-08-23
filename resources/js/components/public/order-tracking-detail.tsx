@@ -436,7 +436,18 @@ export function OrderTrackingDetail({
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-semibold text-foreground">{item.product_name ?? item.name}</span>
+                    {item.parent_sku ? (
+                      <Link
+                        href={routeUrl("product.show", { parent_sku: item.parent_sku })}
+                        className="block text-xs font-semibold text-foreground hover:text-primary"
+                      >
+                        {item.product_name ?? item.name}
+                      </Link>
+                    ) : (
+                      <span className="block text-xs font-semibold text-foreground">
+                        {item.product_name ?? item.name}
+                      </span>
+                    )}
                     {item.note ? (
                       <span className="mt-1 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
                         <span className="font-semibold">Catatan:</span> {item.note}
