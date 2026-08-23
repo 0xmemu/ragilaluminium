@@ -14,7 +14,8 @@ use Tests\TestCase;
 /**
  * Fase 10 — lock StorePerformance handoff rules:
  *   R1  dashboard & Performa Toko page share the exact same formula contract (StorePerformanceService::build).
- *   R4  COD only recognized as paid when the order reaches completed.
+ *   R4  ALL orders (transfer & COD) count toward omzet from processing onward;
+ *      realization (cash-in) is measured separately via "Pembayaran Diterima" (paid_at).
  *   R8  model count is computed by a MySQL+SQLite-compatible SQL query (no PHP collection dedupe).
  *   R9  return/refund never deletes raw order/order_items rows.
  *   R10 refund adjustment reduces omzet bersih by refund_amount on completed return ledger.
@@ -73,24 +74,26 @@ class StorePerformanceF10RulesTest extends TestCase
             'line_total' => $unitPrice * $quantity,
         ]);
     }
-    public function test_r4_cod_is_not_paid_until_fulfillment_reaches_completed(): void
+    public function test_r4_cod_counts_from_processing_like_transfer(): void
     {
-        // COD in processing / shipped / delivered: cash not yet collected →
-        // must NOT contribute to omzet/units/models.
+        // Owner rule 2026-08-22: COD in processing/shipped/delivered DOES count toward
+        // omzet/units/models (same as transfer). Realization is measured separately.
+        // completed_orders stays 0 because none reached completed yet.
         $this->attachItem($this->codOrder('RA-F10-COD-PROC', 'processing', 1000), 1000, 2, 'M-A', 'P');
         $this->attachItem($this->codOrder('RA-F10-COD-SHIP', 'shipped', 1000), 1000, 1, 'M-B', 'H');
         $this->attachItem($this->codOrder('RA-F10-COD-DELIV', 'delivered', 1000), 1000, 1, 'M-C', 'H');
 
         $metrics = app(StorePerformanceService::class)->metricsFor(now()->startOfDay(), now()->endOfDay());
 
-        $this->assertSame(0.0, $metrics['revenue']);
-        $this->assertSame(0, $metrics['units']);
-        $this->assertSame(0, $metrics['models_sold']);
+        // revenue = sum(order.total_amount) = 1000 per order x3 (qty only affects units)
+        $this->assertSame(3000.0, $metrics['revenue']);
+        $this->assertSame(4, $metrics['units']);
+        $this->assertSame(3, $metrics['models_sold']);
         $this->assertSame(0, $metrics['completed_orders']);
     }
 
 
-    public function test_r4_cod_paid_only_when_completed_but_transfer_counts_from_processing(): void
+    public function test_r4_cod_completed_and_transfer_processing_both_count(): void
     {
         $this->attachItem($this->codOrder('RA-F10-COD-DONE', 'completed', 3000000), 1000, 3, 'SLIDING', 'PUTIH');
 
@@ -200,7 +203,7 @@ class StorePerformanceF10RulesTest extends TestCase
         $sql = $reflection->invoke($service, 'orders');
 
         $this->assertStringContainsString('order_status', $sql);
-        $this->assertStringContainsString('cod_flag', $sql);
+        $this->assertStringNotContainsString('cod_flag', $sql);
         $this->assertStringNotContainsString('strftime', $sql);
         $this->assertStringNotContainsString('group_concat', $sql);
     }

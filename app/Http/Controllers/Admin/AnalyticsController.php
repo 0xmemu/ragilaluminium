@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
 use App\Services\StorePerformanceService;
 use App\Support\ExportSafety;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -38,8 +40,8 @@ class AnalyticsController extends Controller
             'description' => 'Pantau dan analisis basis data performa toko Anda dalam satu antarmuka — pembukuan penjualan, produk, dan operasional.',
             'filters' => [
                 'period' => $payload['range']['period'],
-                'from' => $payload['range']['from_date'],
-                'to' => $payload['range']['to_date'],
+                'from' => $payload['range']['from_date_iso'] ?? $payload['range']['from_date'],
+                'to' => $payload['range']['to_date_iso'] ?? $payload['range']['to_date'],
                 'granularity' => $payload['range']['granularity'],
             ],
             'periodOptions' => [
@@ -62,8 +64,8 @@ class AnalyticsController extends Controller
             'report' => $payload,
             'exportUrl' => route('admin.analytics.store-performance.export', [
                 'period' => $payload['range']['period'],
-                'from' => $payload['range']['from_date'],
-                'to' => $payload['range']['to_date'],
+                'from' => $payload['range']['from_date_iso'] ?? $payload['range']['from_date'],
+                'to' => $payload['range']['to_date_iso'] ?? $payload['range']['to_date'],
                 'granularity' => $payload['range']['granularity'],
             ]),
         ]);
@@ -109,7 +111,7 @@ class AnalyticsController extends Controller
         return $payload;
     }
 
-    public function exportStorePerformance(Request $request): StreamedResponse
+    public function exportStorePerformance(Request $request): \Illuminate\Http\Response
     {
         $period = (string) $request->input('period', 'today');
         $payload = $this->performance->build(
@@ -119,69 +121,100 @@ class AnalyticsController extends Controller
             granularity: is_string($request->input('granularity')) ? $request->input('granularity') : null,
         );
 
-        $filename = 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.csv';
+        $filename = 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx';
 
         ExportSafety::assertPerformancePayloadWithinLimit($payload);
 
-        return response()->streamDownload(function () use ($payload) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
 
-            ExportSafety::writeCsvRow($out, ['Performa Toko', $payload['range']['label']]);
-            ExportSafety::writeCsvRow($out, ['Dari', $payload['range']['from_date'], 'Sampai', $payload['range']['to_date']]);
-            ExportSafety::writeCsvRow($out, []);
-            ExportSafety::writeCsvRow($out, ['Bagian', 'Metrik', 'Nilai', 'Periode sebelumnya', 'Perubahan %']);
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Performa Toko');
 
-            foreach ($payload['sections'] as $section) {
-                foreach ($section['kpis'] as $kpi) {
-                    ExportSafety::writeCsvRow($out, [
-                        $section['title'],
-                        $kpi['label'],
-                        $kpi['value'],
-                        $kpi['previous'],
-                        $kpi['change_percent'],
-                    ]);
-                }
+        $row = 1;
+        $sheet->setCellValue('A'.$row, 'Performa Toko');
+        $sheet->setCellValue('B'.$row, $payload['range']['label']);
+        $row++;
+        $sheet->setCellValue('A'.$row, 'Dari');
+        $sheet->setCellValue('B'.$row, $payload['range']['from_date']);
+        $sheet->setCellValue('C'.$row, 'Sampai');
+        $sheet->setCellValue('D'.$row, $payload['range']['to_date']);
+        $row += 2;
+
+        $headers = ['Bagian', 'Metrik', 'Nilai', 'Periode sebelumnya', 'Perubahan %'];
+        $sheet->fromArray($headers, null, 'A'.$row);
+        $headerRow = $row;
+        $row++;
+        foreach ($payload['sections'] as $section) {
+            foreach ($section['kpis'] as $kpi) {
+                $sheet->fromArray([
+                    $section['title'],
+                    $kpi['label'],
+                    $kpi['value'],
+                    $kpi['previous'],
+                    $kpi['change_percent'] === null ? 'Baru pada periode ini' : $kpi['change_percent'],
+                ], null, 'A'.$row);
+                $row++;
             }
+        }
+        $sheet->getStyle('A'.$headerRow.':E'.$headerRow)->getFont()->setBold(true);
 
-            ExportSafety::writeCsvRow($out, []);
-            ExportSafety::writeCsvRow($out, ['Produk terlaris']);
-            ExportSafety::writeCsvRow($out, ['SKU', 'Nama', 'Unit', 'Omzet', 'Jumlah order']);
-            foreach ($payload['top_products'] as $product) {
-                ExportSafety::writeCsvRow($out, [
-                    $product['parent_sku'],
-                    $product['name'],
-                    $product['units'],
-                    $product['revenue'],
-                    $product['order_count'],
-                ]);
+        $row++;
+        $sheet->setCellValue('A'.$row, 'Produk terlaris')->getStyle('A'.$row)->getFont()->setBold(true);
+        $row++;
+        $sheet->fromArray(['SKU', 'Nama', 'Unit', 'Omzet', 'Jumlah order'], null, 'A'.$row);
+        $row++;
+        foreach ($payload['top_products'] as $product) {
+            $sheet->fromArray([
+                $product['parent_sku'],
+                $product['name'],
+                $product['units'],
+                $product['revenue'],
+                $product['order_count'],
+            ], null, 'A'.$row);
+            $row++;
+        }
+
+        $row++;
+        $sheet->setCellValue('A'.$row, 'Customer')->getStyle('A'.$row)->getFont()->setBold(true);
+        $row++;
+        $sheet->fromArray(['Nama', 'Telepon', 'Frekuensi', 'Total belanja', 'Order terakhir'], null, 'A'.$row);
+        $row++;
+        foreach ($payload['customers'] as $customer) {
+            $sheet->fromArray([
+                $customer['customer_name'],
+                $customer['customer_phone'],
+                $customer['order_count'],
+                $customer['total_spent'],
+                $customer['last_order_at'],
+            ], null, 'A'.$row);
+            $row++;
+        }
+
+        foreach ($payload['charts'] as $chart) {
+            $row++;
+            $sheet->setCellValue('A'.$row, $chart['title'])->getStyle('A'.$row)->getFont()->setBold(true);
+            $row++;
+            $sheet->fromArray(['Bucket', 'Label', 'Nilai'], null, 'A'.$row);
+            $row++;
+            foreach ($chart['series'] as $point) {
+                $sheet->fromArray([$point['bucket'], $point['label'], $point['value']], null, 'A'.$row);
+                $row++;
             }
+        }
 
-            ExportSafety::writeCsvRow($out, []);
-            ExportSafety::writeCsvRow($out, ['Customer']);
-            ExportSafety::writeCsvRow($out, ['Nama', 'Telepon', 'Frekuensi', 'Total belanja', 'Order terakhir']);
-            foreach ($payload['customers'] as $customer) {
-                ExportSafety::writeCsvRow($out, [
-                    $customer['customer_name'],
-                    $customer['customer_phone'],
-                    $customer['order_count'],
-                    $customer['total_spent'],
-                    $customer['last_order_at'],
-                ]);
-            }
+        foreach (range('A', 'E') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
 
-            foreach ($payload['charts'] as $chart) {
-                ExportSafety::writeCsvRow($out, []);
-                ExportSafety::writeCsvRow($out, [$chart['title']]);
-                ExportSafety::writeCsvRow($out, ['Bucket', 'Label', 'Nilai']);
-                foreach ($chart['series'] as $point) {
-                    ExportSafety::writeCsvRow($out, [$point['bucket'], $point['label'], $point['value']]);
-                }
-            }
+        ob_start();
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        $xls = ob_get_clean();
+        $spreadsheet->disconnectWorksheets();
 
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+        return response($xls)->withHeaders([
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 

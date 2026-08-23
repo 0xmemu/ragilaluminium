@@ -130,7 +130,7 @@ class StorePerformanceHistoryTest extends TestCase
             'event_type' => 'order_status_changed',
             'entity_type' => 'order',
             'entity_id' => $order->id,
-            'payload' => ['from' => 'pending_payment', 'order_status' => 'processing'],
+            'payload' => ['from' => 'awaiting_confirmation', 'order_status' => 'processing'],
             'created_at' => $created->copy()->addMinutes(90),
         ]);
 
@@ -148,7 +148,9 @@ class StorePerformanceHistoryTest extends TestCase
         $metrics = app(StorePerformanceService::class)->metricsFor(now()->startOfDay(), now()->endOfDay());
 
         $this->assertSame(1.5, $metrics['avg_confirm_hours']);
-        $this->assertSame(0.08, $metrics['avg_process_days']);
+        // KPI-004: nilai mentah (tanpa round di service); kalkulasi % dari mentah. Harus ≈ 0.08 (round 2).
+        $this->assertGreaterThan(0.075, $metrics['avg_process_days']);
+        $this->assertLessThan(0.085, $metrics['avg_process_days']);
     }
 
     public function test_repeat_customer_is_historical_not_only_same_period(): void

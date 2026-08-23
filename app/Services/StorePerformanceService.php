@@ -26,7 +26,11 @@ class StorePerformanceService
 
     public const COMPLETED_STATUSES = ['completed'];
 
-    public const OPEN_STATUSES = ['pending_payment', 'processing', 'shipped'];
+    // Status pesanan yang dihitung sebagai 'pesanan valid' utk KPI Pesanan & tingkat konversi
+    // (konsisten dgn omzet: exclude pending, cancelled, issue).
+    public const VALID_ORDER_STATUSES = self::REVENUE_STATUSES;
+
+    public const OPEN_STATUSES = ['awaiting_confirmation', 'processing', 'shipped'];
 
     /**
      * issue is an operational exception, not proof that goods were returned.
@@ -93,9 +97,9 @@ class StorePerformanceService
             [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
         }
 
-        // Carbon 3: diffInSeconds default absolute=false ??? hitung dari $start ke $end.
+        // Carbon 3: diffInSeconds default absolute=false -> hitung dari $start ke $end.
         $fullSeconds = max(1, (int) round($start->diffInSeconds($end)));
-        // Spec ??G: periode berjalan ??? bandingkan sampai jam sama; selesai ??? penuh.
+        // Spec G: periode berjalan -> bandingkan sampai jam sama; selesai -> penuh.
         $now = now();
         $elapsedSeconds = $now->lessThan($end)
             ? max(1, (int) round($start->diffInSeconds($now)))
@@ -140,7 +144,14 @@ class StorePerformanceService
     public function build(string $period = 'today', ?string $from = null, ?string $to = null, ?string $granularity = null): array
     {
         $range = $this->resolveRange($period, $from, $to, $granularity);
-        $current = $this->metricsFor($range['from'], $range['to']);
+        // KPI-002: saat periode masih berjalan, bandingkan current sampai 'sekarang' (elapsed sama),
+        // bukan endOfDay penuh, agar setara dgn previous yang dipotong di jam yang sama.
+        $currentTo = ($range['is_running'] ?? false) && $range['to']->gt(now())
+            ? now()
+            : $range['to'];
+        $current = $this->metricsFor($range['from'], $currentTo);
+        // Sinkronkan portabel current utk grafik/label bila running.
+        if ($range['is_running'] ?? false) { $range['to'] = $currentTo; }
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
 
         $salesKpis = [
@@ -184,8 +195,8 @@ class StorePerformanceService
                 'label' => $range['label'],
                 'from' => $range['from']->toIso8601String(),
                 'to' => $range['to']->toIso8601String(),
-                'from_date' => $range['from']->toDateString(),
-                'to_date' => $range['to']->toDateString(),
+                'from_date' => $range['from']->translatedFormat('d M Y'),
+                'to_date' => $range['to']->translatedFormat('d M Y'),
                 'previous_from' => $range['previous_from']->toIso8601String(),
                 'previous_to' => $range['previous_to']->toIso8601String(),
                 'granularity' => $range['granularity'],
@@ -195,8 +206,11 @@ class StorePerformanceService
                             ? ''
                             : ' – '.$range['previous_to']->translatedFormat('j M Y')
                     ),
-                'compare_from_date' => $range['previous_from']->toDateString(),
-                'compare_to_date' => $range['previous_to']->toDateString(),
+                'compare_from_date' => $range['previous_from']->translatedFormat('d M Y'),
+                'compare_to_date' => $range['previous_to']->translatedFormat('d M Y'),
+                // KPI-008: nilai ISO utk control HTML date & param custom/export (display tetap d M Y di atas).
+                'from_date_iso' => $range['from']->toDateString(),
+                'to_date_iso' => $range['to']->toDateString(),
                 'is_running' => $range['is_running'],
             ],
             'financial' => [
@@ -246,6 +260,7 @@ class StorePerformanceService
     {
         $base = Order::query()->whereBetween('created_at', [$from, $to]);
 
+        $base = (clone $base)->whereIn('order_status', self::VALID_ORDER_STATUSES);
         $orders = (clone $base)->count();
         $revenueOrders = $this->paidRevenueScope(clone $base);
         $revenue = (float) (clone $revenueOrders)->sum('total_amount');
@@ -515,8 +530,10 @@ class StorePerformanceService
      */
     protected function customerCounts(Carbon $from, Carbon $to): array
     {
+        // KPI-011: 'customer' punya order VALID (konsisten dgn KPI-003), exclude pending/cancelled.
         $phonesInPeriod = Order::query()
             ->whereBetween('created_at', [$from, $to])
+            ->whereIn('order_status', self::VALID_ORDER_STATUSES)
             ->whereNotNull('customer_phone')
             ->distinct()
             ->pluck('customer_phone');
@@ -538,15 +555,21 @@ class StorePerformanceService
         return [$new, $repeat];
     }
 
-    protected function statusEventAt(int|string $orderId, string $fromStatus, string $toStatus): ?Carbon
+    /**
+     * Cari event transisi status order. Menerima $fromStatus tunggal ATAU array
+     * (legacy fallback: order lama pakai 'pending_payment', order baru 'awaiting_confirmation').
+     */
+    protected function statusEventAt(int|string $orderId, string|array $fromStatus, string $toStatus): ?Carbon
     {
+        $fromStatuses = (array) $fromStatus;
+
         return EventLog::query()
             ->where('entity_type', 'order')
             ->where('entity_id', (string) $orderId)
             ->where('event_type', 'order_status_changed')
             ->get()
-            ->filter(function (EventLog $event) use ($fromStatus, $toStatus): bool {
-                return (string) data_get($event->payload, 'from') === $fromStatus
+            ->filter(function (EventLog $event) use ($fromStatuses, $toStatus): bool {
+                return in_array((string) data_get($event->payload, 'from'), $fromStatuses, true)
                     && (string) data_get($event->payload, 'order_status') === $toStatus;
             })
             ->sortBy('created_at')
@@ -557,18 +580,18 @@ class StorePerformanceService
     {
         $orders = Order::query()->whereBetween('created_at', [$from, $to])->get(['id', 'created_at']);
         $durations = $orders->map(function (Order $order): ?float {
-            $confirmedAt = $this->statusEventAt($order->id, 'pending_payment', 'processing');
+            $confirmedAt = $this->statusEventAt($order->id, ['awaiting_confirmation', 'pending_payment'], 'processing');
             return $confirmedAt ? max(0, $order->created_at->diffInMinutes($confirmedAt) / 60) : null;
         })->filter(fn (?float $value): bool => $value !== null);
 
-        return $durations->isEmpty() ? 0.0 : round((float) $durations->avg(), 2);
+        return $durations->isEmpty() ? 0.0 : (float) $durations->avg();
     }
 
     protected function avgProcessDays(Carbon $from, Carbon $to): float
     {
         $orders = Order::query()->whereBetween('created_at', [$from, $to])->get(['id']);
         $durations = $orders->map(function (Order $order): ?float {
-            $processingAt = $this->statusEventAt($order->id, 'pending_payment', 'processing')
+            $processingAt = $this->statusEventAt($order->id, ['awaiting_confirmation', 'pending_payment'], 'processing')
                 ?: $this->statusEventAt($order->id, 'issue', 'processing');
             if (! $processingAt) {
                 return null;
@@ -585,7 +608,7 @@ class StorePerformanceService
                 : null;
         })->filter(fn (?float $value): bool => $value !== null);
 
-        return $durations->isEmpty() ? 0.0 : round((float) $durations->avg(), 2);
+        return $durations->isEmpty() ? 0.0 : (float) $durations->avg();
     }
 
     /**
@@ -597,7 +620,8 @@ class StorePerformanceService
         if ((float) $previous > 0) {
             $change = round((((float) $value - (float) $previous) / (float) $previous) * 100, 1);
         } elseif ((float) $value > 0) {
-            $change = 100.0;
+            // KPI-006: sebelumnya nol -> bukan 100% palsu; UI menampilkan "Baru pada periode ini".
+            $change = null;
         } elseif ((float) $value === 0.0 && (float) $previous === 0.0) {
             $change = 0.0;
         }
@@ -707,19 +731,20 @@ class StorePerformanceService
     }
 
     /**
-     * Whether an order counts as paid revenue.
-     * Rule F10.R4: COD only recognized as paid when it reaches completed;
-     * transfer/regular orders count from fulfilment statuses onward.
+     * Whether an order counts as omzet (revenue).
+     * Rule omzet (owner 2026-08-22): SEMUA pesanan (transfer & COD) dihitung omzet
+     * sejak memasuki fulfillment (processing), apa pun metode bayarnya.
+     * Realisasi/uang masuk dibedakan lewat metrik "Pembayaran Diterima" (paid_at), bukan di sini.
      */
     protected function paidRevenueStatusSql(string $alias = ''): string
     {
+        // Rule omzet (owner 2026-08-22): SEMUA pesanan (transfer & COD) yang masuk alur
+        // fulfillment dihitung omzet sejak processing, apa pun metode bayarnya.
+        // Terealisasi (uang masuk) dibedakan lewat metrik "Pembayaran Diterima" (paid_at),
+        // bukan dengan menunda pengakuan omzet COD ke completed.
         $prefix = $alias !== '' ? $alias.'.' : '';
-        $revList = implode(',', array_map(fn (string $v): string => "'".$v."'", self::REVENUE_STATUSES));
-        $compList = implode(',', array_map(fn (string $v): string => "'".$v."'", self::COMPLETED_STATUSES));
 
-        return "(({$prefix}cod_flag = 0 OR {$prefix}cod_flag IS NULL)"
-            ." AND {$prefix}order_status IN ({$revList}))"
-            ." OR ({$prefix}cod_flag = 1 AND {$prefix}order_status IN ({$compList}))";
+        return "{$prefix}order_status IN (".implode(',', array_map(fn (string $v): string => "'".$v."'", self::REVENUE_STATUSES)).')';
     }
 
     /**

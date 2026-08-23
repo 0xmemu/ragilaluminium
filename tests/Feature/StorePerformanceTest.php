@@ -83,7 +83,7 @@ class StorePerformanceTest extends TestCase
             'shipping_province' => 'DKI',
             'shipping_postal_code' => '12190',
             'shipping_country' => 'Indonesia',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 500000,
@@ -118,19 +118,23 @@ class StorePerformanceTest extends TestCase
         $metrics = $service->metricsFor(now()->startOfDay(), now()->endOfDay());
 
         $this->assertEquals(2000000.0, $metrics['revenue']);
-        $this->assertEquals(3, $metrics['orders']);
+        // KPI-003: pesanan yang dihitung = order VALID (exclude pending & cancelled) => hanya 1 (processing).
+        $this->assertEquals(1, $metrics['orders']);
         $this->assertEquals(2, $metrics['units']);
         $this->assertEquals(1, $metrics['models_sold']);
     }
 
-    public function test_csv_export_downloads(): void
+    public function test_export_xlsx_downloads(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->get(route('admin.analytics.store-performance.export', ['period' => 'last_7']))
             ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             ->assertHeader('content-disposition');
+
+        $this->assertStringContainsString('.xlsx', $response->headers->get('content-disposition'));
     }
 
     public function test_storefront_visit_increments_unique_visitors(): void

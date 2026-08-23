@@ -1,5 +1,6 @@
 import { Head, router } from "@inertiajs/react"
 import * as React from "react"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
@@ -11,6 +12,13 @@ import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/admin/ui/chart"
+
 interface Kpi {
   key: string
   label: string
@@ -20,6 +28,21 @@ interface Kpi {
   format: "currency" | "number" | "percent" | "hours" | "days"
   detail?: string | null
 }
+
+// KPI yg SEMAKIN NAIK justru BURUK (retur, antrean, waktu) -> warna delta dibalik.
+const GOOD_WHEN_DOWN = new Set(["open_orders", "returns", "return_value", "avg_confirm_hours", "avg_process_days"]);
+
+// true = kenaikan perlu tampil merah, penurunan hijau
+function invertColorFor(key: string, changePercent: number | null): boolean {
+  if (changePercent === null || changePercent === 0) return false
+  return GOOD_WHEN_DOWN.has(key)
+}
+
+// KPI-005/009: minus unicode & panah konsisten.
+const MINUS = "−"
+// KPI-014a: metrik yang arahnya netral/kontekstual (bukan lebih-besar/lebih-kecil baik).
+const NEUTRAL_DIRECTION = new Set(["avg_unit_price"])
+
 
 interface Section {
   key: string
@@ -85,9 +108,9 @@ function formatKpiValue(kpi: Kpi): string {
     case "percent":
       return `${formatNumber(kpi.value)}%`
     case "hours":
-      return `${formatNumber(kpi.value)} jam`
+      return formatDuration(kpi.value, false)
     case "days":
-      return `${formatNumber(kpi.value)} hari`
+      return formatDuration(kpi.value, true)
     default:
       return formatNumber(kpi.value)
   }
@@ -100,35 +123,58 @@ function formatPrevious(kpi: Kpi): string {
     case "percent":
       return `${formatNumber(kpi.previous)}%`
     case "hours":
-      return `${formatNumber(kpi.previous)} jam`
+      return formatDuration(kpi.previous, false)
     case "days":
-      return `${formatNumber(kpi.previous)} hari`
+      return formatDuration(kpi.previous, true)
     default:
       return formatNumber(kpi.previous)
   }
 }
-
-function TrendSparkline({ series }: { series: SeriesPoint[] }) {
-  const max = Math.max(...series.map((point) => point.value), 1)
-
-  return (
-    <div className="mt-4 flex h-28 items-end gap-1" role="img" aria-label="Grafik tren">
-      {series.map((point) => (
-        <div key={point.bucket} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-          <div
-            className="w-full rounded-sm bg-primary/80"
-            style={{ height: `${Math.max(4, (point.value / max) * 100)}%` }}
-            title={`${point.label}: ${point.value}`}
-          />
-          {series.length <= 14 ? (
-            <span className="truncate text-[10px] text-muted-foreground">{point.label}</span>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  )
+// KPI-005: durasi -> "X jam Y menit". days=true ditampilkan "X hari Y jam".
+function formatDuration(value: number, isDays = false): string {
+  if (!Number.isFinite(value) || value <= 0) return "0 menit"
+  const base = isDays ? value * 24 : value // konversi hari->jam
+  const totalMinutes = Math.round(base * 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  const jam = hours.toString() + " jam"
+  const menit = minutes.toString() + " menit"
+  if (isDays) {
+    return minutes === 0 ? jam : jam + " " + menit
+  }
+  if (hours === 0) return menit
+  return minutes === 0 ? jam : jam + " " + menit
 }
 
+
+function TrendChart({ series }: { series: SeriesPoint[] }) {
+  const chartConfig = {
+    value: {
+      label: "Nilai",
+      color: "var(--primary)",
+    },
+  } satisfies ChartConfig
+
+  return (
+    <ChartContainer config={chartConfig} className="mt-2 h-32 w-full">
+      <BarChart data={series} accessibilityLayer>
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          tickMargin={8}
+          axisLine={false}
+          tick={{ fontSize: 9 }}
+        />
+        <ChartTooltip
+          cursor={{ fill: "var(--accent)" }}
+          content={<ChartTooltipContent />}
+        />
+        <Bar dataKey="value" radius={2} fill="var(--color-value)" />
+      </BarChart>
+    </ChartContainer>
+  )
+}
 export default function StorePerformance({
   title,
   description,
@@ -172,14 +218,14 @@ export default function StorePerformance({
         <Button asChild variant="secondary">
           <a href={exportUrl}>
             <Icon name="download" className="size-4" aria-hidden="true" />
-            Unduh CSV
+            Unduh Laporan
           </a>
         </Button>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-6 rounded-xl border border-border bg-card p-4 shadow-sm">
+      <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Tinjauan bisnis</p>
@@ -296,7 +342,7 @@ export default function StorePerformance({
 
       <div className="space-y-6">
         {report.sections.map((section) => (
-          <section key={section.key} className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+          <section key={section.key} className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
             <header className="border-b border-border px-4 py-3">
               <h3 className="text-base font-bold">{section.title}</h3>
             </header>
@@ -318,14 +364,19 @@ export default function StorePerformance({
                   <p
                     className={cn(
                       "mt-2 text-xs font-semibold",
-                      (kpi.change_percent ?? 0) > 0 && "text-success",
-                      (kpi.change_percent ?? 0) < 0 && "text-destructive",
+                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success",
+                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
+                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
+                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success",
                       (kpi.change_percent ?? 0) === 0 && "text-muted-foreground",
+                      NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) !== 0 && "text-muted-foreground",
                     )}
                   >
                     {kpi.change_percent === null
-                      ? "—"
-                      : `${kpi.change_percent > 0 ? "+" : ""}${formatNumber(kpi.change_percent)}%`}
+                      ? "Baru pada periode ini"
+                      : (kpi.change_percent ?? 0) === 0
+                        ? "Tidak berubah"
+                        : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
                   </p>
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {report.range.compare_label} ({formatPrevious(kpi)})
@@ -339,7 +390,7 @@ export default function StorePerformance({
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         {report.charts.map((chart) => (
-          <section key={chart.key} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <section key={chart.key} className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-sm font-bold">
                 {chart.title} (
@@ -362,16 +413,23 @@ export default function StorePerformance({
               </div>
             </div>
             {chart.series.length ? (
-              <TrendSparkline series={chart.series} />
+              <TrendChart series={chart.series} />
             ) : (
               <p className="mt-6 text-sm text-muted-foreground">Belum ada data tren.</p>
             )}
+            {chart.key === "visitors" && chart.series.length ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Total = pengunjung unik sepanjang periode; grafik = kehadiran unik per{" "}
+                {report.range.granularity === "hour" ? "jam" : report.range.granularity === "week" ? "minggu" : report.range.granularity === "month" ? "bulan" : "hari"}.
+                Jumlah bar dapat melebihi total unik karena pengunjung yang kembali dihitung di tiap periode.
+              </p>
+            ) : null}
           </section>
         ))}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
           <header className="border-b border-border px-4 py-3">
             <h3 className="text-base font-bold">Penjualan produk</h3>
             <p className="text-xs text-muted-foreground">Omzet & unit dari pesanan fulfillment (processing–completed).</p>
@@ -439,7 +497,7 @@ export default function StorePerformance({
           )}
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
           <header className="border-b border-border px-4 py-3">
             <h3 className="text-base font-bold">Customer</h3>
             <p className="text-xs text-muted-foreground">Agregat per nomor WhatsApp pada periode terpilih.</p>
@@ -509,7 +567,7 @@ export default function StorePerformance({
       </div>
 
       {report.payment_mix.length ? (
-        <section className="mt-6 rounded-xl border border-border bg-card p-4 shadow-sm">
+        <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <h3 className="text-base font-bold">Bauran metode bayar (omzet)</h3>
           <ul className="mt-3 grid gap-2 sm:grid-cols-3">
             {report.payment_mix.map((row) => (
@@ -526,7 +584,7 @@ export default function StorePerformance({
 
       <p className="mt-6 text-xs leading-5 text-muted-foreground">
         Keterangan perbandingan: metrik dibandingkan secara otomatis dengan periode sebelumnya
-        ({report.range.compare_label}: {report.range.compare_from_date} ??? {report.range.compare_to_date}).
+        ({report.range.compare_label}: {report.range.compare_from_date} – {report.range.compare_to_date}).
         {report.range.is_running
           ? " Karena periode berjalan masih berlangsung, data pembanding dipotong sampai jam yang sama agar adil."
           : " Periode pembanding dihitung penuh."}
