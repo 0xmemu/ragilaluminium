@@ -28,7 +28,7 @@ queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, 
 - Archive instead of hard-delete. Guest-only checkout (no customer accounts).
 - Customer-facing copy in Bahasa Indonesia; currency IDR.
 - **Route parameter HARUS Inggris & cocok dengan variabel controller.** `Route::resource`/manual dengan segmen URI Indonesia (kelola/produk, kelola/kategori, sub-model, model-produk, masalah-solusi, dll) WAJIB memetakan parameter ke nama Inggris via `->parameters([...])` (contoh: `->parameters(['produk' => 'product'])`), karena Laravel men-generate nama parameter dari segmen URI (produk -> {produk}) padahal kode memakai $product -> implicit binding & route() 500. Test `AdminRouteParameterNamingTest` mengunci ini; jangan menambah route admin berparameter baru tanpa memastikan nama parameter cocok dengan variabel method controller.
-- **DILARANG em dash (—) dan en dash (–) di SEMUA teks**: copy storefront/admin, placeholder, pesan error, tooltip, hint, komentar kode, dokumen. Ganti dengan koma, titik, titik dua, atau "·"; placeholder kosong pakai "-" (hyphen). (KONTRAK 2026-08-21, user menuntut: jangan pernah menulis em dash.)
+- **DILARANG EM DASH (—, U+2014) di SEMUA teks**: copy storefront/admin, placeholder, pesan error, tooltip, hint, komentar kode, dokumen. Ganti dengan koma, titik, titik dua, atau "·"; placeholder kosong pakai "-" (hyphen). EN DASH (–) TIDAK dilarang dan boleh dipakai untuk rentang/range (mis. jam, tanggal, harga) sesuai konvensi. (KONTRAK 2026-08-21, user verbatim: "JANGAN SAMPAI ADA TEXT DENGAN EM DASHES"; koreksi 2026-08-23: en dash TIDAK termasuk larangan.)
 
 ---
 
