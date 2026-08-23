@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/public/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import PublicLayout from "@/layouts/public-layout"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatCurrency, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
@@ -57,7 +57,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
               <CopyButton text={order.order_number} label="No. Order" />
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {order.created_at ? formatDate(order.created_at) : ""}
+              {order.created_at ? formatDateTime(order.created_at) : ""}
             </p>
             <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
               <span>Resi {resiText}</span>
