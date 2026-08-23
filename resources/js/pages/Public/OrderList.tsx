@@ -27,9 +27,9 @@ function CopyButton({ text, label }: { text: string; label: string }) {
         setCopied(true)
         window.setTimeout(() => setCopied(false), 1500)
       }}
-      className="-m-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-primary"
+      className="ml-1 inline-flex size-4 shrink-0 items-center justify-center rounded align-middle text-muted-foreground transition-colors hover:text-primary"
     >
-      <Icon name={copied ? "check" : "copy"} className="size-4" aria-hidden="true" />
+      <Icon name={copied ? "check" : "copy"} className="size-3.5" aria-hidden="true" />
     </button>
   )
 }
