@@ -83,40 +83,42 @@ function OrderCard({ order }: { order: PublicOrder }) {
         )}
       >
         <div className="overflow-hidden">
-          <ul className="divide-y divide-border border-t border-border">
+          <ul>
             {order.items.map((item, index) => {
               const unit = item.line_total ? Number(item.line_total) / item.quantity : null
               return (
-                <li
-                  key={`${item.product_name ?? item.name}-${index}`}
-                  className="flex items-center gap-3 px-4 py-3"
-                >
-                  <span className="flex size-12 min-w-12 flex-none items-center justify-center rounded-lg bg-surface-muted text-xs font-semibold text-muted-foreground">
-                    {item.quantity}x
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-foreground">
-                      {item.product_name ?? item.name}
+                <React.Fragment key={`${item.product_name ?? item.name}-${index}`}>
+                  <li className="flex items-center gap-3 px-4 py-3">
+                    <span className="flex size-12 min-w-12 flex-none items-center justify-center rounded-lg bg-surface-muted text-xs font-semibold text-muted-foreground">
+                      {item.quantity}x
                     </span>
-                    {item.note ? (
-                      <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
-                        Catatan: {item.note}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold text-foreground">
+                        {item.product_name ?? item.name}
                       </span>
-                    ) : null}
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block tabular-nums text-[13px] font-semibold text-foreground">
-                      {item.line_total
-                        ? formatCurrency(item.line_total)
-                        : `${item.quantity} item`}
+                      {item.note ? (
+                        <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
+                          Catatan: {item.note}
+                        </span>
+                      ) : null}
                     </span>
-                    {unit !== null ? (
-                      <span className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
-                        {item.quantity} × {formatCurrency(unit)}
+                    <span className="shrink-0 text-right">
+                      <span className="block tabular-nums text-[13px] font-semibold text-foreground">
+                        {item.line_total
+                          ? formatCurrency(item.line_total)
+                          : `${item.quantity} item`}
                       </span>
-                    ) : null}
-                  </span>
-                </li>
+                      {unit !== null ? (
+                        <span className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
+                          {item.quantity} × {formatCurrency(unit)}
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                  {index < order.items.length - 1 ? (
+                    <li aria-hidden="true" className="mx-4 h-px bg-border" />
+                  ) : null}
+                </React.Fragment>
               )
             })}
           </ul>
