@@ -15,6 +15,7 @@ use App\Services\ProductEngagementService;
 use App\Services\StorePerformanceService;
 use App\Services\WhatsAppService;
 use App\Support\JntReadiness;
+use App\Support\OrderStatusView;
 use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use App\Support\ProductPromotionMetadata;
@@ -146,7 +147,48 @@ class DashboardController extends Controller
                 'count' => Order::where('order_status', 'issue')->count(),
                 'href' => route('admin.orders.index', ['order_status' => 'issue']),
             ],
+            // Queue pembayaran aman berbasis mapping existing (tidak overclaim).
+            // TIDAK membuat queue "Payment verification": payment_status pending saat ini
+            // belum membedakan unpaid vs proof_received (lihat OrderStatusView).
+            [
+                'key' => 'transfer_unpaid',
+                'label' => 'Transfer menunggu pembayaran',
+                'count' => Order::query()
+                    ->where('order_status', 'awaiting_confirmation')
+                    ->where('payment_status', 'pending')
+                    ->where('cod_flag', false)
+                    ->count(),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'awaiting_confirmation',
+                    'payment_status' => 'pending',
+                ]),
+            ],
+            [
+                'key' => 'cod_pending',
+                'label' => 'COD menunggu diproses',
+                'count' => Order::query()
+                    ->where('order_status', 'awaiting_confirmation')
+                    ->where('payment_status', 'pending')
+                    ->where('cod_flag', true)
+                    ->count(),
+                'href' => route('admin.orders.index', ['order_status' => 'awaiting_confirmation']),
+            ],
         ];
+
+        $severityMap = [
+            'confirm_overdue' => 'high',
+            'processing_overdue' => 'high',
+            'delivered_stale' => 'medium',
+            'return_overdue' => 'medium',
+            'issue_orders' => 'high',
+            'transfer_unpaid' => 'medium',
+            'cod_pending' => 'low',
+        ];
+        // Beri 'severity' pada tiap item attention utk tone badge di UI (danger/warning/info).
+        $attention = collect($attention)->map(function (array $item) use ($severityMap): array {
+            $item['severity'] = $severityMap[$item['key']] ?? 'medium';
+            return $item;
+        })->values()->all();
 
         // Nilai plus: alert operasional di luar Figma status-aging.
         $failedMedia = ProductMedia::query()

@@ -46,6 +46,8 @@ interface OrderCard {
   order_number: string
   order_status: string
   payment_status: string
+  payment_bucket?: string
+  payment_label?: string
   payment_method?: string | null
   payment_method_label?: string
   shipping_status?: string
@@ -383,7 +385,7 @@ function OrderCardRow({
               (order.payment_method ? humanize(order.payment_method) : "Metode -")}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-            {statusMeta(order.payment_status).label}
+            {order.payment_label || statusMeta(order.payment_status).label}
           </p>
         </div>
 

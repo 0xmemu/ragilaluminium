@@ -78,6 +78,7 @@ interface AttentionItem {
   label: string
   count: number
   href: string
+  severity?: "high" | "medium" | "low"
 }
 
 interface QuickAction {
@@ -303,6 +304,12 @@ function DensityChip({ label, value }: { label: string; value: React.ReactNode }
   )
 }
 
+const ATTENTION_TONE: Record<string, string> = {
+  high: "bg-destructive",
+  medium: "bg-amber-500",
+  low: "bg-sky-500",
+}
+
 export default function Dashboard({
   greetingName,
   todayLabel,
@@ -402,7 +409,7 @@ export default function Dashboard({
                       className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
-                        <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
+                        <span aria-hidden="true" className={"size-1.5 shrink-0 rounded-full " + (ATTENTION_TONE[item.severity ?? "medium"] ?? "bg-destructive")} />
                         <span className="text-pretty text-[13px] leading-5 text-foreground">
                           {item.label}
                         </span>

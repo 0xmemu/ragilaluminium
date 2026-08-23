@@ -14,6 +14,7 @@ use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
 use App\Support\OrderEventLabels;
+use App\Support\OrderStatusView;
 use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use DomainException;
@@ -337,6 +338,8 @@ class OrderController extends Controller
                 'order_number' => $order->order_number,
                 'order_status' => $order->order_status,
                 'payment_status' => $order->payment_status,
+                'payment_bucket' => OrderStatusView::paymentBucket($order),
+                'payment_label' => OrderStatusView::paymentLabel($order),
                 'shipping_status' => $order->shipping_status,
                 'payment_method' => $order->payment_method,
                 'payment_method_label' => $isCod ? 'COD' : 'Transfer Bank',
@@ -899,6 +902,8 @@ class OrderController extends Controller
             'order_number' => $order->order_number,
             'order_status' => $order->order_status,
             'payment_status' => $order->payment_status,
+            'payment_bucket' => OrderStatusView::paymentBucket($order),
+            'payment_label' => OrderStatusView::paymentLabel($order),
             'shipping_status' => $order->shipping_status,
             'payment_method' => $order->payment_method,
             'payment_method_label' => $isCod ? 'COD' : 'Transfer Bank',

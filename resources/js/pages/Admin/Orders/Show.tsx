@@ -42,6 +42,8 @@ interface OrderDetail {
   order_number: string
   order_status: string
   payment_status: string
+  payment_bucket?: string
+  payment_label?: string
   shipping_status: string
   payment_method?: string | null
   payment_method_label: string
@@ -764,7 +766,9 @@ export default function OrderShow({
           <p className="text-xs font-medium text-muted-foreground">Pembayaran</p>
           <p className="mt-1.5 text-sm font-semibold">{order.payment_method_label}</p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <StatusBadge status={order.payment_status} />
+            <span className="inline-flex min-h-6 items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
+              {order.payment_label || statusMeta(order.payment_status).label}
+            </span>
             <span className="inline-flex min-h-6 items-center rounded-full border border-border px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               {isCod ? "COD" : "Transfer"}
             </span>
