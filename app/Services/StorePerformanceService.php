@@ -6,6 +6,7 @@ use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderReturnCase;
+use App\Models\Payment;
 use App\Models\PerformanceMetric;
 use App\Models\PerformanceVisitorEvent;
 use App\Models\ShippingRecord;
@@ -197,6 +198,19 @@ class StorePerformanceService
             $this->kpi('avg_process_days', 'Rata-rata Waktu Proses', $current['avg_process_days'], $previous['avg_process_days'], 'days'),
         ];
 
+        $paymentsKpis = [
+            $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
+            $this->kpi('cod_paid', 'COD Dibayar', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Nominal payment COD yang selesai pada periode.'),
+            $this->kpi('payment_pending_count', 'Pembayaran Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Jumlah payment record berstatus pending saat ini.'),
+        ];
+
+        $cancellationsKpis = [
+            $this->kpi('cancelled_orders', 'Pesanan Dibatalkan', $current['cancelled_orders'], $previous['cancelled_orders'], 'number', 'Dihitung dari event pembatalan pada periode.'),
+            $this->kpi('cancelled_by_customer', 'Dibatalkan Pelanggan', $current['cancelled_by_customer'], $previous['cancelled_by_customer'], 'number', 'Pembatalan oleh pelanggan (created_by_user_id kosong).'),
+            $this->kpi('cancelled_by_store', 'Dibatalkan Toko', $current['cancelled_by_store'], $previous['cancelled_by_store'], 'number', 'Pembatalan oleh admin/toko (created_by_user_id terisi).'),
+            $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Dihitung dari event pembatalan pada periode dibandingkan pesanan yang masuk fulfillment pada periode.'),
+        ];
+
         return [
             'range' => [
                 'period' => $range['period'],
@@ -231,6 +245,8 @@ class StorePerformanceService
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
                 ['key' => 'traffic', 'title' => 'Kunjungan & Layanan', 'kpis' => $trafficKpis],
                 ['key' => 'operations', 'title' => 'Operasional', 'kpis' => $opsKpis],
+                ['key' => 'payments', 'title' => 'Pembayaran', 'kpis' => $paymentsKpis],
+                ['key' => 'cancellations', 'title' => 'Pembatalan', 'kpis' => $cancellationsKpis],
             ],
             'charts' => [
                 [
@@ -305,6 +321,8 @@ class StorePerformanceService
         $netRevenue = $revenue - $refundAdjustments;
 
         $returnCounts = $this->returnCounts($from, $to);
+        $paymentCounts = $this->paymentCounts($from, $to);
+        $cancellationCounts = $this->cancellationCounts($from, $to);
 
         $visitors = $this->visitorsBetween($from, $to);
         $conversionRate = $visitors > 0 ? round(($orders / $visitors) * 100, 2) : 0.0;
@@ -340,6 +358,17 @@ class StorePerformanceService
             'return_rate_created' => $orders > 0 ? round(($returnCounts['created'] / $orders) * 100, 2) : 0.0,
             'return_rate_completed' => $completedOrders > 0 ? round(($returnCounts['completed'] / $completedOrders) * 100, 2) : 0.0,
             'repeat_order_rate' => $this->repeatOrderRate($newCustomers, $repeatCustomers),
+
+            // Task 2 KPI baru (additive)
+            'payments_received' => round($paymentCounts['received'], 2),
+            'cod_paid' => round($paymentCounts['cod'], 2),
+            'payment_pending_count' => $paymentCounts['pending_count'],
+            'cancelled_orders' => $cancellationCounts['total'],
+            'cancelled_by_customer' => $cancellationCounts['customer'],
+            'cancelled_by_store' => $cancellationCounts['store'],
+            'cancellation_rate' => $orders + $cancellationCounts['total'] > 0
+                ? round(($cancellationCounts['total'] / ($orders + $cancellationCounts['total'])) * 100, 2)
+                : 0.0,
         ];
     }
 
@@ -379,6 +408,36 @@ class StorePerformanceService
             'open' => $open,
             'completed' => $completed,
             'refund' => $refund,
+        ];
+    }
+    /**
+     * KPI pembayaran (Task 2). Event date = payments.paid_at.
+     * payments_received & cod_paid HANYA status=completed (tidak termasuk refunded/cancelled/pending).
+     *
+     * @return array{received: float, cod: float, pending_count: int}
+     */
+    protected function paymentCounts(Carbon $from, Carbon $to): array
+    {
+        $completed = Payment::query()
+            ->where('status', 'completed')
+            ->whereNotNull('paid_at')
+            ->whereBetween('paid_at', [$from, $to])
+            ->get();
+
+        $received = (float) $completed->sum('amount');
+
+        // COD: hanya payment record method=cod yang completed (pakai ledger, bukan sum orders).
+        $cod = (float) $completed->where('payment_method', 'cod')->sum('amount');
+
+        // Pending count: snapshot pending saat ini (status pending sekarang).
+        $pendingCount = (int) Payment::query()
+            ->where('status', 'pending')
+            ->count();
+
+        return [
+            'received' => $received,
+            'cod' => $cod,
+            'pending_count' => $pendingCount,
         ];
     }
     public function series(Carbon $from, Carbon $to, string $granularity, string $metric): array
@@ -454,6 +513,36 @@ class StorePerformanceService
     /**
      * @return list<array<string, mixed>>
      */
+    /**
+     * KPI pembatalan (Task 2). Berbasis event_logs:
+     * event_type='order_status_changed', payload.order_status='cancelled',
+     * timestamp = event_logs.created_at, actor = created_by_user_id.
+     * Dedupe per entity_id (status cancelled terminal -> maks 1, guard retry).
+     *
+     * @return array{total: int, customer: int, store: int}
+     */
+    protected function cancellationCounts(Carbon $from, Carbon $to): array
+    {
+        $events = EventLog::query()
+            ->where('event_type', 'order_status_changed')
+            ->where('entity_type', 'order')
+            ->whereBetween('created_at', [$from, $to])
+            ->get()
+            ->filter(function (EventLog $event): bool {
+                return (string) data_get($event->payload, 'order_status') === 'cancelled';
+            });
+
+        $dedup = $events->unique('entity_id');
+
+        $customer = $dedup->filter(fn (EventLog $e): bool => $e->created_by_user_id === null)->count();
+        $store = $dedup->filter(fn (EventLog $e): bool => $e->created_by_user_id !== null)->count();
+
+        return [
+            'total' => $dedup->count(),
+            'customer' => $customer,
+            'store' => $store,
+        ];
+    }
     public function topProducts(Carbon $from, Carbon $to, int $limit = 20): array
     {
         return OrderItem::query()
