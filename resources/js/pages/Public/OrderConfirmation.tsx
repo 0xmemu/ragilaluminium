@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
-import { displayEtaRangeLabel } from "@/lib/order-eta-display"
 import { routeUrl } from "@/lib/routes"
-import type { OrderEta, PublicOrder } from "@/types"
+import type { PublicOrder } from "@/types"
 
 function paymentMethodLabel(method: string | undefined): string {
   if (method === "transfer") return "Transfer Bank"
@@ -28,12 +27,8 @@ function formatOrderTime(value?: string): string {
 
 export default function OrderConfirmation({
   order,
-  whatsapp_url = null,
-  eta = null,
 }: {
   order: PublicOrder
-  whatsapp_url?: string | null
-  eta?: OrderEta | null
 }) {
   const orderTime = formatOrderTime(order.created_at)
   const [copied, setCopied] = React.useState(false)
@@ -49,7 +44,7 @@ export default function OrderConfirmation({
     ? `Transfer '${formatCurrency(order.total_amount)}' ke nomor rekening yang kami kirim melalui WhatsApp dan kirim bukti pembayaran. Admin akan konfirmasi pesanan setelah pembayaran diterima.`
     : "Anda memilih pembayaran COD. Siapkan pembayaran tunai saat barang tiba. Balas pesan WhatsApp kami agar pesanan segera diproses."
 
-  // §8: bersihkan timer saat unmount - jangan setState setelah halaman ditutup.
+  // bersihkan timer saat unmount - jangan setState setelah halaman ditutup.
   React.useEffect(() => () => {
     if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current)
   }, [])
@@ -84,14 +79,14 @@ export default function OrderConfirmation({
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
             <h1 className="text-base font-bold tracking-tight text-foreground">
-              Pesanan berhasil
+              Pesanan Berhasil
             </h1>
           </div>
         </div>
       </section>
 
       <section className="container-page !px-2.5 pt-6 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] md:!px-8 lg:!px-12 sm:pt-10 lg:pb-8">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-2xl">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
             <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
           </div>
@@ -132,90 +127,28 @@ export default function OrderConfirmation({
             </dl>
           </div>
 
-          {eta ? (
-            <div className="mt-8 rounded-lg border border-border bg-surface p-5 sm:p-6">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Icon name="truck" className="size-5" aria-hidden="true" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-foreground">Estimasi diterima</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Pesanan diperkirakan tiba pada <span className="font-semibold text-foreground">{displayEtaRangeLabel(eta)}</span>.
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <Alert tone={isTransfer ? "info" : "info"} className="mt-8">
+          <Alert tone="info" className="mt-8">
             {noticeText}
           </Alert>
 
-          <div className="mt-8 grid min-w-0 gap-8 lg:grid-cols-[1fr_20rem]">
-            <section>
-              <h2 className="text-2xl font-semibold">Item pesanan</h2>
-              <ul className="mt-4 divide-y divide-border border-y border-border">
-                {order.items.map((item, index) => (
-                  <li key={`${item.product_name}-${index}`} className="flex justify-between gap-4 py-4 text-sm">
-                    <span className="min-w-0">
-                      <span className="font-semibold">{item.product_name ?? item.name}</span>
-                      <span className="tabular-nums mt-1 block text-xs text-muted-foreground">
-                        {item.quantity} item
-                      </span>
-                      {item.note ? (
-                        <span className="mt-1.5 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
-                          <span className="font-semibold">Catatan:</span> {item.note}
-                        </span>
-                      ) : null}
-                    </span>
-                    {item.line_total !== undefined ? (
-                      <span className="tabular-nums shrink-0 font-semibold">
-                        {formatCurrency(item.line_total)}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <aside className="rounded-lg bg-surface-muted p-5">
-              <p className="text-sm text-muted-foreground">Total pesanan</p>
-              <p className="tabular-nums mt-2 text-2xl font-bold">{formatCurrency(order.total_amount)}</p>
-              <Alert tone="info" className="mt-4 bg-surface">
-                {isTransfer
-                  ? "Setelah transfer, kirim bukti pembayaran via WhatsApp agar pesanan diproses."
-                  : "Status berikutnya mengikuti proses pembayaran dan pengiriman."}
-              </Alert>
-            </aside>
+          <div className="mt-8 flex items-center gap-2.5 text-sm text-muted-foreground">
+            <Icon name="check-circle" className="size-5 shrink-0 text-success" aria-hidden="true" />
+            <p>
+              <span className="font-bold text-foreground">Belanja Aman &amp; Terpercaya</span>
+              <span> · Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.</span>
+            </p>
           </div>
 
-          <div className="mt-10 flex flex-wrap gap-3 border-t border-border pt-7">
-            {whatsapp_url ? (
-              <Button asChild size="lg">
-                <a href={whatsapp_url} target="_blank" rel="noreferrer">
-                  <Icon name="whatsapp" className="h-5 w-5" aria-hidden="true" />
-                  {isTransfer ? "Kirim Bukti Via WhatsApp" : "Chat WhatsApp"}
-                </a>
-              </Button>
-            ) : null}
-            <Button asChild size="lg" variant={whatsapp_url ? "secondary" : undefined}>
+          <div className="mt-8 flex flex-wrap gap-3 border-t border-border pt-7">
+            <Button asChild size="lg">
               <Link href={routeUrl("order.status")}>
                 Cek Pesanan
                 <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
               </Link>
             </Button>
             <Button asChild variant="secondary" size="lg">
-              <Link href={routeUrl("home")}>Kembali ke beranda</Link>
+              <Link href={routeUrl("home")}>Beranda</Link>
             </Button>
-          </div>
-
-          <div className="mt-10 flex items-center gap-2.5 border-t border-border pt-6 text-sm text-muted-foreground">
-            <Icon name="check-circle" className="size-5 shrink-0 text-success" aria-hidden="true" />
-            <p>
-              <span className="font-bold text-foreground">Belanja Aman &amp; Terpercaya</span>
-              <span> · Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.</span>
-            </p>
           </div>
         </div>
       </section>
