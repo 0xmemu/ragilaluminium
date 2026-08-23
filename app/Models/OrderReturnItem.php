@@ -12,6 +12,9 @@ class OrderReturnItem extends Model
         'order_item_id',
         'requested_quantity',
         'returned_quantity',
+        'replacement_product_id',
+        'replacement_variant_id',
+        'replacement_quantity',
     ];
 
     protected $casts = [
