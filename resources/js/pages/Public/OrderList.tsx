@@ -2,6 +2,7 @@ import { Head, Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -112,8 +113,16 @@ function OrderCard({ order }: { order: PublicOrder }) {
               return (
                 <React.Fragment key={`${item.product_name ?? item.name}-${index}`}>
                   <li className="flex items-center gap-3 px-4 py-3">
-                    <span className="flex size-12 min-w-12 flex-none items-center justify-center rounded-lg bg-surface-muted text-xs font-semibold text-muted-foreground">
-                      {item.quantity}x
+                    <span className="relative flex size-12 min-w-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted">
+                      <ResponsiveImage
+                        src={item.image ?? null}
+                        alt={item.product_name ?? item.name ?? "Produk"}
+                        wrapperClassName="size-full"
+                        className="size-full object-cover"
+                      />
+                      <span className="absolute -bottom-0.5 -right-0.5 rounded-[3px] bg-foreground/80 px-1 text-[9px] leading-4 font-bold text-background">
+                        {item.quantity}x
+                      </span>
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-semibold text-foreground">

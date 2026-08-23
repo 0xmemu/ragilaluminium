@@ -327,13 +327,18 @@ class OrderController extends Controller
             ]))),
                 'created_at' => $order->created_at?->toIso8601String(),
             'eta' => OrderEta::forOrder($order),
-            'items' => $order->items->map(fn ($i) => [
-                'product_name' => $i->product_name ?: $i->product?->name,
+            'items' => $order->items->map(function ($i) {
+                $img = $i->product?->media()->first();
+
+                return [
+                    'product_name' => $i->product_name ?: $i->product?->name,
                     'product_id' => $i->product_id ? (int) $i->product_id : null,
-                'quantity' => $i->quantity,
-                'line_total' => isset($i->line_total) ? (float) $i->line_total : null,
-                'note' => $i->note ?? null,
-            ])->all(),
+                    'quantity' => $i->quantity,
+                    'line_total' => isset($i->line_total) ? (float) $i->line_total : null,
+                    'note' => $i->note ?? null,
+                    'image' => $img?->urlFor('thumb') ?? $img?->urlFor('card'),
+                ];
+            })->all(),
             'reviews' => $includeReviewMeta ? CmsTestimonial::query()->where('order_id', $order->id)->get(['id', 'order_id', 'product_id', 'rating', 'message', 'media_items', 'moderation_status', 'published', 'verified_at', 'author_type'])->map(fn (CmsTestimonial $review) => ['id' => $review->id, 'product_id' => $review->product_id ? (int) $review->product_id : null, 'rating' => (int) $review->rating, 'message' => (string) $review->message, 'media_items' => $review->mediaPayload(), 'moderation_status' => $review->moderation_status, 'published' => (bool) $review->published, 'verified_purchase' => $review->verified_at !== null, 'customer_authored' => $review->isCustomerAuthored()])->values()->all() : [],
             'shipping' => $shipping ? [
                 'carrier_name' => $shipping->carrier_name,

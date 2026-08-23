@@ -393,6 +393,7 @@ export interface PublicOrderItem {
   product_id?: number | null
   quantity: number
   line_total?: number
+  image?: string | null
   /** Catatan per-produk dari pembeli (keputusan #11). */
   note?: string | null
 }
@@ -433,6 +434,68 @@ export interface PublicOrderTracking {
   timeline?: Array<{ message: string; detail?: string | null; location?: string | null; at?: string | null; source?: string }>
 }
 
+
+export interface TrackingPrimaryStatus {
+  key: string
+  label: string
+  tone: "neutral" | "info" | "success" | "warning" | "danger"
+  headline: string
+  message: string
+  updatedAt?: string
+}
+
+export interface TrackingActionRequired {
+  type: "pay_now" | "await_verification" | "contact_support" | "none"
+  title: string
+  message: string
+  ctaLabel?: string
+  ctaHref?: string
+}
+
+export interface TrackingMilestone {
+  key: string
+  label: string
+  state: "completed" | "current" | "upcoming" | "exception"
+  occurredAt?: string
+  customerMessage?: string
+}
+
+export interface OrderTrackingViewModel {
+  primaryStatus: TrackingPrimaryStatus
+  actionRequired?: TrackingActionRequired | null
+  milestones: TrackingMilestone[]
+  estimate?: { label: string; startAt?: string; endAt?: string; isShipEstimate: boolean } | null
+  recipient: {
+    customerName: string
+    phoneMasked: string
+    phoneFull?: string | null
+    address: string
+    method: string
+  }
+  carrier?: {
+    carrierName: string
+    waybill: string
+    trackingUrl?: string | null
+    lastStatusAt?: string | null
+    paymentTerm: string
+    payAmount: number
+  } | null
+  payment: {
+    paymentMethod: string
+    statusLabel: string
+    statusKey: string
+    total: number
+    paidAt?: string | null
+    bank?: {
+      bank_name: string
+      account_name: string
+      account_number: string
+      notes: string
+    } | null
+  }
+  canShowCarrierDetails: boolean
+}
+
 export interface PublicOrderReview {
   id: number
   product_id?: number | null
@@ -461,6 +524,7 @@ export interface PublicOrder {
   reviews?: PublicOrderReview[]
   shipping?: PublicOrderShipping | null
   tracking?: PublicOrderTracking | null
+  vm?: OrderTrackingViewModel | null
 }
 
 export interface ResourceColumn {
