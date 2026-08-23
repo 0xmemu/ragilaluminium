@@ -421,7 +421,7 @@ export function OrderTrackingDetail({
           <Icon name="package" className="size-4" aria-hidden="true" />
           <h3 className="text-xs font-bold tracking-tight">Item Pesanan</h3>
         </div>
-        <ul className="mt-3 border-y border-border">
+        <ul className="mt-3">
           {order.items.map((item, index) => {
             const unit = item.line_total ? Number(item.line_total) / item.quantity : null
             return (
@@ -436,7 +436,7 @@ export function OrderTrackingDetail({
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold text-foreground">{item.product_name ?? item.name}</span>
+                    <span className="block text-xs font-semibold text-foreground">{item.product_name ?? item.name}</span>
                     {item.note ? (
                       <span className="mt-1 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
                         <span className="font-semibold">Catatan:</span> {item.note}
@@ -444,7 +444,7 @@ export function OrderTrackingDetail({
                     ) : null}
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block tabular-nums font-semibold text-foreground">
+                    <span className="block tabular-nums text-xs font-semibold text-foreground">
                       {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
                     </span>
                     {unit ? (
