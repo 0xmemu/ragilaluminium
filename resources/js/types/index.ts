@@ -450,6 +450,7 @@ export interface PublicOrder {
   order_status: string
   payment_status: string
   payment_method?: string
+  created_at?: string
   shipping_status: string
   total_amount: number
   customer_name: string

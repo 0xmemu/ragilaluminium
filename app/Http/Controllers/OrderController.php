@@ -65,6 +65,7 @@ class OrderController extends Controller
                 'total_amount' => (float) $order->total_amount,
                 'customer_name' => $order->customer_name,
                 'customer_phone' => $order->customer_phone,
+                'created_at' => $order->created_at?->toIso8601String(),
                 'items' => $order->items->map(fn ($i) => [
                     'product_name' => $i->product_name,
                     'product_id' => $i->product_id ? (int) $i->product_id : null,
@@ -305,6 +306,7 @@ class OrderController extends Controller
             'total_amount' => (float) $order->total_amount,
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
+                'created_at' => $order->created_at?->toIso8601String(),
             'eta' => OrderEta::forOrder($order),
             'items' => $order->items->map(fn ($i) => [
                 'product_name' => $i->product_name ?: $i->product?->name,
