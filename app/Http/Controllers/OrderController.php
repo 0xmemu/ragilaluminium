@@ -296,6 +296,7 @@ class OrderController extends Controller
             ?? $order->shippingRecords->first();
 
         $tracking = OrderTrackingPresenter::forOrder($order, $shipping);
+        $viewModel = new \App\Support\OrderTrackingViewModel($order, $shipping);
 
         return [
             'order_number' => $order->order_number,
@@ -306,6 +307,14 @@ class OrderController extends Controller
             'total_amount' => (float) $order->total_amount,
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
+            'shipping_address' => trim(implode(', ', array_filter([
+                $order->shipping_address_line1,
+                $order->shipping_address_line2 ?? null,
+                $order->shipping_village,
+                $order->shipping_district,
+                $order->shipping_city,
+                $order->shipping_province,
+            ]))),
                 'created_at' => $order->created_at?->toIso8601String(),
             'eta' => OrderEta::forOrder($order),
             'items' => $order->items->map(fn ($i) => [
@@ -325,6 +334,7 @@ class OrderController extends Controller
                 'last_status_at' => $shipping->last_status_at?->toIso8601String(),
             ] : null,
             'tracking' => $tracking,
+            'vm' => $viewModel->toArray(),
         ];
     }
 }

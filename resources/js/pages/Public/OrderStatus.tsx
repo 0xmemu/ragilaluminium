@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, formatDate } from "@/lib/format"
 import { displayEtaRangeLabel } from "@/lib/order-eta-display"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
@@ -99,6 +99,23 @@ async function fetchStoredOrder(
   return await response.json() as PublicOrder
 }
 
+function formatShippingLine(order: PublicOrder): string {
+  const courier = order.shipping?.carrier_name
+  const waybill = order.shipping?.waybill_number
+  if (courier && waybill) return `${courier} · Resi ${waybill}`
+  return "Belum ada resi"
+}
+function orderFooterNote(order: PublicOrder): string {
+  const s = order.order_status
+  if (s === "completed") return "Pesanan Anda telah selesai, terimakasih."
+  if (s === "delivered") return "Paket sudah diterima. Terimakasih telah berbelanja."
+  if (s === "shipped") return "Pesanan sedang dalam perjalanan menuju alamat Anda."
+  if (s === "processing") return "Pesanan sedang diproses admin gudang."
+  return order.payment_method === "cod"
+    ? "Pesanan diterima dan masuk antrean produksi. Bayar di tempat saat kurir tiba."
+    : "Pesanan dibuat. Silakan selesaikan pembayaran sesuai instruksi."
+}
+
 function OrderDetail({
   order,
   eyebrow = "Pesanan",
@@ -111,133 +128,133 @@ function OrderDetail({
   cancelBusy?: boolean
 }) {
   return (
-    <div className="animate-reveal">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="animate-reveal overflow-hidden rounded-[14px] border border-border bg-surface">
+      {/* Header: No. Order + tanggal | status badge sinkron */}
+      <div className="flex items-center justify-between gap-3 p-4">
         <div>
-          <p className="text-xs font-semibold tracking-tight text-success">
-            {eyebrow}
+          <p className="text-sm font-semibold text-foreground">{order.order_number}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {formatDate(order.created_at)}
           </p>
-          <h2 className="tabular-nums mt-2 break-all font-mono text-xl font-semibold sm:text-2xl">
-            {order.order_number}
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">Atas nama {order.customer_name}</p>
         </div>
-        <p className="tabular-nums text-xl font-bold sm:text-2xl">
-          {formatCurrency(order.total_amount)}
-        </p>
+        <StatusBadge status={order.order_status} />
       </div>
+      <div className="h-px w-full bg-border" />
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <p className="text-xs font-bold tracking-tight text-muted-foreground">
-            Status pesanan & pengiriman
-          </p>
-          <OrderProgressTracker order={order} />
-          <div className="mt-4 border-t border-border pt-4">
-            <ShippingTrackPanel
-              embedded
-              track={
-                order.tracking ?? {
-                  shipping_status: order.shipping_status,
-                  carrier_name: order.shipping?.carrier_name,
-                  waybill_number: order.shipping?.waybill_number,
-                  record_status: order.shipping?.status,
-                  status_raw: order.shipping?.status_raw,
-                  last_status_at: order.shipping?.last_status_at,
-                  tracking_url: order.shipping?.tracking_url,
-                  order_status: order.order_status,
-                  payment_status: order.payment_status,
-                  payment_method: order.payment_method,
-                  total_amount: order.total_amount,
-                }
-              }
-              timeline={order.tracking?.timeline}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {order.eta ? (
-            <div className="rounded-lg border border-border bg-surface p-5">
-              <p className="text-xs font-bold tracking-tight text-muted-foreground">
-                Estimasi tiba
-              </p>
-              <p className="mt-2 text-base font-bold text-foreground">{displayEtaRangeLabel(order.eta)}</p>
-            </div>
-          ) : null}
-
-          {onCancel && order.order_status === "awaiting_confirmation" ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
-              <p className="text-xs font-bold tracking-tight text-destructive">
-                Batalkan Pesanan
-              </p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Hanya bisa dibatalkan selama status masih menunggu konfirmasi.
-              </p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="mt-3 border-destructive/40 text-destructive hover:bg-destructive/10"
-                disabled={cancelBusy}
-                onClick={onCancel}
-              >
-                {cancelBusy ? "Membatalkan..." : "Batalkan Pesanan"}
-              </Button>
-            </div>
-          ) : null}
-        </div>
+      {/* Detail Pengiriman */}
+      <div className="p-4">
+        <p className="text-[11px] font-semibold text-muted-foreground">Detail Pengiriman</p>
+        {order.shipping_address ? (
+          <p className="mt-1 text-xs text-foreground">{order.shipping_address}</p>
+        ) : null}
+        <p className="mt-1 text-xs text-muted-foreground">{formatShippingLine(order)}</p>
       </div>
+      <div className="h-px w-full bg-border" />
 
-      <section className="mt-8">
-        <h3 className="text-lg font-semibold">Item pesanan</h3>
-        <ul className="mt-4 divide-y divide-border border-y border-border">
-          {order.items.map((item, index) => {
-            const unit = item.line_total ? Number(item.line_total) / item.quantity : null
-            return (
-              <li
-                key={`${item.product_name}-${index}`}
-                className="flex justify-between gap-4 py-4 text-sm"
-              >
-                <span className="min-w-0">
-                  <span className="font-semibold">{item.product_name ?? item.name}</span>
-                  {item.note ? (
-                    <span className="mt-1 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
-                      <span className="font-semibold">Catatan:</span> {item.note}
-                    </span>
-                  ) : null}
+      {/* Item pesanan */}
+      <ul className="divide-y divide-border">
+        {order.items.map((item, index) => {
+          const unit = item.line_total ? Number(item.line_total) / item.quantity : null
+          return (
+            <li key={`${item.product_name ?? item.name}-${index}`} className="flex items-center gap-3 px-4 py-3">
+              <span className="flex size-12 min-w-12 flex-none items-center justify-center rounded-lg bg-surface-muted text-xs font-semibold text-muted-foreground">
+                {item.quantity}x
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-foreground">
+                  {item.product_name ?? item.name}
                 </span>
-                <span className="shrink-0 text-right">
-                  <span className="block tabular-nums font-semibold text-foreground">
-                    {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
+                {item.note ? (
+                  <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
+                    Catatan: {item.note}
                   </span>
-                  {item.line_total ? (
-                    <span className="mt-0.5 block tabular-nums text-xs text-muted-foreground">
-                      {item.quantity} item{unit !== null ? ` × ${formatCurrency(unit)}` : ""}
-                    </span>
-                  ) : null}
+                ) : null}
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block tabular-nums text-[13px] font-semibold text-foreground">
+                  {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
                 </span>
-              </li>
-            )
-          })}
-        </ul>
-      </section>
+                {unit !== null ? (
+                  <span className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
+                    {item.quantity} × {formatCurrency(unit)}
+                  </span>
+                ) : null}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="h-px w-full bg-border" />
 
-      <CustomerReviewForm
-        orderNumber={order.order_number}
-        customerPhone={order.customer_phone ?? ""}
-        orderStatus={order.order_status}
-        items={order.items}
-        reviews={order.reviews}
-      />
+      {/* Status Pengiriman */}
+      <div className="p-4">
+        <p className="text-[11px] font-semibold text-muted-foreground">Status Pengiriman</p>
+        <OrderProgressTracker order={order} />
+      </div>
+      <div className="h-px w-full bg-border" />
 
-      <Alert tone="info" className="mt-8">
-        Pesanan tersimpan di browser ini. Gunakan browser yang sama untuk memantau status berikutnya.
-        Jika status belum berubah, buka ulang halaman beberapa menit lagi atau hubungi tim Ragil.
-      </Alert>
-      <Button asChild variant="secondary" className="mt-4">
-        <Link href={routeUrl("contact")}>Hubungi Kami</Link>
-      </Button>
+      {/* Estimasi tiba (jika ada) */}
+      {order.eta ? (
+        <>
+          <div className="p-4">
+            <p className="text-[11px] font-semibold text-muted-foreground">Estimasi tiba</p>
+            <p className="mt-1 text-sm font-bold text-foreground">
+              {displayEtaRangeLabel(order.eta)}
+            </p>
+          </div>
+          <div className="h-px w-full bg-border" />
+        </>
+      ) : null}
+
+      {/* Total */}
+      <div className="flex items-center justify-between px-4 py-2">
+        <span className="text-[13px] text-foreground">Total {order.items.reduce((s, i) => s + (i.quantity || 0), 0)} unit</span>
+        <span className="tabular-nums text-base font-bold text-primary">
+          {formatCurrency(order.total_amount)}
+        </span>
+      </div>
+      <div className="h-px w-full bg-border" />
+
+      {/* Banner/note */}
+      <div className="px-4 py-3">
+        <p className="text-[11px] text-muted-foreground">{orderFooterNote(order)}</p>
+      </div>
+      <div className="h-px w-full bg-border" />
+
+      {/* Footer aksi */}
+      <div className="flex gap-2.5 p-4">
+        <Button asChild variant="secondary" className="flex-1">
+          <Link href={routeUrl("catalog.index")}>Pesan Lagi</Link>
+        </Button>
+        {onCancel && order.order_status === "awaiting_confirmation" ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10"
+            disabled={cancelBusy}
+            onClick={onCancel}
+          >
+            {cancelBusy ? "Membatalkan..." : "Batalkan Pesanan"}
+          </Button>
+        ) : (
+          <Button asChild variant="secondary" className="flex-1">
+            <Link href={routeUrl("contact")}>Hubungi Kami</Link>
+          </Button>
+        )}
+      </div>
+
+      {order.reviews && order.reviews.length ? (
+        <div className="border-t border-border p-4">
+          <CustomerReviewForm
+            orderNumber={order.order_number}
+            customerPhone={order.customer_phone ?? ""}
+            orderStatus={order.order_status}
+            items={order.items}
+            reviews={order.reviews}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

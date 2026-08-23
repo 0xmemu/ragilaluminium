@@ -455,6 +455,7 @@ export interface PublicOrder {
   total_amount: number
   customer_name: string
   customer_phone?: string | null
+  shipping_address?: string | null
   eta?: OrderEta | null
   items: PublicOrderItem[]
   reviews?: PublicOrderReview[]
