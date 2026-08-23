@@ -291,11 +291,11 @@ export default function OrderStatus({
     const list = sessionList
     // Keep the selected order valid after a lookup response or local restore replaces the list.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveNumber((current) =>
-      list.some((row) => row.order_number === current)
-        ? current
-        : currentOrderNumber,
-    )
+    setActiveNumber((current) => {
+      if (current && list.some((row) => row.order_number === current)) return current
+      // Default ke order pertama di daftar agar kartu langsung tampil (desain Pen).
+      return currentOrderNumber || list[0]?.order_number || ""
+    })
   }, [sessionList, currentOrderNumber])
 
   const form = useForm({
