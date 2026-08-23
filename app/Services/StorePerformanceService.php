@@ -6,6 +6,7 @@ use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderReturnCase;
+use App\Models\Product;
 use App\Models\Payment;
 use App\Models\PerformanceMetric;
 use App\Models\PerformanceVisitorEvent;
@@ -272,6 +273,7 @@ class StorePerformanceService
                 ],
             ],
             'top_products' => $this->topProducts($range['from'], $range['to']),
+            'product_breakdowns' => $this->productPerformanceBreakdowns($range['from'], $range['to']),
             'customers' => $this->customers($range['from'], $range['to']),
             'payment_mix' => $this->paymentMix($range['from'], $range['to']),
         ];
@@ -541,6 +543,112 @@ class StorePerformanceService
             'total' => $dedup->count(),
             'customer' => $customer,
             'store' => $store,
+        ];
+    }
+    /**
+     * Breakdown performa produk (Task 3) — ADDITIVE, tanpa mengubah top_products.
+     *
+     * - most_viewed : ranking performance_metrics product_views (metric_date in period).
+     * - most_clicked: ranking product_clicks.
+     * - best_sellers: SUM(order_items.quantity) dari order REVENUE_STATUSES (created_at in period).
+     *
+     * Produk di-load batch (whereIn id) + mainImage -> tanpa N+1.
+     *
+     * @return array{
+     *   most_viewed: list<array>,
+     *   most_clicked: list<array>,
+     *   best_sellers: list<array>
+     * }
+     */
+    public function productPerformanceBreakdowns(Carbon $from, Carbon $to, int $limit = 8): array
+    {
+        $dateFrom = $from->toDateString();
+        $dateTo = $to->toDateString();
+
+        // --- engagement dari performance_metrics ---
+        $rows = PerformanceMetric::query()
+            ->whereIn('metric_name', ['product_views', 'product_clicks'])
+            ->whereDate('metric_date', '>=', $dateFrom)
+            ->whereDate('metric_date', '<=', $dateTo)
+            ->get(['metric_name', 'metric_value', 'context']);
+
+        $agg = [];
+        foreach ($rows as $row) {
+            $productId = (int) data_get($row->context, 'product_id', 0);
+            if ($productId <= 0) {
+                continue;
+            }
+            if (! isset($agg[$productId])) {
+                $agg[$productId] = ['views' => 0.0, 'clicks' => 0.0];
+            }
+            if ($row->metric_name === 'product_views') {
+                $agg[$productId]['views'] += (float) $row->metric_value;
+            } else {
+                $agg[$productId]['clicks'] += (float) $row->metric_value;
+            }
+        }
+
+        $viewRank = collect($agg)->mapWithKeys(fn ($v, $k) => [$k => (int) round($v['views'])])
+            ->sort()->reverse()->take($limit);
+        $clickRank = collect($agg)->mapWithKeys(fn ($v, $k) => [$k => (int) round($v['clicks'])])
+            ->sort()->reverse()->take($limit);
+
+        // --- best sellers dari order_items ---
+        $bestRows = OrderItem::query()
+            ->select(['order_items.product_id', 'order_items.parent_sku', 'order_items.name',
+                DB::raw('SUM(order_items.quantity) as units'),
+                DB::raw('SUM(order_items.line_total) as revenue'),
+                DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')])
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->whereRaw($this->paidRevenueStatusSql('orders'))
+            ->groupBy('order_items.product_id', 'order_items.parent_sku', 'order_items.name')
+            ->orderByDesc('units')
+            ->limit($limit)
+            ->get();
+
+        $bestSellers = collect($bestRows)->map(fn ($row) => [
+            'product_id' => (int) $row->product_id,
+            'parent_sku' => $row->parent_sku,
+            'name' => $row->name,
+            'units' => (int) $row->units,
+            'revenue' => round((float) $row->revenue, 2),
+            'order_count' => (int) $row->order_count,
+        ])->values()->all();
+
+        // --- batch load produk utk engagement ranking (views/clicks) ---
+        $engagementIds = $viewRank->keys()->merge($clickRank->keys())->unique()->values()->all();
+
+        $products = $engagementIds === []
+            ? collect()
+            : Product::query()->whereIn('id', $engagementIds)->with('mainImage')->get()->keyBy('id');
+
+        $makeEngagement = function (array $ids, array $agg) use ($products): array {
+            $out = [];
+            foreach ($ids as $productId) {
+                $p = $products->get($productId);
+                if (! $p) {
+                    continue;
+                }
+                $views = (int) round($agg[$productId]['views'] ?? 0);
+                $clicks = (int) round($agg[$productId]['clicks'] ?? 0);
+                $out[] = [
+                    'product_id' => $productId,
+                    'parent_sku' => $p->parent_sku,
+                    'name' => $p->name,
+                    'image' => $p->mainImage?->urlFor('thumb') ?? $p->mainImage?->urlFor('card'),
+                    'views' => $views,
+                    'clicks' => $clicks,
+                    'total' => $views + $clicks,
+                ];
+            }
+            return $out;
+        };
+
+        return [
+            'most_viewed' => $makeEngagement($viewRank->keys()->all(), $agg),
+            'most_clicked' => $makeEngagement($clickRank->keys()->all(), $agg),
+            'best_sellers' => $bestSellers,
         ];
     }
     public function topProducts(Carbon $from, Carbon $to, int $limit = 20): array
