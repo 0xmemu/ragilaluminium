@@ -754,8 +754,12 @@ class StorePerformanceService
         $visitorHash = sha1($sessionId);
 
         $views = PerformanceMetric::query()->firstOrCreate(
-            ['metric_date' => $today, 'metric_name' => 'storefront_page_views'],
-            ['metric_value' => 0, 'created_at' => $now]
+            [
+                'metric_date' => $today,
+                'metric_name' => 'storefront_page_views',
+                'context_hash' => PerformanceMetric::hashContext(null),
+            ],
+            ['metric_value' => 0, 'context' => null, 'created_at' => $now]
         );
         $views->increment('metric_value');
 
@@ -765,8 +769,12 @@ class StorePerformanceService
             ['visited_at' => $now]
         );
         $unique = PerformanceMetric::query()->firstOrCreate(
-            ['metric_date' => $today, 'metric_name' => 'storefront_unique_visitors'],
-            ['metric_value' => 0, 'created_at' => $now]
+            [
+                'metric_date' => $today,
+                'metric_name' => 'storefront_unique_visitors',
+                'context_hash' => PerformanceMetric::hashContext(null),
+            ],
+            ['metric_value' => 0, 'context' => null, 'created_at' => $now]
         );
         if ($event->wasRecentlyCreated || (int) $unique->metric_value === 0) {
             $unique->increment('metric_value');

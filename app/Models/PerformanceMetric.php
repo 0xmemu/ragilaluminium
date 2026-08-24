@@ -13,6 +13,7 @@ class PerformanceMetric extends Model
         'metric_name',
         'metric_value',
         'context',
+        'context_hash',
         'created_at',
     ];
 
@@ -22,4 +23,29 @@ class PerformanceMetric extends Model
         'context' => 'array',
         'created_at' => 'datetime',
     ];
+
+    /**
+     * Hash kanonik untuk context (kunci JSON diurutkan).
+     * Null/empty context -> md5('') agar tetap tercakup unique index.
+     */
+    public static function hashContext(mixed $context): string
+    {
+        if (! is_array($context) || $context === []) {
+            return md5('');
+        }
+
+        return md5(json_encode(self::canonicalize($context)));
+    }
+
+    protected static function canonicalize(array $data): array
+    {
+        ksort($data);
+        foreach ($data as $k => $v) {
+            if (is_array($v)) {
+                $data[$k] = self::canonicalize($v);
+            }
+        }
+
+        return $data;
+    }
 }

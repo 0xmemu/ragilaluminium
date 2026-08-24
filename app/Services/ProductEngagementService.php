@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PerformanceMetric;
 use App\Models\Product;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Carbon\Carbon;
 
 /**
@@ -141,11 +142,14 @@ class ProductEngagementService
         }
 
         $today = now()->toDateString();
+        $context = ['product_id' => $productId];
+        $hash = PerformanceMetric::hashContext($context);
 
+        // whereDate utk konsisten (sqlite menyimpan datetime; mysql menyimpan date).
         $metric = PerformanceMetric::query()
-            ->where('metric_date', $today)
+            ->whereDate('metric_date', $today)
             ->where('metric_name', $metricName)
-            ->where('context->product_id', $productId)
+            ->where('context_hash', $hash)
             ->first();
 
         if ($metric) {
@@ -154,12 +158,22 @@ class ProductEngagementService
             return;
         }
 
-        PerformanceMetric::query()->create([
-            'metric_date' => $today,
-            'metric_name' => $metricName,
-            'metric_value' => 1,
-            'context' => ['product_id' => $productId],
-            'created_at' => now(),
-        ]);
+        try {
+            PerformanceMetric::query()->create([
+                'metric_date' => $today,
+                'metric_name' => $metricName,
+                'metric_value' => 1,
+                'context' => $context,
+                'context_hash' => $hash,
+                'created_at' => now(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Race: baris dibuat worker lain - cukup increment baris tsb.
+            PerformanceMetric::query()
+                ->whereDate('metric_date', $today)
+                ->where('metric_name', $metricName)
+                ->where('context_hash', $hash)
+                ->first()?->increment('metric_value');
+        }
     }
 }

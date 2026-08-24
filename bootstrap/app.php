@@ -19,6 +19,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         EventServiceProvider::class,
     ])
+    // Matikan auto-discovery listener framework (base EventServiceProvider akan
+    // men-scan app/Listeners dan mendaftarkan setiap listener DUA KALI:
+    // satu dari $listen provider ini, satu lagi sebagai Class@handle discovery -
+    // berakibat event di-proses 2x (double WhatsApp/engagement). Semua listener
+    // domain sudah didaftarkan eksplisit di EventServiceProvider::$listen.
+    ->withEvents(
+        discover: false,
+    )
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
