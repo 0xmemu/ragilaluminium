@@ -79,7 +79,7 @@ class ProductEngagementContractTest extends TestCase
         $this->assertSame(2, $item['clicks']);
         $this->assertSame(12, $item['total']);
         $this->assertNull($item['image'], 'tanpa main image → null');
-        $this->assertStringContainsString('/admin/products/', $item['href']);
+        $this->assertStringContainsString('/admin/kelola/produk/', $item['href']);
     }
 
     public function test_top_products_sorts_by_total_then_views(): void
