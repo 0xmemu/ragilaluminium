@@ -53,6 +53,11 @@ class HandleInertiaRequests extends Middleware
                         'email' => $request->user()->email,
                     ]
                     : null,
+                // Capability contract (Foundation Track A): hanya utk authenticated admin,
+                // fail-closed di frontend; BUKAN security (server action tetap authorize sendiri).
+                'capabilities' => $request->user()?->isAdmin()
+                    ? \App\Support\AdminCapabilities::for($request->user())
+                    : null,
             ],
             'flash' => [
                 // Guard hasSession: saat URL tidak dikenal, middleware web (StartSession)

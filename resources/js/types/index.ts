@@ -38,6 +38,9 @@ export interface RouteNavItem {
   active?: string[]
   params?: Record<string, string | number | boolean | null>
   hash?: string
+  /** Capability admin yang dibutuhkan utk menampilkan menu (Foundation Track A). */
+  capability?: string
+  children?: RouteNavItem[]
 }
 
 export interface MegaMenuItem {

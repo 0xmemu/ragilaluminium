@@ -5,6 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
 import { clearReadyCount, getReadyCount, onReadyCountChange } from "@/lib/media-live"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 import type { SharedPageProps } from "@/types"
 
 interface AdminNavItemData {
@@ -13,6 +14,8 @@ interface AdminNavItemData {
   params?: Record<string, string | number | boolean | null>
   icon?: string
   active?: string[]
+  /** Capability admin yang dibutuhkan utk menampilkan item (Foundation Track A). */
+  capability?: string
   /** Filter tambahan berbasis query string (mis. type=flash_sale pada route yang sama). */
   activeType?: "store" | "flash_sale"
   children?: AdminNavItemData[]
@@ -22,6 +25,7 @@ function AdminBrand() {
   return (
     <Link
       href={routeUrl("admin.dashboard")}
+      prefetch={["hover", "click"]}
       className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition hover:bg-muted"
       aria-label="Ragil Aluminium, ke dashboard admin"
     >
@@ -69,6 +73,7 @@ function AdminNavLink({
   return (
     <Link
       href={routeUrl(item.route, item.params)}
+      prefetch={["hover", "click"]}
       onClick={() => {
         if (item.route === "admin.media.library") clearReadyCount()
         onNavigate?.()
@@ -178,7 +183,16 @@ function AdminNavGroup({
 
 export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const { nav } = usePage<SharedPageProps>().props
+  const capabilities = useAdminCapabilities()
   const groups = Object.entries(nav?.admin ?? {})
+
+  function canShowItem(item: AdminNavItemData): boolean {
+    if (!item.capability) return true
+    if (item.children?.length) {
+      return can(item.capability, capabilities) || item.children.some((child) => can(child.capability ?? item.capability ?? "", capabilities))
+    }
+    return can(item.capability, capabilities)
+  }
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -190,7 +204,10 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
         className="scrollbar-none flex-1 overflow-y-auto px-2.5 py-3"
         aria-label="Navigasi admin"
       >
-        {groups.map(([key, group], groupIndex) => (
+        {groups.map(([key, group], groupIndex) => {
+          const visibleItems = group.items.filter(canShowItem)
+          if (!visibleItems.length) return null
+          return (
           <div key={key} className={cn(groupIndex > 0 && "mt-4")}>
             {group.title ? (
               <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
@@ -198,7 +215,7 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
               </p>
             ) : null}
             <ul className="space-y-0.5">
-              {group.items.map((item: AdminNavItemData) =>
+              {visibleItems.map((item: AdminNavItemData) =>
                 item.children?.length ? (
                   <AdminNavGroup key={item.label} item={item} onNavigate={onNavigate} />
                 ) : (
@@ -207,7 +224,8 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
               )}
             </ul>
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       <div className="shrink-0 border-t border-border p-2.5">

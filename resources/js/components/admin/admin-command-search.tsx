@@ -9,6 +9,7 @@ import {
 } from "@/components/admin/ui/dialog"
 import { Icon } from "@/components/shared/icon"
 import { filterAdminSearchHits, flattenAdminNav, type AdminSearchHit } from "@/lib/admin-search"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 import { cn } from "@/lib/utils"
 import type { SharedPageProps } from "@/types"
 
@@ -28,11 +29,15 @@ export function AdminCommandSearch({
   onOpenChange: (open: boolean) => void
 }) {
   const { nav } = usePage<SharedPageProps>().props
+  const capabilities = useAdminCapabilities()
   const [query, setQuery] = React.useState("")
   const [activeIndex, setActiveIndex] = React.useState(0)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
-  const allHits = React.useMemo(() => flattenAdminNav(nav?.admin), [nav?.admin])
+  const allHits = React.useMemo(
+    () => flattenAdminNav(nav?.admin).filter((hit) => (hit.capability ? can(hit.capability, capabilities) : true)),
+    [nav?.admin, capabilities],
+  )
   const hits = React.useMemo(() => filterAdminSearchHits(allHits, query), [allHits, query])
 
   React.useEffect(() => {
@@ -76,7 +81,6 @@ export function AdminCommandSearch({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        hideClose
         className="top-[22%] w-[min(calc(100%-2rem),36rem)] -translate-y-0 gap-0 overflow-hidden p-0"
       >
         <DialogTitle className="sr-only">Cari di admin</DialogTitle>

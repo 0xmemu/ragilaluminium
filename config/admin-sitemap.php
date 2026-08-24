@@ -74,11 +74,11 @@ return [
     'navigation' => [
         'core' => [
             'items' => [
-                ['label' => 'Beranda', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => ['admin.dashboard']],
-                ['label' => 'Performa Toko', 'route' => 'admin.analytics.store-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.store-performance', 'admin.analytics.store-performance.*']],
-                ['label' => 'Pesanan', 'route' => 'admin.orders.index', 'icon' => 'clipboard-list', 'active' => ['admin.orders.*']],
-                ['label' => 'Pembayaran', 'route' => 'admin.payments.index', 'icon' => 'hand-coins', 'active' => ['admin.payments.*', 'admin.orders.payments']],
-                ['label' => 'Pengiriman', 'route' => 'admin.shipping.index', 'icon' => 'truck', 'active' => ['admin.shipping.*']],
+                ['label' => 'Beranda', 'route' => 'admin.dashboard', 'capability' => 'dashboard.view', 'icon' => 'layout-dashboard', 'active' => ['admin.dashboard']],
+                ['label' => 'Performa Toko', 'route' => 'admin.analytics.store-performance', 'capability' => 'analytics.view', 'icon' => 'trending-up', 'active' => ['admin.analytics.store-performance', 'admin.analytics.store-performance.*']],
+                ['label' => 'Pesanan', 'route' => 'admin.orders.index', 'capability' => 'orders.view', 'icon' => 'clipboard-list', 'active' => ['admin.orders.*']],
+                ['label' => 'Pembayaran', 'route' => 'admin.payments.index', 'capability' => 'payments.view', 'icon' => 'hand-coins', 'active' => ['admin.payments.*', 'admin.orders.payments']],
+                ['label' => 'Pengiriman', 'route' => 'admin.shipping.index', 'capability' => 'shipping.view', 'icon' => 'truck', 'active' => ['admin.shipping.*']],
             ],
         ],
         'produk' => [
@@ -88,6 +88,7 @@ return [
                     'label' => 'Kelola Produk',
                     'route' => 'admin.products.index',
                     'icon' => 'package',
+                    'capability' => 'products.view',
                     'active' => ['admin.products.*', 'admin.categories.*', 'admin.model-products.*', 'admin.sub-models.*', 'admin.variants.*', 'admin.attributes.*', 'admin.imports.*', 'admin.media.*', 'admin.products.popularity-boosts.*'],
                     'children' => [
                         ['label' => 'Produk', 'route' => 'admin.products.index', 'active' => ['admin.products.index', 'admin.products.create', 'admin.products.store', 'admin.products.edit', 'admin.products.update', 'admin.products.show', 'admin.products.archive', 'admin.products.unarchive', 'admin.products.publish', 'admin.products.duplicate', 'admin.products.export', 'admin.products.variants.*', 'admin.products.attributes.*', 'admin.products.media.*']],
@@ -119,17 +120,17 @@ return [
                         ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'active' => ['admin.announcements.*']],
                     ],
                 ],
-                ['label' => 'Biaya COD', 'route' => 'admin.cod-settings.edit', 'icon' => 'hand-coins', 'active' => ['admin.cod-settings.*']],
+                ['label' => 'Biaya COD', 'route' => 'admin.cod-settings.edit', 'capability' => 'cod_settings.view', 'icon' => 'hand-coins', 'active' => ['admin.cod-settings.*']],
             ],
         ],
         'pelanggan_komunikasi' => [
             'title' => 'Pelanggan & Komunikasi',
             'items' => [
-                ['label' => 'Customer', 'route' => 'admin.customers.index', 'icon' => 'users', 'active' => ['admin.customers.*']],
-                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*']],
+                ['label' => 'Customer', 'route' => 'admin.customers.index', 'capability' => 'customers.view', 'icon' => 'users', 'active' => ['admin.customers.*']],
+                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*']],
                 [
                     'label' => 'WhatsApp',
-                    'route' => 'admin.whatsapp.dashboard',
+                    'route' => 'admin.whatsapp.dashboard', 'capability' => 'whatsapp.view',
                     'icon' => 'message-circle',
                     'active' => ['admin.whatsapp.dashboard', 'admin.whatsapp.messages.*', 'admin.whatsapp.connection', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
                 ],
@@ -138,7 +139,7 @@ return [
         'pengaturan_website' => [
             'title' => 'Pengaturan Website',
             'items' => [
-                ['label' => 'Beranda Toko', 'route' => 'admin.beranda.index', 'icon' => 'layout-grid', 'active' => ['admin.beranda.*']],
+                ['label' => 'Beranda Toko', 'route' => 'admin.beranda.index', 'capability' => 'storefront_content.view', 'icon' => 'layout-grid', 'active' => ['admin.beranda.*']],
 
                 ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
@@ -152,11 +153,11 @@ return [
         'akun_sistem' => [
             'title' => 'Akun & Sistem',
             'items' => [
-                ['label' => 'Log Aktivitas', 'route' => 'admin.activity-logs.index', 'icon' => 'history', 'active' => ['admin.activity-logs.*']],
-                ['label' => 'Notifikasi', 'route' => 'admin.notifications.index', 'icon' => 'bell', 'active' => ['admin.notifications.*']],
-                ['label' => 'Profil Saya', 'route' => 'admin.profile.edit', 'icon' => 'user', 'active' => ['admin.profile.*']],
-                ['label' => 'Manajemen Admin', 'route' => 'admin.users.index', 'icon' => 'user-cog', 'active' => ['admin.users.*']],
-                ['label' => 'Pengaturan Sistem', 'route' => 'admin.settings.index', 'icon' => 'settings', 'active' => ['admin.settings.*']],
+                ['label' => 'Log Aktivitas', 'route' => 'admin.activity-logs.index', 'capability' => 'activity_logs.view', 'icon' => 'history', 'active' => ['admin.activity-logs.*']],
+                ['label' => 'Notifikasi', 'route' => 'admin.notifications.index', 'capability' => 'notifications.view', 'icon' => 'bell', 'active' => ['admin.notifications.*']],
+                ['label' => 'Profil Saya', 'route' => 'admin.profile.edit', 'capability' => 'profile.view', 'icon' => 'user', 'active' => ['admin.profile.*']],
+                ['label' => 'Manajemen Admin', 'route' => 'admin.users.index', 'capability' => 'users.view', 'icon' => 'user-cog', 'active' => ['admin.users.*']],
+                ['label' => 'Pengaturan Sistem', 'route' => 'admin.settings.index', 'capability' => 'settings.view', 'icon' => 'settings', 'active' => ['admin.settings.*']],
             ],
         ],
     ],
