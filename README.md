@@ -24,6 +24,32 @@ php artisan serve
 php artisan queue:work --queue=media,default
 ```
 
+## Admin Management
+
+Buat user admin via CLI (tidak ada UI pendaftaran admin):
+
+```bash
+# Interaktif (prompt nama, username, email, role, password)
+php artisan admin:create
+
+# Non-interaktif
+php artisan admin:create \
+  --name="Owner" \
+  --username="owner" \
+  --email="owner@ragilaluminium.com" \
+  --password="<min-8-karakter>" \
+  --role="super_admin"
+
+# Output sukses
+Admin user 'owner' created successfully!
+```
+
+- Validasi: username unik, email unik (bila diisi), role enum
+  (`super_admin`, `admin`, `staff`, `viewer`), password min 8 karakter.
+- Password di-hash bcrypt; user dibuat dengan status `active`.
+- Best practice: password kuat, minimalkan jumlah `super_admin`.
+- Detail lanjutan: `docs/admin-management.md` (di repo lokal workspace).
+
 ## Docs
 
 - `AGENTS.md` + `docs/ORCHESTRATION.md` — agent rules
