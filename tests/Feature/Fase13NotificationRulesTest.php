@@ -7,6 +7,8 @@ use App\Models\ImportJob;
 use App\Models\MediaAsset;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderReturnCase;
+use App\Models\ShippingRecord;
 use App\Models\User;
 use App\Support\ImportFailureNotifier;
 use App\Support\MediaFailureNotifier;
@@ -137,6 +139,15 @@ class Fase13NotificationRulesTest extends TestCase
             'cod_flag' => false,
         ]);
 
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'F13-RT-'.strtoupper(uniqid()),
+            'shipping_cost' => 10000,
+            'status' => 'delivered',
+            'last_status_at' => now(),
+        ]);
+
         $item = OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $product->id,
@@ -153,10 +164,8 @@ class Fase13NotificationRulesTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.orders.returns.store', $order), [
-                'reason' => 'cacat produksi',
+                'reason' => 'rusak',
                 'customer_notes' => 'barang rusak',
-                'resolution_type' => 'refund',
-                'refund_amount' => 100000,
                 'items' => [[
                     'order_item_id' => $item->id,
                     'requested_quantity' => 1,
@@ -164,10 +173,12 @@ class Fase13NotificationRulesTest extends TestCase
             ])
             ->assertRedirect(route('admin.orders.show', $order));
 
+        $case = OrderReturnCase::where('order_id', $order->id)->sole();
         $this->assertDatabaseHas('admin_notifications', [
             'type' => 'return_created',
-            'related_type' => Order::class,
-            'related_id' => $order->id,
+            'related_type' => OrderReturnCase::class,
+            'related_id' => $case->id,
+            'order_id' => $order->id,
         ]);
         $this->assertSame('return_in_process', $order->fresh()->order_status);
     }

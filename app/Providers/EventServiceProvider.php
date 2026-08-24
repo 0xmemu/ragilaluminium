@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Events\OrderCreated;
+use App\Events\OrderReturnCreated;
 use App\Events\OrderCancelled;
 use App\Events\OrderProcessingStarted;
 use App\Events\PaymentConfirmed;
@@ -46,6 +47,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         OrderCancelled::class => [
             CreateAdminNotifications::class . '@notifyOrderCancelled',
+        ],
+        OrderReturnCreated::class => [
+            CreateAdminNotifications::class . '@notifyOrderReturnCreated',
         ],
     ];
 }

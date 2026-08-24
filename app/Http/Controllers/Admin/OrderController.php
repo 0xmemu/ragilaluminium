@@ -698,15 +698,8 @@ class OrderController extends Controller
             return $case;
         });
 
-        AdminNotification::create([
-            'type' => 'return_created',
-            'related_type' => Order::class,
-            'related_id' => $order->id,
-            'order_id' => $order->id,
-            'title' => 'Retur baru '.$order->order_number,
-            'body' => 'Alasan: '.$case->reason,
-            'href' => route('admin.orders.show', $order),
-        ]);
+        // Sprint 2.1: notifikasi admin dipancarkan via event (idempoten per return_case_id).
+        \App\Events\OrderReturnCreated::dispatch($order, $case);
 
         $this->whatsapp->sendTemplateMessage(
             $order->customer_phone,
