@@ -26,8 +26,10 @@ function formatOrderTime(value?: string): string {
 // Recipe visual mengikuti patokan canvas ILOTu-COD (b3meZk) / ILOTu-Transfer (y6gSKM).
 export default function OrderConfirmation({
   order,
+  whatsapp_url = null,
 }: {
   order: PublicOrder
+  whatsapp_url?: string | null
 }) {
   const orderTime = formatOrderTime(order.created_at)
   const isTransfer = order.payment_method === "transfer"
@@ -70,7 +72,7 @@ export default function OrderConfirmation({
           <div className="flex flex-col items-center pt-2 text-center">
             <Icon name="check-circle" weight="fill" className="size-[100px] text-[#2a734d]" aria-hidden="true" />
             <p className="mt-8 text-xl font-bold tracking-tight text-[#121212]">
-              Pesanan anda berhasil dibuat!
+              Pesanan Anda berhasil dibuat!
             </p>
             <p className="mt-4 w-full text-[13px] leading-[1.78] text-[#666666]">{helperCopy}</p>
           </div>
@@ -118,14 +120,24 @@ export default function OrderConfirmation({
             </div>
           </div>
 
-          {/* CTA: duaduanya outline/ghost */}
-          <div className="mt-5 flex flex-col gap-3 border-t border-[#dee3e0] pt-7 sm:flex-row">
-            <Button asChild variant="secondary" size="lg" className="flex-1">
-              <Link href={routeUrl("order.status")}>Cek Pesanan</Link>
-            </Button>
-            <Button asChild variant="secondary" size="lg" className="flex-1">
-              <Link href={routeUrl("home")}>Beranda</Link>
-            </Button>
+          {/* CTA: WhatsApp primer, lalu Cek Pesanan & Beranda */}
+          <div className="mt-5 flex flex-col gap-3 border-t border-[#dee3e0] pt-7">
+            {whatsapp_url ? (
+              <Button asChild size="lg" className="w-full">
+                <a href={whatsapp_url} target="_blank" rel="noreferrer">
+                  <Icon name="whatsapp" className="size-5" aria-hidden="true" />
+                  Buka WhatsApp
+                </a>
+              </Button>
+            ) : null}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild variant="secondary" size="lg" className="flex-1">
+                <Link href={routeUrl("order.status")}>Cek Pesanan</Link>
+              </Button>
+              <Button asChild variant="secondary" size="lg" className="flex-1">
+                <Link href={routeUrl("home")}>Beranda</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>

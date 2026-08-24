@@ -44,6 +44,36 @@ class OrderConfirmationTest extends TestCase
                 ->where('payment_instructions', null));
     }
 
+    public function test_whatsapp_url_contains_order_reference_for_transfer_and_cod(): void
+    {
+        [$tf] = $this->makeOrder('transfer', 'RA-CONF-TF-2', 100000);
+
+        foreach (['RA-CONF-TF-2' => $tf] as $number => $order) {
+            $this->withSession(['confirmed_orders' => [$number]])
+                ->get(route('order.confirmation', $number))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->component('Public/OrderConfirmation')
+                    ->where('whatsapp_url', fn ($url) => is_string($url)
+                        && str_contains($url, 'wa.me/')
+                        && str_contains($url, rawurlencode($number))));
+        }
+    }
+
+    public function test_confirmation_props_include_whatsapp_cta_data(): void
+    {
+        [$order] = $this->makeOrder('transfer', 'RA-CONF-TF-3', 100000);
+
+        $this->withSession(['confirmed_orders' => [$order->order_number]])
+            ->get(route('order.confirmation', $order->order_number))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/OrderConfirmation')
+                // Copy yang dibekukan Phase A2/B: COD bayar saat diterima, transfer rekening via WA.
+                ->where('order.payment_method', 'transfer')
+                ->where('whatsapp_url', fn ($url) => is_string($url) && $url !== ''));
+    }
+
     public function test_dashboard_status_chips_use_order_status_query(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
