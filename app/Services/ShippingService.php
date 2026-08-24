@@ -537,10 +537,13 @@ class ShippingService
                     ['shipping_status' => $shippingStatus],
                 );
 
-                // Kontrak FINAL: COD lunas saat COMPLETED (PaymentService::
-                // completeCodAtCompletion), BUKAN saat delivered. Jalur legacy
-                // markDeliveredAndSettleCod (paid saat delivered) dihapus dari
-                // cascade utk konsistensi payment ledger & retur eligibility.
+                // Kontrak (revisi 2026-08-25): COD lunas saat shipping
+                // DELIVERED via ReturnService::markDeliveredAndSettleCod
+                // (primary; idempotent; menulis payments record).
+                if ($transitioned && $target === 'delivered') {
+                    $this->returns->markDeliveredAndSettleCod($order->fresh());
+                }
+
                 return;
             }
 

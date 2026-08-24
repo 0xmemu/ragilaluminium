@@ -189,13 +189,31 @@ class PaymentService
     }
 
     /**
-     * Settle COD exactly when fulfillment reaches completed.
+     * @deprecated Jalur LEGACY "COD lunas saat order completed" (fallback
+     *             backward-compatibility). PRIMARY sejak revisi 2026-08-25:
+     *             ReturnService::markDeliveredAndSettleCod - COD lunas saat
+     *             shipping DELIVERED (webhook J&T / refresh).
      *
-     * This is deliberately system-owned: no admin user is required and the
-     * audit event remains idempotent under repeated status requests.
+     * Fallback ini hanya menyentuh order completed yang BELUM tercatat paid
+     * (mis. order lama pra-revisi). Idempotent: bila sudah paid (via Path 2),
+     * tidak ada penulisan ulang / double-count ledger.
      */
     public function completeCodAtCompletion(Order $order): Payment
     {
+        // Sudah lunas (Path 2 di delivered): kembalikan record existing,
+        // tanpa menulis apa pun - kecuali order paid tanpa record (self-heal).
+        if ($order->payment_status === 'paid') {
+            $existing = $order->payments()
+                ->where('payment_method', 'cod')
+                ->where('status', 'completed')
+                ->latest('id')
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+        }
+
         $payment = DB::transaction(function () use ($order): Payment {
             $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
             if ($lockedOrder->order_status !== 'completed') {
@@ -203,11 +221,15 @@ class PaymentService
             }
 
             if ($lockedOrder->payment_status === 'paid') {
-                return $lockedOrder->payments()
+                $existing = $lockedOrder->payments()
                     ->where('payment_method', 'cod')
                     ->where('status', 'completed')
                     ->latest('id')
-                    ->firstOrFail();
+                    ->first();
+
+                if ($existing) {
+                    return $existing;
+                }
             }
 
             $payment = $lockedOrder->payments()

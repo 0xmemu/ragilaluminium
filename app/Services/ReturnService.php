@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\EventLog;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\ShippingRecord;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * ReturnService — service & validasi bisnis retur (Sprint 2, blueprint
@@ -25,10 +28,13 @@ class ReturnService
     public const RETURN_WINDOW_HOURS = 48;
 
     /**
-     * @deprecated Jalur LEGACY "COD lunas saat delivered". Kontrak final:
-     *             COD lunas saat COMPLETED (PaymentService::completeCodAtCompletion).
-     *             Method dipertahankan hanya utk kompatibilitas command backfill
-     *             historis (retur:backfill-cod-paid); TIDAK dipanggil dari alur aktif.
+     * PRIMARY (kontrak revisi 2026-08-25): COD lunas saat shipping DELIVERED.
+     *
+     * Dipanggil dari ShippingService::cascadeOrderStatus saat status -> delivered
+     * (webhook J&T / refresh). Idempotent:
+     *  - skip non-COD, non-delivered, atau yang sudah paid;
+     *  - menulis/update SATU payment record (status completed, paid_at = waktu
+     *    delivered) lalu menandai order paid - dalam satu transaction.
      */
     public function markDeliveredAndSettleCod(Order $order, bool $persist = true): bool
     {
@@ -41,14 +47,83 @@ class ReturnService
             return false;
         }
 
-        if ($persist) {
-            $order->update([
+        if (! $persist) {
+            return true;
+        }
+
+        DB::transaction(function () use ($order): void {
+            $locked = Order::query()->lockForUpdate()->find($order->id);
+            if (! $locked) {
+                return;
+            }
+
+            $isCod = $locked->cod_flag || $locked->payment_method === 'cod';
+            $isDelivered = $locked->order_status === 'delivered'
+                || $locked->shipping_status === 'delivered';
+            if (! $isCod || ! $isDelivered || $locked->payment_status === 'paid') {
+                return;
+            }
+
+            $payment = $locked->payments()
+                ->where('payment_method', 'cod')
+                ->whereIn('status', ['pending', 'completed'])
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+
+            if (! $payment) {
+                $payment = Payment::create([
+                    'order_id' => $locked->id,
+                    'payment_method' => 'cod',
+                    'amount' => $locked->total_amount,
+                    'status' => 'pending',
+                ]);
+            }
+
+            $paidAt = $this->codDeliveredAt($locked) ?? now();
+
+            $payment->update([
+                'amount' => $locked->total_amount,
+                'status' => 'completed',
+                'paid_at' => $payment->paid_at ?? $paidAt,
+                'created_by_user_id' => null,
+                'updated_by_user_id' => null,
+            ]);
+
+            $locked->update([
                 'payment_status' => 'paid',
                 'updated_by_user_id' => null,
             ]);
-        }
+
+            EventLog::create([
+                'event_type' => 'system/cod_settlement',
+                'entity_type' => 'order',
+                'entity_id' => $locked->id,
+                'payload' => [
+                    'payment_id' => $payment->id,
+                    'payment_method' => 'cod',
+                    'amount' => (float) $locked->total_amount,
+                    'source' => 'shipping_delivered',
+                ],
+                'created_by_user_id' => null,
+                'created_at' => now(),
+            ]);
+        });
 
         return true;
+    }
+
+    /**
+     * Waktu delivered terakhir dari shipping record (jumlahkan waktu kejadian).
+     */
+    protected function codDeliveredAt(Order $order): ?Carbon
+    {
+        $shipping = $order->shippingRecords
+            ->first(fn ($r) => $r->status === 'delivered' && $r->last_status_at !== null);
+
+        return $shipping?->last_status_at !== null
+            ? Carbon::parse($shipping->last_status_at)
+            : null;
     }
 
     /**
