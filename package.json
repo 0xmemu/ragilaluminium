@@ -18,6 +18,7 @@
     "test:php": "node -e \"const {spawnSync}=require('child_process'); const isWin=process.platform==='win32'; const cmd=isWin?'wsl': 'php'; const args=isWin?['php','vendor/bin/phpunit']:['vendor/bin/phpunit']; const r=spawnSync(cmd,args,{stdio:'inherit'}); process.exit(r.status??1)\""
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@inertiajs/react": "^2.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-dialog": "^1.1.4",
@@ -26,13 +27,22 @@
     "@radix-ui/react-select": "^2.1.4",
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-tabs": "^1.1.21",
+    "@radix-ui/react-tooltip": "^1.2.16",
     "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "dompurify": "^3.4.12",
+    "laravel-echo": "^2.4.0",
+    "lucide-react": "^1.33.0",
+    "pusher-js": "^8.6.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.6.0"
+    "react-hook-form": "^7.85.0",
+    "recharts": "^2.15.4",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

@@ -10,6 +10,7 @@
         "ext-gd": "*",
         "inertiajs/inertia-laravel": "^3.1",
         "laravel/framework": "^11.31",
+        "laravel/reverb": "^1.11",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.9",
         "league/flysystem-aws-s3-v3": "^3.29",
