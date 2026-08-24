@@ -216,6 +216,68 @@ function Carrier({ order, onCopyWaybill }: { order: PublicOrder; onCopyWaybill?:
   )
 }
 
+function JnTCard({ order, onCopyWaybill }: { order: PublicOrder; onCopyWaybill?: (w: string) => void }) {
+  const carrier = order.vm?.carrier
+  const hasTimeline = order.tracking?.timeline && order.tracking.timeline.length > 0
+  return (
+    <section className="order-tracking__jnt-card rounded-[14px] border border-[#dee3e0] bg-surface p-5">
+      {/* Logo J&T + No. Resi */}
+      <div className="flex items-center gap-3">
+        <span className="flex size-12 items-center justify-center rounded-md bg-[#2b734e]/10">
+          <Icon name="truck" className="size-6 text-[#2b734e]" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">No. Resi</p>
+          {carrier?.waybill ? (
+            <button
+              type="button"
+              onClick={() => onCopyWaybill?.(carrier.waybill)}
+              className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-foreground hover:underline"
+            >
+              {carrier.waybill}
+              <Icon name="copy" className="size-3.5" aria-hidden="true" />
+            </button>
+          ) : (
+            <p className="font-semibold text-foreground">Belum Dikirim</p>
+          )}
+        </div>
+      </div>
+
+      {/* Status summary 4-step (di dalam kartu J&T, sesuai sO2R6) */}
+      <div className="mt-5">
+        <StatusSummary order={order} />
+      </div>
+
+      {/* Lacak Pesanan (milestone vertikal) */}
+      <p className="mt-5 text-xs font-bold tracking-tight text-muted-foreground">Lacak Pesanan</p>
+      <div className="mt-4">
+        <Milestones order={order} />
+      </div>
+
+      {/* Timeline J&T (sinkronisasi tracking webhook) - jangan diubah datanya */}
+      {hasTimeline ? <ExpandableTimeline order={order} /> : null}
+    </section>
+  )
+}
+
+function TrustAssurance() {
+  return (
+    <section className="order-tracking__trust rounded-[14px] border border-[#dee3e0] bg-[#f7f8f7] p-4">
+      <div className="flex items-start gap-3">
+        <span className="flex size-6 shrink-0 items-center justify-center text-[#333]">
+          <Icon name="shield-check" className="size-6" aria-hidden="true" />
+        </span>
+        <div>
+          <p className="text-xs font-bold text-[#333]">Belanja Aman &amp; Terpercaya</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function ExpandableTimeline({ order }: { order: PublicOrder }) {
   const timeline = order.tracking?.timeline
   if (!timeline || timeline.length === 0) return null
@@ -431,35 +493,32 @@ function StatusSummary({ order }: { order: PublicOrder }) {
   if (!milestones || milestones.length === 0) return null
   const steps = milestones.slice(0, 4)
   return (
-    <section className="order-tracking__status-summary rounded-[14px] border border-[#dee3e0] bg-surface p-4">
-      <ol className="flex items-center justify-between gap-2">
-        {steps.map((step, i) => {
-          const done = step.state === "completed" || step.state === "current"
-          return (
-            <li key={step.key + i} className="flex flex-1 flex-col items-center gap-2 text-center">
-              <span
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-full border-2",
-                  done ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground",
-                )}
-              >
-                {done ? <Icon name="check" className="size-4" weight="bold" /> : <span className="size-1.5 rounded-full bg-current" />}
-              </span>
-              <span className={cn("text-[11px] leading-tight", done ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                {step.label}
-              </span>
-            </li>
-          )
-        })}
-      </ol>
-    </section>
+    <ol className="order-tracking__status-summary flex items-center justify-between gap-2 px-4">
+      {steps.map((step, i) => {
+        const done = step.state === "completed" || step.state === "current"
+        return (
+          <li key={step.key + i} className="flex flex-1 flex-col items-center gap-2 text-center">
+            <span
+              className={cn(
+                "flex size-10 items-center justify-center rounded-full border-2",
+                done ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground",
+              )}
+            >
+              {done ? <Icon name="check" className="size-4" weight="bold" /> : <span className="size-1.5 rounded-full bg-current" />}
+            </span>
+            <span className={cn("text-[11px] leading-tight", done ? "font-semibold text-foreground" : "text-muted-foreground")}>
+              {step.label}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
-function DetailPengiriman({ order, onCopyWaybill }: { order: PublicOrder; onCopyWaybill?: (w: string) => void }) {
+function DetailPengiriman({ order }: { order: PublicOrder }) {
   const recipient = order.vm?.recipient
-  const carrier = order.vm?.carrier
-  if (!recipient && !carrier) return null
+  if (!recipient) return null
   return (
     <section className="order-tracking__detail-pengiriman rounded-[14px] border border-[#dee3e0] bg-surface p-4">
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -482,23 +541,6 @@ function DetailPengiriman({ order, onCopyWaybill }: { order: PublicOrder; onCopy
               <dd className="text-right text-foreground">{recipient.address}</dd>
             </div>
           </>
-        ) : null}
-        {carrier ? (
-          <div className="flex justify-between gap-4 border-t border-border pt-3">
-            <dt className="text-muted-foreground">Metode pengiriman</dt>
-            <dd className="text-right font-medium text-foreground">
-              {carrier.carrierName}
-              {carrier.waybill ? (
-                <button
-                  type="button"
-                  onClick={() => onCopyWaybill?.(carrier.waybill)}
-                  className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                >
-                  <Icon name="copy" className="size-3.5" aria-hidden="true" /> Salin resi
-                </button>
-              ) : null}
-            </dd>
-          </div>
         ) : null}
       </dl>
     </section>
@@ -523,10 +565,10 @@ export function OrderTrackingDetail({
 
   return (
     <div className="order-tracking space-y-4">
-      {/* Card ringkasan pesanan (gaya /order, persis sO2R6) */}
+      {/* 1. Card ringkasan pesanan (gaya /order, persis sO2R6) */}
       <OrderSummaryCard order={order} copied={copied} onCopy={handleCopy} />
 
-      {/* Action banner + cancel (jika perlu) */}
+      {/* 2. Action banner + cancel (jika perlu) */}
       <ActionBanner order={order} />
       {onCancel && order.order_status === "awaiting_confirmation" ? (
         <div className="order-tracking__cancel rounded-[14px] border border-destructive/30 bg-destructive/5 p-4">
@@ -547,25 +589,17 @@ export function OrderTrackingDetail({
         </div>
       ) : null}
 
-      {/* Status summary 4-step (di atas tracker) */}
-      <StatusSummary order={order} />
+      {/* 3. Detail Pengiriman (penerima saja) */}
+      <DetailPengiriman order={order} />
 
-      {/* Lacak Pesanan (milestone vertikal) */}
-      <div className="order-tracking__milestones rounded-[14px] border border-[#dee3e0] bg-surface p-5">
-        <p className="text-xs font-bold tracking-tight text-muted-foreground">Lacak Pesanan</p>
-        <div className="mt-4">
-          <Milestones order={order} />
-        </div>
-      </div>
+      {/* 4. Kartu J&T: logo + resi + StatusSummary 4-step + Lacak Pesanan + timeline */}
+      <JnTCard order={order} onCopyWaybill={(w) => handleCopy(w)} />
 
-      {/* Detail Pengiriman (gabungan penerima + ekspedisi) */}
-      <DetailPengiriman order={order} onCopyWaybill={(w) => handleCopy(w)} />
-
-      {/* Expandable timeline J&T (sinkronisasi tracking) - jangan diubah */}
-      <ExpandableTimeline order={order} />
-
-      {/* Support */}
+      {/* 5. Support */}
       <SupportAction />
+
+      {/* 6. Trust "Belanja Aman & Terpercaya" */}
+      <TrustAssurance />
     </div>
   )
 }
