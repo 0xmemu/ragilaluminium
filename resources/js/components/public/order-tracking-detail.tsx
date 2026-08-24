@@ -522,22 +522,14 @@ export function OrderTrackingDetail({
   }
 
   return (
-    <div className="order-tracking space-y-6">
-      {/* Card ringkasan pesanan (gaya /order) */}
+    <div className="order-tracking space-y-4">
+      {/* Card ringkasan pesanan (gaya /order, persis sO2R6) */}
       <OrderSummaryCard order={order} copied={copied} onCopy={handleCopy} />
 
-      {/* Status summary 4-step */}
-      <StatusSummary order={order} />
-
-      {/* Action banner */}
+      {/* Action banner + cancel (jika perlu) */}
       <ActionBanner order={order} />
-
-      {/* Status hero */}
-      <StatusHero order={order} />
-
-      {/* Cancel CTA (hanya saat masih menunggu konfirmasi && user punya akses) */}
       {onCancel && order.order_status === "awaiting_confirmation" ? (
-        <div className="order-tracking__cancel rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+        <div className="order-tracking__cancel rounded-[14px] border border-destructive/30 bg-destructive/5 p-4">
           <p className="text-sm font-bold text-destructive">Batalkan Pesanan</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Hanya bisa dibatalkan selama status masih menunggu konfirmasi.
@@ -555,97 +547,22 @@ export function OrderTrackingDetail({
         </div>
       ) : null}
 
-      {/* Milestone + current detail */}
-      <div className="order-tracking__milestones rounded-lg border border-border bg-surface p-5">
-        <p className="text-xs font-bold tracking-tight text-muted-foreground">Perkembangan pesanan</p>
+      {/* Status summary 4-step (di atas tracker) */}
+      <StatusSummary order={order} />
+
+      {/* Lacak Pesanan (milestone vertikal) */}
+      <div className="order-tracking__milestones rounded-[14px] border border-[#dee3e0] bg-surface p-5">
+        <p className="text-xs font-bold tracking-tight text-muted-foreground">Lacak Pesanan</p>
         <div className="mt-4">
           <Milestones order={order} />
         </div>
       </div>
 
-      {/* Estimate */}
-      <Estimate order={order} />
-
       {/* Detail Pengiriman (gabungan penerima + ekspedisi) */}
       <DetailPengiriman order={order} onCopyWaybill={(w) => handleCopy(w)} />
 
-      {/* Expandable timeline */}
+      {/* Expandable timeline J&T (sinkronisasi tracking) - jangan diubah */}
       <ExpandableTimeline order={order} />
-
-      {/* Payment */}
-      <PaymentSummary order={order} />
-
-      {/* Items */}
-      <section className="order-tracking__items">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Icon name="package" className="size-4" aria-hidden="true" />
-          <h3 className="text-xs font-bold tracking-tight">Item Pesanan</h3>
-        </div>
-        <ul className="mt-3">
-          {order.items.map((item, index) => {
-            const unit = item.line_total ? Number(item.line_total) / item.quantity : null
-            return (
-              <React.Fragment key={`${item.product_name ?? item.name}-${index}`}>
-                <li className="flex items-center gap-3 px-4 py-3">
-                  <span className="relative flex size-12 min-w-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted">
-                    <ResponsiveImage
-                      src={item.image ?? null}
-                      alt={item.product_name ?? item.name ?? "Produk"}
-                      wrapperClassName="size-full"
-                      className="size-full object-cover"
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    {item.parent_sku ? (
-                      <Link
-                        href={routeUrl("product.show", { parent_sku: item.parent_sku })}
-                        className="block text-xs font-semibold text-foreground hover:text-primary"
-                      >
-                        {item.product_name ?? item.name}
-                      </Link>
-                    ) : (
-                      <span className="block text-xs font-semibold text-foreground">
-                        {item.product_name ?? item.name}
-                      </span>
-                    )}
-                    {item.note ? (
-                      <span className="mt-1 block max-w-full break-words rounded-md bg-accent/60 px-2 py-1 text-[11px] leading-4 text-accent-foreground">
-                        <span className="font-semibold">Catatan:</span> {item.note}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block tabular-nums text-xs font-semibold text-foreground">
-                      {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
-                    </span>
-                    {unit ? (
-                      <span className="mt-0.5 block tabular-nums text-xs text-muted-foreground">
-                        {item.quantity} × {formatCurrency(unit)}
-                      </span>
-                    ) : null}
-                  </span>
-                </li>
-                {index < order.items.length - 1 ? (
-                  <li aria-hidden="true" className="mx-4 h-px bg-border" />
-                ) : null}
-              </React.Fragment>
-            )
-          })}
-        </ul>
-      </section>
-
-      {/* Review */}
-      {order.reviews && order.reviews.length > 0 ? (
-        <div className="order-tracking__reviews rounded-lg border border-border bg-surface-muted/40 p-4">
-          <CustomerReviewForm
-            orderNumber={order.order_number}
-            customerPhone={order.customer_phone ?? ""}
-            orderStatus={order.order_status}
-            items={order.items}
-            reviews={order.reviews}
-          />
-        </div>
-      ) : null}
 
       {/* Support */}
       <SupportAction />
