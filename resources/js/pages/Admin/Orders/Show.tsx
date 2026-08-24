@@ -22,6 +22,7 @@ import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { statusMeta } from "@/lib/status"
 import { liveConnectionLabel, useAdminLiveOrders } from "@/lib/admin-live-events"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 
 interface OrderItemRow {
   id: number
@@ -905,20 +906,22 @@ export default function OrderShow({
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
-    const [showAllEvents, setShowAllEvents] = React.useState(false)
-    const [showAllWa, setShowAllWa] = React.useState(false)
-    const { printing, handlePrint } = usePrintAddress()
-    const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
-    const { state: liveState, lastEventAt } = useAdminLiveOrders({
-      onOrderUpdated: (event) => {
-        if (event.order_id === order.id) {
-          // Tandai data mungkin basi; trigger refresh horizontal.
-          // Detail: tidak menimpa state form yang sedang diedit.
-          // Saat ini hanya hint; full granular update bisa ditambah
-          // saat Echo client tersedia.
-        }
-      },
-    })
+  const [showAllEvents, setShowAllEvents] = React.useState(false)
+  const [showAllWa, setShowAllWa] = React.useState(false)
+  const { printing, handlePrint } = usePrintAddress()
+  const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
+  const capabilities = useAdminCapabilities()
+  const [liveChangedNotice, setLiveChangedNotice] = React.useState<string | null>(null)
+  const { state: liveState, lastEventAt } = useAdminLiveOrders({
+    onOrderUpdated: (event) => {
+      if (event.order_id === order.id) {
+        // Jangan timpa form yang sedang diedit; tampilkan notice + Refresh manual.
+        setLiveChangedNotice(
+          "Pesanan diperbarui oleh aktivitas lain. Perbarui setelah menyimpan pekerjaan Anda.",
+        )
+      }
+    },
+  })
   const [adminNotesBusy, setAdminNotesBusy] = React.useState(false)
 
   function saveAdminNotes(next: string) {
@@ -1068,10 +1071,42 @@ export default function OrderShow({
 
 
       {/* Aksi utama */}
+      {liveChangedNotice ? (
+        <div
+          role="status"
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/25 bg-warning/5 px-3 py-2 text-xs text-muted-foreground"
+        >
+          <span className="flex items-center gap-2">
+            <Icon name="info" className="size-3.5 shrink-0 text-warning" aria-hidden="true" />
+            {liveChangedNotice}
+          </span>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => setLiveChangedNotice(null)}
+              className="rounded-md border border-border bg-surface px-2 py-1 font-semibold text-foreground transition hover:bg-muted"
+            >
+              Tutup
+            </button>
+            <button
+              type="button"
+              onClick={() => router.get(window.location.pathname, {}, { preserveScroll: true })}
+              className="rounded-md border border-border bg-surface px-2 py-1 font-semibold text-foreground transition hover:bg-muted"
+            >
+              Perbarui
+            </button>
+          </div>
+        </div>
+      ) : null}
       <Card className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
         {primaryAction?.next_status ? (
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Button disabled={statusBusy} onClick={runPrimary} className="shrink-0">
+            <Button
+              disabled={statusBusy || !can("orders.process", capabilities)}
+              onClick={runPrimary}
+              className="shrink-0"
+              title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
+            >
               {statusBusy ? "Memproses..." : primaryAction.label}
             </Button>
             {primaryAction.hint ? (
@@ -1109,7 +1144,7 @@ export default function OrderShow({
             <Link href={link.href}>{link.label}</Link>
           </Button>
         ))}
-        {order.order_status !== "cancelled" ? (
+        {order.order_status !== "cancelled" && can("orders.cancel", capabilities) ? (
           <ConfirmAction
             trigger={
               <Button variant="ghost" className="text-destructive hover:text-destructive">

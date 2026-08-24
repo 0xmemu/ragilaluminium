@@ -21,6 +21,7 @@ import { routeUrl } from "@/lib/routes"
 import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
+import { useAdminLiveOrders } from "@/lib/admin-live-events"
 
 interface OrderItemPreview {
   id: number
@@ -251,7 +252,7 @@ function OrderCardRow({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-colors hover:border-foreground/10">
+    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-soft transition-colors hover:border-foreground/10">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-[10px] font-semibold text-muted-foreground">
@@ -278,16 +279,6 @@ function OrderCardRow({
               <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
             </a>
           ) : null}
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="inline-flex h-8 w-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-            aria-label={`Cetak detail konsumen ${order.customer_name}`}
-            title="Cetak detail konsumen"
-          >
-            <Icon name="printer" className="size-4" aria-hidden="true" />
-            <span className="hidden text-xs font-medium xl:inline">Print</span>
-          </button>
           <span className="hidden sm:inline">
             {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
@@ -295,17 +286,29 @@ function OrderCardRow({
             <span className="hidden md:inline">· {order.customer_phone}</span>
           ) : null}
         </div>
-        <Link
-          href={order.href}
-          className="group/order inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-foreground transition hover:text-primary"
-        >
-          {order.order_number}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            aria-label={`Cetak detail konsumen ${order.customer_name}`}
+            title="Cetak detail konsumen"
+          >
+            <Icon name="printer" className="size-3.5" aria-hidden="true" />
+            <span className="hidden xl:inline">Print</span>
+          </button>
+          <Link
+            href={order.href}
+            className="group/order inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-foreground transition hover:text-primary"
+          >
+            {order.order_number}
           <Icon
             name="chevron-right"
             className="size-3 text-muted-foreground transition group-hover/order:text-primary"
             aria-hidden="true"
           />
         </Link>
+      </div>
       </div>
 
       <div className={cn(orderRowGridClass, "gap-y-3 divide-y divide-border p-4 xl:divide-y-0")}>
@@ -548,6 +551,16 @@ export default function OrdersIndex({
     date_to: activeDatePreset === "range" ? dateTo : "",
   }
 
+  // Live-event-ready: adapter tidak aktif (broadcast runtime belum ada).
+  // Saat aktif nanti, event utk order pada hasil/filter saat ini memicu notice.
+  const [liveNotice, setLiveNotice] = React.useState<string | null>(null)
+  const { state: liveState } = useAdminLiveOrders({
+    onOrderUpdated: (event) => {
+      // Jangan sisipkan row palsu; cukup tandai data baru tersedia.
+      setLiveNotice(`Ada pembaruan pesanan ${event.order_number}. Perbarui daftar.`)
+    },
+  })
+
   function visit(params: Record<string, string | undefined>) {
     const next: Record<string, string> = {}
     const merged = {
@@ -575,6 +588,45 @@ export default function OrdersIndex({
     })
   }
 
+  const hasActiveFilters = React.useMemo(() => {
+    return (
+      (activeStatus && activeStatus !== "all") ||
+      (activePaymentStatus && activePaymentStatus !== "all") ||
+      (activeShippingStatus && activeShippingStatus !== "all") ||
+      (activeOlderThan && activeOlderThan !== "all") ||
+      (activeDatePreset && activeDatePreset !== "all" && activeDatePreset !== "today") ||
+      searchQuery?.trim()
+    )
+  }, [activeStatus, activePaymentStatus, activeShippingStatus, activeOlderThan, activeDatePreset, searchQuery])
+
+  const activeFilters = React.useMemo(() => {
+    const chips: Array<{ label: string; clear: () => void }> = []
+    if (activeStatus && activeStatus !== "all") {
+      const tab = tabs.find((t) => t.key === activeStatus)
+      if (tab) chips.push({ label: tab.label, clear: () => visit({ order_status: "all" }) })
+    }
+    if (activePaymentStatus && activePaymentStatus !== "all") {
+      chips.push({ label: `Pembayaran: ${humanize(activePaymentStatus)}`, clear: () => visit({ payment_status: "all" }) })
+    }
+    if (activeShippingStatus && activeShippingStatus !== "all") {
+      chips.push({ label: `Pengiriman: ${humanize(activeShippingStatus)}`, clear: () => visit({ shipping_status: "all" }) })
+    }
+    if (activeOlderThan && activeOlderThan !== "all") {
+      chips.push({ label: `Umur: ${humanize(activeOlderThan)}`, clear: () => visit({ older_than: "all" }) })
+    }
+    if (activeDatePreset && activeDatePreset !== "all" && activeDatePreset !== "today") {
+      chips.push({ label: `Tanggal: ${humanize(activeDatePreset)}`, clear: () => visit({ date_preset: "today" }) })
+    }
+    if (searchQuery?.trim()) {
+      chips.push({ label: `Cari: ${searchQuery}`, clear: () => visit({ q: "" }) })
+    }
+    return chips
+  }, [activeStatus, activePaymentStatus, activeShippingStatus, activeOlderThan, activeDatePreset, searchQuery, tabs, visit])
+
+  function resetAllFilters() {
+    router.get(routeUrl("admin.orders.index"), {}, { preserveState: false, preserveScroll: true })
+  }
+
   function submitSearch(event: React.FormEvent) {
     event.preventDefault()
     visit({ q: q.trim() })
@@ -596,7 +648,7 @@ export default function OrdersIndex({
       {/* Tabs status — segmented control ala AI app */}
       <div className="scrollbar-none overflow-x-auto">
         <div
-          className="inline-flex items-center gap-0.5 rounded-xl border border-border bg-card p-1"
+          className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1"
           role="tablist"
           aria-label="Filter status pesanan"
         >
@@ -769,6 +821,53 @@ export default function OrdersIndex({
 
       {/* Daftar pesanan */}
       <div className="mt-4">
+        {liveNotice ? (
+          <div
+            role="status"
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-info/20 bg-info/5 px-3 py-2 text-xs text-muted-foreground"
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="info" className="size-3.5 shrink-0 text-info" aria-hidden="true" />
+              {liveNotice}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setLiveNotice(null)
+                router.get(routeUrl("admin.orders.index"), {}, { preserveScroll: true })
+              }}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 font-semibold text-foreground transition hover:bg-muted"
+            >
+              <Icon name="refresh" className="size-3" aria-hidden="true" />
+              Perbarui daftar
+            </button>
+          </div>
+        ) : null}
+
+        {activeFilters.length ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Filter aktif
+            </span>
+            {activeFilters.map((filter) => (
+              <span
+                key={filter.label}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground"
+              >
+                {filter.label}
+                <button
+                  type="button"
+                  onClick={filter.clear}
+                  className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                  aria-label={`Hapus filter ${filter.label}`}
+                >
+                  <Icon name="x" className="size-3" aria-hidden="true" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+
         {orders.length ? (
           <>
             <p className="mb-2.5 text-xs font-medium text-muted-foreground">
@@ -786,11 +885,22 @@ export default function OrdersIndex({
               </div>
             </div>
           </>
+        ) : hasActiveFilters ? (
+          <EmptyState
+            icon="clipboard-list"
+            title="Tidak ada pesanan yang cocok"
+            description="Coba ubah atau hapus filter untuk melihat pesanan lain."
+            action={
+              <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                Reset Filter
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon="clipboard-list"
             title="Belum ada pesanan"
-            description="Pesanan yang cocok dengan filter saat ini akan tampil di sini."
+            description="Pesanan yang masuk akan tampil di sini."
           />
         )}
       </div>
