@@ -308,11 +308,36 @@ class OrderController extends Controller
         $tracking = OrderTrackingPresenter::forOrder($order, $shipping);
         $viewModel = new \App\Support\OrderTrackingViewModel($order, $shipping);
 
+        // Phase D: blok retur customer-safe (tanpa internal reason; reason sdh
+        // dirancang customer-facing di ReturnService::canCreateReturn).
+        $returnBlock = [
+            'eligible' => false,
+            'reason' => null,
+            'deadline' => null,
+        ];
+        $deliveredRecord = $shipping?->status === 'delivered' ? $shipping : $order->shippingRecords
+            ->first(fn ($r) => $r->status === 'delivered' && $r->last_status_at !== null);
+        $deliveredAt = $deliveredRecord?->last_status_at;
+        if ($deliveredAt) {
+            $eligibility = app(\App\Services\ReturnService::class)
+                ->canCreateReturn($order, $deliveredRecord);
+            $returnBlock = [
+                'eligible' => (bool) ($eligibility['allowed'] ?? false),
+                'reason' => $eligibility['reason'] ?? null,
+                'deadline' => $eligibility['deadline'] ?? null,
+            ];
+        }
+
         $whatsappUrl = null;
+        $returnWhatsappUrl = null;
         $businessPhone = PhoneNumber::normalize(\App\Support\ConsultationWhatsApp::businessPhone());
         if ($businessPhone) {
             $whatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(sprintf(
                 'Halo Ragil Aluminium, saya mau bertanya soal order %s. Mohon bantuannya.',
+                $order->order_number,
+            ));
+            $returnWhatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(sprintf(
+                'Halo Ragil Aluminium, saya mau mengajukan retur untuk order %s. Mohon info prosedurnya.',
                 $order->order_number,
             ));
         }
@@ -359,8 +384,11 @@ class OrderController extends Controller
             'tracking' => $tracking,
             'vm' => $viewModel->toArray(),
             'whatsapp_url' => $whatsappUrl,
+            'delivered_at' => $deliveredAt?->toIso8601String(),
+            'return_block' => $returnBlock,
+            'return_whatsapp_url' => $returnWhatsappUrl,
             // Lapisan publik: sanitasi metadata internal yang bukan informasi customer.
-            'tracking_public' => self::publicTrackingSanitized($tracking),
+            'tracking_public' => self::publicTrackingSanitized($tracking, $shipping),
 
         ];
     }
@@ -371,14 +399,24 @@ class OrderController extends Controller
      * @param  array<string, mixed>  $tracking
      * @return array<string, mixed>
      */
-    private static function publicTrackingSanitized(array $tracking): array
+    private static function publicTrackingSanitized(array $tracking, ?ShippingRecord $shipping = null): array
     {
         unset($tracking['status_raw'], $tracking['record_status']);
 
+        // Raw provider text (dari fallback timeline shipping record) tidak boleh
+        // sampai ke UI customer; ganti dgn label aman generik.
+        $rawValues = collect($shipping ? [$shipping->status_raw] : [])
+            ->filter(fn ($v) => filled($v))
+            ->values();
+
         if (isset($tracking['timeline']) && is_array($tracking['timeline'])) {
-            $tracking['timeline'] = array_map(static function (array $entry): array {
+            $tracking['timeline'] = array_map(static function (array $entry) use ($rawValues): array {
+                $message = (string) ($entry['message'] ?? '');
+                if ($rawValues->contains($message)) {
+                    $message = 'Status pengiriman diperbarui.';
+                }
                 $safe = [
-                    'message' => (string) ($entry['message'] ?? ''),
+                    'message' => $message,
                     'at' => $entry['at'] ?? null,
                 ];
                 // Hapus metadata internal; unknown scan selalu label aman dari presenter.

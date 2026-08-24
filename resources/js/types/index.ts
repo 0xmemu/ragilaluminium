@@ -526,6 +526,13 @@ export interface PublicOrder {
   shipping?: PublicOrderShipping | null
   tracking?: PublicOrderTracking | null
   whatsapp_url?: string | null
+  delivered_at?: string | null
+  return_block?: {
+    eligible: boolean
+    reason?: string | null
+    deadline?: string | null
+  } | null
+  return_whatsapp_url?: string | null
   vm?: OrderTrackingViewModel | null
 }
 
