@@ -107,7 +107,14 @@ class OrderService
                             if ($variant->stock < $qty) {
                                 throw new \DomainException("Stok {$variant->variant_sku} tidak cukup (tersisa {$variant->stock}).");
                             }
-                            $variant->decrement('stock', $qty);
+                            \App\Support\StockLedger::apply(
+                                $variant,
+                                -$qty,
+                                'order_out',
+                                'checkout',
+                                null,
+                                'stok dikunci saat order dibuat (id pesanan belum terbit)',
+                            );
                         }
 
                         $lineSubtotal = $unitPrice * $qty;
@@ -331,7 +338,13 @@ class OrderService
                         ->find((int) $variantId);
 
                     if ($variant) {
-                        $variant->increment('stock', (int) $quantity);
+                        \App\Support\StockLedger::apply(
+                            $variant,
+                            (int) $quantity,
+                            'order_cancel_in',
+                            'order',
+                            $lockedOrder->id,
+                        );
                     }
                 }
 
@@ -552,7 +565,13 @@ class OrderService
                     throw new \DomainException("Stok {$variant->variant_sku} tidak cukup (tersisa {$variant->stock}).");
                 }
                 if ($delta !== 0) {
-                    $variant->increment('stock', -$delta);
+                    \App\Support\StockLedger::apply(
+                        $variant,
+                        -$delta,
+                        'order_adjust',
+                        'order',
+                        $locked->id,
+                    );
                 }
             }
             foreach ($oldItems as $oldId => $oldItem) {
@@ -560,7 +579,13 @@ class OrderService
                 if ($kept || $oldItem->productVariant === null) {
                     continue;
                 }
-                $oldItem->productVariant->increment('stock', (int) $oldItem->quantity);
+                \App\Support\StockLedger::apply(
+                    $oldItem->productVariant,
+                    (int) $oldItem->quantity,
+                    'order_item_removed_in',
+                    'order',
+                    $locked->id,
+                );
             }
 
             // Voucher: terapkan ulang bila masih valid pada subtotal baru.
