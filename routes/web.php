@@ -106,7 +106,6 @@ Route::get('/search', function (Request $request) {
 Route::get('/product/{parent_sku}', [ProductController::class, 'show'])->name('product.show');
 Route::post('/product/{product}/engage', [ProductEngagementController::class, 'store'])
     ->middleware('throttle:30,1')
-    ->middleware('throttle:120,1')
     ->name('product.engage');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');

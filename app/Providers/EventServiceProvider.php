@@ -7,6 +7,7 @@ use App\Events\OrderReturnCreated;
 use App\Events\OrderCancelled;
 use App\Events\OrderProcessingStarted;
 use App\Events\PaymentConfirmed;
+use App\Events\ProductEngagementRecorded;
 use App\Events\ShippingStatusUpdated;
 use App\Listeners\CreateAdminNotifications;
 use App\Listeners\EvaluateProductPopularityThresholds;
@@ -16,6 +17,7 @@ use App\Listeners\SendOrderCreatedWhatsApp;
 use App\Listeners\SendOrderProcessingWhatsApp;
 use App\Listeners\SendPaymentConfirmedWhatsApp;
 use App\Listeners\SendShippingStatusWhatsApp;
+use App\Listeners\TrackProductEngagement;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\QueueBusy;
@@ -50,6 +52,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         OrderReturnCreated::class => [
             CreateAdminNotifications::class . '@notifyOrderReturnCreated',
+        ],
+        ProductEngagementRecorded::class => [
+            TrackProductEngagement::class,
         ],
     ];
 }

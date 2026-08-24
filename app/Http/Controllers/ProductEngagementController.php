@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ProductEngagementRecorded;
 use App\Models\Product;
-use App\Services\ProductEngagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductEngagementController extends Controller
 {
-    public function store(Request $request, Product $product, ProductEngagementService $engagement): JsonResponse
+    public function store(Request $request, Product $product): JsonResponse
     {
         if ($product->status !== 'active') {
             abort(404);
@@ -19,11 +19,9 @@ class ProductEngagementController extends Controller
             'action' => ['required', 'string', 'in:click'],
         ]);
 
-        try {
-            $engagement->trackClick($product->id);
-        } catch (\Throwable) {
-            // Never break storefront navigation on metrics failure.
-        }
+        // Async: engagement diproses queue (TrackProductEngagement) agar tidak
+        // membebani response storefront.
+        ProductEngagementRecorded::dispatch($product->id, $request->input('action'));
 
         return response()->json(['ok' => true]);
     }
