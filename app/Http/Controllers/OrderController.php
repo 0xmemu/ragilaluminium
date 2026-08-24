@@ -349,6 +349,36 @@ class OrderController extends Controller
             ] : null,
             'tracking' => $tracking,
             'vm' => $viewModel->toArray(),
+            // Lapisan publik: sanitasi metadata internal yang bukan informasi customer.
+            'tracking_public' => self::publicTrackingSanitized($tracking),
+
         ];
     }
+
+    /**
+     * Sanitasi tracking utk publik: hapus source/detail/location raw + status_raw.
+     *
+     * @param  array<string, mixed>  $tracking
+     * @return array<string, mixed>
+     */
+    private static function publicTrackingSanitized(array $tracking): array
+    {
+        unset($tracking['status_raw'], $tracking['record_status']);
+
+        if (isset($tracking['timeline']) && is_array($tracking['timeline'])) {
+            $tracking['timeline'] = array_map(static function (array $entry): array {
+                $safe = [
+                    'message' => (string) ($entry['message'] ?? ''),
+                    'at' => $entry['at'] ?? null,
+                ];
+                // Hapus metadata internal; unknown scan selalu label aman dari presenter.
+                unset($safe['source'], $safe['detail'], $safe['location']);
+
+                return $safe;
+            }, $tracking['timeline']);
+        }
+
+        return $tracking;
+    }
 }
+

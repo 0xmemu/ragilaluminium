@@ -95,6 +95,14 @@ class OrderPrivacyTest extends \Tests\TestCase
         $json = $response->json();
         $this->assertArrayNotHasKey('status_raw', $json['shipping'] ?? []);
         $this->assertSame('JNT-PRIV-2', $json['shipping']['waybill_number']);
+        // Timeline publik tersanitasi: hanya message + at, tanpa metadata internal.
+        $this->assertArrayHasKey('tracking_public', $json);
+        foreach (($json['tracking_public']['timeline'] ?? []) as $entry) {
+            $this->assertArrayHasKey('message', $entry);
+            $this->assertArrayNotHasKey('source', $entry);
+            $this->assertArrayNotHasKey('detail', $entry);
+            $this->assertArrayNotHasKey('location', $entry);
+        }
     }
 
     public function test_lookup_errors_are_enumeration_safe(): void

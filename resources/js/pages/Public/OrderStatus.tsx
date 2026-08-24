@@ -1,20 +1,15 @@
-import { Head, Link, router, useForm, usePage } from "@inertiajs/react"
+import { Head, router, useForm, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { OrderProgressTracker } from "@/components/public/order-progress-tracker"
-import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
+import { OrderTrackingDetail } from "@/components/public/order-tracking-detail"
 import { Alert } from "@/components/ui/alert"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
-import { formatCurrency, formatDate } from "@/lib/format"
-import { displayEtaRangeLabel } from "@/lib/order-eta-display"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder, SharedPageProps } from "@/types"
@@ -25,7 +20,6 @@ const MAX_STORED_ORDER_REFS = 5
 
 type StoredOrderRef = {
   order_number: string
-  customer_phone: string
 }
 
 function readStoredOrderRefs(): StoredOrderRef[] {
@@ -38,9 +32,7 @@ function readStoredOrderRefs(): StoredOrderRef[] {
       .filter((row): row is StoredOrderRef => (
         row
         && typeof row.order_number === "string"
-        && typeof row.customer_phone === "string"
         && row.order_number.trim() !== ""
-        && row.customer_phone.trim() !== ""
       ))
       .slice(0, MAX_STORED_ORDER_REFS)
   } catch {
@@ -89,7 +81,6 @@ async function fetchStoredOrder(
     routeUrl("order.status.api", { order_number: ref.order_number }),
     window.location.origin,
   )
-  url.searchParams.set("customer_phone", ref.customer_phone)
   const response = await fetch(url, {
     signal,
     cache: "no-store",
@@ -99,163 +90,21 @@ async function fetchStoredOrder(
   return await response.json() as PublicOrder
 }
 
-function formatShippingLine(order: PublicOrder): string {
-  const courier = order.shipping?.carrier_name
-  const waybill = order.shipping?.waybill_number
-  if (courier && waybill) return `${courier} · Resi ${waybill}`
-  return "Belum ada resi"
-}
-function orderFooterNote(order: PublicOrder): string {
-  const s = order.order_status
-  if (s === "completed") return "Pesanan Anda telah selesai, terimakasih."
-  if (s === "delivered") return "Paket sudah diterima. Terimakasih telah berbelanja."
-  if (s === "shipped") return "Pesanan sedang dalam perjalanan menuju alamat Anda."
-  if (s === "processing") return "Pesanan sedang diproses admin gudang."
-  return order.payment_method === "cod"
-    ? "Pesanan diterima dan masuk antrean produksi. Bayar di tempat saat kurir tiba."
-    : "Pesanan dibuat. Silakan selesaikan pembayaran sesuai instruksi."
-}
-
 function OrderDetail({
   order,
-  eyebrow = "Pesanan",
   onCancel,
   cancelBusy = false,
 }: {
   order: PublicOrder
-  eyebrow?: string
   onCancel?: () => void
   cancelBusy?: boolean
 }) {
   return (
-    <div className="animate-reveal overflow-hidden rounded-[14px] border border-border bg-surface">
-      {/* Header: No. Order + tanggal | status badge sinkron */}
-      <div className="flex items-center justify-between gap-3 p-4">
-        <div>
-          <p className="text-sm font-semibold text-foreground">{order.order_number}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {formatDate(order.created_at)}
-          </p>
-        </div>
-        <StatusBadge status={order.order_status} />
-      </div>
-      <div className="h-px w-full bg-border" />
-
-      {/* Detail Pengiriman */}
-      <div className="p-4">
-        <p className="text-[11px] font-semibold text-muted-foreground">Detail Pengiriman</p>
-        {order.shipping_address ? (
-          <p className="mt-1 text-xs text-foreground">{order.shipping_address}</p>
-        ) : null}
-        <p className="mt-1 text-xs text-muted-foreground">{formatShippingLine(order)}</p>
-      </div>
-      <div className="h-px w-full bg-border" />
-
-      {/* Item pesanan */}
-      <ul className="divide-y divide-border">
-        {order.items.map((item, index) => {
-          const unit = item.line_total ? Number(item.line_total) / item.quantity : null
-          return (
-            <li key={`${item.product_name ?? item.name}-${index}`} className="flex items-center gap-3 px-4 py-3">
-              <span className="flex size-12 min-w-12 flex-none items-center justify-center rounded-lg bg-surface-muted text-xs font-semibold text-muted-foreground">
-                {item.quantity}x
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-semibold text-foreground">
-                  {item.product_name ?? item.name}
-                </span>
-                {item.note ? (
-                  <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
-                    Catatan: {item.note}
-                  </span>
-                ) : null}
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="block tabular-nums text-[13px] font-semibold text-foreground">
-                  {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
-                </span>
-                {unit !== null ? (
-                  <span className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
-                    {item.quantity} × {formatCurrency(unit)}
-                  </span>
-                ) : null}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-      <div className="h-px w-full bg-border" />
-
-      {/* Status Pengiriman */}
-      <div className="p-4">
-        <p className="text-[11px] font-semibold text-muted-foreground">Status Pengiriman</p>
-        <OrderProgressTracker order={order} />
-      </div>
-      <div className="h-px w-full bg-border" />
-
-      {/* Estimasi tiba (jika ada) */}
-      {order.eta ? (
-        <>
-          <div className="p-4">
-            <p className="text-[11px] font-semibold text-muted-foreground">Estimasi tiba</p>
-            <p className="mt-1 text-sm font-bold text-foreground">
-              {displayEtaRangeLabel(order.eta)}
-            </p>
-          </div>
-          <div className="h-px w-full bg-border" />
-        </>
-      ) : null}
-
-      {/* Total */}
-      <div className="flex items-center justify-between px-4 py-2">
-        <span className="text-[13px] text-foreground">Total {order.items.reduce((s, i) => s + (i.quantity || 0), 0)} unit</span>
-        <span className="tabular-nums text-base font-bold text-primary">
-          {formatCurrency(order.total_amount)}
-        </span>
-      </div>
-      <div className="h-px w-full bg-border" />
-
-      {/* Banner/note */}
-      <div className="px-4 py-3">
-        <p className="text-[11px] text-muted-foreground">{orderFooterNote(order)}</p>
-      </div>
-      <div className="h-px w-full bg-border" />
-
-      {/* Footer aksi */}
-      <div className="flex gap-2.5 p-4">
-        <Button asChild variant="secondary" className="flex-1">
-          <Link href={routeUrl("catalog.index")}>Pesan Lagi</Link>
-        </Button>
-        {onCancel && order.order_status === "awaiting_confirmation" ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10"
-            disabled={cancelBusy}
-            onClick={onCancel}
-          >
-            {cancelBusy ? "Membatalkan..." : "Batalkan Pesanan"}
-          </Button>
-        ) : (
-          <Button asChild variant="secondary" className="flex-1">
-            <Link href={routeUrl("contact")}>Hubungi Kami</Link>
-          </Button>
-        )}
-      </div>
-
-      {order.reviews && order.reviews.length ? (
-        <div className="border-t border-border p-4">
-          <CustomerReviewForm
-            orderNumber={order.order_number}
-            customerPhone={order.customer_phone ?? ""}
-            orderStatus={order.order_status}
-            items={order.items}
-            reviews={order.reviews}
-          />
-        </div>
-      ) : null}
-    </div>
+    <OrderTrackingDetail
+      order={order}
+      onCancel={onCancel}
+      cancelBusy={cancelBusy}
+    />
   )
 }
 
@@ -348,17 +197,14 @@ export default function OrderStatus({
 
   React.useEffect(() => {
     for (const row of serverOrders) {
-      if (row.customer_phone) {
-        mergeStoredRef({
-          order_number: row.order_number,
-          customer_phone: row.customer_phone,
-        })
+      if (row.order_number) {
+        mergeStoredRef({ order_number: row.order_number })
       }
     }
   }, [serverOrders])
 
   const activeOrder = React.useMemo(
-    () => sessionList.find((row) => row.order_number === activeNumber) ?? null,
+    () => sessionList.find((row) => row.order_number === activeNumber) ?? sessionList[0] ?? null,
     [sessionList, activeNumber],
   )
 
@@ -423,12 +269,6 @@ export default function OrderStatus({
         if (disposed) return
         failures = 0
         setLiveOrder(fresh)
-        if (fresh.customer_phone) {
-          mergeStoredRef({
-            order_number: fresh.order_number,
-            customer_phone: fresh.customer_phone,
-          })
-        }
         setStoredOrders((current) => current.map((row) =>
           row.order_number === fresh.order_number ? fresh : row,
         ))
@@ -588,7 +428,6 @@ export default function OrderStatus({
               ) : order ? (
                 <OrderDetail
                   order={order}
-                  eyebrow="Pesanan ditemukan"
                   onCancel={cancelOrder}
                   cancelBusy={cancelForm.processing}
                 />
@@ -616,49 +455,7 @@ export default function OrderStatus({
             {pageErrors.cancel ? (
               <Alert tone="danger" title={pageErrors.cancel} className="mb-4 lg:col-span-2" />
             ) : null}
-            {sessionList.length > 0 ? (
-              <aside className="space-y-2 lg:sticky lg:top-28">
-                <p className="text-xs font-bold tracking-tight text-muted-foreground">
-                  Daftar pesanan
-                </p>
-                <ul className="divide-y divide-border border border-border bg-surface">
-                  {sessionList.map((row) => (
-                    <li key={row.order_number}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveNumber(row.order_number)}
-                        className={cn(
-                          "flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition",
-                          row.order_number === activeOrder?.order_number
-                            ? "bg-surface-muted"
-                            : "hover:bg-surface-muted/60",
-                        )}
-                        aria-current={
-                          row.order_number === activeOrder?.order_number ? "true" : undefined
-                        }
-                      >
-                        <span className="break-all font-mono text-xs font-semibold">
-                          {row.order_number}
-                        </span>
-                        <ShippingTrackPanel
-                          compact
-                          className="w-full"
-                          track={
-                            row.tracking ?? {
-                              shipping_status: row.shipping_status,
-                              order_status: row.order_status,
-                              payment_status: row.payment_status,
-                              total_amount: row.total_amount,
-                            }
-                          }
-                          timeline={row.tracking?.timeline}
-                        />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </aside>
-            ) : null}
+
 
             <div>
               {storedLoading ? (
@@ -669,18 +466,9 @@ export default function OrderStatus({
               ) : shownOrder ? (
                 <OrderDetail
                   order={shownOrder}
-                  eyebrow={sessionList.length > 1 ? "Pesanan dipilih" : "Pesanan tersimpan"}
                   onCancel={cancelOrder}
                   cancelBusy={cancelForm.processing}
                 />
-              ) : sessionList.length ? (
-                <div className="flex min-h-[18rem] flex-col items-center justify-center border-y border-border py-10 text-center">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-md bg-surface-muted text-primary">
-                    <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
-                  </span>
-                  <h2 className="mt-6 text-xl font-semibold sm:text-2xl">Pesanan Anda</h2>
-                  <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">Pilih pesanan dari daftar untuk melihat detail status pesanan dan pengirimannya.</p>
-                </div>
               ) : (
                 <EmptyState
                   icon="clipboard-list"

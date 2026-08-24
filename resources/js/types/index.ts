@@ -415,7 +415,6 @@ export interface PublicOrderShipping {
   carrier_name?: string | null
   waybill_number?: string | null
   status?: string | null
-  status_raw?: string | null
   tracking_url?: string | null
   last_status_at?: string | null
 }
@@ -425,7 +424,6 @@ export interface PublicOrderTracking {
   carrier_name?: string | null
   waybill_number?: string | null
   record_status?: string | null
-  status_raw?: string | null
   last_status_at?: string | null
   tracking_url?: string | null
   order_status?: string
@@ -472,7 +470,6 @@ export interface OrderTrackingViewModel {
   recipient: {
     customerName: string
     phoneMasked: string
-    phoneFull?: string | null
     address: string
     method: string
   }

@@ -1,5 +1,15 @@
 import * as React from "react"
 import { Link } from "@inertiajs/react"
+import {
+  Check,
+  CheckCircle,
+  Clock,
+  Copy,
+  Package,
+  ShieldCheck,
+  Truck,
+  Warning,
+} from "@phosphor-icons/react"
 
 import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -7,123 +17,66 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
 import { Alert } from "@/components/ui/alert"
-import { formatCurrency, formatDateTime, formatDate } from "@/lib/format"
+import { formatCurrency, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
 
 /**
- * Detail tracking order ready-stock, dibangun dari OrderTrackingViewModel (vm).
- * UI membaca dari vm sebagai satu sumber kebenaran; tidak menghitung status sendiri.
- *
- * Urutan section (mobile-first, card-light):
- * identity -> action banner -> status hero -> milestone -> current detail ->
- * estimate -> recipient -> carrier -> expandable timeline -> items -> payment -> support.
+ * Reusable CopyButton dengan state independen per tombol.
+ * Mencegah anomali klik satu tombol memicu centang di tombol lain.
  */
+function CopyButton({
+  text,
+  label = "Salin",
+  className,
+  iconSize = "size-3.5",
+}: {
+  text: string
+  label?: string
+  className?: string
+  iconSize?: string
+}) {
+  const [copied, setCopied] = React.useState(false)
 
-function StatusHero({ order }: { order: PublicOrder }) {
-  const vm = order.vm
-  const primary = vm?.primaryStatus
-  if (!primary) return null
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    void navigator.clipboard?.writeText(text)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
+
   return (
-    <div className="order-tracking__status-hero border-b border-border pb-5" aria-live="polite">
-      <div className="flex items-center gap-2">
-        <StatusBadge status={order.order_status} />
-      </div>
-      <h2 className="mt-3 text-xl font-bold tracking-tight text-foreground">{primary.headline}</h2>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{primary.message}</p>
-      {primary.updatedAt ? (
-        <p className="mt-2 text-xs text-muted-foreground/70">
-          Terakhir diperbarui {formatDateTime(primary.updatedAt)}
-        </p>
-      ) : null}
-    </div>
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={cn(
+        "inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded",
+        className,
+      )}
+      aria-label={label}
+      title={copied ? "Tersalin!" : label}
+    >
+      {copied ? (
+        <Check className={cn(iconSize, "text-success")} weight="bold" />
+      ) : (
+        <Copy className={iconSize} />
+      )}
+    </button>
   )
 }
 
-function Milestones({ order }: { order: PublicOrder }) {
-  const milestones = order.vm?.milestones
-  if (!milestones || milestones.length === 0) return null
-
+/**
+ * J&T Cargo Logo Icon menggunakan asset resmi /images/jnt-cargo.png.
+ */
+function JntCargoLogo({ className }: { className?: string }) {
   return (
-    <ol className="order-tracking__milestones space-y-0">
-      {milestones.map((step, index) => {
-        const isLast = index === milestones.length - 1
-        const connector = !isLast ? (
-          <span
-            aria-hidden="true"
-            className={cn(
-              "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
-              step.state === "completed" || step.state === "current" ? "bg-primary/50" : "bg-border",
-            )}
-          />
-        ) : null
-
-        return (
-          <li key={step.key + index} className="relative flex gap-3 pb-5 last:pb-0">
-            {connector}
-            <span
-              aria-hidden="true"
-              className={cn(
-                "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
-                step.state === "completed" && "border-primary bg-primary text-primary-foreground",
-                step.state === "current" && "border-primary bg-primary text-primary-foreground ring-4 ring-primary/15",
-                step.state === "upcoming" && "border-border bg-surface text-muted-foreground",
-                step.state === "exception" && "border-warning bg-warning/10 text-warning",
-              )}
-            >
-              {step.state === "completed" ? (
-                <Icon name="check" className="size-3.5" weight="bold" />
-              ) : step.state === "exception" ? (
-                <Icon name="warning" className="size-3.5" weight="bold" />
-              ) : (
-                <span className="size-1.5 rounded-full bg-current" />
-              )}
-            </span>
-            <div className="min-w-0 pt-0.5">
-              <p
-                className={cn(
-                  "text-sm font-semibold",
-                  step.state === "current"
-                    ? "text-foreground"
-                    : step.state === "completed"
-                      ? "text-foreground/80"
-                      : step.state === "exception"
-                        ? "text-warning"
-                        : "text-muted-foreground",
-                )}
-              >
-                {step.label}
-              </p>
-              {step.occurredAt ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(step.occurredAt)}</p>
-              ) : null}
-            </div>
-          </li>
-        )
-      })}
-    </ol>
-  )
-}
-
-function Estimate({ order }: { order: PublicOrder }) {
-  const estimate = order.vm?.estimate
-  if (!estimate) return null
-  const start = estimate.startAt ? formatDate(estimate.startAt) : ""
-  const end = estimate.endAt ? formatDate(estimate.endAt) : ""
-
-  return (
-    <div className="order-tracking__estimate flex items-center gap-3 rounded-lg border border-border bg-surface p-4">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary">
-        <Icon name="truck" className="size-4" aria-hidden="true" />
-      </span>
-      <div>
-        <p className="text-xs font-semibold tracking-tight text-muted-foreground">{estimate.label}</p>
-        <p className="mt-0.5 text-sm font-bold text-foreground">
-          {start}{start && end ? " - " : ""}{end}
-        </p>
-      </div>
-    </div>
+    <img
+      src="/images/jnt-cargo.png"
+      alt="J&T CARGO"
+      className={cn("h-7 w-auto object-contain", className)}
+      loading="eager"
+    />
   )
 }
 
@@ -151,125 +104,491 @@ function ActionBanner({ order }: { order: PublicOrder }) {
   )
 }
 
-function Recipient({ order }: { order: PublicOrder }) {
+/**
+ * Card 1: Ringkasan Pesanan (OrderSummaryCard)
+ * Sesuai desain sO2R6:
+ * - No. Order + CopyButton independen di kiri atas
+ * - Tanggal & waktu pembuatan (sampai jam:menit)
+ * - Resi status + CopyButton independen
+ * - Metode Pembayaran (COD / Transfer)
+ * - Badge status sinkron dengan status pesanan di kanan atas
+ * - Collapsible items list dengan format Total X unit & total harga
+ */
+function OrderSummaryCard({ order }: { order: PublicOrder }) {
+  const [expanded, setExpanded] = React.useState(true)
+  const totalAmount = order.total_amount ? formatCurrency(order.total_amount) : "-"
+  const totalUnits = order.items.reduce((sum, item) => sum + item.quantity, 0)
+  const isCod = order.payment_method === "cod"
+  const paymentMethodLabel = isCod
+    ? "COD (Bayar di tempat)"
+    : (order.vm?.payment?.paymentMethod ?? "Transfer Bank")
+
+  return (
+    <section className="order-tracking__summary-card rounded-[14px] border border-border bg-surface p-4 shadow-sm">
+      {/* Header Baris 1: No. Order + Copy di kiri, Status Badge di kanan */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-sm font-bold text-primary">
+              No. Order {order.order_number}
+            </span>
+            <CopyButton
+              text={order.order_number}
+              label="Salin nomor pesanan"
+              className="size-5"
+              iconSize="size-3.5"
+            />
+          </div>
+          {order.created_at ? (
+            <p className="text-[11px] text-muted-foreground">
+              {formatDateTime(order.created_at)}
+            </p>
+          ) : null}
+          <p className="text-[11px] text-muted-foreground">
+            Resi{" "}
+            {order.vm?.carrier?.waybill ? (
+              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                {order.vm.carrier.waybill}
+                <CopyButton
+                  text={order.vm.carrier.waybill}
+                  label="Salin nomor resi"
+                  className="size-4"
+                  iconSize="size-3"
+                />
+              </span>
+            ) : (
+              <span className="font-medium text-foreground">Belum Dikirim</span>
+            )}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Metode Pembayaran:{" "}
+            <span className="font-medium text-foreground">{paymentMethodLabel}</span>
+          </p>
+        </div>
+
+        <div className="shrink-0">
+          <StatusBadge status={order.order_status} />
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="mt-3.5 border-t border-border" />
+
+      {/* Collapsible Trigger: Total X unit & Total Harga */}
+      <button
+        type="button"
+        className="flex w-full items-center justify-between py-2.5 text-left transition hover:opacity-80"
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+      >
+        <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+          Total {totalUnits} unit
+          <Icon
+            name={expanded ? "chevron-up" : "chevron-down"}
+            className="size-3.5 text-muted-foreground"
+            aria-hidden="true"
+          />
+        </span>
+        <span className="tabular-nums text-sm sm:text-base font-bold text-foreground">
+          {totalAmount}
+        </span>
+      </button>
+
+      {/* Daftar Item Pesanan */}
+      {expanded ? (
+        <ul className="divide-y divide-border border-t border-border pt-1">
+          {order.items.map((item, index) => {
+            const unitPrice = item.line_total ? Number(item.line_total) / item.quantity : null
+            const title = item.product_name ?? item.name ?? "Produk"
+            return (
+              <li
+                key={`item-${item.product_name ?? item.name}-${index}`}
+                className="flex items-center gap-3 py-2.5"
+              >
+                <span className="relative flex size-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted">
+                  <ResponsiveImage
+                    src={item.image ?? null}
+                    alt={title}
+                    wrapperClassName="size-full"
+                    className="size-full object-cover"
+                  />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  {item.parent_sku ? (
+                    <Link
+                      href={routeUrl("product.show", { parent_sku: item.parent_sku })}
+                      className="block text-xs font-semibold text-foreground hover:text-primary leading-snug"
+                    >
+                      {title}
+                    </Link>
+                  ) : (
+                    <span className="block text-xs font-semibold text-foreground leading-snug">
+                      {title}
+                    </span>
+                  )}
+                  {item.note ? (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Catatan: {item.note}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <p className="block tabular-nums text-xs font-semibold text-foreground">
+                    {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
+                  </p>
+                  {unitPrice ? (
+                    <p className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
+                      {item.quantity} � {formatCurrency(unitPrice)}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </section>
+  )
+}
+
+/**
+ * Card 2: Detail Pengiriman (DetailPengiriman)
+ * Format bersih:
+ * - Header "Detail Pengiriman"
+ * - Nama Penerima + Nomor Telepon
+ * - Alamat lengkap yang mengalir
+ */
+function DetailPengiriman({ order }: { order: PublicOrder }) {
   const recipient = order.vm?.recipient
   if (!recipient) return null
 
   return (
-    <section className="order-tracking__recipient">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon name="map-pin" className="size-4" aria-hidden="true" />
-        <h3 className="text-xs font-bold tracking-tight">Informasi Pengiriman</h3>
+    <section className="order-tracking__detail-pengiriman rounded-[14px] border border-border bg-surface p-4 shadow-sm">
+      <h3 className="text-xs font-bold tracking-tight text-muted-foreground">
+        Detail Pengiriman
+      </h3>
+      <div className="mt-2.5">
+        <p className="text-sm font-semibold text-foreground">
+          {recipient.customerName} {recipient.phoneMasked}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {recipient.address}
+        </p>
       </div>
-      <dl className="mt-3 space-y-3 text-sm">
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Penerima</dt>
-          <dd className="text-right font-semibold text-foreground">{recipient.customerName}</dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Nomor telepon</dt>
-          <dd className="text-right tabular-nums text-foreground">{recipient.phoneMasked}</dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="shrink-0 text-muted-foreground">Alamat tujuan</dt>
-          <dd className="text-right text-foreground">{recipient.address}</dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Metode pengiriman</dt>
-          <dd className="text-right font-medium text-foreground">{recipient.method}</dd>
-        </div>
-      </dl>
     </section>
   )
 }
 
-function Carrier({ order, onCopyWaybill }: { order: PublicOrder; onCopyWaybill?: (waybill: string) => void }) {
-  const carrier = order.vm?.carrier
-  if (!carrier) return null
+/**
+ * Stepper 4 Tahap Horizontal di dalam Card J&T Cargo.
+ * Tahap utama disesuaikan:
+ * 1. Terkonfirmasi (Clock)
+ * 2. Pesanan Dikirim (Package / Box)
+ * 3. Pesanan Sampai COD (Lunas) (Truck)
+ * 4. Selesai (CheckCircle)
+ */
+function StatusSummary({ order }: { order: PublicOrder }) {
+  const status = order.order_status
+  const isDelivered =
+    status === "delivered" ||
+    status === "completed" ||
+    order.vm?.milestones?.some((m) => m.key === "delivered" && m.state === "completed")
+  const isShippedOrProcessing =
+    status === "processing" ||
+    status === "ready_to_ship" ||
+    status === "shipped" ||
+    isDelivered ||
+    order.vm?.milestones?.some(
+      (m) =>
+        (m.key === "ready_to_ship" || m.key === "handover_to_carrier" || m.key === "in_transit" || m.key === "out_for_delivery") &&
+        (m.state === "completed" || m.state === "current"),
+    )
+  const isConfirmed = true
+
+  const steps = [
+    {
+      key: "confirmed",
+      label: "Terkonfirmasi",
+      icon: Clock,
+      done: isConfirmed,
+    },
+    {
+      key: "shipping",
+      label: "Pesanan Dikirim",
+      icon: Package,
+      done: Boolean(isShippedOrProcessing),
+    },
+    {
+      key: "delivered",
+      label: "Pesanan Sampai COD (Lunas)",
+      icon: Truck,
+      done: Boolean(isDelivered),
+    },
+    {
+      key: "completed",
+      label: "Selesai",
+      icon: CheckCircle,
+      done: status === "completed",
+    },
+  ]
 
   return (
-    <section className="order-tracking__carrier">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon name="package" className="size-4" aria-hidden="true" />
-        <h3 className="text-xs font-bold tracking-tight">Pengiriman</h3>
-      </div>
-      <div className="mt-3 rounded-lg border border-border bg-surface p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-bold text-foreground">{carrier.carrierName}</p>
-          <button
-            type="button"
-            onClick={() => onCopyWaybill?.(carrier.waybill)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-          >
-            <Icon name="copy" className="size-3.5" aria-hidden="true" />
-            Salin resi
-          </button>
-        </div>
-        <p className="mt-1 font-mono text-sm tabular-nums text-foreground">{carrier.waybill}</p>
-        {carrier.lastStatusAt ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Pembaruan terakhir diterima pada {formatDateTime(carrier.lastStatusAt)}
-          </p>
-        ) : null}
-      </div>
-    </section>
+    <div className="relative">
+      {/* Background connector line */}
+      <div
+        aria-hidden="true"
+        className="absolute top-6 left-[12%] right-[12%] h-0.5 bg-border -translate-y-1/2 z-0"
+      />
+      <ol className="relative z-10 grid grid-cols-4 gap-2 text-center">
+        {steps.map((step) => {
+          const Glyph = step.icon
+          return (
+            <li key={step.key} className="flex flex-col items-center gap-2">
+              <span
+                className={cn(
+                  "flex size-12 items-center justify-center rounded-full transition-colors",
+                  step.done
+                    ? "bg-[#2b734e] text-white shadow-sm ring-4 ring-[#2b734e]/15"
+                    : "border-2 border-border bg-surface text-muted-foreground",
+                )}
+              >
+                <Glyph className="size-6" weight={step.done ? "bold" : "regular"} />
+              </span>
+              <span
+                className={cn(
+                  "text-[11px] leading-tight max-w-[80px]",
+                  step.done ? "font-semibold text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {step.label}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
   )
 }
 
-function JnTCard({ order, onCopyWaybill }: { order: PublicOrder; onCopyWaybill?: (w: string) => void }) {
+/**
+ * Vertical Timeline ("Lacak Pesanan") di dalam Card J&T.
+ * Timestamp detail memuat tanggal dan jam:menit.
+ * Berwarna hijau #2b734e untuk milestone yang selesai.
+ */
+function Milestones({ order }: { order: PublicOrder }) {
+  const milestones = order.vm?.milestones
+  if (!milestones || milestones.length === 0) return null
+
+  return (
+    <ol className="order-tracking__milestones space-y-0">
+      {milestones.map((step, index) => {
+        const isLast = index === milestones.length - 1
+        const isDone = step.state === "completed"
+        const isCurrent = step.state === "current"
+        const isException = step.state === "exception"
+
+        const connector = !isLast ? (
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
+              isDone || isCurrent ? "bg-[#2b734e]/40" : "bg-border",
+            )}
+          />
+        ) : null
+
+        return (
+          <li key={step.key + index} className="relative flex gap-3 pb-5 last:pb-0">
+            {connector}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full",
+                isDone && "bg-[#2b734e] text-white",
+                isCurrent && "bg-[#2b734e] text-white ring-4 ring-[#2b734e]/20",
+                isException && "bg-destructive text-white",
+                !isDone && !isCurrent && !isException && "border-2 border-border bg-surface text-muted-foreground",
+              )}
+            >
+              {isDone ? (
+                <Check className="size-3.5" weight="bold" />
+              ) : isException ? (
+                <Warning className="size-3.5" weight="bold" />
+              ) : isCurrent ? (
+                <Check className="size-3.5" weight="bold" />
+              ) : (
+                <span className="size-1.5 rounded-full bg-border" />
+              )}
+            </span>
+
+            <div className="min-w-0 pt-0.5">
+              <p
+                className={cn(
+                  "text-sm font-semibold",
+                  isCurrent || isDone ? "text-foreground" : "text-muted-foreground",
+                  isException && "text-destructive",
+                )}
+              >
+                {step.label}
+              </p>
+              {step.occurredAt ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {formatDateTime(step.occurredAt)}
+                </p>
+              ) : null}
+              {step.customerMessage ? (
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {step.customerMessage}
+                </p>
+              ) : null}
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/**
+ * Expandable J&T Webhook Scan Events (bila tersedia) dengan timestamp jam:menit.
+ */
+function ExpandableTimeline({ order }: { order: PublicOrder }) {
+  const timeline = order.tracking?.timeline
+  if (!timeline || timeline.length === 0) return null
+
+  return (
+    <details className="order-tracking__carrier-details group mt-4 rounded-lg border border-border bg-surface">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3.5">
+        <span className="text-xs font-semibold text-foreground">
+          Lihat detail perjalanan paket
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {timeline.length} pembaruan
+          <Icon
+            name="chevron-down"
+            className="size-3.5 transition-transform group-open:rotate-180"
+            aria-hidden="true"
+          />
+        </span>
+      </summary>
+      <div className="border-t border-border">
+        <ol className="order-tracking__carrier-details-list divide-y divide-border">
+          {timeline.map((entry, index) => (
+            <li key={`${entry.at ?? "e"}-${index}`} className="flex gap-3 px-3.5 py-2.5">
+              {entry.at ? (
+                <time
+                  dateTime={entry.at}
+                  className="w-28 shrink-0 text-[11px] leading-relaxed text-muted-foreground"
+                >
+                  {formatDateTime(entry.at)}
+                </time>
+              ) : (
+                <span className="w-28 shrink-0 text-[11px] text-muted-foreground">-</span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs leading-relaxed text-foreground">{entry.message}</p>
+                {entry.location ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {entry.location}
+                  </p>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </details>
+  )
+}
+
+/**
+ * Card 3: J&T Cargo + Stepper + Lacak Pesanan
+ */
+function JnTCard({ order }: { order: PublicOrder }) {
   const carrier = order.vm?.carrier
   const hasTimeline = order.tracking?.timeline && order.tracking.timeline.length > 0
+
   return (
-    <section className="order-tracking__jnt-card rounded-[14px] border border-[#dee3e0] bg-surface p-5">
-      {/* Logo J&T + No. Resi */}
-      <div className="flex items-center gap-3">
-        <span className="flex size-12 items-center justify-center rounded-md bg-[#2b734e]/10">
-          <Icon name="truck" className="size-6 text-[#2b734e]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
+    <section className="order-tracking__jnt-card rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5">
+      {/* Brand Header J&T Cargo Icon */}
+      <div className="space-y-1">
+        <JntCargoLogo />
+        <div className="pt-1">
           <p className="text-xs text-muted-foreground">No. Resi</p>
           {carrier?.waybill ? (
-            <button
-              type="button"
-              onClick={() => onCopyWaybill?.(carrier.waybill)}
-              className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-foreground hover:underline"
-            >
-              {carrier.waybill}
-              <Icon name="copy" className="size-3.5" aria-hidden="true" />
-            </button>
+            <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
+              <span>{carrier.waybill}</span>
+              <CopyButton
+                text={carrier.waybill}
+                label="Salin nomor resi"
+                className="size-5"
+                iconSize="size-3.5"
+              />
+            </div>
           ) : (
-            <p className="font-semibold text-foreground">Belum Dikirim</p>
+            <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
+              <span>{order.order_number}</span>
+              <CopyButton
+                text={order.order_number}
+                label="Salin nomor pesanan"
+                className="size-5"
+                iconSize="size-3.5"
+              />
+            </div>
           )}
         </div>
       </div>
 
-      {/* Status summary 4-step (di dalam kartu J&T, sesuai sO2R6) */}
-      <div className="mt-5">
+      {/* Stepper Status Horizontal (4-Step Hijau) */}
+      <div className="pt-2">
         <StatusSummary order={order} />
       </div>
 
-      {/* Lacak Pesanan (milestone vertikal) */}
-      <p className="mt-5 text-xs font-bold tracking-tight text-muted-foreground">Lacak Pesanan</p>
-      <div className="mt-4">
+      {/* Timeline Vertikal (Lacak Pesanan) */}
+      <div className="pt-2 border-t border-border">
+        <h3 className="text-xs font-bold tracking-tight text-foreground mb-4">
+          Lacak Pesanan
+        </h3>
         <Milestones order={order} />
+        {hasTimeline ? <ExpandableTimeline order={order} /> : null}
       </div>
-
-      {/* Timeline J&T (sinkronisasi tracking webhook) - jangan diubah datanya */}
-      {hasTimeline ? <ExpandableTimeline order={order} /> : null}
     </section>
   )
 }
 
+/**
+ * Card 4: Support Section
+ */
+function SupportAction() {
+  return (
+    <section
+      className="order-tracking__support rounded-[14px] border border-border bg-surface-muted/40 p-4 shadow-sm"
+      id="bantuan"
+    >
+      <p className="text-sm font-bold text-foreground">Butuh bantuan dengan pesanan ini?</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti.
+      </p>
+      <Button asChild variant="secondary" size="sm" className="mt-3 rounded-full border border-border bg-surface hover:bg-surface-muted text-foreground font-semibold text-xs px-4 py-2">
+        <Link href={routeUrl("contact")}>Hubungi Kami</Link>
+      </Button>
+    </section>
+  )
+}
+
+/**
+ * Card 5: Trust Assurance
+ */
 function TrustAssurance() {
   return (
-    <section className="order-tracking__trust rounded-[14px] border border-[#dee3e0] bg-[#f7f8f7] p-4">
+    <section className="order-tracking__trust rounded-[14px] border border-border bg-surface-muted p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <span className="flex size-6 shrink-0 items-center justify-center text-[#333]">
-          <Icon name="shield-check" className="size-6" aria-hidden="true" />
-        </span>
+        <ShieldCheck className="size-6 shrink-0 text-foreground" weight="regular" />
         <div>
-          <p className="text-xs font-bold text-[#333]">Belanja Aman &amp; Terpercaya</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          <p className="text-xs font-bold text-foreground">Belanja Aman & Terpercaya</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
             Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
           </p>
         </div>
@@ -278,275 +597,9 @@ function TrustAssurance() {
   )
 }
 
-function ExpandableTimeline({ order }: { order: PublicOrder }) {
-  const timeline = order.tracking?.timeline
-  if (!timeline || timeline.length === 0) return null
-
-  return (
-    <details className="order-tracking__carrier-details group rounded-lg border border-border bg-surface">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
-        <span className="text-sm font-semibold text-foreground">Lihat detail perjalanan paket</span>
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {timeline.length} pembaruan
-          <Icon name="chevron-down" className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
-        </span>
-      </summary>
-      <div className="border-t border-border">
-        <ol className="order-tracking__carrier-details-list">
-          {timeline.map((entry, index) => (
-            <React.Fragment key={`${entry.at ?? "e"}-${index}`}>
-              <li className="carrier-event flex gap-3 px-4 py-3">
-                {entry.at ? (
-                  <time dateTime={entry.at} className="w-28 shrink-0 text-xs leading-5 text-muted-foreground">
-                    {formatDateTime(entry.at)}
-                  </time>
-                ) : (
-                  <span className="w-28 shrink-0 text-xs text-muted-foreground">-</span>
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm leading-5 text-foreground">{entry.message}</p>
-                  {entry.location ? (
-                    <p className="carrier-event__location mt-0.5 text-xs text-muted-foreground">{entry.location}</p>
-                  ) : null}
-                </div>
-              </li>
-              {index < timeline.length - 1 ? (
-                <li aria-hidden="true" className="mx-4 h-px bg-border" />
-              ) : null}
-            </React.Fragment>
-          ))}
-        </ol>
-      </div>
-    </details>
-  )
-}
-
-function PaymentSummary({ order }: { order: PublicOrder }) {
-  const payment = order.vm?.payment
-  if (!payment) return null
-  const isCod = order.vm?.carrier?.paymentTerm === "COD" || order.payment_method === "cod"
-
-  return (
-    <section className="order-tracking__payment" id="pembayaran">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon name="badge-check" className="size-4" aria-hidden="true" />
-        <h3 className="text-xs font-bold tracking-tight">Pembayaran</h3>
-      </div>
-      <dl className="mt-3 space-y-3 text-sm">
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Metode pembayaran</dt>
-          <dd className="text-right font-semibold text-foreground">{payment.paymentMethod}</dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Status pembayaran</dt>
-          <dd className="text-right font-medium text-foreground">{payment.statusLabel}</dd>
-        </div>
-        {payment.bank && payment.statusKey === "unpaid" ? (
-          <div className="rounded-lg border border-border bg-surface-muted/40 p-3 space-y-2 text-sm">
-            <p className="text-xs font-semibold text-muted-foreground">Instruksi Transfer</p>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Bank</dt>
-              <dd className="text-right font-semibold text-foreground">{payment.bank.bank_name}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">No. rekening</dt>
-              <dd className="text-right tabular-nums font-semibold text-foreground">{payment.bank.account_number}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Atas nama</dt>
-              <dd className="text-right font-semibold text-foreground">{payment.bank.account_name}</dd>
-            </div>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">{payment.bank.notes}</p>
-          </div>
-        ) : null}
-        <div className="flex justify-between gap-4 border-t border-border pt-3">
-          <dt className="text-muted-foreground">
-            {isCod && payment.statusKey !== "paid" ? "Total yang dibayarkan saat menerima barang" : "Total pesanan"}
-          </dt>
-          <dd className="tabular-nums text-right text-lg font-bold text-foreground">
-            {formatCurrency(order.total_amount)}
-          </dd>
-        </div>
-      </dl>
-    </section>
-  )
-}
-
-function SupportAction() {
-  return (
-    <section className="order-tracking__support rounded-lg border border-border bg-surface-muted/40 p-4" id="bantuan">
-      <p className="text-sm font-bold text-foreground">Butuh bantuan dengan pesanan ini?</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti.
-      </p>
-      <Button asChild variant="secondary" className="mt-3">
-        <Link href={routeUrl("contact")}>Hubungi Kami</Link>
-      </Button>
-    </section>
-  )
-}
-
-
-function OrderSummaryCard({ order, copied, onCopy }: { order: PublicOrder; copied: boolean; onCopy: (v: string) => void }) {
-  const total = order.total_amount ? formatCurrency(order.total_amount) : "-"
-  const methodLabel =
-    order.payment_method === "cod"
-      ? order.vm?.payment?.statusKey === "paid"
-        ? "COD (Lunas)"
-        : "COD"
-      : order.vm?.payment?.statusKey === "paid"
-        ? "Transfer (Lunas)"
-        : "Transfer"
-  return (
-    <section className="order-tracking__summary-card rounded-[14px] border border-[#dee3e0] bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-mono text-sm font-semibold text-primary">{order.order_number}</p>
-          {order.created_at ? (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{formatDateTime(order.created_at)}</p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          <StatusBadge status={order.order_status} />
-          <button
-            type="button"
-            onClick={() => onCopy(order.order_number)}
-            className="inline-flex size-5 items-center justify-center text-muted-foreground hover:text-foreground"
-            aria-label="Salin nomor pesanan"
-          >
-            <Icon name={copied ? "check" : "copy"} className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-3 border-t border-border pt-3">
-        <p className="text-[11px] text-muted-foreground">
-          Resi{" "}
-          {order.vm?.carrier?.waybill ? (
-            <button
-              type="button"
-              onClick={() => onCopy(order.vm!.carrier!.waybill)}
-              className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
-            >
-              {order.vm.carrier.waybill}
-              <Icon name="copy" className="size-3" aria-hidden="true" />
-            </button>
-          ) : (
-            <span className="font-medium text-foreground">Belum Dikirim</span>
-          )}
-        </p>
-      </div>
-
-      <button
-        type="button"
-        className="mt-3 flex w-full items-center justify-between gap-2 text-left"
-        onClick={() => document.getElementById("items-detail")?.classList.toggle("hidden")}
-        aria-expanded="false"
-      >
-        <span className="text-xs font-semibold text-foreground">Total {order.items.reduce((s, i) => s + i.quantity, 0)} unit</span>
-        <span className="flex items-center gap-2">
-          <span className="tabular-nums text-sm font-bold text-primary">{total}</span>
-          <span className="text-[11px] text-muted-foreground">· {methodLabel}</span>
-          <Icon name="chevron-down" className="size-4 text-muted-foreground" aria-hidden="true" />
-        </span>
-      </button>
-
-      <ul id="items-detail" className="mt-3 hidden border-t border-border pt-3">
-        {order.items.map((item, index) => {
-          const unit = item.line_total ? Number(item.line_total) / item.quantity : null
-          return (
-            <li key={`sum-${item.product_name ?? item.name}-${index}`} className="flex items-center gap-3 py-2">
-              <span className="relative flex size-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted">
-                <ResponsiveImage
-                  src={item.image ?? null}
-                  alt={item.product_name ?? item.name ?? "Produk"}
-                  wrapperClassName="size-full"
-                  className="size-full object-cover"
-                />
-              </span>
-              <span className="min-w-0 flex-1">
-                {item.parent_sku ? (
-                  <Link href={routeUrl("product.show", { parent_sku: item.parent_sku })} className="block text-xs font-semibold text-foreground hover:text-primary">
-                    {item.product_name ?? item.name}
-                  </Link>
-                ) : (
-                  <span className="block text-xs font-semibold text-foreground">{item.product_name ?? item.name}</span>
-                )}
-                {item.note ? <span className="mt-0.5 block text-[11px] text-muted-foreground">Catatan: {item.note}</span> : null}
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="block tabular-nums text-xs font-semibold text-foreground">
-                  {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
-                </span>
-                {unit ? <span className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">{item.quantity} × {formatCurrency(unit)}</span> : null}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-    </section>
-  )
-}
-
-function StatusSummary({ order }: { order: PublicOrder }) {
-  const milestones = order.vm?.milestones
-  if (!milestones || milestones.length === 0) return null
-  const steps = milestones.slice(0, 4)
-  return (
-    <ol className="order-tracking__status-summary flex items-center justify-between gap-2 px-4">
-      {steps.map((step, i) => {
-        const done = step.state === "completed" || step.state === "current"
-        return (
-          <li key={step.key + i} className="flex flex-1 flex-col items-center gap-2 text-center">
-            <span
-              className={cn(
-                "flex size-10 items-center justify-center rounded-full border-2",
-                done ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground",
-              )}
-            >
-              {done ? <Icon name="check" className="size-4" weight="bold" /> : <span className="size-1.5 rounded-full bg-current" />}
-            </span>
-            <span className={cn("text-[11px] leading-tight", done ? "font-semibold text-foreground" : "text-muted-foreground")}>
-              {step.label}
-            </span>
-          </li>
-        )
-      })}
-    </ol>
-  )
-}
-
-function DetailPengiriman({ order }: { order: PublicOrder }) {
-  const recipient = order.vm?.recipient
-  if (!recipient) return null
-  return (
-    <section className="order-tracking__detail-pengiriman rounded-[14px] border border-[#dee3e0] bg-surface p-4">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon name="map-pin" className="size-4" aria-hidden="true" />
-        <h3 className="text-xs font-bold tracking-tight">Detail Pengiriman</h3>
-      </div>
-      <dl className="mt-3 space-y-3 text-sm">
-        {recipient ? (
-          <>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Penerima</dt>
-              <dd className="text-right font-semibold text-foreground">{recipient.customerName}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Nomor telepon</dt>
-              <dd className="text-right tabular-nums text-foreground">{recipient.phoneMasked}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="shrink-0 text-muted-foreground">Alamat tujuan</dt>
-              <dd className="text-right text-foreground">{recipient.address}</dd>
-            </div>
-          </>
-        ) : null}
-      </dl>
-    </section>
-  )
-}
-
+/**
+ * Komponen Utama OrderTrackingDetail
+ */
 export function OrderTrackingDetail({
   order,
   onCancel,
@@ -556,19 +609,12 @@ export function OrderTrackingDetail({
   onCancel?: () => void
   cancelBusy?: boolean
 }) {
-  const [copied, setCopied] = React.useState(false)
-  const handleCopy = (value: string) => {
-    void navigator.clipboard?.writeText(value)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
-  }
-
   return (
-    <div className="order-tracking space-y-4">
-      {/* 1. Card ringkasan pesanan (gaya /order, persis sO2R6) */}
-      <OrderSummaryCard order={order} copied={copied} onCopy={handleCopy} />
+    <div className="order-tracking space-y-4 max-w-lg mx-auto">
+      {/* 1. Ringkasan Pesanan */}
+      <OrderSummaryCard order={order} />
 
-      {/* 2. Action banner + cancel (jika perlu) */}
+      {/* 2. Action banner & Cancel (bila status awaiting_confirmation) */}
       <ActionBanner order={order} />
       {onCancel && order.order_status === "awaiting_confirmation" ? (
         <div className="order-tracking__cancel rounded-[14px] border border-destructive/30 bg-destructive/5 p-4">
@@ -580,7 +626,7 @@ export function OrderTrackingDetail({
             type="button"
             variant="secondary"
             size="sm"
-            className="mt-3 border-destructive/40 text-destructive hover:bg-destructive/10"
+            className="mt-3 border-destructive/40 text-destructive hover:bg-destructive/10 rounded-full"
             disabled={cancelBusy}
             onClick={onCancel}
           >
@@ -589,17 +635,28 @@ export function OrderTrackingDetail({
         </div>
       ) : null}
 
-      {/* 3. Detail Pengiriman (penerima saja) */}
+      {/* 3. Detail Pengiriman */}
       <DetailPengiriman order={order} />
 
-      {/* 4. Kartu J&T: logo + resi + StatusSummary 4-step + Lacak Pesanan + timeline */}
-      <JnTCard order={order} onCopyWaybill={(w) => handleCopy(w)} />
+      {/* 4. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
+      <JnTCard order={order} />
 
-      {/* 5. Support */}
+      {/* 5. Support Section */}
       <SupportAction />
 
-      {/* 6. Trust "Belanja Aman & Terpercaya" */}
+      {/* 6. Trust Assurance */}
       <TrustAssurance />
+
+      {/* 7. Review Form jika status delivered / completed */}
+      {order.order_status === "delivered" || order.order_status === "completed" ? (
+        <CustomerReviewForm
+          orderNumber={order.order_number}
+          customerPhone={order.customer_phone ?? ""}
+          orderStatus={order.order_status}
+          items={order.items}
+          reviews={order.reviews}
+        />
+      ) : null}
     </div>
   )
 }
