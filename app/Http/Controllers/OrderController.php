@@ -381,7 +381,10 @@ class OrderController extends Controller
                 'tracking_url' => $shipping->tracking_url,
                 'last_status_at' => $shipping->last_status_at?->toIso8601String(),
             ] : null,
-            'tracking' => $tracking,
+            // Satu lapisan publik: 'tracking' kini = versi TERSANITASI (metadata
+            // internal dibuang). UI memakai tracking_public / vm.* — jangan pernah
+            // kirim raw $tracking (record_status/status_raw/source) ke pelanggan.
+            'tracking' => self::publicTrackingSanitized($tracking, $shipping),
             'vm' => $viewModel->toArray(),
             'whatsapp_url' => $whatsappUrl,
             'delivered_at' => $deliveredAt?->toIso8601String(),

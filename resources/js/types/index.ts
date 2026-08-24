@@ -494,6 +494,39 @@ export interface OrderTrackingViewModel {
       notes: string
     } | null
   }
+  shipment: {
+    hasWaybill: boolean
+    waybill: string | null
+    carrierName: string | null
+    statusKey: string
+    label: string
+    location: string | null
+    latestEventText: string | null
+    latestEventAt: string | null
+    syncedAt: string | null
+    trackingAvailable: boolean
+    stale: boolean
+  }
+  customerStatus: {
+    key: string
+    title: string
+    description: string
+    stage: string
+  }
+  position: {
+    stateKey: string
+    text: string
+    description: string
+    latestEventAt: string | null
+    syncedAt: string | null
+    stale: boolean
+  }
+  progress: Array<{
+    key: string
+    label: string
+    state: "completed" | "current" | "upcoming" | "attention" | "exception"
+    occurredAt?: string
+  }>
   canShowCarrierDetails: boolean
 }
 
@@ -533,6 +566,7 @@ export interface PublicOrder {
     deadline?: string | null
   } | null
   return_whatsapp_url?: string | null
+  tracking_public?: PublicOrderTracking | null
   vm?: OrderTrackingViewModel | null
 }
 

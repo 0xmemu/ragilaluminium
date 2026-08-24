@@ -152,7 +152,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
             </p>
           ) : null}
           <p className="text-[11px] text-muted-foreground">
-            Resi{" "}
+            No. Resi{" "}
             {order.vm?.carrier?.waybill ? (
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
                 {order.vm.carrier.waybill}
@@ -164,7 +164,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
                 />
               </span>
             ) : (
-              <span className="font-medium text-foreground">Belum Dikirim</span>
+              <span className="font-medium text-muted-foreground">Belum tersedia</span>
             )}
           </p>
           <p className="text-[11px] text-muted-foreground">
@@ -296,77 +296,67 @@ function DetailPengiriman({ order }: { order: PublicOrder }) {
  * 3. Pesanan Sampai COD (Lunas) (Truck)
  * 4. Selesai (CheckCircle)
  */
-function StatusSummary({ order }: { order: PublicOrder }) {
-  const status = order.order_status
-  const isDelivered =
-    status === "delivered" ||
-    status === "completed" ||
-    order.vm?.milestones?.some((m) => m.key === "delivered" && m.state === "completed")
-  const isShippedOrProcessing =
-    status === "processing" ||
-    status === "ready_to_ship" ||
-    status === "shipped" ||
-    isDelivered ||
-    order.vm?.milestones?.some(
-      (m) =>
-        (m.key === "ready_to_ship" || m.key === "handover_to_carrier" || m.key === "in_transit" || m.key === "out_for_delivery") &&
-        (m.state === "completed" || m.state === "current"),
-    )
-  const isConfirmed = true
+const PROGRESS_ICONS: Record<string, typeof Clock> = {
+  confirmed: Clock,
+  prepared: Package,
+  handover: Truck,
+  transit: Truck,
+  last_mile: Truck,
+  delivered: CheckCircle,
+  completed: CheckCircle,
+}
 
-  const steps = [
-    {
-      key: "confirmed",
-      label: "Terkonfirmasi",
-      icon: Clock,
-      done: isConfirmed,
-    },
-    {
-      key: "shipping",
-      label: "Pesanan Dikirim",
-      icon: Package,
-      done: Boolean(isShippedOrProcessing),
-    },
-    {
-      key: "delivered",
-      label: "Pesanan Sampai",
-      icon: Truck,
-      done: Boolean(isDelivered),
-    },
-    {
-      key: "completed",
-      label: "Selesai",
-      icon: CheckCircle,
-      done: status === "completed",
-    },
-  ]
+/**
+ * Tracker ringkas (kontrak sinkronisasi): SUMBER TUNGGAL order.vm.progress.
+ * "Pesanan dikirim" HANYA muncul saat event carrier membuktikannya (state
+ * handover complete/current) - tidak pernah dari order_status internal.
+ */
+function StatusSummary({ order }: { order: PublicOrder }) {
+  const progress = order.vm?.progress ?? []
+  if (progress.length === 0) return null
+
+  const stepClass = (state: string) => {
+    switch (state) {
+      case "completed":
+        return "bg-[#2b734e] text-white shadow-sm ring-4 ring-[#2b734e]/15"
+      case "current":
+        return "border-2 border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e] ring-4 ring-[#2b734e]/10"
+      case "attention":
+      case "exception":
+        return "border-2 border-warning bg-warning/10 text-warning ring-4 ring-warning/10"
+      default:
+        return "border-2 border-border bg-surface text-muted-foreground"
+    }
+  }
 
   return (
     <div className="relative">
       {/* Background connector line */}
       <div
         aria-hidden="true"
-        className="absolute top-6 left-[12%] right-[12%] h-0.5 bg-border -translate-y-1/2 z-0"
+        className="absolute top-6 left-[2.5%] right-[2.5%] h-0.5 bg-border -translate-y-1/2 z-0"
       />
-      <ol className="relative z-10 grid grid-cols-4 gap-2 text-center">
-        {steps.map((step) => {
-          const Glyph = step.icon
+      <ol className="relative z-10 grid grid-cols-7 gap-1 text-center">
+        {progress.map((step) => {
+          const Glyph = PROGRESS_ICONS[step.key] ?? Package
+          const active = step.state === "completed" || step.state === "current"
           return (
-            <li key={step.key} className="flex flex-col items-center gap-2">
+            <li key={step.key} className="flex flex-col items-center gap-1.5">
               <span
                 className={cn(
-                  "flex size-12 items-center justify-center rounded-full transition-colors",
-                  step.done
-                    ? "bg-[#2b734e] text-white shadow-sm ring-4 ring-[#2b734e]/15"
-                    : "border-2 border-border bg-surface text-muted-foreground",
+                  "flex size-10 items-center justify-center rounded-full transition-colors",
+                  stepClass(step.state),
                 )}
               >
-                <Glyph className="size-6" weight={step.done ? "bold" : "regular"} />
+                <Glyph
+                  className="size-5"
+                  weight={step.state === "completed" ? "bold" : step.state === "current" ? "bold" : "regular"}
+                />
               </span>
               <span
                 className={cn(
-                  "text-[11px] leading-tight max-w-[80px]",
-                  step.done ? "font-semibold text-foreground" : "text-muted-foreground",
+                  "text-[10px] leading-tight max-w-full",
+                  active ? "font-semibold text-foreground" : "text-muted-foreground",
                 )}
               >
                 {step.label}
@@ -462,7 +452,7 @@ function Milestones({ order }: { order: PublicOrder }) {
  * Expandable J&T Webhook Scan Events (bila tersedia) dengan timestamp jam:menit.
  */
 function ExpandableTimeline({ order }: { order: PublicOrder }) {
-  const timeline = order.tracking?.timeline
+  const timeline = (order.tracking_public ?? order.tracking)?.timeline
   if (!timeline || timeline.length === 0) return null
 
   return (
@@ -515,14 +505,28 @@ function ExpandableTimeline({ order }: { order: PublicOrder }) {
  */
 function JnTCard({ order }: { order: PublicOrder }) {
   const carrier = order.vm?.carrier
-  const hasTimeline = order.tracking?.timeline && order.tracking.timeline.length > 0
+  const hasTimeline =
+    (order.tracking_public ?? order.tracking)?.timeline &&
+    (order.tracking_public ?? order.tracking)!.timeline!.length > 0
 
   return (
     <section className="order-tracking__jnt-card rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5">
       {/* Brand Header J&T Cargo Icon */}
-      <div className="space-y-1">
+      <div className="space-y-3">
         <JntCargoLogo />
-        <div className="pt-1">
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">No. Pesanan</p>
+          <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
+            <span>{order.order_number}</span>
+            <CopyButton
+              text={order.order_number}
+              label="Salin nomor pesanan"
+              className="size-5"
+              iconSize="size-3.5"
+            />
+          </div>
+        </div>
+        <div className="space-y-1">
           <p className="text-xs text-muted-foreground">No. Resi</p>
           {carrier?.waybill ? (
             <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
@@ -535,15 +539,7 @@ function JnTCard({ order }: { order: PublicOrder }) {
               />
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
-              <span>{order.order_number}</span>
-              <CopyButton
-                text={order.order_number}
-                label="Salin nomor pesanan"
-                className="size-5"
-                iconSize="size-3.5"
-              />
-            </div>
+            <p className="font-mono text-sm font-semibold text-muted-foreground">Belum tersedia</p>
           )}
         </div>
       </div>
@@ -692,19 +688,59 @@ function ReturnBlockCard({ order }: { order: PublicOrder }) {
 /**
  * Komponen Utama OrderTrackingDetail
  */
+/**
+ * Kartu "Posisi paket saat ini" (kontrak B). Sumber: order.vm.position +
+ * order.vm.shipment. Timestamp event carrier = "Pembaruan pengiriman";
+ * timestamp sistem = "Data disinkronkan". Tidak mengarang lokasi.
+ */
+function PositionCard({ order, onRefresh }: { order: PublicOrder; onRefresh?: () => void }) {
+  const position = order.vm?.position
+  if (!position) return null
+
+  return (
+    <section className="order-tracking__position rounded-[14px] border border-border bg-surface p-4 shadow-sm">
+      <h3 className="text-xs font-bold tracking-tight text-foreground">Posisi paket saat ini</h3>
+      <p className="mt-2 text-sm font-semibold text-foreground">{position.text}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{position.description}</p>
+      <div className="mt-3 space-y-1 border-t border-border pt-3 text-[11px] text-muted-foreground">
+        {position.latestEventAt ? (
+          <p>Pembaruan pengiriman: {formatDateTime(position.latestEventAt)}</p>
+        ) : null}
+        {position.syncedAt ? (
+          <p>Data disinkronkan: {formatDateTime(position.syncedAt)}</p>
+        ) : null}
+      </div>
+      {onRefresh ? (
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="mt-3 text-xs font-semibold text-[#2b734e] underline-offset-2 hover:underline"
+        >
+          Muat Ulang
+        </button>
+      ) : null}
+    </section>
+  )
+}
+
 export function OrderTrackingDetail({
   order,
   onCancel,
   cancelBusy = false,
+  onRefresh,
 }: {
   order: PublicOrder
   onCancel?: () => void
   cancelBusy?: boolean
+  onRefresh?: () => void
 }) {
   return (
     <div className="order-tracking space-y-4 max-w-lg mx-auto">
       {/* 0. Status utama (kontrak A2: headline + message + tone) */}
       <StatusNotice order={order} />
+
+      {/* 0b. Posisi paket saat ini (kontrak B) */}
+      <PositionCard order={order} onRefresh={onRefresh} />
 
       {/* 1. Ringkasan Pesanan */}
       <OrderSummaryCard order={order} />

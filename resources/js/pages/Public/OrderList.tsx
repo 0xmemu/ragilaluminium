@@ -64,7 +64,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
               {waybill ? <CopyButton text={waybill} label="Nomor Resi" /> : null}
             </p>
           </div>
-          <StatusBadge status={order.order_status} />
+          <StatusBadge status={order.vm?.primaryStatus?.key ?? order.order_status} />
         </div>
       </div>
       <div className="mx-4 h-px bg-border" />

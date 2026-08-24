@@ -48,6 +48,7 @@ class OrderTrackingViewModel
         return match ($raw) {
             'picked_up' => 'picked_up',
             'in_transit' => 'in_transit',
+            'out_for_delivery' => 'out_for_delivery',
             'delivered' => 'delivered',
             'returned' => 'returned',
             'exception' => 'exception',
@@ -156,11 +157,12 @@ class OrderTrackingViewModel
 
         // 5. COD aktif pengiriman -> primary mengikuti shipping
         if (! $this->isPaid()) {
-            // Belum lanjut ke delivery -> order pending (belum konfirmasi/proses) utk COD
+            // Belum lanjut ke delivery -> order pending (belum konfirmasi/proses) utk COD.
+            // Kontrak A: order baru/menunggu verifikasi = "Pesanan sedang dikonfirmasi".
             if ($status === 'awaiting_confirmation') {
-                return $this->mk('confirmed', 'Pesanan dikonfirmasi', 'neutral',
-                    'Pesanan dikonfirmasi',
-                    'Pembayaran dilakukan saat barang diterima sesuai ketentuan COD.');
+                return $this->mk('confirmed', 'Pesanan sedang dikonfirmasi', 'neutral',
+                    'Pesanan sedang dikonfirmasi',
+                    'Kami sedang memverifikasi pesanan Anda.');
             }
         }
 
@@ -180,18 +182,23 @@ class OrderTrackingViewModel
         $isCod = $this->isCod();
 
         return match ($shipping) {
-            'waybill_created' => $this->mk('ready_to_ship', 'Siap dikirim', 'info',
-                'Pesanan siap dikirim',
-                $isCod
-                    ? 'Paket sedang disiapkan untuk diserahkan ke kurir. Siapkan pembayaran sesuai total saat barang diterima.'
-                    : 'Paket sedang disiapkan untuk diserahkan ke kurir.'),
-            'picked_up', 'in_transit' => $this->mk('in_transit', 'Dalam perjalanan', 'info',
-                'Dalam perjalanan',
-                'Paket sedang menuju kota tujuan.',
+            // Resi ada tapi belum ada scan carrier = menunggu penjemputan kurir.
+            'waybill_created' => $this->mk('awaiting_pickup', 'Menunggu penjemputan kurir', 'info',
+                'Menunggu penjemputan kurir',
+                'Resi telah dibuat dan paket menunggu dijemput atau diterima kurir.',
                 $this->shipping?->last_status_at?->toIso8601String()),
-            'out_for_delivery' => $this->mk('out_for_delivery', 'Sedang diantar', 'info',
-                'Sedang diantar',
-                'Kurir sedang menuju alamat Anda.',
+            // Carrier menerima paket (pickup/scan) = pesanan DITERIMA kurir.
+            'picked_up' => $this->mk('shipped', 'Pesanan dikirim', 'info',
+                'Pesanan dikirim',
+                'Paket telah diterima kurir dan akan segera diproses untuk pengiriman.',
+                $this->shipping?->last_status_at?->toIso8601String()),
+            'in_transit' => $this->mk('in_transit', 'Paket dalam perjalanan', 'info',
+                'Paket dalam perjalanan',
+                'Paket sedang dalam perjalanan ke wilayah tujuan.',
+                $this->shipping?->last_status_at?->toIso8601String()),
+            'out_for_delivery' => $this->mk('out_for_delivery', 'Paket sedang diantar', 'info',
+                'Paket sedang diantar',
+                'Kurir sedang mengantar paket ke alamat tujuan Anda.',
                 $this->shipping?->last_status_at?->toIso8601String()),
             'delivered' => $this->mk('delivered', 'Pesanan terkirim', 'success',
                 'Pesanan terkirim',
@@ -208,11 +215,13 @@ class OrderTrackingViewModel
     {
         $status = $this->orderStatus();
 
-        // Order sedang diproses admin (belum resi) -> fase siap dikirim (ready-stock).
+        // Order sedang diproses admin (belum resi) -> fase siap dikirim (kontrak A
+        // & skenario 3/10): judul 'Pesanan siap dikirim', posisi paket menyatakan
+        // masih menunggu diserahkan ke kurir (tidak mengklaim sudah dikirim).
         if ($status === 'processing') {
             return $this->mk('ready_to_ship', 'Pesanan siap dikirim', 'info',
                 'Pesanan siap dikirim',
-                'Pesanan sedang disiapkan untuk diserahkan ke kurir.');
+                'Pesanan sudah siap dan menunggu diserahkan ke kurir.');
         }
 
         return $this->mk('pending', $isCod ? 'Pesanan dikonfirmasi' : 'Menunggu pembayaran', 'neutral',
@@ -312,12 +321,14 @@ class OrderTrackingViewModel
         if ($payment === 'unpaid' && ! $isCod) {
             $paymentStep['state'] = 'current';
             $paymentStep['label'] = 'Menunggu pembayaran';
+            unset($paymentStep['occurredAt']); // belum terjadi: tanpa timestamp palsu
 
             return [$orderMade, $paymentStep];
         }
         if ($payment === 'pending_verification' && ! $isCod) {
             $paymentStep['state'] = 'current';
             $paymentStep['label'] = 'Pembayaran sedang diverifikasi';
+            unset($paymentStep['occurredAt']);
 
             return [$orderMade, $paymentStep];
         }
@@ -326,6 +337,7 @@ class OrderTrackingViewModel
         if ($isCod && in_array($status, ['awaiting_confirmation'], true)) {
             $paymentStep['state'] = 'current';
             $paymentStep['label'] = 'Pesanan dikonfirmasi';
+            unset($paymentStep['occurredAt']);
 
             return [$orderMade, $paymentStep];
         }
@@ -516,6 +528,226 @@ class OrderTrackingViewModel
         ];
     }
 
+    /**
+     * Blok pengiriman (kontrak sinkronisasi status UI pelanggan).
+     *
+     * @return array{hasWaybill:bool,waybill:string|null,carrierName:string|null,statusKey:string,label:string,location:string|null,latestEventText:string|null,latestEventAt:string|null,syncedAt:string|null,trackingAvailable:bool,stale:bool}
+     */
+    public function shipment(): array
+    {
+        $shipping = $this->shipping;
+        $hasWaybill = $shipping !== null && filled($shipping->waybill_number);
+        $statusKey = $this->normalizedShippingStatus();
+
+        $latestEvent = null;
+        if ($shipping !== null) {
+            $latestEvent = $shipping->trackingEvents()
+                ->orderByDesc('occurred_at')
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        // Stale: pengiriman aktif (belum terminal) tanpa sinkronisasi > 2 jam.
+        $stale = false;
+        if ($hasWaybill && ! in_array($statusKey, ['delivered', 'exception', 'returned'], true)) {
+            $synced = $shipping->updated_at;
+            $stale = $synced === null || $synced->lt(now()->subMinutes(120));
+        }
+
+        return [
+            'hasWaybill' => $hasWaybill,
+            'waybill' => $hasWaybill ? (string) $shipping->waybill_number : null,
+            'carrierName' => $hasWaybill ? (string) $shipping->carrier_name : null,
+            'statusKey' => $statusKey,
+            'label' => $this->shipmentLabel($statusKey, $hasWaybill),
+            'location' => $latestEvent?->location,
+            'latestEventText' => $latestEvent?->description,
+            'latestEventAt' => $latestEvent?->occurred_at?->toIso8601String()
+                ?? $shipping?->last_status_at?->toIso8601String(),
+            'syncedAt' => $shipping?->updated_at?->toIso8601String(),
+            'trackingAvailable' => $shipping !== null && $shipping->trackingEvents()->exists(),
+            'stale' => $stale,
+        ];
+    }
+
+    private function shipmentLabel(string $statusKey, bool $hasWaybill): string
+    {
+        if (! $hasWaybill) {
+            return 'Belum diserahkan ke kurir';
+        }
+
+        return match ($statusKey) {
+            'waybill_created' => 'Menunggu dijemput atau diterima kurir',
+            'picked_up' => 'Paket diterima kurir',
+            'in_transit' => 'Paket dalam perjalanan',
+            'out_for_delivery' => 'Paket sedang diantar',
+            'delivered' => 'Paket telah diterima di tujuan',
+            'exception' => 'Pengiriman perlu perhatian',
+            'returned' => 'Paket dikembalikan ke pengirim',
+            default => 'Informasi posisi paket belum tersedia',
+        };
+    }
+
+    /**
+     * Status customer tunggal (title+description) dari kontrak banner.
+     *
+     * @return array{key:string,title:string,description:string,stage:string}
+     */
+    public function customerStatus(): array
+    {
+        $primary = $this->primaryStatus();
+        $key = (string) $primary['key'];
+        $status = $this->orderStatus();
+        $shipping = $this->normalizedShippingStatus();
+        $payment = $this->paymentStatus();
+
+        $stage = match (true) {
+            in_array($status, ['cancelled', 'issue', 'return_in_process', 'return_completed'], true) => 'attention',
+            $status === 'completed' => 'completed',
+            $payment === 'unpaid' && ! $this->isCod() => 'payment',
+            $payment === 'pending_verification' && ! $this->isCod() => 'verification',
+            $status === 'awaiting_confirmation' => 'confirmed',
+            $shipping === 'not_shipped' => 'preparing',
+            $shipping === 'waybill_created' => 'awaiting_pickup',
+            $shipping === 'picked_up' => 'shipped',
+            $shipping === 'in_transit' => 'transit',
+            $shipping === 'out_for_delivery' => 'last_mile',
+            $shipping === 'delivered' => 'delivered',
+            in_array($shipping, ['exception', 'delivery_failed', 'returned'], true) => 'attention',
+            default => 'preparing',
+        };
+
+        return [
+            'key' => $key,
+            'title' => (string) $primary['headline'],
+            'description' => (string) $primary['message'],
+            'stage' => $stage,
+        ];
+    }
+
+    /**
+     * Kartu "Posisi paket saat ini" (kontrak B), tanpa mengarang lokasi.
+     *
+     * @return array{stateKey:string,text:string,description:string,latestEventAt:string|null,syncedAt:string|null,stale:bool}
+     */
+    public function position(): array
+    {
+        $shipment = $this->shipment();
+        $statusKey = (string) $shipment['statusKey'];
+        $stale = (bool) $shipment['stale'];
+
+        [$stateKey, $text, $description] = match ($statusKey) {
+            'waybill_created' => [
+                'awaiting_pickup',
+                'Menunggu dijemput atau diterima kurir',
+                'Resi telah dibuat. Paket menunggu dijemput atau diterima kurir.',
+            ],
+            'picked_up' => ['picked_up', 'Paket diterima kurir', 'Kurir telah menerima paket dan akan segera memprosesnya untuk pengiriman.'],
+            'in_transit' => $shipment['location'] !== null
+                ? ['in_transit', 'Paket berada di '.$shipment['location'], 'Paket sedang dalam perjalanan ke wilayah tujuan.']
+                : ['in_transit', 'Paket dalam perjalanan', 'Paket sedang dalam perjalanan ke wilayah tujuan.'],
+            'out_for_delivery' => ['out_for_delivery', 'Paket sedang dibawa kurir ke alamat tujuan', 'Kurir sedang mengantar paket ke alamat Anda.'],
+            'delivered' => ['delivered', 'Paket telah diterima di tujuan', 'Paket tercatat telah diterima.'],
+            'exception' => ['exception', 'Pengiriman perlu perhatian', 'Ada pembaruan pengiriman yang memerlukan tindak lanjut. Hubungi kami bila perlu.'],
+            'returned' => ['returned', 'Paket dikembalikan ke pengirim', 'Pengiriman tidak dapat diselesaikan. Tim kami akan menghubungi Anda.'],
+            default => ['not_shipped', 'Belum diserahkan ke kurir', 'Paket masih berada di proses toko dan belum dititipkan ke kurir.'],
+        };
+
+        if ($stale && ! in_array($statusKey, ['delivered', 'exception', 'returned'], true)) {
+            $description = 'Pembaruan pengiriman terakhir belum tersedia. Timestamp di bawah adalah waktu sinkronisasi data, bukan kejadian fisik paket.';
+        }
+
+        return [
+            'stateKey' => $stateKey,
+            'text' => $text,
+            'description' => $description,
+            'latestEventAt' => $shipment['latestEventAt'],
+            'syncedAt' => $shipment['syncedAt'],
+            'stale' => $stale,
+        ];
+    }
+
+    /**
+     * Progress tracker 7 tahap customer-facing (kontrak C), satu sumber.
+     *
+     * @return list<array{key:string,label:string,state:string,occurredAt?:string}>
+     */
+    public function progress(): array
+    {
+        $status = $this->orderStatus();
+        $milestones = $this->milestones();
+
+        $keyMap = [
+            'order_created' => ['confirmed', 'Pesanan dikonfirmasi'],
+            'payment_verified' => ['confirmed', 'Pesanan dikonfirmasi'],
+            'order_confirmed' => ['confirmed', 'Pesanan dikonfirmasi'],
+            'ready_to_ship' => ['prepared', 'Pesanan disiapkan'],
+            'handover_to_carrier' => ['handover', 'Diserahkan ke kurir'],
+            'in_transit' => ['transit', 'Dalam perjalanan'],
+            'out_for_delivery' => ['last_mile', 'Sedang diantar'],
+            'delivered' => ['delivered', 'Terkirim'],
+        ];
+
+        $seen = [];
+        $steps = [];
+        foreach ($milestones as $m) {
+            if (! isset($keyMap[$m['key']])) {
+                continue;
+            }
+            [$key, $label] = $keyMap[$m['key']];
+            $state = (string) ($m['state'] ?? 'upcoming');
+            if (isset($seen[$key])) {
+                // Duplikat confirmed (order_created + payment/order_confirmed):
+                // state 'current' lebih bermakna daripada 'completed' (menunggu aksi).
+                if ($state === 'current') {
+                    foreach ($steps as &$existing) {
+                        if ($existing['key'] === $key) {
+                            $existing['state'] = 'current';
+                        }
+                    }
+                    unset($existing);
+                }
+                continue;
+            }
+            $seen[$key] = true;
+            $step = [
+                'key' => $key,
+                'label' => $label,
+                'state' => $state,
+            ];
+            if (! empty($m['occurredAt'])) {
+                $step['occurredAt'] = (string) $m['occurredAt'];
+            }
+            $steps[] = $step;
+        }
+
+        // Tahap akhir Selesai hanya saat order benar-benar completed.
+        $steps[] = [
+            'key' => 'completed',
+            'label' => 'Selesai',
+            'state' => $status === 'completed' ? 'completed' : 'upcoming',
+        ];
+
+        // Terminal (cancelled/issue/return): tahap terakhir yang pernah tercapai
+        // ditandai 'attention' (masalah di situ), sisanya upcoming. Pelanggan melihat
+        // titik gagal di-highlight, bukan semua langkah jadi abu-abu.
+        if (in_array($status, ['cancelled', 'issue', 'return_in_process', 'return_completed'], true)) {
+            $lastReached = null;
+            foreach (array_reverse($steps) as $st) {
+                if (in_array($st['state'], ['completed', 'current', 'attention'], true)) {
+                    $lastReached = $st['key'];
+                    break;
+                }
+            }
+            foreach ($steps as &$step) {
+                $step['state'] = $step['key'] === $lastReached ? 'attention' : 'upcoming';
+            }
+            unset($step);
+        }
+
+        return $steps;
+    }
+
     /** Ekspos objek view model penuh untuk payload. @return array<string,mixed> */
     public function toArray(): array
     {
@@ -523,6 +755,10 @@ class OrderTrackingViewModel
             'primaryStatus' => $this->primaryStatus(),
             'actionRequired' => $this->actionRequired(),
             'milestones' => $this->milestones(),
+            'shipment' => $this->shipment(),
+            'customerStatus' => $this->customerStatus(),
+            'position' => $this->position(),
+            'progress' => $this->progress(),
             'estimate' => $this->estimate(),
             'recipient' => $this->recipient(),
             'carrier' => $this->carrier(),

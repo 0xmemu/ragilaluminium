@@ -43,11 +43,11 @@ function dateForStep(
  * 5 milestone statis (pesanan → diproses → dikirim → sampai → selesai).
  */
 export function OrderProgressTracker({ order }: { order: PublicOrder }) {
-  const timeline = order.tracking?.timeline
+  const timeline = (order.tracking_public ?? order.tracking)?.timeline
   const tl = timeline ?? []
   const dynamicEntries = tl.length > 0 ? [...tl].reverse() : null
   const currentIndex = STEPS.findIndex((step) => step.status === order.order_status)
-  const activeShipping = order.tracking?.record_status || order.shipping_status || ""
+  const activeShipping = order.vm?.shipment?.statusKey || order.shipping_status || ""
 
   const specialMeta: Record<
     string,

@@ -94,16 +94,19 @@ function OrderDetail({
   order,
   onCancel,
   cancelBusy = false,
+  onRefresh,
 }: {
   order: PublicOrder
   onCancel?: () => void
   cancelBusy?: boolean
+  onRefresh?: () => void
 }) {
   return (
     <OrderTrackingDetail
       order={order}
       onCancel={onCancel}
       cancelBusy={cancelBusy}
+      onRefresh={onRefresh}
     />
   )
 }
@@ -445,6 +448,7 @@ export default function OrderStatus({
                   order={order}
                   onCancel={cancelOrder}
                   cancelBusy={cancelForm.processing}
+                  onRefresh={requestRefresh}
                 />
               ) : (
                 <EmptyState
@@ -511,6 +515,7 @@ export default function OrderStatus({
                     order={shownOrder}
                     onCancel={cancelOrder}
                     cancelBusy={cancelForm.processing}
+                    onRefresh={requestRefresh}
                   />
                 </>
               ) : (
