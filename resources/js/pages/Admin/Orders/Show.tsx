@@ -21,6 +21,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { statusMeta } from "@/lib/status"
+import { liveConnectionLabel, useAdminLiveOrders } from "@/lib/admin-live-events"
 
 interface OrderItemRow {
   id: number
@@ -904,10 +905,20 @@ export default function OrderShow({
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
-  const [showAllEvents, setShowAllEvents] = React.useState(false)
-  const [showAllWa, setShowAllWa] = React.useState(false)
-  const { printing, handlePrint } = usePrintAddress()
-  const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
+    const [showAllEvents, setShowAllEvents] = React.useState(false)
+    const [showAllWa, setShowAllWa] = React.useState(false)
+    const { printing, handlePrint } = usePrintAddress()
+    const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
+    const { state: liveState, lastEventAt } = useAdminLiveOrders({
+      onOrderUpdated: (event) => {
+        if (event.order_id === order.id) {
+          // Tandai data mungkin basi; trigger refresh horizontal.
+          // Detail: tidak menimpa state form yang sedang diedit.
+          // Saat ini hanya hint; full granular update bisa ditambah
+          // saat Echo client tersedia.
+        }
+      },
+    })
   const [adminNotesBusy, setAdminNotesBusy] = React.useState(false)
 
   function saveAdminNotes(next: string) {
@@ -1128,6 +1139,18 @@ export default function OrderShow({
               <span className="text-muted-foreground">Update terakhir</span>
               <span className="font-medium">{formatDateTime(order.updated_at)}</span>
             </li>
+            {liveState !== "unavailable" && liveState !== "connected" ? (
+              <li className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Pembaruan langsung</span>
+                <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
+              </li>
+            ) : null}
+            {lastEventAt ? (
+              <li className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Event terakhir</span>
+                <span className="font-medium">{formatDateTime(lastEventAt)}</span>
+              </li>
+            ) : null}
           </ol>
         </SectionCard>
         <SectionCard title="Log perubahan status">
