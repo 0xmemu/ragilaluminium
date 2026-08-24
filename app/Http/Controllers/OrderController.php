@@ -308,6 +308,15 @@ class OrderController extends Controller
         $tracking = OrderTrackingPresenter::forOrder($order, $shipping);
         $viewModel = new \App\Support\OrderTrackingViewModel($order, $shipping);
 
+        $whatsappUrl = null;
+        $businessPhone = PhoneNumber::normalize(\App\Support\ConsultationWhatsApp::businessPhone());
+        if ($businessPhone) {
+            $whatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(sprintf(
+                'Halo Ragil Aluminium, saya mau bertanya soal order %s. Mohon bantuannya.',
+                $order->order_number,
+            ));
+        }
+
         return [
             'order_number' => $order->order_number,
             'order_status' => $order->order_status,
@@ -349,6 +358,7 @@ class OrderController extends Controller
             ] : null,
             'tracking' => $tracking,
             'vm' => $viewModel->toArray(),
+            'whatsapp_url' => $whatsappUrl,
             // Lapisan publik: sanitasi metadata internal yang bukan informasi customer.
             'tracking_public' => self::publicTrackingSanitized($tracking),
 

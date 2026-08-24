@@ -103,6 +103,20 @@ class OrderPrivacyTest extends \Tests\TestCase
             $this->assertArrayNotHasKey('detail', $entry);
             $this->assertArrayNotHasKey('location', $entry);
         }
+        // Phase C: handoff WhatsApp dengan order reference tersedia di payload publik.
+        $this->assertIsString($json['whatsapp_url'] ?? null);
+        $this->assertStringContainsString('wa.me/', $json['whatsapp_url'] ?? '');
+    }
+
+    public function test_api_payload_includes_whatsapp_url_with_order_reference(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->getJson('/api/orders/RA-PRIV-1/status?customer_phone=08123456789')
+            ->assertOk()
+            ->assertJsonPath('whatsapp_url', fn ($url) => is_string($url)
+                && str_contains($url, 'wa.me/')
+                && str_contains($url, rawurlencode($order->order_number)));
     }
 
     public function test_lookup_errors_are_enumeration_safe(): void

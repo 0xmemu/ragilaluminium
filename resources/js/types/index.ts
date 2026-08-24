@@ -525,6 +525,7 @@ export interface PublicOrder {
   reviews?: PublicOrderReview[]
   shipping?: PublicOrderShipping | null
   tracking?: PublicOrderTracking | null
+  whatsapp_url?: string | null
   vm?: OrderTrackingViewModel | null
 }
 

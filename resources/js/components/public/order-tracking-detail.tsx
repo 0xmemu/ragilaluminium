@@ -99,6 +99,13 @@ function ActionBanner({ order }: { order: PublicOrder }) {
             <a href={action.ctaHref}>{action.ctaLabel}</a>
           </Button>
         ) : null}
+        {action.type === "contact_support" && order.whatsapp_url ? (
+          <Button asChild size="sm" variant="secondary">
+            <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
+              Buka WhatsApp
+            </a>
+          </Button>
+        ) : null}
       </div>
     </Alert>
   )

@@ -158,6 +158,14 @@ export default function OrderStatus({
 
   // Data pesanan terbaru hasil polling (fallback ke prop awal).
   const [liveOrder, setLiveOrder] = React.useState<PublicOrder | null>(null)
+  // Feedback polling: idle | updating | error + timestamp terakhir berhasil.
+  const [pollState, setPollState] = React.useState<"idle" | "updating" | "error">("idle")
+  const [lastPolledAt, setLastPolledAt] = React.useState<Date | null>(null)
+  // Ref agar tombol Muat Ulang manual dapat memicu satu siklus polling tanpa reload halaman.
+  const pollRef = React.useRef<null | (() => void)>(null)
+  function requestRefresh(): void {
+    pollRef.current?.()
+  }
 
   React.useEffect(() => {
     const refs = readStoredOrderRefs()
@@ -247,6 +255,7 @@ export default function OrderStatus({
 
       inFlight = true
       lastAttempt = Date.now()
+      setPollState("updating")
 
       try {
         const url = new URL(
@@ -262,6 +271,7 @@ export default function OrderStatus({
         })
         if (!response.ok) {
           failures = response.status === 429 ? Math.max(2, failures + 1) : failures + 1
+          setPollState("error")
           return
         }
 
@@ -269,6 +279,8 @@ export default function OrderStatus({
         if (disposed) return
         failures = 0
         setLiveOrder(fresh)
+        setLastPolledAt(new Date())
+        setPollState("idle")
         setStoredOrders((current) => current.map((row) =>
           row.order_number === fresh.order_number ? fresh : row,
         ))
@@ -277,6 +289,7 @@ export default function OrderStatus({
         }
       } catch {
         failures += 1
+        setPollState("error")
       } finally {
         inFlight = false
         if (!disposed) {
@@ -294,9 +307,11 @@ export default function OrderStatus({
 
     document.addEventListener("visibilitychange", onVisibility)
     // Start conservatively; visibility changes may trigger one guarded refresh.
+    pollRef.current = poll
     schedule(30_000)
 
     return () => {
+      pollRef.current = null
       disposed = true
       if (timer !== null) window.clearTimeout(timer)
       document.removeEventListener("visibilitychange", onVisibility)
@@ -464,11 +479,40 @@ export default function OrderStatus({
                   <p className="text-sm text-muted-foreground">Memuat pesanan yang tersimpan di browser ini...</p>
                 </div>
               ) : shownOrder ? (
-                <OrderDetail
-                  order={shownOrder}
-                  onCancel={cancelOrder}
-                  cancelBusy={cancelForm.processing}
-                />
+                <>
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {pollState === "updating" ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Icon name="dots-three" className="size-3.5 animate-pulse" aria-hidden="true" />
+                        Memperbarui...
+                      </span>
+                    ) : null}
+                    {lastPolledAt ? (
+                      <span>
+                        Terakhir diperbarui:{" "}
+                        {new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(lastPolledAt)}{" "}
+                        WIB
+                      </span>
+                    ) : null}
+                    {pollState === "error" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 font-medium text-destructive">
+                        Koneksi bermasalah. Data mungkin belum terbarui.
+                        <button
+                          type="button"
+                          className="ml-1 font-bold underline underline-offset-2"
+                          onClick={requestRefresh}
+                        >
+                          Muat Ulang
+                        </button>
+                      </span>
+                    ) : null}
+                  </div>
+                  <OrderDetail
+                    order={shownOrder}
+                    onCancel={cancelOrder}
+                    cancelBusy={cancelForm.processing}
+                  />
+                </>
               ) : (
                 <EmptyState
                   icon="clipboard-list"
