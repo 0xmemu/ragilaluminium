@@ -6,6 +6,7 @@ import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 
 interface CodSettingsData {
   enabled: boolean
@@ -32,6 +33,8 @@ export default function CodSettingsEdit({
     fee_value: String(settings.fee_value ?? 0),
     max_order_amount: settings.max_order_amount ?? "",
   })
+  const capabilities = useAdminCapabilities()
+  const canManage = can("cod_settings.manage", capabilities)
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -55,6 +58,10 @@ export default function CodSettingsEdit({
       actions={<StatusBadge status={form.data.enabled ? "active" : "inactive"} />}
     >
       <Head title={`${title} | Admin`} />
+
+      <p className="mb-4 -mt-2 text-xs text-muted-foreground">
+        Biaya COD berbeda dari subsidi ongkir dan tidak mengubah status pembayaran.
+      </p>
 
       <form onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
@@ -133,7 +140,7 @@ export default function CodSettingsEdit({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={form.processing}>
+          <Button type="submit" disabled={form.processing || !canManage} title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}>
             {form.processing ? "Menyimpan..." : "Simpan perubahan"}
           </Button>
           <Button asChild type="button" variant="secondary">

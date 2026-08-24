@@ -21,8 +21,9 @@ import {
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
-import { formatCurrency, formatNumber } from "@/lib/format"
+import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 import type { Pagination as PaginationData } from "@/types"
 
 interface FilterOption {
@@ -240,6 +241,35 @@ export default function ProductsIndex({
 }: ProductsIndexProps) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
+  const capabilities = useAdminCapabilities()
+  const canManage = can("products.manage", capabilities)
+
+  const activeFilters = React.useMemo(() => {
+    const chips: Array<{ label: string; clear: () => void }> = []
+    if (filters.product_category && filters.product_category !== "all") {
+      const option = filterOptions.categories.find((o) => o.value === filters.product_category)
+      chips.push({ label: `Kategori: ${option?.label ?? filters.product_category}`, clear: () => visit({ product_category: "all" }) })
+    }
+    if (filters.product_model && filters.product_model !== "all") {
+      const option = filterOptions.models.find((o) => o.value === filters.product_model)
+      chips.push({ label: `Model: ${option?.label ?? filters.product_model}`, clear: () => visit({ product_model: "all" }) })
+    }
+    if (filters.status && filters.status !== "all") {
+      const option = filterOptions.statuses.find((o) => o.value === filters.status)
+      chips.push({ label: `Status: ${option?.label ?? humanize(filters.status)}`, clear: () => visit({ status: "all" }) })
+    }
+    if (searchQuery?.trim()) {
+      chips.push({ label: `Cari: ${searchQuery}`, clear: () => visit({ q: "" }) })
+    }
+    return chips
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.product_category, filters.product_model, filters.status, searchQuery])
+
+  const hasActiveFilters = activeFilters.length > 0
+
+  function resetAllFilters() {
+    router.get("/admin/kelola/produk", {}, { preserveState: false, preserveScroll: true })
+  }
 
   function visit(params: Record<string, string | undefined>) {
     const next: Record<string, string> = {}
@@ -347,22 +377,69 @@ export default function ProductsIndex({
       </ListToolbar>
 
       {/* Konten */}
+      {activeFilters.length ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Filter aktif
+          </span>
+          {activeFilters.map((filter) => (
+            <span
+              key={filter.label}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground"
+            >
+              {filter.label}
+              <button
+                type="button"
+                onClick={filter.clear}
+                className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label={`Hapus filter ${filter.label}`}
+              >
+                <Icon name="x" className="size-3" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
+            >
+              Reset Filter
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {!products.length ? (
-        <EmptyState
-          className="mt-4"
-          title="Belum ada produk"
-          description="Tambah produk baru atau impor katalog dari menu Produk → Import."
-          action={
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link href={createHref}>Tambah produk</Link>
+        hasActiveFilters ? (
+          <EmptyState
+            className="mt-4"
+            icon="package"
+            title="Tidak ada produk yang cocok"
+            description="Coba ubah atau hapus filter untuk melihat produk lain."
+            action={
+              <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                Reset Filter
               </Button>
-              <Button asChild variant="secondary">
-                <Link href={importHref}>Import</Link>
-              </Button>
-            </div>
-          }
-        />
+            }
+          />
+        ) : (
+          <EmptyState
+            className="mt-4"
+            title="Belum ada produk"
+            description="Tambah produk baru atau impor katalog dari menu Produk → Import."
+            action={
+              <div className="flex flex-wrap gap-2">
+                <Button asChild disabled={!canManage}>
+                  <Link href={createHref}>Tambah produk</Link>
+                </Button>
+                <Button asChild variant="secondary">
+                  <Link href={importHref}>Import</Link>
+                </Button>
+              </div>
+            }
+          />
+        )
       ) : (
         <div className="mt-4">
           <div className="overflow-x-auto">
