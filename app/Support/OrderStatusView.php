@@ -6,7 +6,7 @@ use App\Models\Order;
 
 /**
  * OrderStatusView — normalizer pembacaan status order/payment/COD yang AMAN
- * terhadap skema payment saat ini (hanya payment_status pending|paid).
+ * terhadap skema payment saat ini (kolom enum orders.payment_status: pending|paid|refunded).
  *
  * TUJUAN/UTILITAS:
  *  - Satu sumber pembagian bucket pembayaran yang tidak overclaim.
@@ -15,7 +15,7 @@ use App\Models\Order;
  *    seluruh komponen UI; hanya method normalizer ini yang disesuaikan.
  *
  * BATASAN (penting, jangan diabaikan):
- *  - payment_status saat ini HANYA `pending` | `paid`.
+ *  - payment_status saat ini: `pending` | `paid` | `refunded`.
  *  - Oleh karena itu TIDAK AMAN membedakan "belum bayar" vs "bukti diterima"
  *    (keduanya pending). Jangan klaim status proof_received/pending_verification.
  *  - Data yang ambigu -> bucket "perlu_ditinjau" dan label "Perlu ditinjau".

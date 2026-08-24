@@ -164,6 +164,13 @@ class OrderTrackingViewModel
             }
         }
 
+        // 5b. Order selesai: tidak ada retur baru, hanya dukungan historis.
+        if ($status === 'completed') {
+            return $this->mk('completed', 'Pesanan selesai', 'success',
+                'Pesanan selesai',
+                'Terima kasih, pesanan Anda telah selesai. Retur baru tidak tersedia untuk pesanan ini; jika butuh bantuan, hubungi kami melalui WhatsApp.');
+        }
+
         // 6. Fulfillment/shipping normal
         return $this->primaryByShipping($shipping);
     }
