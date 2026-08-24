@@ -5,6 +5,8 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequestContext;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackStorefrontPageView;
+use App\Http\Middleware\VerifyBaileysKey;
+use App\Http\Middleware\VerifyJntSignature;
 use App\Providers\EventServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -53,6 +55,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'verify.jnt.signature' => VerifyJntSignature::class,
+            'verify.baileys.key' => VerifyBaileysKey::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

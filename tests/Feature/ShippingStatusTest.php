@@ -103,8 +103,8 @@ class ShippingStatusTest extends \Tests\TestCase
     {
         config(['jnt.webhook.private_key' => null]);
 
+        // Middleware verify.jnt.signature: tanpa signature -> 401 (sebelumnya ack 200).
         $this->post('/webhook/shipping/jnt', ['bizContent' => '{}'])
-            ->assertOk()
-            ->assertJsonPath('code', config('jnt.ack.code'));
+            ->assertStatus(401);
     }
 }

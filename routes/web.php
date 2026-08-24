@@ -504,10 +504,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('throttle:120,1')->group(function () {
-Route::post('/webhook/whatsapp/baileys', [WhatsAppController::class, 'handleBaileys'])->name('webhook.whatsapp.baileys');
-    Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])->name('webhook.shipping.jnt');
-});
+Route::post('/webhook/whatsapp/baileys', [WhatsAppController::class, 'handleBaileys'])
+    ->middleware(['throttle:120,1', 'verify.baileys.key'])
+    ->name('webhook.whatsapp.baileys');
+Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])
+    ->middleware(['throttle:120,1', 'verify.jnt.signature'])
+    ->name('webhook.shipping.jnt');
 
 // TEMPORARY ErrorBoundary e2e test route — remove after verification
 
