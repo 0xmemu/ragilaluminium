@@ -14,7 +14,15 @@ class CheckoutTelemetryTest extends TestCase
 
     public function test_successful_checkout_emits_correlated_safe_outcome(): void
     {
-        Log::spy();
+        // Log::listen() pasif: tidak mengganggu channel kustom 'jnt' (yang
+        // dipakai fallback tariff J&T di checkout), hanya menyalin pesan utk
+        // verifikasi telemetry.
+        $captured = [];
+        Log::listen(function ($message) use (&$captured): void {
+            if ($message instanceof \Illuminate\Log\Events\MessageLogged) {
+                $captured[] = ['level' => $message->level, 'message' => $message->message, 'context' => $message->context];
+            }
+        });
 
         $product = Product::create([
             'parent_sku' => 'WIN-TELEM-1', 'name' => 'Window', 'category_id' => 1,
@@ -43,18 +51,27 @@ class CheckoutTelemetryTest extends TestCase
         $requestId = (string) $response->headers->get('X-Request-ID');
 
         $response->assertRedirectContains('/order/ORD');
-        Log::shouldHaveReceived('info')
-            ->withArgs(function ($message, $context) use ($requestId): bool {
-                return $message === 'checkout_outcome'
-                    && $context['schema_version'] === 1
-                    && $context['request_id'] === $requestId
-                    && $context['outcome'] === 'order_created'
-                    && $context['payment_method'] === 'transfer'
-                    && $context['idempotency_replay'] === false
-                    && array_diff(array_keys($context), [
-                        'schema_version', 'request_id', 'outcome', 'payment_method', 'idempotency_replay',
-                    ]) === [];
-            })
-            ->once();
+
+        $match = null;
+        foreach ($captured as $entry) {
+            if ($entry['message'] !== 'checkout_outcome') {
+                continue;
+            }
+            $ctx = $entry['context'];
+            if (($ctx['schema_version'] ?? null) === 1
+                && ($ctx['request_id'] ?? null) === $requestId
+                && ($ctx['outcome'] ?? null) === 'order_created'
+                && ($ctx['payment_method'] ?? null) === 'transfer'
+                && ($ctx['idempotency_replay'] ?? null) === false
+                && array_diff(array_keys($ctx), [
+                    'schema_version', 'request_id', 'outcome', 'payment_method', 'idempotency_replay',
+                ]) === []) {
+                $match = $entry;
+                break;
+            }
+        }
+
+        $this->assertNotNull($match, 'checkout_outcome telemetry tidak ditemukan dgn payload aman.');
+        $this->assertSame('info', $match['level']);
     }
 }

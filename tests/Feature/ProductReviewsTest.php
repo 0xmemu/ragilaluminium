@@ -321,7 +321,7 @@ class ProductReviewsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 2)
+                ->has('testimonials.data', 2)
                 ->where('stats.website_total', 2)
             );
     }
@@ -388,7 +388,7 @@ class ProductReviewsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 2)
+                ->has('testimonials.data', 2)
                 ->where('stats.website_total', 2)
                 ->where('stats.average_rating', 4.5)
                 ->has('modelNav')
@@ -400,7 +400,7 @@ class ProductReviewsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
-                ->has('testimonials', 1)
+                ->has('testimonials.data', 1)
                 ->where('activeModel', 'WINDOW|SLIDING')
             );
 
