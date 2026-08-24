@@ -542,6 +542,7 @@ function ReturnCasePanel({
     shipping_cost_borne_by_store: true,
     items: order.items.map((item) => ({ order_item_id: item.id, requested_quantity: item.quantity })),
   })
+  const capabilities = useAdminCapabilities()
 
   const [completion, setCompletion] = React.useState<
     Record<
@@ -692,7 +693,7 @@ function ReturnCasePanel({
                       </div>
 
                       {completion[item.id].resolution_type === "refund" ? (
-                        <Field id={`return-refund-${item.id}`} label="Nominal refund" required>
+                        <Field id={`return-refund-${item.id}`} label="Refund Retur" required>
                           <Input
                             type="number"
                             min="0"
@@ -705,7 +706,12 @@ function ReturnCasePanel({
                               }))
                             }
                           />
-                          <p className="text-[11px] text-muted-foreground">Maksimum {formatCurrency(order.total_amount)}</p>
+                          <p
+                            className="text-[11px] text-muted-foreground"
+                            title="Pengembalian dana kepada pelanggan. Mengurangi Penjualan Bersih saat retur selesai."
+                          >
+                            Maksimum {formatCurrency(order.total_amount)} · refund mengurangi Penjualan Bersih
+                          </p>
                         </Field>
                       ) : null}
 
@@ -758,7 +764,7 @@ function ReturnCasePanel({
 
                       <Field
                         id={`return-shipping-cost-${item.id}`}
-                        label="Ongkir retur ditanggung toko"
+                        label="Ongkir Retur Ditanggung Toko"
                         required={item.fault_party === "store"}
                       >
                         <Input
@@ -773,14 +779,19 @@ function ReturnCasePanel({
                             }))
                           }
                         />
-                        <p className="text-[11px] text-muted-foreground">
+                        <p
+                          className="text-[11px] text-muted-foreground"
+                          title="Biaya operasional ongkir pengembalian. Tidak mengurangi Penjualan Bersih."
+                        >
                           {item.fault_party === "store"
-                            ? "Biaya ongkir pengembalian yang ditanggung toko karena kesalahan toko. Wajib diisi."
-                            : "Biaya ongkir pengembalian yang ditanggung toko (opsional, goodwill)."}
+                            ? "Biaya ongkir pengembalian yang ditanggung toko karena kesalahan toko. Wajib diisi. Tidak mengurangi Penjualan Bersih."
+                            : "Biaya ongkir pengembalian yang ditanggung toko (opsional, goodwill). Tidak mengurangi Penjualan Bersih."}
                         </p>
                       </Field>
 
-                      <Button type="submit" size="sm">Tandai retur selesai</Button>
+                      <Button type="submit" size="sm" disabled={!can("returns.complete", capabilities)} title={can("returns.complete", capabilities) ? undefined : "Kamu tidak punya akses menyelesaikan retur"}>
+                        Tandai retur selesai
+                      </Button>
                     </form>
                   ) : (
                     <Button type="button" size="sm" variant="outline" onClick={() => openCompletion(item)}>
@@ -849,7 +860,9 @@ function ReturnCasePanel({
                   </div>
                 ))}
               </div>
-              <Button type="submit" disabled={form.processing}>{form.processing ? "Menyimpan..." : "Catat retur"}</Button>
+              <Button type="submit" disabled={form.processing || !can("returns.create", capabilities)} title={can("returns.create", capabilities) ? undefined : "Kamu tidak punya akses mencatat retur"}>
+                {form.processing ? "Menyimpan..." : "Catat retur"}
+              </Button>
             </form>
           ) : null}
         </div>

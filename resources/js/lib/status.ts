@@ -32,6 +32,8 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   paid: { label: "Lunas", tone: "success" },
   refunded: { label: "Dikembalikan", tone: "neutral" },
   tracking_pending: { label: "Menunggu resi", tone: "neutral" },
+  pending: { label: "Menunggu pembayaran", tone: "warning" },
+  pending_payment: { label: "Menunggu pembayaran", tone: "warning" },
   picked_up: { label: "Paket dijemput kurir", tone: "info" },
   in_transit: { label: "Dalam perjalanan", tone: "info" },
   exception: { label: "Kendala pengiriman", tone: "danger" },
