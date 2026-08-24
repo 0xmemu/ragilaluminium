@@ -51,6 +51,75 @@ class OrderPrivacyTest extends \Tests\TestCase
             ->assertSessionHas('confirmed_orders', fn ($list) => in_array('RA-PRIV-1', $list, true));
     }
 
+    public function test_public_payload_does_not_leak_raw_provider_metadata(): void
+    {
+        $order = $this->makeOrder();
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'JNT-PRIV-1',
+            'status' => 'in_transit',
+            'status_raw' => 'RAW-PROVIDER-INTERNAL-CODE-999',
+            'last_status_at' => now(),
+        ]);
+
+        $this->post('/order/status', [
+            'order_number' => 'RA-PRIV-1',
+            'customer_phone' => '08123456789',
+        ])->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Public/OrderStatus')
+            ->where('order.order_number', 'RA-PRIV-1')
+            // Raw provider metadata bukan informasi customer: tidak boleh bocor.
+            ->missing('order.shipping.status_raw')
+            // Data sah customer tetap tersedia setelah verifikasi server-side.
+            ->where('order.customer_phone', '628123456789')
+            ->where('order.shipping.waybill_number', 'JNT-PRIV-1')
+            ->where('order.shipping.carrier_name', 'J&T Cargo'));
+    }
+
+    public function test_api_payload_does_not_leak_raw_provider_metadata(): void
+    {
+        $order = $this->makeOrder();
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'JNT-PRIV-2',
+            'status' => 'in_transit',
+            'status_raw' => 'RAW-PROVIDER-INTERNAL-CODE-888',
+            'last_status_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/orders/RA-PRIV-1/status?customer_phone=08123456789')
+            ->assertOk();
+
+        $json = $response->json();
+        $this->assertArrayNotHasKey('status_raw', $json['shipping'] ?? []);
+        $this->assertSame('JNT-PRIV-2', $json['shipping']['waybill_number']);
+    }
+
+    public function test_lookup_errors_are_enumeration_safe(): void
+    {
+        $this->makeOrder();
+
+        // Nomor pesanan tidak ada vs nomor pesanan ada tapi HP salah:
+        // keduanya harus menghasilkan payload order null yang sama (customer-facing generic).
+        $this->post('/order/status', [
+            'order_number' => 'RA-TIDAK-ADA',
+            'customer_phone' => '08123456789',
+        ])->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Public/OrderStatus')
+            ->where('searched', true)
+            ->where('order', null));
+
+        $this->post('/order/status', [
+            'order_number' => 'RA-PRIV-1',
+            'customer_phone' => '08129876543', // HP salah
+        ])->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Public/OrderStatus')
+            ->where('searched', true)
+            ->where('order', null));
+    }
+
     public function test_status_form_without_session_shows_empty_orders(): void
     {
         $this->makeOrder();

@@ -344,7 +344,6 @@ class OrderController extends Controller
                 'carrier_name' => $shipping->carrier_name,
                 'waybill_number' => $shipping->waybill_number,
                 'status' => $shipping->status,
-                'status_raw' => $shipping->status_raw,
                 'tracking_url' => $shipping->tracking_url,
                 'last_status_at' => $shipping->last_status_at?->toIso8601String(),
             ] : null,
