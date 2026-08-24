@@ -219,6 +219,17 @@ protected function category(?string $category, Request $request, string $mode = 
              ->paginate(14)
             ->withQueryString();
 
+        // P2-2.1: hasil katalog per kombinasi filter di-cache 5 menit;
+        // invalidasi via observer (flush tag products).
+        $cacheKey = implode('|', [
+            'cat', (string) $category, $mode, (string) ($model ?? ''),
+            (string) ($design ?? ''),
+            (string) $request->input('q'), (string) $request->input('sort'),
+            (string) $request->input('price_min'), (string) $request->input('price_max'),
+            (string) $products->currentPage(),
+        ]);
+        $products = \App\Support\ProductCache::rememberCatalog($cacheKey, fn () => $products);
+
         $flashSaleSpotlight = [];
         if (
             ! $flashOnly

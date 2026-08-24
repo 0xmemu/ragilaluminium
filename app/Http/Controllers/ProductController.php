@@ -21,21 +21,26 @@ class ProductController extends Controller
 {
     public function show(Request $request, string $parent_sku): JsonResponse|Response
     {
-        $product = Product::visible()
-            ->where('parent_sku', $parent_sku)
-            ->with([
-                'mainImage',
-                'activeVariants.attributes',
-                'attributes',
-                'media' => fn ($q) => $q->visible()
-                    ->catalog()
-                    ->where('is_installation', false)
-                    ->orderByDesc('is_main_image')
-                    ->orderBy('position')
-                    ->orderBy('id'),
-                'installationMedia' => fn ($q) => $q->visible()->installation()->orderBy('position'),
-            ])
-            ->firstOrFail();
+        // P2-2.1: payload berat (produk + media + varian) di-cache 5 menit;
+        // invalidasi via ProductObserver/ProductVariantObserver (flush tag).
+        $product = \App\Support\ProductCache::rememberPdp(
+            $parent_sku,
+            fn () => Product::visible()
+                ->where('parent_sku', $parent_sku)
+                ->with([
+                    'mainImage',
+                    'activeVariants.attributes',
+                    'attributes',
+                    'media' => fn ($q) => $q->visible()
+                        ->catalog()
+                        ->where('is_installation', false)
+                        ->orderByDesc('is_main_image')
+                        ->orderBy('position')
+                        ->orderBy('id'),
+                    'installationMedia' => fn ($q) => $q->visible()->installation()->orderBy('position'),
+                ])
+                ->firstOrFail(),
+        );
 
         if ($request->is('api/*') || $request->wantsJson()) {
             $product->loadMissing(['media' => fn ($q) => $q->visible()->orderBy('position')]);
