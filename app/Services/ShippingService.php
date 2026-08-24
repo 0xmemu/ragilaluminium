@@ -537,11 +537,10 @@ class ShippingService
                     ['shipping_status' => $shippingStatus],
                 );
 
-                // Sprint 2: saat order jadi delivered, lunaskan COD secara idempotent.
-                if ($transitioned && $target === 'delivered') {
-                    $this->returns->markDeliveredAndSettleCod($order->fresh());
-                }
-
+                // Kontrak FINAL: COD lunas saat COMPLETED (PaymentService::
+                // completeCodAtCompletion), BUKAN saat delivered. Jalur legacy
+                // markDeliveredAndSettleCod (paid saat delivered) dihapus dari
+                // cascade utk konsistensi payment ledger & retur eligibility.
                 return;
             }
 

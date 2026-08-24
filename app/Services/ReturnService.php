@@ -25,10 +25,10 @@ class ReturnService
     public const RETURN_WINDOW_HOURS = 48;
 
     /**
-     * Pastikan order COD di-set `paid` saat pengiriman `delivered`.
-     * Idempotent: tidak mengubah non-COD, tidak mengubah yang sudah paid.
-     *
-     * Dipanggil dari ShippingService::cascadeOrderStatus saat status -> delivered.
+     * @deprecated Jalur LEGACY "COD lunas saat delivered". Kontrak final:
+     *             COD lunas saat COMPLETED (PaymentService::completeCodAtCompletion).
+     *             Method dipertahankan hanya utk kompatibilitas command backfill
+     *             historis (retur:backfill-cod-paid); TIDAK dipanggil dari alur aktif.
      */
     public function markDeliveredAndSettleCod(Order $order, bool $persist = true): bool
     {

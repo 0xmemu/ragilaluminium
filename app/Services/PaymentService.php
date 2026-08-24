@@ -7,6 +7,7 @@ use App\Events\PaymentConfirmed;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\Payment;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class PaymentService
