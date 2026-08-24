@@ -33,7 +33,7 @@ class OrderController extends Controller
     /** @var list<array{key: string, label: string}> */
     private const STATUS_TABS = [
         ['key' => 'all', 'label' => 'Semua'],
-        ['key' => 'pending_payment', 'label' => 'Perlu Konfirmasi'],
+        ['key' => 'awaiting_confirmation', 'label' => 'Perlu Konfirmasi'],
         ['key' => 'processing', 'label' => 'Diproses'],
         ['key' => 'shipped', 'label' => 'Dikirim'],
         ['key' => 'delivered', 'label' => 'Sampai'],
@@ -379,6 +379,7 @@ class OrderController extends Controller
                     'status' => $p->status,
                     'amount' => (float) $p->amount,
                     'transaction_reference' => $p->transaction_reference,
+                    'evidence_url' => $p->evidence_url || null,
                     'paid_at' => optional($p->paid_at)?->toIso8601String(),
                 ])->values()->all(),
                 'shipping_records' => $order->shippingRecords->map(fn ($s) => [
@@ -404,6 +405,9 @@ class OrderController extends Controller
                     'id' => $case->id,
                     'status' => $case->status,
                     'reason' => $case->reason,
+                    'reason_detail' => $case->reason_detail,
+                    'fault_party' => $case->fault_party,
+                    'shipping_cost_borne_by_store' => (bool) $case->shipping_cost_borne_by_store,
                     'resolution_type' => $case->resolution_type,
                     'customer_notes' => $case->customer_notes,
                     'admin_notes' => $case->admin_notes,
@@ -415,8 +419,12 @@ class OrderController extends Controller
                         'id' => $item->id,
                         'order_item_id' => $item->order_item_id,
                         'name' => $item->orderItem?->name,
+                        'unit_price' => (float) optional($item->orderItem)->unit_price,
                         'requested_quantity' => (int) $item->requested_quantity,
                         'returned_quantity' => (int) $item->returned_quantity,
+                        'replacement_product_id' => $item->replacement_product_id,
+                        'replacement_variant_id' => $item->replacement_variant_id,
+                        'replacement_quantity' => $item->replacement_quantity,
                     ])->values()->all(),
                 ])->values()->all(),
             ],
@@ -429,6 +437,7 @@ class OrderController extends Controller
             'editPolicy' => $this->orders->editPolicy($order),
             'editUrl' => route('admin.orders.items.update', $order),
             'returnUrl' => route('admin.orders.returns.store', $order),
+            'returnEligibility' => $this->returnEligibility($order),
             'shippingActions' => [
                 'createUrl' => route('admin.orders.shipping.store', $order),
                 'refreshUrl' => route('admin.orders.shipping.refresh', $order),
@@ -602,24 +611,33 @@ class OrderController extends Controller
 
     public function createReturn(Request $request, Order $order): RedirectResponse
     {
-        $allowedStatuses = ['delivered', 'completed'];
-        if (! in_array($order->order_status, $allowedStatuses, true)) {
+        // Retur hanya dari delivered, payment paid, sebelum 48 jam, tanpa duplicate aktif.
+        $eligibility = $this->returnEligibility($order);
+        if (! $eligibility['eligible']) {
             return redirect()->route('admin.orders.show', $order)
-                ->withErrors(['return' => 'Retur hanya dapat dicatat setelah pesanan berstatus Sampai atau Selesai.']);
+                ->withErrors(['return' => $eligibility['reason']]);
         }
 
         $validated = $request->validate([
-            'reason' => ['required', 'string', 'max:120'],
+            'reason' => ['required', 'in:rusak,pecah,salah_ukuran,salah_produk,kurang,lainnya'],
+            'reason_detail' => ['nullable', 'string', 'max:500'],
             'customer_notes' => ['required', 'string', 'max:5000'],
             'admin_notes' => ['nullable', 'string', 'max:5000'],
-            'resolution_type' => ['nullable', 'in:refund,replacement,reship,compensation,no_compensation'],
-            'refund_amount' => ['nullable', 'numeric', 'min:0'],
-            'replacement_amount' => ['nullable', 'numeric', 'min:0'],
-            'additional_shipping_amount' => ['nullable', 'numeric', 'min:0'],
+            'fault_party' => ['nullable', 'in:store,customer,other'],
+            'shipping_cost_borne_by_store' => ['nullable', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.order_item_id' => ['required', 'integer'],
             'items.*.requested_quantity' => ['required', 'integer', 'min:1'],
         ]);
+
+        if ($validated['reason'] === 'lainnya' && trim((string) ($validated['reason_detail'] ?? '')) === '') {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['reason_detail' => 'Keterangan wajib diisi untuk alasan Lainnya.'])
+                ->withInput();
+        }
+
+        $faultParty = ($validated['fault_party'] ?? null)
+            ?: $this->defaultFaultParty($validated['reason']);
 
         $order->load('items');
         $itemsById = $order->items->keyBy('id');
@@ -632,17 +650,30 @@ class OrderController extends Controller
             }
         }
 
-        $case = DB::transaction(function () use ($order, $validated, $request, $itemsById): OrderReturnCase {
+        // Anti-duplikasi: tidak boleh ada kasus retur aktif (open) utk order ini.
+        $hasActive = OrderReturnCase::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'open')
+            ->exists();
+        if ($hasActive) {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['return' => 'Sudah ada kasus retur aktif untuk pesanan ini. Selesaikan atau tangani dulu.']);
+        }
+
+        $shippingCostBorne = array_key_exists('shipping_cost_borne_by_store', $validated)
+            ? $request->boolean('shipping_cost_borne_by_store')
+            : ($faultParty === 'store');
+
+        $case = DB::transaction(function () use ($order, $validated, $request, $itemsById, $faultParty, $shippingCostBorne): OrderReturnCase {
             $case = OrderReturnCase::create([
                 'order_id' => $order->id,
                 'status' => 'open',
                 'reason' => trim($validated['reason']),
+                'reason_detail' => filled($validated['reason_detail'] ?? null) ? trim($validated['reason_detail']) : null,
+                'fault_party' => $faultParty,
+                'shipping_cost_borne_by_store' => $shippingCostBorne,
                 'customer_notes' => trim($validated['customer_notes']),
                 'admin_notes' => filled($validated['admin_notes'] ?? null) ? trim($validated['admin_notes']) : null,
-                'resolution_type' => $validated['resolution_type'] ?? null,
-                'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
-                'replacement_amount' => (float) ($validated['replacement_amount'] ?? 0),
-                'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
                 'created_by_user_id' => $request->user()->id,
                 'updated_by_user_id' => $request->user()->id,
             ]);
@@ -688,11 +719,16 @@ class OrderController extends Controller
             ->with('success', 'Kasus retur dicatat dan status pesanan menjadi Retur Diproses.');
     }
 
-    public function completeReturn(Request $request, Order $order, OrderReturnCase $returnCase): RedirectResponse
+    public function completeReturn(Request $request, Order $order, OrderReturnCase $returnCase, \App\Services\ReturnService $returns): RedirectResponse
     {
         if ((int) $returnCase->order_id !== (int) $order->id || $order->order_status !== 'return_in_process') {
             return redirect()->route('admin.orders.show', $order)
                 ->withErrors(['return' => 'Kasus retur tidak cocok dengan status pesanan.']);
+        }
+        // Idempotency: case yang sudah completed tidak boleh di-submit ulang.
+        if ($returnCase->status !== 'open') {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['return' => 'Kasus retur sudah diselesaikan.']);
         }
 
         $validated = $request->validate([
@@ -701,12 +737,102 @@ class OrderController extends Controller
             'refund_amount' => ['nullable', 'numeric', 'min:0'],
             'replacement_amount' => ['nullable', 'numeric', 'min:0'],
             'additional_shipping_amount' => ['nullable', 'numeric', 'min:0'],
+            'return_shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'returned_items' => ['nullable', 'array'],
             'returned_items.*.id' => ['required', 'integer'],
             'returned_items.*.returned_quantity' => ['required', 'integer', 'min:0'],
+            'replacement_items' => ['nullable', 'array'],
+            'replacement_items.*.order_item_id' => ['required', 'integer'],
+            'replacement_items.*.product_id' => ['required', 'integer'],
+            'replacement_items.*.variant_id' => ['nullable', 'integer'],
+            'replacement_items.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
 
-        DB::transaction(function () use ($request, $order, $returnCase, $validated): void {
+        $shippingCost = (float) ($validated['return_shipping_cost'] ?? 0);
+        $costCheck = $returns->validateReturnShippingCost((string) $returnCase->fault_party, $shippingCost);
+        if (! $costCheck['valid']) {
+            return redirect()->route('admin.orders.show', $order)
+                ->withErrors(['return_shipping_cost' => $costCheck['error']])
+                ->withInput();
+        }
+
+        if ($validated['resolution_type'] === 'refund') {
+            $refund = (float) ($validated['refund_amount'] ?? 0);
+            $maxRefund = (float) $order->total_amount;
+            if ($refund < 0 || $refund > $maxRefund) {
+                return redirect()->route('admin.orders.show', $order)
+                    ->withErrors(['refund_amount' => 'Refund tidak boleh melebihi total pembayaran pesanan.'])
+                    ->withInput();
+            }
+        }
+
+        if ($validated['resolution_type'] !== 'replacement') {
+            $validated['replacement_items'] = null;
+        }
+
+        // Validasi & stok replacement di dalam transaksi dgn locking.
+        DB::transaction(function () use ($request, $order, $returnCase, $validated, $shippingCost): void {
+            $replacement = $validated['replacement_items'] ?? null;
+
+            if ($replacement) {
+                foreach ($replacement as $row) {
+                    $product = \App\Models\Product::query()->lockForUpdate()->find((int) $row['product_id']);
+                    if (! $product) {
+                        throw new \Illuminate\Validation\ValidationException(
+                            request(), ['replacement_items' => 'Produk pengganti tidak ditemukan.']
+                        );
+                    }
+                    if ($row['variant_id']) {
+                        $variant = \App\Models\ProductVariant::query()->lockForUpdate()->find((int) $row['variant_id']);
+                        if (! $variant || (int) $variant->product_id !== (int) $product->id) {
+                            throw new \Illuminate\Validation\ValidationException(
+                                request(), ['replacement_items' => 'Varian pengganti tidak cocok dengan produk.']
+                            );
+                        }
+                        $stock = (int) $variant->stock;
+                        if ($stock < (int) $row['quantity']) {
+                            throw new \Illuminate\Validation\ValidationException(
+                                request(), ['replacement_items' => 'Stok pengganti tidak mencukupi (tersedia '.$stock.').']
+                            );
+                        }
+                    } else {
+                        $stock = (int) $product->stock;
+                        if ($stock < (int) $row['quantity']) {
+                            throw new \Illuminate\Validation\ValidationException(
+                                request(), ['replacement_items' => 'Stok pengganti tidak mencukupi (tersedia '.$stock.').']
+                            );
+                        }
+                    }
+                }
+
+                foreach ($replacement as $row) {
+                    $returnItem = $returnCase->items()
+                        ->where('order_item_id', (int) $row['order_item_id'])
+                        ->first();
+                    if (! $returnItem) {
+                        $returnItem = $returnCase->items()->create([
+                            'order_item_id' => (int) $row['order_item_id'],
+                            'requested_quantity' => (int) $row['quantity'],
+                            'returned_quantity' => 0,
+                        ]);
+                    }
+                    $returnItem->update([
+                        'replacement_product_id' => (int) $row['product_id'],
+                        'replacement_variant_id' => $row['variant_id'] ? (int) $row['variant_id'] : null,
+                        'replacement_quantity' => (int) $row['quantity'],
+                    ]);
+
+                    // Kurangi stok tepat satu kali. Idempotensi dijamin blok atas
+                    // (case status !== 'open' -> reject) sehingga tidak dobel dekremen.
+                    $product = \App\Models\Product::find((int) $row['product_id']);
+                    if ($row['variant_id']) {
+                        \App\Models\ProductVariant::find((int) $row['variant_id'])->decrement('stock', (int) $row['quantity']);
+                    } else {
+                        $product->decrement('stock', (int) $row['quantity']);
+                    }
+                }
+            }
+
             $returnCase->update([
                 'status' => 'completed',
                 'resolution_type' => $validated['resolution_type'],
@@ -714,6 +840,7 @@ class OrderController extends Controller
                 'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
                 'replacement_amount' => (float) ($validated['replacement_amount'] ?? 0),
                 'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
+                'return_shipping_cost' => $shippingCost,
                 'completed_at' => now(),
                 'updated_by_user_id' => $request->user()->id,
             ]);
@@ -748,13 +875,55 @@ class OrderController extends Controller
             ->with('success', 'Kasus retur selesai dan tercatat dalam riwayat order.');
     }
 
-
     /**
-     * GET handoff for the status action URL.
+     * Kelayakan membuat retur (blueprint Sprint 2): hanya delivered + paid + dalam 48 jam.
      *
-     * Status changes intentionally remain PUT-only. A direct browser visit should
-     * return the order workflow instead of a 404/ambiguous method error.
+     * @return array{eligible: bool, reason: string|null, deadline: string|null}
      */
+    protected function returnEligibility(Order $order): array
+    {
+        if ($order->order_status !== 'delivered') {
+            return [
+                'eligible' => false,
+                'reason' => $order->order_status === 'completed'
+                    ? 'Retur hanya dapat dicatat untuk pesanan berstatus Sampai. Pesanan selesai tidak dapat diretur di sistem; tindak lanjuti melalui WhatsApp.'
+                    : 'Retur hanya dapat dicatat untuk pesanan yang sudah sampai (delivered).',
+                'deadline' => null,
+            ];
+        }
+
+        if ($order->payment_status !== 'paid') {
+            return ['eligible' => false, 'reason' => 'Pesanan belum tercatat lunas.', 'deadline' => null];
+        }
+
+        $deliveredAt = $order->shippingRecords
+            ->sortByDesc('last_status_at')
+            ->first(fn ($s) => $s->status === 'delivered' && $s->last_status_at !== null)?->last_status_at;
+
+        if (! $deliveredAt) {
+            return ['eligible' => false, 'reason' => 'Waktu paket sampai belum tersedia.', 'deadline' => null];
+        }
+
+        $deadline = $deliveredAt->copy()->addHours(48);
+
+        if (now()->gt($deadline)) {
+            return [
+                'eligible' => false,
+                'reason' => 'Batas retur 48 jam telah lewat. Untuk komplain lebih lanjut, hubungi pelanggan melalui WhatsApp.',
+                'deadline' => $deadline->toIso8601String(),
+            ];
+        }
+
+        return ['eligible' => true, 'reason' => null, 'deadline' => $deadline->toIso8601String()];
+    }
+
+    protected function defaultFaultParty(string $reason): string
+    {
+        return in_array($reason, ['rusak', 'pecah', 'salah_ukuran', 'salah_produk', 'kurang'], true)
+            ? 'store'
+            : 'other';
+    }
+
     public function statusEntry(Order $order): RedirectResponse
     {
         return redirect()
@@ -765,14 +934,17 @@ class OrderController extends Controller
     public function updateStatus(Request $request, Order $order): RedirectResponse
     {
         $validated = $request->validate([
-            'order_status' => ['required', 'in:pending_payment,processing,shipped,delivered,completed,issue,return_in_process,return_completed,cancelled'],
+            'order_status' => ['required', 'in:pending,processing,shipped,delivered,completed,issue,return_in_process,return_completed,cancelled'],
             'cancel_reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         $from = $order->order_status;
         $to = $validated['order_status'];
-        if ($to === 'return_in_process') {
-            return $this->statusRedirect($request, $order)->withErrors(['order_status' => 'Retur wajib dicatat melalui form retur admin agar alasan, item, dan catatan terdokumentasi.']);
+        if (in_array($to, ['return_in_process', 'return_completed'], true)) {
+            return $this->statusRedirect($request, $order)->withErrors(['order_status' => 'Retur wajib diselesaikan melalui form retur admin agar item, jumlah, dan catatan terdokumentasi.']);
+        }
+        if ($to === 'delivered') {
+            return $this->statusRedirect($request, $order)->withErrors(['order_status' => 'Sampai hanya diperbarui dari tracking pengiriman J&T, tidak dari tangan admin (spec: tidak ada tombol Tandai Sampai).']);
         }
         $userId = $request->user()->id;
         $isCod = $this->isCod($order);
@@ -798,7 +970,7 @@ class OrderController extends Controller
         }
 
         // Transfer: proses dari "perlu konfirmasi" = konfirmasi transfer dulu.
-        if ($from === 'pending_payment' && $to === 'processing' && ! $isCod && $order->payment_status !== 'paid') {
+        if ($from === 'awaiting_confirmation' && $to === 'processing' && ! $isCod && $order->payment_status !== 'paid') {
             $this->payments->completePendingForOrder($order, $userId, 'transfer');
             $order->refresh();
 
@@ -809,7 +981,7 @@ class OrderController extends Controller
         }
 
         // COD: tombol Proses → processing + WA "pesanan diproses" (tanpa menandai lunas).
-        if ($from === 'pending_payment' && $to === 'processing' && $isCod) {
+        if ($from === 'awaiting_confirmation' && $to === 'processing' && $isCod) {
             $this->orders->beginProcessing($order, $userId, 'admin');
 
             return $this->statusRedirect($request, $order)
@@ -955,6 +1127,8 @@ class OrderController extends Controller
         return [
             'id' => $item->id,
             'name' => $item->name,
+            'product_id' => (int) $item->product_id,
+            'variant_id' => $item->product_variant_id !== null ? (int) $item->product_variant_id : null,
             'variant_sku' => $item->variant_sku,
             'variation_1_name' => $item->variation_1_name,
             'variation_1_option' => $item->variation_1_option,
@@ -993,7 +1167,7 @@ class OrderController extends Controller
 
         if ($isCod) {
             return match ($order->order_status) {
-                'pending_payment' => 'COD: proses pesanan tanpa menunggu transfer. Tagihan ditagih saat paket diterima.',
+                'awaiting_confirmation' => 'COD: proses pesanan tanpa menunggu transfer. Tagihan ditagih saat paket diterima.',
                 'processing', 'shipped' => 'COD: pembayaran masih menunggu. Konfirmasi lunas saat paket sampai.',
                 'delivered' => 'COD: konfirmasi pembayaran diterima bersama penyelesaian pesanan.',
                 'completed' => 'COD: pesanan selesai dan pembayaran sudah dikonfirmasi.',
@@ -1002,7 +1176,7 @@ class OrderController extends Controller
         }
 
         return match ($order->order_status) {
-            'pending_payment' => 'Transfer: pastikan bukti transfer valid, lalu proses untuk menandai lunas dan mulai fulfillment.',
+            'awaiting_confirmation' => 'Transfer: pastikan bukti transfer valid, lalu proses untuk menandai lunas dan mulai fulfillment.',
             'processing', 'shipped' => 'Transfer: pembayaran sudah dikonfirmasi. Lanjutkan pengiriman.',
             'delivered' => 'Transfer: paket sudah sampai. Selesaikan pesanan bila tidak ada komplain.',
             default => 'Alur Transfer Bank: bayar dulu, baru diproses.',
@@ -1023,7 +1197,7 @@ class OrderController extends Controller
                 'kind' => 'advance_status',
                 'hint' => 'Pesanan kembali ke antrean proses untuk dilanjutkan.',
             ],
-            'pending_payment' => [
+            'awaiting_confirmation' => [
                 'label' => 'Proses Pesanan',
                 'next_status' => 'processing',
                 'kind' => $isCod ? 'advance_cod' : 'confirm_transfer',
@@ -1037,12 +1211,7 @@ class OrderController extends Controller
                 'kind' => 'input_resi',
                 'hint' => 'Buat resi J&T atau isi nomor resi di blok Lacak pesanan.',
             ],
-            'shipped' => [
-                'label' => 'Tandai Sampai',
-                'next_status' => 'delivered',
-                'kind' => $isCod ? 'settle_cod' : 'advance_status',
-                'hint' => $isCod ? 'Saat sampai, pembayaran COD ikut dikonfirmasi.' : null,
-            ],
+
             'delivered' => [
                 'label' => 'Selesaikan Pesanan',
                 'next_status' => 'completed',
@@ -1053,9 +1222,10 @@ class OrderController extends Controller
             ],
             'return_in_process' => [
                 'label' => 'Selesaikan Retur',
-                'next_status' => 'return_completed',
-                'kind' => 'advance_status',
-                'hint' => 'Menutup retur: kirim notifikasi WhatsApp ke pelanggan.',
+                'next_status' => null,
+                'kind' => 'complete_return',
+                'hint' => 'Lengkapi form retur (jumlah item dikembalikan & nilai refund) untuk menutup retur dan mengirim notifikasi WhatsApp.',
+                'href' => route('admin.orders.show', $order).'#return-case',
             ],
             default => null,
         };

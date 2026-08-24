@@ -25,6 +25,8 @@ import { statusMeta } from "@/lib/status"
 interface OrderItemRow {
   id: number
   name: string
+  product_id?: number
+  variant_id?: number | null
   variant_sku?: string | null
   variation_1_name?: string | null
   variation_1_option?: string | null
@@ -79,6 +81,7 @@ interface OrderDetail {
   items: OrderItemRow[]
   payments: Array<{
     id: number
+    evidence_url?: string | null
     payment_method: string
     status: string
     amount: number
@@ -86,15 +89,16 @@ interface OrderDetail {
     paid_at?: string | null
   }>
   shipping_records: Array<{
-    id: number
-    carrier_name?: string | null
-    waybill_number?: string | null
-    status?: string | null
-    status_raw?: string | null
-    tracking_url?: string | null
-    last_status_at?: string | null
-  }>
-  whatsapp_messages: Array<{
+      id: number
+      carrier_name?: string | null
+      waybill_number?: string | null
+      status?: string | null
+      status_raw?: string | null
+      tracking_url?: string | null
+      last_status_at?: string | null
+    }>
+    return_cases?: ReturnCase[]
+    whatsapp_messages: Array<{
     id: number
     direction: string
     status: string
@@ -153,7 +157,7 @@ interface OrderEvent {
 }
 
 const orderStatuses = [
-  "pending_payment",
+  "awaiting_confirmation",
   "processing",
   "shipped",
   "delivered",
@@ -468,133 +472,389 @@ interface ReturnCaseItem {
   id: number
   order_item_id: number
   name?: string | null
+  unit_price?: number
   requested_quantity: number
   returned_quantity: number
+  replacement_product_id?: number | null
+  replacement_variant_id?: number | null
+  replacement_quantity?: number | null
 }
 
 interface ReturnCase {
   id: number
   status: string
   reason: string
+  reason_detail?: string | null
+  fault_party?: string | null
+  shipping_cost_borne_by_store?: boolean
   resolution_type?: string | null
   customer_notes?: string | null
   admin_notes?: string | null
-  refund_amount: number
-  replacement_amount: number
-  additional_shipping_amount: number
+  refund_amount?: number
+  replacement_amount?: number
+  additional_shipping_amount?: number
   completed_at?: string | null
   items: ReturnCaseItem[]
+}
+
+interface ReturnEligibility {
+  eligible: boolean
+  reason: string | null
+  deadline: string | null
+}
+
+const RETURN_REASONS = [
+  { value: "rusak", label: "Rusak" },
+  { value: "pecah", label: "Pecah" },
+  { value: "salah_ukuran", label: "Salah ukuran" },
+  { value: "salah_produk", label: "Salah produk" },
+  { value: "kurang", label: "Barang kurang" },
+  { value: "lainnya", label: "Lainnya" },
+]
+
+function returnDeadline(order: OrderDetail): { deliveredAt: string | null; deadline: string | null; expired: boolean } {
+  const delivered = order.shipping_records
+    ?.filter((r) => r.status === "delivered" && r.last_status_at)
+    .sort((a, b) => (b.last_status_at || "").localeCompare(a.last_status_at || ""))[0]
+  if (!delivered?.last_status_at) return { deliveredAt: null, deadline: null, expired: false }
+  const deliveredAt = new Date(delivered.last_status_at)
+  const deadline = new Date(deliveredAt.getTime() + 48 * 60 * 60 * 1000)
+  return { deliveredAt: delivered.last_status_at, deadline: deadline.toISOString(), expired: Date.now() > deadline.getTime() }
 }
 
 function ReturnCasePanel({
   order,
   cases,
-  returnUrl,
+  eligibility,
 }: {
   order: OrderDetail
   cases: ReturnCase[]
-  returnUrl: string
+  eligibility: ReturnEligibility
 }) {
   const form = useForm({
     reason: "rusak",
+    reason_detail: "",
     customer_notes: "",
     admin_notes: "",
-    resolution_type: "",
-    refund_amount: "0",
-    replacement_amount: "0",
-    additional_shipping_amount: "0",
+    fault_party: "store",
+    shipping_cost_borne_by_store: true,
     items: order.items.map((item) => ({ order_item_id: item.id, requested_quantity: item.quantity })),
   })
-  const [completion, setCompletion] = React.useState<Record<number, { resolution_type: string; admin_notes: string }>>({})
+
+  const [completion, setCompletion] = React.useState<
+    Record<
+      number,
+      {
+        resolution_type: string
+        admin_notes: string
+        refund_amount: string
+        return_shipping_cost: string
+        replacement_items: Array<{ order_item_id: number; product_id: number; variant_id: string; quantity: string; name: string }>
+      }
+    >
+  >({})
+  const [editReplacement, setEditReplacement] = React.useState<Record<number, boolean>>({})
+
+  const { deadline, expired } = returnDeadline(order)
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form.post(returnUrl, { preserveScroll: true })
+    form.post(routeUrl("admin.orders.returns.store", { order: order.id }), { preserveScroll: true })
   }
 
+  function openCompletion(caseItem: ReturnCase) {
+    const autoReplace = caseItem.items.map((ci) => {
+      const orderItem = order.items.find((oi) => oi.id === ci.order_item_id)
+      return {
+        order_item_id: ci.order_item_id,
+        product_id: orderItem?.product_id ?? 0,
+        variant_id: orderItem?.variant_id != null ? String(orderItem.variant_id) : "",
+        quantity: String(ci.requested_quantity),
+        name: orderItem?.name ?? `Item #${ci.order_item_id}`,
+      }
+    })
+    setCompletion((current) => ({
+      ...current,
+      [caseItem.id]: current[caseItem.id] ?? {
+        resolution_type: "refund",
+        admin_notes: "",
+        refund_amount: "0",
+        return_shipping_cost: "",
+        replacement_items: autoReplace,
+      },
+    }))
+  }
+
+  function submitComplete(caseItem: ReturnCase) {
+    const data = completion[caseItem.id] ?? { resolution_type: "refund", admin_notes: "", refund_amount: "0", return_shipping_cost: "", replacement_items: [] }
+    const payload: {
+          resolution_type: string
+          admin_notes: string
+          refund_amount: number
+          return_shipping_cost: number
+          returned_items: Array<{ id: number; returned_quantity: number }>
+          replacement_items?: Array<{ order_item_id: number; product_id: number; variant_id: number | null; quantity: number }>
+        } = {
+          resolution_type: data.resolution_type,
+          admin_notes: data.admin_notes,
+          refund_amount: data.resolution_type === "refund" ? Number(data.refund_amount) || 0 : 0,
+          return_shipping_cost: Number(data.return_shipping_cost) || 0,
+          returned_items: caseItem.items.map((ci) => ({ id: ci.id, returned_quantity: ci.requested_quantity })),
+        }
+    if (data.resolution_type === "replacement") {
+      payload.replacement_items = data.replacement_items.map((r) => ({
+        order_item_id: r.order_item_id,
+        product_id: Number(r.product_id) || 0,
+        variant_id: r.variant_id ? Number(r.variant_id) : null,
+        quantity: Number(r.quantity) || 1,
+      }))
+    }
+    router.post(routeUrl("admin.orders.returns.complete", { order: order.id, returnCase: caseItem.id }), payload, {
+      preserveScroll: true,
+    })
+  }
+
+  const showCreate = eligibility?.eligible === true
+
   return (
-    <div id="return-case"><SectionCard title="Retur & penyelesaian">
-      <div className="space-y-4">
-        {cases.map((item) => (
-          <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold">Kasus #{item.id} · {item.reason}</span>
-              <StatusBadge status={item.status} />
-            </div>
-            {item.customer_notes ? <p className="mt-2 text-xs text-muted-foreground">{item.customer_notes}</p> : null}
-            {item.admin_notes ? <p className="mt-1 text-xs text-muted-foreground">Catatan admin: {item.admin_notes}</p> : null}
-            {item.status === "open" ? (
-              <form
-                className="mt-3 space-y-3 border-t border-border pt-3"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  const data = completion[item.id] ?? { resolution_type: "no_compensation", admin_notes: "" }
-                  router.post(routeUrl("admin.orders.returns.complete", { order: order.id, returnCase: item.id }), data, { preserveScroll: true })
-                }}
-              >
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field id={`return-resolution-${item.id}`} label="Resolusi" required>
-                    <Select
-                      value={(completion[item.id] ?? { resolution_type: "no_compensation" }).resolution_type}
-                      onChange={(event) => setCompletion((current) => ({ ...current, [item.id]: { ...(current[item.id] ?? { admin_notes: "" }), resolution_type: event.target.value } }))}
+    <div id="return-case">
+      <SectionCard title="Retur & penyelesaian">
+        <div className="space-y-4">
+          {deadline ? (
+            <p className={`text-xs ${expired ? "text-destructive" : "text-muted-foreground"}`}>
+              Waktu sampai: {new Date(deadline).toLocaleString("id-ID")} · Batas retur 48 jam.
+              {expired ? " Batas retur telah lewat. Tindak lanjuti melalui WhatsApp." : ` Deadline: ${new Date(deadline).toLocaleString("id-ID")}`}
+            </p>
+          ) : null}
+
+          {order.order_status === "delivered" && !showCreate ? (
+            <p className="text-xs text-destructive">
+              {eligibility?.reason || "Retur tidak dapat dicatat sekarang."}
+            </p>
+          ) : null}
+
+          {cases.map((item) => (
+            <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold">Kasus #{item.id} · {item.reason}{item.reason === "lainnya" && item.reason_detail ? ` — ${item.reason_detail}` : ""}</span>
+                <StatusBadge status={item.status} />
+              </div>
+              {item.customer_notes ? <p className="mt-2 text-xs text-muted-foreground">{item.customer_notes}</p> : null}
+              {item.admin_notes ? <p className="mt-1 text-xs text-muted-foreground">Catatan admin: {item.admin_notes}</p> : null}
+              {item.fault_party ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pihak penyebab: {item.fault_party === "store" ? "Toko" : item.fault_party === "customer" ? "Pelanggan" : "Lainnya"} ·{" "}
+                  Ongkir ditanggung toko: {item.shipping_cost_borne_by_store ? "Ya" : "Tidak"}
+                </p>
+              ) : null}
+              {item.status === "open" ? (
+                <div className="mt-3 border-t border-border pt-3">
+                  {completion[item.id] ? (
+                    <form
+                      className="space-y-3"
+                      onSubmit={(event) => {
+                        event.preventDefault()
+                        submitComplete(item)
+                      }}
                     >
-                      <option value="no_compensation">Tidak ada kompensasi</option>
-                      <option value="refund">Refund</option>
-                      <option value="replacement">Penggantian barang</option>
-                      <option value="reship">Kirim ulang</option>
-                      <option value="compensation">Kompensasi</option>
-                    </Select>
-                  </Field>
-                  <Field id={`return-completion-note-${item.id}`} label="Catatan penyelesaian" required>
-                    <Textarea
-                      rows={2}
-                      value={(completion[item.id] ?? { admin_notes: "" }).admin_notes}
-                      onChange={(event) => setCompletion((current) => ({ ...current, [item.id]: { ...(current[item.id] ?? { resolution_type: "no_compensation" }), admin_notes: event.target.value } }))}
-                    />
-                  </Field>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field id={`return-resolution-${item.id}`} label="Resolusi" required>
+                          <Select
+                            value={completion[item.id].resolution_type}
+                            onChange={(event) =>
+                              setCompletion((current) => ({
+                                ...current,
+                                [item.id]: { ...current[item.id], resolution_type: event.target.value },
+                              }))
+                            }
+                          >
+                            <option value="refund">Refund</option>
+                            <option value="replacement">Ganti barang</option>
+                            <option value="reship">Kirim ulang</option>
+                            <option value="compensation">Kompensasi</option>
+                            <option value="no_compensation">Tanpa kompensasi</option>
+                          </Select>
+                        </Field>
+                        <Field id={`return-completion-note-${item.id}`} label="Catatan penyelesaian" required>
+                          <Textarea
+                            rows={2}
+                            value={completion[item.id].admin_notes}
+                            onChange={(event) =>
+                              setCompletion((current) => ({
+                                ...current,
+                                [item.id]: { ...current[item.id], admin_notes: event.target.value },
+                              }))
+                            }
+                          />
+                        </Field>
+                      </div>
+
+                      {completion[item.id].resolution_type === "refund" ? (
+                        <Field id={`return-refund-${item.id}`} label="Nominal refund" required>
+                          <Input
+                            type="number"
+                            min="0"
+                            max={order.total_amount}
+                            value={completion[item.id].refund_amount}
+                            onChange={(event) =>
+                              setCompletion((current) => ({
+                                ...current,
+                                [item.id]: { ...current[item.id], refund_amount: event.target.value },
+                              }))
+                            }
+                          />
+                          <p className="text-[11px] text-muted-foreground">Maksimum {formatCurrency(order.total_amount)}</p>
+                        </Field>
+                      ) : null}
+
+                      {completion[item.id].resolution_type === "replacement" ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold">Barang pengganti (terkunci default)</p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setEditReplacement((current) => ({ ...current, [item.id]: !current[item.id] }))
+                              }
+                            >
+                              {editReplacement[item.id] ? "Kunci item" : "Ubah item pengganti"}
+                            </Button>
+                          </div>
+                          {completion[item.id].replacement_items.map((r, idx) => (
+                            <div key={r.order_item_id} className="flex items-center gap-2 text-xs">
+                              <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                              {editReplacement[item.id] ? (
+                                <>
+                                  <Input
+                                    className="w-28"
+                                    type="number"
+                                    min="1"
+                                    value={r.quantity}
+                                    placeholder="Produk id"
+                                    onChange={(event) =>
+                                      setCompletion((current) => ({
+                                        ...current,
+                                        [item.id]: {
+                                          ...current[item.id],
+                                          replacement_items: current[item.id].replacement_items.map((rr, i) =>
+                                            i === idx ? { ...rr, quantity: event.target.value } : rr
+                                          ),
+                                        },
+                                      }))
+                                    }
+                                  />
+                                </>
+                              ) : (
+                                <span className="tabular-nums">{r.quantity} pcs</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <Field
+                        id={`return-shipping-cost-${item.id}`}
+                        label="Ongkir retur ditanggung toko"
+                        required={item.fault_party === "store"}
+                      >
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={completion[item.id].return_shipping_cost}
+                          onChange={(event) =>
+                            setCompletion((current) => ({
+                              ...current,
+                              [item.id]: { ...current[item.id], return_shipping_cost: event.target.value },
+                            }))
+                          }
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          {item.fault_party === "store"
+                            ? "Biaya ongkir pengembalian yang ditanggung toko karena kesalahan toko. Wajib diisi."
+                            : "Biaya ongkir pengembalian yang ditanggung toko (opsional, goodwill)."}
+                        </p>
+                      </Field>
+
+                      <Button type="submit" size="sm">Tandai retur selesai</Button>
+                    </form>
+                  ) : (
+                    <Button type="button" size="sm" variant="outline" onClick={() => openCompletion(item)}>
+                      Selesaikan retur
+                    </Button>
+                  )}
                 </div>
-                <Button type="submit" size="sm">Tandai retur selesai</Button>
-              </form>
-            ) : null}
-          </div>
-        ))}
-        {order.order_status === "delivered" || order.order_status === "completed" ? (
-          <form className="space-y-3 border-t border-border pt-4" onSubmit={submit}>
-            <p className="text-xs text-muted-foreground">Isi admin. Customer mengirim kronologi/foto melalui WhatsApp; tidak ada form retur publik.</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field id="return-reason" label="Alasan retur" required error={form.errors.reason}>
-                <Select value={form.data.reason} onChange={(event) => form.setData("reason", event.target.value)}>
-                  <option value="rusak">Rusak/pecah</option>
-                  <option value="salah_ukuran">Salah ukuran</option>
-                  <option value="salah_produk">Salah produk</option>
-                  <option value="kurang">Barang kurang</option>
-                  <option value="lainnya">Lainnya</option>
-                </Select>
-              </Field>
-              <Field id="return-customer-notes" label="Kronologi pelanggan" required error={form.errors.customer_notes}>
-                <Textarea rows={2} value={form.data.customer_notes} onChange={(event) => form.setData("customer_notes", event.target.value)} />
-              </Field>
+              ) : null}
             </div>
-            <Field id="return-admin-notes" label="Catatan admin (opsional)" error={form.errors.admin_notes}>
-              <Textarea rows={2} value={form.data.admin_notes} onChange={(event) => form.setData("admin_notes", event.target.value)} placeholder="Bukti unboxing/foto dikirim via WhatsApp, hasil inspeksi, dll." />
-            </Field>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold">Item yang diretur</p>
-              {form.data.items.map((row, index) => (
-                <div key={row.order_item_id} className="flex items-center justify-between gap-3 text-xs">
-                  <span className="min-w-0 flex-1 truncate">{order.items[index]?.name ?? `Item #${row.order_item_id}`}</span>
-                  <Input className="w-24" type="number" min="1" max={order.items[index]?.quantity ?? 1} value={String(row.requested_quantity)} onChange={(event) => form.setData("items", form.data.items.map((line, i) => i === index ? { ...line, requested_quantity: Number(event.target.value) || 1 } : line))} />
-                </div>
-              ))}
-            </div>
-            <Button type="submit" disabled={form.processing}>{form.processing ? "Menyimpan..." : "Catat retur"}</Button>
-          </form>
-        ) : null}
-      </div>
-    </SectionCard></div>
+          ))}
+
+          {showCreate ? (
+            <form className="space-y-3 border-t border-border pt-4" onSubmit={submit}>
+              <p className="text-xs text-muted-foreground">Isi admin. Customer mengirim kronologi/foto melalui WhatsApp; tidak ada form retur publik.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field id="return-reason" label="Alasan retur" required error={form.errors.reason}>
+                  <Select value={form.data.reason} onChange={(event) => {
+                    form.setData("reason", event.target.value)
+                    const storeParty = ["rusak", "pecah", "salah_ukuran", "salah_produk", "kurang"].includes(event.target.value)
+                    form.setData("fault_party", storeParty ? "store" : "other")
+                  }}>
+                    {RETURN_REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </Select>
+                </Field>
+                {form.data.reason === "lainnya" ? (
+                  <Field id="return-reason-detail" label="Keterangan lainnya" required error={form.errors.reason_detail}>
+                    <Textarea rows={2} value={form.data.reason_detail} onChange={(event) => form.setData("reason_detail", event.target.value)} />
+                  </Field>
+                ) : null}
+                <Field id="return-customer-notes" label="Kronologi pelanggan" required error={form.errors.customer_notes}>
+                  <Textarea rows={2} value={form.data.customer_notes} onChange={(event) => form.setData("customer_notes", event.target.value)} />
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field id="return-fault-party" label="Pihak penyebab">
+                  <Select value={form.data.fault_party} onChange={(event) => {
+                    form.setData("fault_party", event.target.value)
+                    form.setData("shipping_cost_borne_by_store", event.target.value === "store")
+                  }}>
+                    <option value="store">Toko</option>
+                    <option value="customer">Pelanggan</option>
+                    <option value="other">Lainnya</option>
+                  </Select>
+                </Field>
+                <Field id="return-shipping" label="Ongkir retur ditanggung toko">
+                  <Select
+                    value={form.data.shipping_cost_borne_by_store ? "true" : "false"}
+                    onChange={(event) => form.setData("shipping_cost_borne_by_store", event.target.value === "true")}
+                  >
+                    <option value="true">Ya</option>
+                    <option value="false">Tidak</option>
+                  </Select>
+                </Field>
+              </div>
+              <Field id="return-admin-notes" label="Catatan admin (opsional)" error={form.errors.admin_notes}>
+                <Textarea rows={2} value={form.data.admin_notes} onChange={(event) => form.setData("admin_notes", event.target.value)} placeholder="Bukti unboxing/foto dikirim via WhatsApp, hasil inspeksi, dll." />
+              </Field>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold">Item yang diretur</p>
+                {form.data.items.map((row, index) => (
+                  <div key={row.order_item_id} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="min-w-0 flex-1 truncate">{order.items[index]?.name ?? `Item #${row.order_item_id}`}</span>
+                    <Input className="w-24" type="number" min="1" max={order.items[index]?.quantity ?? 1} value={String(row.requested_quantity)} onChange={(event) => form.setData("items", form.data.items.map((line, i) => i === index ? { ...line, requested_quantity: Number(event.target.value) || 1 } : line))} />
+                  </div>
+                ))}
+              </div>
+              <Button type="submit" disabled={form.processing}>{form.processing ? "Menyimpan..." : "Catat retur"}</Button>
+            </form>
+          ) : null}
+        </div>
+      </SectionCard>
+    </div>
   )
 }
-
 export default function OrderShow({
   order,
   events = [],
@@ -608,22 +868,24 @@ export default function OrderShow({
   editPolicy,
   editUrl,
   returnCases = [],
-  returnUrl,
-}: {
-  order: OrderDetail
-  events?: OrderEvent[]
-  tracking?: TrackingProps
-  primaryAction: PrimaryAction | null
-  secondaryAction?: PrimaryAction | null
-  updateStatusUrl: string
-  adminNotesUrl?: string
-  shippingActions: ShippingActions
-  workflowLinks: Array<{ label: string; href: string }>
-  editPolicy?: EditPolicy | null
-  editUrl?: string
-  returnCases?: ReturnCase[]
-  returnUrl: string
-}) {
+    returnUrl,
+    returnEligibility,
+  }: {
+    order: OrderDetail
+    events?: OrderEvent[]
+    tracking?: TrackingProps
+    primaryAction: PrimaryAction | null
+    secondaryAction?: PrimaryAction | null
+    updateStatusUrl: string
+    adminNotesUrl?: string
+    shippingActions: ShippingActions
+    workflowLinks: Array<{ label: string; href: string }>
+    editPolicy?: EditPolicy | null
+    editUrl?: string
+    returnCases?: ReturnCase[]
+    returnUrl: string
+    returnEligibility?: ReturnEligibility | null
+  }) {
   const isCod = order.flow === "cod" || order.cod_flag
   const lacakRef = React.useRef<HTMLElement | null>(null)
   const statusForm = useForm({ order_status: order.order_status })
@@ -950,7 +1212,7 @@ export default function OrderShow({
 
       ) : null}
 
-      <ReturnCasePanel order={order} cases={returnCases} returnUrl={returnUrl} />
+      <ReturnCasePanel order={order} cases={order.return_cases ?? returnCases} eligibility={returnEligibility ?? { eligible: false, reason: null, deadline: null }} />
 
       {/* Konten utama + aside */}
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
@@ -1135,6 +1397,16 @@ export default function OrderShow({
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {payment.transaction_reference || formatDateTime(payment.paid_at)}
                       </p>
+                      {payment.evidence_url ? (
+                        <a
+                          href={payment.evidence_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          Lihat bukti transfer
+                        </a>
+                      ) : null}
                     </div>
                     <div className="shrink-0 text-right">
                       <StatusBadge status={payment.status} />

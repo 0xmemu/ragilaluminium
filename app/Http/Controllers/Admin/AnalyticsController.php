@@ -206,6 +206,28 @@ class AnalyticsController extends Controller
             $row++;
         }
 
+        // Biaya Retur — ongkir retur ditanggung toko (biaya operasional, bukan pengurang omzet).
+        $row++;
+        $sheet->setCellValue('A'.$row, 'Biaya Retur — Ongkir')->getStyle('A'.$row)->getFont()->setBold(true);
+        $row++;
+        $rcList = $payload['return_shipping_costs'] ?? [];
+        $rcTotal = (float) collect($rcList)->sum('return_shipping_cost');
+        $sheet->fromArray(['Total periode', 'Jumlah kasus'], null, 'A'.$row);
+        $sheet->fromArray([$rcTotal, count($rcList)], null, 'C'.$row);
+        $row += 2;
+        $sheet->fromArray(['Order', 'Tanggal selesai', 'Pihak penyebab', 'Alasan', 'Ongkir retur'], null, 'A'.$row);
+        $row++;
+        foreach ($rcList as $rc) {
+            $sheet->fromArray([
+                $rc['order_number'] ?? $rc['order_id'],
+                $rc['completed_at'] ?? '-',
+                $rc['fault_party'] ?? '-',
+                $rc['reason'] ?? '-',
+                $rc['return_shipping_cost'] ?? 0,
+            ], null, 'A'.$row);
+            $row++;
+        }
+
         foreach ($payload['charts'] as $chart) {
             $row++;
             $sheet->setCellValue('A'.$row, $chart['title'])->getStyle('A'.$row)->getFont()->setBold(true);

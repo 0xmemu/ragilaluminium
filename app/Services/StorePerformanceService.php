@@ -212,6 +212,11 @@ class StorePerformanceService
             $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Dihitung dari event pembatalan pada periode dibandingkan pesanan yang masuk fulfillment pada periode.'),
         ];
 
+        $returnCostKpis = [
+            $this->kpi('return_shipping_cost_total', 'Total Ongkir Retur', $current['return_shipping_cost_total'], $previous['return_shipping_cost_total'] ?? 0, 'currency', 'Biaya ongkir retur yang ditanggung toko pada periode ini (biaya operasional, bukan pengurang omzet).'),
+            $this->kpi('return_shipping_cost_cases', 'Kasus Retur dengan Ongkir', $current['return_shipping_cost_cases'], $previous['return_shipping_cost_cases'] ?? 0, 'number', 'Jumlah kasus retur selesai yang menanggung ongkir retur.'),
+        ];
+
         return [
             'range' => [
                 'period' => $range['period'],
@@ -248,7 +253,9 @@ class StorePerformanceService
                 ['key' => 'operations', 'title' => 'Operasional', 'kpis' => $opsKpis],
                 ['key' => 'payments', 'title' => 'Pembayaran', 'kpis' => $paymentsKpis],
                 ['key' => 'cancellations', 'title' => 'Pembatalan', 'kpis' => $cancellationsKpis],
+                ['key' => 'return_costs', 'title' => 'Biaya Retur', 'kpis' => $returnCostKpis],
             ],
+            'return_shipping_costs' => $current['return_shipping_cost_list'],
             'charts' => [
                 [
                     'key' => 'revenue',
@@ -330,6 +337,7 @@ class StorePerformanceService
         $conversionRate = $visitors > 0 ? round(($orders / $visitors) * 100, 2) : 0.0;
 
         [$newCustomers, $repeatCustomers] = $this->customerCounts($from, $to);
+        $shippingCost = $this->shippingCostCounts($from, $to);
 
         return [
             'orders' => $orders,
@@ -360,6 +368,11 @@ class StorePerformanceService
             'return_rate_created' => $orders > 0 ? round(($returnCounts['created'] / $orders) * 100, 2) : 0.0,
             'return_rate_completed' => $completedOrders > 0 ? round(($returnCounts['completed'] / $completedOrders) * 100, 2) : 0.0,
             'repeat_order_rate' => $this->repeatOrderRate($newCustomers, $repeatCustomers),
+
+            // Ongkir retur ditanggung toko (biaya operasional, bukan pengurang omzet)
+            'return_shipping_cost_total' => round($shippingCost['total'], 2),
+            'return_shipping_cost_cases' => $shippingCost['cases'],
+            'return_shipping_cost_list' => $shippingCost['list'],
 
             // Task 2 KPI baru (additive)
             'payments_received' => round($paymentCounts['received'], 2),
@@ -785,6 +798,37 @@ class StorePerformanceService
      * $unique = new + repeat (keduanya dari customerCounts: order valid, exclude cancelled).
      * Normalisasi nomor tetap via customerCounts (dimana pun raw customer_phone dipakai).
      */
+    /**
+     * Ongkir retur yang ditanggung toko (biaya operasional, bukan pengurang omzet).
+     * Dihitung dari kasus retur yang selesai (completed) dalam periode.
+     *
+     * @return array{total: float, cases: int, list: list<array<string, mixed>>}
+     */
+    protected function shippingCostCounts(Carbon $from, Carbon $to): array
+    {
+        $rows = OrderReturnCase::query()
+            ->with('order:id,order_number')
+            ->whereBetween('completed_at', [$from, $to])
+            ->where('status', 'completed')
+            ->where('return_shipping_cost', '>', 0)
+            ->orderBy('completed_at')
+            ->get();
+
+        $total = (float) $rows->sum('return_shipping_cost');
+
+        return [
+            'total' => $total,
+            'cases' => $rows->count(),
+            'list' => $rows->map(fn ($case) => [
+                'order_id' => $case->order_id,
+                'order_number' => $case->order?->order_number,
+                'completed_at' => $case->completed_at?->toIso8601String(),
+                'fault_party' => $case->fault_party,
+                'reason' => $case->reason,
+                'return_shipping_cost' => (float) $case->return_shipping_cost,
+            ])->all(),
+        ];
+    }
     protected function repeatOrderRate(int $newCustomers, int $repeatCustomers): float
     {
         $unique = $newCustomers + $repeatCustomers;

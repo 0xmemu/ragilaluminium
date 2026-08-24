@@ -153,4 +153,29 @@ class ReturnService
 
         return ['valid' => true];
     }
+
+    /**
+     * Validasi ongkir retur yang ditanggung toko (dua opsi).
+     *
+     * - fault_party store -> wajib > 0 (kesalahan toko).
+     * - fault_party customer/other -> opsional (goodwill, boleh 0 atau > 0).
+     * Tanpa batas maksimal nominal. Tidak mengurangi omzet (biaya operasional).
+     *
+     * @return array{valid: bool, error?: string}
+     */
+    public function validateReturnShippingCost(string $faultParty, mixed $cost): array
+    {
+        $value = is_numeric($cost) ? (float) $cost : null;
+
+        if ($faultParty === 'store') {
+            if ($value === null || $value <= 0) {
+                return ['valid' => false, 'error' => 'Ongkir retur wajib diisi karena kesalahan ada di toko.'];
+            }
+
+            return ['valid' => true];
+        }
+
+        // customer/other: opsional (goodwill). Null dianggap 0.
+        return ['valid' => true];
+    }
 }

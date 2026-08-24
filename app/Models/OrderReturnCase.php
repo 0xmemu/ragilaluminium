@@ -21,6 +21,7 @@ class OrderReturnCase extends Model
         'refund_amount',
         'replacement_amount',
         'additional_shipping_amount',
+        'return_shipping_cost',
         'completed_at',
         'created_by_user_id',
         'updated_by_user_id',
@@ -30,6 +31,7 @@ class OrderReturnCase extends Model
         'refund_amount' => 'decimal:2',
         'replacement_amount' => 'decimal:2',
         'additional_shipping_amount' => 'decimal:2',
+        'return_shipping_cost' => 'decimal:2',
         'completed_at' => 'datetime',
     ];
 
