@@ -38,6 +38,11 @@ Schedule::command('media:prune-logs', [
     '--days' => (int) config('media.log_retention_days', 30),
 ])->dailyAt('03:30')->withoutOverlapping();
 
+// Rilis reservation stok kedaluwarsa (P2-3.2; aman walau feature disabled).
+Schedule::call(function () {
+    app(\App\Services\StockReservationService::class)->releaseExpired();
+})->name('stock-reservations:release-expired')->everyFiveMinutes()->withoutOverlapping();
+
 // Audit keamanan dependency bulanan (composer). Hasil JSON tersimpan di storage.
 Schedule::exec(
     'cd '.base_path().' && composer audit --format=json > storage/logs/composer-audit-$(date +%Y%m).json 2>&1',
