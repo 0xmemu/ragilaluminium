@@ -324,6 +324,187 @@ function SupportAction() {
   )
 }
 
+
+function OrderSummaryCard({ order, copied, onCopy }: { order: PublicOrder; copied: boolean; onCopy: (v: string) => void }) {
+  const total = order.total_amount ? formatCurrency(order.total_amount) : "-"
+  const methodLabel =
+    order.payment_method === "cod"
+      ? order.vm?.payment?.statusKey === "paid"
+        ? "COD (Lunas)"
+        : "COD"
+      : order.vm?.payment?.statusKey === "paid"
+        ? "Transfer (Lunas)"
+        : "Transfer"
+  return (
+    <section className="order-tracking__summary-card rounded-[14px] border border-[#dee3e0] bg-surface p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-mono text-sm font-semibold text-primary">{order.order_number}</p>
+          {order.created_at ? (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{formatDateTime(order.created_at)}</p>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge status={order.order_status} />
+          <button
+            type="button"
+            onClick={() => onCopy(order.order_number)}
+            className="inline-flex size-5 items-center justify-center text-muted-foreground hover:text-foreground"
+            aria-label="Salin nomor pesanan"
+          >
+            <Icon name={copied ? "check" : "copy"} className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 border-t border-border pt-3">
+        <p className="text-[11px] text-muted-foreground">
+          Resi{" "}
+          {order.vm?.carrier?.waybill ? (
+            <button
+              type="button"
+              onClick={() => onCopy(order.vm!.carrier!.waybill)}
+              className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+            >
+              {order.vm.carrier.waybill}
+              <Icon name="copy" className="size-3" aria-hidden="true" />
+            </button>
+          ) : (
+            <span className="font-medium text-foreground">Belum Dikirim</span>
+          )}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        className="mt-3 flex w-full items-center justify-between gap-2 text-left"
+        onClick={() => document.getElementById("items-detail")?.classList.toggle("hidden")}
+        aria-expanded="false"
+      >
+        <span className="text-xs font-semibold text-foreground">Total {order.items.reduce((s, i) => s + i.quantity, 0)} unit</span>
+        <span className="flex items-center gap-2">
+          <span className="tabular-nums text-sm font-bold text-primary">{total}</span>
+          <span className="text-[11px] text-muted-foreground">· {methodLabel}</span>
+          <Icon name="chevron-down" className="size-4 text-muted-foreground" aria-hidden="true" />
+        </span>
+      </button>
+
+      <ul id="items-detail" className="mt-3 hidden border-t border-border pt-3">
+        {order.items.map((item, index) => {
+          const unit = item.line_total ? Number(item.line_total) / item.quantity : null
+          return (
+            <li key={`sum-${item.product_name ?? item.name}-${index}`} className="flex items-center gap-3 py-2">
+              <span className="relative flex size-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted">
+                <ResponsiveImage
+                  src={item.image ?? null}
+                  alt={item.product_name ?? item.name ?? "Produk"}
+                  wrapperClassName="size-full"
+                  className="size-full object-cover"
+                />
+              </span>
+              <span className="min-w-0 flex-1">
+                {item.parent_sku ? (
+                  <Link href={routeUrl("product.show", { parent_sku: item.parent_sku })} className="block text-xs font-semibold text-foreground hover:text-primary">
+                    {item.product_name ?? item.name}
+                  </Link>
+                ) : (
+                  <span className="block text-xs font-semibold text-foreground">{item.product_name ?? item.name}</span>
+                )}
+                {item.note ? <span className="mt-0.5 block text-[11px] text-muted-foreground">Catatan: {item.note}</span> : null}
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block tabular-nums text-xs font-semibold text-foreground">
+                  {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
+                </span>
+                {unit ? <span className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">{item.quantity} × {formatCurrency(unit)}</span> : null}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+function StatusSummary({ order }: { order: PublicOrder }) {
+  const milestones = order.vm?.milestones
+  if (!milestones || milestones.length === 0) return null
+  const steps = milestones.slice(0, 4)
+  return (
+    <section className="order-tracking__status-summary rounded-[14px] border border-[#dee3e0] bg-surface p-4">
+      <ol className="flex items-center justify-between gap-2">
+        {steps.map((step, i) => {
+          const done = step.state === "completed" || step.state === "current"
+          return (
+            <li key={step.key + i} className="flex flex-1 flex-col items-center gap-2 text-center">
+              <span
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-full border-2",
+                  done ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground",
+                )}
+              >
+                {done ? <Icon name="check" className="size-4" weight="bold" /> : <span className="size-1.5 rounded-full bg-current" />}
+              </span>
+              <span className={cn("text-[11px] leading-tight", done ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                {step.label}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
+}
+
+function DetailPengiriman({ order, onCopyWaybill }: { order: PublicOrder; onCopyWaybill?: (w: string) => void }) {
+  const recipient = order.vm?.recipient
+  const carrier = order.vm?.carrier
+  if (!recipient && !carrier) return null
+  return (
+    <section className="order-tracking__detail-pengiriman rounded-[14px] border border-[#dee3e0] bg-surface p-4">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon name="map-pin" className="size-4" aria-hidden="true" />
+        <h3 className="text-xs font-bold tracking-tight">Detail Pengiriman</h3>
+      </div>
+      <dl className="mt-3 space-y-3 text-sm">
+        {recipient ? (
+          <>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Penerima</dt>
+              <dd className="text-right font-semibold text-foreground">{recipient.customerName}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Nomor telepon</dt>
+              <dd className="text-right tabular-nums text-foreground">{recipient.phoneMasked}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="shrink-0 text-muted-foreground">Alamat tujuan</dt>
+              <dd className="text-right text-foreground">{recipient.address}</dd>
+            </div>
+          </>
+        ) : null}
+        {carrier ? (
+          <div className="flex justify-between gap-4 border-t border-border pt-3">
+            <dt className="text-muted-foreground">Metode pengiriman</dt>
+            <dd className="text-right font-medium text-foreground">
+              {carrier.carrierName}
+              {carrier.waybill ? (
+                <button
+                  type="button"
+                  onClick={() => onCopyWaybill?.(carrier.waybill)}
+                  className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  <Icon name="copy" className="size-3.5" aria-hidden="true" /> Salin resi
+                </button>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+    </section>
+  )
+}
+
 export function OrderTrackingDetail({
   order,
   onCancel,
@@ -342,29 +523,11 @@ export function OrderTrackingDetail({
 
   return (
     <div className="order-tracking space-y-6">
-      {/* Identity */}
-      <div className="order-tracking__identity flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold tracking-tight text-success">Pesanan</p>
-          <h2 className="tabular-nums mt-1 break-all font-mono text-xl font-semibold sm:text-2xl">
-            {order.order_number}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Atas nama {order.customer_name}</p>
-          {order.created_at ? (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Dibuat pada {formatDateTime(order.created_at)}
-            </p>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={() => handleCopy(order.order_number)}
-          className="inline-flex shrink-0 items-center gap-1.5 self-start text-xs font-medium text-primary hover:underline sm:self-end"
-        >
-          <Icon name="copy" className="size-3.5" aria-hidden="true" />
-          {copied ? "Nomor disalin" : "Salin nomor pesanan"}
-        </button>
-      </div>
+      {/* Card ringkasan pesanan (gaya /order) */}
+      <OrderSummaryCard order={order} copied={copied} onCopy={handleCopy} />
+
+      {/* Status summary 4-step */}
+      <StatusSummary order={order} />
 
       {/* Action banner */}
       <ActionBanner order={order} />
@@ -403,11 +566,8 @@ export function OrderTrackingDetail({
       {/* Estimate */}
       <Estimate order={order} />
 
-      {/* Recipient */}
-      <Recipient order={order} />
-
-      {/* Carrier */}
-      <Carrier order={order} onCopyWaybill={(w) => handleCopy(w)} />
+      {/* Detail Pengiriman (gabungan penerima + ekspedisi) */}
+      <DetailPengiriman order={order} onCopyWaybill={(w) => handleCopy(w)} />
 
       {/* Expandable timeline */}
       <ExpandableTimeline order={order} />
