@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Broadcast;
 | 2. php artisan vendor:publish --provider="Laravel\Reverb\Providers\ReverbServiceProvider"
 | 3. Set .env: BROADCAST_CONNECTION=reverb (atau pusher)
 | 4. Konfigurasi Reverb/Pusher di .env (REVERB_APP_ID, REVERB_APP_KEY, etc.)
-| 5. npm install --save-dev laravel-echo (Reverb tidak butuh pusher-js)
-|    atau npm install --save-dev laravel-echo pusher-js (utk Pusher-compatible)
+| 5. npm install laravel-echo pusher-js (runtime/production dependencies —
+|    dibundle & dijalankan di browser production; BUKAN devDependency)
 | 6. php artisan queue:restart (pastikan queue worker berjalan dgn Redis)
 | 7. Verifikasi route channels.php ini aktif (Broadcast::routes() di boot)
 | 8. Restart queue worker & pastikan Reverb server running (php artisan reverb:start)
