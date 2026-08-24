@@ -1,5 +1,6 @@
 import { Head, Link } from "@inertiajs/react"
-import { useEffect, useState } from "react"
+import * as React from "react"
+import { useState } from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
@@ -54,33 +55,50 @@ export default function WhatsAppConnection({
   const isBaileysActive = connection.default_provider === "baileys"
 
   const [liveStatus, setLiveStatus] = useState<string>("unknown")
+  const [refreshing, setRefreshing] = useState<boolean>(false)
 
-  useEffect(() => {
-    let active = true
-    const poll = () => {
-      fetch(statusUrl, { headers: { Accept: "application/json" } })
-        .then((r) => r.json())
-        .then((d) => {
-          if (!active) return
-          if (d.status) setLiveStatus(d.status)
-        })
-        .catch(() => {})
-    }
-    poll()
-    const t = setInterval(poll, 4000)
-    return () => {
-      active = false
-      clearInterval(t)
-    }
+  // Manual refresh eksplisit — TANPA polling/setInterval (Design Contract D).
+  function refreshStatus() {
+    setRefreshing(true)
+    fetch(statusUrl, { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.status) setLiveStatus(d.status)
+      })
+      .catch(() => {})
+      .finally(() => setRefreshing(false))
+  }
+
+  React.useEffect(() => {
+    refreshStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusUrl])
 
   const liveConnected = liveStatus === "open"
+  const liveUnreachable = liveStatus === "unreachable"
+
+  const healthLabel = liveConnected
+    ? "Sehat"
+    : liveUnreachable
+      ? "Gagal atau Offline"
+      : connection.configured
+        ? "Perlu Perhatian"
+        : "Belum Dikonfigurasi"
+  const healthTone = liveConnected ? "success" : liveUnreachable ? "danger" : connection.configured ? "warning" : "neutral"
 
   return (
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={connection.configured ? "active" : "inactive"} />}
+      actions={
+        <div className="flex items-center gap-2">
+          <StatusBadge status={healthTone} label={healthLabel} />
+          <Button type="button" variant="ghost" size="sm" onClick={refreshStatus} disabled={refreshing}>
+            <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+            {refreshing ? "Memuat..." : "Refresh"}
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
@@ -100,7 +118,7 @@ export default function WhatsAppConnection({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <div className="flex items-start gap-3">
             <span className="flex size-11 items-center justify-center rounded-md border border-border bg-muted/40 text-primary">
               <Icon name="whatsapp" className="size-6" aria-hidden="true" />
@@ -192,7 +210,7 @@ export default function WhatsAppConnection({
           </div>
         </section>
 
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <h2 className="text-base font-bold">Perangkat & trafik</h2>
           <dl className="space-y-4 text-sm">
             <div>

@@ -1,5 +1,6 @@
 import { Head, Link } from "@inertiajs/react"
-import { useEffect, useState } from "react"
+import * as React from "react"
+import { useState } from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
@@ -63,55 +64,93 @@ export default function WhatsAppDashboard({
   messagesUrl,
   pairingUrl,
 }: Props) {
-  const [status, setStatus] = useState<string>("connecting")
-  const [statusText, setStatusText] = useState<string>("Menghubungkan...")
+  const [status, setStatus] = useState<string>("unknown")
+  const [statusText, setStatusText] = useState<string>("Status belum dimuat")
   const [qrTs, setQrTs] = useState<number>(0)
   const [hasSession, setHasSession] = useState<boolean>(false)
   const [connectedPhone, setConnectedPhone] = useState<string>("")
+  const [refreshing, setRefreshing] = useState<boolean>(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null)
 
-  useEffect(() => {
-    let active = true
-    const poll = () => {
-      fetch(statusUrl, { headers: { Accept: "application/json" } })
-        .then((r) => r.json())
-        .then((d) => {
-          if (!active) return
-          setStatus(d.status)
-          setStatusText(d.statusText)
-          if (typeof d.has_session === "boolean") setHasSession(d.has_session)
-          if (d.connected_phone) setConnectedPhone(d.connected_phone)
-          if (d.status === "SCAN_QR" && !d.has_session) setQrTs(Date.now())
-        })
-        .catch(() => {})
-    }
-    poll()
-    const t = setInterval(poll, 5000)
-    return () => { active = false; clearInterval(t) }
+  // Manual refresh eksplisit — TANPA polling/setInterval (Design Contract D).
+  function refreshStatus() {
+    setRefreshing(true)
+    setRefreshError(null)
+    fetch(statusUrl, { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((d) => {
+        setStatus(d.status)
+        setStatusText(d.statusText)
+        if (typeof d.has_session === "boolean") setHasSession(d.has_session)
+        if (d.connected_phone) setConnectedPhone(d.connected_phone)
+        if (d.status === "SCAN_QR" && !d.has_session) setQrTs(Date.now())
+        setLastCheckedAt(Date.now())
+      })
+      .catch(() => setRefreshError("Status gagal dimuat. Coba lagi."))
+      .finally(() => setRefreshing(false))
+  }
+
+  React.useEffect(() => {
+    refreshStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusUrl])
 
   const connected = status === "open"
+  const unreachable = status === "unreachable"
   const showQr = !hasSession && (status === "SCAN_QR" || status === "connecting")
 
+  // Mapping health empat status kontrak: Sehat / Perlu Perhatian / Gagal atau Offline / Belum Dikonfigurasi.
+  const healthLabel = connected
+    ? "Sehat"
+    : unreachable
+      ? "Gagal atau Offline"
+      : hasSession
+        ? "Perlu Perhatian"
+        : "Belum Dikonfigurasi"
+  const healthTone = connected ? "success" : unreachable ? "danger" : hasSession ? "warning" : "neutral"
+
   return (
-    <AdminLayout title={title} description={description} actions={<StatusBadge status={connected ? "success" : "info"} />}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex items-center gap-2">
+          <StatusBadge status={healthTone} label={healthLabel} />
+          <Button type="button" variant="ghost" size="sm" onClick={refreshStatus} disabled={refreshing}>
+            <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+            {refreshing ? "Memuat..." : "Refresh"}
+          </Button>
+        </div>
+      }
+    >
       <Head title={`${title} | Admin`} />
 
       {/* Connection / linked status */}
-      <section className="rounded-xl border border-border bg-card p-5 shadow-soft">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Icon name="whatsapp" className="size-8 text-primary" aria-hidden="true" />
             <div>
               <h2 className="text-lg font-bold">
-                {connected ? "Terhubung" : hasSession ? "Sesi terdeteksi" : "Belum tertaut"}
+                {connected ? "Terhubung" : unreachable ? "Gateway tidak terjangkau" : hasSession ? "Sesi terdeteksi" : "Belum tertaut"}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {connected
                   ? `Nomor: ${connectedPhone || "—"} · Gateway Baileys aktif`
-                  : hasSession
-                    ? "Gateway sedang memulihkan koneksi..."
-                    : `Status: ${statusText}`}
+                  : unreachable
+                    ? statusText
+                    : hasSession
+                      ? "Gateway sedang memulihkan koneksi..."
+                      : `Status: ${statusText}`}
               </p>
+              {refreshError ? (
+                <p className="mt-1 text-xs font-medium text-destructive" role="status">{refreshError}</p>
+              ) : lastCheckedAt ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Terakhir diperiksa: {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(lastCheckedAt))} WIB
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex gap-2">
@@ -155,7 +194,7 @@ export default function WhatsAppDashboard({
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* Template cards */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-soft">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-base font-bold">Template Pesan Otomatis</h3>
             <Button asChild variant="secondary" size="sm"><Link href={templatesUrl}>Kelola</Link></Button>
@@ -177,7 +216,7 @@ export default function WhatsAppDashboard({
         </section>
 
         {/* Recent message logs */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-soft">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-base font-bold">Log Pesan Terbaru</h3>
             <Button asChild variant="secondary" size="sm"><Link href={messagesUrl}>Semua</Link></Button>

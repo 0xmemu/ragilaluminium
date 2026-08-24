@@ -82,7 +82,7 @@ function formatDateTime(iso: string | null | undefined): string {
 }
 
 function RatingStars({ rating }: { rating?: number | null }) {
-  if (!rating) return <span className="text-muted-foreground">—</span>
+  if (!rating) return <span className="text-muted-foreground">-</span>
   return (
     <span className="inline-flex items-center gap-0.5 text-warning-foreground" aria-label={`${rating} dari 5 bintang`}>
       {Array.from({ length: 5 }, (_, index) => (
@@ -385,6 +385,12 @@ export default function TestimonialsIndex({
     router.get(routeUrl(indexRoute), params, { preserveState: true, preserveScroll: true })
   }
 
+  const hasActiveFilters = Boolean(q?.trim()) || (published && published !== "all")
+
+  function resetAllFilters() {
+    router.get(routeUrl(indexRoute), {}, { preserveState: false, preserveScroll: true })
+  }
+
   function moveRow(index: number, direction: -1 | 1) {
     const target = index + direction
     if (target < 0 || target >= orderedRows.length) return
@@ -412,7 +418,7 @@ export default function TestimonialsIndex({
       <Head title={`${title} | Admin`} />
 
       {pageMeta && metaUrl ? (
-        <details className="group mb-6 rounded-xl border border-border bg-card shadow-sm">
+        <details className="group mb-6 rounded-lg border border-border bg-card shadow-sm">
           <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5">
             <div>
               <p className="text-sm font-bold">Pengaturan tampilan (CMS)</p>
@@ -591,7 +597,7 @@ export default function TestimonialsIndex({
         }
       </ListToolbar>
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {(tab === "website" ? websiteRows.length > 0 : rows.length + importedRows.length > 0) ? (
           <div className="overflow-x-auto">
             {tab === "website" ? (
@@ -670,10 +676,10 @@ export default function TestimonialsIndex({
                               className="h-20 w-16 rounded-md border border-border object-cover"
                             />
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">-</span>
                           )
                         ) : (
-                          <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "—")}</p>
+                          <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "-")}</p>
                         )}
                       </td>
                       {!isApaKata ? (
@@ -685,7 +691,7 @@ export default function TestimonialsIndex({
                               className="size-12 rounded-md border border-border object-cover"
                             />
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </td>
                       ) : null}
@@ -741,7 +747,7 @@ export default function TestimonialsIndex({
                             className="h-16 w-24 rounded-md border border-border object-cover"
                           />
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </td>
                       <td className="px-3 py-3">
@@ -779,6 +785,16 @@ export default function TestimonialsIndex({
               </table>
             )}
           </div>
+        ) : hasActiveFilters ? (
+          <EmptyState
+            title="Tidak ada ulasan yang cocok"
+            description="Coba ubah atau hapus filter untuk melihat ulasan lain."
+            action={
+              <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                Reset Filter
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             title={

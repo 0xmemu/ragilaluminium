@@ -1,5 +1,6 @@
 import { Head, Link } from "@inertiajs/react"
-import { useEffect, useState, type FormEvent } from "react"
+import * as React from "react"
+import { useState, type FormEvent } from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
@@ -30,41 +31,50 @@ export default function Pairing({
   provider,
   flash,
 }: Props) {
-  const [status, setStatus] = useState<string>("connecting")
-  const [statusText, setStatusText] = useState<string>("Menghubungkan...")
+  const [status, setStatus] = useState<string>("unknown")
+  const [statusText, setStatusText] = useState<string>("Status belum dimuat")
   const [qrTs, setQrTs] = useState<number>(0)
   const [hasSession, setHasSession] = useState<boolean>(false)
   const [connectedPhone, setConnectedPhone] = useState<string>("")
   const [sessionName, setSessionName] = useState<string>("")
   const [phone, setPhone] = useState<string>("")
+  const [refreshing, setRefreshing] = useState<boolean>(false)
 
-  useEffect(() => {
-    let active = true
-    const poll = () => {
-      fetch(statusUrl, { headers: { Accept: "application/json" } })
-        .then((r) => r.json())
-        .then((d) => {
-          if (!active) return
-          setStatus(d.status)
-          setStatusText(d.statusText)
-          if (typeof d.has_session === "boolean") setHasSession(d.has_session)
-          if (d.connected_phone) setConnectedPhone(d.connected_phone)
-          if (d.session_name) setSessionName(d.session_name)
-          if (d.status === "SCAN_QR" && !d.has_session) setQrTs(Date.now())
-        })
-        .catch(() => {})
-    }
-    poll()
-    const t = setInterval(poll, 3000)
-    return () => {
-      active = false
-      clearInterval(t)
-    }
+  // Manual refresh eksplisit — TANPA polling/setInterval (Design Contract D).
+  function refreshStatus() {
+    setRefreshing(true)
+    fetch(statusUrl, { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((d) => {
+        setStatus(d.status)
+        setStatusText(d.statusText)
+        if (typeof d.has_session === "boolean") setHasSession(d.has_session)
+        if (d.connected_phone) setConnectedPhone(d.connected_phone)
+        if (d.session_name) setSessionName(d.session_name)
+        if (d.status === "SCAN_QR" && !d.has_session) setQrTs(Date.now())
+      })
+      .catch(() => {})
+      .finally(() => setRefreshing(false))
+  }
+
+  React.useEffect(() => {
+    refreshStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusUrl])
 
   const connected = status === "open"
+  const unreachable = status === "unreachable"
   const reconnectingSession = hasSession && !connected
   const showQr = !hasSession && (status === "SCAN_QR" || status === "connecting")
+
+  const healthLabel = connected
+    ? "Sehat"
+    : unreachable
+      ? "Gagal atau Offline"
+      : hasSession
+        ? "Perlu Perhatian"
+        : "Belum Dikonfigurasi"
+  const healthTone = connected ? "success" : unreachable ? "danger" : hasSession ? "warning" : "neutral"
 
   const confirmRefreshQr = (e: FormEvent) => {
     e.preventDefault()
@@ -89,7 +99,15 @@ export default function Pairing({
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={connected ? "success" : status === "SCAN_QR" ? "warning" : "info"} />}
+      actions={
+        <div className="flex items-center gap-2">
+          <StatusBadge status={healthTone} label={healthLabel} />
+          <Button type="button" variant="ghost" size="sm" onClick={refreshStatus} disabled={refreshing}>
+            <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+            {refreshing ? "Memuat..." : "Refresh"}
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
@@ -134,7 +152,7 @@ export default function Pairing({
       )}
 
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <Icon name="qr" className="size-5 text-primary" aria-hidden="true" />
             <h2 className="text-lg font-bold">Scan QR</h2>
@@ -174,7 +192,7 @@ export default function Pairing({
           )}
         </section>
 
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <Icon name="phone" className="size-5 text-primary" aria-hidden="true" />
             <h2 className="text-lg font-bold">Pairing Code (tanpa scan)</h2>
