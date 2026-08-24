@@ -20,6 +20,12 @@ Route::get('/health/ready', ReadinessController::class)
     ->middleware('throttle:60,1')
     ->name('health.ready');
 
+// Order status API memakai identitas (order_number + phone): throttle lebih
+// ketat, konsisten dgn endpoint public /order/status (15/1m).
+Route::get('/orders/{order_number}/status', [OrderController::class, 'statusApi'])
+    ->middleware('throttle:10,1')
+    ->name('api.orders.status');
+
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('/catalog/{category}', function ($category, Request $request) {
         $controller = app(CatalogController::class);
@@ -36,7 +42,6 @@ Route::middleware('throttle:60,1')->group(function () {
 
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/products/{parent_sku}', [ProductController::class, 'show']);
-    Route::get('/orders/{order_number}/status', [OrderController::class, 'statusApi']);
 
     Route::get('/wilayah/provinces', [WilayahController::class, 'provinces']);
     Route::get('/wilayah/regencies/{provinceId}', [WilayahController::class, 'regencies']);
