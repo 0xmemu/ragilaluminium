@@ -95,6 +95,25 @@ class OrderReturnCtaTest extends TestCase
                 && ! str_contains($r, 'internal')));
     }
 
+    public function test_primary_status_payload_present_for_all_states(): void
+    {
+        // Phase E: StatusNotice (headline+message+tone) harus tersedia utk setiap
+        // status agar hierarchy/a11y kontrak A2 terpenuhi.
+        foreach (['awaiting_confirmation', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'issue', 'return_in_process', 'return_completed'] as $state) {
+            $order = $this->makeOrder([
+                'order_number' => 'RA-RC-'.strtoupper(str_replace('_', '', $state)),
+                'order_status' => $state,
+            ]);
+
+            $vm = new \App\Support\OrderTrackingViewModel($order, $order->shippingRecords->first());
+            $primary = $vm->primaryStatus();
+
+            $this->assertNotSame('', $primary['headline'], "headline kosong utk {$state}");
+            $this->assertNotSame('', $primary['message'], "message kosong utk {$state}");
+            $this->assertContains($primary['tone'], ['success', 'danger', 'warning', 'neutral', 'info'], "tone tak dikenal utk {$state}");
+        }
+    }
+
     public function test_completed_order_has_no_return_block_and_copy_says_finished(): void
     {
         $order = $this->makeOrder([

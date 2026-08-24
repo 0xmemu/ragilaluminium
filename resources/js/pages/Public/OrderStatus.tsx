@@ -480,7 +480,7 @@ export default function OrderStatus({
                 </div>
               ) : shownOrder ? (
                 <>
-                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <div role="status" aria-live="polite" className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     {pollState === "updating" ? (
                       <span className="inline-flex items-center gap-1.5">
                         <Icon name="dots-three" className="size-3.5 animate-pulse" aria-hidden="true" />

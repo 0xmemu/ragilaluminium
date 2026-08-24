@@ -329,7 +329,7 @@ function StatusSummary({ order }: { order: PublicOrder }) {
     },
     {
       key: "delivered",
-      label: "Pesanan Sampai COD (Lunas)",
+      label: "Pesanan Sampai",
       icon: Truck,
       done: Boolean(isDelivered),
     },
@@ -605,6 +605,36 @@ function TrustAssurance() {
 }
 
 /**
+ * Phase E: StatusNotice — render status dictionary ViewModel (headline +
+ * message + tone) supaya hierarchy jelas dan a11y-friendly (role=status).
+ */
+const STATUS_TONE_CLASSES: Record<string, string> = {
+  success: "border-[#2b734e33] bg-[#2b734e0d] text-[#2b734e]",
+  danger: "border-[#bd111133] bg-[#bd11110d] text-[#bd1111]",
+  warning: "border-[#8d570c33] bg-[#8d570c0d] text-[#8d570c]",
+  neutral: "border-border bg-surface-muted text-foreground",
+  info: "border-[#2c6d9b33] bg-[#2c6d9b0d] text-[#2c6d9b]",
+}
+
+function StatusNotice({ order }: { order: PublicOrder }) {
+  const primary = order.vm?.primaryStatus
+  if (!primary || !primary.headline) return null
+  const tone = STATUS_TONE_CLASSES[primary.tone] ?? STATUS_TONE_CLASSES.neutral
+
+  return (
+    <section
+      role="status"
+      className={`order-tracking__status-notice rounded-[14px] border p-4 shadow-sm ${tone}`}
+    >
+      <p className="text-sm font-bold text-foreground">{primary.headline}</p>
+      {primary.message ? (
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{primary.message}</p>
+      ) : null}
+    </section>
+  )
+}
+
+/**
  * Card: Retur & Penyelesaian (Phase D) — hanya utk pesanan delivered.
  * Eligibility dari ReturnService (delivered + paid + <=48 jam); CTA WhatsApp
  * dgn order reference. Completed tidak menampilkan kartu ini (copy A2).
@@ -673,6 +703,9 @@ export function OrderTrackingDetail({
 }) {
   return (
     <div className="order-tracking space-y-4 max-w-lg mx-auto">
+      {/* 0. Status utama (kontrak A2: headline + message + tone) */}
+      <StatusNotice order={order} />
+
       {/* 1. Ringkasan Pesanan */}
       <OrderSummaryCard order={order} />
 
