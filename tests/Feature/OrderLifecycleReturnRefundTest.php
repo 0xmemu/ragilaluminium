@@ -146,21 +146,30 @@ class OrderLifecycleReturnRefundTest extends TestCase
     }
 
     // ==== Rule 4 & 8: return dari completed + alur terpisah di timeline ====
-    public function test_return_case_can_be_created_from_completed_and_is_separate_track(): void
+    public function test_return_case_can_be_created_from_delivered_and_is_separate_track(): void
     {
         $admin = $this->admin();
         $product = $this->createVisibleProduct();
         $variant = $product->variants()->first();
-        $order = $this->makeOrder('completed');
+        $order = $this->makeOrder('delivered', [
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+        ]);
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'F9-RET-1',
+            'shipping_cost' => 10000,
+            'status' => 'delivered',
+            'last_status_at' => now(),
+        ]);
         $item = $this->attachItem($order, $product, $variant, 2, 50000);
 
         $this->actingAs($admin)
             ->post(route('admin.orders.returns.store', $order), [
-                'reason' => 'Barang rusak saat tiba',
+                'reason' => 'rusak',
                 'customer_notes' => 'Kaca pecah',
                 'admin_notes' => 'Cek foto kerusakan',
-                'resolution_type' => 'refund',
-                'refund_amount' => 100000,
                 'items' => [
                     ['order_item_id' => $item->id, 'requested_quantity' => 2],
                 ],
@@ -172,7 +181,7 @@ class OrderLifecycleReturnRefundTest extends TestCase
 
         $case = OrderReturnCase::where('order_id', $order->id)->sole();
         $this->assertSame('open', $case->status);
-        $this->assertSame('Barang rusak saat tiba', $case->reason);
+        $this->assertSame('rusak', $case->reason);
         $this->assertSame(1, $case->items()->count());
 
         // Rule 8: alur retur tercatat sebagai jejak terpisah (ledger retur + event admin_return),
@@ -185,13 +194,45 @@ class OrderLifecycleReturnRefundTest extends TestCase
         $this->assertSame((string) $case->id, (string) $event->payload['return_case_id']);
     }
 
+    // Kontrak baru: retur dari completed DILARANG oleh sistem (delivered-only).
+    public function test_return_rejected_when_order_completed(): void
+    {
+        $admin = $this->admin();
+        $product = $this->createVisibleProduct();
+        $variant = $product->variants()->first();
+        $order = $this->makeOrder('completed');
+        $item = $this->attachItem($order, $product, $variant, 1, 50000);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.returns.store', $order), [
+                'reason' => 'rusak',
+                'customer_notes' => 'Minta retur',
+                'items' => [['order_item_id' => $item->id, 'requested_quantity' => 1]],
+            ])
+            ->assertSessionHasErrors('return');
+
+        $this->assertSame(0, OrderReturnCase::count());
+        $this->assertSame('completed', $order->fresh()->order_status);
+    }
+
     // ==== Rule 5: retur wajib alasan + hanya dari delivered/completed ====
     public function test_return_requires_reason_from_admin(): void
     {
         $admin = $this->admin();
         $product = $this->createVisibleProduct();
         $variant = $product->variants()->first();
-        $order = $this->makeOrder('completed');
+        $order = $this->makeOrder('delivered', [
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+        ]);
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'F9-RET-2',
+            'shipping_cost' => 10000,
+            'status' => 'delivered',
+            'last_status_at' => now(),
+        ]);
         $item = $this->attachItem($order, $product, $variant, 1, 50000);
 
         $this->actingAs($admin)
@@ -202,7 +243,7 @@ class OrderLifecycleReturnRefundTest extends TestCase
             ->assertSessionHasErrors('reason');
 
         $this->assertSame(0, OrderReturnCase::count());
-        $this->assertSame('completed', $order->fresh()->order_status);
+        $this->assertSame('delivered', $order->fresh()->order_status);
     }
 
     public function test_return_rejected_when_order_still_processing(): void
@@ -251,13 +292,15 @@ class OrderLifecycleReturnRefundTest extends TestCase
         ]);
 
         // Kombinasi: refund + selisih harga penggantian + ongkir tambahan.
+        // Kontrak baru: refund tidak boleh melebihi total pembayaran (110.000).
         $this->actingAs($admin)
             ->post(route('admin.orders.returns.complete', [$order, $case]), [
                 'resolution_type' => 'refund',
-                'admin_notes' => 'Tindakan: refund & penggantian. Refund 150rb, selisih harga unit 50rb, ongkir balik 20rb.',
-                'refund_amount' => 150000,
+                'admin_notes' => 'Tindakan: refund & penggantian. Refund 100rb, selisih harga unit 50rb, ongkir balik 20rb.',
+                'refund_amount' => 100000,
                 'replacement_amount' => 50000,
                 'additional_shipping_amount' => 20000,
+                'return_shipping_cost' => 0,
                 'returned_items' => [
                     ['id' => $returnItem->id, 'returned_quantity' => 2],
                 ],
@@ -268,7 +311,7 @@ class OrderLifecycleReturnRefundTest extends TestCase
         $case->refresh();
         $this->assertSame('completed', $case->status);
         $this->assertSame('refund', $case->resolution_type);
-        $this->assertSame(150000.0, (float) $case->refund_amount);
+        $this->assertSame(100000.0, (float) $case->refund_amount);
         $this->assertSame(50000.0, (float) $case->replacement_amount);
         $this->assertSame(20000.0, (float) $case->additional_shipping_amount);
         $this->assertStringContainsString('selisih harga', (string) $case->admin_notes);
