@@ -1,6 +1,5 @@
 import { Head, router } from "@inertiajs/react"
 import * as React from "react"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
@@ -12,12 +11,6 @@ import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/admin/ui/chart"
 
 interface Kpi {
   key: string
@@ -170,34 +163,7 @@ function formatDuration(value: number, isDays = false): string {
 }
 
 
-function TrendChart({ series }: { series: SeriesPoint[] }) {
-  const chartConfig = {
-    value: {
-      label: "Nilai",
-      color: "var(--primary)",
-    },
-  } satisfies ChartConfig
-
-  return (
-    <ChartContainer config={chartConfig} className="mt-2 h-32 w-full">
-      <BarChart data={series} accessibilityLayer>
-        <CartesianGrid vertical={false} />
-        <XAxis
-          dataKey="label"
-          tickLine={false}
-          tickMargin={8}
-          axisLine={false}
-          tick={{ fontSize: 9 }}
-        />
-        <ChartTooltip
-          cursor={{ fill: "var(--accent)" }}
-          content={<ChartTooltipContent />}
-        />
-        <Bar dataKey="value" radius={2} fill="var(--color-value)" />
-      </BarChart>
-    </ChartContainer>
-  )
-}
+const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
 type ProductBreakdown = {
   product_id: number
   parent_sku: string
@@ -569,7 +535,9 @@ export default function StorePerformance({
               </div>
             </div>
             {chart.series.length ? (
-              <TrendChart series={chart.series} />
+              <React.Suspense fallback={<div className="mt-2 h-32 w-full animate-pulse rounded-md bg-muted" aria-label="Memuat grafik" />}>
+                <TrendChart series={chart.series} />
+              </React.Suspense>
             ) : (
               <p className="mt-6 text-sm text-muted-foreground">Belum ada data tren.</p>
             )}
