@@ -7,6 +7,7 @@ import { ActivityLogBell, type ActivityLogItem } from "@/components/admin/activi
 import { NotificationBell, type NotificationItem } from "@/components/admin/notification-bell"
 import { AdminNavigation } from "@/components/admin/admin-navigation"
 import { Button } from "@/components/admin/ui/button"
+import { AdminBreadcrumbs, resolveAdminBreadcrumb } from "@/components/admin/ui/breadcrumb"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,7 +68,18 @@ export function AdminLayout({
   actions?: React.ReactNode
   backUrl?: string | null
 }) {
-  const { auth, adminNotifications, adminActivityLogs } = usePage<SharedPageProps>().props
+  const { auth, adminNotifications, adminActivityLogs, nav } = usePage<SharedPageProps>().props
+  const breadcrumbItems = React.useMemo(() => {
+    const current = (globalThis as { route?: (...args: unknown[]) => { current: (p?: string | string[]) => string | boolean | undefined } }).route
+    let routeName = ""
+    try {
+      const value = current?.().current()
+      if (typeof value === "string") routeName = value
+    } catch {
+      routeName = ""
+    }
+    return resolveAdminBreadcrumb(nav?.admin ?? {}, routeName)
+  }, [nav])
   const notifications = (adminNotifications as NotificationItem[] | undefined) ?? []
   const activityLogs = (adminActivityLogs as ActivityLogItem[] | undefined) ?? []
   const [navigationOpen, setNavigationOpen] = React.useState(false)
@@ -221,6 +233,7 @@ export function AdminLayout({
             <div className="px-4 pb-5 pt-6 md:px-6 lg:px-8">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
+                  <AdminBreadcrumbs items={breadcrumbItems} className="mb-1.5" />
                   {title ? (
                     backUrl ? (
                       <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">

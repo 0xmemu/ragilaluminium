@@ -56,8 +56,8 @@ interface PerformaData {
 }
 
 interface FinancialData {
-  pending_payment_amount: number
-  pending_payment_orders: number
+  awaiting_confirmation_amount: number
+  awaiting_confirmation_orders: number
   active_order_amount: number
   active_order_count: number
   received_today_amount: number
@@ -329,10 +329,10 @@ export default function Dashboard({
   const [refreshing, setRefreshing] = React.useState(false)
   const [refreshError, setRefreshError] = React.useState(false)
   const name = greetingName || auth.user?.name || "Admin"
-  const pendingPaymentOrders = statusOrder.find((item) => item.key === "pending_payment")
+  const pendingPaymentOrders = statusOrder.find((item) => item.key === "awaiting_confirmation")
   const pendingPaymentOrdersHref =
     pendingPaymentOrders?.href ??
-    withQuery(routeUrl("admin.orders.index"), { order_status: "pending_payment" })
+    withQuery(routeUrl("admin.orders.index"), { order_status: "awaiting_confirmation" })
   const hasOrders =
     statusOrder.reduce((sum, item) => sum + item.total, 0) > 0 || omzet.orders > 0
   const visitorsMetric = performa.metrics.find((metric) => metric.key === "visitors")
@@ -371,7 +371,7 @@ export default function Dashboard({
               </p>
               <p className="mt-1 text-[13px] text-muted-foreground">{todayLabel}</p>
               <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-                {refreshing ? "Memperbarui data dashboard..." : `Data diperbarui ${formatDateTime(generatedAt)}`}
+                {refreshing ? "Memperbarui data dashboard..." : `Data diperbarui: ${formatDateTime(generatedAt)} WIB`}
               </p>
               {refreshError ? (
                 <p className="mt-1 text-xs font-medium text-destructive" role="status">
@@ -439,7 +439,10 @@ export default function Dashboard({
               <div className="flex flex-wrap items-start justify-between gap-4 p-4 pb-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Omzet hari ini
+                    Penjualan (Gross) Hari Ini
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
+                    Nilai pesanan yang masuk alur fulfillment · bukan pembayaran diterima atau laba
                   </p>
                   <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
                     {formatCurrency(omzet.revenue)}
@@ -489,13 +492,13 @@ export default function Dashboard({
                 <div className="px-4 py-3">
                   <MetricTile
                     label="Belum dibayar"
-                    value={formatCurrency(financial.pending_payment_amount)}
-                    delta={`${formatNumber(financial.pending_payment_orders)} order pending`}
+                    value={formatCurrency(financial.awaiting_confirmation_amount)}
+                    delta={`${formatNumber(financial.awaiting_confirmation_orders)} order pending`}
                   />
                 </div>
                 <div className="px-4 py-3">
                   <MetricTile
-                    label="Diterima hari ini"
+                    label="Pembayaran Diterima Hari Ini"
                     value={formatCurrency(financial.received_today_amount)}
                     delta={`${formatNumber(financial.received_today_count)} pembayaran`}
                   />
@@ -825,37 +828,40 @@ export default function Dashboard({
             contentClassName="p-0"
           >
             <ul className="divide-y divide-border">
-              {integrationReadiness.map((item) => (
-                <li key={item.key} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span
-                      aria-hidden="true"
-                      className={`size-2 shrink-0 rounded-full ${item.ready ? "bg-green-500" : "bg-muted-foreground/40"}`}
-                    />
-                    <span className="min-w-0">
-                      <span className="text-[13px] font-medium text-foreground">{item.label}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{item.detail}</span>
+              {integrationReadiness.map((item: IntegrationReadinessItem) => {
+                const isSehat = item.ready && item.verified
+                const isPerhatian = item.ready && !item.verified
+                const isGagal = !item.ready && (item.status_label ?? "").toLowerCase().includes("gagal")
+                const isBelum = !item.ready && !isGagal
+                const statusLabel = isSehat ? "Sehat" : isPerhatian ? "Perlu Perhatian" : isGagal ? "Gagal atau Offline" : "Belum Dikonfigurasi"
+                const dotClass = isSehat ? "bg-[var(--success)]" : isPerhatian ? "bg-[var(--warning)]" : isGagal ? "bg-[var(--destructive)]" : "bg-muted-foreground/40"
+                const badgeClass = isSehat
+                  ? "bg-success/10 text-success"
+                  : isPerhatian
+                    ? "bg-warning/10 text-warning"
+                    : isGagal
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-muted text-muted-foreground"
+                return (
+                  <li key={item.key} className="flex items-center justify-between gap-3 px-5 py-3">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${dotClass}`} />
+                      <span className="min-w-0">
+                        <span className="text-[13px] font-medium text-foreground">{item.label}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{item.detail}</span>
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0">
-                    {item.ready ? (
+                    <span className="shrink-0">
                       <Link
                         href={item.href}
-                        className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 transition hover:bg-green-100"
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition hover:bg-opacity-80 ${badgeClass}`}
                       >
-                        Aktif
+                        {statusLabel}
                       </Link>
-                    ) : (
-                      <Link
-                        href={item.href}
-                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted/80"
-                      >
-                        Belum aktif
-                      </Link>
-                    )}
-                  </span>
-                </li>
-              ))}
+                    </span>
+                  </li>
+                )
+              })}
             </ul>
           </SectionCard>
         )}

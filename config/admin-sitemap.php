@@ -74,7 +74,7 @@ return [
     'navigation' => [
         'core' => [
             'items' => [
-                ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => ['admin.dashboard']],
+                ['label' => 'Beranda', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => ['admin.dashboard']],
                 ['label' => 'Performa Toko', 'route' => 'admin.analytics.store-performance', 'icon' => 'trending-up', 'active' => ['admin.analytics.store-performance', 'admin.analytics.store-performance.*']],
                 ['label' => 'Pesanan', 'route' => 'admin.orders.index', 'icon' => 'clipboard-list', 'active' => ['admin.orders.*']],
                 ['label' => 'Pembayaran', 'route' => 'admin.payments.index', 'icon' => 'hand-coins', 'active' => ['admin.payments.*', 'admin.orders.payments']],
@@ -138,7 +138,7 @@ return [
         'pengaturan_website' => [
             'title' => 'Pengaturan Website',
             'items' => [
-                ['label' => 'Beranda Pembeli', 'route' => 'admin.beranda.index', 'icon' => 'layout-grid', 'active' => ['admin.beranda.*']],
+                ['label' => 'Beranda Toko', 'route' => 'admin.beranda.index', 'icon' => 'layout-grid', 'active' => ['admin.beranda.*']],
 
                 ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
