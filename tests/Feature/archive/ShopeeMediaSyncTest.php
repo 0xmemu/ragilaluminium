@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Imports\ShopeeMediaExport;
+use App\Imports\archive\ShopeeMediaExport;
 use App\Models\ImportJob;
 use App\Models\Product;
 use App\Models\ProductMedia;

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\CatalogTemplateExport;
+use App\Exports\StockPriceTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessCatalogImport;
 use App\Support\MediaNamer;
@@ -15,10 +17,22 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ImportJobController extends Controller
 {
+    public static function typeLabel(string $type): string
+    {
+        return match ($type) {
+            'catalog_import' => 'Import Katalog',
+            'stock_price_update' => 'Update Harga & Stok',
+            'shopee_mass_upload' => 'Shopee Mass Upload (historis)',
+            'shopee_mass_update' => 'Shopee Mass Update (historis)',
+            'internal_bulk_update' => 'Internal Bulk Update (historis)',
+            default => $type,
+        };
+    }
+
     public function index(Request $request): Response
     {
         $jobs = ImportJob::with('triggeredBy')
@@ -30,7 +44,7 @@ class ImportJobController extends Controller
 
         return Inertia::render('Admin/ResourceIndex', [
             'title' => 'Import',
-            'description' => 'Bulk update katalog (Shopee/internal). Bagian dari menu Produk.',
+            'description' => 'Import katalog & update harga/stok. Bagian dari menu Produk.',
             'createHref' => route('admin.imports.create'),
             'toolbarLinks' => [
                 [
@@ -72,7 +86,7 @@ class ImportJobController extends Controller
 
                 return [
                     'id' => $j->id,
-                    'type' => $j->type,
+                    'type' => self::typeLabel($j->type),
                     'source_file_name' => $j->source_file_name,
                     'status' => $j->status,
                     'rows_summary' => ($j->success_rows ?? 0).' ok / '.($j->failed_rows ?? 0).' gagal',
@@ -90,10 +104,10 @@ class ImportJobController extends Controller
         return Inertia::render('Admin/ImportCreate', [
             'submitUrl' => route('admin.imports.store'),
             'internalTemplateUrl' => route('admin.imports.internal-template'),
+            'stockPriceTemplateUrl' => route('admin.imports.stock-price-template'),
             'types' => [
-                ['value' => 'shopee_mass_upload', 'label' => 'Shopee Mass Upload'],
-                ['value' => 'shopee_mass_update', 'label' => 'Shopee Mass Update'],
-                ['value' => 'internal_bulk_update', 'label' => 'Internal Bulk Update'],
+                ['value' => 'catalog_import', 'label' => 'Import Katalog'],
+                ['value' => 'stock_price_update', 'label' => 'Update Harga & Stok'],
             ],
         ]);
     }
@@ -101,7 +115,7 @@ class ImportJobController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'type' => ['required', 'in:shopee_mass_upload,shopee_mass_update,internal_bulk_update'],
+            'type' => ['required', 'in:catalog_import,stock_price_update'],
             'file' => ['required', 'file', 'mimes:xls,xlsx,xlsm,csv', 'max:51200'],
             'stock_mode' => ['required', 'in:file,manual'],
             'manual_stock' => ['nullable', 'required_if:stock_mode,manual', 'integer', 'min:0'],
@@ -165,7 +179,7 @@ class ImportJobController extends Controller
                 [
                     'title' => 'Baris Terakhir',
                     'rows' => $import_job->rows->map(fn ($r) => [
-                        'label' => 'Row '.$r->row_number.' · '.$r->status,
+                        'label' => 'Row '.$r->row_number.' ï¿½ '.$r->status,
                         'value' => (string) ($r->error_reason
                             ?? (($r->raw_data['_activation_status'] ?? null) === 'archived'
                                 ? 'Diarsipkan: '.implode(', ', (array) ($r->raw_data['_activation_reasons'] ?? []))
@@ -227,57 +241,15 @@ class ImportJobController extends Controller
         return redirect()->back()->withErrors('Berkas sumber tidak ditemukan, tidak bisa menjalankan ulang.');
     }
 
-    public function downloadInternalTemplate(): StreamedResponse
+    public function downloadInternalTemplate(): BinaryFileResponse
     {
-        $query = \App\Models\ProductVariant::query()
-            ->with(['product.attributes'])
-            ->orderBy('product_id')
-            ->orderBy('id');
-        ExportSafety::assertQueryWithinLimit($query);
-
-        return response()->streamDownload(function () use ($query) {
-            $handle = fopen('php://output', 'w');
-            ExportSafety::writeCsvRow($handle, [
-                'parent_sku', 'variant_sku', 'name', 'description', 'product_category',
-                'product_model', 'design_variant', 'variation_1_name', 'variation_1_option',
-                'variation_2_name', 'variation_2_option', 'price', 'stock', 'weight_kg',
-                'height_cm', 'width_cm', 'depth_cm', 'specifications', 'status',
-            ]);
-            $query->chunk(200, function ($variants) use ($handle) {
-                foreach ($variants as $variant) {
-                    $specifications = $variant->product->attributes
-                        ->whereNull('product_variant_id')
-                        ->map(fn ($attribute) => $attribute->attribute_name.': '.$attribute->attribute_value)
-                        ->implode('; ');
-                    ExportSafety::writeCsvRow($handle, [
-                        $variant->product->parent_sku,
-                        $variant->variant_sku,
-                        $variant->product->name,
-                        $variant->product->description,
-                        $variant->product->product_category,
-                        $variant->product->product_model,
-                        $variant->product->design_variant,
-                        $variant->variation_1_name,
-                        $variant->variation_1_option,
-                        $variant->variation_2_name,
-                        $variant->variation_2_option,
-                        $variant->price,
-                        $variant->stock,
-                        $variant->weight_kg,
-                        $variant->height_cm,
-                        $variant->width_cm,
-                        $variant->depth_cm,
-                        $specifications,
-                        $variant->status,
-                    ]);
-                }
-            });
-            fclose($handle);
-        }, 'internal-catalog-template.csv', [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return Excel::download(new CatalogTemplateExport(), 'template-import-katalog.xlsx');
     }
 
+    public function downloadStockPriceTemplate(): BinaryFileResponse
+    {
+        return Excel::download(new StockPriceTemplateExport(), 'template-update-harga-stok.xlsx');
+    }
     public function previewInternal(Request $request)
     {
         $validated = $request->validate([

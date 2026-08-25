@@ -3,8 +3,7 @@
 namespace App\Jobs;
 
 use App\Imports\CatalogProductsImport;
-use App\Imports\ShopeeCatalogExport;
-use App\Imports\ShopeeMediaExport;
+use App\Imports\ImportStockPriceUpdate;
 use App\Models\ImportJob;
 use App\Support\CatalogTaxonomy;
 use App\Support\ImportFailureNotifier;
@@ -17,7 +16,6 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
 {
@@ -59,7 +57,7 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             'global_error_message' => 'Job gagal: '.$e->getMessage(),
             'completed_at' => now(),
         ]);
-        ImportFailureNotifier::notify($this->jobId, "Job gagal: ".$e->getMessage());
+        ImportFailureNotifier::notify($this->jobId, 'Job gagal: '.$e->getMessage());
     }
 
     public function handle(): void
@@ -78,18 +76,19 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                 'global_error_message' => 'Berkas sumber tidak ditemukan.',
                 'completed_at' => now(),
             ]);
-            ImportFailureNotifier::notify($this->jobId, "Berkas sumber tidak ditemukan.");
+            ImportFailureNotifier::notify($this->jobId, 'Berkas sumber tidak ditemukan.');
 
             throw new \RuntimeException('Berkas sumber impor tidak ditemukan.');
         }
 
         try {
-            if ($this->kind === 'media') {
-                Excel::import(new ShopeeMediaExport($this->jobId), $path);
-            } else {
-                $importer = $this->resolveCatalogImporter($path);
-                Excel::import($importer, $path);
-            }
+            // Auto-detect Shopee dihapus (owner 2026-08-25): semua file diproses
+            // sebagai format internal. File ekspor Shopee lama gagal baris
+            // (parent_sku kosong) - BREAKING, lihat laporan task import-katalog.
+            $importer = $job->type === 'stock_price_update'
+                ? new ImportStockPriceUpdate($this->jobId)
+                : new CatalogProductsImport($this->jobId);
+            Excel::import($importer, $path);
         } catch (\Throwable $e) {
             $job->update([
                 'status' => 'failed',
@@ -107,37 +106,5 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
         }
 
         CatalogTaxonomy::forgetCache();
-    }
-
-    /**
-     * Pick the catalog importer based on the spreadsheet's first heading row.
-     * Real Shopee exports use "et_title_*" headers and no populated SKU columns,
-     * so they route to ShopeeCatalogExport. The simple dummy format routes to
-     * CatalogProductsImport.
-     */
-    protected function resolveCatalogImporter(string $path): object
-    {
-        $headingRow = $this->firstHeadingRow($path);
-
-        $isShopee = collect($headingRow)->contains(
-            fn ($c) => is_string($c) && str_starts_with($c, 'et_title_')
-        );
-
-        return $isShopee
-            ? new ShopeeCatalogExport($this->jobId)
-            : new CatalogProductsImport($this->jobId);
-    }
-
-    protected function firstHeadingRow(string $path): array
-    {
-        $ss = IOFactory::load($path);
-        $ws = $ss->getActiveSheet();
-        $row = $ws->getRowIterator(1, 1)->current();
-        $cells = [];
-        foreach ($row->getCellIterator() as $cell) {
-            $cells[] = $cell->getValue();
-        }
-
-        return $cells;
     }
 }

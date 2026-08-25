@@ -166,6 +166,8 @@ Route::post('/order/{order_number}/cancel', [OrderController::class, 'cancel'])
 
 Route::post('/order/{order_number}/review', [CustomerReviewController::class, 'store'])
     ->middleware('throttle:10,1')->name('order.review.store');
+Route::post('/order/{order_number}/review/media', [CustomerReviewController::class, 'uploadMedia'])
+    ->middleware('throttle:10,1')->name('order.review.media');
 Route::put('/order/{order_number}/review/{testimonial}', [CustomerReviewController::class, 'update'])
     ->middleware('throttle:10,1')->name('order.review.update');
 /*
@@ -249,6 +251,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Imports
     Route::get('imports/internal-template', [ImportJobController::class, 'downloadInternalTemplate'])->name('imports.internal-template');
+    Route::get('imports/stock-price-template', [ImportJobController::class, 'downloadStockPriceTemplate'])->name('imports.stock-price-template');
     Route::post('imports/preview', [ImportJobController::class, 'previewInternal'])->name('imports.preview');
     Route::get('imports', [ImportJobController::class, 'index'])->name('imports.index');
     Route::get('imports/create', [ImportJobController::class, 'create'])->name('imports.create');

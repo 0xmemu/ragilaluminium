@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Imports\ShopeeCatalogExport;
+use App\Imports\archive\ShopeeCatalogExport;
 use App\Support\ShopeeCatalogTaxonomy;
 use App\Support\ShopeeVariationAxes;
 use ReflectionMethod;

@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Imports;
+/** ARSIP (2026-08-25): jalur Shopee ditutup. Hanya referensi historis. */
+
+namespace App\Imports\archive;
 
 use App\Jobs\DownloadMediaAsset;
 use App\Models\ImportJob;
