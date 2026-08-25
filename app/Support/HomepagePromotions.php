@@ -186,7 +186,14 @@ class HomepagePromotions
             ->whereHas('activeVariants', fn ($q) => $q->where('price', '>', 0))
             ->whereHas('mainImage')
             ->where(function ($query) {
-                $query->whereHas('attributes', function ($attr) {
+                $campaignIds = array_values(array_unique(array_merge(
+                    app(\App\Services\CampaignService::class)->flashProductIds(),
+                    app(\App\Services\CampaignService::class)->promoProductIds(),
+                )));
+                if ($campaignIds !== []) {
+                    $query->whereIn('id', $campaignIds);
+                }
+                $query->orWhereHas('attributes', function ($attr) {
                     $attr->whereIn('attribute_name', [
                         'promo_compare_price',
                         'compare_price',
@@ -206,7 +213,7 @@ class HomepagePromotions
             ->get()
             ->filter(fn (Product $product) => ProductPromotionMetadata::isEligibleForAutoBanner($product))
             ->sortBy(function (Product $product) {
-                // Prefer newest BOUVEN for banner imagery, then curated/popular, then discount.
+                // Prefer newest BOVEN for banner imagery, then curated/popular, then discount.
                 $bouvenRank = self::isBouven($product->product_category) ? '0' : '1';
                 $popularRank = $product->homepage_popular ? '0' : '1';
                 $sort = str_pad((string) (int) ($product->homepage_popular_sort ?? 9999), 6, '0', STR_PAD_LEFT);
@@ -256,7 +263,7 @@ class HomepagePromotions
 
     /**
      * Campaign slides when CMS + auto promos empty.
-     * Prefer real newest BOUVEN (then DOOR) product photos - never static dummy promo art.
+     * Prefer real newest BOVEN (then PINTU) product photos - never static dummy promo art.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -264,12 +271,12 @@ class HomepagePromotions
     {
         $slides = [self::landingSlide()];
 
-        $bouven = self::newestCategoryProduct('BOUVEN');
+        $bouven = self::newestCategoryProduct('BOVEN');
         if ($bouven !== null) {
             $slides[] = self::productShowcaseSlide($bouven, id: -1);
         }
 
-        $door = self::newestCategoryProduct('DOOR');
+        $door = self::newestCategoryProduct('PINTU');
         if ($door !== null) {
             $slides[] = self::productShowcaseSlide($door, id: -2);
         }

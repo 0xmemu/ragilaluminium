@@ -31,7 +31,10 @@ class CatalogTaxonomy
                         DB::raw('count(*) as total')
                     )
                     ->groupBy('product_category', 'product_model', 'design_variant')
-                    ->get();
+                    ->get()
+                    // Kategori data lama (WINDOW/DOOR/BOUVEN) dinormalisasi ke
+                    // kanonik Indonesia agar kartu & konsumen membandingkan satu kode.
+                    ->each(fn ($r) => $r->product_category = \App\Support\CatalogLabels::normalizeCategory((string) $r->product_category));
             } catch (\Throwable) {
                 return collect();
             }
@@ -75,14 +78,18 @@ class CatalogTaxonomy
             }
 
             if ($category) {
-                $rows = $rows->where('product_category', $category);
+                $legacyCodes = \App\Support\CatalogLabels::categoryCodesWithLegacy($category);
+                $rows = $rows->whereIn('product_category', $legacyCodes);
             }
 
             if ($rows->isEmpty()) {
                 return [];
             }
 
-            $categoryOrder = CategoryUrl::productCategoryCodes();
+            $categoryOrder = array_values(array_unique(array_merge(
+                CategoryUrl::productCategoryCodes(),
+                $rows->pluck('product_category')->all(),
+            )));
             $wanted = [];
 
             foreach ($categoryOrder as $category) {
@@ -474,7 +481,7 @@ class CatalogTaxonomy
         foreach (config('sitemap.navigation.mega_menu', []) as $column) {
             // Kategori canonical berasal dari slug konfigurasi/database.
             // Tidak ada lagi ketergantungan pada route kategori statis.
-            $key = CategoryUrl::categoryFromSlug((string) ($column['category'] ?? '')) ?? 'WINDOW';
+            $key = CategoryUrl::categoryFromSlug((string) ($column['category'] ?? '')) ?? 'JENDELA';
 
             $slug = CategoryUrl::categoryToSlug($key);
             $baseParams = ['category' => $slug];
@@ -497,8 +504,8 @@ class CatalogTaxonomy
                 'key' => $key,
                 'label' => $column['title'],
                 'icon' => match ($key) {
-                    'DOOR' => 'door-open',
-                    'BOUVEN' => 'columns-3',
+                    'PINTU' => 'door-open',
+                    'BOVEN' => 'columns-3',
                     default => 'layout-grid',
                 },
             ];

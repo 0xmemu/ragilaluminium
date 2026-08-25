@@ -28,6 +28,10 @@ class CatalogLabels
 
     /** @var array<string, string> */
     private const CATEGORY = [
+        'JENDELA' => 'Jendela',
+        'PINTU' => 'Pintu',
+        'BOVEN' => 'Boven',
+        // Alias lama (English) tetap didukung supaya data/link lama tidak patah.
         'WINDOW' => 'Jendela',
         'DOOR' => 'Pintu',
         'BOUVEN' => 'Boven',
@@ -87,6 +91,19 @@ class CatalogLabels
         );
     }
 
+    /** Kode kategori + alias legacy (data lama masih WINDOW/DOOR/BOUVEN). */
+    public static function categoryCodesWithLegacy(string $code): array
+    {
+        $code = strtoupper(trim($code));
+        $alias = [
+            'JENDELA' => ['WINDOW'],
+            'PINTU' => ['DOOR'],
+            'BOVEN' => ['BOUVEN'],
+        ][$code] ?? [];
+
+        return array_values(array_unique(array_merge([$code], $alias)));
+    }
+
     public static function normalizeCategory(?string $code): ?string
     {
         if ($code === null || $code === '' || $code === 'ALL' || $code === 'all') {
@@ -95,14 +112,17 @@ class CatalogLabels
 
         $key = strtoupper(trim((string) $code));
 
-        // Alias query lama (English + Indonesia) ke kode internal produk.
+        // Satu kanonik Indonesia: JENDELA/PINTU/BOVEN; alias English (WINDOW/
+        // DOOR/BOUVEN + WINDOWS/DOORS) tetap dipetakan agar query lama jalan.
         $aliases = [
-            'WINDOWS' => 'WINDOW',
-            'JENDELA' => 'WINDOW',
-            'DOORS' => 'DOOR',
-            'PINTU' => 'DOOR',
-            'BOUVEN' => 'BOUVEN',
-            'BOVEN' => 'BOUVEN',
+            'JENDELA' => 'JENDELA',
+            'WINDOWS' => 'JENDELA',
+            'WINDOW' => 'JENDELA',
+            'PINTU' => 'PINTU',
+            'DOORS' => 'PINTU',
+            'DOOR' => 'PINTU',
+            'BOVEN' => 'BOVEN',
+            'BOUVEN' => 'BOVEN',
         ];
         if (isset($aliases[$key])) {
             return $aliases[$key];

@@ -38,8 +38,8 @@ class CatalogDynamicCategoryTest extends TestCase
 
         // Compatibility resolver: kategori Indonesia legacy tetap dipetakan ke
         // kode internal produk lama WINDOW/PINTU/BOVEN.
-        $this->assertSame('WINDOW', CategoryUrl::codeToProductCode('JENDELA'));
-        $this->assertSame('jendela', CategoryUrl::categoryToSlug('WINDOW'));
+        $this->assertSame('JENDELA', CategoryUrl::codeToProductCode('JENDELA'));
+        $this->assertSame('jendela', CategoryUrl::categoryToSlug('JENDELA'));
     }
 
     public function test_unknown_category_does_not_fallback_to_window(): void

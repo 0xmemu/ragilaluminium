@@ -298,9 +298,9 @@ export function PublicHeader() {
   const modelGroups = React.useMemo(
     () =>
       [
-        ["WINDOW", "Jendela"],
-        ["DOOR", "Pintu"],
-        ["BOUVEN", "Boven"],
+        ["JENDELA", "Jendela"],
+        ["PINTU", "Pintu"],
+        ["BOVEN", "Boven"],
       ]
         .map(([category, label]) => ({
           category,

@@ -21,7 +21,7 @@ class ModelProductAdminTest extends TestCase
             'parent_sku' => 'WIN-MOD-1',
             'name' => 'Jendela Sliding 1',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -31,7 +31,7 @@ class ModelProductAdminTest extends TestCase
             'parent_sku' => 'WIN-MOD-2',
             'name' => 'Jendela Sliding 2',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'ORNAMEN',
             'status' => 'archived',
@@ -42,7 +42,7 @@ class ModelProductAdminTest extends TestCase
             ->assertRedirect(route('admin.model-products.index'));
 
         $this->assertDatabaseHas('cms_model_products', [
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'status' => 'active',
         ]);
@@ -77,7 +77,7 @@ class ModelProductAdminTest extends TestCase
             'parent_sku' => 'WIN-JUNG-1',
             'name' => 'Jungkit',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -86,7 +86,7 @@ class ModelProductAdminTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.model-products.store'), [
                 'name' => 'Jendela Jungkit Unggulan',
-                'product_category' => 'WINDOW',
+                'product_category' => 'JENDELA',
                 'product_model' => 'JUNGKIT',
                 'image_url' => 'https://cdn.example.com/jungkit.jpg',
                 'description' => 'Deskripsi jungkit dari admin untuk halaman detail model.',

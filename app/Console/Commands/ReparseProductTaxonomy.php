@@ -17,7 +17,7 @@ class ReparseProductTaxonomy extends Command
                             {--dry-run : Tampilkan perubahan tanpa menulis DB}
                             {--limit=0 : Batasi jumlah produk (0 = semua)}';
 
-    protected $description = 'Perbaiki taxonomy (WINDOW/DOOR/BOUVEN + model + desain) dari nama produk';
+    protected $description = 'Perbaiki taxonomy (JENDELA/PINTU/BOVEN + model + desain) dari nama produk';
 
     public function handle(): int
     {

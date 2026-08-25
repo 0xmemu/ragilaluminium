@@ -6,9 +6,9 @@ namespace App\Support;
  * Taxonomy dari judul produk Shopee (xlsx tidak punya kolom category terisi).
  *
  * Kategori saling eksklusif - tidak ada “Jendela Boven”:
- * - kata Boven/Bouven → BOUVEN (meski judul diawali “Jendela …”)
- * - kata Pintu → DOOR
- * - kata Jendela (tanpa Boven) → WINDOW
+ * - kata Boven/Bouven → BOVEN (meski judul diawali “Jendela …”)
+ * - kata Pintu → PINTU
+ * - kata Jendela (tanpa Boven) → JENDELA
  *
  * Model (Jungkit/Sliding/…) terpisah dari kategori: boleh ada
  * Jendela Jungkit dan Boven Jungkit sebagai dua produk berbeda.
@@ -35,16 +35,16 @@ class ShopeeCatalogTaxonomy
     protected static function categoryFromName(string $upper): string
     {
         if (self::hasWord($upper, ['PINTU', 'DOOR'])) {
-            return 'DOOR';
+            return 'PINTU';
         }
 
         // “Jendela Boven …” / “Boven 1 Daun …” → BOUVEN, bukan WINDOW.
         if (self::hasWord($upper, ['BOVEN', 'BOUVEN'])) {
-            return 'BOUVEN';
+            return 'BOVEN';
         }
 
         if (self::hasWord($upper, ['JENDELA', 'WINDOW'])) {
-            return 'WINDOW';
+            return 'JENDELA';
         }
 
         // Kategori tidak dikenal: sentinel jelas, bukan Jendela (hindari asumsi diam-diam).

@@ -21,7 +21,7 @@ class ShopeeCatalogNameParseTest extends TestCase
 
         $this->assertSame(200.0, $dimensions['height_cm']);
         $this->assertSame(160.0, $dimensions['width_cm']);
-        $this->assertSame('WINDOW', $taxonomy['category']);
+        $this->assertSame('JENDELA', $taxonomy['category']);
         $this->assertSame('SWING', $taxonomy['model']);
         $this->assertSame('ORNAMEN', $taxonomy['design']);
         $this->assertSame('200x160', $short);
@@ -33,7 +33,7 @@ class ShopeeCatalogNameParseTest extends TestCase
             'Jendela 2 Daun Aluminium Jungkit Ornamen Tinggi 170 cm x Panjang 100 cm (170x100)'
         );
 
-        $this->assertSame('WINDOW', $taxonomy['category']);
+        $this->assertSame('JENDELA', $taxonomy['category']);
         $this->assertSame('JUNGKIT', $taxonomy['model']);
         $this->assertSame('ORNAMEN', $taxonomy['design']);
     }
@@ -44,7 +44,7 @@ class ShopeeCatalogNameParseTest extends TestCase
             'Jendela Boven Aluminium Jungkit Ornamen (TxP) 50x50,50x60'
         );
 
-        $this->assertSame('BOUVEN', $taxonomy['category']);
+        $this->assertSame('BOVEN', $taxonomy['category']);
         $this->assertSame('JUNGKIT', $taxonomy['model']);
         $this->assertSame('ORNAMEN', $taxonomy['design']);
     }
@@ -55,7 +55,7 @@ class ShopeeCatalogNameParseTest extends TestCase
             'Tinggi 40 cm x Panjang 40 cm (40x40) Boven 1 Daun Aluminium Jungkit Polos'
         );
 
-        $this->assertSame('BOUVEN', $taxonomy['category']);
+        $this->assertSame('BOVEN', $taxonomy['category']);
         $this->assertSame('JUNGKIT', $taxonomy['model']);
         $this->assertSame('POLOS', $taxonomy['design']);
     }

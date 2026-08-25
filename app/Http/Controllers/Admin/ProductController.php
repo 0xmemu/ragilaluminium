@@ -189,7 +189,10 @@ class ProductController extends Controller
             'short_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'category_id' => ['required', 'integer'],
-            'product_category' => ['required', Rule::in(\App\Support\CategoryUrl::productCategoryCodes())],
+            'product_category' => ['required', Rule::in(array_merge(
+                \App\Support\CategoryUrl::productCategoryCodes(),
+                ['WINDOW', 'DOOR', 'BOUVEN'], // legacy data lama tetap valid
+            ))],
             'product_model' => ['required', Rule::in(\App\Support\CatalogLabels::modelCodes())],
             'design_variant' => ['nullable', 'string', 'max:100', Rule::exists('sub_models', 'code')->where('product_model', $request->input('product_model'))],
             'status' => ['required', 'in:active,archived'],
@@ -351,7 +354,10 @@ class ProductController extends Controller
             'short_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'category_id' => ['required', 'integer'],
-            'product_category' => ['required', Rule::in(\App\Support\CategoryUrl::productCategoryCodes())],
+            'product_category' => ['required', Rule::in(array_merge(
+                \App\Support\CategoryUrl::productCategoryCodes(),
+                ['WINDOW', 'DOOR', 'BOUVEN'], // legacy data lama tetap valid
+            ))],
             'product_model' => ['required', Rule::in(\App\Support\CatalogLabels::modelCodes())],
             'design_variant' => ['nullable', 'string', 'max:100', Rule::exists('sub_models', 'code')->where('product_model', $request->input('product_model'))],
             'status' => ['required', 'in:active,archived'],

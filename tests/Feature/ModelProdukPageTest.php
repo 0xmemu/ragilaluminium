@@ -22,7 +22,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'WIN-MOD-1',
             'name' => 'Jungkit Sample',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -35,7 +35,7 @@ class ModelProdukPageTest extends TestCase
                 ->has('models', 1)
                 ->missing('popularProducts')
                 ->where('models.0.model', 'JUNGKIT')
-                ->where('models.0.category', 'WINDOW')
+                ->where('models.0.category', 'JENDELA')
             );
     }
 
@@ -45,7 +45,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'WIN-S-1',
             'name' => 'Window Sliding',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -54,7 +54,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'DOOR-S-1',
             'name' => 'Door Sliding',
             'category_id' => 1,
-            'product_category' => 'DOOR',
+            'product_category' => 'PINTU',
             'product_model' => 'SLIDING',
             'design_variant' => 'ORNAMEN',
             'status' => 'active',
@@ -65,9 +65,9 @@ class ModelProdukPageTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ModelProduk')
                 ->has('models', 2)
-                ->where('models.0.category', 'WINDOW')
+                ->where('models.0.category', 'JENDELA')
                 ->where('models.0.model', 'SLIDING')
-                ->where('models.1.category', 'DOOR')
+                ->where('models.1.category', 'PINTU')
                 ->where('models.1.model', 'SLIDING')
                 // Design filtering belongs to the SKU catalog, not this
                 // model/category-scoped hub.
@@ -81,7 +81,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'WIN-ALL-1',
             'name' => 'All Products Sample',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -106,7 +106,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'WIN-DEFAULT-POPULAR-1',
             'name' => 'Default Popular Sample',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -136,7 +136,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'WIN-POP-1',
             'name' => 'Popular Sample',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -165,7 +165,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'WIN-SWING-1',
             'name' => 'Swing Sample',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SWING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -183,7 +183,7 @@ class ModelProdukPageTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/ModelDetail')
                 ->where('model.model', 'SWING')
-                ->where('model.category', 'WINDOW')
+                ->where('model.category', 'JENDELA')
                 ->where('model.subtitle', null)
                 ->has('model.desc')
                 ->has('model.highlights', 3)
@@ -203,7 +203,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => 'WIN-JUNG-ORN-1',
             'name' => 'Jungkit Ornamen Sample',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'ORNAMEN',
             'status' => 'active',
@@ -248,7 +248,7 @@ class ModelProdukPageTest extends TestCase
 
         CmsModelProduct::create([
             'name' => 'Jendela Sliding',
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'type' => 'polos',
             'status' => 'active',
@@ -256,7 +256,7 @@ class ModelProdukPageTest extends TestCase
         ]);
         CmsModelProduct::create([
             'name' => 'Jendela Jungkit',
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'type' => 'polos',
             'status' => 'active',
@@ -294,7 +294,7 @@ class ModelProdukPageTest extends TestCase
             'parent_sku' => $sku,
             'name' => $model.' Hub',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => $model,
             'design_variant' => 'POLOS',
             'status' => 'active',

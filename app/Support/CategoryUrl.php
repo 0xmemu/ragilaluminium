@@ -18,13 +18,23 @@ class CategoryUrl
 {
     /** Map kode categories (Indonesia) -> kode internal products.product_category. */
     private const CODE_TO_PRODUCT = [
-        'JENDELA' => 'WINDOW',
-        'PINTU' => 'DOOR',
-        'BOVEN' => 'BOUVEN',
+        // Kanonik Indonesia: identitas.
+        'JENDELA' => 'JENDELA',
+        'PINTU' => 'PINTU',
+        'BOVEN' => 'BOVEN',
+        // Alias historis English -> kanonik.
+        'WINDOW' => 'JENDELA',
+        'WINDOWS' => 'JENDELA',
+        'DOOR' => 'PINTU',
+        'DOORS' => 'PINTU',
+        'BOUVEN' => 'BOVEN',
     ];
 
     /** Fallback slug per kode internal, bila baris categories tidak ditemukan. */
     private const FALLBACK_SLUG_BY_CODE = [
+        'JENDELA' => 'jendela',
+        'PINTU' => 'pintu',
+        'BOVEN' => 'boven',
         'WINDOW' => 'jendela',
         'DOOR' => 'pintu',
         'BOUVEN' => 'boven',
@@ -32,12 +42,14 @@ class CategoryUrl
 
     /** Alias slug English (back-compat) -> kode internal. */
     private const ALIAS_SLUG_TO_CODE = [
-        'window' => 'WINDOW',
-        'windows' => 'WINDOW',
-        'door' => 'DOOR',
-        'doors' => 'DOOR',
-        'bouven' => 'BOUVEN',
-        'boven' => 'BOUVEN',
+        'jendela' => 'JENDELA',
+        'window' => 'JENDELA',
+        'windows' => 'JENDELA',
+        'pintu' => 'PINTU',
+        'door' => 'PINTU',
+        'doors' => 'PINTU',
+        'boven' => 'BOVEN',
+        'bouven' => 'BOVEN',
     ];
 
     /** TTL cache (detik) peta slug baca-tabel. */

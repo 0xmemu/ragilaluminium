@@ -217,7 +217,7 @@ export default function ProductForm({
 
         {activeStep === "identity" ? (
           <form onSubmit={(event) => submitIdentity("active", event)} className="space-y-6">
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold">Identitas produk</h2>
@@ -257,7 +257,7 @@ export default function ProductForm({
               </div>
             </section>
 
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
               <h2 className="text-xl font-semibold">Taksonomi</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-3">
                 <Field id="product-category" label="Kategori" required error={form.errors.product_category}>
@@ -283,7 +283,7 @@ export default function ProductForm({
               </div>
             </section>
 
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
               <h2 className="text-xl font-semibold">Beranda</h2>
               <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md bg-surface-muted p-4">
                 <input type="checkbox" checked={form.data.homepage_popular} onChange={(event) => form.setData("homepage_popular", event.target.checked)} className="mt-1 h-4 w-4 accent-primary" />
@@ -310,7 +310,7 @@ export default function ProductForm({
 
         {activeStep === "variants" && product ? (
           <form onSubmit={submitVariants} className="space-y-6">
-            <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
               <div className="border-b border-border p-5 sm:p-7">
                 <h2 className="text-xl font-semibold">Varian, harga, dan stok</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Tambahkan beberapa ukuran sekaligus. SKU dibuat otomatis.</p>
@@ -339,7 +339,7 @@ export default function ProductForm({
 
             <section className="space-y-6">
               {variantsForm.data.variants.map((variant, index) => (
-                <article key={index} className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+                <article key={index} className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="font-semibold">Varian baru {index + 1}</h2>
                     {variantsForm.data.variants.length > 1 ? (
@@ -375,7 +375,7 @@ export default function ProductForm({
         ) : null}
 
         {activeStep === "media" && product ? (
-          <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
             <h2 className="text-xl font-semibold">Media produk</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Pasang gambar produk, atur gambar utama, dan tandai hasil pemasangan. Media Library bersama akan tersedia di selector ini.</p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -396,7 +396,7 @@ export default function ProductForm({
         ) : null}
 
         {activeStep === "review" && product ? (
-          <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
             <h2 className="text-xl font-semibold">Review sebelum publish</h2>
             <p className="mt-2 text-sm text-muted-foreground">Periksa blocker berikut. Produk tetap arsip sampai semua checklist siap.</p>
             <div className="mt-6 space-y-3">

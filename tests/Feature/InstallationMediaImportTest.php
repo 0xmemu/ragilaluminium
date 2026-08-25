@@ -31,7 +31,7 @@ class InstallationMediaImportTest extends TestCase
             [
                 'parent_sku' => 'WIN-INST-1',
                 'name' => 'Window Install',
-                'product_category' => 'WINDOW',
+                'product_category' => 'JENDELA',
                 'product_model' => 'JUNGKIT',
                 'design_variant' => 'POLOS',
                 'variant_sku' => 'WIN-INST-1-V1',
@@ -95,7 +95,7 @@ class InstallationMediaImportTest extends TestCase
             'parent_sku' => 'WIN-REV-1',
             'name' => 'Jendela Review',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -127,7 +127,7 @@ class InstallationMediaImportTest extends TestCase
         $this->assertSame('https://example.com/hasil.jpg', $models[0]['image_url']);
         $this->assertSame('import', $models[0]['source']);
         $this->assertSame(1, $models[0]['product_count']);
-        $this->assertSame('WINDOW', $models[0]['category']);
+        $this->assertSame('JENDELA', $models[0]['category']);
         $this->assertSame('SLIDING', $models[0]['model']);
         $this->assertSame(
             route('installation.model', ['category' => 'jendela', 'model' => 'sliding'], absolute: false),
@@ -208,7 +208,7 @@ class InstallationMediaImportTest extends TestCase
             'parent_sku' => 'WIN-MERGE-1',
             'name' => 'Merge Window',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -238,7 +238,7 @@ class InstallationMediaImportTest extends TestCase
             'parent_sku' => 'WIN-VID-1',
             'name' => 'Jendela Video',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SWING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -288,7 +288,7 @@ class InstallationMediaImportTest extends TestCase
             'parent_sku' => 'WIN-EMPTY-INSTALL',
             'name' => 'Jendela Jungkit Tanpa Dokumentasi',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -297,7 +297,7 @@ class InstallationMediaImportTest extends TestCase
         $cards = InstallationGallery::modelCards(10);
 
         $this->assertCount(1, $cards);
-        $this->assertSame('WINDOW', $cards[0]['category']);
+        $this->assertSame('JENDELA', $cards[0]['category']);
         $this->assertSame('JUNGKIT', $cards[0]['model']);
         $this->assertSame(1, $cards[0]['product_count']);
         $this->assertSame(0, $cards[0]['photo_count']);

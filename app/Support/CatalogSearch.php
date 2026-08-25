@@ -226,7 +226,7 @@ class CatalogSearch
 
 
             if ($hasTaxonomyCombo) {
-                // "jendela sliding" → WINDOW + SLIDING (both required).
+                // "jendela sliding" → JENDELA + SLIDING (both required).
                 $inner->orWhere(function ($combo) use ($modelCodes, $categoryCodes) {
                     $combo->whereIn('product_category', $categoryCodes)
                         ->whereIn('product_model', $modelCodes);
@@ -446,9 +446,9 @@ class CatalogSearch
     {
         // Peta kategori DINAMIS dari tabel `categories` + alias legacy back-compat.
         $map = [
-            'WINDOW' => ['window', 'windows'],
-            'DOOR' => ['door', 'doors'],
-            'BOUVEN' => ['bouven', 'boven'],
+            'JENDELA' => ['jendela', 'window', 'windows'],
+            'PINTU' => ['pintu', 'door', 'doors'],
+            'BOVEN' => ['boven', 'bouven'],
         ];
         foreach (CategoryUrl::categoryLinks() as $link) {
             $code = (string) $link['code'];
@@ -473,7 +473,19 @@ class CatalogSearch
             }
         }
 
-        return array_values(array_unique($matched));
+        // Data lama masih berisi WINDOW/DOOR/BOUVEN: selalu sertakan alias legacy
+        // pada proses pencarian (dipakai whereIn) sebelum migrasi Fase 2 jalan.
+        $expand = [
+            'JENDELA' => ['WINDOW'],
+            'PINTU' => ['DOOR'],
+            'BOVEN' => ['BOUVEN'],
+        ];
+        $out = [];
+        foreach ($matched as $code) {
+            $out = array_merge($out, [$code], $expand[$code] ?? []);
+        }
+
+        return array_values(array_unique($out));
     }
 
     /**

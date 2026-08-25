@@ -152,7 +152,7 @@ protected function category(?string $category, Request $request, string $mode = 
         ];
 
         $products = Product::visible()
-            ->when($category, fn ($q) => $q->where('product_category', $category))
+            ->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
             ->when($promoOnly, function ($q) use ($promoAttributes) {
                 $ids = app(\App\Services\CampaignService::class)->promoProductIds();
                 if ($ids !== []) {
@@ -384,7 +384,7 @@ protected function category(?string $category, Request $request, string $mode = 
             $dims = array_values(array_unique([(float) $matches[1], (float) $matches[2]]));
 
             $nearby = Product::visible()
-                ->when($category, fn ($q) => $q->where('product_category', $category))
+                ->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
                 ->whereHas('activeVariants', function ($q) use ($dims) {
                     $q->where(function ($inner) use ($dims) {
                         foreach ($dims as $dimension) {
@@ -456,7 +456,7 @@ protected function category(?string $category, Request $request, string $mode = 
         }
 
         $matchedModels = Product::visible()
-            ->when($category, fn ($q) => $q->where('product_category', $category));
+            ->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)));
         CatalogSearch::apply($matchedModels, $term);
         $matchedModels = $matchedModels
             ->limit(48)
@@ -466,7 +466,7 @@ protected function category(?string $category, Request $request, string $mode = 
             ->values()
             ->all();
 
-        $flashQuery = Product::visible()->when($category, fn ($q) => $q->where('product_category', $category));
+        $flashQuery = Product::visible()->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)));
         $this->scopeFlashSaleActive($flashQuery);
 
         $flashQuery->where(function ($inner) use ($term, $matchedModels) {
@@ -552,7 +552,7 @@ protected function category(?string $category, Request $request, string $mode = 
         }
 
         $products = Product::visible()
-            ->where('product_category', $categoryCode)
+            ->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($categoryCode))
             ->where('product_model', $modelCode)
             ->with(['mainImage', 'activeVariants', 'attributes'])
             ->withPopularityScore()
