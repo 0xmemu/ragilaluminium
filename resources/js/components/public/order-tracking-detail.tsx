@@ -5,6 +5,7 @@ import {
   CheckCircle,
   Clock,
   Copy,
+  CreditCard,
   Package,
   ShieldCheck,
   Truck,
@@ -16,7 +17,6 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
-import { Alert } from "@/components/ui/alert"
 import { formatCurrency, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
@@ -80,37 +80,6 @@ function JntCargoLogo({ className }: { className?: string }) {
   )
 }
 
-function ActionBanner({ order }: { order: PublicOrder }) {
-  const action = order.vm?.actionRequired
-  if (!action) return null
-
-  return (
-    <Alert
-      tone={action.type === "contact_support" ? "danger" : action.type === "pay_now" ? "warning" : "info"}
-      className="order-tracking__action-banner"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-bold text-foreground">{action.title}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{action.message}</p>
-        </div>
-        {action.ctaLabel && action.ctaHref ? (
-          <Button asChild size="sm">
-            <a href={action.ctaHref}>{action.ctaLabel}</a>
-          </Button>
-        ) : null}
-        {action.type === "contact_support" && order.whatsapp_url ? (
-          <Button asChild size="sm" variant="secondary">
-            <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-              Buka WhatsApp
-            </a>
-          </Button>
-        ) : null}
-      </div>
-    </Alert>
-  )
-}
-
 /**
  * Card 1: Ringkasan Pesanan (OrderSummaryCard)
  * Sesuai desain sO2R6:
@@ -129,6 +98,8 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
   const paymentMethodLabel = isCod
     ? "COD (Bayar di tempat)"
     : (order.vm?.payment?.paymentMethod ?? "Transfer Bank")
+  // Status pembayaran dipindah ke teks Metode Pembayaran (badge = Menunggu Konfirmasi).
+  const paymentStateSuffix = isCod ? null : (order.vm?.payment?.statusLabel ?? null)
 
   return (
     <section className="order-tracking__summary-card rounded-[14px] border border-border bg-surface p-4 shadow-sm">
@@ -169,7 +140,15 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
           </p>
           <p className="text-[11px] text-muted-foreground">
             Metode Pembayaran:{" "}
-            <span className="font-medium text-foreground">{paymentMethodLabel}</span>
+            <span className="font-medium text-foreground">
+              {paymentMethodLabel}
+              {paymentStateSuffix ? ` (${paymentStateSuffix})` : ""}
+            </span>
+            {order.order_status === "cancelled" ? (
+              <span className="mt-1.5 block text-[11px] font-semibold text-destructive">
+                Pesanan ini telah dibatalkan. Hubungi kami bila perlu.
+              </span>
+            ) : null}
           </p>
         </div>
 
@@ -247,7 +226,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
                   </p>
                   {unitPrice ? (
                     <p className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
-                      {item.quantity} � {formatCurrency(unitPrice)}
+                      {item.quantity} × {formatCurrency(unitPrice)}
                     </p>
                   ) : null}
                 </div>
@@ -256,6 +235,8 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
           })}
         </ul>
       ) : null}
+      {/* Detail Pengiriman (revisi final 4: di dalam kartu ringkasan) */}
+      <DetailPengiriman order={order} />
     </section>
   )
 }
@@ -272,19 +253,28 @@ function DetailPengiriman({ order }: { order: PublicOrder }) {
   if (!recipient) return null
 
   return (
-    <section className="order-tracking__detail-pengiriman rounded-[14px] border border-border bg-surface p-4 shadow-sm">
+    <div className="order-tracking__detail-pengiriman mt-4 border-t border-border pt-3">
       <h3 className="text-xs font-bold tracking-tight text-muted-foreground">
         Detail Pengiriman
       </h3>
-      <div className="mt-2.5">
+      <div className="mt-2">
         <p className="text-sm font-semibold text-foreground">
-          {recipient.customerName} {recipient.phoneMasked}
+          {recipient.customerName}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {recipient.phoneFull}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {recipient.address}
+          {recipient.addressLine1 ? <>{recipient.addressLine1}<br /></> : null}
+          {recipient.addressLine2 ? <>{recipient.addressLine2}<br /></> : null}
+          {[recipient.village, recipient.district].filter(Boolean).join(", ") ? (
+            <>{[recipient.village, recipient.district].filter(Boolean).join(", ")}<br /></>
+          ) : null}
+          {[recipient.city, recipient.province].filter(Boolean).join(", ")}
+          {recipient.postalCode ? ` ${recipient.postalCode}` : ""}
         </p>
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -296,41 +286,12 @@ function DetailPengiriman({ order }: { order: PublicOrder }) {
  * 3. Pesanan Sampai COD (Lunas) (Truck)
  * 4. Selesai (CheckCircle)
  */
-const PROGRESS_ICONS: Record<string, typeof Clock> = {
-  confirmed: Clock,
-  prepared: Package,
-  handover: Truck,
-  transit: Truck,
-  last_mile: Truck,
-  delivered: CheckCircle,
-  completed: CheckCircle,
-}
-
-/**
- * Stepper horizontal 4 MAKRO (keputusan desain D1).
- * Ringkasan cepat; detail per tahap ada di tracker vertikal (Milestones).
- * Sumber TUNGGAL: order.vm.progress (7 tahap) yang dikelompokkan di frontend.
- */
-const STATUS_GROUPS: Array<{
-  key: string
-  label: string
-  icon: typeof Clock
-  steps: string[]
-}> = [
-  { key: "confirmed", label: "Terkonfirmasi", icon: Clock, steps: ["confirmed", "prepared"] },
-  { key: "shipping", label: "Pesanan Dikirim", icon: Package, steps: ["handover", "transit"] },
-  { key: "arrived", label: "Pesanan Sampai", icon: Truck, steps: ["last_mile", "delivered"] },
-  { key: "completed", label: "Selesai", icon: CheckCircle, steps: ["completed"] },
-]
-
-function groupState(steps: string[], progress: NonNullable<PublicOrder["vm"]>["progress"]): string {
-  const states = steps.map(
-    (key) => progress.find((p) => p.key === key)?.state ?? "upcoming",
-  )
-  if (states.some((st) => st === "attention" || st === "exception")) return "attention"
-  if (states.every((st) => st === "completed" || st === "current")) return "completed"
-  if (states.some((st) => st === "completed" || st === "current")) return "current"
-  return "upcoming"
+const SUMMARY_ICONS: Record<string, typeof Clock> = {
+  clock: Clock,
+  "credit-card": CreditCard,
+  package: Package,
+  truck: Truck,
+  "check-circle": CheckCircle,
 }
 
 function stepClass(state: string) {
@@ -347,291 +308,148 @@ function stepClass(state: string) {
   }
 }
 
+/**
+ * StatusSummary horizontal 4 makro STABIL (kontrak): Dikonfirmasi -> Disiapkan
+ * -> Dikirim -> Selesai. Sumber TUNGGAL: order.vm.summary.steps (backend).
+ * frontend hanya render; TIDAK menghitung status sendiri.
+ */
 function StatusSummary({ order }: { order: PublicOrder }) {
-  const progress = order.vm?.progress ?? []
-  if (progress.length === 0) return null
+  const steps = order.vm?.summary?.steps ?? []
+  if (steps.length === 0) return null
 
   return (
-    <div className="relative">
-      {/* Background connector line */}
-      <div
-        aria-hidden="true"
-        className="absolute top-6 left-[4%] right-[4%] h-0.5 bg-border -translate-y-1/2 z-0"
-      />
-      <ol className="relative z-10 grid grid-cols-4 gap-1 text-center">
-        {STATUS_GROUPS.map((group) => {
-          const Glyph = group.icon
-          const state = groupState(group.steps, progress)
-          const active = state === "completed" || state === "current"
-          return (
-            <li key={group.key} className="flex flex-col items-center gap-1.5">
-              <span
-                className={cn(
-                  "flex size-11 items-center justify-center rounded-full transition-colors",
-                  stepClass(state),
-                )}
-              >
-                <Glyph
-                  className="size-5"
-                  weight={state === "completed" ? "bold" : state === "current" ? "bold" : "regular"}
-                />
-              </span>
-              <span
-                className={cn(
-                  "text-[11px] leading-tight text-balance",
-                  active ? "font-semibold text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {group.label}
-              </span>
-            </li>
-          )
-        })}
-      </ol>
-    </div>
-  )
-}
-
-/**
- * Vertical Timeline ("Lacak Pesanan") di dalam Card J&T.
- * Timestamp detail memuat tanggal dan jam:menit.
- * Berwarna hijau #2b734e untuk milestone yang selesai.
- */
-const MILESTONE_GROUP: Record<string, string> = {
-  order_created: "confirmed",
-  order_confirmed: "confirmed",
-  payment_verified: "confirmed",
-  ready_to_ship: "confirmed",
-  handover_to_carrier: "shipping",
-  in_transit: "shipping",
-  out_for_delivery: "arrived",
-  delivered: "arrived",
-}
-
-const GROUP_ORDER = ["confirmed", "shipping", "arrived", "completed"] as const
-const GROUP_META: Record<string, { label: string; icon: typeof Clock }> = {
-  confirmed: { label: "Terkonfirmasi", icon: Clock },
-  shipping: { label: "Pesanan Dikirim", icon: Package },
-  arrived: { label: "Pesanan Sampai", icon: Truck },
-  completed: { label: "Selesai", icon: CheckCircle },
-}
-
-/**
- * Tracker vertikal 'Lacak Pesanan' (keputusan desain D1): detail per makro.
- * Setiap makro horizontal punya seksi vertikal berisi tahap penyusun +
- * timestamp event. D6: pemisah ekspedisi disisipkan sebelum tahap handover.
- */
-function Milestones({ order }: { order: PublicOrder }) {
-  const milestones = order.vm?.milestones
-  if (!milestones || milestones.length === 0) return null
-
-  const carrierName = order.vm?.carrier?.carrierName ?? "J&T Cargo"
-  const grouped = GROUP_ORDER.map((group) => ({
-    group,
-    rows: milestones.filter((m) => MILESTONE_GROUP[m.key] === group),
-  })).filter((g) => g.rows.length > 0)
-
-  // Seksi Selesai: hanya saat order benar-benar completed.
-  const completed = order.order_status === "completed"
-  if (completed) {
-    grouped.push({ group: "completed", rows: [] })
-  }
-
-  return (
-    <div className="order-tracking__milestones space-y-5">
-      {grouped.map(({ group, rows }) => {
-        const meta = GROUP_META[group]
-        const Glyph = meta.icon
-        const isShipping = group === "shipping"
-
+    <ol
+      className="flex items-start justify-between gap-0.5"
+      aria-label="Progres pesanan"
+    >
+      {steps.map((step, index) => {
+        const Glyph = SUMMARY_ICONS[step.icon] ?? Package
+        const active = step.state === "completed" || step.state === "current"
+        const isLast = index === steps.length - 1
+        // Kontrak 7: connector hanya tampil utk progres yang relevan:
+        // hijau setelah completed, abu setelah current, invisible setelah upcoming.
+        const connector =
+          step.state === "completed" ? "bg-[#2b734e]" : step.state === "current" ? "bg-border" : "bg-transparent"
         return (
-          <section key={group}>
-            <h4 className="flex items-center gap-2 text-xs font-bold tracking-tight text-foreground">
-              <span
-                className={cn(
-                  "flex size-5 items-center justify-center rounded-full",
-                  rows.some((r) => r.state === "completed" || r.state === "current")
-                    ? "bg-[#2b734e] text-white"
-                    : "bg-border text-muted-foreground",
-                )}
-              >
-                <Glyph className="size-3" weight="bold" />
-              </span>
-              {meta.label}
-            </h4>
-
-            {isShipping ? (
-              <div className="mt-3 flex items-center gap-2" aria-hidden="true">
-                <span className="h-px w-full bg-border" />
-                <span className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                  Paket diserahkan ke ekspedisi {carrierName}
+          <React.Fragment key={step.key}>
+            <li aria-current={step.state === "current" ? "step" : undefined}>
+              <div className="flex flex-col items-center gap-1.5">
+                <span
+                  className={cn(
+                    "flex size-11 items-center justify-center rounded-full transition-colors",
+                    stepClass(step.state),
+                  )}
+                >
+                  {step.state === "completed" ? (
+                    <Check className="size-5" weight="bold" />
+                  ) : (
+                    <Glyph
+                      className="size-5"
+                      weight={step.state === "current" ? "bold" : "regular"}
+                    />
+                  )}
                 </span>
-                <span className="h-px w-full bg-border" />
+                <span
+                  className={cn(
+                    "text-[11px] leading-tight text-balance max-w-[72px]",
+                    active ? "font-semibold text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {step.label}
+                </span>
               </div>
+            </li>
+            {!isLast ? (
+              <span
+                aria-hidden="true"
+                className={cn("mt-[22px] h-0.5 flex-1 rounded-full", connector)}
+              />
             ) : null}
-
-            <ol className={`mt-2 space-y-0 ${isShipping ? "pt-1" : ""}`}>
-              {group === "completed" && rows.length === 0
-                ? [
-                    <li
-                      key="completed-li"
-                      className="relative flex gap-3 pb-0"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2b734e] text-white"
-                      >
-                        <Check className="size-3.5" weight="bold" />
-                      </span>
-                      <div className="min-w-0 pt-0.5">
-                        <p className="text-sm font-semibold text-foreground">Pesanan selesai</p>
-                      </div>
-                    </li>,
-                  ]
-                : rows.map((step, index) => {
-                    const isLast = index === rows.length - 1
-                    const isDone = step.state === "completed"
-                    const isCurrent = step.state === "current"
-                    const isAttention = step.state === "exception"
-
-                    const connector = !isLast ? (
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
-                          isDone || isCurrent ? "bg-[#2b734e]/40" : "bg-border",
-                        )}
-                      />
-                    ) : null
-
-                    return (
-                      <li key={step.key + index} className="relative flex gap-3 py-2.5">
-                        {connector}
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full",
-                            isDone && "bg-[#2b734e] text-white",
-                            isCurrent && "bg-[#2b734e] text-white ring-4 ring-[#2b734e]/20",
-                            isAttention && "bg-warning text-white",
-                            !isDone && !isCurrent && !isAttention && "border-2 border-border bg-surface text-muted-foreground",
-                          )}
-                        >
-                          {isDone ? (
-                            <Check className="size-3.5" weight="bold" />
-                          ) : isAttention ? (
-                            <Warning className="size-3.5" weight="bold" />
-                          ) : isCurrent ? (
-                            <Check className="size-3.5" weight="bold" />
-                          ) : (
-                            <span className="size-1.5 rounded-full bg-border" />
-                          )}
-                        </span>
-
-                        <div className="min-w-0 pt-0.5">
-                          <p
-                            className={cn(
-                              "text-sm font-semibold",
-                              isCurrent || isDone ? "text-foreground" : "text-muted-foreground",
-                              isAttention && "text-warning",
-                            )}
-                          >
-                            {step.label}
-                          </p>
-                          {step.occurredAt ? (
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {formatDateTime(step.occurredAt)}
-                            </p>
-                          ) : null}
-                          {step.customerMessage ? (
-                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                              {step.customerMessage}
-                            </p>
-                          ) : null}
-                        </div>
-                      </li>
-                    )
-                  })}
-            </ol>
-          </section>
+          </React.Fragment>
         )
       })}
-    </div>
+    </ol>
   )
 }
 
 /**
- * Expandable J&T Webhook Scan Events (bila tersedia) dengan timestamp jam:menit.
+ * Lacak Pesanan (kontrak 6): KARTU CURRENT STATUS, bukan history panjang.
+ * Menampilkan status pelanggan terkini + timestamp menit + ringkasan posisi +
+ * sumber event (toko / J&T Cargo). Raw event tidak dirender di website.
  */
-function ExpandableTimeline({ order }: { order: PublicOrder }) {
-  const timeline = (order.tracking_public ?? order.tracking)?.timeline
-  if (!timeline || timeline.length === 0) return null
+/**
+ * Lacak Pesanan = VERTICAL TIMELINE (revisi final 9-13): seluruh event penting
+ * yang SUDAH TERJADI, diterjemahkan label customer-facing. Item terakhir
+ * (keadaan terkini) berisi label + tanggal jam menit + ringkasan posisi +
+ * sumber update. Raw event J&T TIDAK pernah dirender.
+ */
+function LacakPesanan({ order }: { order: PublicOrder }) {
+  const events = order.vm?.events ?? []
+  if (events.length === 0) return null
+
+  const lastIndex = events.length - 1
 
   return (
-    <details className="order-tracking__carrier-details group mt-4 rounded-lg border border-border bg-surface">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3.5">
-        <span className="text-xs font-semibold text-foreground">
-          Lihat detail perjalanan paket
-        </span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {timeline.length} pembaruan
-          <Icon
-            name="chevron-down"
-            className="size-3.5 transition-transform group-open:rotate-180"
-            aria-hidden="true"
-          />
-        </span>
-      </summary>
-      <div className="border-t border-border">
-        <ol className="order-tracking__carrier-details-list divide-y divide-border">
-          {timeline.map((entry, index) => {
-            const isLatest = index === 0
-            return (
-              <li
-                key={`${entry.at ?? "e"}-${index}`}
-                className={cn("flex gap-3 px-3.5 py-2.5", isLatest && "bg-[#2b734e]/5")}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "mt-1.5 size-1.5 shrink-0 rounded-full",
-                    isLatest ? "bg-[#2b734e]" : "bg-border",
-                  )}
-                />
-                {entry.at ? (
-                  <time
-                    dateTime={entry.at}
-                    className={cn(
-                      "w-28 shrink-0 text-[11px] leading-relaxed",
-                      isLatest ? "font-semibold text-foreground" : "text-muted-foreground",
-                    )}
-                  >
-                    {formatDateTime(entry.at)}
-                  </time>
-                ) : (
-                  <span className="w-28 shrink-0 text-[11px] text-muted-foreground">-</span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      isLatest ? "font-semibold text-foreground" : "text-foreground/80",
-                    )}
-                  >
-                    {entry.message}
-                  </p>
-                  {entry.location ? (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {entry.location}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
-            )
-          })}
-        </ol>
-      </div>
-    </details>
+    <ol className="order-tracking__timeline space-y-0">
+      {events.map((ev, index) => {
+        const isLatest = index === lastIndex
+        const isStore = ev.source === "store"
+        return (
+          <li key={`${ev.key}-${index}`} className="relative flex gap-3 pb-5 last:pb-0">
+            {index < lastIndex ? (
+              <span
+                aria-hidden="true"
+                className="absolute left-[13px] top-7 h-[calc(100%-1.25rem)] w-0.5 bg-border"
+              />
+            ) : null}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full",
+                isLatest
+                  ? "border-2 border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e]"
+                  : "bg-[#2b734e] text-white",
+              )}
+            >
+              <Icon
+                name={isStore ? "package" : "truck"}
+                className="size-3.5"
+                weight="bold"
+              />
+            </span>
+            <div className="min-w-0 pt-0.5">
+              <p className={cn("text-sm font-semibold", isLatest ? "text-foreground" : "text-foreground/85")}>
+                {ev.label}
+              </p>
+              {ev.at ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {formatDateTime(ev.at)} WIB
+                </p>
+              ) : null}
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{ev.position}</p>
+              {(ev.detail?.destination || ev.detail?.location) ? (
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {ev.detail?.origin && ev.detail?.destination
+                    ? `Dari ${ev.detail.origin} menuju ${ev.detail.destination}.`
+                    : ev.detail?.destination
+                      ? `Menuju ${ev.detail.destination}.`
+                      : `Lokasi terakhir: ${ev.detail?.location}.`}
+                </p>
+              ) : null}
+              {ev.detail?.courierName ? (
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Kurir: {ev.detail.courierName}
+                  {ev.detail.courierPhone ? ` · ${ev.detail.courierPhone}` : ""}
+                </p>
+              ) : null}
+              <p className="mt-0.5 text-[11px] font-medium text-muted-foreground/80">
+                {isStore ? "Diperbarui oleh toko" : "Pembaruan J&T Cargo"}
+              </p>
+            </div>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -640,9 +458,7 @@ function ExpandableTimeline({ order }: { order: PublicOrder }) {
  */
 function JnTCard({ order }: { order: PublicOrder }) {
   const carrier = order.vm?.carrier
-  const hasTimeline =
-    (order.tracking_public ?? order.tracking)?.timeline &&
-    (order.tracking_public ?? order.tracking)!.timeline!.length > 0
+  const shipment = order.vm?.shipment
 
   return (
     <section className="order-tracking__jnt-card rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5">
@@ -664,21 +480,31 @@ function JnTCard({ order }: { order: PublicOrder }) {
           ) : (
             <p className="font-mono text-sm font-semibold text-muted-foreground">Belum tersedia</p>
           )}
+          {shipment?.officialTrackingUrl ? (
+            <a
+              href={shipment.officialTrackingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#2b734e] underline-offset-2 hover:underline"
+            >
+              Lacak di J&T Cargo
+              <Icon name="arrow-up-right" className="size-3" aria-hidden="true" />
+            </a>
+          ) : null}
         </div>
       </div>
 
-      {/* Stepper Status Horizontal (4-Step Hijau) */}
+      {/* Stepper Status Horizontal (4 Makro: Dikonfirmasi/Disiapkan/Dikirim/Selesai) */}
       <div className="pt-2">
         <StatusSummary order={order} />
       </div>
 
-      {/* Timeline Vertikal (Lacak Pesanan) */}
+      {/* Lacak Pesanan: current status card (kontrak 6) */}
       <div className="pt-2 border-t border-border">
-        <h3 className="text-xs font-bold tracking-tight text-foreground mb-4">
+        <h3 className="text-xs font-bold tracking-tight text-foreground mb-3">
           Lacak Pesanan
         </h3>
-        <Milestones order={order} />
-        {hasTimeline ? <ExpandableTimeline order={order} /> : null}
+        <LacakPesanan order={order} />
       </div>
     </section>
   )
@@ -723,92 +549,6 @@ function TrustAssurance() {
   )
 }
 
-/**
- * Phase E: StatusNotice — render status dictionary ViewModel (headline +
- * message + tone) supaya hierarchy jelas dan a11y-friendly (role=status).
- */
-const STATUS_TONE_CLASSES: Record<string, string> = {
-  success: "border-[#2b734e33] bg-[#2b734e0d] text-[#2b734e]",
-  danger: "border-[#bd111133] bg-[#bd11110d] text-[#bd1111]",
-  warning: "border-[#8d570c33] bg-[#8d570c0d] text-[#8d570c]",
-  neutral: "border-border bg-surface-muted text-foreground",
-  info: "border-[#2c6d9b33] bg-[#2c6d9b0d] text-[#2c6d9b]",
-}
-
-/**
- * Deskripsi ringkas posisi (D5, 1 kalimat inti). Tidak mengarang lokasi:
- * lokasi hanya tampil bila carrier mengirimkan (vm.position.text).
- */
-const POSITION_SHORT: Record<string, string> = {
-  not_shipped: "Paket masih diproses oleh toko.",
-  awaiting_pickup: "Paket menunggu dijemput atau diterima kurir.",
-  picked_up: "Paket telah diterima kurir.",
-  in_transit: "Paket sedang dalam perjalanan ke wilayah tujuan.",
-  out_for_delivery: "Kurir sedang mengantar paket ke alamat Anda.",
-  delivered: "Paket telah diterima di tujuan.",
-  exception: "Pengiriman memerlukan tindak lanjut.",
-  returned: "Paket dikembalikan ke pengirim.",
-}
-
-/**
- * Satu kartu highlight status (D2): menggabungkan banner utama + posisi paket.
- * Urutan: judul status, deskripsi ringkas, baris posisi, dua timestamp terpisah
- * (event carrier vs sinkronisasi sistem), tombol Muat Ulang bila tersedia.
- */
-function StatusHighlightCard({ order, onRefresh }: { order: PublicOrder; onRefresh?: () => void }) {
-  const primary = order.vm?.primaryStatus
-  const customer = order.vm?.customerStatus
-  const position = order.vm?.position
-  if (!primary || !primary.headline) return null
-
-  const tone = STATUS_TONE_CLASSES[primary.tone] ?? STATUS_TONE_CLASSES.neutral
-  const shortDesc =
-    (position ? POSITION_SHORT[position.stateKey] : undefined) ??
-    primary.message ??
-    ""
-
-  return (
-    <section
-      role="status"
-      className={`order-tracking__status-highlight rounded-[14px] border border-border bg-surface p-4 shadow-sm ${tone}`}
-    >
-      <p className="text-sm font-bold text-foreground">
-        {customer?.title ?? primary.headline}
-      </p>
-      {shortDesc ? (
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{shortDesc}</p>
-      ) : null}
-      {position ? (
-        <p className="mt-2 text-xs font-medium text-foreground/90">
-          Posisi paket saat ini: {position.text}
-        </p>
-      ) : null}
-      <div className="mt-3 space-y-1 border-t border-border pt-3 text-[11px] text-muted-foreground">
-        {position?.latestEventAt ? (
-          <p>Pembaruan pengiriman: {formatDateTime(position.latestEventAt)}</p>
-        ) : null}
-        {position?.syncedAt ? (
-          <p>Data disinkronkan: {formatDateTime(position.syncedAt)}</p>
-        ) : null}
-      </div>
-      {onRefresh ? (
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="mt-3 text-xs font-semibold text-[#2b734e] underline-offset-2 hover:underline"
-        >
-          Muat Ulang
-        </button>
-      ) : null}
-    </section>
-  )
-}
-
-/**
- * Card: Retur & Penyelesaian (Phase D) — hanya utk pesanan delivered.
- * Eligibility dari ReturnService (delivered + paid + <=48 jam); CTA WhatsApp
- * dgn order reference. Completed tidak menampilkan kartu ini (copy A2).
- */
 function ReturnBlockCard({ order }: { order: PublicOrder }) {
   if (order.order_status !== "delivered") return null
   const block = order.return_block
@@ -864,50 +604,13 @@ function ReturnBlockCard({ order }: { order: PublicOrder }) {
  */
 
 
-export function OrderTrackingDetail({
-  order,
-  onCancel,
-  cancelBusy = false,
-  onRefresh,
-}: {
-  order: PublicOrder
-  onCancel?: () => void
-  cancelBusy?: boolean
-  onRefresh?: () => void
-}) {
+export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
   return (
     <div className="order-tracking space-y-4 max-w-lg mx-auto">
-      {/* 0. Satu kartu highlight status (D2: banner + posisi paket) */}
-      <StatusHighlightCard order={order} onRefresh={onRefresh} />
-
-      {/* 1. Ringkasan Pesanan */}
+      {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
       <OrderSummaryCard order={order} />
 
-      {/* 2. Action banner & Cancel (bila status awaiting_confirmation) */}
-      <ActionBanner order={order} />
-      {onCancel && order.order_status === "awaiting_confirmation" ? (
-        <div className="order-tracking__cancel rounded-[14px] border border-destructive/30 bg-destructive/5 p-4">
-          <p className="text-sm font-bold text-destructive">Batalkan Pesanan</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Hanya bisa dibatalkan selama status masih menunggu konfirmasi.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="mt-3 border-destructive/40 text-destructive hover:bg-destructive/10 rounded-full"
-            disabled={cancelBusy}
-            onClick={onCancel}
-          >
-            {cancelBusy ? "Membatalkan..." : "Batalkan Pesanan"}
-          </Button>
-        </div>
-      ) : null}
-
-      {/* 3. Detail Pengiriman */}
-      <DetailPengiriman order={order} />
-
-      {/* 4. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
+      {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
       <JnTCard order={order} />
 
       {/* 4b. Retur & Penyelesaian (delivered only) */}

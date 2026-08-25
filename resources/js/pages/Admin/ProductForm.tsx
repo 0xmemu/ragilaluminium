@@ -111,7 +111,7 @@ export default function ProductForm({
     short_name: product?.short_name ?? "",
     description: product?.description ?? "",
     category_id: product?.category_id ?? "",
-    product_category: product?.product_category ?? options.categories[0]?.value ?? "WINDOW",
+    product_category: product?.product_category ?? options.categories[0]?.value ?? "JENDELA",
     product_model: product?.product_model ?? options.models[0]?.value ?? "SLIDING",
     design_variant: product?.design_variant ?? options.designs[0]?.value ?? "POLOS",
     status: product?.status ?? "archived",

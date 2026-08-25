@@ -90,24 +90,9 @@ async function fetchStoredOrder(
   return await response.json() as PublicOrder
 }
 
-function OrderDetail({
-  order,
-  onCancel,
-  cancelBusy = false,
-  onRefresh,
-}: {
-  order: PublicOrder
-  onCancel?: () => void
-  cancelBusy?: boolean
-  onRefresh?: () => void
-}) {
+function OrderDetail({ order }: { order: PublicOrder }) {
   return (
-    <OrderTrackingDetail
-      order={order}
-      onCancel={onCancel}
-      cancelBusy={cancelBusy}
-      onRefresh={onRefresh}
-    />
+    <OrderTrackingDetail order={order} />
   )
 }
 
@@ -446,9 +431,6 @@ export default function OrderStatus({
               ) : order ? (
                 <OrderDetail
                   order={order}
-                  onCancel={cancelOrder}
-                  cancelBusy={cancelForm.processing}
-                  onRefresh={requestRefresh}
                 />
               ) : (
                 <EmptyState
@@ -513,9 +495,6 @@ export default function OrderStatus({
                   </div>
                   <OrderDetail
                     order={shownOrder}
-                    onCancel={cancelOrder}
-                    cancelBusy={cancelForm.processing}
-                    onRefresh={requestRefresh}
                   />
                 </>
               ) : (

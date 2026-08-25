@@ -145,9 +145,9 @@ class OrderTrackingViewModel
 
         // 4. Payment unpaid/pending (hanya transfer; COD tidak minta bayar sekarang)
         if ($payment === 'unpaid' && ! $this->isCod()) {
-            return $this->mk('payment_pending', 'Menunggu pembayaran', 'warning',
-                'Pesanan menunggu pembayaran',
-                'Pesanan akan mulai disiapkan setelah pembayaran dikonfirmasi.');
+            return $this->mk('payment_pending', 'Menunggu Konfirmasi', 'warning',
+                'Pesanan menunggu konfirmasi',
+                'Pesanan belum dapat dikonfirmasi sebelum pembayaran diterima.');
         }
         if ($payment === 'pending_verification' && ! $this->isCod()) {
             return $this->mk('payment_verification', 'Pembayaran diverifikasi', 'info',
@@ -160,8 +160,8 @@ class OrderTrackingViewModel
             // Belum lanjut ke delivery -> order pending (belum konfirmasi/proses) utk COD.
             // Kontrak A: order baru/menunggu verifikasi = "Pesanan sedang dikonfirmasi".
             if ($status === 'awaiting_confirmation') {
-                return $this->mk('confirmed', 'Pesanan sedang dikonfirmasi', 'neutral',
-                    'Pesanan sedang dikonfirmasi',
+                return $this->mk('confirmed', 'Pesanan menunggu konfirmasi', 'neutral',
+                    'Pesanan menunggu konfirmasi',
                     'Kami sedang memverifikasi pesanan Anda.');
             }
         }
@@ -200,8 +200,8 @@ class OrderTrackingViewModel
                 'Paket sedang diantar',
                 'Kurir sedang mengantar paket ke alamat tujuan Anda.',
                 $this->shipping?->last_status_at?->toIso8601String()),
-            'delivered' => $this->mk('delivered', 'Pesanan terkirim', 'success',
-                'Pesanan terkirim',
+            'delivered' => $this->mk('delivered', 'Sampai', 'success',
+                'Sampai',
                 'Paket telah diterima.',
                 $this->shipping?->last_status_at?->toIso8601String()),
             'returned' => $this->mk('returned', 'Paket dikembalikan', 'danger',
@@ -219,9 +219,9 @@ class OrderTrackingViewModel
         // & skenario 3/10): judul 'Pesanan siap dikirim', posisi paket menyatakan
         // masih menunggu diserahkan ke kurir (tidak mengklaim sudah dikirim).
         if ($status === 'processing') {
-            return $this->mk('ready_to_ship', 'Pesanan siap dikirim', 'info',
-                'Pesanan siap dikirim',
-                'Pesanan sudah siap dan menunggu diserahkan ke kurir.');
+            return $this->mk('ready_to_ship', 'Menyiapkan', 'info',
+                'Menyiapkan',
+                'Tim kami sedang menyiapkan pesanan Anda.');
         }
 
         return $this->mk('pending', $isCod ? 'Pesanan dikonfirmasi' : 'Menunggu pembayaran', 'neutral',
@@ -350,7 +350,7 @@ class OrderTrackingViewModel
             ['key' => 'handover_to_carrier', 'label' => 'Diserahkan ke kurir', 'state' => 'upcoming'],
             ['key' => 'in_transit', 'label' => 'Dalam perjalanan', 'state' => 'upcoming'],
             ['key' => 'out_for_delivery', 'label' => 'Sedang diantar', 'state' => 'upcoming'],
-            ['key' => 'delivered', 'label' => 'Terkirim', 'state' => 'upcoming'],
+            ['key' => 'delivered', 'label' => 'Sampai', 'state' => 'upcoming'],
         ]);
 
         // Tandai current bedasarkan shipping
@@ -461,6 +461,15 @@ class OrderTrackingViewModel
         return [
             'customerName' => (string) $this->order->customer_name,
             'phoneMasked' => $masked,
+            // Pemilik pesanan berhak lihat data lengkap (kontrak privacy owner).
+            'phoneFull' => $phone,
+            'addressLine1' => (string) $this->order->shipping_address_line1,
+            'addressLine2' => (string) $this->order->shipping_address_line2,
+            'village' => (string) $this->order->shipping_village,
+            'district' => (string) $this->order->shipping_district,
+            'city' => (string) $this->order->shipping_city,
+            'province' => (string) $this->order->shipping_province,
+            'postalCode' => (string) $this->order->shipping_postal_code,
             'address' => $address,
             'method' => $this->shipping?->carrier_name ?: ($this->shipping ? 'J&T Cargo' : 'Ekspedisi'),
         ];
@@ -560,11 +569,15 @@ class OrderTrackingViewModel
             'carrierName' => $hasWaybill ? (string) $shipping->carrier_name : null,
             'statusKey' => $statusKey,
             'label' => $this->shipmentLabel($statusKey, $hasWaybill),
+            // URL resmi terverifikasi dari integrasi (jet.co.id/track/trace?waybill=...).
+            'officialTrackingUrl' => $hasWaybill
+                ? ($shipping->tracking_url ?: 'https://www.jet.co.id/track/trace?waybill='.rawurlencode((string) $shipping->waybill_number))
+                : null,
             'location' => $latestEvent?->location,
             'latestEventText' => $latestEvent?->description,
-            'latestEventAt' => $latestEvent?->occurred_at?->toIso8601String()
-                ?? $shipping?->last_status_at?->toIso8601String(),
-            'syncedAt' => $shipping?->updated_at?->toIso8601String(),
+            'latestEventAt' => $latestEvent?->occurred_at?->utc()->toIso8601String()
+                ?? $shipping?->last_status_at?->utc()->toIso8601String(),
+            'syncedAt' => $shipping?->updated_at?->utc()->toIso8601String(),
             'trackingAvailable' => $shipping !== null && $shipping->trackingEvents()->exists(),
             'stale' => $stale,
         ];
@@ -617,12 +630,135 @@ class OrderTrackingViewModel
             default => 'preparing',
         };
 
+        $position = $this->position();
+        $shipment = $this->shipment();
+        $term = in_array($status, ['cancelled', 'issue', 'return_in_process', 'return_completed'], true);
+        $attention = $term || in_array($shipping, ['exception', 'delivery_failed', 'returned'], true);
+
+        // Source: toko (belum ada event carrier) vs carrier (event carrier) vs system (fallback).
+        if ($attention) {
+            $source = $term ? 'store' : 'carrier';
+        } elseif (in_array($shipping, ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'], true)) {
+            $source = 'carrier';
+        } else {
+            $source = 'store';
+        }
+
+        $eventAt = $source === 'carrier'
+            ? ($shipment['latestEventAt'] ?? $shipment['syncedAt'])
+            : $this->order->updated_at?->toIso8601String();
+
         return [
             'key' => $key,
             'title' => (string) $primary['headline'],
             'description' => (string) $primary['message'],
+            'position' => $position['text'],
+            'source' => $source,
+            'eventAt' => $eventAt,
+            'syncedAt' => $shipment['syncedAt'],
+            'stale' => (bool) $shipment['stale'],
+            'attention' => $attention,
             'stage' => $stage,
         ];
+    }
+
+    /**
+     * StatusSummary 4 makro stabil (kontrak): Dikonfirmasi -> Disiapkan ->
+     * Dikirim -> Selesai. State dihitung dari progress() (satu mapper).
+     *
+     * @return array{steps: list<array{key:string,label:string,state:string,icon:string}>}
+     */
+    public function summary(): array
+    {
+        $progress = collect($this->progress())->keyBy('key');
+        $state = static fn (string $key): string => (string) ($progress[$key]['state'] ?? 'upcoming');
+
+        $status = $this->orderStatus();
+
+        // Dikonfirmasi: current saat menunggu (belum tervalidasi), completed setelahnya.
+        $confirmation = $state('confirmed') === 'current' ? 'current' : 'completed';
+
+        // Disiapkan: current saat preparing/ready/waybill; completed bila carrier
+        // benar-benar menerima (handover completed/current).
+        $fulfillment = match (true) {
+            $state('handover') === 'completed' || $state('handover') === 'current' => 'completed',
+            $state('prepared') === 'current' || $status === 'awaiting_confirmation' && $confirmation === 'completed' => 'current',
+            default => 'upcoming',
+        };
+        if ($status === 'awaiting_confirmation' && $confirmation === 'current') {
+            $fulfillment = 'upcoming';
+        }
+
+        // Dikirim: current sejak carrier menerima sampai delivered; completed saat delivered.
+        $shipping = match (true) {
+            $state('delivered') === 'completed' || $state('delivered') === 'current' => 'completed',
+            in_array($state('handover'), ['current', 'completed'])
+                || in_array($state('transit'), ['current', 'completed'])
+                || in_array($state('last_mile'), ['current', 'completed']) => 'current',
+            default => 'upcoming',
+        };
+
+        // Selesai: current saat delivered (menunggu completion); completed saat order completed.
+        $completion = match (true) {
+            $status === 'completed' => 'completed',
+            $state('delivered') === 'current' || $state('delivered') === 'completed' => 'current',
+            default => 'upcoming',
+        };
+
+        // TEXT adaptif per substate (keputusan owner 2026-08-25):
+        // menunggu pembayaran (transfer) / menunggu konfirmasi / menyiapkan /
+        // dikirim / sampai / selesai. State completed memakai kata dasar.
+        // Sinkron: label step tunggal "Menunggu konfirmasi" utk semua state menunggu
+        // (transfer & COD); status pembayaran ditampilkan di teks Metode Pembayaran.
+        $confirmationLabel = $confirmation === 'current' ? 'Menunggu konfirmasi' : 'Dikonfirmasi';
+        $fulfillmentLabel = $fulfillment === 'current' ? 'Menyiapkan' : 'Disiapkan';
+        $shippingLabel = match (true) {
+            $shipping === 'completed' => 'Sampai',
+            default => 'Dikirim',
+        };
+
+        // Ikon adaptif: menunggu pembayaran = credit-card, menunggu konfirmasi = clock,
+        // menyiapkan = package, dikirim = truck, selesai = check-circle.
+        $confirmationIcon = $confirmation === 'completed' ? 'check-circle' : 'clock';
+        $fulfillmentIcon = $fulfillment === 'completed' ? 'check-circle' : 'package';
+        $shippingIcon = $shipping === 'completed' ? 'check-circle' : 'truck';
+        $completionIcon = $completion === 'completed' ? 'check-circle' : 'check-circle';
+
+        $steps = [
+            ['key' => 'confirmation', 'label' => $confirmationLabel, 'state' => $confirmation, 'icon' => $confirmationIcon],
+            ['key' => 'fulfillment', 'label' => $fulfillmentLabel, 'state' => $fulfillment, 'icon' => $fulfillmentIcon],
+            ['key' => 'shipping', 'label' => $shippingLabel, 'state' => $shipping, 'icon' => $shippingIcon],
+            ['key' => 'completion', 'label' => 'Selesai', 'state' => $completion, 'icon' => $completionIcon],
+        ];
+
+        // Exception carrier (kontrak 8.4): makro Dikirim = attention.
+        if (in_array($this->normalizedShippingStatus(), ['exception', 'delivery_failed', 'returned'], true)) {
+            foreach ($steps as &$st) {
+                if ($st['key'] === 'shipping') {
+                    $st['state'] = 'attention';
+                }
+            }
+            unset($st);
+        } elseif (in_array($status, ['cancelled', 'issue', 'return_in_process', 'return_completed'], true)) {
+            // Terminal order: tandai makro terakhir yang tercapai = attention.
+            $lastActive = null;
+            foreach (array_reverse($steps) as $st) {
+                if (in_array($st['state'], ['completed', 'current'], true)) {
+                    $lastActive = $st['key'];
+                    break;
+                }
+            }
+            foreach ($steps as &$st) {
+                if ($st['key'] === $lastActive) {
+                    $st['state'] = 'attention';
+                } elseif ($st['state'] !== 'completed') {
+                    $st['state'] = 'upcoming';
+                }
+            }
+            unset($st);
+        }
+
+        return ['steps' => $steps];
     }
 
     /**
@@ -748,6 +884,176 @@ class OrderTrackingViewModel
         return $steps;
     }
 
+    /**
+     * Translation matrix customer-facing (revisi final 20): satu-satunya sumber
+     * label + posisi + sumber utk timeline. RAW event J&T TIDAK pernah muncul.
+     */
+    private const EVENT_TRANSLATION = [
+        'order_created' => ['label' => 'Pesanan dibuat', 'position' => 'Pesanan diterima oleh toko.', 'source' => 'store'],
+        'order_confirmed' => ['label' => 'Pesanan dikonfirmasi', 'position' => 'Pesanan dikonfirmasi oleh toko.', 'source' => 'store'],
+        'payment_verified' => ['label' => 'Pembayaran dikonfirmasi', 'position' => 'Pembayaran telah dikonfirmasi.', 'source' => 'store'],
+        'ready_to_ship' => ['label' => 'Pesanan siap dikirim', 'position' => 'Paket sudah siap dan menunggu diserahkan ke kurir.', 'source' => 'store'],
+        'waybill_created' => ['label' => 'Resi pengiriman dibuat', 'position' => 'Resi telah dibuat; paket menunggu dijemput kurir.', 'source' => 'store'],
+        'picked_up' => ['label' => 'Paket diterima kurir', 'position' => 'Paket telah diterima oleh J&T Cargo.', 'source' => 'carrier'],
+        'in_transit' => ['label' => 'Paket dalam perjalanan', 'position' => 'Paket sedang dalam perjalanan ke wilayah tujuan.', 'source' => 'carrier'],
+        'arrived_destination_hub' => ['label' => 'Paket tiba di wilayah tujuan', 'position' => 'Paket telah tiba di wilayah tujuan.', 'source' => 'carrier'],
+        'out_for_delivery' => ['label' => 'Paket sedang diantar', 'position' => 'Kurir sedang mengantar paket ke alamat Anda.', 'source' => 'carrier'],
+        'delivered' => ['label' => 'Sampai', 'position' => 'Paket tercatat telah diterima di tujuan.', 'source' => 'carrier'],
+        'completed' => ['label' => 'Pesanan selesai', 'position' => 'Pesanan telah selesai. Terima kasih telah berbelanja.', 'source' => 'store'],
+        'delivery_failed' => ['label' => 'Pengantaran belum berhasil', 'position' => 'Kurir belum berhasil mengantar paket.', 'source' => 'carrier'],
+        'delivery_exception' => ['label' => 'Kendala pengiriman', 'position' => 'Ada kendala dalam pengiriman paket.', 'source' => 'carrier'],
+        'returned_to_sender' => ['label' => 'Paket dikembalikan ke toko', 'position' => 'Paket sedang dikembalikan kepada toko.', 'source' => 'carrier'],
+        'cancelled_shipment' => ['label' => 'Pengiriman dibatalkan', 'position' => 'Pengiriman dibatalkan; tim kami akan menghubungi Anda.', 'source' => 'carrier'],
+        'cancelled' => ['label' => 'Pesanan dibatalkan', 'position' => 'Pesanan telah dibatalkan.', 'source' => 'store'],
+        'return_in_process' => ['label' => 'Retur sedang diproses', 'position' => 'Tim kami sedang menangani retur.', 'source' => 'store'],
+        'return_completed' => ['label' => 'Retur selesai', 'position' => 'Proses retur telah selesai.', 'source' => 'store'],
+    ];
+
+    /**
+     * Timeline event penting yang SUDAH TERJADI, diterjemahkan (revisi final 9-15).
+     * Store steps dari milestones (completed/current) + carrier events canonical
+     * (dedupe per key, ambil yang terakhir). Tidak pernah menampilkan raw text.
+     *
+     * @return list<array{key:string,label:string,at:string,position:string,source:string}>
+     */
+    public function events(): array
+    {
+        $events = [];
+
+        // 1. Store milestones yang SUDAH TERJADI (completed saja; milestone
+        // 'current' belum terjadi dan dirender sebagai satu item akhir).
+        // HANYA tahap source=store: tahap carrier (in_transit/out_for_delivery/
+        // delivered) tidak boleh diambil dari milestones karena timestamp-nya
+        // tidak ada (createdAt = palsu) dan duplikat dgn event carrier asli.
+        foreach ($this->milestones() as $m) {
+            if (($m['state'] ?? '') !== 'completed') {
+                continue;
+            }
+            $key = (string) ($m['key'] ?? '');
+            $t = self::EVENT_TRANSLATION[$key] ?? null;
+            if ($t === null || $t['source'] !== 'store') {
+                continue;
+            }
+            // occurredAt hanya tersedia utk order_created (tahap store lain tidak
+            // menyimpan waktu kejadian). Tanpa timestamp nyata, tahap itu TIDAK
+            // masuk timeline (jangan karang now()/created_at); state saat ini
+            // tetap diwakili item 'current' di akhir.
+            if (empty($m['occurredAt'])) {
+                continue;
+            }
+            $events[$key] = [
+                'key' => $key,
+                'label' => $t['label'],
+                'at' => \Illuminate\Support\Carbon::parse($m['occurredAt'])->utc()->toIso8601String(),
+                'position' => $t['position'],
+                'source' => $t['source'],
+                'detail' => null,
+            ];
+        }
+
+        // 2. Status terminal order (cancelled/issue/return) sebagai store event.
+        $status = $this->orderStatus();
+        if (in_array($status, ['cancelled', 'return_in_process', 'return_completed'], true)) {
+            $key = $status === 'cancelled' ? 'cancelled' : $status;
+            $t = self::EVENT_TRANSLATION[$key] ?? null;
+            if ($t !== null) {
+                $events[$key] = [
+                    'key' => $key,
+                    'label' => $t['label'],
+                    'at' => $this->order->updated_at?->utc()->toIso8601String() ?? now()->utc()->toIso8601String(),
+                    'position' => $t['position'],
+                    'source' => $t['source'],
+                    'detail' => null,
+                ];
+            }
+        }
+
+        // 3. Carrier events canonical (dedupe per key, ambil terakhir).
+        $shipping = $this->shipping;
+        if ($shipping !== null) {
+            $carrier = $shipping->trackingEvents()
+                ->orderByDesc('occurred_at')->orderByDesc('id')
+                ->get();
+            $seen = [];
+            foreach ($carrier as $ev) {
+                $canonical = (string) ($ev->normalized_status ?? '');
+                if ($canonical === '' || isset($seen[$canonical])) {
+                    continue;
+                }
+                $seen[$canonical] = true;
+                $t = self::EVENT_TRANSLATION[$canonical] ?? null;
+                if ($t === null) {
+                    continue;
+                }
+                $detail = JntEventDetail::parse($ev->description);
+                $events[$canonical] = [
+                    'key' => $canonical,
+                    'label' => $t['label'],
+                    'at' => ($ev->occurred_at?->utc()->toIso8601String())
+                        ?? $shipping->last_status_at?->utc()->toIso8601String()
+                        ?? now()->utc()->toIso8601String(),
+                    'position' => $t['position'],
+                    'source' => $t['source'],
+                    'detail' => $detail,
+                ];
+            }
+        }
+
+        // Urutkan kronologis; stable by at.
+        $sorted = array_values($events);
+        usort($sorted, static fn (array $a, array $b): int => strcmp((string) $a['at'], (string) $b['at']));
+
+        // Origin rute: lokasi dari event carrier sebelumnya (kota sebelumnya).
+        foreach ($sorted as $i => &$ev) {
+            if (($ev['detail']['destination'] ?? null) === null || $i === 0) {
+                continue;
+            }
+            $prev = $sorted[$i - 1];
+            if (($prev['source'] ?? '') === 'carrier' && ($prev['detail']['location'] ?? null) !== null) {
+                $ev['detail']['origin'] = $prev['detail']['location'];
+            }
+        }
+        unset($ev);
+
+        // State saat ini (milestone current atau status lanjutan): satu item
+        // terakhir dgn label & posisi dari customerStatus (tidak pernah
+        // menerjemahkan event yang belum terjadi). Skip bila item terakhir
+        // sudah mewakili state yang sama (dedupe canonical, bukan label).
+        $current = $this->customerStatus();
+        $stageKey = match ((string) ($current['stage'] ?? '')) {
+            'payment', 'verification', 'confirmed' => 'order_confirmed',
+            'preparing' => 'ready_to_ship',
+            'awaiting_pickup' => 'waybill_created',
+            'shipped' => 'picked_up',
+            'transit' => 'in_transit',
+            'last_mile' => 'out_for_delivery',
+            'delivered' => 'delivered',
+            'completed' => 'completed',
+            default => null,
+        };
+        $lastKey = $sorted[count($sorted) - 1]['key'] ?? '';
+        if ($stageKey !== null && $stageKey !== $lastKey && ! empty($current['title'])) {
+            // State saat ini di-end: clamp timestamp ke event valid terakhir bila
+            // lebih awal (hindari urutan turun di UI; tidak mengarang waktu).
+            $lastAt = $sorted[count($sorted) - 1]['at'] ?? null;
+            $currentAt = (string) ($current['eventAt'] ?? now()->toIso8601String());
+            if (is_string($lastAt) && $currentAt < $lastAt) {
+                $currentAt = $lastAt;
+            }
+            $lastEvent = $sorted === [] ? null : $sorted[count($sorted) - 1];
+            $sorted[] = [
+                'key' => 'current',
+                'label' => (string) $current['title'],
+                'at' => $currentAt,
+                'position' => (string) ($current['position'] ?? ''),
+                'source' => (string) $current['source'],
+                'detail' => ($lastEvent['detail'] ?? null) !== null ? $lastEvent['detail'] : null,
+            ];
+        }
+
+        return $sorted;
+    }
+
     /** Ekspos objek view model penuh untuk payload. @return array<string,mixed> */
     public function toArray(): array
     {
@@ -757,8 +1063,10 @@ class OrderTrackingViewModel
             'milestones' => $this->milestones(),
             'shipment' => $this->shipment(),
             'customerStatus' => $this->customerStatus(),
+            'summary' => $this->summary(),
             'position' => $this->position(),
             'progress' => $this->progress(),
+            'events' => $this->events(),
             'estimate' => $this->estimate(),
             'recipient' => $this->recipient(),
             'carrier' => $this->carrier(),

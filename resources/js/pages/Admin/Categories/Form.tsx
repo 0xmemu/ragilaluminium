@@ -52,7 +52,7 @@ export default function CategoryForm({ title, description, category, submitUrl, 
       </div>
       <form onSubmit={submit} className="max-w-2xl space-y-4 rounded-xl border border-border bg-card p-5 shadow-soft">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="cat-code" label="Kode" required error={form.errors.code} hint="Contoh: WINDOW, DOOR, BOUVEN">
+          <Field id="cat-code" label="Kode" required error={form.errors.code} hint="Contoh: JENDELA, PINTU, BOVEN">
             <Input value={form.data.code} onChange={(e) => form.setData("code", e.target.value.toUpperCase())} />
           </Field>
           <Field id="cat-name" label="Nama" required error={form.errors.name}>

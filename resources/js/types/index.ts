@@ -470,6 +470,14 @@ export interface OrderTrackingViewModel {
   recipient: {
     customerName: string
     phoneMasked: string
+    phoneFull: string
+    addressLine1: string
+    addressLine2: string
+    village: string
+    district: string
+    city: string
+    province: string
+    postalCode: string
     address: string
     method: string
   }
@@ -500,6 +508,7 @@ export interface OrderTrackingViewModel {
     carrierName: string | null
     statusKey: string
     label: string
+    officialTrackingUrl: string | null
     location: string | null
     latestEventText: string | null
     latestEventAt: string | null
@@ -511,7 +520,21 @@ export interface OrderTrackingViewModel {
     key: string
     title: string
     description: string
+    position: string | null
+    source: "store" | "carrier" | "system"
+    eventAt: string | null
+    syncedAt: string | null
+    stale: boolean
+    attention: boolean
     stage: string
+  }
+  summary: {
+    steps: Array<{
+      key: string
+      label: string
+      state: "completed" | "current" | "upcoming" | "attention" | "exception"
+      icon: string
+    }>
   }
   position: {
     stateKey: string
@@ -521,6 +544,20 @@ export interface OrderTrackingViewModel {
     syncedAt: string | null
     stale: boolean
   }
+  events: Array<{
+    key: string
+    label: string
+    at: string | null
+    position: string
+    source: "store" | "carrier"
+    detail: {
+      location?: string | null
+      origin?: string | null
+      destination?: string | null
+      courierName?: string | null
+      courierPhone?: string | null
+    } | null
+  }>
   progress: Array<{
     key: string
     label: string
