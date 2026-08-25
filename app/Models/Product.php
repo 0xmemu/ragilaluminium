@@ -17,6 +17,7 @@ class Product extends Model
         'parent_sku',
         'name',
         'short_name',
+        'search_keywords',
         'description',
         'category_id',
         'product_category',

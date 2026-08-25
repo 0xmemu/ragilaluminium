@@ -14,6 +14,10 @@ class ProductVariantObserver
 {
     public function saved(ProductVariant $variant): void
     {
+        if ($variant->product_id && $variant->product) {
+            app(\App\Support\ProductSearchKeywordService::class)->generate($variant->product);
+        }
+
         if ($variant->wasChanged('price')) {
             ProductPriceLog::create([
                 'product_variant_id' => $variant->id,

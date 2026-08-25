@@ -12,6 +12,8 @@ class ProductObserver
 {
     public function saved(Product $product): void
     {
+        app(\App\Support\ProductSearchKeywordService::class)->generate($product);
+
         ProductCache::flushProducts();
     }
 

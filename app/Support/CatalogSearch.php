@@ -157,6 +157,7 @@ class CatalogSearch
                 self::likeClause($inner, 'name', '%'.$term.'%');
                 self::likeClause($inner, 'parent_sku', '%'.$term.'%', true);
                 self::likeClause($inner, 'short_name', '%'.$term.'%', true);
+                self::likeClause($inner, 'search_keywords', '%'.$term.'%', true);
             }
             self::likeClause(
                 $inner,
@@ -170,6 +171,7 @@ class CatalogSearch
                 foreach ($sizePatterns as $pattern) {
                     self::likeClause($inner, 'name', $pattern, true);
                     self::likeClause($inner, 'short_name', $pattern, true);
+                    self::likeClause($inner, 'search_keywords', $pattern, true);
                 }
             }
 
