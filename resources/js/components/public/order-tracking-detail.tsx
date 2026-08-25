@@ -174,7 +174,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
         </div>
 
         <div className="shrink-0">
-          <StatusBadge status={order.order_status} />
+          <StatusBadge status={order.vm?.primaryStatus?.key ?? order.order_status} />
         </div>
       </div>
 
@@ -307,59 +307,82 @@ const PROGRESS_ICONS: Record<string, typeof Clock> = {
 }
 
 /**
- * Tracker ringkas (kontrak sinkronisasi): SUMBER TUNGGAL order.vm.progress.
- * "Pesanan dikirim" HANYA muncul saat event carrier membuktikannya (state
- * handover complete/current) - tidak pernah dari order_status internal.
+ * Stepper horizontal 4 MAKRO (keputusan desain D1).
+ * Ringkasan cepat; detail per tahap ada di tracker vertikal (Milestones).
+ * Sumber TUNGGAL: order.vm.progress (7 tahap) yang dikelompokkan di frontend.
  */
+const STATUS_GROUPS: Array<{
+  key: string
+  label: string
+  icon: typeof Clock
+  steps: string[]
+}> = [
+  { key: "confirmed", label: "Terkonfirmasi", icon: Clock, steps: ["confirmed", "prepared"] },
+  { key: "shipping", label: "Pesanan Dikirim", icon: Package, steps: ["handover", "transit"] },
+  { key: "arrived", label: "Pesanan Sampai", icon: Truck, steps: ["last_mile", "delivered"] },
+  { key: "completed", label: "Selesai", icon: CheckCircle, steps: ["completed"] },
+]
+
+function groupState(steps: string[], progress: NonNullable<PublicOrder["vm"]>["progress"]): string {
+  const states = steps.map(
+    (key) => progress.find((p) => p.key === key)?.state ?? "upcoming",
+  )
+  if (states.some((st) => st === "attention" || st === "exception")) return "attention"
+  if (states.every((st) => st === "completed" || st === "current")) return "completed"
+  if (states.some((st) => st === "completed" || st === "current")) return "current"
+  return "upcoming"
+}
+
+function stepClass(state: string) {
+  switch (state) {
+    case "completed":
+      return "bg-[#2b734e] text-white shadow-sm ring-4 ring-[#2b734e]/15"
+    case "current":
+      return "border-2 border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e] ring-4 ring-[#2b734e]/10"
+    case "attention":
+    case "exception":
+      return "border-2 border-warning bg-warning/10 text-warning ring-4 ring-warning/10"
+    default:
+      return "border-2 border-border bg-surface text-muted-foreground"
+  }
+}
+
 function StatusSummary({ order }: { order: PublicOrder }) {
   const progress = order.vm?.progress ?? []
   if (progress.length === 0) return null
-
-  const stepClass = (state: string) => {
-    switch (state) {
-      case "completed":
-        return "bg-[#2b734e] text-white shadow-sm ring-4 ring-[#2b734e]/15"
-      case "current":
-        return "border-2 border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e] ring-4 ring-[#2b734e]/10"
-      case "attention":
-      case "exception":
-        return "border-2 border-warning bg-warning/10 text-warning ring-4 ring-warning/10"
-      default:
-        return "border-2 border-border bg-surface text-muted-foreground"
-    }
-  }
 
   return (
     <div className="relative">
       {/* Background connector line */}
       <div
         aria-hidden="true"
-        className="absolute top-6 left-[2.5%] right-[2.5%] h-0.5 bg-border -translate-y-1/2 z-0"
+        className="absolute top-6 left-[4%] right-[4%] h-0.5 bg-border -translate-y-1/2 z-0"
       />
-      <ol className="relative z-10 grid grid-cols-7 gap-1 text-center">
-        {progress.map((step) => {
-          const Glyph = PROGRESS_ICONS[step.key] ?? Package
-          const active = step.state === "completed" || step.state === "current"
+      <ol className="relative z-10 grid grid-cols-4 gap-1 text-center">
+        {STATUS_GROUPS.map((group) => {
+          const Glyph = group.icon
+          const state = groupState(group.steps, progress)
+          const active = state === "completed" || state === "current"
           return (
-            <li key={step.key} className="flex flex-col items-center gap-1.5">
+            <li key={group.key} className="flex flex-col items-center gap-1.5">
               <span
                 className={cn(
-                  "flex size-10 items-center justify-center rounded-full transition-colors",
-                  stepClass(step.state),
+                  "flex size-11 items-center justify-center rounded-full transition-colors",
+                  stepClass(state),
                 )}
               >
                 <Glyph
                   className="size-5"
-                  weight={step.state === "completed" ? "bold" : step.state === "current" ? "bold" : "regular"}
+                  weight={state === "completed" ? "bold" : state === "current" ? "bold" : "regular"}
                 />
               </span>
               <span
                 className={cn(
-                  "text-[10px] leading-tight max-w-full",
+                  "text-[11px] leading-tight text-balance",
                   active ? "font-semibold text-foreground" : "text-muted-foreground",
                 )}
               >
-                {step.label}
+                {group.label}
               </span>
             </li>
           )
@@ -374,77 +397,166 @@ function StatusSummary({ order }: { order: PublicOrder }) {
  * Timestamp detail memuat tanggal dan jam:menit.
  * Berwarna hijau #2b734e untuk milestone yang selesai.
  */
+const MILESTONE_GROUP: Record<string, string> = {
+  order_created: "confirmed",
+  order_confirmed: "confirmed",
+  payment_verified: "confirmed",
+  ready_to_ship: "confirmed",
+  handover_to_carrier: "shipping",
+  in_transit: "shipping",
+  out_for_delivery: "arrived",
+  delivered: "arrived",
+}
+
+const GROUP_ORDER = ["confirmed", "shipping", "arrived", "completed"] as const
+const GROUP_META: Record<string, { label: string; icon: typeof Clock }> = {
+  confirmed: { label: "Terkonfirmasi", icon: Clock },
+  shipping: { label: "Pesanan Dikirim", icon: Package },
+  arrived: { label: "Pesanan Sampai", icon: Truck },
+  completed: { label: "Selesai", icon: CheckCircle },
+}
+
+/**
+ * Tracker vertikal 'Lacak Pesanan' (keputusan desain D1): detail per makro.
+ * Setiap makro horizontal punya seksi vertikal berisi tahap penyusun +
+ * timestamp event. D6: pemisah ekspedisi disisipkan sebelum tahap handover.
+ */
 function Milestones({ order }: { order: PublicOrder }) {
   const milestones = order.vm?.milestones
   if (!milestones || milestones.length === 0) return null
 
-  return (
-    <ol className="order-tracking__milestones space-y-0">
-      {milestones.map((step, index) => {
-        const isLast = index === milestones.length - 1
-        const isDone = step.state === "completed"
-        const isCurrent = step.state === "current"
-        const isException = step.state === "exception"
+  const carrierName = order.vm?.carrier?.carrierName ?? "J&T Cargo"
+  const grouped = GROUP_ORDER.map((group) => ({
+    group,
+    rows: milestones.filter((m) => MILESTONE_GROUP[m.key] === group),
+  })).filter((g) => g.rows.length > 0)
 
-        const connector = !isLast ? (
-          <span
-            aria-hidden="true"
-            className={cn(
-              "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
-              isDone || isCurrent ? "bg-[#2b734e]/40" : "bg-border",
-            )}
-          />
-        ) : null
+  // Seksi Selesai: hanya saat order benar-benar completed.
+  const completed = order.order_status === "completed"
+  if (completed) {
+    grouped.push({ group: "completed", rows: [] })
+  }
+
+  return (
+    <div className="order-tracking__milestones space-y-5">
+      {grouped.map(({ group, rows }) => {
+        const meta = GROUP_META[group]
+        const Glyph = meta.icon
+        const isShipping = group === "shipping"
 
         return (
-          <li key={step.key + index} className="relative flex gap-3 pb-5 last:pb-0">
-            {connector}
-            <span
-              aria-hidden="true"
-              className={cn(
-                "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full",
-                isDone && "bg-[#2b734e] text-white",
-                isCurrent && "bg-[#2b734e] text-white ring-4 ring-[#2b734e]/20",
-                isException && "bg-destructive text-white",
-                !isDone && !isCurrent && !isException && "border-2 border-border bg-surface text-muted-foreground",
-              )}
-            >
-              {isDone ? (
-                <Check className="size-3.5" weight="bold" />
-              ) : isException ? (
-                <Warning className="size-3.5" weight="bold" />
-              ) : isCurrent ? (
-                <Check className="size-3.5" weight="bold" />
-              ) : (
-                <span className="size-1.5 rounded-full bg-border" />
-              )}
-            </span>
-
-            <div className="min-w-0 pt-0.5">
-              <p
+          <section key={group}>
+            <h4 className="flex items-center gap-2 text-xs font-bold tracking-tight text-foreground">
+              <span
                 className={cn(
-                  "text-sm font-semibold",
-                  isCurrent || isDone ? "text-foreground" : "text-muted-foreground",
-                  isException && "text-destructive",
+                  "flex size-5 items-center justify-center rounded-full",
+                  rows.some((r) => r.state === "completed" || r.state === "current")
+                    ? "bg-[#2b734e] text-white"
+                    : "bg-border text-muted-foreground",
                 )}
               >
-                {step.label}
-              </p>
-              {step.occurredAt ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {formatDateTime(step.occurredAt)}
-                </p>
-              ) : null}
-              {step.customerMessage ? (
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {step.customerMessage}
-                </p>
-              ) : null}
-            </div>
-          </li>
+                <Glyph className="size-3" weight="bold" />
+              </span>
+              {meta.label}
+            </h4>
+
+            {isShipping ? (
+              <div className="mt-3 flex items-center gap-2" aria-hidden="true">
+                <span className="h-px w-full bg-border" />
+                <span className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  Paket diserahkan ke ekspedisi {carrierName}
+                </span>
+                <span className="h-px w-full bg-border" />
+              </div>
+            ) : null}
+
+            <ol className={`mt-2 space-y-0 ${isShipping ? "pt-1" : ""}`}>
+              {group === "completed" && rows.length === 0
+                ? [
+                    <li
+                      key="completed-li"
+                      className="relative flex gap-3 pb-0"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2b734e] text-white"
+                      >
+                        <Check className="size-3.5" weight="bold" />
+                      </span>
+                      <div className="min-w-0 pt-0.5">
+                        <p className="text-sm font-semibold text-foreground">Pesanan selesai</p>
+                      </div>
+                    </li>,
+                  ]
+                : rows.map((step, index) => {
+                    const isLast = index === rows.length - 1
+                    const isDone = step.state === "completed"
+                    const isCurrent = step.state === "current"
+                    const isAttention = step.state === "exception"
+
+                    const connector = !isLast ? (
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-0.5",
+                          isDone || isCurrent ? "bg-[#2b734e]/40" : "bg-border",
+                        )}
+                      />
+                    ) : null
+
+                    return (
+                      <li key={step.key + index} className="relative flex gap-3 py-2.5">
+                        {connector}
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full",
+                            isDone && "bg-[#2b734e] text-white",
+                            isCurrent && "bg-[#2b734e] text-white ring-4 ring-[#2b734e]/20",
+                            isAttention && "bg-warning text-white",
+                            !isDone && !isCurrent && !isAttention && "border-2 border-border bg-surface text-muted-foreground",
+                          )}
+                        >
+                          {isDone ? (
+                            <Check className="size-3.5" weight="bold" />
+                          ) : isAttention ? (
+                            <Warning className="size-3.5" weight="bold" />
+                          ) : isCurrent ? (
+                            <Check className="size-3.5" weight="bold" />
+                          ) : (
+                            <span className="size-1.5 rounded-full bg-border" />
+                          )}
+                        </span>
+
+                        <div className="min-w-0 pt-0.5">
+                          <p
+                            className={cn(
+                              "text-sm font-semibold",
+                              isCurrent || isDone ? "text-foreground" : "text-muted-foreground",
+                              isAttention && "text-warning",
+                            )}
+                          >
+                            {step.label}
+                          </p>
+                          {step.occurredAt ? (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {formatDateTime(step.occurredAt)}
+                            </p>
+                          ) : null}
+                          {step.customerMessage ? (
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {step.customerMessage}
+                            </p>
+                          ) : null}
+                        </div>
+                      </li>
+                    )
+                  })}
+            </ol>
+          </section>
         )
       })}
-    </ol>
+    </div>
   )
 }
 
@@ -472,28 +584,51 @@ function ExpandableTimeline({ order }: { order: PublicOrder }) {
       </summary>
       <div className="border-t border-border">
         <ol className="order-tracking__carrier-details-list divide-y divide-border">
-          {timeline.map((entry, index) => (
-            <li key={`${entry.at ?? "e"}-${index}`} className="flex gap-3 px-3.5 py-2.5">
-              {entry.at ? (
-                <time
-                  dateTime={entry.at}
-                  className="w-28 shrink-0 text-[11px] leading-relaxed text-muted-foreground"
-                >
-                  {formatDateTime(entry.at)}
-                </time>
-              ) : (
-                <span className="w-28 shrink-0 text-[11px] text-muted-foreground">-</span>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-xs leading-relaxed text-foreground">{entry.message}</p>
-                {entry.location ? (
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {entry.location}
+          {timeline.map((entry, index) => {
+            const isLatest = index === 0
+            return (
+              <li
+                key={`${entry.at ?? "e"}-${index}`}
+                className={cn("flex gap-3 px-3.5 py-2.5", isLatest && "bg-[#2b734e]/5")}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-1.5 size-1.5 shrink-0 rounded-full",
+                    isLatest ? "bg-[#2b734e]" : "bg-border",
+                  )}
+                />
+                {entry.at ? (
+                  <time
+                    dateTime={entry.at}
+                    className={cn(
+                      "w-28 shrink-0 text-[11px] leading-relaxed",
+                      isLatest ? "font-semibold text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {formatDateTime(entry.at)}
+                  </time>
+                ) : (
+                  <span className="w-28 shrink-0 text-[11px] text-muted-foreground">-</span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={cn(
+                      "text-xs leading-relaxed",
+                      isLatest ? "font-semibold text-foreground" : "text-foreground/80",
+                    )}
+                  >
+                    {entry.message}
                   </p>
-                ) : null}
-              </div>
-            </li>
-          ))}
+                  {entry.location ? (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {entry.location}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            )
+          })}
         </ol>
       </div>
     </details>
@@ -512,21 +647,9 @@ function JnTCard({ order }: { order: PublicOrder }) {
   return (
     <section className="order-tracking__jnt-card rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5">
       {/* Brand Header J&T Cargo Icon */}
-      <div className="space-y-3">
+      <div className="space-y-1">
         <JntCargoLogo />
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">No. Pesanan</p>
-          <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
-            <span>{order.order_number}</span>
-            <CopyButton
-              text={order.order_number}
-              label="Salin nomor pesanan"
-              className="size-5"
-              iconSize="size-3.5"
-            />
-          </div>
-        </div>
-        <div className="space-y-1">
+        <div className="pt-1">
           <p className="text-xs text-muted-foreground">No. Resi</p>
           {carrier?.waybill ? (
             <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
@@ -612,19 +735,70 @@ const STATUS_TONE_CLASSES: Record<string, string> = {
   info: "border-[#2c6d9b33] bg-[#2c6d9b0d] text-[#2c6d9b]",
 }
 
-function StatusNotice({ order }: { order: PublicOrder }) {
+/**
+ * Deskripsi ringkas posisi (D5, 1 kalimat inti). Tidak mengarang lokasi:
+ * lokasi hanya tampil bila carrier mengirimkan (vm.position.text).
+ */
+const POSITION_SHORT: Record<string, string> = {
+  not_shipped: "Paket masih diproses oleh toko.",
+  awaiting_pickup: "Paket menunggu dijemput atau diterima kurir.",
+  picked_up: "Paket telah diterima kurir.",
+  in_transit: "Paket sedang dalam perjalanan ke wilayah tujuan.",
+  out_for_delivery: "Kurir sedang mengantar paket ke alamat Anda.",
+  delivered: "Paket telah diterima di tujuan.",
+  exception: "Pengiriman memerlukan tindak lanjut.",
+  returned: "Paket dikembalikan ke pengirim.",
+}
+
+/**
+ * Satu kartu highlight status (D2): menggabungkan banner utama + posisi paket.
+ * Urutan: judul status, deskripsi ringkas, baris posisi, dua timestamp terpisah
+ * (event carrier vs sinkronisasi sistem), tombol Muat Ulang bila tersedia.
+ */
+function StatusHighlightCard({ order, onRefresh }: { order: PublicOrder; onRefresh?: () => void }) {
   const primary = order.vm?.primaryStatus
+  const customer = order.vm?.customerStatus
+  const position = order.vm?.position
   if (!primary || !primary.headline) return null
+
   const tone = STATUS_TONE_CLASSES[primary.tone] ?? STATUS_TONE_CLASSES.neutral
+  const shortDesc =
+    (position ? POSITION_SHORT[position.stateKey] : undefined) ??
+    primary.message ??
+    ""
 
   return (
     <section
       role="status"
-      className={`order-tracking__status-notice rounded-[14px] border p-4 shadow-sm ${tone}`}
+      className={`order-tracking__status-highlight rounded-[14px] border border-border bg-surface p-4 shadow-sm ${tone}`}
     >
-      <p className="text-sm font-bold text-foreground">{primary.headline}</p>
-      {primary.message ? (
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{primary.message}</p>
+      <p className="text-sm font-bold text-foreground">
+        {customer?.title ?? primary.headline}
+      </p>
+      {shortDesc ? (
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{shortDesc}</p>
+      ) : null}
+      {position ? (
+        <p className="mt-2 text-xs font-medium text-foreground/90">
+          Posisi paket saat ini: {position.text}
+        </p>
+      ) : null}
+      <div className="mt-3 space-y-1 border-t border-border pt-3 text-[11px] text-muted-foreground">
+        {position?.latestEventAt ? (
+          <p>Pembaruan pengiriman: {formatDateTime(position.latestEventAt)}</p>
+        ) : null}
+        {position?.syncedAt ? (
+          <p>Data disinkronkan: {formatDateTime(position.syncedAt)}</p>
+        ) : null}
+      </div>
+      {onRefresh ? (
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="mt-3 text-xs font-semibold text-[#2b734e] underline-offset-2 hover:underline"
+        >
+          Muat Ulang
+        </button>
       ) : null}
     </section>
   )
@@ -688,40 +862,7 @@ function ReturnBlockCard({ order }: { order: PublicOrder }) {
 /**
  * Komponen Utama OrderTrackingDetail
  */
-/**
- * Kartu "Posisi paket saat ini" (kontrak B). Sumber: order.vm.position +
- * order.vm.shipment. Timestamp event carrier = "Pembaruan pengiriman";
- * timestamp sistem = "Data disinkronkan". Tidak mengarang lokasi.
- */
-function PositionCard({ order, onRefresh }: { order: PublicOrder; onRefresh?: () => void }) {
-  const position = order.vm?.position
-  if (!position) return null
 
-  return (
-    <section className="order-tracking__position rounded-[14px] border border-border bg-surface p-4 shadow-sm">
-      <h3 className="text-xs font-bold tracking-tight text-foreground">Posisi paket saat ini</h3>
-      <p className="mt-2 text-sm font-semibold text-foreground">{position.text}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{position.description}</p>
-      <div className="mt-3 space-y-1 border-t border-border pt-3 text-[11px] text-muted-foreground">
-        {position.latestEventAt ? (
-          <p>Pembaruan pengiriman: {formatDateTime(position.latestEventAt)}</p>
-        ) : null}
-        {position.syncedAt ? (
-          <p>Data disinkronkan: {formatDateTime(position.syncedAt)}</p>
-        ) : null}
-      </div>
-      {onRefresh ? (
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="mt-3 text-xs font-semibold text-[#2b734e] underline-offset-2 hover:underline"
-        >
-          Muat Ulang
-        </button>
-      ) : null}
-    </section>
-  )
-}
 
 export function OrderTrackingDetail({
   order,
@@ -736,11 +877,8 @@ export function OrderTrackingDetail({
 }) {
   return (
     <div className="order-tracking space-y-4 max-w-lg mx-auto">
-      {/* 0. Status utama (kontrak A2: headline + message + tone) */}
-      <StatusNotice order={order} />
-
-      {/* 0b. Posisi paket saat ini (kontrak B) */}
-      <PositionCard order={order} onRefresh={onRefresh} />
+      {/* 0. Satu kartu highlight status (D2: banner + posisi paket) */}
+      <StatusHighlightCard order={order} onRefresh={onRefresh} />
 
       {/* 1. Ringkasan Pesanan */}
       <OrderSummaryCard order={order} />
