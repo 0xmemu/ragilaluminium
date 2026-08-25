@@ -155,7 +155,7 @@ export default function WhatsAppDashboard({
           </div>
           <div className="flex gap-2">
             <Button asChild variant="secondary">
-              <a href={pairingUrl}>Pairing</a>
+              <Link href={pairingUrl}>Pairing</Link>
             </Button>
             {showQr && (
               <form method="post" action={refreshQrUrl}>

@@ -110,10 +110,10 @@ export default function WhatsAppConnection({
           </Link>
         </Button>
         <Button asChild variant="primary">
-          <a href={pairingUrl}>
+          <Link href={pairingUrl}>
             <Icon name="phone" className="size-4" aria-hidden="true" />
             Pairing WhatsApp
-          </a>
+          </Link>
         </Button>
       </div>
 

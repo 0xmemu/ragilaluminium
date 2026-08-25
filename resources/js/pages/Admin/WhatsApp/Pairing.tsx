@@ -39,6 +39,7 @@ export default function Pairing({
   const [sessionName, setSessionName] = useState<string>("")
   const [phone, setPhone] = useState<string>("")
   const [refreshing, setRefreshing] = useState<boolean>(false)
+  const [qrError, setQrError] = useState<boolean>(false)
 
   // Manual refresh eksplisit — TANPA polling/setInterval (Design Contract D).
   function refreshStatus() {
@@ -51,7 +52,10 @@ export default function Pairing({
         if (typeof d.has_session === "boolean") setHasSession(d.has_session)
         if (d.connected_phone) setConnectedPhone(d.connected_phone)
         if (d.session_name) setSessionName(d.session_name)
-        if (d.status === "SCAN_QR" && !d.has_session) setQrTs(Date.now())
+        if (d.status === "SCAN_QR" && !d.has_session) {
+          setQrTs(Date.now())
+          setQrError(false)
+        }
       })
       .catch(() => {})
       .finally(() => setRefreshing(false))
@@ -75,6 +79,12 @@ export default function Pairing({
         ? "Perlu Perhatian"
         : "Belum Dikonfigurasi"
   const healthTone = connected ? "success" : unreachable ? "danger" : hasSession ? "warning" : "neutral"
+
+  const generateLabel = connected
+    ? "Generate QR Baru"
+    : showQr
+      ? "Generate Ulang QR"
+      : "Generate QR & Mulai Pairing"
 
   const confirmRefreshQr = (e: FormEvent) => {
     e.preventDefault()
@@ -115,7 +125,7 @@ export default function Pairing({
         <Button asChild variant="secondary">
           <Link href={backUrl}>
             <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali ke Hubungkan WhatsApp
+            Kembali ke WhatsApp Otomatis
           </Link>
         </Button>
       </div>
@@ -161,35 +171,45 @@ export default function Pairing({
             Buka WhatsApp di HP → <b>Menu</b> → <b>Perangkat Tertaut</b> → <b>Tautkan Perangkat</b>, lalu scan QR di bawah.
           </p>
           <div className="flex justify-center rounded-md border border-border bg-background p-4">
-            {showQr ? (
-              <img src={`${qrUrl}?t=${qrTs}`} alt="WhatsApp QR" className="max-h-[340px] w-auto" />
-            ) : (
+            {showQr && !qrError ? (
+              <img src={`${qrUrl}?t=${qrTs}`} alt="WhatsApp QR" className="max-h-[340px] w-auto" onError={() => setQrError(true)} />
+            ) : hasSession ? (
               <div className="py-10 text-center text-sm text-muted-foreground">
-                {hasSession ? (
-                  <>
-                    <Icon name="check" className="mx-auto mb-2 size-8 text-success" aria-hidden="true" />
-                    Perangkat sudah tertaut.
-                    <br />
-                    Nomor: <b>{connectedPhone || "—"}</b>
-                  </>
-                ) : (
-                  <>
-                    QR belum tersedia.
-                    <br />
-                    Status gateway: <b>{statusText}</b>
-                  </>
-                )}
+                <Icon name="check" className="mx-auto mb-2 size-8 text-success" aria-hidden="true" />
+                Perangkat sudah tertaut.
+                <br />
+                Nomor: <b>{connectedPhone || "—"}</b>
+              </div>
+            ) : unreachable ? (
+              <div className="py-10 text-center text-sm text-destructive">
+                <Icon name="alert-triangle" className="mx-auto mb-2 size-8" aria-hidden="true" />
+                Gateway tidak dapat dijangkau.
+                <br />
+                Cek service Baileys.
+              </div>
+            ) : (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                QR belum tersedia.
+                <br />
+                Status gateway: <b>{statusText}</b>
+                <div className="mt-3">
+                  <Button type="button" variant="secondary" size="sm" onClick={refreshStatus} disabled={refreshing}>
+                    <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+                    {refreshing ? "Memuat..." : "Coba Lagi"}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
-          {showQr && (
-            <form method="post" action={refreshQrUrl} className="mt-2" onSubmit={confirmRefreshQr}>
-              <Button type="submit" className="w-full">
-                <Icon name="refresh" className="size-4" aria-hidden="true" />
-                Generate QR Baru
-              </Button>
-            </form>
-          )}
+          <form method="post" action={refreshQrUrl} className="mt-2" onSubmit={confirmRefreshQr}>
+            <Button type="submit" className="w-full" disabled={unreachable}>
+              <Icon name="refresh" className="size-4" aria-hidden="true" />
+              {generateLabel}
+            </Button>
+          </form>
+          {unreachable ? (
+            <p className="mt-1 text-center text-xs text-destructive">Gateway tidak dapat dijangkau. Cek service Baileys.</p>
+          ) : null}
         </section>
 
         <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
