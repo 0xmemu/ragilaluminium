@@ -282,6 +282,12 @@ return [
                 'icon' => 'star',
                 'active' => ['reviews.website', 'reviews.screenshots'],
             ],
+            [
+                'label' => 'Flash Sale',
+                'route' => 'catalog.flash-sale',
+                'icon' => 'bolt',
+                'active' => ['catalog.flash-sale'],
+            ],
         ],
 
         'hamburger_info' => [
@@ -316,7 +322,7 @@ return [
                 'active' => ['masalah-dan-solusi'],
             ],
             [
-                'label' => 'Informasi Toko',
+                'label' => 'Tentang Kami',
                 'route' => 'about',
                 'icon' => 'storefront',
                 'active' => ['about'],
@@ -357,7 +363,7 @@ return [
                 'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
-                'label' => 'Informasi Toko',
+                'label' => 'Tentang Kami',
                 'route' => 'about',
                 'active' => ['about'],
             ],

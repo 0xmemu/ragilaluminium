@@ -125,12 +125,12 @@ export default function PromotionForm({
   return (
     <AdminLayout title={title} description={editing ? "Perubahan berlaku setelah disimpan; kampanye draft baru dapat diaktifkan dari daftar." : "Kampanye dibuat sebagai draft, lalu diaktifkan dari daftar."}>
       <Head title={title} />
-      <form onSubmit={submit} className="mx-auto max-w-3xl space-y-6">
+      <form onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-4">
           <h2 className="text-base font-bold">Informasi kampanye</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field id="promotion-name" label="Nama kampanye" required error={form.errors.name} className="sm:col-span-2">
               <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} placeholder={form.data.type === "flash_sale" ? "contoh: Flash Sale 8.8" : "contoh: Promo Akhir Tahun"} />
             </Field>
@@ -146,9 +146,9 @@ export default function PromotionForm({
           </div>
         </section>
 
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-4">
           <h2 className="text-base font-bold">Waktu berlaku</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field id="promotion-starts" label="Mulai" error={form.errors.starts_at}>
               <Input type="datetime-local" value={form.data.starts_at} onChange={(event) => form.setData("starts_at", event.target.value)} />
             </Field>
@@ -161,16 +161,16 @@ export default function PromotionForm({
           </p>
         </section>
 
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-4">
           <h2 className="text-base font-bold">Target produk</h2>
           <p className="text-sm text-muted-foreground">
             Pilih model, sub model, atau produk tertentu. Produk yang dikecualikan tidak kena diskon meski masuk target model/sub model.
           </p>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field id="promotion-model" label="Seluruh produk model">
               <Select value="" onChange={(event) => addTarget("model", event.target.value)}>
-                <option value="">— pilih model —</option>
+                <option value="">Pilih model</option>
                 {options.modelOptions.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
@@ -178,7 +178,7 @@ export default function PromotionForm({
             </Field>
             <Field id="promotion-submodel" label="Sub model">
               <Select value="" onChange={(event) => addTarget("sub_model", event.target.value)}>
-                <option value="">— pilih sub model —</option>
+                <option value="">Pilih sub model</option>
                 {options.subModelOptions.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
@@ -186,20 +186,57 @@ export default function PromotionForm({
             </Field>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field id="promotion-product" label="Produk tertentu">
               <Input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Cari nama/SKU…" />
-              <Select value="" onChange={(event) => addTarget("product", event.target.value)}>
-                <option value="">— pilih produk —</option>
-                {filteredProducts.slice(0, 50).map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </Select>
+              {productSearch.trim() ? (
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border bg-surface">
+                  {filteredProducts.slice(0, 50).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        addTarget("product", option.value)
+                        setProductSearch("")
+                      }}
+                      className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/60"
+                    >
+                      <span className="min-w-0">{option.label}</span>
+                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Tambah</span>
+                    </button>
+                  ))}
+                  {filteredProducts.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>
+                  ) : null}
+                </div>
+              ) : null}
+              <p className="text-xs text-muted-foreground">Ketik nama atau SKU, lalu klik produk untuk menambahkannya sebagai target.</p>
             </Field>
             <Field id="promotion-exclude" label="Kecualikan produk">
               <Input value={excludeSearch} onChange={(event) => setExcludeSearch(event.target.value)} placeholder="Cari nama/SKU…" />
+              {excludeSearch.trim() ? (
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border bg-surface">
+                  {filteredExclude.slice(0, 50).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        addExcluded(option.value)
+                        setExcludeSearch("")
+                      }}
+                      className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/60"
+                    >
+                      <span className="min-w-0">{option.label}</span>
+                      <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">Kecualikan</span>
+                    </button>
+                  ))}
+                  {filteredExclude.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>
+                  ) : null}
+                </div>
+              ) : null}
               <Select value="" onChange={(event) => addExcluded(event.target.value)}>
-                <option value="">— pilih produk —</option>
+                <option value="">Pilih produk</option>
                 {filteredExclude.slice(0, 50).map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}

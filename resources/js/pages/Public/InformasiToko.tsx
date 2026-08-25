@@ -175,7 +175,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
   const { brand, consultationWhatsApp, platforms = [] } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
   const phoneHref = brand.phone ? `tel:${brand.phone.replace(/[^\d+]/g, "")}` : null
-  const heading = page.heading?.trim() || "Informasi Toko"
+  const heading = page.heading?.trim() || "Tentang Kami"
   const unitsLabel = brand.units_installed_label?.trim()
   const trustPoints = TRUST_POINTS.map((item, index) =>
     index === 0 && unitsLabel
@@ -191,7 +191,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
 
   return (
     <PublicLayout>
-      <Head title={page.title || "Informasi Toko"}>
+      <Head title={page.title || "Tentang Kami"}>
         <meta
           name="description"
           content={`Profil, keunggulan, dan kontak resmi ${brand.short_name || "Ragil Aluminium"}.`}
@@ -204,7 +204,7 @@ export default function InformasiToko({ page }: { page: PageData }) {
                         <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
-              { label: "Informasi Toko", href: null },
+              { label: "Tentang Kami", href: null },
             ]}
           />
           </div>
