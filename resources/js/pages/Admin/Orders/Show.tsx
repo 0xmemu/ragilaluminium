@@ -246,6 +246,18 @@ function OrderEditPanel({
   onCancel: () => void
 }) {
   const [newLine, setNewLine] = React.useState({ parent_sku: "", variant_sku: "", qty: 1 })
+  const [adminNotes, setAdminNotes] = React.useState<string>(order.admin_notes ?? "")
+  const [savingAdminNotes, setSavingAdminNotes] = React.useState(false)
+
+  function saveAdminNotes() {
+    setSavingAdminNotes(true)
+    router.put(
+      routeUrl("admin.orders.admin-notes.update", { order: order.id }),
+      { admin_notes: adminNotes },
+      { preserveScroll: true, onFinish: () => setSavingAdminNotes(false) },
+    )
+  }
+
   const form = useForm<EditFormData>({
     customer_name: order.customer_name ?? "",
     customer_phone: order.customer_phone ?? "",
@@ -442,6 +454,29 @@ function OrderEditPanel({
           onChange={(event) => form.setData("notes", event.target.value)}
         />
       </Field>
+
+      <div className="rounded-lg border border-border bg-card p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <Icon name="clipboard-text" className="size-4 text-muted-foreground" aria-hidden="true" />
+          <p className="text-sm font-semibold">Catatan internal admin</p>
+        </div>
+        <Textarea
+          rows={3}
+          value={adminNotes}
+          onChange={(event) => setAdminNotes(event.target.value)}
+          placeholder="Catatan hanya untuk tim admin, tidak terlihat pelanggan."
+        />
+        <div className="mt-2 flex justify-end gap-2">
+          {order.admin_notes?.trim() ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => setAdminNotes("")}>
+              Hapus
+            </Button>
+          ) : null}
+          <Button type="button" size="sm" onClick={saveAdminNotes} disabled={savingAdminNotes}>
+            {savingAdminNotes ? "Menyimpan..." : "Simpan catatan internal"}
+          </Button>
+        </div>
+      </div>
 
       <Field
         id="edit-note"
