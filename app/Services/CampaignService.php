@@ -50,6 +50,24 @@ final class CampaignService
      *
      * @return Collection<int, Promotion>
      */
+    /**
+     * Lazy auto-end: kampanye scheduled/active yang sudah melewati ends_at
+     * diakhiri otomatis (status finished) supaya tidak memblokir kampanye lain.
+     */
+    public function autoEndExpired(): void
+    {
+        $now = now();
+        $updated = Promotion::query()
+            ->whereIn('status', [Promotion::STATUS_SCHEDULED, Promotion::STATUS_ACTIVE])
+            ->whereNotNull('ends_at')
+            ->where('ends_at', '<=', $now)
+            ->update(['status' => Promotion::STATUS_FINISHED]);
+
+        if ($updated > 0) {
+            $this->flushCache();
+        }
+    }
+
     public function liveCampaigns(): Collection
     {
         if ($this->liveCache !== null) {

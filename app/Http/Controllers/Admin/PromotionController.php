@@ -23,6 +23,8 @@ class PromotionController extends Controller
 
     public function index(Request $request): Response
     {
+        $this->campaigns->autoEndExpired();
+
         $type = $request->input('type') === Promotion::TYPE_FLASH_SALE
             ? Promotion::TYPE_FLASH_SALE
             : Promotion::TYPE_STORE;
@@ -153,9 +155,11 @@ class PromotionController extends Controller
         try {
             $this->campaigns->validate($promotion, $this->requestTargets($request), $promotion->id);
         } catch (Throwable $e) {
+            $errors = method_exists($e, 'errors') ? $e->errors() : ['Kampanye tidak valid.'];
+            $errors = is_array($errors) ? array_values($errors) : [$errors];
             return response()->json([
                 'ok' => false,
-                'errors' => method_exists($e, 'errors') ? $e->errors() : ['Kampanye tidak valid.'],
+                'errors' => $errors,
             ], 422);
         }
 
@@ -167,6 +171,7 @@ class PromotionController extends Controller
 
     public function activate(Request $request, Promotion $promotion): RedirectResponse
     {
+        $this->campaigns->autoEndExpired();
         $this->campaigns->validate($promotion, $promotion->items->toArray(), $promotion->id);
 
         if ($promotion->starts_at !== null && $promotion->starts_at->isFuture()) {

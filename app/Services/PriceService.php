@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductAttribute;
 use App\Models\ProductVariant;
 
 /**
@@ -52,6 +53,23 @@ final class PriceService
                 $sale = $bandrol;
                 $percent = 0;
                 $source = null;
+            }
+        } else {
+            // Diskon biasa: atribut promo_compare_price pada varian (non-kampanye).
+            $manual = ProductAttribute::query()
+                ->where('product_variant_id', $variant->id)
+                ->whereIn('attribute_name', ['promo_compare_price', 'compare_price', 'harga_asli', 'harga_sebelum_diskon'])
+                ->where('attribute_value', '>', '0')
+                ->orderBy('id')
+                ->first();
+            if ($manual !== null) {
+                $compare = max(0, (float) $manual->attribute_value);
+                if ($compare > $bandrol) {
+                    $percent = min(90, max(1, (int) round((1 - $bandrol / $compare) * 100)));
+                    $source = 'manual';
+                } else {
+                    $compare = null;
+                }
             }
         }
 
@@ -117,4 +135,10 @@ final class PriceService
     {
         return ceil($amount / self::ROUNDING_STEP) * self::ROUNDING_STEP;
     }
+
+    /**
+     * Atribut legacy produk untuk diskon biasa (non-kampanye).
+     * Urutan: promo_compare_price, compare_price, harga_asli, harga_sebelum_diskon.
+     */
 }
+

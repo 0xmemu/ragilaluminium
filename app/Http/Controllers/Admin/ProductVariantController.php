@@ -74,6 +74,30 @@ class ProductVariantController extends Controller
             ->with('success', 'Varian dibuat dengan SKU '.$validated['variant_sku'].'.');
     }
 
+    /** Simpan atau hapus atribut promo_compare_price varian (diskon biasa). */
+    protected function syncPromoPrice(ProductVariant $variant, mixed $promoPrice): void
+    {
+        $promoPrice = is_numeric($promoPrice) && (float) $promoPrice > 0
+            ? (string) round((float) $promoPrice, 2)
+            : null;
+
+        \App\Models\ProductAttribute::query()
+            ->where('product_id', $variant->product_id)
+            ->where('product_variant_id', $variant->id)
+            ->where('attribute_name', 'promo_compare_price')
+            ->delete();
+
+        if ($promoPrice !== null) {
+            \App\Models\ProductAttribute::create([
+                'product_id' => $variant->product_id,
+                'product_variant_id' => $variant->id,
+                'attribute_name' => 'promo_compare_price',
+                'attribute_value' => $promoPrice,
+                'source' => 'internal',
+            ]);
+        }
+    }
+
     public function bulkStore(Request $request, Product $product): RedirectResponse
     {
         $validated = $request->validate([
@@ -85,6 +109,7 @@ class ProductVariantController extends Controller
             'variants.*.variation_2_name' => ['nullable', 'string', 'max:255'],
             'variants.*.variation_2_option' => ['nullable', 'string', 'max:255'],
             'variants.*.price' => ['required', 'numeric', 'min:0'],
+            'variants.*.promo_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.weight_kg' => ['nullable', 'numeric', 'min:0'],
             'variants.*.width_cm' => ['nullable', 'numeric', 'min:0'],
@@ -97,7 +122,9 @@ class ProductVariantController extends Controller
         $randomizeStock = $request->has('randomize_stock') ? $request->boolean('randomize_stock') : (bool) $stockSettings['default_enabled'];
         DB::transaction(function () use ($validated, $product, $request, $randomizeStock, $stockSettings): void {
             foreach ($validated['variants'] as $row) {
-                ProductVariant::create([
+                $promoPrice = $row['promo_price'] ?? null;
+                unset($row['promo_price']);
+                $variant = ProductVariant::create([
                     ...$row,
                     'stock' => $randomizeStock ? random_int((int) $stockSettings['min'], (int) $stockSettings['max']) : (int) ($row['stock'] ?? 0),
                     'product_id' => $product->id,
@@ -105,6 +132,7 @@ class ProductVariantController extends Controller
                     'created_by_user_id' => $request->user()->id,
                     'updated_by_user_id' => $request->user()->id,
                 ]);
+                $this->syncPromoPrice($variant, $promoPrice);
             }
         });
 
@@ -164,6 +192,7 @@ class ProductVariantController extends Controller
             'variation_2_name' => ['nullable', 'string'],
             'variation_2_option' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0'],
+            'promo_price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
             'weight_kg' => ['nullable', 'numeric'],
             'width_cm' => ['nullable', 'numeric'],
@@ -172,7 +201,10 @@ class ProductVariantController extends Controller
             'status' => ['required', 'in:active,inactive,archived'],
         ]);
         $validated['updated_by_user_id'] = $request->user()->id;
+        $promoPrice = $validated['promo_price'] ?? null;
+        unset($validated['promo_price']);
         $variant->update($validated);
+        $this->syncPromoPrice($variant, $promoPrice);
 
         return redirect()->route('admin.products.variants.index', $variant->product_id)
             ->with('success', 'Varian diperbarui.');

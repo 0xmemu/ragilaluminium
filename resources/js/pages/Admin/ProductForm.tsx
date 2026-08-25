@@ -20,6 +20,7 @@ interface VariantDraft {
   variation_2_name: string
   variation_2_option: string
   price: string
+  promo_price: string
   stock?: string | number
   weight_kg: string
   width_cm: string
@@ -67,6 +68,7 @@ function emptyVariant(): VariantDraft {
     variation_2_name: "",
     variation_2_option: "",
     price: "",
+    promo_price: "",
     stock: "0",
     weight_kg: "",
     width_cm: "",
