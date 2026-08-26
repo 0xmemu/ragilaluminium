@@ -4,9 +4,11 @@ namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
 /**
  * Template Update Harga & Stok (mini): 2 sheet Contoh + Panduan.
+ * Header tetap snake_case karena processor membaca by key.
  */
 class StockPriceTemplateExport implements WithMultipleSheets
 {
@@ -19,7 +21,7 @@ class StockPriceTemplateExport implements WithMultipleSheets
     }
 }
 
-class StockPriceExampleSheet implements FromArray
+class StockPriceExampleSheet implements FromArray, WithTitle
 {
     public function array(): array
     {
@@ -36,7 +38,7 @@ class StockPriceExampleSheet implements FromArray
     }
 }
 
-class StockPriceGuideSheet implements FromArray
+class StockPriceGuideSheet implements FromArray, WithTitle
 {
     public function array(): array
     {
@@ -44,7 +46,7 @@ class StockPriceGuideSheet implements FromArray
             ['KOLOM', 'WAJIB/OPTIONAL', 'KETERANGAN'],
             ['parent_sku', 'WAJIB BILA TANPA variant_sku', 'Kode produk utama. Harus sudah ada; tidak dikenal = baris gagal.'],
             ['variant_sku', 'OPTIONAL', 'Kode varian. Kosongkan untuk menuju varian default produk.'],
-            ['price', 'WAJIB', 'Harga satuan baru (Rupiah, desimal titik).'],
+            ['price', 'WAJIB', 'Harga satuan baru (Rupiah, angka, tanpa titik ribuan).'],
             ['stock', 'WAJIB', 'Stok baru (bilangan bulat >= 0).'],
             ['CATATAN', '', 'Mode ini HANYA mengubah harga dan stok. Kolom lain di file diabaikan. Produk/varian baru tidak akan dibuat.'],
         ];

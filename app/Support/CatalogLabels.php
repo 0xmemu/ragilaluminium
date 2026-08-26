@@ -70,6 +70,12 @@ class CatalogLabels
         return self::categoryNameForProductCode($key) ?? ((string) $code);
     }
 
+    /** @return list<string> kode kategori valid (untuk dropdown template import) */
+    public static function categoryCodes(): array
+    {
+        return array_keys(self::CATEGORY);
+    }
+
     /**
      * Nama kategori aktif yang kode produknya (products.product_category) sama dengan
      * kode yang dicari. Kategori baru (bukan legacy) memakai kodenya sendiri sebagai
