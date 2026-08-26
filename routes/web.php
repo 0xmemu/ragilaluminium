@@ -27,6 +27,8 @@ use App\Http\Controllers\Admin\ProductAttributeController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\ProductPopularityBoostController;
 use App\Http\Controllers\Admin\MediaUploadController;
+use App\Http\Controllers\Admin\MediaFolderController;
+use App\Http\Controllers\Admin\MediaLibraryUploadController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\SubModelController;
@@ -230,6 +232,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Media
     Route::get('media/library', [ProductMediaController::class, 'library'])->name('media.library');
+    Route::get('media/folders/tree', [MediaFolderController::class, 'tree'])->name('media.folders.tree');
+    Route::post('media/folders', [MediaFolderController::class, 'store'])->name('media.folders.store');
+    Route::post('media/folders/{folder}/rename', [MediaFolderController::class, 'rename'])->name('media.folders.rename');
+    Route::post('media/folders/{folder}/move', [MediaFolderController::class, 'move'])->name('media.folders.move');
+    Route::post('media/folders/move-assets', [MediaFolderController::class, 'moveAssets'])->name('media.folders.move-assets');
+    Route::post('media/folders/{folder}/archive', [MediaFolderController::class, 'archive'])->name('media.folders.archive');
+    Route::delete('media/folders/{folder}', [MediaFolderController::class, 'destroy'])->name('media.folders.destroy');
+    Route::post('media/upload', [MediaLibraryUploadController::class, 'upload'])->name('media.upload');
+    Route::post('media/import-url', [MediaLibraryUploadController::class, 'importUrl'])->name('media.import-url');
     Route::get('media/history', [ProductMediaController::class, 'history'])->name('media.history');
     Route::post('media/logs/{log}/retry', [ProductMediaController::class, 'retryLog'])->name('media.logs.retry');
     Route::delete('media/logs/{log}', [ProductMediaController::class, 'destroyLog'])->name('media.logs.destroy');
