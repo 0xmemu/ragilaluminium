@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -113,6 +114,7 @@ export default function PromotionsIndex({
   description,
   activeType,
   typeOptions,
+  statusOptions,
   rows: initialRows = [],
   createHref,
 }: {
@@ -127,10 +129,13 @@ export default function PromotionsIndex({
   const [rows, setRows] = React.useState(initialRows)
   const [busyId, setBusyId] = React.useState<number | null>(null)
   const [search, setSearch] = React.useState("")
+  const [statusFilter, setStatusFilter] = React.useState("")
 
-  const filteredRows = search.trim()
-    ? rows.filter((row) => row.name.toLowerCase().includes(search.trim().toLowerCase()))
-    : rows
+  const filteredRows = rows.filter((row) => {
+    const byName = search.trim() === "" || row.name.toLowerCase().includes(search.trim().toLowerCase())
+    const byStatus = statusFilter === "" || row.status === statusFilter
+    return byName && byStatus
+  })
 
   React.useEffect(() => {
     // Sync dari props saat Inertia me-render ulang (data tabel bisa berubah dari server).
@@ -168,11 +173,17 @@ export default function PromotionsIndex({
             />
             <Icon name="magnifying-glass" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           </div>
-          {search.trim() ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSearch("")}>
+          {search.trim() || statusFilter ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("") }}>
               Reset filter
             </Button>
           ) : null}
+          <Select className="w-44" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Semua status</option>
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </Select>
         </div>
 
         <div className="overflow-hidden">
