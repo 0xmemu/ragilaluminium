@@ -394,6 +394,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('kelola/sub-model/{subModel}', [SubModelController::class, 'update'])->name('sub-models.update');
     Route::post('kelola/sub-model/{subModel}/toggle', [SubModelController::class, 'toggle'])->name('sub-models.toggle');
     Route::post('kelola/sub-model/reorder', [SubModelController::class, 'reorder'])->name('sub-models.reorder');
+    Route::get('promotions/products', [PromotionController::class, 'products'])->name('promotions.products');
     Route::get('promotions', [PromotionController::class, 'index'])->name('promotions.index');
     Route::get('promotions/create', [PromotionController::class, 'create'])->name('promotions.create');
     Route::post('promotions', [PromotionController::class, 'store'])->name('promotions.store');

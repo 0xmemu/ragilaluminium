@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
 use App\Models\SubModel;
+use App\Support\LikeSearch;
+use App\Support\short_name;
 use App\Services\CampaignService;
 use App\Support\CatalogLabels;
 use Illuminate\Http\JsonResponse;
@@ -302,6 +304,38 @@ class PromotionController extends Controller
     }
 
     /** @return array<string, mixed> */
+    public function products(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+        $category = trim((string) $request->query('category', ''));
+        $model = trim((string) $request->query('model', ''));
+        $perPage = min(50, max(10, (int) $request->query('per_page', 20)));
+
+        $products = Product::query()
+            ->where('status', 'active')
+            ->when($q !== '', fn ($qry) => $qry->where(fn ($inner) =>
+                LikeSearch::whereLike($inner, 'name', $q)
+                    ->orWhereRaw('parent_sku LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\'])
+            ))
+            ->when($category !== '', fn ($qry) => $qry->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
+            ->when($model !== '', fn ($qry) => $qry->where('product_model', 'LIKE', $model))
+            ->withMin('activeVariants as min_price', 'price')
+            ->orderBy('name')
+            ->paginate($perPage)
+            ->through(fn (Product $p) => [
+                'id' => $p->id,
+                'parent_sku' => $p->parent_sku,
+                'name' => $p->name,
+                'category' => $p->product_category,
+                'model' => $p->product_model,
+                'sub_model' => $p->design_variant,
+                'price' => $p->min_price ? (float) $p->min_price : 0,
+                'dimensions' => $p->short_name ?? '',
+            ]);
+
+        return response()->json($products);
+    }
+
     private function formOptions(string $type): array
     {
         return [

@@ -7,6 +7,9 @@ import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Switch } from "@/components/admin/ui/switch"
 import AdminLayout from "@/layouts/admin-layout"
+import { Icon } from "@/components/shared/icon"
+import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
+import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import { cn } from "@/lib/utils"
 
 interface TargetDraft {
@@ -76,6 +79,35 @@ export default function PromotionForm({
   })
   const [productSearch, setProductSearch] = React.useState("")
   const [excludeSearch, setExcludeSearch] = React.useState("")
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const [pickerProducts, setPickerProducts] = React.useState<PickerProduct[]>(() =>
+    options.productOptions
+      .filter((option) => form.data.targets.some((t) => t.target_type === "product" && !t.excluded && t.target_id === option.value))
+      .map((option) => ({
+        id: Number(option.value),
+        parent_sku: option.label.split(" (")[0] ?? "",
+        name: option.label,
+        category: "",
+        model: "",
+        sub_model: "",
+        price: 0,
+        dimensions: "",
+      })),
+  )
+
+  function applyPickerSelection(products: PickerProduct[]) {
+    setPickerProducts(products)
+    const ids = new Set(products.map((product) => product.id))
+    const kept = form.data.targets.filter((target) => target.target_type !== "product" || target.excluded || ids.has(Number(target.target_id)))
+    const existingIds = new Set(form.data.targets.filter((t) => t.target_type === "product" && !t.excluded).map((t) => t.target_id))
+    const added = products.filter((product) => !existingIds.has(String(product.id))).map((product) => ({
+      target_type: "product" as const,
+      target_id: String(product.id),
+      excluded: false,
+      override_discount_percent: "",
+    }))
+    form.setData("targets", [...kept, ...added])
+  }
 
   function addTarget(target_type: TargetDraft["target_type"], value: string) {
     if (!value) return
@@ -188,29 +220,26 @@ export default function PromotionForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="promotion-product" label="Produk tertentu">
-              <Input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Cari nama/SKU…" />
-              {productSearch.trim() ? (
-                <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border bg-surface">
-                  {filteredProducts.slice(0, 50).map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => {
-                        addTarget("product", option.value)
-                        setProductSearch("")
-                      }}
-                      className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/60"
-                    >
-                      <span className="min-w-0">{option.label}</span>
-                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Tambah</span>
-                    </button>
-                  ))}
-                  {filteredProducts.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-muted-foreground">Tidak ada produk yang cocok.</p>
-                  ) : null}
-                </div>
-              ) : null}
-              <p className="text-xs text-muted-foreground">Ketik nama atau SKU, lalu klik produk untuk menambahkannya sebagai target.</p>
+              <div className="space-y-2">
+                <Button type="button" variant="outline" onClick={() => setPickerOpen(true)} className="w-full sm:w-auto">
+                  <Icon name="package" className="mr-2 size-4" aria-hidden="true" />
+                  {pickerProducts.length > 0 ? `Ubah pilihan (${pickerProducts.length} produk)` : "Pilih Produk"}
+                </Button>
+                {pickerProducts.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {pickerProducts.slice(0, 12).map((product) => (
+                      <span key={product.id} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-foreground">
+                        <span className="truncate">{product.name}</span>
+                      </span>
+                    ))}
+                    {pickerProducts.length > 12 ? (
+                      <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-muted-foreground">
+                        +{pickerProducts.length - 12} lainnya
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </Field>
             <Field id="promotion-exclude" label="Kecualikan produk">
               <Input value={excludeSearch} onChange={(event) => setExcludeSearch(event.target.value)} placeholder="Cari nama/SKU…" />
@@ -292,7 +321,31 @@ export default function PromotionForm({
             {form.processing ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan sebagai draft"}
           </Button>
         </div>
-      </form>
+            <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-base font-semibold">Pilih Produk untuk Promo</h2>
+            <p className="text-sm text-muted-foreground">Cari, filter, lalu centang produk. Maksimal 100 produk per promo.</p>
+          </div>
+          <div className="mt-4 space-y-4">
+            <ProductPicker
+              endpoint="/admin/promotions/products"
+              maxSelection={100}
+              initialSelection={pickerProducts}
+              onSelect={applyPickerSelection}
+            />
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="ghost" onClick={() => setPickerOpen(false)}>
+                Batal
+              </Button>
+              <Button type="button" onClick={() => setPickerOpen(false)}>
+                Selesai ({pickerProducts.length} produk)
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </form>
     </AdminLayout>
   )
 }
