@@ -96,6 +96,22 @@ export default function UsersIndex({
             </Link>
           </Button>
         }
+        sort={
+          <Select
+            value={sort}
+            onChange={(event) => {
+              setSort(event.target.value)
+              apply({ sort: event.target.value })
+            }}
+            aria-label="Urutkan"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
         className="mb-4"
       >
         <Select
@@ -113,25 +129,9 @@ export default function UsersIndex({
             </option>
           ))}
         </Select>
-        sort={
-          <Select
-            value={sort}
-            onChange={(event) => {
-              setSort(event.target.value)
-              apply({ sort: event.target.value })
-            }}
-            aria-label="Urutkan"
-          >
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        }
       </ListToolbar>
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {rows.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">

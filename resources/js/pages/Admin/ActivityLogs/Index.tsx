@@ -136,8 +136,6 @@ export default function ActivityLogsIndex({
             </a>
           </Button>
         }
-        className="mb-4"
-      >
         sort={
           <Select
             value={sort}
@@ -155,7 +153,8 @@ export default function ActivityLogsIndex({
             ))}
           </Select>
         }
-      </ListToolbar>
+        className="mb-4"
+      />
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {rows.length ? (

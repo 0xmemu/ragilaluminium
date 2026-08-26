@@ -298,8 +298,8 @@ class TestimonialController extends Controller
             'sortOptions' => [],
             'publishedOptions' => [
                 ['value' => '', 'label' => 'Semua status'],
-                ['value' => '1', 'label' => 'Published'],
-                ['value' => '0', 'label' => 'Draft'],
+                ['value' => '1', 'label' => 'Tampil'],
+                ['value' => '0', 'label' => 'Tersembunyi'],
             ],
             'createHref' => route('admin.testimonials.create', ['intent' => 'marketplace']),
             'createLabel' => 'Tambah Screenshot',
@@ -400,8 +400,8 @@ class TestimonialController extends Controller
             ],
             'publishedOptions' => [
                 ['value' => '', 'label' => 'Semua status'],
-                ['value' => '1', 'label' => 'Published'],
-                ['value' => '0', 'label' => 'Draft'],
+                ['value' => '1', 'label' => 'Tampil'],
+                ['value' => '0', 'label' => 'Tersembunyi'],
             ],
             'createHref' => route('admin.testimonials.create'),
             'adminReviewHref' => route('admin.testimonials.create', ['intent' => 'admin-order']),
@@ -558,11 +558,11 @@ class TestimonialController extends Controller
             ],
             'publishedOptions' => [
                 ['value' => '', 'label' => 'Semua status'],
-                ['value' => '1', 'label' => 'Published'],
-                ['value' => '0', 'label' => 'Draft'],
+                ['value' => '1', 'label' => 'Tampil'],
+                ['value' => '0', 'label' => 'Tersembunyi'],
             ],
             'createHref' => route('admin.gallery-items.create'),
-            'createLabel' => $pengaturanSurface ? 'Tambah Foto Pemasangan' : 'Tambah Ulasan Foto',
+            'createLabel' => $pengaturanSurface ? 'Tambah Foto Pemasangan' : 'Tambah Ulasan Eksternal',
             'indexRoute' => $indexRoute,
             'pageMeta' => $pengaturanSurface ? InstallationPageSettings::pageMeta() : null,
             'metaUrl' => $pengaturanSurface ? route('admin.hasil-pemasangan.meta.update') : null,
@@ -585,7 +585,7 @@ class TestimonialController extends Controller
             ],
             [
                 'key' => 'foto',
-                'label' => 'Ulasan Foto',
+                'label' => 'Ulasan Eksternal',
                 'href' => route('admin.testimonials.index', ['tab' => 'foto']),
             ],
         ];

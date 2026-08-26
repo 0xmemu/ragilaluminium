@@ -317,7 +317,7 @@ export default function ProductsIndex({
         actions={
           <>
             <Button asChild variant="secondary">
-              <a href={exportUrl}>Export CSV</a>
+              <a href={exportUrl}>Ekspor Produk ke Excel</a>
             </Button>
             <Button asChild variant="secondary">
               <Link href={importHref}>Import</Link>

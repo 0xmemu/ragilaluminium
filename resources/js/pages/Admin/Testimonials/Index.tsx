@@ -539,6 +539,26 @@ export default function TestimonialsIndex({
             </Button>
           </div>
         }
+        sort={
+          sortOptions.length > 0 ? (
+            <Select
+              value={sort}
+              onChange={(event) => {
+                const value = event.target.value
+                setSort(value)
+                apply({ sort: value })
+              }}
+              className="w-44"
+              disabled={reorderMode}
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          ) : null
+        }
         className="mb-4"
       >
         <Select
@@ -575,26 +595,6 @@ export default function TestimonialsIndex({
             ))}
           </Select>
         ) : null}
-        sort={
-          sortOptions.length > 0 ? (
-            <Select
-              value={sort}
-              onChange={(event) => {
-                const value = event.target.value
-                setSort(value)
-                apply({ sort: value })
-              }}
-              className="w-44"
-              disabled={reorderMode}
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          ) : null
-        }
       </ListToolbar>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
@@ -698,7 +698,7 @@ export default function TestimonialsIndex({
                       <td className="px-3 py-3">
                         <StatusBadge
                           status={row.published ? "active" : "inactive"}
-                          label={row.published ? "Published" : "Draft"}
+                          label={row.published ? "Tampil" : "Tersembunyi"}
                         />
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.created_at)}</td>
@@ -762,7 +762,7 @@ export default function TestimonialsIndex({
                       <td className="px-3 py-3">
                         <StatusBadge
                           status={row.published ? "active" : "inactive"}
-                          label={row.published ? "Published" : "Draft"}
+                          label={row.published ? "Tampil" : "Tersembunyi"}
                         />
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.created_at)}</td>

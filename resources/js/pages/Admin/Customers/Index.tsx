@@ -104,8 +104,6 @@ export default function CustomersIndex({
             </a>
           </Button>
         }
-        className="mb-4"
-      >
         sort={
           <Select
             value={sort}
@@ -122,7 +120,8 @@ export default function CustomersIndex({
             ))}
           </Select>
         }
-      </ListToolbar>
+        className="mb-4"
+      />
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {rows.length ? (
