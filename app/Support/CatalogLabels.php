@@ -277,7 +277,7 @@ class CatalogLabels
         });
     }
 
-    private static function titleCaseIndonesia(string $raw): string
+    public static function titleCaseIndonesia(string $raw): string
     {
         return str_replace('_', ' ', ucwords(strtolower($raw)));
     }

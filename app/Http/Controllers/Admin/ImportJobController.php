@@ -121,6 +121,16 @@ class ImportJobController extends Controller
             'manual_stock' => ['nullable', 'required_if:stock_mode,manual', 'integer', 'min:0'],
         ]);
 
+        $rowData = \Maatwebsite\Excel\Facades\Excel::toArray(new \App\Imports\InternalCatalogPreviewImport(), $file);
+        $rows = $rowData[0] ?? [];
+        $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['parent_sku'] ?? '')))));
+        $rowLimit = $validated['type'] === 'stock_price_update' ? 10000 : 5000;
+        if ($rowCount > $rowLimit) {
+            return redirect()->back()->withErrors([
+                'file' => 'Jumlah baris ('.$rowCount.') melebihi batas maksimal ('.$rowLimit.').',
+            ]);
+        }
+
         $file = $request->file('file');
         $fileName = $file->getClientOriginalName();
         $name = MediaNamer::onDisk('import', $file->getClientOriginalExtension() ?: 'xlsx', 'imports', 'catalog');

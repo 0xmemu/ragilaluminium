@@ -67,7 +67,8 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                 ['parent_sku' => $parentSku],
                 [
                     'name' => $data['name'] ?? $data['product_name'] ?? $parentSku,
-                    'short_name' => $data['short_name'] ?? null,
+                    'short_name' => $this->deriveShortName($data),
+                    'search_keywords' => $this->deriveKeywords($data, $productCategory),
                     'description' => $data['description'] ?? null,
                     'category_id' => (int) ($data['category_id'] ?? 0),
                     'product_category' => $productCategory,
@@ -287,4 +288,31 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
     {
         return 1000;
     }
+
+    protected function deriveShortName(array $data): string
+    {
+        $provided = trim((string) ($data['short_name'] ?? ''));
+        if ($provided !== '') {
+            return $provided;
+        }
+        $name = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
+        $fallback = trim((string) ($data['parent_sku'] ?? ''));
+        return \App\Support\CatalogLabels::titleCaseIndonesia($name) ?: $fallback;
+    }
+
+    protected function deriveKeywords(array $data, string $categoryCode): string
+    {
+        $provided = trim((string) ($data['search_keywords'] ?? $data['keywords'] ?? ''));
+        if ($provided !== '') {
+            return $provided;
+        }
+        $parts = array_filter([
+            \App\Support\CatalogLabels::category($categoryCode) ?: $categoryCode,
+            \App\Support\CatalogLabels::model((string) ($data['product_model'] ?? '')),
+            \App\Support\CatalogLabels::design((string) ($data['design_variant'] ?? '')),
+            trim((string) ($data['name'] ?? '')),
+        ]);
+        return implode(', ', array_unique(array_filter($parts)));
+    }
+
 }
