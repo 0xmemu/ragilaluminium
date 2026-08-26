@@ -126,6 +126,11 @@ export default function PromotionsIndex({
 }) {
   const [rows, setRows] = React.useState(initialRows)
   const [busyId, setBusyId] = React.useState<number | null>(null)
+  const [search, setSearch] = React.useState("")
+
+  const filteredRows = search.trim()
+    ? rows.filter((row) => row.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : rows
 
   React.useEffect(() => {
     // Sync dari props saat Inertia me-render ulang (data tabel bisa berubah dari server).
@@ -152,8 +157,26 @@ export default function PromotionsIndex({
           </Button>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full max-w-xs">
+            <input
+              type="search"
+              className="h-9 w-full rounded-md border border-input bg-surface px-3 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+              placeholder="Cari nama kampanye…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <Icon name="magnifying-glass" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          </div>
+          {search.trim() ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => setSearch("")}>
+              Reset filter
+            </Button>
+          ) : null}
+        </div>
+
         <div className="overflow-hidden">
-          {rows.length === 0 ? (
+          {filteredRows.length === 0 ? (
             <EmptyState title="Belum ada kampanye" description="Buat kampanye pertama untuk mulai memberikan diskon." />
           ) : (
             <div className="overflow-x-auto">
@@ -170,7 +193,7 @@ export default function PromotionsIndex({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {filteredRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
