@@ -11,6 +11,8 @@ use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
 use App\Support\ExportSafety;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\OrderExport;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
 use App\Support\OrderEventLabels;
@@ -240,50 +242,11 @@ class OrderController extends Controller
             )
             ->latest();
 
-        $filename = 'pesanan-'.now()->format('Ymd-His').'.csv';
 
         ExportSafety::assertQueryWithinLimit($query);
 
-        return response()->streamDownload(function () use ($query) {
-            $handle = fopen('php://output', 'w');
-            ExportSafety::writeCsvRow($handle, [
-                'order_number',
-                'customer_name',
-                'customer_phone',
-                'city',
-                'province',
-                'order_status',
-                'payment_status',
-                'payment_method',
-                'total_amount',
-                'items',
-                'units',
-                'created_at',
-            ]);
+        return Excel::download(new OrderExport($query), 'pesanan-'.now()->format('Ymd-His').'.xlsx');
 
-            $query->chunk(200, function ($orders) use ($handle) {
-                foreach ($orders as $order) {
-                    ExportSafety::writeCsvRow($handle, [
-                        $order->order_number,
-                        $order->customer_name,
-                        $order->customer_phone,
-                        $order->shipping_city,
-                        $order->shipping_province,
-                        $order->order_status,
-                        $order->payment_status,
-                        $order->payment_method,
-                        $order->total_amount,
-                        $order->items_count,
-                        $order->units_count,
-                        optional($order->created_at)?->toDateTimeString(),
-                    ]);
-                }
-            });
-
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
     }
 
     public function show(Order $order): Response

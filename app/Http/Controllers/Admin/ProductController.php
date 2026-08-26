@@ -10,6 +10,8 @@ use App\Models\ProductMedia;
 use App\Support\CatalogLabels;
 use App\Support\CategoryUrl;
 use App\Support\ExportSafety;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProductExport;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
 use App\Support\ShopeeStyleSku;
@@ -128,48 +130,11 @@ class ProductController extends Controller
             ->when($status !== '' && $status !== 'all', fn ($builder) => $builder->where('status', $status))
             ->latest();
 
-        $filename = 'produk-'.now()->format('Ymd-His').'.csv';
 
         ExportSafety::assertQueryWithinLimit($query);
 
-        return response()->streamDownload(function () use ($query) {
-            $handle = fopen('php://output', 'w');
-            ExportSafety::writeCsvRow($handle, [
-                'parent_sku',
-                'name',
-                'product_category',
-                'product_model',
-                'design_variant',
-                'status',
-                'min_price',
-                'stock_total',
-                'variants_count',
-                'sold_count',
-                'updated_at',
-            ]);
+        return Excel::download(new ProductExport($query), 'produk-'.now()->format('Ymd-His').'.xlsx');
 
-            $query->chunk(200, function ($products) use ($handle) {
-                foreach ($products as $product) {
-                    ExportSafety::writeCsvRow($handle, [
-                        $product->parent_sku,
-                        $product->name,
-                        $product->product_category,
-                        $product->product_model,
-                        $product->design_variant,
-                        $product->status,
-                        $product->min_price,
-                        $product->stock_total,
-                        $product->variants_count,
-                        $product->sold_count,
-                        optional($product->updated_at)?->toDateTimeString(),
-                    ]);
-                }
-            });
-
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
     }
 
     public function create(): Response

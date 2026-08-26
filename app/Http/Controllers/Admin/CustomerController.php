@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Services\CustomerService;
 use App\Support\ExportSafety;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\CustomerExport;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
@@ -163,37 +165,7 @@ class CustomerController extends Controller
 
         ExportSafety::assertQueryWithinLimit($query);
 
-        return response()->streamDownload(function () use ($query) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
-            ExportSafety::writeCsvRow($out, [
-                'Kode', 'Nama', 'Telepon', 'Email', 'Alamat', 'Kota', 'Provinsi',
-                'Jumlah Order', 'Total Belanja', 'Status', 'Fraud Score', 'Fraud Label',
-            ]);
+        return Excel::download(new CustomerExport($query), 'pelanggan-'.now()->format('Ymd').'.xlsx');
 
-            $query->chunk(100, function ($chunk) use ($out) {
-                foreach ($chunk as $customer) {
-                    $metrics = $this->customers->metricsFor($customer);
-                    ExportSafety::writeCsvRow($out, [
-                        $this->customers->publicCode($customer),
-                        $customer->name,
-                        $customer->phone,
-                        $customer->email,
-                        $customer->default_address_line1,
-                        $customer->default_city,
-                        $customer->default_province,
-                        $metrics['order_count'],
-                        $metrics['total_spent'],
-                        $metrics['status']['label'],
-                        $metrics['fraud']['score'],
-                        $metrics['fraud']['label'],
-                    ]);
-                }
-            });
-
-            fclose($out);
-        }, 'pelanggan-'.now()->format('Ymd').'.csv', [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
     }
 }

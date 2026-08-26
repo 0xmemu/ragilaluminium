@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
 use App\Services\StorePerformanceService;
 use App\Support\ExportSafety;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\StorePerformanceExport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -124,136 +124,7 @@ class AnalyticsController extends Controller
         $filename = 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx';
 
         ExportSafety::assertPerformancePayloadWithinLimit($payload);
-
-
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Performa Toko');
-
-        $row = 1;
-        $sheet->setCellValue('A'.$row, 'Performa Toko');
-        $sheet->setCellValue('B'.$row, $payload['range']['label']);
-        $row++;
-        $sheet->setCellValue('A'.$row, 'Dari');
-        $sheet->setCellValue('B'.$row, $payload['range']['from_date']);
-        $sheet->setCellValue('C'.$row, 'Sampai');
-        $sheet->setCellValue('D'.$row, $payload['range']['to_date']);
-        $row += 2;
-
-        // Task 4: ringkasan financial utama (gross/net/refund) sebelum tabel KPI.
-        $sheet->setCellValue('A'.$row, 'Financial');
-        $sheet->getStyle('A'.$row)->getFont()->setBold(true);
-        $row++;
-        $fin = $payload['financial'] ?? [];
-        $finRows = [
-            ['Penjualan (Gross)', $fin['gross_revenue'] ?? 0],
-            ['Penjualan Bersih', $fin['net_revenue'] ?? 0],
-            ['Refund Diberikan', $fin['refund_adjustments'] ?? 0],
-        ];
-        foreach ($finRows as $fr) {
-            $sheet->fromArray(['Financial', $fr[0], $fr[1], '', ''], null, 'A'.$row);
-            $row++;
-        }
-        $row++;
-
-        $headers = ['Bagian', 'Metrik', 'Nilai', 'Periode sebelumnya', 'Perubahan %'];
-        $sheet->fromArray($headers, null, 'A'.$row);
-        $headerRow = $row;
-        $row++;
-        foreach ($payload['sections'] as $section) {
-            foreach ($section['kpis'] as $kpi) {
-                $sheet->fromArray([
-                    $section['title'],
-                    $kpi['label'],
-                    $kpi['value'],
-                    $kpi['previous'],
-                    $kpi['change_percent'] === null ? 'Baru pada periode ini' : $kpi['change_percent'],
-                ], null, 'A'.$row);
-                $row++;
-            }
-        }
-        $sheet->getStyle('A'.$headerRow.':E'.$headerRow)->getFont()->setBold(true);
-
-        $row++;
-        $sheet->setCellValue('A'.$row, 'Produk terlaris')->getStyle('A'.$row)->getFont()->setBold(true);
-        $row++;
-        $sheet->fromArray(['SKU', 'Nama', 'Unit', 'Omzet', 'Jumlah order'], null, 'A'.$row);
-        $row++;
-        foreach ($payload['top_products'] as $product) {
-            $sheet->fromArray([
-                $product['parent_sku'],
-                $product['name'],
-                $product['units'],
-                $product['revenue'],
-                $product['order_count'],
-            ], null, 'A'.$row);
-            $row++;
-        }
-
-        $row++;
-        $sheet->setCellValue('A'.$row, 'Customer')->getStyle('A'.$row)->getFont()->setBold(true);
-        $row++;
-        $sheet->fromArray(['Nama', 'Telepon', 'Frekuensi', 'Total belanja', 'Order terakhir'], null, 'A'.$row);
-        $row++;
-        foreach ($payload['customers'] as $customer) {
-            $sheet->fromArray([
-                $customer['customer_name'],
-                $customer['customer_phone'],
-                $customer['order_count'],
-                $customer['total_spent'],
-                $customer['last_order_at'],
-            ], null, 'A'.$row);
-            $row++;
-        }
-
-        // Biaya Retur — ongkir retur ditanggung toko (biaya operasional, bukan pengurang omzet).
-        $row++;
-        $sheet->setCellValue('A'.$row, 'Biaya Retur — Ongkir')->getStyle('A'.$row)->getFont()->setBold(true);
-        $row++;
-        $rcList = $payload['return_shipping_costs'] ?? [];
-        $rcTotal = (float) collect($rcList)->sum('return_shipping_cost');
-        $sheet->fromArray(['Total periode', 'Jumlah kasus'], null, 'A'.$row);
-        $sheet->fromArray([$rcTotal, count($rcList)], null, 'C'.$row);
-        $row += 2;
-        $sheet->fromArray(['Order', 'Tanggal selesai', 'Pihak penyebab', 'Alasan', 'Ongkir retur'], null, 'A'.$row);
-        $row++;
-        foreach ($rcList as $rc) {
-            $sheet->fromArray([
-                $rc['order_number'] ?? $rc['order_id'],
-                $rc['completed_at'] ?? '-',
-                $rc['fault_party'] ?? '-',
-                $rc['reason'] ?? '-',
-                $rc['return_shipping_cost'] ?? 0,
-            ], null, 'A'.$row);
-            $row++;
-        }
-
-        foreach ($payload['charts'] as $chart) {
-            $row++;
-            $sheet->setCellValue('A'.$row, $chart['title'])->getStyle('A'.$row)->getFont()->setBold(true);
-            $row++;
-            $sheet->fromArray(['Bucket', 'Label', 'Nilai'], null, 'A'.$row);
-            $row++;
-            foreach ($chart['series'] as $point) {
-                $sheet->fromArray([$point['bucket'], $point['label'], $point['value']], null, 'A'.$row);
-                $row++;
-            }
-        }
-
-        foreach (range('A', 'E') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
-
-        ob_start();
-        $writer = new Xlsx($spreadsheet);
-        $writer->save('php://output');
-        $xls = ob_get_clean();
-        $spreadsheet->disconnectWorksheets();
-
-        return response($xls)->withHeaders([
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        return Excel::download(new StorePerformanceExport($payload), 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx');
     }
 
     public function importPerformance(): Response
