@@ -144,6 +144,7 @@ return [
                 ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
                 ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],
+                ['label' => 'Kontak', 'route' => 'admin.beranda.kontak.edit', 'icon' => 'phone', 'active' => ['admin.beranda.kontak.*']],
                 ['label' => 'Dokumen Halaman', 'route' => 'admin.documents.index', 'icon' => 'file-text', 'active' => ['admin.documents.*', 'admin.tentang-kami.*', 'admin.ketentuan-layanan.*', 'admin.kebijakan-privasi.*']],
                 ['label' => 'Marketplace & Media Sosial', 'route' => 'admin.storefront-platforms.edit', 'icon' => 'storefront', 'active' => ['admin.storefront-platforms.*']],
                 ['label' => 'Apa Kata Pelanggan Kami', 'route' => 'admin.apa-kata-pelanggan.index', 'icon' => 'badge-check', 'active' => ['admin.apa-kata-pelanggan.*']],
