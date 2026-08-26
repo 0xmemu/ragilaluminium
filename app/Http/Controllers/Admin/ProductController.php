@@ -105,7 +105,7 @@ class ProductController extends Controller
         ]);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $category = (string) $request->input('product_category', 'all');
         $model = (string) $request->input('product_model', 'all');

@@ -68,7 +68,7 @@ class ActivityLogController extends Controller
         ]);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $rows = $this->logs->exportRows($request);
         ExportSafety::assertCountWithinLimit($rows->count());

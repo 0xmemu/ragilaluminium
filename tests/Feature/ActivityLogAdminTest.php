@@ -73,10 +73,22 @@ class ActivityLogAdminTest extends TestCase
             ->get(route('admin.activity-logs.export'));
 
         $response->assertOk();
-        $response->assertStreamed();
-        $content = $response->streamedContent();
-        $this->assertStringContainsString('payment.confirmed', $content);
-        $this->assertStringContainsString('Pesanan & Biaya', $content);
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->assertStringContainsString('.xlsx', (string) $response->headers->get('content-disposition'));
+        $content = file_get_contents($response->getFile()->getPathname());
+        $this->assertNotEmpty($content);
+        $tmp = tempnam(sys_get_temp_dir(), 'act').'.xlsx';
+        file_put_contents($tmp, $content);
+        $ws = (new \PhpOffice\PhpSpreadsheet\Reader\Xlsx())->load($tmp)->getActiveSheet();
+        $text = '';
+        foreach ($ws->getRowIterator() as $row) {
+            foreach ($row->getCellIterator() as $cell) {
+                $text .= (string) $cell->getValue().' ';
+            }
+        }
+        unlink($tmp);
+        $this->assertStringContainsString('Pesanan & Biaya', $text);
+        $this->assertStringContainsString('Pesanan', $text);
     }
 
     public function test_login_writes_auth_login_event_log(): void

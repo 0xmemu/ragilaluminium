@@ -149,7 +149,7 @@ class CustomerController extends Controller
             ->with('success', 'Data pelanggan disimpan.');
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $this->customers->syncMissingFromOrders();
 

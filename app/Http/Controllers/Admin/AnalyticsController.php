@@ -111,7 +111,7 @@ class AnalyticsController extends Controller
         return $payload;
     }
 
-    public function exportStorePerformance(Request $request): \Illuminate\Http\Response
+    public function exportStorePerformance(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $period = (string) $request->input('period', 'today');
         $payload = $this->performance->build(

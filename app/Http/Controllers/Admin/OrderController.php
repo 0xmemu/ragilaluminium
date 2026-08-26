@@ -181,7 +181,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $status = (string) $request->input('order_status', 'all');
         $paymentStatus = trim((string) $request->input('payment_status', ''));
