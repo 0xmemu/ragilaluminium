@@ -12,20 +12,31 @@ import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { addReadyCount, playReadySound } from "@/lib/media-live"
+import { routeUrl } from "@/lib/routes"
 import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 
-const CONTEXT_PRESETS = [
-  { label: "Semua", q: "" },
-  { label: "Hasil pemasangan", q: "hasil-pemasangan" },
-  { label: "Banner", q: "banner" },
-  { label: "Media", q: "media" },
-]
+// --- Status mapper media khusus (bukan shipping) ---
+const MEDIA_STATUS_META: Record<string, { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" }> = {
+  pending:    { label: "Menunggu diproses", tone: "neutral" },
+  uploading:  { label: "Sedang diunggah",   tone: "info" },
+  downloading:{ label: "Mengambil media",   tone: "info" },
+  processing: { label: "Sedang diproses",   tone: "info" },
+  ready:      { label: "Siap digunakan",    tone: "success" },
+  failed:     { label: "Gagal diproses",    tone: "danger" },
+  archived:   { label: "Diarsipkan",         tone: "neutral" },
+  duplicate:  { label: "Duplikat terdeteksi", tone: "warning" },
+}
 
-const CONTEXT_LABELS: Record<string, string> = {
-  "hasil-pemasangan": "Hasil pemasangan",
-  banner: "Banner",
-  media: "Media",
-  lainnya: "Lainnya",
+function mediaStatusMeta(status: string): { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" } {
+  return MEDIA_STATUS_META[status] ?? { label: status, tone: "neutral" }
+}
+
+// --- Types ---
+interface FolderNode {
+  id: number | string
+  name: string
+  assets_count: number
+  children: FolderNode[]
 }
 
 interface LibraryAsset {
@@ -34,16 +45,14 @@ interface LibraryAsset {
   kind: string
   status: string
   usage_count: number
+  folder_id: number | null
   thumb_url?: string | null
   media_url?: string | null
+  public_url: string
+  error_reason?: string | null
   context: string
   attach_url: string
   created_at: string | null
-}
-
-interface ProductOption {
-  id: number
-  label: string
 }
 
 interface LibraryFilters {
@@ -51,19 +60,226 @@ interface LibraryFilters {
   kind: string
   status: string
   visibility: string
+  folder_id: string
 }
 
-const CONTEXT_RE = /^(hasil-pemasangan|banner|media)$/
+interface ProductOption {
+  id: number
+  label: string
+}
 
+// --- FolderTree component ---
+function FolderTree({ nodes, currentFolderId, onSelect }: {
+  nodes: FolderNode[]
+  currentFolderId: string
+  onSelect: (id: string) => void
+}) {
+  return (
+    <ul className="space-y-0.5">
+      {nodes.map((node) => {
+        const isActive = String(node.id) === currentFolderId
+        const hasChildren = node.children.length > 0
+        return (
+          <li key={node.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(String(node.id))}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors",
+                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-card-hover",
+              )}
+            >
+              <Icon name="folder" className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="truncate">{node.name}</span>
+              {node.assets_count > 0 ? (
+                <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                  {node.assets_count}
+                </span>
+              ) : null}
+            </button>
+            {hasChildren ? (
+              <div className="ml-3 border-l border-border pl-2">
+                <FolderTree nodes={node.children} currentFolderId={currentFolderId} onSelect={onSelect} />
+              </div>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+// --- Upload preview modal ---
+function UploadModal({ open, onClose, folderId, onUploadDone }: {
+  open: boolean
+  onClose: () => void
+  folderId: string | null
+  onUploadDone: () => void
+}) {
+  const [mode, setMode] = React.useState<"file" | "multiple" | "folder" | "url">("file")
+  const [files, setFiles] = React.useState<File[]>([])
+  const [url, setUrl] = React.useState("")
+  const [results, setResults] = React.useState<{ name: string; status: string; error?: string; progress: number }[]>([])
+  const [busy, setBusy] = React.useState(false)
+  const { csrf } = usePage<SharedPageProps>().props
+
+  const reset = () => { setFiles([]); setUrl(""); setResults([]); setBusy(false) }
+
+  async function startUpload() {
+    setBusy(true)
+    const uploads = files.map((f) => ({ name: f.name, file: f }))
+    setResults(uploads.map((u) => ({ name: u.name, status: "uploading", progress: 0 })))
+    for (let i = 0; i < uploads.length; i++) {
+      const u = uploads[i]
+      await new Promise<void>((resolve) => {
+        const fd = new FormData()
+        fd.append("media", u.file)
+        if (folderId) fd.append("folder_id", folderId)
+        const xhr = new XMLHttpRequest()
+        xhr.open("POST", routeUrl("admin.media.upload"))
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
+        xhr.setRequestHeader("X-CSRF-TOKEN", csrf)
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.min(99, Math.round((e.loaded / e.total) * 100))
+            setResults((prev) => prev.map((r, j) => (j === i ? { ...r, progress: pct } : r)))
+          }
+        }
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setResults((prev) => prev.map((r, j) => (j === i ? { ...r, status: "sukses", progress: 100 } : r)))
+          } else {
+            let msg = "Upload gagal"
+            try {
+              const body = JSON.parse(xhr.responseText)
+              if (body?.message) msg = body.message
+            } catch { /* respon bukan JSON */ }
+            setResults((prev) => prev.map((r, j) => (j === i ? { ...r, status: "gagal", error: msg } : r)))
+          }
+          resolve()
+        }
+        xhr.onerror = () => {
+          setResults((prev) => prev.map((r, j) => (j === i ? { ...r, status: "gagal", error: "Upload gagal, periksa koneksi." } : r)))
+          resolve()
+        }
+        xhr.send(fd)
+      })
+    }
+    setBusy(false)
+    onUploadDone()
+  }
+
+  async function importUrl() {
+    setBusy(true)
+    try {
+      const res = await fetch(routeUrl("admin.media.import-url"), {
+        method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": csrf },
+        body: JSON.stringify({ source_url: url, folder_id: folderId || undefined }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Gagal")
+      setResults([{ name: url, status: "sukses", progress: 100 }])
+    } catch (e) {
+      setResults([{ name: url, status: "gagal", error: String(e), progress: 0 }])
+    }
+    setBusy(false); onUploadDone()
+  }
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Unggah Media</h3>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <Icon name="x" className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(["file", "multiple", "folder", "url"] as const).map((m) => (
+            <Button key={m} type="button" variant={mode === m ? "primary" : "secondary"} size="sm" onClick={() => { setMode(m); reset() }}>
+              {m === "file" ? "Pilih File" : m === "multiple" ? "Pilih Banyak File" : m === "folder" ? "Unggah Folder" : "Dari URL"}
+            </Button>
+          ))}
+        </div>
+
+        {mode !== "url" ? (
+          <input
+            type="file"
+            multiple={mode !== "file"}
+            {...(mode === "folder" ? { webkitdirectory: "" as any } : {})}
+            accept="image/*,video/*"
+            className="mb-3 w-full text-xs text-muted-foreground file:mr-3 file:rounded file:border-0 file:bg-primary/10 file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          />
+        ) : (
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="mb-3" />
+        )}
+
+        {files.length > 0 ? (
+          <div className="mb-3 max-h-40 overflow-y-auto rounded border border-border p-2 text-xs">
+            {files.map((f) => (
+              <div key={f.name} className="flex items-center justify-between py-0.5">
+                <span className="truncate">{f.name}</span>
+                <span className="shrink-0 text-muted-foreground">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {results.length > 0 ? (
+          <div className="mb-3 max-h-40 overflow-y-auto rounded border border-border p-2 text-xs">
+            {results.map((r, idx) => (
+              <div key={`${r.name}-${idx}`} className="flex items-center gap-2 py-0.5">
+                <span className="truncate">{r.name}</span>
+                {r.status === "uploading" ? (
+                  <span className="flex w-28 shrink-0 items-center gap-1.5">
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                      <span className="block h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${r.progress}%` }} />
+                    </span>
+                    <span className="tabular-nums text-muted-foreground">{r.progress}%</span>
+                  </span>
+                ) : (
+                  <span className={cn("shrink-0", r.status === "sukses" ? "text-success" : "text-destructive")}>
+                    {r.status === "sukses" ? "✓" : `✗ ${r.error ?? ""}`}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>Batal</Button>
+          <Button type="button" size="sm" disabled={(!files.length && !url) || busy} onClick={mode === "url" ? importUrl : startUpload}>
+            {busy ? "Memproses…" : "Mulai Unggah"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Copy URL helper ---
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// ====== MAIN PAGE ======
 export default function MediaLibrary({
-  assets,
-  pagination,
-  filters,
-  indexHref,
+  assets, pagination, filters, folders, historyHref, indexHref,
 }: {
   assets: LibraryAsset[]
   pagination: PaginationData | null
   filters: LibraryFilters
+  folders: FolderNode[]
+  historyHref: string
   indexHref: string
 }) {
   const { csrf } = usePage<SharedPageProps>().props
@@ -71,34 +287,23 @@ export default function MediaLibrary({
   const [kind, setKind] = React.useState(filters.kind)
   const [status, setStatus] = React.useState(filters.status)
   const [visibility, setVisibility] = React.useState(filters.visibility)
-
-  // Seleksi multi-asset
+  const [folderId, setFolderId] = React.useState(filters.folder_id)
   const [selectedIds, setSelectedIds] = React.useState<number[]>([])
-  const [bulkBusy, setBulkBusy] = React.useState(false)
+  const [showUploadModal, setShowUploadModal] = React.useState(false)
+  const [copiedId, setCopiedId] = React.useState<number | null>(null)
+  const [bulkMoveTarget, setBulkMoveTarget] = React.useState<string>("")
 
-  // Upload langsung ke R2
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = React.useState(false)
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null)
-  const [uploadError, setUploadError] = React.useState<string | null>(null)
-
-  // Status live WebP (pending -> ready tanpa reload)
-  const [liveStatus, setLiveStatus] = React.useState<
-    Record<number, { status: string; error_reason?: string | null }>
-  >({})
-  const [readyNotice, setReadyNotice] = React.useState<string | null>(null)
+  // Live status
+  const [liveStatus, setLiveStatus] = React.useState<Record<number, { status: string; error_reason?: string | null }>>({})
   const [liveThumbs, setLiveThumbs] = React.useState<Record<number, string | null | undefined>>({})
+  const [readyNotice, setReadyNotice] = React.useState<string | null>(null)
   const liveStatusRef = React.useRef(liveStatus)
   const notifiedRef = React.useRef<number[]>([])
   const assetsRef = React.useRef(assets)
-  React.useEffect(() => {
-    liveStatusRef.current = liveStatus
-  }, [liveStatus])
-  React.useEffect(() => {
-    assetsRef.current = assets
-  }, [assets])
+  React.useEffect(() => { liveStatusRef.current = liveStatus }, [liveStatus])
+  React.useEffect(() => { assetsRef.current = assets }, [assets])
 
-  // Attach lintas produk (pencarian live)
+  // Attach
   const [attachingId, setAttachingId] = React.useState<number | null>(null)
   const [attachProduct, setAttachProduct] = React.useState("")
   const [attachQuery, setAttachQuery] = React.useState("")
@@ -111,57 +316,41 @@ export default function MediaLibrary({
   const [attachBusy, setAttachBusy] = React.useState(false)
   const [attachError, setAttachError] = React.useState<string | null>(null)
 
-  const runSearch = React.useCallback(
-    (overrides: { q?: string; kind?: string; status?: string; visibility?: string } = {}) => {
-      const nextQ = overrides.q !== undefined ? overrides.q : q
-      const nextKind = overrides.kind !== undefined ? overrides.kind : kind
-      const nextStatus = overrides.status !== undefined ? overrides.status : status
-      const nextVisibility = overrides.visibility !== undefined ? overrides.visibility : visibility
-      router.get(
-        route("admin.media.library"),
-        {
-          q: nextQ || undefined,
-          kind: nextKind || undefined,
-          status: nextStatus || undefined,
-          visibility: nextVisibility || undefined,
-        },
-        { preserveState: true, preserveScroll: true },
-      )
-    },
-    [q, kind, status, visibility],
-  )
+  const runSearch = React.useCallback((overrides: Partial<LibraryFilters> = {}) => {
+    router.get(
+      routeUrl("admin.media.library"),
+      {
+        q: overrides.q ?? (q || undefined),
+        kind: overrides.kind ?? (kind || undefined),
+        status: overrides.status ?? (status || undefined),
+        visibility: overrides.visibility ?? (visibility || undefined),
+        folder_id: overrides.folder_id ?? (folderId || undefined),
+      },
+      { preserveState: true, preserveScroll: true },
+    )
+  }, [q, kind, status, visibility, folderId])
 
-  // Pencarian live (debounce)
   const skipFirst = React.useRef(true)
   React.useEffect(() => {
-    if (skipFirst.current) {
-      skipFirst.current = false
-      return
-    }
+    if (skipFirst.current) { skipFirst.current = false; return }
     const timer = window.setTimeout(() => runSearch(), 350)
     return () => window.clearTimeout(timer)
   }, [q, runSearch])
 
-  // Pencarian produk untuk attach (debounce)
+  // Attach search
   React.useEffect(() => {
     if (attachingId === null) return
     const query = attachQuery.trim()
     if (!query) return
     const timer = window.setTimeout(() => {
       setAttachSearching(true)
-      void fetch(`${route("admin.media.products.search")}?q=${encodeURIComponent(query)}`, {
+      fetch(`${routeUrl("admin.media.products.search")}?q=${encodeURIComponent(query)}`, {
         headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
       })
-        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-        .then((body: { products: ProductOption[] }) => {
-          setAttachResults(body.products ?? [])
-        })
-        .catch(() => {
-          setAttachResults([])
-        })
-        .finally(() => {
-          setAttachSearching(false)
-        })
+        .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+        .then((b) => setAttachResults(b.products ?? []))
+        .catch(() => setAttachResults([]))
+        .finally(() => setAttachSearching(false))
     }, 300)
     return () => window.clearTimeout(timer)
   }, [attachQuery, attachingId])
@@ -170,522 +359,295 @@ export default function MediaLibrary({
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
-  function toggleSelectPage() {
-    const pageIds = assets.map((a) => a.id)
-    const allSelected = pageIds.every((id) => selectedIds.includes(id))
-    setSelectedIds((prev) => {
-      const rest = prev.filter((id) => !pageIds.includes(id))
-      return allSelected ? rest : [...rest, ...pageIds]
-    })
-  }
-
   function runBulkAction(action: "archive" | "delete" | "restore") {
-    if (!selectedIds.length) return
-    setBulkBusy(true)
-    router.post(
-      route("admin.media.bulk-action"),
-      { action, asset_ids: selectedIds },
-      {
-        preserveScroll: true,
-        onSuccess: () => setSelectedIds([]),
-        onFinish: () => setBulkBusy(false),
-      },
-    )
+    const form = new FormData()
+    form.append("action", action)
+    selectedIds.forEach((id) => form.append("asset_ids[]", String(id)))
+    router.post(routeUrl("admin.media.bulk-action"), form, { preserveState: true, onSuccess: () => setSelectedIds([]) })
   }
 
-  async function uploadDirect(file: File) {
-    setUploading(true)
-    setUploadProgress(0)
-    setUploadError(null)
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission()
-    }
-    const kindUpload = file.type.startsWith("video/") ? "video" : "image"
-    const context = CONTEXT_RE.test(q.trim()) ? q.trim() : "media"
-    try {
-      const presignRes = await fetch(route("admin.media.presign"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          "X-CSRF-TOKEN": csrf,
-        },
-        body: JSON.stringify({
-          kind: kindUpload,
-          filename: file.name,
-          size_bytes: file.size,
-          mime: file.type || "application/octet-stream",
-          context,
-        }),
-      })
-      if (!presignRes.ok) {
-        const body = await presignRes.json().catch(() => null)
-        throw new Error(body?.message ?? `Gagal menyiapkan upload (${presignRes.status})`)
-      }
-      const presigned = (await presignRes.json()) as { upload_url: string; object_key: string }
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open("PUT", presigned.upload_url)
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            setUploadProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)))
-          }
-        }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error(`Upload ke penyimpanan gagal (${xhr.status})`))
-        }
-        xhr.onerror = () => reject(new Error("Upload gagal — periksa koneksi internet."))
-        xhr.send(file)
-      })
-      setUploadProgress(100)
-
-      const form = new FormData()
-      form.append("kind", kindUpload)
-      form.append("object_key", presigned.object_key)
-      form.append("context", context)
-      form.append("mime", file.type || "application/octet-stream")
-      form.append("position", "1")
-      form.append("visibility", "visible")
-      router.post(route("admin.media.finalize"), form, {
-        forceFormData: true,
-        preserveScroll: true,
-      })
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Upload gagal — coba lagi.")
-    } finally {
-      setUploading(false)
-      setUploadProgress(null)
-    }
+  async function bulkMove() {
+    if (!bulkMoveTarget) return
+    const form = new FormData()
+    form.append("folder_id", bulkMoveTarget)
+    selectedIds.forEach((id) => form.append("asset_ids[]", String(id)))
+    router.post(routeUrl("admin.media.folders.move-assets"), form, { preserveState: true, onSuccess: () => { setSelectedIds([]); setBulkMoveTarget("") } })
   }
 
-  function openAttach(asset: LibraryAsset) {
-    setAttachingId(attachingId === asset.id ? null : asset.id)
-    setAttachError(null)
-    if (attachingId !== asset.id) {
-      setAttachProduct("")
-      setAttachQuery("")
-      setAttachResults([])
-      setAttachPosition("1")
-      setAttachCatalog(true)
-      setAttachInstallation(false)
-      setAttachVisibility("visible")
-    }
+  async function handleCopyUrl(asset: LibraryAsset) {
+    const ok = await copyText(asset.public_url)
+    if (ok) { setCopiedId(asset.id); setTimeout(() => setCopiedId(null), 2000) }
   }
-
-  function pickProduct(product: ProductOption) {
-    setAttachProduct(String(product.id))
-    setAttachQuery(product.label)
-    setAttachResults([])
-  }
-
-  function submitAttach(asset: LibraryAsset) {
-    if (!attachProduct) {
-      setAttachError("Pilih produk tujuan terlebih dahulu.")
-      return
-    }
-    setAttachBusy(true)
-    setAttachError(null)
-    router.post(
-      asset.attach_url,
-      {
-        product_ids: [Number(attachProduct)],
-        position: Number(attachPosition),
-        show_in_catalog: attachCatalog ? 1 : 0,
-        is_installation: attachInstallation ? 1 : 0,
-        is_main_image: 0,
-        visibility: attachVisibility,
-      },
-      {
-        preserveScroll: true,
-        onSuccess: () => {
-          setAttachingId(null)
-        },
-        onError: (errors) => {
-          setAttachError(Object.values(errors)[0] ?? "Gagal memasang media.")
-        },
-        onFinish: () => setAttachBusy(false),
-      },
-    )
-  }
-
-  const allPageSelected = assets.length > 0 && assets.every((a) => selectedIds.includes(a.id))
-
-  // Polling status live: selama ada aset pending, cek tiap 3 detik tanpa reload.
-  const pendingKey = assets
-    .filter((a) => (liveStatus[a.id]?.status ?? a.status) === "pending")
-    .map((a) => a.id)
-    .join(",")
-
-  React.useEffect(() => {
-    if (!pendingKey) return
-    let cancelled = false
-
-    async function tick() {
-      if (cancelled) return
-      try {
-        const params = new URLSearchParams()
-        params.set("kind", "asset")
-        pendingKey.split(",").filter(Boolean).forEach((id) => params.append("ids[]", id))
-        const res = await fetch(`${route("admin.media.status")}?${params.toString()}`, {
-          headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-        })
-        if (!res.ok) return
-        const body = (await res.json()) as {
-          statuses: { id: number; status: string; error_reason?: string | null; thumb_url?: string | null }[]
-        }
-        const next: Record<number, { status: string; error_reason?: string | null }> = {}
-        const thumbNext: Record<number, string | null | undefined> = {}
-        const newlyReady: number[] = []
-        for (const item of body.statuses) {
-          next[item.id] = { status: item.status, error_reason: item.error_reason ?? null }
-          if (item.thumb_url) thumbNext[item.id] = item.thumb_url
-          const prev = liveStatusRef.current[item.id]?.status ?? assetsRef.current.find((a) => a.id === item.id)?.status
-          if (prev === "pending" && item.status === "ready" && !notifiedRef.current.includes(item.id)) {
-            newlyReady.push(item.id)
-          }
-        }
-        setLiveStatus((old) => ({ ...old, ...next }))
-        setLiveThumbs((old) => ({ ...old, ...thumbNext }))
-        if (newlyReady.length > 0) {
-          notifiedRef.current = [...notifiedRef.current, ...newlyReady]
-          setReadyNotice(`${newlyReady.length} media siap dipakai.`)
-          playReadySound()
-          addReadyCount(newlyReady.length)
-          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-            new Notification("Media siap dipakai", {
-              body: `${newlyReady.length} media selesai diproses WebP.`,
-            })
-          }
-        }
-      } catch {
-        // Abaikan error polling sesaat; interval berikutnya akan mencoba lagi.
-      }
-    }
-
-    const interval = window.setInterval(() => void tick(), 3000)
-    return () => {
-      cancelled = true
-      window.clearInterval(interval)
-    }
-  }, [pendingKey])
 
   return (
     <AdminLayout
       title="Media Library"
-      description="Semua aset media bersama (shared assets): cari, unggah langsung, pilih banyak untuk arsip/hapus, atau pasang ke produk mana pun."
+      description="Semua aset media bersama: folder, unggah, salin URL, dan pasang ke produk/banner."
       actions={
         <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void uploadDirect(file)
-              event.target.value = ""
-            }}
-          />
-          <Button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
-            <Icon name="upload" className="size-4" aria-hidden="true" />
-            {uploading ? `Mengunggah ${uploadProgress ?? 0}%…` : "Upload media"}
+          <Button type="button" onClick={() => setShowUploadModal(true)}>
+            <Icon name="upload" className="size-4" aria-hidden="true" /> Unggah Media
           </Button>
           <Button asChild variant="secondary">
-            <Link href={indexHref}>
-              <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-              Media produk
-            </Link>
+            <Link href={indexHref}><Icon name="arrow-left" className="size-4" aria-hidden="true" /> Media produk</Link>
           </Button>
         </div>
       }
     >
       <Head title="Media Library | Admin" />
 
-      {readyNotice ? (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3">
-          <p className="text-sm font-semibold text-primary">{readyNotice}</p>
-          <Button type="button" size="sm" variant="ghost" onClick={() => setReadyNotice(null)}>
-            Tutup
-          </Button>
-        </div>
-      ) : null}
+      <UploadModal
+        open={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        folderId={folderId || null}
+        onUploadDone={() => { setShowUploadModal(false); runSearch() }}
+      />
 
-      {uploadError ? (
-        <p role="alert" className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {uploadError}
-        </p>
-      ) : null}
-
-      {uploading ? (
-        <div role="status" aria-live="polite" className="mb-4">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Upload langsung ke penyimpanan (R2)…</span>
-            <span>{uploadProgress ?? 0}%</span>
-          </div>
-          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${uploadProgress ?? 0}%` }} />
-          </div>
-        </div>
-      ) : null}
-
-      {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4">
-        <div className="min-w-52 flex-1">
-          <label className="text-xs font-semibold text-muted-foreground">Cari label / URL</label>
-          <Input
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="mis. hasil-pemasangan, banner…"
-          />
-        </div>
-        <div className="w-40">
-          <label className="text-xs font-semibold text-muted-foreground">Jenis</label>
-          <Select
-            value={kind}
-            onChange={(event) => {
-              setKind(event.target.value)
-              runSearch({ kind: event.target.value })
-            }}
-          >
-            <option value="">Semua</option>
-            <option value="image">Gambar</option>
-            <option value="video">Video</option>
-          </Select>
-        </div>
-        <div className="w-40">
-          <label className="text-xs font-semibold text-muted-foreground">Status</label>
-          <Select
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value)
-              runSearch({ status: event.target.value })
-            }}
-          >
-            <option value="">Semua status</option>
-            <option value="ready">Siap</option>
-            <option value="pending">Menunggu</option>
-            <option value="failed">Gagal</option>
-          </Select>
-        </div>
-        <div className="w-40">
-          <label className="text-xs font-semibold text-muted-foreground">Visibilitas</label>
-          <Select
-            value={visibility}
-            onChange={(event) => {
-              setVisibility(event.target.value)
-              runSearch({ visibility: event.target.value })
-            }}
-          >
-            <option value="">Semua</option>
-            <option value="visible">Aktif</option>
-            <option value="archived">Diarsipkan</option>
-          </Select>
-        </div>
-        <Button type="button" variant="ghost" onClick={() => { setQ(""); setKind(""); setStatus(""); setVisibility(""); router.get(route("admin.media.library"), {}, { preserveState: true }) }}>
-          Reset
-        </Button>
-      </div>
-
-      {/* Chip konteks */}
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        {CONTEXT_PRESETS.map((preset) => {
-          const active = q === preset.q
-          return (
+      <div className="flex gap-4">
+        {/* Sidebar folder */}
+        <aside className="w-64 shrink-0">
+          <div className="mb-2 space-y-1">
             <button
-              key={preset.label}
+              type="button"
+              onClick={() => { setFolderId(""); runSearch({ folder_id: "" }) }}
+              className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium", !folderId && !filters.folder_id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-card-hover")}
+            >
+              <Icon name="layout-grid" className="size-3.5" aria-hidden="true" /> Semua Media
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFolderId("0"); runSearch({ folder_id: "0" }) }}
+              className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium", folderId === "0" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-card-hover")}
+            >
+              <Icon name="inbox" className="size-3.5" aria-hidden="true" /> Inbox
+            </button>
+          </div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">Folder</span>
+            <button
               type="button"
               onClick={() => {
-                setQ(preset.q)
-                runSearch({ q: preset.q })
+                const name = window.prompt("Nama folder baru:")
+                if (name?.trim()) {
+                  const fd = new FormData()
+                  fd.append("name", name.trim())
+                  if (folderId && folderId !== "0") fd.append("parent_id", folderId)
+                  router.post(routeUrl("admin.media.folders.store"), fd, { preserveState: true })
+                }
               }}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                active
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-foreground/25 hover:text-foreground",
-              )}
+              className="text-xs font-medium text-primary hover:underline"
             >
-              {preset.label}
+              + Baru
             </button>
-          )
-        })}
-      </div>
+          </div>
+          <FolderTree nodes={folders} currentFolderId={folderId} onSelect={(id) => { setFolderId(id); runSearch({ folder_id: id }) }} />
+        </aside>
 
-      {/* Bulk bar */}
-      {selectedIds.length > 0 ? (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-          <span className="text-sm font-semibold text-foreground">{selectedIds.length} aset terpilih</span>
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={allPageSelected}
-              onChange={toggleSelectPage}
-              className="h-4 w-4 accent-primary"
-            />
-            Semua di halaman ini
-          </label>
-          <div className="ml-auto flex items-center gap-2">
-            <Button type="button" size="sm" variant="secondary" disabled={bulkBusy} onClick={() => runBulkAction("restore")}>
-              Pulihkan
-            </Button>
-            <Button type="button" size="sm" variant="secondary" disabled={bulkBusy} onClick={() => runBulkAction("archive")}>
-              Arsipkan
-            </Button>
-            <ConfirmAction
-              trigger={
-                <Button type="button" size="sm" variant="destructive" disabled={bulkBusy}>
-                  Hapus
-                </Button>
-              }
-              title="Hapus aset terpilih?"
-              description="Aset yang masih dipakai produk/banner/galeri otomatis diarsipkan, bukan dihapus. Aset tak terpakai dihapus permanen beserta file di penyimpanan."
-              confirmLabel="Hapus permanen"
-              processing={bulkBusy}
-              onConfirm={() => runBulkAction("delete")}
-            />
-            <Button type="button" size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedIds([])}>
-              Batal
+        {/* Main content */}
+        <div className="min-w-0 flex-1">
+          {/* Filters */}
+          <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
+            <div className="min-w-52 flex-1">
+              <label className="text-xs font-semibold text-muted-foreground">Cari label / URL</label>
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="mis. produck, banner…" />
+            </div>
+            <div className="w-36">
+              <label className="text-xs font-semibold text-muted-foreground">Jenis</label>
+              <Select value={kind} onChange={(e) => { setKind(e.target.value); runSearch({ kind: e.target.value }) }}>
+                <option value="">Semua</option>
+                <option value="image">Gambar</option>
+                <option value="video">Video</option>
+              </Select>
+            </div>
+            <div className="w-36">
+              <label className="text-xs font-semibold text-muted-foreground">Status</label>
+              <Select value={status} onChange={(e) => { setStatus(e.target.value); runSearch({ status: e.target.value }) }}>
+                <option value="">Semua status</option>
+                <option value="ready">Siap</option>
+                <option value="pending">Menunggu</option>
+                <option value="processing">Diproses</option>
+                <option value="failed">Gagal</option>
+                <option value="archived">Diarsipkan</option>
+              </Select>
+            </div>
+            <div className="w-36">
+              <label className="text-xs font-semibold text-muted-foreground">Visibilitas</label>
+              <Select value={visibility} onChange={(e) => { setVisibility(e.target.value); runSearch({ visibility: e.target.value }) }}>
+                <option value="">Semua</option>
+                <option value="visible">Tampil</option>
+                <option value="hidden">Sembunyi</option>
+                <option value="archived">Diarsipkan</option>
+              </Select>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href={historyHref}><Icon name="clock" className="size-3.5" aria-hidden="true" /> Riwayat</Link>
             </Button>
           </div>
-        </div>
-      ) : null}
 
+          {/* Bulk actions */}
+          {selectedIds.length > 0 ? (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 px-3">
+              <span className="text-xs font-semibold">{selectedIds.length} dipilih</span>
+              <ConfirmAction
+                trigger={<Button type="button" variant="secondary" size="sm">Arsipkan</Button>}
+                title="Arsipkan" description="Arsipkan aset terpilih?" confirmLabel="Arsipkan"
+                onConfirm={() => runBulkAction("archive")}
+              />
+              <ConfirmAction
+                trigger={<Button type="button" variant="secondary" size="sm">Pulihkan</Button>}
+                title="Pulihkan" description="Pulihkan aset?" confirmLabel="Pulihkan"
+                onConfirm={() => runBulkAction("restore")}
+              />
+              <ConfirmAction
+                trigger={<Button type="button" variant="secondary" size="sm" className="text-destructive">Hapus</Button>}
+                title="Hapus" description="Aset yang masih digunakan akan diarsipkan, bukan dihapus." confirmLabel="Hapus"
+                onConfirm={() => runBulkAction("delete")}
+              />
+              <Select value={bulkMoveTarget} onChange={(e) => setBulkMoveTarget(e.target.value)} className="w-48">
+                <option value="">Pindah ke folder…</option>
+                <option value="0">Inbox</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </Select>
+              {bulkMoveTarget ? (
+                <Button type="button" size="sm" onClick={bulkMove}>Pindahkan</Button>
+              ) : null}
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedIds([])}>Batal</Button>
+            </div>
+          ) : null}
 
-      {/* Grid asset */}
-      {assets.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">Belum ada aset yang cocok.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {assets.map((asset) => {
-            const isSelected = selectedIds.includes(asset.id)
-            const status = liveStatus[asset.id]?.status ?? asset.status
-            const thumb = liveThumbs[asset.id] ?? asset.thumb_url
-            return (
-              <div
-                key={asset.id}
-                className={cn(
-                  "overflow-hidden rounded-xl border bg-card shadow-soft transition-colors",
-                  isSelected ? "border-primary ring-1 ring-primary" : "border-border",
-                )}
-              >
-                <div className="relative aspect-square overflow-hidden bg-muted">
-                  {thumb ? (
-                    asset.kind === "video" ? (
-                      <video src={thumb} muted preload="metadata" className="size-full object-cover" />
+          {/* Grid */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {assets.map((asset) => {
+              const meta = mediaStatusMeta(asset.status)
+              const isCopied = copiedId === asset.id
+              return (
+                <div key={asset.id} className="group relative overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-md">
+                  <div className="relative aspect-square overflow-hidden bg-muted">
+                    {asset.thumb_url ? (
+                      <img src={asset.thumb_url} alt={asset.label} className="h-full w-full object-cover" loading="lazy" />
                     ) : (
-                      <img src={thumb} alt="" loading="lazy" className="size-full object-cover" />
-                    )
-                  ) : (
-                    <div className="flex size-full items-center justify-center text-[10px] text-muted-foreground/60">
-                      Tanpa gambar
-                    </div>
-                  )}
-                  <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
-                    {CONTEXT_LABELS[asset.context] ?? "Lainnya"}
-                  </span>
-                  <label className="absolute right-2 top-2 flex size-6 cursor-pointer items-center justify-center rounded-md bg-black/50">
+                      <div className="flex h-full items-center justify-center text-muted-foreground">
+                        <Icon name={asset.kind === "video" ? "video" : "image"} className="size-8" aria-hidden="true" />
+                      </div>
+                    )}
+                    {asset.status === "ready" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyUrl(asset)}
+                        aria-label={`Salin URL publik ${asset.label}`}
+                        title="Salin URL publik"
+                        className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
+                      >
+                        <Icon name={isCopied ? "check" : "copy"} className="size-3.5" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                    {asset.status === "failed" ? (
+                      <button
+                        type="button"
+                        onClick={() => router.post(routeUrl("admin.media.redownload", { media: asset.id }), {}, { preserveState: true })}
+                        className="absolute right-1.5 bottom-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-destructive"
+                        title="Coba lagi"
+                      >
+                        <Icon name="rotate-cw" className="size-3.5" aria-hidden="true" />
+                      </button>
+                    ) : null}
                     <input
                       type="checkbox"
-                      checked={isSelected}
+                      checked={selectedIds.includes(asset.id)}
                       onChange={() => toggleSelected(asset.id)}
-                      className="size-4 accent-primary"
+                      className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary opacity-0 transition-opacity group-hover:opacity-100"
                       aria-label={`Pilih ${asset.label}`}
                     />
-                  </label>
-                </div>
-                <div className="space-y-2 p-3">
-                  <p className="truncate font-mono text-xs font-semibold text-foreground" title={asset.label}>
-                    {asset.label}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={asset.kind === "video" ? "video" : "image"} label={asset.kind === "video" ? "Video" : "Gambar"} />
-                    <StatusBadge status={status} />
-                    <span className="text-[11px] text-muted-foreground">Dipakai di {asset.usage_count} produk</span>
                   </div>
-                  <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => openAttach(asset)}>
-                    <Icon name="link" className="size-3.5" aria-hidden="true" />
-                    {attachingId === asset.id ? "Tutup" : "Pasang ke produk"}
-                  </Button>
-
-                  {attachingId === asset.id ? (
-                    <div className="space-y-3 rounded-lg border border-border bg-surface-muted p-3">
-                      <Field id={`attach-product-${asset.id}`} label="Produk tujuan" error={attachError ?? undefined}>
-                        <div className="relative">
-                          <Input
-                            value={attachQuery}
-                            onChange={(event) => {
-                              const v = event.target.value
-                              setAttachQuery(v)
-                              if (!v.trim()) {
-                                setAttachResults([])
-                                setAttachSearching(false)
-                              }
-                            }}
-                            placeholder="Cari nama produk atau SKU…"
-                            autoComplete="off"
-                          />
-                          {attachQuery.trim() && !attachProduct ? (
-                            <div className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
-                              {attachSearching ? (
-                                <p className="px-3 py-2 text-xs text-muted-foreground">Mencari…</p>
-                              ) : attachResults.length === 0 ? (
-                                <p className="px-3 py-2 text-xs text-muted-foreground">Tidak ada produk cocok.</p>
-                              ) : (
-                                attachResults.map((product) => (
-                                  <button
-                                    key={product.id}
-                                    type="button"
-                                    onClick={() => pickProduct(product)}
-                                    className="block w-full truncate px-3 py-2 text-left text-xs text-foreground hover:bg-accent"
-                                  >
-                                    {product.label}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      </Field>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Field id={`attach-pos-${asset.id}`} label="Posisi">
-                          <Input type="number" min="1" max="109" value={attachPosition} onChange={(event) => setAttachPosition(event.target.value)} />
-                        </Field>
-                        <Field id={`attach-vis-${asset.id}`} label="Visibilitas">
-                          <Select value={attachVisibility} onChange={(event) => setAttachVisibility(event.target.value)}>
-                            <option value="visible">Visible</option>
-                            <option value="hidden">Hidden</option>
-                          </Select>
-                        </Field>
-                      </div>
-                      <label className="flex cursor-pointer items-center gap-2 text-xs">
-                        <input type="checkbox" checked={attachCatalog} onChange={(event) => setAttachCatalog(event.target.checked)} className="h-4 w-4 accent-primary" />
-                        Tampil di galeri katalog
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-2 text-xs">
-                        <input type="checkbox" checked={attachInstallation} onChange={(event) => setAttachInstallation(event.target.checked)} className="h-4 w-4 accent-primary" />
-                        Hasil pemasangan
-                      </label>
-                      {attachError ? (
-                        <p role="alert" className="text-xs text-destructive">{attachError}</p>
-                      ) : null}
-                      <Button type="button" size="sm" className="w-full" disabled={attachBusy} onClick={() => submitAttach(asset)}>
-                        {attachBusy ? "Memasang…" : "Pasang media"}
+                  <div className="space-y-1 p-2.5">
+                    <p className="truncate text-xs font-medium text-foreground" title={asset.label}>{asset.label}</p>
+                    <StatusBadge label={meta.label} tone={meta.tone} />
+                    {asset.usage_count > 0 ? (
+                      <p className="text-[10px] text-muted-foreground">Digunakan di {asset.usage_count} tempat</p>
+                    ) : null}
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setAttachingId(asset.id)}>
+                        <Icon name="link" className="size-3" aria-hidden="true" /> Pasang
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]">
+                        <Link href={asset.attach_url}><Icon name="info" className="size-3" aria-hidden="true" /> Detail</Link>
                       </Button>
                     </div>
-                  ) : null}
+                  </div>
                 </div>
+              )
+            })}
+            {assets.length === 0 ? (
+              <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
+                <Icon name="image" className="mx-auto mb-2 size-8 text-muted-foreground/50" aria-hidden="true" />
+                Belum ada media. Unggah file untuk memulai.
               </div>
-            )
-          })}
-        </div>
-      )}
+            ) : null}
+          </div>
 
-      {pagination && pagination.last_page > 1 ? (
-        <div className="mt-6"><Pagination pagination={pagination} /></div>
+          {pagination ? <Pagination pagination={pagination} /> : null}
+        </div>
+      </div>
+
+      {/* Attach modal */}
+      {attachingId !== null ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onClick={() => setAttachingId(null)}>
+          <div className="w-full max-w-md rounded-lg bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-3 text-sm font-semibold">Pasang ke produk</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Cari produk</label>
+                <Input value={attachQuery} onChange={(e) => setAttachQuery(e.target.value)} placeholder="Nama atau SKU produk…" />
+              </div>
+              {attachSearching ? <p className="text-xs text-muted-foreground">Mencari…</p> : null}
+              {attachResults.length > 0 ? (
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {attachResults.map((p) => (
+                    <button key={p.id} type="button" onClick={() => setAttachProduct(String(p.id))} className={cn("block w-full rounded px-2 py-1 text-left text-xs hover:bg-card-hover", attachProduct === String(p.id) ? "bg-primary/10 text-primary" : "text-foreground")}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              ) : attachQuery.trim() && !attachSearching ? <p className="text-xs text-muted-foreground">Tidak ditemukan</p> : null}
+              {attachProduct ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground">Posisi</label>
+                    <Input type="number" value={attachPosition} onChange={(e) => setAttachPosition(e.target.value)} min="1" />
+                  </div>
+                  <div className="flex items-end gap-1">
+                    <label className="flex items-center gap-1 text-xs">
+                      <input type="checkbox" checked={attachCatalog} onChange={(e) => setAttachCatalog(e.target.checked)} /> Tampilkan katalog
+                    </label>
+                    <label className="flex items-center gap-1 text-xs">
+                      <input type="checkbox" checked={attachInstallation} onChange={(e) => setAttachInstallation(e.target.checked)} /> Pemasangan
+                    </label>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setAttachingId(null); setAttachProduct("") }}>Batal</Button>
+              <Button type="button" size="sm" disabled={!attachProduct || attachBusy} onClick={async () => {
+                setAttachBusy(true); setAttachError(null)
+                try {
+                  const res = await fetch(routeUrl("admin.media.attach", { media: attachingId }), {
+                    method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": csrf },
+                    body: JSON.stringify({ product_id: Number(attachProduct), position: Number(attachPosition), show_in_catalog: attachCatalog, is_installation: attachInstallation, visibility: attachVisibility }),
+                  })
+                  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Gagal")
+                  setAttachingId(null); setAttachProduct("")
+                } catch (e) { setAttachError(String(e)) }
+                setAttachBusy(false)
+              }}>
+                {attachBusy ? "Memasang…" : "Pasang"}
+              </Button>
+            </div>
+            {attachError ? <p className="mt-2 text-xs text-destructive">{attachError}</p> : null}
+          </div>
+        </div>
       ) : null}
     </AdminLayout>
   )
