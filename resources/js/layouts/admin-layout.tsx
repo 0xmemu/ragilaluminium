@@ -233,7 +233,7 @@ export function AdminLayout({
             <div className="px-4 pb-5 pt-6 md:px-6 lg:px-8">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
-                  <AdminBreadcrumbs items={breadcrumbItems} className="mb-4" />
+                  <AdminBreadcrumbs items={breadcrumbItems} className="mb-[26px]" />
                   {title ? (
                     backUrl ? (
                       <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
