@@ -262,7 +262,7 @@ export function AdminLayout({
               </div>
             </div>
           )}
-          <div className="w-full px-4 pb-24 md:px-6 lg:px-8 lg:pb-10">{children}</div>
+          <div className="w-full px-4 pb-24 pt-4 md:px-6 md:pt-5 lg:px-8 lg:pb-10">{children}</div>
         </main>
       </div>
       <AdminBottomNav onOpenMenu={() => setNavigationOpen(true)} />
