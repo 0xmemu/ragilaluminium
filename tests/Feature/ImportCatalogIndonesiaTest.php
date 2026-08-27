@@ -116,7 +116,7 @@ class ImportCatalogIndonesiaTest extends TestCase
         }
         $this->assertCount(3, $names);
         $first = $ss->getSheet(0)->toArray()[0];
-        $this->assertContains('parent_sku', $first);
+        $this->assertContains('name', $first);
         $this->assertContains('price', $first);
     }
 

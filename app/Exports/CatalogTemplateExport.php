@@ -40,7 +40,7 @@ class CatalogTemplateDataSheet implements FromArray, WithTitle, WithEvents
     public function array(): array
     {
         return [[
-            'parent_sku', 'variant_sku', 'name', 'description', 'product_category',
+            'name', 'description', 'product_category',
             'product_model', 'design_variant', 'variation_1_name', 'variation_1_option',
             'variation_2_name', 'variation_2_option', 'price', 'stock', 'weight_kg',
             'height_cm', 'width_cm', 'depth_cm', 'specifications', 'status',
@@ -55,15 +55,15 @@ class CatalogTemplateDataSheet implements FromArray, WithTitle, WithEvents
     public function afterSheet(AfterSheet $event): void
     {
         $sheet = $event->sheet->getDelegate();
-        $this->styleHeader($sheet, 'A', 'S');
+        $this->styleHeader($sheet, 'A', 'Q');
         $this->setColumnWidths($sheet);
         $sheet->freezePane('A2');
 
         $lastRow = max($sheet->getHighestRow(), 200);
-        $this->addListValidation($sheet, 'E', CatalogLabels::categoryCodes(), $lastRow);
-        $this->addListValidation($sheet, 'F', CatalogLabels::modelCodes(), $lastRow);
-        $this->addListValidation($sheet, 'G', CatalogLabels::designCodes(), $lastRow);
-        $this->addListValidation($sheet, 'S', ['draft', 'archived', 'active'], $lastRow);
+        $this->addListValidation($sheet, 'C', CatalogLabels::categoryCodes(), $lastRow);
+        $this->addListValidation($sheet, 'D', CatalogLabels::modelCodes(), $lastRow);
+        $this->addListValidation($sheet, 'E', CatalogLabels::designCodes(), $lastRow);
+        $this->addListValidation($sheet, 'Q', ['draft', 'archived', 'active'], $lastRow);
     }
 
     private function styleHeader($sheet, string $from, string $to): void
@@ -80,10 +80,10 @@ class CatalogTemplateDataSheet implements FromArray, WithTitle, WithEvents
     private function setColumnWidths($sheet): void
     {
         $w = [
-            'A' => 16, 'B' => 20, 'C' => 40, 'D' => 40, 'E' => 14,
-            'F' => 12, 'G' => 12, 'H' => 12, 'I' => 12, 'J' => 12,
-            'K' => 12, 'L' => 14, 'M' => 10, 'N' => 10, 'O' => 10,
-            'P' => 10, 'Q' => 10, 'R' => 34, 'S' => 10,
+            'A' => 40, 'B' => 40, 'C' => 14,
+            'D' => 12, 'E' => 12, 'F' => 12, 'G' => 12, 'H' => 12,
+            'I' => 12, 'J' => 14, 'K' => 10, 'L' => 10, 'M' => 10,
+            'N' => 10, 'O' => 10, 'P' => 34, 'Q' => 10,
         ];
         foreach ($w as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
@@ -125,30 +125,30 @@ class CatalogTemplateExampleSheet implements FromArray, WithTitle, WithEvents
             ['Isi baris produk baru di sheet Data. Data di bawah hanya contoh ilustrasi, tidak akan diproses.'],
             [],
             [
-                'parent_sku', 'variant_sku', 'name', 'description', 'product_category',
+                'name', 'description', 'product_category',
                 'product_model', 'design_variant', 'variation_1_name', 'variation_1_option',
                 'variation_2_name', 'variation_2_option', 'price', 'stock', 'weight_kg',
                 'height_cm', 'width_cm', 'depth_cm', 'specifications', 'status',
             ],
             [
-                'RGL-JNG-JKT-1', 'RGL-JNG-JKT-1-H', 'Jendela Aluminium Jungkit Ornamen 200x180',
+                'Jendela Aluminium Jungkit Ornamen 200x180',
                 'Jendela jungkit aluminium dengan ornamen, kaca bening.', 'JENDELA',
                 'JUNGKIT', 'ORNEMEN', 'Warna', 'Hitam', 'Kaca', 'Bening',
                 '10170000', '3', '45', '200', '180', '10',
                 '[{"name":"Bahan","value":"Aluminium"}]', 'draft',
             ],
             [
-                'RGL-PNT-SLD-1', 'RGL-PNT-SLD-1-P', 'Pintu Aluminium Sliding 100x220',
-                'Pintu sliding aluminium standar, kaca buram.', 'PINTU',
-                'SLIDING', 'POLOS', 'Warna', 'Silver', 'Kaca', 'Buram',
-                '5400000', '2', '30', '100', '220', '8',
+                'Jendela Aluminium Jungkit Ornamen 200x180',
+                'Jendela jungkit aluminium dengan ornamen, kaca bening.', 'JENDELA',
+                'JUNGKIT', 'ORNEMEN', 'Warna', 'Putih', 'Kaca', 'Bening',
+                '10170000', '4', '45', '200', '180', '10',
                 '[{"name":"Bahan","value":"Aluminium"}]', 'draft',
             ],
             [
-                'RGL-PNT-SLD-2', 'RGL-PNT-SLD-2-P', 'Pintu Aluminium Sliding 120x230',
-                'Pintu sliding aluminium, kaca bening.', 'PINTU',
-                'SLIDING', 'POLOS', 'Warna', 'Hitam', 'Kaca', 'Bening',
-                '6200000', '5', '35', '120', '230', '8',
+                'Pintu Aluminium Sliding 100x220',
+                'Pintu sliding aluminium standar, kaca buram.', 'PINTU',
+                'SLIDING', 'POLOS', 'Warna', 'Silver', 'Kaca', 'Buram',
+                '5400000', '2', '30', '100', '220', '8',
                 '[{"name":"Bahan","value":"Aluminium"}]', 'draft',
             ],
             [],
@@ -166,7 +166,7 @@ class CatalogTemplateExampleSheet implements FromArray, WithTitle, WithEvents
         $sheet = $event->sheet->getDelegate();
 
         // Row 1: title
-        $sheet->mergeCells('A1:S1');
+        $sheet->mergeCells('A1:Q1');
         $sheet->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
@@ -174,14 +174,14 @@ class CatalogTemplateExampleSheet implements FromArray, WithTitle, WithEvents
         $sheet->getRowDimension(1)->setRowHeight(24);
 
         // Row 2: subtitle
-        $sheet->mergeCells('A2:S2');
+        $sheet->mergeCells('A2:Q2');
         $sheet->getStyle('A2')->applyFromArray([
             'font' => ['size' => 10, 'color' => ['argb' => 'FF666666']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
         ]);
 
         // Row 4: header
-        $sheet->getStyle('A4:S4')->applyFromArray([
+        $sheet->getStyle('A4:Q4')->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 10],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
@@ -190,26 +190,24 @@ class CatalogTemplateExampleSheet implements FromArray, WithTitle, WithEvents
         $sheet->getRowDimension(4)->setRowHeight(26);
 
         // Rows 5-7: example data with zebra
-        $cols = range('A', 'S');
-        $zebra = [false, true, false];
-        $colors = ['FF333333', 'FF333333'];
+        $cols = range('A', 'Q');
         $zebraFills = ['FFFFFFFF', 'FFF7F8F7'];
         for ($i = 0; $i < 3; $i++) {
             $row = 5 + $i;
             $fill = $zebraFills[$i % 2];
-            $sheet->getStyle('A'.$row.':S'.$row)->applyFromArray([
+            $sheet->getStyle('A'.$row.':Q'.$row)->applyFromArray([
                 'font' => ['size' => 10, 'color' => ['argb' => 'FF333333']],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
             ]);
             if ($fill !== 'FFFFFFFF') {
-                $sheet->getStyle('A'.$row.':S'.$row)->getFill()
+                $sheet->getStyle('A'.$row.':Q'.$row)->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->setStartColor(new \PhpOffice\PhpSpreadsheet\Style\Color($fill));
             }
         }
 
         // Row 9: note
-        $sheet->mergeCells('A9:S9');
+        $sheet->mergeCells('A9:Q9');
         $sheet->getStyle('A9')->applyFromArray([
             'font' => ['size' => 9, 'color' => ['argb' => 'FF666666'], 'italic' => true],
         ]);
@@ -219,10 +217,10 @@ class CatalogTemplateExampleSheet implements FromArray, WithTitle, WithEvents
 
         // Column widths
         $w = [
-            'A' => 16, 'B' => 20, 'C' => 40, 'D' => 40, 'E' => 14,
-            'F' => 12, 'G' => 12, 'H' => 12, 'I' => 12, 'J' => 12,
-            'K' => 12, 'L' => 14, 'M' => 10, 'N' => 10, 'O' => 10,
-            'P' => 10, 'Q' => 10, 'R' => 34, 'S' => 10,
+            'A' => 40, 'B' => 40, 'C' => 14,
+            'D' => 12, 'E' => 12, 'F' => 12, 'G' => 12, 'H' => 12,
+            'I' => 12, 'J' => 14, 'K' => 10, 'L' => 10, 'M' => 10,
+            'N' => 10, 'O' => 10, 'P' => 34, 'Q' => 10,
         ];
         foreach ($w as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
@@ -243,9 +241,9 @@ class CatalogTemplateGuideSheet implements FromArray, WithTitle, WithEvents
             ['Cara mengisi file import dengan benar.'],
             [],
             ['KOLOM', 'WAJIB/OPTIONAL', 'KETERANGAN'],
-            ['parent_sku', 'WAJIB', 'Kode produk utama. Harus unik. Baris dengan parent_sku sama akan memperbarui produk yang sudah ada.'],
-            ['variant_sku', 'OPTIONAL', 'Kode varian. Kosongkan bila produk tidak punya varian. Wajib bila satu parent memiliki banyak pilihan (warna/ukuran/kaca).'],
-            ['name', 'WAJIB', 'Nama produk yang tampil di toko.'],
+            ['name', 'WAJIB', 'Nama produk yang tampil di toko. Baris dengan nama sama dianggap varian dari produk yang sama.'],
+            ['SKU (parent & varian)', 'OTOMATIS', 'Tidak perlu diisi. Sistem membuat SKU otomatis (pola RGL-{angka acak} untuk produk, RGL-{parent}-{urutan} untuk varian). SKU terlihat setelah ekspor atau template update harga/stok.'],
+
             ['description', 'OPTIONAL', 'Deskripsi produk.'],
             ['product_category', 'WAJIB', 'Kategori. Pilih dari dropdown. Kategori tak dikenal ditandai untuk tinjauan admin.'],
             ['product_model', 'WAJIB', 'Model. Pilih dari dropdown.'],
@@ -262,7 +260,7 @@ class CatalogTemplateGuideSheet implements FromArray, WithTitle, WithEvents
             ['depth_cm', 'OPTIONAL', 'Kedalaman dalam cm.'],
             ['specifications', 'OPTIONAL', 'Spesifikasi dalam format JSON.'],
             ['status', 'WAJIB', 'Status awal. Pilih dari dropdown: draft, archived, active.'],
-            ['CATATAN', '', 'Isi satu produk per baris di sheet Data. Jangan ubah nama kolom (snake_case). Gunakan sheet Contoh sebagai rujukan.'],
+            ['CATATAN', '', 'Isi satu baris per varian di sheet Data. Baris dengan nama sama akan menjadi varian produk yang sama (SKU dibuat otomatis). Jangan ubah nama kolom (snake_case). Gunakan sheet Contoh sebagai rujukan.'],
         ];
     }
 

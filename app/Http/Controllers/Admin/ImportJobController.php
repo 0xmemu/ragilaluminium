@@ -123,7 +123,7 @@ class ImportJobController extends Controller
 
         $rowData = \Maatwebsite\Excel\Facades\Excel::toArray(new \App\Imports\InternalCatalogPreviewImport(), $file);
         $rows = $rowData[0] ?? [];
-        $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['parent_sku'] ?? '')))));
+        $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['name'] ?? ''))) || ! empty(trim((string) ($r['parent_sku'] ?? '')))));
         $rowLimit = $validated['type'] === 'stock_price_update' ? 10000 : 5000;
         if ($rowCount > $rowLimit) {
             return redirect()->back()->withErrors([

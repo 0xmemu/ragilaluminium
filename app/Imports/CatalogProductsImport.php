@@ -43,8 +43,23 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
 
         try {
             $parentSku = trim((string) ($data['parent_sku'] ?? ''));
+            $name = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
+            // Auto-mode: kolom parent_sku tidak diisi (template create). Sistem
+            // mengelompokkan varian berdasarkan NAMA produk (grouping by name),
+            // dan membuat parent_sku baru (RGL-{acak}) untuk produk baru.
+            $autoMode = $parentSku === '';
+            if ($autoMode) {
+                $existingByName = $name !== ''
+                    ? Product::where('name', $name)->first()
+                    : null;
+                if ($existingByName) {
+                    $parentSku = (string) $existingByName->parent_sku;
+                } else {
+                    $parentSku = $this->generateParentSku();
+                }
+            }
             if ($parentSku === '') {
-                throw new \RuntimeException('parent_sku kosong');
+                throw new \RuntimeException('parent_sku dan name kosong');
             }
 
             // Resolusi kategori dari sumber DINAMIS (tabel categories), bukan default
@@ -79,6 +94,14 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             );
 
             $variantSku = trim((string) ($data['variant_sku'] ?? ''));
+            if ($autoMode && $variantSku === '') {
+                $hasVariation = trim((string) ($data['variation_1_option'] ?? '')) !== ''
+                    || trim((string) ($data['variation_2_option'] ?? '')) !== '';
+                if ($hasVariation) {
+                    $n = ProductVariant::where('product_id', $product->id)->count() + 1;
+                    $variantSku = $parentSku.'-'.$n;
+                }
+            }
             $variant = null;
             if ($variantSku !== '') {
                 $stock = $job->stock_mode === 'manual'
@@ -313,6 +336,16 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             trim((string) ($data['name'] ?? '')),
         ]);
         return implode(', ', array_unique(array_filter($parts)));
+    }
+
+
+    protected function generateParentSku(): string
+    {
+        do {
+            $sku = 'RGL-'.random_int(100000, 999999);
+        } while (Product::where('parent_sku', $sku)->exists());
+
+        return $sku;
     }
 
 }
