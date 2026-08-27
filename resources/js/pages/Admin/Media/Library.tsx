@@ -110,78 +110,39 @@ function FolderTree({ nodes, currentFolderId, onSelect }: {
 }
 
 // --- Upload preview modal ---
-function UploadModal({ open, onClose, folderId, onUploadDone }: {
+// State upload dinaikkan ke halaman (uploads + startUploads) agar progress
+// tetap terlihat walau modal ditutup (lihat UploadTracker di bawah).
+type UploadItem = { id: number; name: string; status: "uploading" | "sukses" | "gagal"; progress: number; error?: string }
+
+function UploadModal({ open, onClose, folderId, uploads, onStart }: {
   open: boolean
   onClose: () => void
   folderId: string | null
-  onUploadDone: () => void
+  uploads: UploadItem[]
+  onStart: (files: File[]) => void
 }) {
   const [mode, setMode] = React.useState<"file" | "multiple" | "folder" | "url">("file")
   const [files, setFiles] = React.useState<File[]>([])
   const [url, setUrl] = React.useState("")
-  const [results, setResults] = React.useState<{ name: string; status: string; error?: string; progress: number }[]>([])
-  const [busy, setBusy] = React.useState(false)
+  const [urlResult, setUrlResult] = React.useState<{ name: string; status: string; error?: string } | null>(null)
   const { csrf } = usePage<SharedPageProps>().props
+  const uploading = uploads.filter((u) => u.status === "uploading").length
 
-  const reset = () => { setFiles([]); setUrl(""); setResults([]); setBusy(false) }
-
-  async function startUpload() {
-    setBusy(true)
-    const uploads = files.map((f) => ({ name: f.name, file: f }))
-    setResults(uploads.map((u) => ({ name: u.name, status: "uploading", progress: 0 })))
-    for (let i = 0; i < uploads.length; i++) {
-      const u = uploads[i]
-      await new Promise<void>((resolve) => {
-        const fd = new FormData()
-        fd.append("media", u.file)
-        if (folderId) fd.append("folder_id", folderId)
-        const xhr = new XMLHttpRequest()
-        xhr.open("POST", routeUrl("admin.media.upload"))
-        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
-        xhr.setRequestHeader("X-CSRF-TOKEN", csrf)
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.min(99, Math.round((e.loaded / e.total) * 100))
-            setResults((prev) => prev.map((r, j) => (j === i ? { ...r, progress: pct } : r)))
-          }
-        }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            setResults((prev) => prev.map((r, j) => (j === i ? { ...r, status: "sukses", progress: 100 } : r)))
-          } else {
-            let msg = "Upload gagal"
-            try {
-              const body = JSON.parse(xhr.responseText)
-              if (body?.message) msg = body.message
-            } catch { /* respon bukan JSON */ }
-            setResults((prev) => prev.map((r, j) => (j === i ? { ...r, status: "gagal", error: msg } : r)))
-          }
-          resolve()
-        }
-        xhr.onerror = () => {
-          setResults((prev) => prev.map((r, j) => (j === i ? { ...r, status: "gagal", error: "Upload gagal, periksa koneksi." } : r)))
-          resolve()
-        }
-        xhr.send(fd)
-      })
-    }
-    setBusy(false)
-    onUploadDone()
-  }
+  const reset = () => { setFiles([]); setUrl(""); setUrlResult(null) }
 
   async function importUrl() {
-    setBusy(true)
+    if (!url.trim()) return
+    setUrlResult({ name: url, status: "uploading" })
     try {
       const res = await fetch(routeUrl("admin.media.import-url"), {
         method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": csrf },
         body: JSON.stringify({ source_url: url, folder_id: folderId || undefined }),
       })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Gagal")
-      setResults([{ name: url, status: "sukses", progress: 100 }])
+      setUrlResult({ name: url, status: "sukses" })
     } catch (e) {
-      setResults([{ name: url, status: "gagal", error: String(e), progress: 0 }])
+      setUrlResult({ name: url, status: "gagal", error: String(e) })
     }
-    setBusy(false); onUploadDone()
   }
 
   if (!open) return null
@@ -217,7 +178,7 @@ function UploadModal({ open, onClose, folderId, onUploadDone }: {
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="mb-3" />
         )}
 
-        {files.length > 0 ? (
+        {mode !== "url" && files.length > 0 ? (
           <div className="mb-3 max-h-40 overflow-y-auto rounded border border-border p-2 text-xs">
             {files.map((f) => (
               <div key={f.name} className="flex items-center justify-between py-0.5">
@@ -228,10 +189,10 @@ function UploadModal({ open, onClose, folderId, onUploadDone }: {
           </div>
         ) : null}
 
-        {results.length > 0 ? (
+        {mode !== "url" && uploads.length > 0 ? (
           <div className="mb-3 max-h-40 overflow-y-auto rounded border border-border p-2 text-xs">
-            {results.map((r, idx) => (
-              <div key={`${r.name}-${idx}`} className="flex items-center gap-2 py-0.5">
+            {uploads.map((r) => (
+              <div key={r.id} className="flex items-center gap-2 py-0.5">
                 <span className="truncate">{r.name}</span>
                 {r.status === "uploading" ? (
                   <span className="flex w-28 shrink-0 items-center gap-1.5">
@@ -250,13 +211,81 @@ function UploadModal({ open, onClose, folderId, onUploadDone }: {
           </div>
         ) : null}
 
+        {mode === "url" && urlResult ? (
+          <div className={cn("mb-3 rounded border border-border p-2 text-xs", urlResult.status === "sukses" ? "text-success" : urlResult.status === "gagal" ? "text-destructive" : "text-muted-foreground")}>
+            {urlResult.status === "uploading" ? "Mengambil URL…" : urlResult.status === "sukses" ? "✓ Media berhasil ditambahkan" : `✗ ${urlResult.error ?? "Gagal"}`}
+          </div>
+        ) : null}
+
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>Batal</Button>
-          <Button type="button" size="sm" disabled={(!files.length && !url) || busy} onClick={mode === "url" ? importUrl : startUpload}>
-            {busy ? "Memproses…" : "Mulai Unggah"}
+          <Button
+            type="button"
+            size="sm"
+            disabled={mode === "url" ? !url.trim() : !files.length}
+            onClick={mode === "url" ? importUrl : () => { onStart(files); setFiles([]) }}
+          >
+            {uploading > 0 ? `Mengunggah ${uploading}…` : "Mulai Unggah"}
           </Button>
         </div>
+        {uploading > 0 ? (
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            Boleh tutup jendela ini, progress tetap berjalan di panel kanan bawah.
+          </p>
+        ) : null}
       </div>
+    </div>
+  )
+}
+
+// --- Panel tracking upload (persisten walau modal ditutup) ---
+function UploadTracker({ uploads, onDismiss }: { uploads: UploadItem[]; onDismiss: () => void }) {
+  const [hidden, setHidden] = React.useState(false)
+  const active = uploads.filter((u) => u.status === "uploading").length
+  const allDone = uploads.length > 0 && active === 0
+
+  React.useEffect(() => {
+    if (!allDone) return
+    const t = window.setTimeout(() => setHidden(true), 5000)
+    return () => window.clearTimeout(t)
+  }, [allDone])
+
+  if (uploads.length === 0 || hidden) return null
+  const ok = uploads.filter((u) => u.status === "sukses").length
+  const fail = uploads.filter((u) => u.status === "gagal").length
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[70] w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-3 shadow-float">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-semibold">Unggah Media</p>
+        <button type="button" onClick={() => setHidden(true)} className="text-muted-foreground hover:text-foreground" aria-label="Tutup panel unggah">
+          <Icon name="x" className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+        {uploads.map((u) => (
+          <div key={u.id} className="text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate">{u.name}</span>
+              {u.status === "uploading" ? (
+                <span className="shrink-0 tabular-nums text-muted-foreground">{u.progress}%</span>
+              ) : u.status === "sukses" ? (
+                <span className="shrink-0 text-success">✓</span>
+              ) : (
+                <span className="shrink-0 text-destructive" title={u.error ?? ""}>✗</span>
+              )}
+            </div>
+            {u.status === "uploading" ? (
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border">
+                <div className="h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${u.progress}%` }} />
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
+        {allDone ? `${ok} berhasil${fail ? `, ${fail} gagal` : ""}` : `Sedang mengunggah ${active} media…`}
+      </p>
     </div>
   )
 }
@@ -292,6 +321,57 @@ export default function MediaLibrary({
   const [showUploadModal, setShowUploadModal] = React.useState(false)
   const [copiedId, setCopiedId] = React.useState<number | null>(null)
   const [bulkMoveTarget, setBulkMoveTarget] = React.useState<string>("")
+
+  // Upload tracking (persisten walau modal ditutup)
+  const [uploads, setUploads] = React.useState<UploadItem[]>([])
+  const uploadIdRef = React.useRef(0)
+
+  function patchUpload(id: number, patch: Partial<Omit<UploadItem, "id" | "name">>): void {
+    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)))
+  }
+
+  function uploadOne(id: number, file: File, folder: string | null): Promise<void> {
+    return new Promise((resolve) => {
+      const fd = new FormData()
+      fd.append("media", file)
+      if (folder) fd.append("folder_id", folder)
+      const xhr = new XMLHttpRequest()
+      xhr.open("POST", routeUrl("admin.media.upload"))
+      xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
+      xhr.setRequestHeader("X-CSRF-TOKEN", csrf)
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) patchUpload(id, { progress: Math.min(99, Math.round((e.loaded / e.total) * 100)) })
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          patchUpload(id, { status: "sukses", progress: 100 })
+        } else {
+          let msg = "Upload gagal"
+          try {
+            const body = JSON.parse(xhr.responseText)
+            if (body?.message) msg = body.message
+          } catch { /* respon bukan JSON */ }
+          patchUpload(id, { status: "gagal", error: msg })
+        }
+        resolve()
+      }
+      xhr.onerror = () => {
+        patchUpload(id, { status: "gagal", error: "Upload gagal, periksa koneksi." })
+        resolve()
+      }
+      xhr.send(fd)
+    })
+  }
+
+  async function startUploads(files: File[]): Promise<void> {
+    const folder = folderId || null
+    const items = files.map((f) => ({ id: ++uploadIdRef.current, name: f.name, file: f }))
+    setUploads((prev) => [...prev, ...items.map(({ id, name }) => ({ id, name, status: "uploading" as const, progress: 0 }))])
+    for (const it of items) {
+      await uploadOne(it.id, it.file, folder)
+    }
+    runSearch()
+  }
 
   // Live status
   const [liveStatus, setLiveStatus] = React.useState<Record<number, { status: string; error_reason?: string | null }>>({})
@@ -400,8 +480,10 @@ export default function MediaLibrary({
         open={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         folderId={folderId || null}
-        onUploadDone={() => { setShowUploadModal(false); runSearch() }}
+        uploads={uploads}
+        onStart={(files) => { void startUploads(files) }}
       />
+      <UploadTracker uploads={uploads} onDismiss={() => setUploads([])} />
 
       <div className="flex gap-4">
         {/* Sidebar folder */}
