@@ -771,7 +771,7 @@ function useFlashCarousel(itemCount: number) {
   return { trackRef, trackId, canGoBack, canGoNext, move }
 }
 
-/** Compact Flash Sale band ??? horizontal carousel. */
+/** Compact Flash Sale band (horizontal carousel). */
 export function PromoFlashSaleSection({
   products,
   period,
