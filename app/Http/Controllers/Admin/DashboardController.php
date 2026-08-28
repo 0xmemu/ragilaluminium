@@ -37,7 +37,7 @@ class DashboardController extends Controller
         $today = now()->startOfDay();
         $activeOrderStatuses = ['processing', 'shipped', 'delivered'];
 
-        $pendingPaymentQuery = Order::query()->where('order_status', 'pending_payment');
+        $pendingPaymentQuery = Order::query()->where('order_status', 'awaiting_confirmation');
         $activeOrdersQuery = Order::query()->whereIn('order_status', $activeOrderStatuses);
         $paymentsReceivedTodayQuery = Payment::query()
             ->where('status', 'completed')
@@ -55,7 +55,7 @@ class DashboardController extends Controller
         $queueIsReady = ! in_array($queueConnection, ['sync', 'null'], true);
 
         $statusOrder = [
-            ['key' => 'pending_payment', 'label' => 'Perlu Konfirmasi', 'icon' => 'clock'],
+            ['key' => 'awaiting_confirmation', 'label' => 'Perlu Konfirmasi', 'icon' => 'clock'],
             ['key' => 'processing', 'label' => 'Diproses', 'icon' => 'refresh'],
             ['key' => 'shipped', 'label' => 'Dikirim', 'icon' => 'truck'],
             ['key' => 'delivered', 'label' => 'Sampai', 'icon' => 'check-circle'],
@@ -73,7 +73,7 @@ class DashboardController extends Controller
             ->keyBy('order_status');
 
         $attentionOrderIds = Order::query()
-            ->whereIn('order_status', ['pending_payment', 'processing', 'delivered', 'return_in_process'])
+            ->whereIn('order_status', ['awaiting_confirmation', 'processing', 'delivered', 'return_in_process'])
             ->pluck('id');
 
         // Status aging follows the last status transition event; legacy orders fall back to updated_at.
@@ -108,9 +108,9 @@ class DashboardController extends Controller
             [
                 'key' => 'confirm_overdue',
                 'label' => 'Perlu Konfirmasi > 24 Jam',
-                'count' => $overdueCount('pending_payment', now()->subDay()),
+                'count' => $overdueCount('awaiting_confirmation', now()->subDay()),
                 'href' => route('admin.orders.index', [
-                    'order_status' => 'pending_payment',
+                    'order_status' => 'awaiting_confirmation',
                     'older_than' => '24h',
                 ]),
             ],
@@ -350,17 +350,29 @@ class DashboardController extends Controller
             ->all();
         $performaRevenueChart = collect($performance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
 
+        // Source-truth promo = kampanye (Advertisement-007). Atribut legacy tetap fallback.
+        $campaignPromoIds = array_merge(
+            app(\App\Services\CampaignService::class)->flashProductIds(),
+            app(\App\Services\CampaignService::class)->promoProductIds(),
+        );
+        $campaignPromoIds = array_values(array_unique($campaignPromoIds));
+
         $promoProducts = Product::visible()
             ->with(['activeVariants', 'attributes'])
-            ->whereHas('attributes', function ($attr) {
-                $attr->whereIn('attribute_name', [
-                    'promo_compare_price',
-                    'compare_price',
-                    'harga_asli',
-                    'harga_sebelum_diskon',
-                    'promo_flash_sale',
-                    'flash_sale',
-                ]);
+            ->where(function ($query) use ($campaignPromoIds) {
+                if ($campaignPromoIds !== []) {
+                    $query->whereIn('id', $campaignPromoIds);
+                }
+                $query->orWhereHas('attributes', function ($attr) {
+                    $attr->whereIn('attribute_name', [
+                        'promo_compare_price',
+                        'compare_price',
+                        'harga_asli',
+                        'harga_sebelum_diskon',
+                        'promo_flash_sale',
+                        'flash_sale',
+                    ]);
+                });
             })
             ->orderByDesc('homepage_popular')
             ->orderBy('homepage_popular_sort')
@@ -493,8 +505,8 @@ class DashboardController extends Controller
                 'sparkline' => $revenueSparkline,
             ],
             'financial' => [
-                'pending_payment_amount' => (float) $pendingPaymentQuery->sum('total_amount'),
-                'pending_payment_orders' => (int) $pendingPaymentQuery->count(),
+                'awaiting_confirmation_amount' => (float) $pendingPaymentQuery->sum('total_amount'),
+                'awaiting_confirmation_orders' => (int) $pendingPaymentQuery->count(),
                 'active_order_amount' => (float) $activeOrdersQuery->sum('total_amount'),
                 'active_order_count' => (int) $activeOrdersQuery->count(),
                 'received_today_amount' => (float) $paymentsReceivedTodayQuery->sum('amount'),

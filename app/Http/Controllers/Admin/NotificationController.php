@@ -11,7 +11,7 @@ use Inertia\Response;
 class NotificationController extends Controller
 {
     /**
-     * Daftar notifikasi admin (spec ??F: 1 daftar, klik ??? detail).
+     * Daftar notifikasi admin (spec F: 1 daftar, klik -> detail).
      */
     public function index(Request $request): Response
     {

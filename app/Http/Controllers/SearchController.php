@@ -24,14 +24,12 @@ class SearchController extends Controller
             ->withPopularityScore()
             ->when($q !== '', fn ($query) => CatalogSearch::apply($query, $q))
             ->when($q !== '' && $flashPeriodLive, function ($query) {
-                $query->orderByRaw(
-                    "CASE WHEN EXISTS (
-                        SELECT 1 FROM product_attributes pa
-                        WHERE pa.product_id = products.id
-                          AND LOWER(TRIM(pa.attribute_name)) IN ('promo_flash_sale', 'flash_sale')
-                          AND LOWER(TRIM(pa.attribute_value)) IN ('true', '1', 'yes', 'on')
-                    ) THEN 0 ELSE 1 END"
-                );
+                $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
+                if ($flashIds !== []) {
+                    $query->orderByRaw(
+                        "CASE WHEN products.id IN (".implode(',', array_map('intval', $flashIds)).") THEN 0 ELSE 1 END"
+                    );
+                }
             })
             ->orderByDesc('id')
             ->paginate(24)

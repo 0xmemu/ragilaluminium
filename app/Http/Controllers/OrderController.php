@@ -248,7 +248,7 @@ class OrderController extends Controller
             }
             $this->refreshShippingFromCarrier($order);
             $order->refresh()->load('items', 'shippingRecords');
-            $payloads[] = $this->publicOrderPayload($order);
+            $payloads[] = $this->publicOrderPayload($order, true);
         }
 
         return $payloads;

@@ -43,6 +43,7 @@ class PaymentController extends Controller
                 'payment_method' => $p->payment_method,
                 'status' => $p->status,
                 'amount' => (float) $p->amount,
+                'evidence_url' => $p->evidence_url || null,
             ])->all(),
             'pagination' => InertiaAdmin::pagination($payments),
         ]);
@@ -68,6 +69,7 @@ class PaymentController extends Controller
                 'status' => $p->status,
                 'amount' => (float) $p->amount,
                 'paid_at' => optional($p->paid_at)?->toDateTimeString() ?? '-',
+                'evidence_url' => $p->evidence_url || null,
             ])->values()->all(),
             'pagination' => null,
         ]);
@@ -80,7 +82,7 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'payment_method' => ['required', 'in:cod,transfer,gateway'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'status' => ['required', 'in:pending,completed,failed,refunded'],
+            'status' => ['required', 'in:pending,completed,cancelled,refunded'],
             'transaction_reference' => ['nullable', 'string', 'max:255', Rule::unique('payments', 'transaction_reference')],
             'evidence_url' => ['nullable', 'url'],
             'paid_at' => ['nullable', 'date'],
@@ -110,7 +112,7 @@ class PaymentController extends Controller
         $this->normalizeTransactionReference($request);
 
         $validated = $request->validate([
-            'status' => ['required', 'in:pending,completed,failed,refunded'],
+            'status' => ['required', 'in:pending,completed,cancelled,refunded'],
             'transaction_reference' => [
                 'nullable',
                 'string',

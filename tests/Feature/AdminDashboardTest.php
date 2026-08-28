@@ -48,7 +48,7 @@ class AdminDashboardTest extends TestCase
         ]);
 
         $overdue = $this->makeOrder([
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'total_amount' => 1_500_000,
         ]);
@@ -140,7 +140,7 @@ class AdminDashboardTest extends TestCase
         // order yang baru di-edit admin TIDAK ikut dihitung, yang tak tersentuh > 24 jam YA.
         $oldPending = $this->makeOrder([
             'order_number' => 'RA-DASH-OLD-PENDING-'.uniqid(),
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
         ]);
         $oldPending->forceFill([
@@ -150,7 +150,7 @@ class AdminDashboardTest extends TestCase
 
         $newPending = $this->makeOrder([
             'order_number' => 'RA-DASH-NEW-PENDING-'.uniqid(),
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
         ]);
 
@@ -161,7 +161,7 @@ class AdminDashboardTest extends TestCase
                 ->where('attention.0.key', 'confirm_overdue')
                 ->where('attention.0.count', 1)
                 ->where('attention.0.href', route('admin.orders.index', [
-                    'order_status' => 'pending_payment',
+                    'order_status' => 'awaiting_confirmation',
                     'older_than' => '24h',
                 ]))
                 ->where('statusOrder.0.total', 2)
@@ -206,7 +206,7 @@ class AdminDashboardTest extends TestCase
 
         $pending = $this->makeOrder([
             'order_number' => 'RA-DASH-ATTENTION-PENDING-'.uniqid(),
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
         ]);
         $pending->forceFill(['created_at' => now()->subDays(2), 'updated_at' => now()->subDays(2)])->save();
@@ -307,7 +307,7 @@ class AdminDashboardTest extends TestCase
 
         $pending = $this->makeOrder([
             'order_number' => 'RA-DASH-PENDING-'.uniqid(),
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'total_amount' => 9_000_000,
         ]);
@@ -347,10 +347,11 @@ class AdminDashboardTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('omzet.revenue', 2_000_000)
-                ->where('omzet.orders', 3)
+                // KPI-003: omzet.orders = pesanan VALID (exclude pending & cancelled) => 1 (processing).
+                ->where('omzet.orders', 1)
                 ->where('omzet.units', 2)
-                ->where('financial.pending_payment_amount', 9_000_000)
-                ->where('financial.pending_payment_orders', 1)
+                ->where('financial.awaiting_confirmation_amount', 9_000_000)
+                ->where('financial.awaiting_confirmation_orders', 1)
                 ->where('financial.active_order_amount', 2_000_000)
                 ->where('financial.active_order_count', 1)
                 ->where('financial.received_today_amount', 2_000_000)
