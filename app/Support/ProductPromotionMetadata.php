@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Product;
 use Illuminate\Support\Collection;
+use App\Services\CampaignService;
 
 /**
  * Shared product promotion metadata for storefront cards and homepage banners.
@@ -37,6 +38,17 @@ class ProductPromotionMetadata
             : collect();
 
         $price = $product->min_price ?? $product->activeVariants?->min('price');
+
+        // Source-truth: kampanye flash sale (ADR-007/PriceService). Kampanye menang atas atribut legacy.
+        $campaignFlash = null;
+        try {
+            $campaignFlash = app(CampaignService::class)->forProduct($product)['flash'] ?? null;
+        } catch (\Throwable $e) {
+            $campaignFlash = null;
+        }
+        $flashFromCampaign = $campaignFlash !== null;
+        $campaignDiscountPercent = $flashFromCampaign ? (int) ($campaignFlash['discount_percent'] ?? 0) : null;
+
         $comparePrice = self::moneyAttribute($attributes, [
             'promo_compare_price',
             'compare_price',
@@ -50,12 +62,15 @@ class ProductPromotionMetadata
             ? max(0, min(90, (int) config('storefront.product_card_discount_percent', 0)))
             : 0;
 
-        $flashSale = self::booleanAttribute(
-            $attributes,
-            ['promo_flash_sale', 'flash_sale'],
-            $eventDiscount > 0
-        );
+        $flashSale = $flashFromCampaign
+            ? true
+            : self::booleanAttribute($attributes, ['promo_flash_sale', 'flash_sale'], $eventDiscount > 0);
 
+        // Flash Sale kampanye: harga coret = bandrol, diskon = % kampanye.
+        if ($flashFromCampaign && is_numeric($price)) {
+            $comparePrice = round((float) $price / (1 - (($campaignDiscountPercent ?: 0) / 100)));
+            $hasExplicitCompare = true;
+        }
         // Harga coret dari event global tetap boleh tampil di luar periode Flash Sale.
         if ($comparePrice === null && is_numeric($price) && $eventDiscount > 0) {
             $comparePrice = round((float) $price / (1 - ($eventDiscount / 100)));
@@ -69,11 +84,11 @@ class ProductPromotionMetadata
         $hasDiscount = is_numeric($price) && $comparePrice !== null && $comparePrice > (float) $price;
         $codEligible = self::booleanAttribute($attributes, ['promo_cod', 'cod'], true);
         $warrantyLabel = self::attribute($attributes, ['promo_warranty', 'warranty', 'garansi']) ?: 'Garansi 100%';
-        $hasExplicitFlashAttr = $hasExplicitFlash && self::booleanAttribute(
+        $hasExplicitFlashAttr = $flashFromCampaign || ($hasExplicitFlash && self::booleanAttribute(
             $attributes,
             ['promo_flash_sale', 'flash_sale'],
             false
-        );
+        ));
 
         return [
             'compare_price' => $hasDiscount ? $comparePrice : null,

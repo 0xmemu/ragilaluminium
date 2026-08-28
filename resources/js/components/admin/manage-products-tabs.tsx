@@ -1,3 +1,5 @@
+import { Link } from "@inertiajs/react"
+
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 
@@ -14,7 +16,7 @@ export function ManageProductsTabs({ active }: { active: string }) {
       {TABS.map((tab) => {
         const isActive = active === tab.key
         return (
-          <a
+          <Link
             key={tab.key}
             href={routeUrl(tab.href)}
             className={cn(
@@ -25,7 +27,7 @@ export function ManageProductsTabs({ active }: { active: string }) {
             )}
           >
             {tab.label}
-          </a>
+          </Link>
         )
       })}
     </div>

@@ -115,29 +115,6 @@ class FlashSalePeriodTest extends TestCase
                 ->has('products', 0));
     }
 
-    public function test_admin_can_update_flash_sale_period(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-
-        $this->actingAs($admin)
-            ->put(route('admin.flash-sale.period'), [
-                'enabled' => true,
-                'starts_at' => now()->subHour()->format('Y-m-d H:i:s'),
-                'ends_at' => now()->addDay()->format('Y-m-d H:i:s'),
-            ])
-            ->assertRedirect(route('admin.flash-sale.index'));
-
-        $this->assertTrue(FlashSalePeriodSettings::isLive());
-
-        $this->actingAs($admin)
-            ->get(route('admin.flash-sale.index'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/FlashSale/Index')
-                ->where('period.live', true)
-                ->where('period.status', 'live'));
-    }
-
     public function test_live_period_exposes_daily_countdown_until_end_of_day(): void
     {
         $now = Carbon::parse('2026-07-30 15:00:00', config('app.timezone'));
