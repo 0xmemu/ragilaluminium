@@ -370,7 +370,7 @@ export default function Catalog({
       priceMax={filters.priceMax}
       onReset={reset}
       breadcrumbItems={[
-        { label: "Home", href: routeUrl("home") },
+        { label: "Beranda", href: routeUrl("home") },
         ...(listingAllProducts
           ? [{ label: categoryName }]
           : [
@@ -571,7 +571,7 @@ export default function Catalog({
             <div className="flex items-center gap-3">
                           <Breadcrumbs
               items={[
-                { label: "Home", href: routeUrl("home") },
+                { label: "Beranda", href: routeUrl("home") },
                 ...(listingAllProducts
                   ? [{ label: categoryName }]
                   : [

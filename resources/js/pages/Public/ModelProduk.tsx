@@ -118,7 +118,7 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
         <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
           <Breadcrumbs
             items={[
-              { label: "Home", href: routeUrl("home") },
+              { label: "Beranda", href: routeUrl("home") },
               { label: "Semua Model Produk" },
             ]}
           />

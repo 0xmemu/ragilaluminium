@@ -115,7 +115,7 @@ export default function Installations({
               items={
                 isModelLevel
                   ? [
-                      { label: "Home", href: routeUrl("home") },
+                      { label: "Beranda", href: routeUrl("home") },
                       { label: "Hasil Pemasangan" },
                     ]
                   : [

@@ -326,7 +326,7 @@ export function FlashSaleHero({
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <Breadcrumbs
           items={[
-            { label: "Home", href: routeUrl("home") },
+            { label: "Beranda", href: routeUrl("home") },
             { label: "Promo", href: routeUrl("catalog.promo") },
             { label: "Flash Sale" },
           ]}
