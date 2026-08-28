@@ -81,7 +81,7 @@ export function PrintAddressArea({ data }: { data: AddressData }) {
     <div id="print-address" aria-hidden="true" style={label}>
       <div style={{ borderBottom: "2px solid #111", marginBottom: 16, paddingBottom: 8 }}>
         <strong style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase" }}>
-          Ragil Aluminium — Alamat Pengiriman
+          Ragil Aluminium · Alamat Pengiriman
         </strong>
       </div>
       <p style={{ fontWeight: 700, fontSize: 17, margin: 0 }}>{data.customer_name || ""}</p>

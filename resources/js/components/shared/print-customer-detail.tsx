@@ -149,7 +149,7 @@ export function PrintCustomerArea({ data }: { data: CustomerPrintData }) {
       <div style={headerRow}>
         <div>
           <div style={brand}>RAGIL ALUMINIUM</div>
-          <div style={docTitle}>Detail Konsumen — {customer.code}</div>
+          <div style={docTitle}>Detail Konsumen · {customer.code}</div>
         </div>
         <div style={printMeta}>
           Dicetak: {formatDate(printedAt.toISOString())}
@@ -174,12 +174,12 @@ export function PrintCustomerArea({ data }: { data: CustomerPrintData }) {
         </div>
         <div>
           <span style={label}>Email</span>
-          <span style={value}>{customer.email || "—"}</span>
+          <span style={value}>{customer.email || "-"}</span>
         </div>
       </div>
 
       <div style={sectionTitle}>Alamat Default</div>
-      <div style={{ fontSize: 13, lineHeight: 1.7 }}>{address || "—"}</div>
+      <div style={{ fontSize: 13, lineHeight: 1.7 }}>{address || "-"}</div>
 
       <div style={sectionTitle}>Ringkasan</div>
       <div style={grid}>
@@ -193,12 +193,12 @@ export function PrintCustomerArea({ data }: { data: CustomerPrintData }) {
         </div>
         <div>
           <span style={label}>Order Terakhir</span>
-          <span style={value}>{metrics.last_order_at ? formatDate(metrics.last_order_at) : "—"}</span>
+          <span style={value}>{metrics.last_order_at ? formatDate(metrics.last_order_at) : "-"}</span>
         </div>
         <div>
           <span style={label}>Skor Penipuan</span>
           <span style={value}>
-            {metrics.fraud.score} — {metrics.fraud.label}
+            {metrics.fraud.score} · {metrics.fraud.label}
           </span>
         </div>
         {metrics.duplicate_warning ? (
@@ -227,7 +227,7 @@ export function PrintCustomerArea({ data }: { data: CustomerPrintData }) {
             {orders.map((order) => (
               <tr key={order.id}>
                 <td style={{ ...td, fontFamily: "monospace", fontWeight: 600 }}>{order.order_number}</td>
-                <td style={td}>{order.created_at ? formatDate(order.created_at) : "—"}</td>
+                <td style={td}>{order.created_at ? formatDate(order.created_at) : "-"}</td>
                 <td style={td}>{statusMeta(order.order_status).label}</td>
                 <td style={td}>{statusMeta(order.payment_status).label}</td>
                 <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{formatCurrency(order.total_amount)}</td>

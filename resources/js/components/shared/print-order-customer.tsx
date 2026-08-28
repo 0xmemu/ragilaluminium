@@ -204,7 +204,7 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
           <div>
             Tanggal dipesan:{" "}
             <strong style={{ color: "#333333" }}>
-              {data.created_at ? formatDateTime(data.created_at) : "—"}
+              {data.created_at ? formatDateTime(data.created_at) : "-"}
             </strong>
           </div>
           <div>
@@ -252,11 +252,11 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <span style={{ ...label, width: 56, flexShrink: 0 }}>No. HP</span>
-              <span style={value}>{data.customer_phone || "—"}</span>
+              <span style={value}>{data.customer_phone || "-"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <span style={{ ...label, color: "#333333", fontWeight: 700 }}>Alamat lengkap</span>
-              <span style={{ ...value, fontSize: 10, lineHeight: 1.5, maxWidth: 290 }}>{address || "—"}</span>
+              <span style={{ ...value, fontSize: 10, lineHeight: 1.5, maxWidth: 290 }}>{address || "-"}</span>
             </div>
           </div>
           {/* Kanan: wilayah (provinsi, kota, kecamatan, kelurahan, kode pos) */}
@@ -271,23 +271,23 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={label}>Provinsi</span>
-              <span style={value}>{data.shipping_province || "—"}</span>
+              <span style={value}>{data.shipping_province || "-"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={label}>Kota</span>
-              <span style={value}>{data.shipping_city || "—"}</span>
+              <span style={value}>{data.shipping_city || "-"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={label}>Kecamatan</span>
-              <span style={value}>{data.shipping_district || "—"}</span>
+              <span style={value}>{data.shipping_district || "-"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={label}>Kelurahan</span>
-              <span style={value}>{data.shipping_village || "—"}</span>
+              <span style={value}>{data.shipping_village || "-"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={label}>Kode Pos</span>
-              <span style={value}>{data.shipping_postal_code || "—"}</span>
+              <span style={value}>{data.shipping_postal_code || "-"}</span>
             </div>
           </div>
         </div>
@@ -337,22 +337,23 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
               if (item.weight_kg != null) dimParts.push(`${fmtDecimal(item.weight_kg, 1)} kg`)
               const bg = index % 2 === 1 ? "#F9FAFA" : "#FFFFFF"
               return (
+                <>
                 <tr key={item.id}>
                   <td style={{ ...td, background: bg, outline: "1px solid #DEE3E0", outlineOffset: -0.5, color: "#666666" }}>
                     {index + 1}
                   </td>
                   <td style={{ ...td, background: bg, outline: "1px solid #DEE3E0", outlineOffset: -0.5 }}>{item.name}</td>
                   <td style={{ ...td, background: bg, outline: "1px solid #DEE3E0", outlineOffset: -0.5 }}>
-                    {variation || "—"}
+                    {variation || "-"}
                   </td>
                   <td style={{ ...td, background: bg, outline: "1px solid #DEE3E0", outlineOffset: -0.5 }}>
-                    {dimParts.join(" · ") || "—"}
+                    {dimParts.join(" · ") || "-"}
                   </td>
                   <td style={{ ...td, background: bg, outline: "1px solid #DEE3E0", outlineOffset: -0.5, textAlign: "center" }}>
                     {item.quantity}
                   </td>
                   <td style={{ ...td, background: bg, outline: "1px solid #DEE3E0", outlineOffset: -0.5, textAlign: "right" }}>
-                    {item.unit_price != null ? formatCurrency(item.unit_price) : "—"}
+                    {item.unit_price != null ? formatCurrency(item.unit_price) : "-"}
                   </td>
                   <td
                     style={{
@@ -364,9 +365,17 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
                       fontWeight: 700,
                     }}
                   >
-                    {item.line_total != null ? formatCurrency(item.line_total) : "—"}
+                    {item.line_total != null ? formatCurrency(item.line_total) : "-"}
                   </td>
                 </tr>
+                {item.note ? (
+                  <tr>
+                    <td colSpan={7} style={{ ...td, background: bg, outline: "1px solid #DEE3E0", outlineOffset: -0.5, borderTop: "none", paddingTop: 2, paddingBottom: 4, fontSize: 9, fontStyle: "italic", color: "#8A9490" }}>
+                      Catatan: {item.note}
+                    </td>
+                  </tr>
+                ) : null}
+                </>
               )
             })}
           </tbody>
@@ -415,7 +424,7 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
           <span style={{ fontSize: 10, fontWeight: 600, color: "#666666" }}>ONGKIR</span>
           <span style={{ fontSize: 10, color: "#333333" }}>
-            {data.shipping_amount != null ? formatCurrency(data.shipping_amount) : "—"}
+            {data.shipping_amount != null ? formatCurrency(data.shipping_amount) : "-"}
           </span>
         </div>
         {data.shipping_subsidy_amount && data.shipping_subsidy_amount > 0 ? (
