@@ -30,7 +30,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   awaiting_pickup: { label: "Menunggu Penjemputan", tone: "info" },
   payment_pending: { label: "Menunggu Konfirmasi", tone: "warning" },
   payment_verification: { label: "Pembayaran Diverifikasi", tone: "info" },
-  issue: { label: "Perlu perhatian", tone: "danger" },
+  issue: { label: "Perlu perhatian", tone: "warning" },
   return_in_process: { label: "Retur diproses", tone: "warning" },
   return_completed: { label: "Retur selesai", tone: "neutral" },
   cancelled: { label: "Dibatalkan", tone: "danger" },
