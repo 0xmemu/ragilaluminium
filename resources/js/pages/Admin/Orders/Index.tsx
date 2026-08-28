@@ -179,7 +179,7 @@ function OrderListColumnHeader() {
       <span>Dibayar pembeli</span>
       <span>Status pesanan</span>
       <span>Pembayaran</span>
-      <span>Usia pesanan</span>
+      <span>Update terakhir</span>
       <span>Pengiriman</span>
       <span className="text-right">Aksi</span>
     </div>
@@ -421,7 +421,7 @@ function OrderCardRow({
         {/* Usia Pesanan */}
         <div className="min-w-0 pt-3 xl:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Usia pesanan
+            Update terakhir
           </p>
           <p className="text-[13px] font-medium leading-snug text-foreground">
             {formatRelativeAge(order.updated_at)}
