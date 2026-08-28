@@ -162,9 +162,9 @@ function variationLabel(item: OrderItemPreview): string {
     .join(", ")
 }
 
-/** Grid kolom: produk | bayar | status pesanan | pembayaran | usia | pengiriman | aksi */
+/** Grid kolom: produk | item | bayar | status pesanan | pembayaran | usia | pengiriman | aksi */
 const orderRowGridClass =
-  "xl:grid xl:grid-cols-[minmax(0,2.6fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
+  "xl:grid xl:grid-cols-[minmax(0,2.5fr)_minmax(3.5rem,0.4fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
@@ -176,6 +176,7 @@ function OrderListColumnHeader() {
       aria-hidden="true"
     >
       <span>Produk</span>
+      <span className="text-center">Item</span>
       <span>Dibayar pembeli</span>
       <span>Status pesanan</span>
       <span>Pembayaran</span>
@@ -349,9 +350,6 @@ function OrderCardRow({
                     {variationLabel(item) || item.variant_sku || "-"}
                   </p>
                 </div>
-                <span className="mt-0.5 shrink-0 tabular-nums text-[13px] font-semibold text-foreground" title="Jumlah unit">
-                  {formatNumber(item.quantity)}x
-                </span>
               </li>
             ))}
           </ul>
@@ -374,6 +372,16 @@ function OrderCardRow({
               {order.notes}
             </p>
           ) : null}
+        </div>
+
+        {/* Item (jumlah unit dipesan) */}
+        <div className="pt-3 text-center xl:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+            Item
+          </p>
+          <span className="inline-flex min-w-8 justify-center rounded-md bg-muted px-1.5 py-0.5 text-sm font-semibold tabular-nums text-foreground" title="Jumlah unit dipesan">
+            {formatNumber(order.unit_count)}x
+          </span>
         </div>
 
         {/* Dibayar Pembeli */}
@@ -399,9 +407,6 @@ function OrderCardRow({
             Status pesanan
           </p>
           <StatusBadge status={order.order_status} />
-          <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground/80">
-            {order.primary_action?.hint || statusMeta(order.order_status).label}
-          </p>
         </div>
 
         {/* Pembayaran */}
@@ -412,9 +417,11 @@ function OrderCardRow({
           <p className="text-[13px] font-medium text-foreground">
             {order.payment_method_label ||
               (order.payment_method ? humanize(order.payment_method) : "Metode -")}
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-            {order.payment_label || statusMeta(order.payment_status).label}
+            {order.payment_method === "transfer" || (order.payment_method_label || "").toLowerCase().includes("transfer") ? (
+              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                ({order.payment_status === "paid" ? "Lunas" : "Belum dibayar"})
+              </span>
+            ) : null}
           </p>
         </div>
 
