@@ -162,9 +162,9 @@ function variationLabel(item: OrderItemPreview): string {
     .join(", ")
 }
 
-/** Grid kolom: produk | bayar | status | waktu | kirim | aksi */
+/** Grid kolom: produk | bayar | status pesanan | pembayaran | usia | pengiriman | aksi */
 const orderRowGridClass =
-  "xl:grid xl:grid-cols-[minmax(0,2.8fr)_minmax(7rem,0.95fr)_minmax(8.5rem,1.05fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
+  "xl:grid xl:grid-cols-[minmax(0,2.6fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
@@ -177,9 +177,10 @@ function OrderListColumnHeader() {
     >
       <span>Produk</span>
       <span>Dibayar pembeli</span>
-      <span>Status</span>
-      <span>Batas waktu</span>
-      <span>Jasa kirim</span>
+      <span>Status pesanan</span>
+      <span>Pembayaran</span>
+      <span>Usia pesanan</span>
+      <span>Pengiriman</span>
       <span className="text-right">Aksi</span>
     </div>
   )
@@ -347,10 +348,10 @@ function OrderCardRow({
                   <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                     {variationLabel(item) || item.variant_sku || "-"}
                   </p>
-                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-                    ×{formatNumber(item.quantity)}
-                  </p>
                 </div>
+                <span className="mt-0.5 shrink-0 tabular-nums text-[13px] font-semibold text-foreground" title="Jumlah unit">
+                  {formatNumber(item.quantity)}x
+                </span>
               </li>
             ))}
           </ul>
@@ -392,31 +393,40 @@ function OrderCardRow({
           </p>
         </div>
 
-        {/* Status */}
+        {/* Status Pesanan */}
         <div className="min-w-0 pt-3 xl:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Status
+            Status pesanan
           </p>
           <StatusBadge status={order.order_status} />
           <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground/80">
             {order.primary_action?.hint || statusMeta(order.order_status).label}
           </p>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {(order.flow === "cod" || order.cod_flag) && (
-              <span className="rounded-md border border-warning/30 bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
-                COD
-              </span>
-            )}
-            <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {formatNumber(order.product_count)} produk
-            </span>
-          </div>
         </div>
 
-        {/* Batas Waktu */}
+        {/* Pembayaran */}
         <div className="min-w-0 pt-3 xl:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Batas waktu
+            Pembayaran
+          </p>
+          <p className="text-[13px] font-medium text-foreground">
+            {order.payment_method_label ||
+              (order.payment_method ? humanize(order.payment_method) : "Metode -")}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+            {order.payment_label || statusMeta(order.payment_status).label}
+          </p>
+          {order.flow === "cod" || order.cod_flag ? (
+            <span className="mt-1.5 inline-block rounded-md border border-warning/30 bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
+              COD
+            </span>
+          ) : null}
+        </div>
+
+        {/* Usia Pesanan */}
+        <div className="min-w-0 pt-3 xl:pt-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+            Usia pesanan
           </p>
           <p className="text-[13px] font-medium leading-snug text-foreground">
             {formatRelativeAge(order.updated_at)}
@@ -426,24 +436,25 @@ function OrderCardRow({
           </p>
         </div>
 
-        {/* Jasa Kirim */}
+        {/* Pengiriman */}
         <div className="min-w-0 pt-3 xl:pt-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Jasa kirim
+            Pengiriman
           </p>
           <p className="text-[13px] font-medium text-foreground">
             {order.shipping_track?.carrier_name || "Pengiriman"}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {statusMeta(order.shipping_track?.shipping_status || order.shipping_status || "pending_pickup").label}
-          </p>
           {order.shipping_track?.waybill_number ? (
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
+            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
               {order.shipping_track.waybill_number}
             </p>
           ) : (
-            <p className="mt-1 text-xs text-muted-foreground">Belum ada resi</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Belum ada resi</p>
           )}
+          <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground/80">
+            {order.shipping_track?.latest_message ||
+              statusMeta(order.shipping_track?.shipping_status || order.shipping_status || "pending_pickup").label}
+          </p>
           {order.shipping_track?.tracking_url ? (
             <a
               href={order.shipping_track.tracking_url}
@@ -702,22 +713,6 @@ export default function OrdersIndex({
             <option value="oldest">Terlama</option>
           </Select>
         }
-        summary={
-          <>
-            <span>
-              <span className="tabular-nums font-semibold text-foreground">
-                {formatNumber(summary.count)}
-              </span>{" "}
-              pesanan
-            </span>
-            <span className="tabular-nums">
-              Nilai:{" "}
-              <span className="font-semibold text-foreground">
-                {formatCurrency(summary.total_value)}
-              </span>
-            </span>
-          </>
-        }
         actions={
           <Button asChild variant="secondary">
             <a href={exportUrl}>
@@ -844,7 +839,7 @@ export default function OrdersIndex({
           </div>
         ) : null}
 
-        {activeFilters.length ? (
+        {activeFilters.length || summary.count ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
             <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Filter aktif
@@ -865,6 +860,11 @@ export default function OrdersIndex({
                 </button>
               </span>
             ))}
+            <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground">
+              <span className="tabular-nums font-semibold">{formatNumber(summary.count)}</span> pesanan
+              <span className="text-muted-foreground">|</span>
+              Nilai <span className="tabular-nums font-semibold">{formatCurrency(summary.total_value)}</span>
+            </span>
           </div>
         ) : null}
 
