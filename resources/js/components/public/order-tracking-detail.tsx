@@ -549,64 +549,22 @@ function TrustAssurance() {
   )
 }
 
-function ReturnBlockCard({ order }: { order: PublicOrder }) {
-  if (order.order_status !== "delivered") return null
-  const block = order.return_block
-  if (!block) return null
-
-  const deadlineText = block.deadline
-    ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(block.deadline))
-    : null
-  const deliveredText = order.delivered_at
-    ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.delivered_at))
-    : null
-
-  return (
-    <section className="order-tracking__return rounded-[14px] border border-border bg-surface p-4 shadow-sm">
-      <h3 className="text-xs font-bold tracking-tight text-muted-foreground">Retur &amp; Penyelesaian</h3>
-      {deliveredText ? (
-        <p className="mt-2 text-xs text-muted-foreground">Paket sampai: {deliveredText} WIB</p>
-      ) : null}
-      {block.eligible ? (
-        <div className="mt-2">
-          <p className="text-sm font-semibold text-foreground">Anda dapat mengajukan retur</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {block.deadline && deadlineText
-              ? `Ajukan sebelum ${deadlineText} WIB sesuai kebijakan 48 jam setelah barang sampai.`
-              : "Ajukan sesuai kebijakan 48 jam setelah barang sampai."}
-          </p>
-          {order.return_whatsapp_url ? (
-            <Button asChild size="sm" className="mt-3">
-              <a href={order.return_whatsapp_url} target="_blank" rel="noreferrer">
-                Ajukan Retur via WhatsApp
-              </a>
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="mt-2">
-          <p className="text-sm font-medium text-foreground">{block.reason ?? "Retur tidak dapat diajukan."}</p>
-          {order.return_whatsapp_url ? (
-            <Button asChild variant="secondary" size="sm" className="mt-3">
-              <a href={order.return_whatsapp_url} target="_blank" rel="noreferrer">
-                Tindak Lanjut via WhatsApp
-              </a>
-            </Button>
-          ) : null}
-        </div>
-      )}
-    </section>
-  )
-}
-
 /**
  * Komponen Utama OrderTrackingDetail
  */
 
-
 export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
   return (
     <div className="order-tracking space-y-4 max-w-lg mx-auto">
+      {/* Banner delivered/completed: "sudah sampai" + CTA ulasan (paling atas) */}
+      <CustomerReviewForm
+        orderNumber={order.order_number}
+        customerPhone={order.customer_phone ?? ""}
+        orderStatus={order.order_status}
+        items={order.items}
+        reviews={order.reviews}
+        variant="banner"
+      />
       {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
       <OrderSummaryCard order={order} />
 
@@ -614,7 +572,6 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
       <JnTCard order={order} />
 
       {/* 4b. Retur & Penyelesaian (delivered only) */}
-      <ReturnBlockCard order={order} />
 
       {/* 5. Support Section */}
       <SupportAction />
@@ -622,16 +579,6 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
       {/* 6. Trust Assurance */}
       <TrustAssurance />
 
-      {/* 7. Review Form jika status delivered / completed */}
-      {order.order_status === "delivered" || order.order_status === "completed" ? (
-        <CustomerReviewForm
-          orderNumber={order.order_number}
-          customerPhone={order.customer_phone ?? ""}
-          orderStatus={order.order_status}
-          items={order.items}
-          reviews={order.reviews}
-        />
-      ) : null}
     </div>
   )
 }
