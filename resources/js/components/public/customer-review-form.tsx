@@ -1,8 +1,11 @@
 import * as React from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Icon } from "@/components/shared/icon"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrderItem, PublicOrderReview } from "@/types"
 
@@ -14,7 +17,17 @@ interface CustomerReviewFormProps {
   orderStatus: string
   items: ReviewItem[]
   reviews?: PublicOrderReview[]
+  variant?: "banner" | "button"
+  fullWidth?: boolean
 }
+
+const SUGGESTION_CHIPS = [
+  "Pengiriman cepat",
+  "Barang berkualitas",
+  "Pemasangan rapi",
+  "Harga sesuai",
+  "Pelayanan ramah",
+]
 
 function reviewRoute(orderNumber: string, reviewId?: number): string {
   return reviewId
@@ -44,12 +57,47 @@ function mediaToUrls(media: PublicOrderReview["media_items"]): string[] {
     .filter((url): url is string => Boolean(url))
 }
 
+/** U3: sheet kompak - bottom sheet (mobile) / side panel kanan (desktop). */
+function ReviewSheet({
+  open,
+  onOpenChange,
+  children,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  children: React.ReactNode
+}) {
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[65] bg-foreground/45 backdrop-blur-[2px]" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed z-[70] overflow-y-auto border-border bg-surface p-5 shadow-float focus:outline-none",
+            "inset-x-0 bottom-0 max-h-[88dvh] w-full rounded-t-lg border-t",
+            "lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:w-[min(90vw,27rem)] lg:max-h-none lg:rounded-none lg:border-l",
+          )}
+        >
+          <DialogPrimitive.Title className="sr-only">Formulir ulasan</DialogPrimitive.Title>
+          {children}
+          <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex size-11 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground">
+            <Icon name="x" className="size-5" aria-hidden="true" />
+            <span className="sr-only">Tutup</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  )
+}
+
 export function CustomerReviewForm({
   orderNumber,
   customerPhone,
   orderStatus,
   items,
   reviews = [],
+  variant = "button",
+  fullWidth = false,
 }: CustomerReviewFormProps) {
   const eligible = orderStatus === "delivered" || orderStatus === "completed"
   const review = reviews[0] ?? null
@@ -59,14 +107,18 @@ export function CustomerReviewForm({
     )),
     [items],
   )
-  const [rating, setRating] = React.useState(review?.rating || 5)
+  const [rating, setRating] = React.useState(0)
   const [message, setMessage] = React.useState(review?.message ?? "")
   const [productId, setProductId] = React.useState<number | "">(
     review?.product_id ?? (products.length === 1 ? products[0].product_id : ""),
   )
-  const [mediaText, setMediaText] = React.useState(mediaToUrls(review?.media_items).join("\n"))
+  const [mediaItems, setMediaItems] = React.useState<NonNullable<PublicOrderReview["media_items"]>>(
+    review?.media_items ?? [],
+  )
   const [currentReview, setCurrentReview] = React.useState<PublicOrderReview | null>(review)
+  const [sheetOpen, setSheetOpen] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
+  const [uploading, setUploading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [success, setSuccess] = React.useState<string | null>(null)
 
@@ -74,31 +126,76 @@ export function CustomerReviewForm({
     const next = reviews[0] ?? null
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentReview(next)
-    setRating(next?.rating || 5)
+    setRating(next?.rating || 0)
     setMessage(next?.message ?? "")
     setProductId(next?.product_id ?? (products.length === 1 ? products[0].product_id : ""))
-    setMediaText(mediaToUrls(next?.media_items).join("\n"))
-  }, [reviews, products])
+    setMediaItems(next?.media_items ?? [])
+  }, [reviews, products, orderNumber])
 
+  const hasOwnReview = Boolean(currentReview?.customer_authored === true)
   if (!eligible) return null
 
-  const isOwnReview = currentReview?.customer_authored === true
-  const canEdit = Boolean(currentReview && isOwnReview)
-  const mediaItems: PublicOrderReview["media_items"] = mediaText
-    .split("\n")
-    .map((url) => url.trim())
-    .filter(Boolean)
-    .slice(0, 10)
-    .map((url) => ({ type: "image", url }))
 
   function resetNotice(): void {
     setError(null)
     setSuccess(null)
   }
 
+  async function uploadFiles(files: FileList | File[]): Promise<void> {
+    const fileList = Array.from(files)
+    const slots = 10 - mediaItems.length
+    const selected = fileList.slice(0, Math.max(0, slots))
+    if (selected.length === 0) {
+      setError("Maksimal 10 media per ulasan.")
+      return
+    }
+
+    setUploading(true)
+    resetNotice()
+    try {
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? ""
+      const uploaded: NonNullable<PublicOrderReview["media_items"]> = []
+      for (const file of selected) {
+        const body = new FormData()
+        body.append("customer_phone", customerPhone)
+        body.append("media", file)
+        const response = await fetch(`/order/${encodeURIComponent(orderNumber)}/review/media`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
+          },
+          body,
+        })
+        const payload = await response.json().catch(() => ({})) as {
+          url?: string
+          type?: "image" | "video"
+        }
+        if (!response.ok || !payload.url) {
+          setError(firstError(payload) ?? "Media gagal diunggah. Coba lagi.")
+          break
+        }
+        uploaded.push({ type: payload.type ?? (file.type.startsWith("video/") ? "video" : "image"), url: payload.url })
+      }
+      if (uploaded.length > 0) {
+        setMediaItems((prev) => [...prev, ...uploaded].slice(0, 10))
+      }
+    } catch {
+      setError("Koneksi gagal saat mengunggah media.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     resetNotice()
+    if (rating < 1) {
+      setError("Pilih bintang rating terlebih dahulu.")
+      return
+    }
     if (message.trim().length < 3) {
       setError("Tulis ulasan minimal 3 karakter.")
       return
@@ -111,8 +208,8 @@ export function CustomerReviewForm({
     setBusy(true)
     try {
       const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? ""
-      const response = await fetch(reviewRoute(orderNumber, canEdit ? currentReview?.id : undefined), {
-        method: canEdit ? "PUT" : "POST",
+      const response = await fetch(reviewRoute(orderNumber), {
+        method: "POST",
         credentials: "same-origin",
         headers: {
           Accept: "application/json",
@@ -122,7 +219,7 @@ export function CustomerReviewForm({
         },
         body: JSON.stringify({
           customer_phone: customerPhone,
-          ...(canEdit ? {} : productId === "" ? {} : { product_id: productId }),
+          ...(productId === "" ? {} : { product_id: productId }),
           rating,
           message: message.trim(),
           media_items: mediaItems,
@@ -150,6 +247,7 @@ export function CustomerReviewForm({
         customer_authored: true,
       })
       setSuccess(payload.message ?? "Ulasan berhasil disimpan dan menunggu moderasi.")
+      setSheetOpen(false)
     } catch {
       setError("Koneksi gagal. Periksa koneksi lalu coba lagi.")
     } finally {
@@ -157,39 +255,106 @@ export function CustomerReviewForm({
     }
   }
 
-  return (
-    <section className="mt-8 rounded-lg border border-border bg-surface p-5 sm:p-6" aria-labelledby="customer-review-heading">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+  function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  }
+
+  function chipSelected(chip: string): boolean {
+    const esc = escapeRegExp(chip)
+    return new RegExp(`(^|,\\s*)${esc}(?=\\s*,|\\s*$)`).test(message)
+  }
+
+  function removeChipFromMessage(value: string, chip: string): string {
+    const esc = escapeRegExp(chip)
+    return value
+      .replace(new RegExp(`(^|,\\s*)${esc}(?=\\s*,|\\s*$)`, "g"), "$1")
+      .replace(/^,\\s*/, "")
+      .replace(/,\\s*$/, "")
+      .replace(/,\\s*,/g, ",")
+      .trim()
+  }
+
+  function toggleSuggestion(chip: string): void {
+    resetNotice()
+    setMessage((prev) => {
+      const trimmed = prev.trim()
+      if (chipSelected(chip)) return removeChipFromMessage(trimmed, chip)
+      if (trimmed === "") return chip
+      return `${trimmed.replace(/,\\s*$/, "")}, ${chip.toLowerCase()}`
+    })
+  }
+
+  const trigger = variant === "banner" ? (
+    <section className="rounded-[14px] border border-success/30 bg-success/10 p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 id="customer-review-heading" className="text-lg font-semibold">
-            {currentReview ? "Ulasan Anda" : "Bagikan pengalaman Anda"}
-          </h3>
-          <p className="mt-1 max-w-prose text-sm leading-6 text-muted-foreground">
-            Hanya pembelian terverifikasi yang dapat mengirim ulasan.
+          <p className="text-sm font-semibold text-foreground">
+            Terima kasih, pesanan Anda sudah sampai di alamat tujuan!
           </p>
+          {hasOwnReview ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">Anda sudah berbagi pengalaman untuk pesanan ini. Terima kasih!</p>
+          ) : (
+            <p className="mt-0.5 text-xs text-muted-foreground">Bagikan pengalaman Anda agar bermanfaat bagi pembeli lain.</p>
+          )}
         </div>
-        {currentReview?.verified_purchase ? (
-          <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
-            Pembelian terverifikasi
-          </span>
-        ) : null}
+        <Button
+          type="button"
+          disabled={hasOwnReview}
+          onClick={() => setSheetOpen(true)}
+          className="w-full sm:w-auto"
+        >
+          <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
+          {hasOwnReview ? "Ulasan Terkirim" : "Beri Ulasan"}
+        </Button>
       </div>
+    </section>
+  ) : (
+    <Button
+      type="button"
+      variant="secondary"
+      disabled={hasOwnReview}
+      onClick={() => setSheetOpen(true)}
+      className={fullWidth ? "w-full" : "w-full sm:w-auto"}
+    >
+      <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
+      {hasOwnReview ? "Ulasan Terkirim" : "Beri Ulasan"}
+    </Button>
+  )
 
-      {currentReview && !isOwnReview ? (
-        <Alert tone="info" className="mt-4">
-          Ulasan ini dicatat oleh tim toko dan tidak dapat diedit dari sisi pelanggan.
-        </Alert>
-      ) : (
+  return (
+    <>
+      {trigger}
+      <ReviewSheet
+        open={sheetOpen}
+        onOpenChange={(next) => {
+          if (!next && (busy || uploading)) return
+          setSheetOpen(next)
+        }}
+      >
+      <div className="pb-14 lg:pb-4">
+        <h3 id="customer-review-heading" className="text-lg font-semibold">
+          Bagikan Pengalaman Anda
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Hanya pembelian terverifikasi yang dapat mengirim ulasan.
+        </p>
+
+        {error ? <Alert tone="danger" className="mt-4">{error}</Alert> : null}
+        {success ? (
+          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success">
+            <Icon name="check-circle" className="mr-2 inline size-4" aria-hidden="true" />
+            {success}
+          </div>
+        ) : null}
+
         <form onSubmit={(event) => void submit(event)} className="mt-5 space-y-4">
-          {error ? <Alert tone="danger">{error}</Alert> : null}
-          {success ? <Alert tone="success">{success}</Alert> : null}
-
-          {products.length > 1 && !canEdit ? (
-            <label className="block text-sm font-medium">
+          {products.length > 1 ? (
+            <label className="block text-sm font-medium" htmlFor={`review-product-${orderNumber}`}>
               Produk yang diulas
               <select
+                id={`review-product-${orderNumber}`}
                 value={productId}
-                onChange={(event) => setProductId(event.target.value ? Number(event.target.value) : "")}
+                onChange={(event) => setProductId(event.target.value === "" ? "" : Number(event.target.value))}
                 className="mt-1.5 h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
                 disabled={busy}
               >
@@ -205,7 +370,7 @@ export function CustomerReviewForm({
 
           <fieldset>
             <legend className="text-sm font-medium">Rating</legend>
-            <div className="mt-2 flex gap-1" role="radiogroup" aria-label="Rating ulasan">
+            <div className="mt-2 flex items-center gap-1.5" role="radiogroup" aria-label="Rating ulasan">
               {[1, 2, 3, 4, 5].map((value) => (
                 <button
                   key={value}
@@ -214,10 +379,15 @@ export function CustomerReviewForm({
                   aria-checked={rating === value}
                   aria-label={`${value} bintang`}
                   onClick={() => setRating(value)}
-                  className={`size-10 rounded-md border text-lg ${rating >= value ? "border-warning bg-warning/10 text-warning" : "border-border text-muted-foreground"}`}
+                  className="inline-flex items-center justify-center rounded-full p-2 transition hover:scale-110"
                   disabled={busy}
                 >
-                  ★
+                  <Icon
+                    name="star"
+                    weight={rating >= value ? "fill" : "regular"}
+                    className={cn("size-6", rating >= value ? "text-[#f59e0b]" : "text-muted-foreground")}
+                    aria-hidden="true"
+                  />
                 </button>
               ))}
             </div>
@@ -225,6 +395,24 @@ export function CustomerReviewForm({
 
           <label className="block text-sm font-medium" htmlFor={`review-message-${orderNumber}`}>
             Ceritakan pengalaman Anda
+            <span className="mt-2 flex flex-wrap gap-1.5" aria-hidden="true">
+              {SUGGESTION_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => toggleSuggestion(chip)}
+                  aria-pressed={chipSelected(chip)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] transition",
+                    chipSelected(chip)
+                      ? "border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e]"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  {chip}
+                </button>
+              ))}
+            </span>
             <Textarea
               id={`review-message-${orderNumber}`}
               value={message}
@@ -237,27 +425,60 @@ export function CustomerReviewForm({
             />
           </label>
 
-          <label className="block text-sm font-medium" htmlFor={`review-media-${orderNumber}`}>
-            Media pendukung (opsional)
-            <Textarea
-              id={`review-media-${orderNumber}`}
-              value={mediaText}
-              onChange={(event) => setMediaText(event.target.value)}
-              rows={2}
-              className="mt-1.5"
-              disabled={busy}
-              placeholder="Tautan foto/video, satu tautan per baris"
-            />
-            <span className="mt-1 block text-xs font-normal text-muted-foreground">
-              Tempel satu tautan per baris, maksimal 10 tautan.
-            </span>
-          </label>
+          <div>
+            <span className="block text-sm font-medium">Media pendukung (opsional)</span>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {mediaItems.map((item, index) => (
+                <div
+                  key={`${item.url}-${index}`}
+                  className="relative size-20 overflow-hidden rounded-md border border-border bg-background"
+                >
+                  {item.type === "video" ? (
+                    <video src={item.url} className="size-full object-cover" muted playsInline />
+                  ) : (
+                    <img src={item.url} alt="" className="size-full object-cover" loading="lazy" />
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Hapus media"
+                    onClick={() => setMediaItems((prev) => prev.filter((_, i) => i !== index))}
+                    className="absolute right-0.5 top-0.5 inline-flex size-6 items-center justify-center rounded-full bg-foreground/70 text-white"
+                  >
+                    <Icon name="x" className="size-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+              {mediaItems.length < 10 ? (
+                <label className="inline-flex size-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
+                  <Icon name="image" className="size-5" aria-hidden="true" />
+                  <span className="text-[10px]">{uploading ? "Mengunggah..." : "Unggah"}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,video/mp4"
+                    multiple
+                    className="sr-only"
+                    disabled={uploading || busy}
+                    onChange={(event) => {
+                      if (event.target.files && event.target.files.length > 0) {
+                        void uploadFiles(event.target.files)
+                      }
+                      event.target.value = ""
+                    }}
+                  />
+                </label>
+              ) : null}
+            </div>
+            <p className="mt-1 text-xs font-normal text-muted-foreground">
+              {mediaItems.length}/10 media. Foto atau video, maksimal 10 MB per file.
+            </p>
+          </div>
 
-          <Button type="submit" disabled={busy}>
-            {busy ? "Menyimpan..." : canEdit ? "Simpan perubahan" : "Kirim ulasan"}
+          <Button type="submit" disabled={busy || uploading} className="w-full">
+            {busy ? "Menyimpan..." : "Kirim ulasan"}
           </Button>
         </form>
-      )}
-    </section>
+      </div>
+      </ReviewSheet>
+    </>
   )
 }
