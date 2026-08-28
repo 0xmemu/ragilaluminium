@@ -696,7 +696,7 @@ export default function ProductMediaPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
-        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
           <div className="border-b border-border p-5">
             <h2 className="text-xl font-semibold">Kelola media</h2>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -788,7 +788,7 @@ export default function ProductMediaPage({
               },
             })
           }}
-          className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24"
+          className="rounded-lg border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24"
         >
           <h2 className="text-xl font-semibold">Tambah media</h2>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">

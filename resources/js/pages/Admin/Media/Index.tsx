@@ -51,7 +51,7 @@ export default function MediaIndex({ title, description, filters, statusOptions,
       <Head title={`${title} | Admin`} />
 
       {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4">
+      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
         <div className="w-44">
           <label className="text-xs font-semibold text-muted-foreground">Status</label>
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>

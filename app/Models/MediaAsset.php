@@ -24,6 +24,7 @@ class MediaAsset extends Model
         'height_px',
         'duration_ms',
         'poster_asset_id',
+        'folder_id',
         'status',
         'visibility',
         'error_reason',
@@ -49,6 +50,11 @@ class MediaAsset extends Model
     public function poster(): BelongsTo
     {
         return $this->belongsTo(self::class, 'poster_asset_id');
+    }
+
+    public function folder(): BelongsTo
+    {
+        return $this->belongsTo(MediaFolder::class, 'folder_id');
     }
 
     public function scopeReady(Builder $query): Builder

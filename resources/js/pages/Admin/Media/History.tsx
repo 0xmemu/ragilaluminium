@@ -274,7 +274,7 @@ export default function MediaHistory({
         </Select>
       </ListToolbar>
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {liveRows.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">

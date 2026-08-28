@@ -271,6 +271,14 @@ class ProductMediaController extends Controller
     {
         $assets = MediaAsset::query()
             ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
+            ->when($request->filled('folder_id'), function ($query) use ($request): void {
+                $folderId = (int) $request->query('folder_id');
+                if ($folderId === 0) {
+                    $query->whereNull('folder_id'); // Inbox
+                } else {
+                    $query->where('folder_id', $folderId);
+                }
+            })
             ->when(! $request->filled('visibility'), fn ($query) => $query->where('visibility', '!=', 'archived'))
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $q = trim((string) $request->query('q'));
@@ -283,6 +291,8 @@ class ProductMediaController extends Controller
             ->paginate(30)
             ->withQueryString();
 
+        $folderTree = $this->folderTree();
+
         return Inertia::render('Admin/Media/Library', [
             'assets' => $assets->getCollection()->map(fn (MediaAsset $asset) => [
                 'id' => $asset->id,
@@ -290,21 +300,42 @@ class ProductMediaController extends Controller
                 'kind' => $asset->kind,
                 'status' => $asset->status,
                 'usage_count' => (int) $asset->usage_count,
+                'folder_id' => $asset->folder_id,
                 'thumb_url' => $asset->urlFor('thumb'),
                 'media_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
+                'public_url' => $asset->publicUrlForPath((string) $asset->object_key),
+                'error_reason' => $asset->error_reason,
                 'context' => self::libraryContext($asset->label),
                 'attach_url' => route('admin.media.attach', $asset),
                 'created_at' => optional($asset->created_at)?->toIso8601String(),
             ])->values()->all(),
+            'folders' => $folderTree,
             'pagination' => InertiaAdmin::pagination($assets),
             'filters' => [
                 'q' => (string) $request->query('q', ''),
                 'kind' => (string) $request->query('kind', ''),
                 'status' => (string) $request->query('status', ''),
                 'visibility' => (string) $request->query('visibility', ''),
+                'folder_id' => (string) $request->query('folder_id', ''),
             ],
+            'historyHref' => route('admin.media.history'),
             'indexHref' => route('admin.media.index'),
         ]);
+    }
+
+    protected function folderTree(): array
+    {
+        $folders = \App\Models\MediaFolder::query()->withCount('assets')->orderBy('name')->get();
+        $build = function (?int $parentId) use ($folders, &$build): array {
+            return $folders->where('parent_id', $parentId)->values()->map(fn ($f) => [
+                'id' => $f->id,
+                'name' => $f->name,
+                'assets_count' => (int) $f->assets_count,
+                'children' => $build((int) $f->id),
+            ])->all();
+        };
+
+        return $build(null);
     }
 
     protected static function libraryContext(?string $label): string
