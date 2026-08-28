@@ -60,6 +60,7 @@ class PromotionController extends Controller
             : Promotion::TYPE_STORE;
 
         return Inertia::render('Admin/PromotionForm', [
+            'backUrl' => route('admin.promotions.index', ['type' => $type]),
             'title' => $type === Promotion::TYPE_STORE ? 'Promo Toko Baru' : 'Flash Sale Baru',
             'promotion' => null,
             'submitUrl' => route('admin.promotions.store'),
@@ -103,6 +104,7 @@ class PromotionController extends Controller
         $promotion->load('items');
 
         return Inertia::render('Admin/PromotionForm', [
+            'backUrl' => route('admin.promotions.index', ['type' => $promotion->type]),
             'title' => 'Edit '.($promotion->isFlashSale() ? 'Flash Sale' : 'Promo Toko'),
             'promotion' => [
                 'id' => $promotion->id,

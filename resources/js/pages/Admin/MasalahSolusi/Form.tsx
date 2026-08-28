@@ -49,7 +49,9 @@ export default function MasalahSolusiForm({
   submitUrl,
   indexUrl,
   method = "post",
+  backUrl
 }: {
+  backUrl?: string | null
   item: RecordItem | null
   submitUrl: string
   indexUrl: string
@@ -189,7 +191,7 @@ export default function MasalahSolusiForm({
 
   return (
     <AdminLayout
-      title={editing ? "Edit Masalah & Solusi" : "Tambah Masalah & Solusi"}
+      backUrl={backUrl} title={editing ? "Edit Masalah & Solusi" : "Tambah Masalah & Solusi"}
       description="Unggah foto/video dokumentasi masalah dan tulis rekomendasi solusi untuk halaman publik."
       actions={
         <Button asChild variant="secondary">
@@ -205,7 +207,7 @@ export default function MasalahSolusiForm({
       <form className="mx-auto max-w-5xl space-y-6" onSubmit={onSubmit}>
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-base font-bold">Masalah pelanggan</h2>
           <div className="mt-4 space-y-4">
             <Field id="ms-problem" label="Deskripsi masalah" required error={form.errors.problem}>
@@ -228,7 +230,7 @@ export default function MasalahSolusiForm({
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-base font-bold">Contoh dokumentasi</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Foto atau video yang membantu pelanggan mengenali kondisi masalah. Ditampilkan di accordion halaman publik.
@@ -383,7 +385,7 @@ export default function MasalahSolusiForm({
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-base font-bold">Solusi / rekomendasi</h2>
           <div className="mt-4 space-y-4">
             <Field id="ms-solution-body" label="Teks solusi" error={form.errors.solution_body}>
@@ -434,7 +436,7 @@ export default function MasalahSolusiForm({
                 {form.data.use_options ? (
                   <div className="space-y-3">
                     {options.map((option, index) => (
-                      <div key={index} className="rounded-xl border border-border bg-card p-3">
+                      <div key={index} className="rounded-lg border border-border bg-card p-3">
                         <div className="grid gap-2 sm:grid-cols-2">
                           <Input
                             value={option.title}

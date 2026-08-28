@@ -50,7 +50,9 @@ export default function PromotionForm({
   submitUrl,
   indexUrl,
   options,
+  backUrl,
 }: {
+  backUrl?: string | null
   title: string
   promotion: PromotionFormData | null
   submitUrl: string
@@ -155,7 +157,7 @@ export default function PromotionForm({
   const filteredExclude = options.productOptions.filter((option) => option.label.toLowerCase().includes(excludeSearch.toLowerCase()))
 
   return (
-    <AdminLayout title={title} description={editing ? "Perubahan berlaku setelah disimpan; kampanye draft baru dapat diaktifkan dari daftar." : "Kampanye dibuat sebagai draft, lalu diaktifkan dari daftar."}>
+    <AdminLayout title={title} backUrl={backUrl} description={editing ? "Perubahan berlaku setelah disimpan; kampanye draft baru dapat diaktifkan dari daftar." : "Kampanye dibuat sebagai draft, lalu diaktifkan dari daftar."}>
       <Head title={title} />
       <form onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />

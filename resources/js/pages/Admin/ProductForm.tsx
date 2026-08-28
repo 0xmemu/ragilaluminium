@@ -88,7 +88,9 @@ export default function ProductForm({
   variants = [],
   completion = { active_variants: false, prices: false, main_image_ready: false, photo_coverage: false, specifications: false, explanation: false, shipping_data: false },
   options,
+  backUrl,
 }: {
+  backUrl?: string | null
   product: ProductRecord | null
   submitUrl: string
   publishUrl?: string
@@ -172,7 +174,7 @@ export default function ProductForm({
 
   return (
     <AdminLayout
-      title={editing ? "Edit produk" : "Tambah produk"}
+      backUrl={backUrl} title={editing ? "Edit produk" : "Tambah produk"}
       description={
         editing
           ? `Lengkapi ${product?.parent_sku} dari satu alur kerja.`

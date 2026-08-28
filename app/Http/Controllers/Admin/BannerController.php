@@ -65,6 +65,7 @@ class BannerController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/Banners/Form', [
+            'backUrl' => route('admin.banners.index'),
             'banner' => null,
             'submitUrl' => route('admin.banners.store'),
             'method' => 'post',
@@ -93,6 +94,7 @@ class BannerController extends Controller
     public function edit(CmsBanner $banner): Response
     {
         return Inertia::render('Admin/Banners/Form', [
+            'backUrl' => route('admin.banners.index'),
             'banner' => $this->bannerCard($banner),
             'submitUrl' => route('admin.banners.update', $banner),
             'method' => 'put',

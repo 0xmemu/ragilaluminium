@@ -140,6 +140,7 @@ class ProductController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/ProductForm', [
+            'backUrl' => route('admin.products.index'),
             'product' => null,
             'submitUrl' => route('admin.products.store'),
             'options' => $this->formOptions(),
@@ -275,6 +276,7 @@ class ProductController extends Controller
         $product->load(['variants', 'attributes', 'media']);
 
         return Inertia::render('Admin/ProductForm', [
+            'backUrl' => route('admin.products.index'),
             'product' => [
                 'id' => $product->id,
                 'parent_sku' => $product->parent_sku,

@@ -23,7 +23,9 @@ export default function BannerForm({
   method,
   indexHref,
   presignUrl,
+  backUrl
 }: {
+  backUrl?: string | null
   banner: BannerFormData | null
   submitUrl: string
   method: "post" | "put"
@@ -143,7 +145,7 @@ export default function BannerForm({
 
   return (
     <AdminLayout
-      title={isEdit ? "Edit Promo Toko" : "Tambah Promo Toko"}
+      backUrl={backUrl} title={isEdit ? "Edit Promo Toko" : "Tambah Promo Toko"}
       description="Slide manual beranda (cms_banners): judul, gambar, link, urutan, status published."
       actions={
         <Button asChild variant="secondary">
@@ -159,7 +161,7 @@ export default function BannerForm({
       <form onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <section className="overflow-hidden rounded-lg border border-border bg-card">
           {/* Stripe media: thumbnail kiri, upload inline kanan */}
           <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start">
             <div className="aspect-[1024/426] w-full max-w-[280px] shrink-0 overflow-hidden rounded-md border border-border bg-muted">

@@ -58,6 +58,7 @@ class MasalahSolusiController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/MasalahSolusi/Form', [
+            'backUrl' => route('admin.masalah-solusi.index'),
             'item' => null,
             'submitUrl' => route('admin.masalah-solusi.store'),
             'indexUrl' => route('admin.masalah-solusi.index'),
@@ -90,6 +91,7 @@ class MasalahSolusiController extends Controller
     public function edit(CmsProblemSolution $masalahSolusi): Response
     {
         return Inertia::render('Admin/MasalahSolusi/Form', [
+            'backUrl' => route('admin.masalah-solusi.index'),
             'item' => array_merge(
                 [
                     'id' => $masalahSolusi->id,

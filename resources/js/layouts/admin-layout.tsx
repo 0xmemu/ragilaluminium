@@ -80,6 +80,9 @@ export function AdminLayout({
     }
     return resolveAdminBreadcrumb(nav?.admin ?? {}, routeName)
   }, [nav])
+
+  // Tombol Kembali hanya muncul saat controller mengirim backUrl eksplisit
+  // (halaman sub: create/edit/detail). Halaman index/menu utama TIDAK tampil.
   const notifications = (adminNotifications as NotificationItem[] | undefined) ?? []
   const activityLogs = (adminActivityLogs as ActivityLogItem[] | undefined) ?? []
   const [navigationOpen, setNavigationOpen] = React.useState(false)
@@ -234,18 +237,11 @@ export function AdminLayout({
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
                   <AdminBreadcrumbs items={breadcrumbItems} className="mb-[26px]" />
-                  {title ? (
-                    backUrl ? (
-                      <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                        <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
-                        Kembali
-                      </Link>
-                    ) : (
-                      <button type="button" onClick={() => window.history.back()} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                        <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
-                        Kembali
-                      </button>
-                    )
+                  {title && backUrl ? (
+                    <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                      <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
+                      Kembali
+                    </Link>
                   ) : null}
                   {title ? (
                     <h1 className="text-xl font-semibold tracking-tight text-foreground">

@@ -296,6 +296,7 @@ class OrderController extends Controller
         }
 
         return Inertia::render('Admin/Orders/Show', [
+            'backUrl' => route('admin.orders.index'),
             'order' => [
                 'id' => $order->id,
                 'order_number' => $order->order_number,

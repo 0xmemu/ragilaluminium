@@ -63,6 +63,7 @@ class VoucherController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/Vouchers/Form', [
+            'backUrl' => route('admin.vouchers.index'),
             'voucher' => null,
             'submitUrl' => route('admin.vouchers.store'),
             'method' => 'post',
@@ -110,6 +111,7 @@ class VoucherController extends Controller
     public function edit(StoreVoucher $voucher): Response
     {
         return Inertia::render('Admin/Vouchers/Form', [
+            'backUrl' => route('admin.vouchers.index'),
             'voucher' => $this->card($voucher),
             'submitUrl' => route('admin.vouchers.update', $voucher),
             'method' => 'put',
@@ -156,7 +158,7 @@ class VoucherController extends Controller
             (int) auth()->id(),
         );
 
-        return redirect()->back()->with('success', 'Voucher diaktifkan. Voucher lain dinonaktifkan.');
+        return redirect()->back()->with('success', 'Voucher diaktifkan.');
     }
 
     public function unpublish(StoreVoucher $voucher): RedirectResponse

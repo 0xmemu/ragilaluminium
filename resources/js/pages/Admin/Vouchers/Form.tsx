@@ -2,7 +2,7 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
@@ -48,7 +48,9 @@ export default function VoucherForm({
   method,
   indexHref,
   targetOptions,
+  backUrl
 }: {
+  backUrl?: string | null
   voucher: VoucherFormData | null
   submitUrl: string
   method: "post" | "put"
@@ -94,7 +96,7 @@ export default function VoucherForm({
 
   return (
     <AdminLayout
-      title={isEdit ? "Edit Voucher Toko" : "Tambah Voucher Toko"}
+      backUrl={backUrl} title={isEdit ? "Edit Voucher Toko" : "Tambah Voucher Toko"}
       description="Nama internal + kode checkout. Aktifkan untuk dipakai pelanggan."
       actions={
         <Button asChild variant="secondary">
@@ -104,201 +106,232 @@ export default function VoucherForm({
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Voucher | Admin`} />
 
-      <form
-        onSubmit={submit}
-        className="mx-auto max-w-2xl space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm"
-      >
+      <form onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="space-y-4">
-          <h2 className="text-base font-bold">Informasi dasar</h2>
-          <Field
-            id="name"
-            label="Nama voucher (internal)"
-            error={form.errors.name}
-            hint="Tidak ditampilkan ke pembeli."
-          >
-            <Input
-              id="name"
-              value={form.data.name}
-              onChange={(event) => form.setData("name", event.target.value)}
-              required
-            />
-          </Field>
-          <Field
-            id="code"
-            label="Kode voucher"
-            error={form.errors.code}
-            hint="Huruf/angka/-/_ . Pelanggan memasukkan kode ini di checkout."
-          >
-            <Input
-              id="code"
-              value={form.data.code}
-              onChange={(event) => form.setData("code", event.target.value.toUpperCase())}
-              className="font-mono uppercase"
-              required
-            />
-          </Field>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-base font-bold">Berlaku untuk</h2>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { value: "general", label: "Semua produk" },
-              { value: "model", label: "Model Produk" },
-              { value: "product", label: "Produk Tertentu" },
-            ] as const).map((option) => (
-              <label
-                key={option.value}
-                className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-semibold ${
-                  form.data.target_type === option.value
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-border text-muted-foreground"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="target_type"
-                  className="size-4 accent-primary"
-                  checked={form.data.target_type === option.value}
-                  onChange={() => form.setData("target_type", option.value)}
-                />
-                {option.label}
-              </label>
-            ))}
-          </div>
-          {form.data.target_type === "model" ? (
-            <Field id="target_model" label="Pilih model produk" error={form.errors.target_model}>
-              <Select
-                id="target_model"
-                value={form.data.target_model}
-                onChange={(event) => form.setData("target_model", event.target.value)}
-              >
-                <option value="">Pilih model…</option>
-                {targetModelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Voucher hanya berlaku untuk produk dengan model ini. Minimum pembelian dihitung dari belanja model tersebut.
-              </p>
-            </Field>
-          ) : null}
-          {form.data.target_type === "product" ? (
-            <Field id="target_product_id" label="Pilih produk" error={form.errors.target_product_id}>
-              <Select
-                id="target_product_id"
-                value={form.data.target_product_id}
-                onChange={(event) => form.setData("target_product_id", event.target.value)}
-              >
-                <option value="">Pilih produk…</option>
-                {targetProductOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Voucher hanya berlaku untuk produk ini. Minimum pembelian dihitung dari belanja produk tersebut.
-              </p>
-            </Field>
-          ) : null}
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-base font-bold">Waktu berlaku</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="starts_at" label="Mulai" error={form.errors.starts_at}>
-              <Input
-                id="starts_at"
-                type="datetime-local"
-                value={form.data.starts_at}
-                onChange={(event) => form.setData("starts_at", event.target.value)}
-              />
-            </Field>
-            <Field id="ends_at" label="Selesai" error={form.errors.ends_at}>
-              <Input
-                id="ends_at"
-                type="datetime-local"
-                value={form.data.ends_at}
-                onChange={(event) => form.setData("ends_at", event.target.value)}
-              />
-            </Field>
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-base font-bold">Pengaturan diskon</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="discount_type" label="Jenis" error={form.errors.discount_type}>
-              <Select
-                id="discount_type"
-                value={form.data.discount_type}
-                onChange={(event) =>
-                  form.setData("discount_type", event.target.value as "percent" | "fixed")
-                }
-              >
-                <option value="percent">Persen (%)</option>
-                <option value="fixed">Nominal (Rp)</option>
-              </Select>
-            </Field>
-            <Field id="discount_value" label="Nilai diskon" error={form.errors.discount_value}>
-              <Input
-                id="discount_value"
-                type="number"
-                min={0.01}
-                step="0.01"
-                max={form.data.discount_type === "percent" ? 100 : undefined}
-                value={form.data.discount_value}
-                onChange={(event) => form.setData("discount_value", Number(event.target.value))}
-                required
-              />
-            </Field>
-          </div>
-          <Field
-            id="min_purchase"
-            label="Minimum pembelian"
-            error={form.errors.min_purchase}
-            hint="Isi 0 jika tidak ada minimum."
-          >
-            <Input
-              id="min_purchase"
-              type="number"
-              min={0}
-              step="1"
-              value={form.data.min_purchase}
-              onChange={(event) => form.setData("min_purchase", Number(event.target.value))}
-            />
-          </Field>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-border"
-              checked={form.data.stackable}
-              onChange={(event) => form.setData("stackable", event.target.checked)}
-            />
-            Boleh digabung dengan voucher lain
-          </label>
-          <p className="text-xs text-muted-foreground">
-            Kode hanya bisa ditumpuk jika semua voucher yang dipakai mengizinkan stacking.
-          </p>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-border"
-              checked={form.data.publish_now}
-              onChange={(event) => form.setData("publish_now", event.target.checked)}
-            />
-            Aktifkan sekarang
-          </label>
-        </section>
+        <div className="overflow-hidden rounded-lg border border-border">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Nama voucher (internal) <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    value={form.data.name}
+                    onChange={(event) => form.setData("name", event.target.value)}
+                    className="h-8 text-xs"
+                    required
+                  />
+                  {form.errors.name ? <p className="mt-1 text-xs text-destructive">{form.errors.name}</p> : null}
+                  <p className="mt-1 text-xs text-muted-foreground">Tidak ditampilkan ke pembeli.</p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kode voucher <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    value={form.data.code}
+                    onChange={(event) => form.setData("code", event.target.value.toUpperCase())}
+                    className="h-8 w-56 text-xs font-mono uppercase"
+                    required
+                  />
+                  {form.errors.code ? <p className="mt-1 text-xs text-destructive">{form.errors.code}</p> : null}
+                  <p className="mt-1 text-xs text-muted-foreground">Huruf/angka/-/_ . Pelanggan memasukkan kode ini di checkout.</p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Diskon
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Select
+                      value={form.data.discount_type}
+                      onChange={(event) => form.setData("discount_type", event.target.value as "percent" | "fixed")}
+                      className="h-8 w-48 text-xs"
+                    >
+                      <option value="percent">Persentase (%)</option>
+                      <option value="fixed">Nominal tetap (Rp)</option>
+                    </Select>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.data.discount_value}
+                      onChange={(event) => form.setData("discount_value", Number(event.target.value))}
+                      className="h-8 w-32 text-xs"
+                      required
+                    />
+                  </div>
+                  {form.errors.discount_value ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.discount_value}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Minimum pembelian
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={form.data.min_purchase}
+                    onChange={(event) => form.setData("min_purchase", Number(event.target.value))}
+                    className="h-8 w-44 text-xs"
+                  />
+                  {form.errors.min_purchase ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.min_purchase}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Tumpuk (stackable)</th>
+                <td className="px-4 py-2.5">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-border"
+                      checked={form.data.stackable}
+                      onChange={(event) => form.setData("stackable", event.target.checked)}
+                    />
+                    Bisa ditumpuk dengan voucher lain
+                  </label>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Berlaku untuk
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { value: "general", label: "Semua produk" },
+                      { value: "model", label: "Model Produk" },
+                      { value: "product", label: "Produk Tertentu" },
+                    ] as const).map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-xs font-semibold ${
+                          form.data.target_type === option.value
+                            ? "border-primary bg-primary/5 text-foreground"
+                            : "border-border text-muted-foreground"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="target_type"
+                          className="size-4 accent-primary"
+                          checked={form.data.target_type === option.value}
+                          onChange={() => form.setData("target_type", option.value)}
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                  {form.data.target_type === "model" ? (
+                    <div className="mt-3">
+                      <Select
+                        value={form.data.target_model}
+                        onChange={(event) => form.setData("target_model", event.target.value)}
+                        className="h-8 w-full text-xs"
+                      >
+                        <option value="">Pilih model…</option>
+                        {targetModelOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </Select>
+                      {form.errors.target_model ? (
+                        <p className="mt-1 text-xs text-destructive">{form.errors.target_model}</p>
+                      ) : null}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Voucher hanya berlaku untuk produk dengan model ini. Minimum pembelian dihitung dari belanja model tersebut.
+                      </p>
+                    </div>
+                  ) : null}
+                  {form.data.target_type === "product" ? (
+                    <div className="mt-3">
+                      <Select
+                        value={form.data.target_product_id}
+                        onChange={(event) => form.setData("target_product_id", event.target.value)}
+                        className="h-8 w-full text-xs"
+                      >
+                        <option value="">Pilih produk…</option>
+                        {targetProductOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </Select>
+                      {form.errors.target_product_id ? (
+                        <p className="mt-1 text-xs text-destructive">{form.errors.target_product_id}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Periode berlaku
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="grid max-w-md gap-3 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="starts_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mulai</label>
+                      <Input
+                        id="starts_at"
+                        type="datetime-local"
+                        value={form.data.starts_at ?? ""}
+                        onChange={(event) => form.setData("starts_at", event.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="ends_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Selesai</label>
+                      <Input
+                        id="ends_at"
+                        type="datetime-local"
+                        value={form.data.ends_at ?? ""}
+                        onChange={(event) => form.setData("ends_at", event.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                  {form.errors.starts_at ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.starts_at}</p>
+                  ) : null}
+                  {form.errors.ends_at ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.ends_at}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Publikasi</th>
+                <td className="px-4 py-2.5">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-border"
+                      checked={form.data.publish_now}
+                      onChange={(event) => form.setData("publish_now", event.target.checked)}
+                    />
+                    Langsung aktifkan setelah disimpan
+                  </label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Simpan voucher"}
+            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah voucher"}
           </Button>
           <Button asChild type="button" variant="secondary">
             <Link href={indexHref}>Batal</Link>
