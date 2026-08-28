@@ -346,10 +346,15 @@ function OrderCardRow({
                       <Icon name="copy" className="size-3" aria-hidden="true" />
                     </button>
                   </div>
-                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                    {variationLabel(item) || item.variant_sku || "-"}
-                  </p>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
+                      {variationLabel(item) || item.variant_sku || "-"}
+                    </p>
+                  </div>
                 </div>
+                <span className="mt-0.5 shrink-0 tabular-nums text-[13px] font-semibold text-foreground" title="Qty produk ini">
+                  {formatNumber(item.quantity)}x
+                </span>
               </li>
             ))}
           </ul>
@@ -374,13 +379,11 @@ function OrderCardRow({
           ) : null}
         </div>
 
-        {/* Item (jumlah unit dipesan) */}
-        <div className="pt-3 text-center xl:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Item
-          </p>
-          <span className="inline-flex min-w-8 justify-center rounded-md bg-muted px-1.5 py-0.5 text-sm font-semibold tabular-nums text-foreground" title="Jumlah unit dipesan">
-            {formatNumber(order.unit_count)}x
+        {/* Item (total unit seluruh baris produk) */}
+        <div className="flex items-center justify-center pt-3 xl:items-center xl:justify-center xl:pt-0 xl:self-stretch">
+          <span className="inline-flex min-w-10 flex-col items-center rounded-md bg-muted px-1.5 py-1 leading-tight" title="Total unit seluruh produk dalam pesanan">
+            <span className="text-sm font-semibold tabular-nums text-foreground">{formatNumber(order.unit_count)}</span>
+            <span className="text-[10px] text-muted-foreground">unit</span>
           </span>
         </div>
 
