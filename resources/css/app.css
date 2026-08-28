@@ -101,11 +101,11 @@
      ========================================================================== */
   html.admin-shell {
     color-scheme: dark;
-    --background: 0 0% 4%;
+    --background: 0 0% 7%; /* #121212 kanvas */
     --foreground: 0 0% 96%;
     --action-foreground: 0 0% 94%;
     --body-foreground: 0 0% 62%;
-    --card: 0 0% 7.5%;
+    --card: 240 8% 7.3%; /* #111114 sidebar & kartu */
     --card-foreground: 0 0% 96%;
     --popover: 0 0% 8.5%;
     --popover-foreground: 0 0% 96%;
@@ -130,7 +130,7 @@
     --border: 0 0% 13%;
     --input: 0 0% 18%;
     --ring: 0 0% 72%;
-    --surface: 0 0% 7.5%;
+    --surface: 240 8% 7.3%; /* #111114 kartu */
     --surface-muted: 0 0% 11%;
     --radius: 0.5rem;
     --radius-control: 0.375rem;
