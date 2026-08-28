@@ -93,7 +93,7 @@ export default function WhatsAppEdit({
       </div>
 
       <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <FormErrorSummary errors={form.errors} />
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -151,7 +151,7 @@ export default function WhatsAppEdit({
           </div>
         </section>
 
-        <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
+        <aside className="rounded-lg border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
           <h2 className="text-base font-bold">Urutan variabel Meta</h2>
           <p className="mt-2 text-pretty text-sm text-muted-foreground">
             Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend — jangan ganti jadi nama seperti {"{{order_number}}"}.

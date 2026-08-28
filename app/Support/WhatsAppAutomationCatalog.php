@@ -42,7 +42,7 @@ Nomor resi terkait : *{{3}}*
 
 Apabila ada hal lain yang perlu dibantu, silakan langsung balas chat ini ya Kak.
 
-Terima kasih sudah order di Ragil Aluminium ????
+Terima kasih sudah order di Ragil Aluminium 😊
 TXT,
                 'variables' => [
                     ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
@@ -62,7 +62,7 @@ terima kasih atas informasinya terkait pesanan dengan nomor order : *{{2}}*
 
 Kami sudah menerima laporan Kakak dan akan segera menindaklanjuti. Mohon ditunggu ya Kak, kami akan mengabari perkembangannya di chat ini.
 
-Terima kasih sudah bersabar ????
+Terima kasih sudah bersabar 🙏
 TXT,
                 'variables' => [
                     ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
@@ -190,7 +190,7 @@ Estimasi sampai Tujuan : *{{3}}*
 
 Nanti kami akan mengabari kembali setelah pesanan dikirim dan nomor resi sudah tersedia ya Kak.
 
-Terima kasih sudah order di Ragil Aluminium 🙏
+Terima kasih sudah order di Ragil Aluminium 😊
 TXT,
                 'variables' => [
                     ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
@@ -243,7 +243,7 @@ Mohon bantu dicek kembali kondisi barang dan kesesuaian pesanan ya Kak.
 
 Jika ada kendala, kerusakan pengiriman, atau ketidaksesuaian pesanan, silakan langsung infokan di chat ini agar bisa segera kami bantu tindak lanjuti.
 
-Terima kasih sudah order di Ragil Aluminium 🙏
+Terima kasih sudah order di Ragil Aluminium 😊
 TXT,
                 'variables' => [
                     ['token' => '{{1}}', 'label' => 'Nama pelanggan'],

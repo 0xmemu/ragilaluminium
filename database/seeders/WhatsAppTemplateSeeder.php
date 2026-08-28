@@ -8,7 +8,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Sinkronisasi baris whatsapp_templates dengan WhatsAppAutomationCatalog.
- * Upsert by internal_key ??? template lama tetap, tidak ada penghapusan.
+ * Upsert by internal_key -> template lama tetap, tidak ada penghapusan.
  */
 class WhatsAppTemplateSeeder extends Seeder
 {
