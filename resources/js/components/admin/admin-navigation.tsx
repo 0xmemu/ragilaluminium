@@ -195,7 +195,7 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="flex h-full flex-col bg-card">
+    <div className="flex h-full flex-col bg-[hsl(var(--sidebar))]">
       <div className="flex h-14 shrink-0 items-center border-b border-border px-3">
         <AdminBrand />
       </div>

@@ -105,7 +105,8 @@
     --foreground: 0 0% 96%;
     --action-foreground: 0 0% 94%;
     --body-foreground: 0 0% 62%;
-    --card: 240 8% 7.3%; /* #111114 sidebar & kartu */
+    --card: 240 8% 10.2%; /* #18181c kartu konten */
+    --sidebar: 240 8% 7.3%; /* #111114 sidebar */
     --card-foreground: 0 0% 96%;
     --popover: 0 0% 8.5%;
     --popover-foreground: 0 0% 96%;
@@ -130,7 +131,7 @@
     --border: 0 0% 13%;
     --input: 0 0% 18%;
     --ring: 0 0% 72%;
-    --surface: 240 8% 7.3%; /* #111114 kartu */
+    --surface: 240 8% 10.2%; /* #18181c panel konten */
     --surface-muted: 0 0% 11%;
     --radius: 0.5rem;
     --radius-control: 0.375rem;
