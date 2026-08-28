@@ -416,11 +416,6 @@ function OrderCardRow({
           <p className="mt-0.5 text-[11px] text-muted-foreground/80">
             {order.payment_label || statusMeta(order.payment_status).label}
           </p>
-          {order.flow === "cod" || order.cod_flag ? (
-            <span className="mt-1.5 inline-block rounded-md border border-warning/30 bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
-              COD
-            </span>
-          ) : null}
         </div>
 
         {/* Usia Pesanan */}

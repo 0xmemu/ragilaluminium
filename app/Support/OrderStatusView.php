@@ -79,7 +79,7 @@ class OrderStatusView
     {
         return match (self::paymentBucket($order)) {
             self::BUCKET_PAID => 'Lunas',
-            self::BUCKET_COD_PENDING => 'COD, bayar saat barang diterima',
+            self::BUCKET_COD_PENDING => 'Bayar saat barang diterima',
             self::BUCKET_TRANSFER_UNPAID => 'Menunggu pembayaran',
             default => 'Perlu ditinjau',
         };

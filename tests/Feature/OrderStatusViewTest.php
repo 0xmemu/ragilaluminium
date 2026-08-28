@@ -31,7 +31,7 @@ class OrderStatusViewTest extends BaseTestCase
 
     public function test_cod_pending_is_cod_not_unpaid(): void
     {
-        $this->assertSame('COD, bayar saat barang diterima', OrderStatusView::paymentLabel($this->order(['cod_flag' => true, 'payment_method' => 'cod'])));
+        $this->assertSame('Bayar saat barang diterima', OrderStatusView::paymentLabel($this->order(['cod_flag' => true, 'payment_method' => 'cod'])));
         $this->assertSame(OrderStatusView::BUCKET_COD_PENDING, OrderStatusView::paymentBucket($this->order(['cod_flag' => true, 'payment_method' => 'cod'])));
     }
 
