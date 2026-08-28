@@ -45,7 +45,13 @@ class WorkflowAuditP2Test extends TestCase
         $nav = config('admin-sitemap.navigation');
         $coreRoutes = collect($nav['core']['items'])->pluck('route')->all();
         $komunikasiRoutes = collect($nav['pelanggan_komunikasi']['items'])->pluck('route')->all();
-        $productRoutes = collect($nav['produk']['items'])->pluck('route')->all();
+        $productRoutes = collect($nav['produk']['items'])
+            ->flatMap(fn ($item) => array_merge(
+                [$item['route'] ?? null],
+                collect($item['children'] ?? [])->pluck('route')->all(),
+            ))
+            ->filter()
+            ->all();
         $accountRoutes = collect($nav['akun_sistem']['items'])->pluck('route')->all();
 
         $this->assertContains('admin.payments.index', $coreRoutes);
@@ -73,7 +79,7 @@ class WorkflowAuditP2Test extends TestCase
             'order_number' => 'ORD-UNPAID-1',
             'customer_name' => 'Unpaid Buyer',
             'customer_phone' => '08222222222',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
         ]);
         $unpaid->forceFill(['created_at' => now(), 'updated_at' => now()])->save();

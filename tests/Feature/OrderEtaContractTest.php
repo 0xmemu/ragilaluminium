@@ -31,8 +31,8 @@ class OrderEtaContractTest extends TestCase
         $this->assertSame(2, $eta['base_min_days']);
         $this->assertSame(5, $eta['base_max_days']);
         $this->assertSame(1, $eta['display_buffer_days']);
-        $this->assertSame('2026-08-19T00:00:00+00:00', $eta['start_at']);
-        $this->assertSame('2026-08-22T23:59:59+00:00', $eta['end_at']);
+        $this->assertSame('2026-08-19T00:00:00+07:00', $eta['start_at']);
+        $this->assertSame('2026-08-22T23:59:59+07:00', $eta['end_at']);
 
         Carbon::setTestNow();
     }
