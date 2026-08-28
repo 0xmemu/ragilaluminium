@@ -9,17 +9,10 @@ import {
   CatalogNav,
   type CatalogNavFilters,
 } from "@/components/public/catalog-nav"
-import {
-  FlashSaleListingToolbar,
-  FlashModelToggles,
-} from "@/components/public/flash-sale-stage"
+
 import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
-import {
-  CATALOG_SORT_OPTIONS,
-  FilterBerdasarkanControl,
-} from "@/components/public/filter-berdasarkan-control"
 import { FilterSheetContent } from "@/components/public/filter-sidebar"
 import { FlashSaleCarouselSection } from "@/components/public/flash-sale-carousel-section"
 import { Icon } from "@/components/shared/icon"
@@ -28,7 +21,6 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
 import PublicLayout from "@/layouts/public-layout"
-import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type {
   FlashSalePeriod,
@@ -204,7 +196,6 @@ export default function Catalog({
     return new URLSearchParams(window.location.search).get("from") === "paling-banyak-dipesan"
   }, [])
   const flashCarouselProducts = React.useMemo(() => flashSaleSpotlight, [flashSaleSpotlight])
-  const useModelToggles = isPromo
 
   const [loading, setLoading] = React.useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false)
@@ -333,18 +324,7 @@ export default function Catalog({
     </FilterSheetContent>
   )
 
-  const filterToolbar = (
-    <div className="flex items-end gap-2">
-      <FilterBerdasarkanControl
-        id="promo-sort"
-        variant="plain"
-        value={filters.sort || "popular"}
-        options={CATALOG_SORT_OPTIONS}
-        onChange={(sort) => visit({ sort, design: "", priceMin: "", priceMax: "" })}
-        ariaLabel="Urutkan produk promo"
-      />
-    </div>
-  )
+  
 
   const catalogNav = (
     <CatalogNav
@@ -374,7 +354,7 @@ export default function Catalog({
         ...(listingAllProducts
           ? [{ label: categoryName }]
           : [
-              { label: "Semua Model Produk", href: routeUrl("catalog.index") },
+              {label: "Model Produk", href: routeUrl("catalog.index")},
               { label: categoryName },
             ]),
       ]}
@@ -468,7 +448,7 @@ export default function Catalog({
                 : period?.status === "ended"
                   ? `Periode berakhir ${period.ends_at_label ?? "sudah lewat"}. Pantau menu Flash Sale untuk periode berikutnya.`
                   : "Flash Sale sedang disiapkan. Pantau pengumuman kami atau lihat promo yang sedang berjalan."
-              : useModelToggles && activeModel
+              : isFlash
                 ? `Belum ada produk ${isFlash ? "Flash Sale" : "promo"} untuk model ini. Coba model lain atau pilih Semua.`
                 : isFlash
                   ? "Flash Sale sedang disiapkan. Produk akan tampil di sini saat periode berlangsung."
@@ -486,18 +466,14 @@ export default function Catalog({
             ) : (
               <Button
                 onClick={() =>
-                  useModelToggles
-                    ? visit({ model: "", design: "", priceMin: "", priceMax: "" })
-                    : searchQuery
-                      ? visit({}, { clearSearch: true })
-                      : reset()
+                  searchQuery
+                    ? visit({}, { clearSearch: true })
+                    : reset()
                 }
               >
                 {searchQuery
                   ? "Lihat semua model"
-                  : useModelToggles && activeModel
-                    ? "Lihat semua model"
-                    : "Hapus semua filter"}
+                  : "Hapus semua filter"}
               </Button>
             )
           }
@@ -506,40 +482,7 @@ export default function Catalog({
     </div>
   )
 
-  const listingBody = useModelToggles ? (
-    <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
-      {isFlash ? (
-        <FlashSaleListingToolbar
-          sort={filters.sort || "popular"}
-          priceMin={filters.priceMin}
-          priceMax={filters.priceMax}
-          searchQuery={searchQuery}
-          onSortChange={(sort) => visit({ sort })}
-          onPriceApply={({ priceMin: nextMin, priceMax: nextMax }) =>
-            visit({ priceMin: nextMin, priceMax: nextMax })
-          }
-          onSearch={(q) => visit({}, { q })}
-        />
-      ) : isPromo ? (
-        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
-          <FlashModelToggles
-            models={filterModels}
-            activeModel={activeModel}
-            ariaLabel="Pilih model promo"
-            onSelect={(model) =>
-              visit({
-                model,
-                design: "",
-                priceMin: "",
-                priceMax: "",
-              })
-            }
-          />
-        </div>
-      ) : null}
-      {productGallery}
-    </section>
-  ) : (
+  const listingBody = (
     <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
       {/* Filter desktop via topnav (pill) - sidebar dihapus; sheet tetap utk mobile. */}
       {productGallery}
@@ -565,54 +508,7 @@ export default function Catalog({
         />
       </Head>
 
-      {isPromo ? (
-        <section className="border-b border-border bg-surface">
-          <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-            <div className="flex items-center gap-3">
-                          <Breadcrumbs
-              items={[
-                { label: "Beranda", href: routeUrl("home") },
-                ...(listingAllProducts
-                  ? [{ label: categoryName }]
-                  : [
-                      { label: "Semua Model Produk", href: routeUrl("catalog.index") },
-                      { label: categoryName },
-                    ]),
-              ]}
-            />
-            </div>
-          </div>
-
-          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
-                aria-label="Kembali"
-              >
-                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-              </button>
-              <h1 className="flex items-baseline gap-2 text-base font-bold tracking-tight text-foreground">
-              {categoryName}
-              <span className="font-normal text-muted-foreground">|</span>
-              <span className="text-sm font-normal text-muted-foreground">
-                {formatNumber(pagination?.total ?? products.length)} produk ditemukan
-                {searchQuery ? ` untuk “${searchQuery}”` : ""}
-              </span>
-            </h1>
-            </div>
-          </div>
-        </section>
-      ) : (
-        catalogNav
-      )}
-
-      {isPromo ? (
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 flex justify-end py-3">
-          {filterToolbar}
-        </div>
-      ) : null}
+      {catalogNav}
 
       {fromTopSold && flashCarouselProducts.length > 0 ? (
         <FlashSaleCarouselSection products={flashCarouselProducts} />

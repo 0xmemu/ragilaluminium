@@ -76,7 +76,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <SectionTitle
-          title="Pilih Model Produk"
+          title="Model Produk"
           actionHref={seeMoreHref}
         />
         {models.length ? (

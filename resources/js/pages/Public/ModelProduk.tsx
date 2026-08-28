@@ -107,7 +107,7 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
 
   return (
     <PublicLayout>
-      <Head title="Semua Model Produk">
+      <Head title="Model Produk">
         <meta
           name="description"
           content="Bandingkan model jendela, pintu, dan boven aluminium berdasarkan jenis bukaan dan desain."
@@ -119,12 +119,12 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
           <Breadcrumbs
             items={[
               { label: "Beranda", href: routeUrl("home") },
-              { label: "Semua Model Produk" },
+              { label: "Model Produk" },
             ]}
           />
         </div>
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <PageHeader title="Semua Model Produk" container={false} className="border-b-0" />
+          <PageHeader title="Model Produk" container={false} className="border-b-0" />
         </div>
       </section>
 
