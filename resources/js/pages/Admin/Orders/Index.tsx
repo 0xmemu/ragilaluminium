@@ -870,12 +870,6 @@ export default function OrdersIndex({
 
         {orders.length ? (
           <>
-            <p className="mb-2.5 text-xs font-medium text-muted-foreground">
-              <span className="tabular-nums font-semibold text-foreground">
-                {formatNumber(pagination?.total ?? orders.length)}
-              </span>{" "}
-              pesanan
-            </p>
             <div className="overflow-x-auto">
               <div className="space-y-3 xl:min-w-[60rem]">
                 <OrderListColumnHeader />
