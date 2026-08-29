@@ -225,12 +225,13 @@ export default function ModelDetail({
         </div>
       </section>
 
-      <section className="pb-5">
+            <section className="pb-5">
         <div className="container-page !px-0 md:!px-8 lg:!px-12">
-          <div className="lg:grid lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
-            {/* Kolom kiri: hero + judul + deskripsi */}
+          {/* Hero dua kolom: thumb diperkecil (kiri) + deskripsi & statistik (kanan) */}
+          <div className="lg:grid lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+            {/* Kiri: thumb + judul + keunggulan */}
             <div>
-              <div className="relative mx-auto aspect-square w-full max-w-[34rem] overflow-hidden lg:max-w-none">
+              <div className="relative mx-auto aspect-square w-full max-w-[28rem] overflow-hidden lg:max-w-none">
                 <div
                   ref={heroThumbsRef}
                   onScroll={handleHeroScroll}
@@ -266,11 +267,6 @@ export default function ModelDetail({
                   >
                     {model.title}
                   </h1>
-                  {model.desc ? (
-                    <p className="mt-1.5 max-w-xl truncate text-[11px] leading-snug text-white/90 sm:text-[13px]">
-                      {model.desc}
-                    </p>
-                  ) : null}
 
                   {highlights.length ? (
                     <div className="mt-3 flex flex-nowrap items-center gap-1.5 sm:gap-2" aria-label="Keunggulan model">
@@ -307,9 +303,17 @@ export default function ModelDetail({
                   </div>
                 ) : null}
               </div>
+            </div>
 
-              {/* Statistik di bawah hero (kolom kiri) */}
-              <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+            {/* Kanan: deskripsi + statistik */}
+            <div className="min-w-0 lg:pt-1">
+              {model.desc ? (
+                <p className="hidden text-sm leading-relaxed text-muted-foreground lg:block">
+                  {model.desc}
+                </p>
+              ) : null}
+
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
                   <span className="text-base font-bold leading-tight tracking-tight text-foreground">
                     {rails.length}
@@ -328,61 +332,58 @@ export default function ModelDetail({
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Kolom kanan: varian + daftar produk */}
-            <div className="min-w-0">
-              <div className="mt-5 lg:mt-2">
-                {rails.length === 1 ? (
-                  <section aria-labelledby="single-design-heading">
-                    <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
-                      <h2
-                        id="single-design-heading"
-                        className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
-                      >
-                        {rails[0].title}
-                      </h2>
-                      <Link
-                        href={rails[0].href}
-                        className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted-foreground transition hover:text-foreground"
-                      >
-                        Lihat Semua
-                        <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
-                      </Link>
-                    </div>
-                    <ProductCardGrid className="xl:!grid-cols-2">
-                      {(products.length ? products : (rails[0].products ?? [])).map((product) => (
-                        <ProductCard
-                          key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
-                          product={product}
-                          titleStyle="model"
-                        />
-                      ))}
-                    </ProductCardGrid>
-                  </section>
-                ) : rails.length ? (
-                  <div className="flex flex-col gap-5 sm:gap-6">
-                    {rails.map((variant) => (
-                      <DesignProductRail key={variant.value} variant={variant} compact />
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon="package"
-                    title="Produk belum tersedia"
-                    description="Model ini belum punya produk aktif di katalog."
-                    action={
-                      <Button asChild>
-                        <Link href={modelsHref}>Kembali Ke Model</Link>
-                      </Button>
-                    }
-                  />
-                )}
+          {/* Konten 1 kolom penuh: varian & produk (carousel 5 kartu) */}
+          <div className="mt-8">
+            {rails.length === 1 ? (
+              <section aria-labelledby="single-design-heading">
+                <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
+                  <h2
+                    id="single-design-heading"
+                    className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
+                  >
+                    {rails[0].title}
+                  </h2>
+                  <Link
+                    href={rails[0].href}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                  >
+                    Lihat Semua
+                    <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+                  </Link>
+                </div>
+                <ProductCardGrid>
+                  {(products.length ? products : (rails[0].products ?? [])).map((product) => (
+                    <ProductCard
+                      key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
+                      product={product}
+                      titleStyle="model"
+                    />
+                  ))}
+                </ProductCardGrid>
+              </section>
+            ) : rails.length ? (
+              <div className="flex flex-col gap-5 sm:gap-6">
+                {rails.map((variant) => (
+                  <DesignProductRail key={variant.value} variant={variant} />
+                ))}
               </div>
-            </div>
+            ) : (
+              <EmptyState
+                icon="package"
+                title="Produk belum tersedia"
+                description="Model ini belum punya produk aktif di katalog."
+                action={
+                  <Button asChild>
+                    <Link href={modelsHref}>Kembali Ke Model</Link>
+                  </Button>
+                }
+              />
+            )}
           </div>
         </div>
       </section>
-
       <ClosingCTASection />
     </PublicLayout>
   )
