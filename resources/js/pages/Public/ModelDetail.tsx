@@ -7,6 +7,12 @@ import {
 } from "@/components/public/home-carousels"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
+import {
+  carouselCardClass as profileCarouselCardClass,
+  carouselTrackClass,
+  CarouselNavButton,
+  useHorizontalCarousel as useRailCarousel,
+} from "@/components/public/carousel-controls"
 import { ClosingCTASection } from "@/components/public/closing-cta"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -34,101 +40,7 @@ export interface DesignVariantCard {
 const carouselNavBtnClass =
   "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
-const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
-const carouselCardClass =
-  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/4)]"
-const compactCarouselCardClass =
-  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/3)]"
-
-function useHorizontalCarousel(itemCount: number) {
-  const trackRef = React.useRef<HTMLDivElement>(null)
-  const trackId = React.useId()
-  const [canGoBack, setCanGoBack] = React.useState(false)
-  const [canGoNext, setCanGoNext] = React.useState(itemCount > 3)
-
-  useDragScroll(trackRef)
-
-  const updateControls = React.useCallback(() => {
-    const track = trackRef.current
-    if (!track) return
-
-    const overflow = track.scrollWidth > track.clientWidth + 2
-    setCanGoBack(overflow && track.scrollLeft > 2)
-    setCanGoNext(overflow && track.scrollLeft + track.clientWidth < track.scrollWidth - 2)
-  }, [])
-
-  React.useEffect(() => {
-    const track = trackRef.current
-    if (!track) return
-
-    const frame = window.requestAnimationFrame(() => updateControls())
-    track.addEventListener("scroll", updateControls, { passive: true })
-    window.addEventListener("resize", updateControls)
-
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => updateControls()) : null
-    resizeObserver?.observe(track)
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-      track.removeEventListener("scroll", updateControls)
-      window.removeEventListener("resize", updateControls)
-      resizeObserver?.disconnect()
-    }
-  }, [itemCount, updateControls])
-
-  function move(direction: -1 | 1) {
-    const track = trackRef.current
-    if (!track) return
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    track.scrollBy({
-      left: direction * track.clientWidth * 0.85,
-      behavior: reduceMotion ? "auto" : "smooth",
-    })
-  }
-
-  return { trackRef, trackId, canGoBack, canGoNext, move }
-}
-
-function CarouselNavButton({
-  trackId,
-  side,
-  label,
-  enabled,
-  onClick,
-}: {
-  trackId: string
-  side: "left" | "right"
-  label: string
-  enabled: boolean
-  onClick: () => void
-}) {
-  if (!enabled) return null
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-controls={trackId}
-      className={cn(
-        carouselNavBtnClass,
-        // Inset di dalam track - jangan half-outside (overflow parent memotong tombol).
-        side === "left" ? "md:left-2" : "md:right-2",
-      )}
-    >
-      <Icon
-        name={side === "left" ? "caret-left" : "caret-right"}
-        className="size-5 md:size-6"
-        weight="bold"
-        aria-hidden="true"
-      />
-    </button>
-  )
-}
 
 function DesignProductRail({
   variant,
@@ -138,7 +50,7 @@ function DesignProductRail({
   compact?: boolean
 }) {
   const items = (variant.products ?? []).slice(0, 12)
-  const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const { trackRef, trackId, canGoBack, canGoNext, move } = useRailCarousel(items.length)
   const reveal = useEndActionReveal(trackRef)
   const headingId = `design-rail-${variant.value}`
 
@@ -207,7 +119,7 @@ function DesignProductRail({
             {items.map((product) => (
               <div
                 key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
-                className={compact ? compactCarouselCardClass : carouselCardClass}
+                className={profileCarouselCardClass[compact ? "compact" : "full"]}
               >
                 <ProductCard product={product} titleStyle="model" />
               </div>

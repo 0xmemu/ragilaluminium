@@ -15,106 +15,19 @@ import type {
   ProductCardData,
   Testimonial,
 } from "@/types"
+import {
+  carouselCardClass as profileCarouselCardClass,
+  carouselTrackClass,
+  CarouselNavButton,
+  useHorizontalCarousel as useRailCarousel,
+} from "@/components/public/carousel-controls"
 
 /** Desktop next/back - visible from md; mobile memakai slider horizontal. */
 const carouselNavBtnClass =
   "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
 /** Touch: pan-x + pan-y agar swipe kartu & scroll halaman sama-sama jalan. Mouse = useDragScroll. */
-const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
-/** Mobile ≈ 2⅙ kartu di viewport; gap-2 (0.5rem) antar kartu. */
-const carouselCardClass =
-  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-2.5rem)/3.5)] md:w-[calc((100%-3rem)/4)] xl:w-[calc((100%-4rem)/5)]"
-
-function useHorizontalCarousel(itemCount: number, scrollFactor = 0.85) {
-  const trackRef = React.useRef<HTMLDivElement>(null)
-  const trackId = React.useId()
-  const [canGoBack, setCanGoBack] = React.useState(false)
-  const [canGoNext, setCanGoNext] = React.useState(itemCount > 4)
-
-  useDragScroll(trackRef)
-
-  const updateControls = React.useCallback(() => {
-    const track = trackRef.current
-    if (!track) return
-
-    const overflow = track.scrollWidth > track.clientWidth + 2
-    setCanGoBack(overflow && track.scrollLeft > 2)
-    setCanGoNext(overflow && track.scrollLeft + track.clientWidth < track.scrollWidth - 2)
-  }, [])
-
-  React.useEffect(() => {
-    const track = trackRef.current
-    if (!track) return
-
-    const frame = window.requestAnimationFrame(() => updateControls())
-    track.addEventListener("scroll", updateControls, { passive: true })
-    window.addEventListener("resize", updateControls)
-
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => updateControls()) : null
-    resizeObserver?.observe(track)
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-      track.removeEventListener("scroll", updateControls)
-      window.removeEventListener("resize", updateControls)
-      resizeObserver?.disconnect()
-    }
-  }, [itemCount, updateControls])
-
-  function move(direction: -1 | 1) {
-    const track = trackRef.current
-    if (!track) return
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    track.scrollBy({
-      left: direction * track.clientWidth * scrollFactor,
-      behavior: reduceMotion ? "auto" : "smooth",
-    })
-  }
-
-  return { trackRef, trackId, canGoBack, canGoNext, move }
-}
-
-function CarouselNavButton({
-  trackId,
-  side,
-  label,
-  enabled,
-  onClick,
-}: {
-  trackId: string
-  side: "left" | "right"
-  label: string
-  enabled: boolean
-  onClick: () => void
-}) {
-  if (!enabled) return null
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-controls={trackId}
-      className={cn(
-        carouselNavBtnClass,
-        // Inset di dalam track - jangan half-outside (overflow parent memotong tombol).
-        side === "left" ? "md:-left-5" : "md:-right-5",
-      )}
-    >
-      <Icon
-        name={side === "left" ? "caret-left" : "caret-right"}
-        className="size-5 md:size-6"
-        weight="bold"
-        aria-hidden="true"
-      />
-    </button>
-  )
-}
 
 export function useEndActionReveal(trackRef: React.RefObject<HTMLDivElement | null>) {
   const [pull, setPull] = React.useState(0)
@@ -253,7 +166,7 @@ export function ModelCardCarousel({
   seeMoreHref: string
 }) {
   const items = models.slice(0, 10)
-  const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const { trackRef, trackId, canGoBack, canGoNext, move } = useRailCarousel(items.length, { nextThreshold: 4, scrollFactor: 0.85 })
   const reveal = useEndActionReveal(trackRef)
 
   return (
@@ -272,7 +185,7 @@ export function ModelCardCarousel({
         onPointerCancel={reveal.onPointerUp}
       >
         {items.map((model) => (
-          <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
+          <div key={`${model.category}-${model.model}`} className={profileCarouselCardClass.home}>
             <ModelCategoryCard model={model} />
           </div>
         ))}
@@ -308,7 +221,7 @@ export function ProductCardCarousel({
   tone?: "default" | "on-primary"
 }) {
   const items = products.slice(0, 10)
-  const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const { trackRef, trackId, canGoBack, canGoNext, move } = useRailCarousel(items.length, { nextThreshold: 4, scrollFactor: 0.85 })
   const reveal = useEndActionReveal(trackRef)
   const onPrimary = tone === "on-primary"
 
@@ -331,7 +244,7 @@ export function ProductCardCarousel({
         onPointerCancel={reveal.onPointerUp}
       >
         {items.map((product, index) => (
-          <div key={product.id} className={cn(carouselCardClass, onPrimary && "flex")}>
+          <div key={product.id} className={cn(profileCarouselCardClass.home, onPrimary && "flex")}>
             <ProductCard
               product={product}
               priority={index < 4}
@@ -371,7 +284,7 @@ export function InstallationCarousel({
   seeMoreHref: string
 }) {
   const slides = items.slice(0, 10)
-  const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(slides.length)
+  const { trackRef, trackId, canGoBack, canGoNext, move } = useRailCarousel(slides.length, { nextThreshold: 4, scrollFactor: 0.85 })
   const reveal = useEndActionReveal(trackRef)
 
   return (
@@ -390,7 +303,7 @@ export function InstallationCarousel({
         onPointerCancel={reveal.onPointerUp}
       >
         {slides.map((item) => (
-          <div key={item.id} className={carouselCardClass}>
+          <div key={item.id} className={profileCarouselCardClass.home}>
             <InstallationCard item={item} />
           </div>
         ))}
@@ -429,7 +342,7 @@ export function TestimonialCarousel({
   navLabel?: string
 }) {
   const items = testimonials.slice(0, 10)
-  const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
+  const { trackRef, trackId, canGoBack, canGoNext, move } = useRailCarousel(items.length, { nextThreshold: 4, scrollFactor: 0.85 })
   const reveal = useEndActionReveal(trackRef)
 
   return (
@@ -450,7 +363,7 @@ export function TestimonialCarousel({
         {items.map((testimonial) => (
           <div
             key={testimonial.id}
-            className={carouselCardClass}
+            className={profileCarouselCardClass.home}
           >
             <TestimonialCard
               testimonial={testimonial}
