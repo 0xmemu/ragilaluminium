@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Radio } from "@/components/ui/radio"
+import { Icon } from "@/components/shared/icon"
 import { Link } from "@inertiajs/react"
 import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
@@ -34,31 +34,37 @@ export function DesignFilterOptions({
   activeDesign: string | null
   onSelect: (value: string | null) => void
 }) {
+  const Item = ({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md px-2.5 text-sm transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className={selected ? "font-semibold text-foreground" : "text-foreground"}>{children}</span>
+      {selected ? (
+        <Icon name="check" className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      ) : (
+        <span className="size-4 shrink-0" aria-hidden="true" />
+      )}
+    </button>
+  )
+
   return (
-    <fieldset className="space-y-1">
-      <legend className="sr-only">Filter desain</legend>
-      <Radio
-        name={name}
-        value=""
-        checked={!activeDesign}
-        onChange={() => onSelect(null)}
-        className="min-h-11 px-1 text-sm hover:bg-accent"
-      >
+    <div className="flex flex-col" role="listbox" aria-label={name}>
+      <Item selected={!activeDesign} onClick={() => onSelect(null)}>
         Semua Desain
-      </Radio>
+      </Item>
       {designs.map((design) => (
-        <Radio
+        <Item
           key={design.value}
-          name={name}
-          value={design.value}
-          checked={activeDesign === design.value}
-          onChange={() => onSelect(design.value)}
-          className="min-h-11 px-1 text-sm hover:bg-accent"
+          selected={activeDesign === design.value}
+          onClick={() => onSelect(design.value)}
         >
           {design.label}
-        </Radio>
+        </Item>
       ))}
-    </fieldset>
+    </div>
   )
 }
 
@@ -73,31 +79,37 @@ export function ModelFilterOptions({
   activeModel: string | null
   onSelect: (value: string | null) => void
 }) {
+  const Item = ({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md px-2.5 text-sm transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className={selected ? "font-semibold text-foreground" : "text-foreground"}>{children}</span>
+      {selected ? (
+        <Icon name="check" className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      ) : (
+        <span className="size-4 shrink-0" aria-hidden="true" />
+      )}
+    </button>
+  )
+
   return (
-    <fieldset className="space-y-1">
-      <legend className="sr-only">Filter model bukaan</legend>
-      <Radio
-        name={name}
-        value=""
-        checked={!activeModel}
-        onChange={() => onSelect(null)}
-        className="min-h-11 px-1 text-sm hover:bg-accent"
-      >
+    <div className="flex flex-col" role="listbox" aria-label={name}>
+      <Item selected={!activeModel} onClick={() => onSelect(null)}>
         Semua Model
-      </Radio>
+      </Item>
       {models.map((model) => (
-        <Radio
+        <Item
           key={model.value}
-          name={name}
-          value={model.value}
-          checked={activeModel === model.value}
-          onChange={() => onSelect(model.value)}
-          className="min-h-11 px-1 text-sm hover:bg-accent"
+          selected={activeModel === model.value}
+          onClick={() => onSelect(model.value)}
         >
           {model.label}
-        </Radio>
+        </Item>
       ))}
-    </fieldset>
+    </div>
   )
 }
 
