@@ -312,11 +312,11 @@ export default function ModelDetail({
               </h1>
 
               {highlights.length ? (
-                <div className="mt-2 hidden flex-wrap gap-1.5 lg:flex" aria-label="Keunggulan model">
+                <div className="mt-3 hidden flex-wrap gap-2.5 lg:flex" aria-label="Keunggulan model">
                   {highlights.map((item) => (
                     <span
                       key={item.label}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-4 py-2 text-[13px] font-medium text-foreground"
                     >
                       {item.label}
                     </span>
