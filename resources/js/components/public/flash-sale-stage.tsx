@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { ProductCard } from "@/components/public/product-card"
 import { MobileEndActionReveal, useEndActionReveal } from "@/components/public/home-carousels"
+import { CarouselNavButton } from "@/components/public/carousel-controls"
 import { Icon } from "@/components/shared/icon"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -699,35 +700,7 @@ const flashCarouselTrackClass =
 const flashCarouselCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]"
 
-const flashCarouselNavBtnClass =
-  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
-function FlashCarouselNavButton({
-  trackId,
-  side,
-  label,
-  enabled,
-  onClick,
-}: {
-  trackId: string
-  side: "left" | "right"
-  label: string
-  enabled: boolean
-  onClick: () => void
-}) {
-  if (!enabled) return null
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-controls={trackId}
-      className={cn(flashCarouselNavBtnClass, side === "left" ? "md:-left-5" : "md:-right-5")}
-    >
-      <Icon name={side === "left" ? "caret-left" : "caret-right"} className="size-5 md:size-6" weight="bold" aria-hidden="true" />
-    </button>
-  )
-}
 
 function useFlashCarousel(itemCount: number) {
   const trackRef = React.useRef<HTMLDivElement>(null)
@@ -825,14 +798,14 @@ export function PromoFlashSaleSection({
               revealed={reveal.revealed}
             />
           ) : null}
-          <FlashCarouselNavButton
+          <CarouselNavButton
             trackId={trackId}
             side="left"
             label="Produk sebelumnya"
             enabled={canGoBack}
             onClick={() => move(-1)}
           />
-          <FlashCarouselNavButton
+          <CarouselNavButton
             trackId={trackId}
             side="right"
             label="Produk berikutnya"

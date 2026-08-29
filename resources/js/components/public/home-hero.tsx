@@ -3,6 +3,7 @@ import { SealCheck, ShieldCheck, Tag, Truck } from "@phosphor-icons/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { CarouselNavButton } from "@/components/public/carousel-controls"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
@@ -25,7 +26,7 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
   const headlineLines = (slide.headline || "").split("\n").filter(Boolean)
   const label = [slide.eyebrow, slide.headline, slide.subheadline]
     .filter(Boolean)
-    .join(" — ")
+    .join(" · ")
 
   return (
     <Link
@@ -372,22 +373,20 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
 
           {total > 1 ? (
             <>
-              <button
-                type="button"
+              <CarouselNavButton
+                side="left"
+                label="Slide sebelumnya"
+                enabled
+                sideOffset="inset"
                 onClick={() => goTo(visibleIndex - 1)}
-                aria-label="Slide sebelumnya"
-                className="absolute left-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
-              >
-                <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
+              />
+              <CarouselNavButton
+                side="right"
+                label="Slide berikutnya"
+                enabled
+                sideOffset="inset"
                 onClick={() => goTo(visibleIndex + 1)}
-                aria-label="Slide berikutnya"
-                className="absolute right-5 top-1/2 z-10 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
-              >
-                <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
-              </button>
+              />
 
               <div className="absolute inset-x-0 bottom-1 flex justify-center gap-0.5">
                 {Array.from({ length: dotCount }).map((_, index) => (

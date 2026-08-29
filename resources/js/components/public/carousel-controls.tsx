@@ -81,38 +81,26 @@ export function useHorizontalCarousel(itemCount: number, options: CarouselHookOp
 }
 
 /** Dasar ukuran tombol panah (44px mobile, 48px desktop). */
-const carouselNavBtnBase =
-  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 md:flex md:size-12"
+export const carouselNavBtnClass =
+  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
-/** Varian tampilan tombol panah per rail. */
-const carouselNavBtnClass = {
-  default: cn(
-    carouselNavBtnBase,
-    "border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring",
-  ),
-  dark: cn(
-    carouselNavBtnBase,
-    "border-white/30 bg-black/60 text-white hover:bg-black/70 hover:text-white focus-visible:ring-white/60",
-  ),
-} as const
-
-export type CarouselNavVariant = "default" | "dark"
-
-/** Tombol panah carousel — ukuran standar, varian warna per rail. */
+/** Tombol panah carousel — SATU gaya global (patokan homepage). */
 export function CarouselNavButton({
   trackId,
   side,
   label,
   enabled,
   onClick,
-  variant = "default",
+  sideOffset = "outset",
 }: {
-  trackId: string
+  /** Id track utk aria-controls (opsional: slider hero tidak pakai track). */
+  trackId?: string
   side: "left" | "right"
   label: string
   enabled: boolean
   onClick: () => void
-  variant?: CarouselNavVariant
+  /** outset: menonjol keluar track (carousel) · inset: di dalam area (hero). */
+  sideOffset?: "outset" | "inset"
 }) {
   if (!enabled) return null
 
@@ -123,9 +111,8 @@ export function CarouselNavButton({
       aria-label={label}
       aria-controls={trackId}
       className={cn(
-        carouselNavBtnClass[variant],
-        // Inset di dalam track - jangan half-outside (overflow parent memotong tombol).
-        side === "left" ? "md:-left-5" : "md:-right-5",
+        carouselNavBtnClass,
+        side === "left" ? (sideOffset === "inset" ? "md:left-5" : "md:-left-5") : (sideOffset === "inset" ? "md:right-5" : "md:-right-5"),
       )}
     >
       <Icon

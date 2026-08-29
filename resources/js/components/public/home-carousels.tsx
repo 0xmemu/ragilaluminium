@@ -23,8 +23,6 @@ import {
 } from "@/components/public/carousel-controls"
 
 /** Desktop next/back - visible from md; mobile memakai slider horizontal. */
-const carouselNavBtnClass =
-  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
 /** Touch: pan-x + pan-y agar swipe kartu & scroll halaman sama-sama jalan. Mouse = useDragScroll. */
 
@@ -199,7 +197,6 @@ export function ModelCardCarousel({
         label="Lihat model sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
-            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -207,7 +204,6 @@ export function ModelCardCarousel({
         label="Lihat model berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
-            variant="dark"
       />
     </div>
   )
@@ -266,7 +262,6 @@ export function ProductCardCarousel({
         label="Lihat produk sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
-            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -274,7 +269,6 @@ export function ProductCardCarousel({
         label="Lihat produk berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
-            variant="dark"
       />
     </div>
   )
@@ -322,7 +316,6 @@ export function InstallationCarousel({
         label="Lihat dokumentasi sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
-            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -330,7 +323,6 @@ export function InstallationCarousel({
         label="Lihat dokumentasi berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
-            variant="dark"
       />
     </div>
   )
@@ -390,7 +382,6 @@ export function TestimonialCarousel({
         label={`Lihat ${navLabel} sebelumnya`}
         enabled={canGoBack}
         onClick={() => move(-1)}
-            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -398,7 +389,6 @@ export function TestimonialCarousel({
         label={`Lihat ${navLabel} berikutnya`}
         enabled={canGoNext}
         onClick={() => move(1)}
-            variant="dark"
       />
     </div>
   )
