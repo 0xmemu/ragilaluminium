@@ -162,9 +162,9 @@ function variationLabel(item: OrderItemPreview): string {
     .join(", ")
 }
 
-/** Grid kolom: produk | item | bayar | status pesanan | pembayaran | usia | pengiriman | aksi */
+/** Grid kolom: produk | bayar | status pesanan | pembayaran | usia | pengiriman | aksi */
 const orderRowGridClass =
-  "xl:grid xl:grid-cols-[minmax(0,2.5fr)_minmax(3.5rem,0.4fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
+  "xl:grid xl:grid-cols-[minmax(0,2.6fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
@@ -176,7 +176,6 @@ function OrderListColumnHeader() {
       aria-hidden="true"
     >
       <span>Produk</span>
-      <span className="text-center">Item</span>
       <span>Dibayar pembeli</span>
       <span>Status pesanan</span>
       <span>Pembayaran</span>
@@ -377,17 +376,6 @@ function OrderCardRow({
               {order.notes}
             </p>
           ) : null}
-        </div>
-
-        {/* Item (total unit seluruh baris produk) */}
-        <div className="pt-3 text-center xl:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Item
-          </p>
-          <span className="inline-flex flex-col items-center leading-tight" title="Total unit seluruh produk dalam pesanan">
-            <span className="text-sm font-semibold tabular-nums text-foreground">{formatNumber(order.unit_count)}</span>
-            <span className="text-[10px] text-muted-foreground">unit</span>
-          </span>
         </div>
 
         {/* Dibayar Pembeli */}
