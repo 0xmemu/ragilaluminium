@@ -310,7 +310,7 @@ export default function ModelDetail({
       </section>
 
       <section className="pb-5">
-        <div className="px-0 md:px-8 lg:px-12">
+        <div className="container-page !px-0 md:!px-8 lg:!px-12">
         <div className="relative aspect-square w-full overflow-hidden">
             <div
               ref={heroThumbsRef}
