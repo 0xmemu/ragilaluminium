@@ -311,7 +311,8 @@ export default function ModelDetail({
 
       <section className="pb-5">
         <div className="container-page !px-0 md:!px-8 lg:!px-12">
-        <div className="relative aspect-square w-full overflow-hidden">
+        <div className="lg:grid lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="relative mx-auto aspect-square w-full max-w-[34rem] overflow-hidden lg:max-w-none">
             <div
               ref={heroThumbsRef}
               onScroll={handleHeroScroll}
@@ -388,27 +389,50 @@ export default function ModelDetail({
               </div>
             ) : null}
         </div>
-        </div>
 
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 mt-4">
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="flex flex-col items-center gap-0.5">
+        {/* Panel kanan (desktop): judul, deskripsi, highlights, statistik */}
+        <div className="min-w-0 lg:pt-2">
+          <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
+            {model.title}
+          </h1>
+          {model.desc ? (
+            <p className="mt-2 hidden text-sm leading-relaxed text-muted-foreground lg:block">
+              {model.desc}
+            </p>
+          ) : null}
+
+          {highlights.length ? (
+            <div className="mt-3 hidden flex-wrap gap-2 lg:flex" aria-label="Keunggulan model">
+              {highlights.map((item) => (
+                <span
+                  key={item.label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
+                >
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
               <span className="text-base font-bold leading-tight tracking-tight text-foreground">
                 {rails.length}
               </span>
               <span className="text-[10px] font-medium text-muted-foreground">Varian Model</span>
             </div>
-            <div className="flex flex-col items-center gap-0.5">
+            <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
               <span className="text-base font-bold leading-tight tracking-tight text-foreground">
                 {model.count ?? 0}
               </span>
               <span className="text-[10px] font-medium text-muted-foreground">Produk</span>
             </div>
-            <div className="flex flex-col items-center gap-0.5">
+            <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
               <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>
               <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
             </div>
           </div>
+        </div>
         </div>
 
         <div id="produk" className="container-page !px-2.5 md:!px-8 lg:!px-12 scroll-mt-24 mt-4">
@@ -458,9 +482,10 @@ export default function ModelDetail({
             />
           )}
         </div>
+        </div>
+      </section>
 
       <ClosingCTASection />
-      </section>
     </PublicLayout>
   )
 }
