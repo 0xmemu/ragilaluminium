@@ -391,11 +391,9 @@ export default function ModelDetail({
                   </div>
                 ) : null}
               </div>
-            </div>
 
-            {/* Kolom kanan: statistik + varian + daftar produk */}
-            <div className="min-w-0">
-              <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 lg:mt-2">
+              {/* Statistik di bawah hero (kolom kiri) */}
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
                   <span className="text-base font-bold leading-tight tracking-tight text-foreground">
                     {rails.length}
@@ -413,8 +411,11 @@ export default function ModelDetail({
                   <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
                 </div>
               </div>
+            </div>
 
-              <div className="mt-5 lg:mt-8">
+            {/* Kolom kanan: varian + daftar produk */}
+            <div className="min-w-0">
+              <div className="mt-5 lg:mt-2">
                 {rails.length === 1 ? (
                   <section aria-labelledby="single-design-heading">
                     <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
@@ -432,7 +433,7 @@ export default function ModelDetail({
                         <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
                       </Link>
                     </div>
-                    <ProductCardGrid>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {(products.length ? products : (rails[0].products ?? [])).map((product) => (
                         <ProductCard
                           key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
@@ -440,7 +441,7 @@ export default function ModelDetail({
                           titleStyle="model"
                         />
                       ))}
-                    </ProductCardGrid>
+                    </div>
                   </section>
                 ) : rails.length ? (
                   <div className="flex flex-col gap-5 sm:gap-6">
