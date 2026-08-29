@@ -395,6 +395,43 @@
     min-height: 0;
   }
 
+  /* Skala teks kartu model mengikuti dimensi kartu (container query).
+     Kartu di kolom sempit (190-290px) tidak boleh dipenuhi harga raksasa. */
+  .product-card--model .product-card__price {
+    font-size: 0.875rem;
+    line-height: 1.125rem;
+  }
+  .product-card--model .product-card__compare {
+    font-size: 0.6875rem;
+  }
+  .product-card--model .product-card__title {
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+
+  @container (min-width: 236px) {
+    .product-card--model .product-card__price {
+      font-size: 1rem;
+      line-height: 1.25rem;
+    }
+    .product-card--model .product-card__title {
+      font-size: 0.8125rem;
+    }
+  }
+
+  @container (min-width: 280px) {
+    .product-card--model .product-card__price {
+      font-size: 1.125rem;
+      line-height: 1.375rem;
+    }
+    .product-card--model .product-card__compare {
+      font-size: 0.75rem;
+    }
+    .product-card--model .product-card__title {
+      font-size: 0.875rem;
+    }
+  }
+
   /* Modifier: stok habis — kartu redup, tidak interaktif. */
   .product-card--unavailable .product-card__image {
     filter: grayscale(0.85);
