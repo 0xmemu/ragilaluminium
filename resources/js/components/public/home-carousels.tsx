@@ -199,6 +199,7 @@ export function ModelCardCarousel({
         label="Lihat model sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
+            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -206,6 +207,7 @@ export function ModelCardCarousel({
         label="Lihat model berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
+            variant="dark"
       />
     </div>
   )
@@ -264,6 +266,7 @@ export function ProductCardCarousel({
         label="Lihat produk sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
+            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -271,6 +274,7 @@ export function ProductCardCarousel({
         label="Lihat produk berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
+            variant="dark"
       />
     </div>
   )
@@ -318,6 +322,7 @@ export function InstallationCarousel({
         label="Lihat dokumentasi sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
+            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -325,6 +330,7 @@ export function InstallationCarousel({
         label="Lihat dokumentasi berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
+            variant="dark"
       />
     </div>
   )
@@ -384,6 +390,7 @@ export function TestimonialCarousel({
         label={`Lihat ${navLabel} sebelumnya`}
         enabled={canGoBack}
         onClick={() => move(-1)}
+            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -391,6 +398,7 @@ export function TestimonialCarousel({
         label={`Lihat ${navLabel} berikutnya`}
         enabled={canGoNext}
         onClick={() => move(1)}
+            variant="dark"
       />
     </div>
   )

@@ -62,6 +62,7 @@ function ProductCardCarousel({
         label="Lihat produk sebelumnya"
         enabled={canGoBack}
         onClick={() => move(-1)}
+            variant="dark"
       />
       <CarouselNavButton
         trackId={trackId}
@@ -69,6 +70,7 @@ function ProductCardCarousel({
         label="Lihat produk berikutnya"
         enabled={canGoNext}
         onClick={() => move(1)}
+            variant="dark"
       />
     </div>
   )
