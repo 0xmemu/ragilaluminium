@@ -195,7 +195,7 @@ export function CatalogNav({
                 ) : null}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" sideOffset={6} className="w-80 p-3">
+            <DropdownMenuContent align="start" sideOffset={6} className="w-80 p-3 max-h-[70vh] overflow-y-auto">
               <DropdownMenuLabel className="px-1 pb-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Kategori
               </DropdownMenuLabel>
