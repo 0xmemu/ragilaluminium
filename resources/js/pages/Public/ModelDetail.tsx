@@ -39,6 +39,8 @@ const carouselTrackClass =
 
 const carouselCardClass =
   "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/4)]"
+const compactCarouselCardClass =
+  "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-1/2"
 
 function useHorizontalCarousel(itemCount: number) {
   const trackRef = React.useRef<HTMLDivElement>(null)
@@ -130,8 +132,10 @@ function CarouselNavButton({
 
 function DesignProductRail({
   variant,
+  compact = false,
 }: {
   variant: DesignVariantCard
+  compact?: boolean
 }) {
   const items = (variant.products ?? []).slice(0, 12)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useHorizontalCarousel(items.length)
@@ -160,7 +164,7 @@ function DesignProductRail({
 
       {items.length < 3 ? (
         /* Sub-model dengan produk < 3 → grid produk, bukan carousel. */
-        <ProductCardGrid>
+        <ProductCardGrid className={compact ? "xl:!grid-cols-2" : undefined}>
           {items.map((product) => (
             <ProductCard
               key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
@@ -203,7 +207,7 @@ function DesignProductRail({
             {items.map((product) => (
               <div
                 key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
-                className={carouselCardClass}
+                className={compact ? compactCarouselCardClass : carouselCardClass}
               >
                 <ProductCard product={product} titleStyle="model" />
               </div>
@@ -433,7 +437,7 @@ export default function ModelDetail({
                         <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
                       </Link>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <ProductCardGrid className="xl:!grid-cols-2">
                       {(products.length ? products : (rails[0].products ?? [])).map((product) => (
                         <ProductCard
                           key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
@@ -441,12 +445,12 @@ export default function ModelDetail({
                           titleStyle="model"
                         />
                       ))}
-                    </div>
+                    </ProductCardGrid>
                   </section>
                 ) : rails.length ? (
                   <div className="flex flex-col gap-5 sm:gap-6">
                     {rails.map((variant) => (
-                      <DesignProductRail key={variant.value} variant={variant} />
+                      <DesignProductRail key={variant.value} variant={variant} compact />
                     ))}
                   </div>
                 ) : (
