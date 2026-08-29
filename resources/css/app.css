@@ -395,6 +395,40 @@
     min-height: 0;
   }
 
+  /* Carousel reusable: track jadi container (inline-size) sehingga jumlah kolom
+     kartu mengikuti RUANG yang tersedia (bukan viewport/halaman).
+     Patokan = homepage (5 kartu di ruang lebar). Kolom sempit otomatis menurun
+     (4 -> 3) tanpa profil terpisah. */
+  .carousel-track {
+    container-type: inline-size;
+  }
+
+  .carousel-card {
+    width: calc((100cqw - 1rem) * 6 / 13);
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  @container (min-width: 560px) {
+    .carousel-card { width: calc((100cqw - 1.5rem) / 3); }
+  }
+
+  @container (min-width: 760px) {
+    .carousel-card { width: calc((100cqw - 2rem) / 4); }
+  }
+
+  @container (min-width: 960px) {
+    .carousel-card { width: calc((100cqw - 2.5rem) / 4.5); }
+  }
+
+  @container (min-width: 1120px) {
+    .carousel-card { width: calc((100cqw - 3rem) / 5); }
+  }
+
+  @container (min-width: 1400px) {
+    .carousel-card { width: calc((100cqw - 4rem) / 6); }
+  }
+
   /* Skala teks kartu model mengikuti dimensi kartu (container query).
      Kartu di kolom sempit (190-290px) tidak boleh dipenuhi harga raksasa. */
   .product-card--model .product-card__price {

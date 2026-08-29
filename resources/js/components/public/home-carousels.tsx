@@ -16,7 +16,7 @@ import type {
   Testimonial,
 } from "@/types"
 import {
-  carouselCardClass as profileCarouselCardClass,
+  carouselCardClass,
   carouselTrackClass,
   CarouselNavButton,
   useHorizontalCarousel as useRailCarousel,
@@ -185,7 +185,7 @@ export function ModelCardCarousel({
         onPointerCancel={reveal.onPointerUp}
       >
         {items.map((model) => (
-          <div key={`${model.category}-${model.model}`} className={profileCarouselCardClass.home}>
+          <div key={`${model.category}-${model.model}`} className={carouselCardClass}>
             <ModelCategoryCard model={model} />
           </div>
         ))}
@@ -246,7 +246,7 @@ export function ProductCardCarousel({
         onPointerCancel={reveal.onPointerUp}
       >
         {items.map((product, index) => (
-          <div key={product.id} className={cn(profileCarouselCardClass.home, onPrimary && "flex")}>
+          <div key={product.id} className={cn(carouselCardClass, onPrimary && "flex")}>
             <ProductCard
               product={product}
               priority={index < 4}
@@ -307,7 +307,7 @@ export function InstallationCarousel({
         onPointerCancel={reveal.onPointerUp}
       >
         {slides.map((item) => (
-          <div key={item.id} className={profileCarouselCardClass.home}>
+          <div key={item.id} className={carouselCardClass}>
             <InstallationCard item={item} />
           </div>
         ))}
@@ -369,7 +369,7 @@ export function TestimonialCarousel({
         {items.map((testimonial) => (
           <div
             key={testimonial.id}
-            className={profileCarouselCardClass.home}
+            className={carouselCardClass}
           >
             <TestimonialCard
               testimonial={testimonial}

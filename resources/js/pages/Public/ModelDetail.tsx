@@ -8,7 +8,7 @@ import {
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import {
-  carouselCardClass as profileCarouselCardClass,
+  carouselCardClass,
   carouselTrackClass,
   CarouselNavButton,
   useHorizontalCarousel as useRailCarousel,
@@ -119,7 +119,7 @@ function DesignProductRail({
             {items.map((product) => (
               <div
                 key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
-                className={profileCarouselCardClass[compact ? "compact" : "full"]}
+                className={carouselCardClass}
               >
                 <ProductCard product={product} titleStyle="model" />
               </div>

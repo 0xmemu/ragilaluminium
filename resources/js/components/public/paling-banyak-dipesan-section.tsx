@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { ProductCardData } from "@/types"
 import {
-  carouselCardClass as profileCarouselCardClass,
+  carouselCardClass,
   carouselTrackClass,
   CarouselNavButton,
   useHorizontalCarousel as useRailCarousel,
@@ -47,7 +47,7 @@ function ProductCardCarousel({
         onPointerCancel={reveal.onPointerUp}
       >
         {items.map((product, index) => (
-          <div key={product.id} className={profileCarouselCardClass.popular}>
+          <div key={product.id} className={carouselCardClass}>
             <ProductCard product={product} priority={index < 4} titleStyle="model" />
           </div>
         ))}

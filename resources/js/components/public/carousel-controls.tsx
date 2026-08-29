@@ -14,23 +14,10 @@ import { cn } from "@/lib/utils"
 
 /** Track carousel horizontal — kanonik (gap 12/16px, snap-x). */
 export const carouselTrackClass =
-  "scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
+  "carousel-track scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
-export type CarouselCardProfile =
-  | "full" // ModelDetail rail normal (xl:4 kolom)
-  | "compact" // ModelDetail kolom sempit (xl:3 kolom)
-  | "home" // Home carousels (xl:5 kolom)
-  | "popular" // Paling Banyak Dipesan (xl:5 kolom, md:4)
-  | "flash-sale" // Flash sale rail (xl:4 kolom)
-
-/** Lebar kartu per profil rail. */
-export const carouselCardClass: Record<CarouselCardProfile, string> = {
-  full: "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/4)]",
-  compact: "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/3)]",
-  home: "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-2.5rem)/3.5)] md:w-[calc((100%-3rem)/4)] xl:w-[calc((100%-4rem)/5)]",
-  popular: "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/4)] xl:w-[calc((100%-2rem)/5)]",
-  "flash-sale": "w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md:w-[calc((100%-1.5rem)/3.25)] xl:w-[calc((100%-2rem)/4)]",
-}
+/** Lebar kartu: satu class adaptif (container query di app.css) utk SEMUA rail. */
+export const carouselCardClass = "carousel-card"
 
 export interface CarouselHookOptions {
   /** Faktor geser per klik panah (0-1). Default 0.85. */
