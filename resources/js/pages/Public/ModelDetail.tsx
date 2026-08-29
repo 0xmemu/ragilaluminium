@@ -306,7 +306,7 @@ export default function ModelDetail({
             </div>
 
             {/* Kanan: judul + pill + deskripsi + statistik (desktop) */}
-            <div className="min-w-0 lg:pt-1">
+            <div className="min-w-0 lg:pt-3">
               <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
                 {model.title}
               </h1>
@@ -325,12 +325,12 @@ export default function ModelDetail({
               ) : null}
 
               {model.desc ? (
-                <p className="hidden text-sm leading-relaxed text-muted-foreground lg:block">
+                <p className="mt-3 hidden max-w-md text-sm leading-relaxed text-muted-foreground lg:block">
                   {model.desc}
                 </p>
               ) : null}
 
-              <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
                   <span className="text-base font-bold leading-tight tracking-tight text-foreground">
                     {rails.length}

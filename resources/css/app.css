@@ -284,6 +284,41 @@
     }
   }
 
+  /* Typography hierarchy standar (desktop) utk semua halaman publik.
+     Mobile dipertahankan seperti asli (tidak disentuh).
+     Skala: H1 20px/700 · H2 18px/700 · H3 15px/600 · H4 14px/600. */
+  @media (min-width: 48em) {
+    .public-title-case h1 {
+      font-size: 1.25rem;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+    .public-title-case h2 {
+      font-size: 1.125rem;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+    .public-title-case h3 {
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+    .public-title-case h4 {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+  }
+
+  /* Spacing antar section standar (desktop): 40px (2.5rem) atas-bawah. */
+  @media (min-width: 48em) {
+    .public-title-case main > section:not([class*="border-b"]):not([class*="pb-5"]):not([class*="py-0"]) {
+      padding-block: 2.5rem;
+    }
+    .public-title-case main > section.pb-5 {
+      padding-bottom: 2.5rem;
+    }
+  }
+
   .public-title-case article {
     border-radius: 5px !important;
   }
