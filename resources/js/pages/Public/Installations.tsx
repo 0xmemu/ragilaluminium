@@ -185,6 +185,7 @@ export default function Installations({
           <div className="space-y-6 lg:space-y-8">
             {/* Hero — mengikuti halaman model produk: aspect-square + overlay judul */}
             {featured?.image_url ? (
+              <div className="px-0 md:px-8 lg:px-12">
               <div className="relative aspect-square w-full overflow-hidden">
                 <ResponsiveImage
                   src={featured.image_url}
@@ -205,6 +206,7 @@ export default function Installations({
                   ) : null}
                 </div>
               </div>
+            </div>
             ) : null}
 
             {/* Statistik — mengikuti halaman model produk */}
