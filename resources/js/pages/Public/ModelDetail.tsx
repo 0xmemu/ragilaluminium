@@ -311,177 +311,158 @@ export default function ModelDetail({
 
       <section className="pb-5">
         <div className="container-page !px-0 md:!px-8 lg:!px-12">
-        <div className="lg:grid lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
-        <div className="relative mx-auto aspect-square w-full max-w-[34rem] overflow-hidden lg:max-w-none">
-            <div
-              ref={heroThumbsRef}
-              onScroll={handleHeroScroll}
-              className="absolute inset-0 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] data-[dragging=true]:cursor-grabbing"
-            >
-              {heroThumbs.map((thumb) => (
-                <button
-                  key={thumb.id}
-                  type="button"
-                  onClick={() => thumb.href && window.location.assign(thumb.href)}
-                  className="relative h-full w-full shrink-0 snap-start"
-                  aria-label={thumb.alt}
+          <div className="lg:grid lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+            {/* Kolom kiri: hero + judul + deskripsi */}
+            <div>
+              <div className="relative mx-auto aspect-square w-full max-w-[34rem] overflow-hidden lg:max-w-none">
+                <div
+                  ref={heroThumbsRef}
+                  onScroll={handleHeroScroll}
+                  className="absolute inset-0 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] data-[dragging=true]:cursor-grabbing"
                 >
-                  <ResponsiveImage
-                    src={thumb.src}
-                    alt={thumb.alt}
-                    loading="lazy"
-                    wrapperClassName="absolute inset-0 size-full !aspect-auto bg-surface-muted"
-                    className="h-full w-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
-
-            <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5">
-              <h1
-                className={cn(
-                  "font-bold leading-tight tracking-tight text-white",
-                  "text-sm sm:text-base",
-                )}
-              >
-                {model.title}
-              </h1>
-              {model.desc ? (
-                <p className="mt-1.5 max-w-xl truncate text-[11px] leading-snug text-white/90 sm:text-[13px]">
-                  {model.desc}
-                </p>
-              ) : null}
-
-              {highlights.length ? (
-                <div className="mt-3 flex flex-nowrap items-center gap-1.5 sm:gap-2" aria-label="Keunggulan model">
-                  {highlights.map((item) => (
-                    <span
-                      key={item.label}
-                      className="inline-flex min-w-0 flex-1 items-center justify-center truncate whitespace-nowrap rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-foreground sm:px-2.5 sm:text-[11px]"
+                  {heroThumbs.map((thumb) => (
+                    <button
+                      key={thumb.id}
+                      type="button"
+                      onClick={() => thumb.href && window.location.assign(thumb.href)}
+                      className="relative h-full w-full shrink-0 snap-start"
+                      aria-label={thumb.alt}
                     >
-                      {item.label}
-                    </span>
+                      <ResponsiveImage
+                        src={thumb.src}
+                        alt={thumb.alt}
+                        loading="lazy"
+                        wrapperClassName="absolute inset-0 size-full !aspect-auto bg-surface-muted"
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
                   ))}
                 </div>
-              ) : null}
-            </div>
 
-            {heroThumbs.length > 1 ? (
-              <div className="absolute inset-x-0 bottom-1.5 flex items-center justify-center">
-                {heroThumbs.map((thumb, index) => (
-                  <button
-                    key={`dot-${index}-${thumb.id}`}
-                    type="button"
-                    onClick={() => goHeroSlide(index)}
-                    aria-label={`Foto ${index + 1}`}
-                    className="relative flex size-6 items-center justify-center rounded-full"
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
+
+                <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5">
+                  <h1
+                    className={cn(
+                      "font-bold leading-tight tracking-tight text-white",
+                      "text-sm sm:text-base",
+                    )}
                   >
-                    <span
-                      className={cn(
-                        "h-1 rounded-full transition-all duration-300",
-                        index === heroActive ? "w-4 bg-white" : "w-1 bg-white/50 hover:bg-white/80",
-                      )}
-                    />
-                  </button>
-                ))}
+                    {model.title}
+                  </h1>
+                  {model.desc ? (
+                    <p className="mt-1.5 max-w-xl truncate text-[11px] leading-snug text-white/90 sm:text-[13px]">
+                      {model.desc}
+                    </p>
+                  ) : null}
+
+                  {highlights.length ? (
+                    <div className="mt-3 flex flex-nowrap items-center gap-1.5 sm:gap-2" aria-label="Keunggulan model">
+                      {highlights.map((item) => (
+                        <span
+                          key={item.label}
+                          className="inline-flex min-w-0 flex-1 items-center justify-center truncate whitespace-nowrap rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-foreground sm:px-2.5 sm:text-[11px]"
+                        >
+                          {item.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                {heroThumbs.length > 1 ? (
+                  <div className="absolute inset-x-0 bottom-1.5 flex items-center justify-center">
+                    {heroThumbs.map((thumb, index) => (
+                      <button
+                        key={`dot-${index}-${thumb.id}`}
+                        type="button"
+                        onClick={() => goHeroSlide(index)}
+                        aria-label={`Foto ${index + 1}`}
+                        className="relative flex size-6 items-center justify-center rounded-full"
+                      >
+                        <span
+                          className={cn(
+                            "h-1 rounded-full transition-all duration-300",
+                            index === heroActive ? "w-4 bg-white" : "w-1 bg-white/50 hover:bg-white/80",
+                          )}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-        </div>
-
-        {/* Panel kanan (desktop): judul, deskripsi, highlights, statistik */}
-        <div className="min-w-0 lg:pt-2">
-          <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
-            {model.title}
-          </h1>
-          {model.desc ? (
-            <p className="mt-2 hidden text-sm leading-relaxed text-muted-foreground lg:block">
-              {model.desc}
-            </p>
-          ) : null}
-
-          {highlights.length ? (
-            <div className="mt-3 hidden flex-wrap gap-2 lg:flex" aria-label="Keunggulan model">
-              {highlights.map((item) => (
-                <span
-                  key={item.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
-                >
-                  {item.label}
-                </span>
-              ))}
             </div>
-          ) : null}
 
-          <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-              <span className="text-base font-bold leading-tight tracking-tight text-foreground">
-                {rails.length}
-              </span>
-              <span className="text-[10px] font-medium text-muted-foreground">Varian Model</span>
-            </div>
-            <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-              <span className="text-base font-bold leading-tight tracking-tight text-foreground">
-                {model.count ?? 0}
-              </span>
-              <span className="text-[10px] font-medium text-muted-foreground">Produk</span>
-            </div>
-            <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-              <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>
-              <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
+            {/* Kolom kanan: statistik + varian + daftar produk */}
+            <div className="min-w-0">
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 lg:mt-2">
+                <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
+                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">
+                    {rails.length}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Varian Model</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
+                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">
+                    {model.count ?? 0}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Produk</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
+                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
+                </div>
+              </div>
+
+              <div className="mt-5 lg:mt-8">
+                {rails.length === 1 ? (
+                  <section aria-labelledby="single-design-heading">
+                    <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
+                      <h2
+                        id="single-design-heading"
+                        className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
+                      >
+                        {rails[0].title}
+                      </h2>
+                      <Link
+                        href={rails[0].href}
+                        className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                      >
+                        Lihat Semua
+                        <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
+                      </Link>
+                    </div>
+                    <ProductCardGrid>
+                      {(products.length ? products : (rails[0].products ?? [])).map((product) => (
+                        <ProductCard
+                          key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
+                          product={product}
+                          titleStyle="model"
+                        />
+                      ))}
+                    </ProductCardGrid>
+                  </section>
+                ) : rails.length ? (
+                  <div className="flex flex-col gap-5 sm:gap-6">
+                    {rails.map((variant) => (
+                      <DesignProductRail key={variant.value} variant={variant} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon="package"
+                    title="Produk belum tersedia"
+                    description="Model ini belum punya produk aktif di katalog."
+                    action={
+                      <Button asChild>
+                        <Link href={modelsHref}>Kembali Ke Model</Link>
+                      </Button>
+                    }
+                  />
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        </div>
-
-        <div id="produk" className="container-page !px-2.5 md:!px-8 lg:!px-12 scroll-mt-24 mt-4">
-          {rails.length === 1 ? (
-            <section aria-labelledby="single-design-heading">
-              <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
-                <h2
-                  id="single-design-heading"
-                  className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
-                >
-                  {rails[0].title}
-                </h2>
-                <Link
-                  href={rails[0].href}
-                  className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted-foreground transition hover:text-foreground"
-                >
-                  Lihat Semua
-                  <Icon name="arrow-right" className="size-3 sm:size-3.5" weight="regular" aria-hidden="true" />
-                </Link>
-              </div>
-              <ProductCardGrid>
-                {(products.length ? products : (rails[0].products ?? [])).map((product) => (
-                  <ProductCard
-                    key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
-                    product={product}
-                    titleStyle="model"
-                  />
-                ))}
-              </ProductCardGrid>
-            </section>
-          ) : rails.length ? (
-            <div className="flex flex-col gap-5 sm:gap-6">
-              {rails.map((variant) => (
-                <DesignProductRail key={variant.value} variant={variant} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon="package"
-              title="Produk belum tersedia"
-              description="Model ini belum punya produk aktif di katalog."
-              action={
-                <Button asChild>
-                  <Link href={modelsHref}>Kembali Ke Model</Link>
-                </Button>
-              }
-            />
-          )}
-        </div>
         </div>
       </section>
 
