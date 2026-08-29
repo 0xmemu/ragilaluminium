@@ -258,7 +258,7 @@ export default function ModelDetail({
 
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
 
-                <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5">
+                <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5 lg:hidden">
                   <h1
                     className={cn(
                       "font-bold leading-tight tracking-tight text-white",
@@ -305,8 +305,25 @@ export default function ModelDetail({
               </div>
             </div>
 
-            {/* Kanan: deskripsi + statistik */}
+            {/* Kanan: judul + pill + deskripsi + statistik (desktop) */}
             <div className="min-w-0 lg:pt-1">
+              <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
+                {model.title}
+              </h1>
+
+              {highlights.length ? (
+                <div className="mt-2 hidden flex-wrap gap-1.5 lg:flex" aria-label="Keunggulan model">
+                  {highlights.map((item) => (
+                    <span
+                      key={item.label}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
+                    >
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
               {model.desc ? (
                 <p className="hidden text-sm leading-relaxed text-muted-foreground lg:block">
                   {model.desc}
