@@ -479,17 +479,14 @@
     font-size: 0.6875rem;
   }
   .product-card--model .product-card__title {
-    font-size: 0.75rem;
-    line-height: 1.25;
+    font-size: 0.8125rem;
+    line-height: 1.35;
   }
 
   @container (min-width: 236px) {
     .product-card--model .product-card__price {
       font-size: 1rem;
       line-height: 1.25rem;
-    }
-    .product-card--model .product-card__title {
-      font-size: 0.8125rem;
     }
   }
 
@@ -500,9 +497,6 @@
     }
     .product-card--model .product-card__compare {
       font-size: 0.75rem;
-    }
-    .product-card--model .product-card__title {
-      font-size: 0.875rem;
     }
   }
 
