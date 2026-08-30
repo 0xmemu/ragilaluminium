@@ -34,7 +34,6 @@ function readStoredOrderRefs(): StoredOrderRef[] {
         row
         && typeof row.order_number === "string"
         && row.order_number.trim() !== ""
-        && typeof row.customer_phone === "string"
       ))
       .slice(0, MAX_STORED_ORDER_REFS)
   } catch {
@@ -178,6 +177,7 @@ export default function OrderStatus({
         if (disposed) return
         if (loaded.length > 0) await sleep(350)
         try {
+          if (!ref.customer_phone) continue
           const row = await fetchStoredOrder(ref, controller.signal, ref.customer_phone)
           if (row) loaded.push(row)
         } catch {
@@ -483,7 +483,7 @@ export default function OrderStatus({
           <div
             className={cn(
               "grid gap-6 lg:items-start lg:gap-8",
-              sessionList.length > 0 && "lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]",
+              sessionList.length > 1 && "lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]",
             )}
           >
             {pageErrors.cancel ? (
