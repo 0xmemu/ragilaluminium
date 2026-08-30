@@ -286,8 +286,8 @@ export default function Cart({
                 </Button>
               </form>
             </div>
-            {/* Ringkasan flat (prototype Sum) */}
-            <div className="border-t border-border pt-3">
+            {/* Ringkasan flat (mobile saja): di desktop dipakai panel ringkasan lg:block, jangan render dobel. */}
+            <div className="border-t border-border pt-3 lg:hidden">
               <dl className="space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">Subtotal ({selectMode ? selectedIds.size : cartItems.length} barang)</dt>
