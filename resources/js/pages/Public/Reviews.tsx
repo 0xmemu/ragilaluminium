@@ -204,7 +204,7 @@ export default function Reviews({
       </section>
 
       {total ? (
-        <section className="border-b border-border bg-surface">
+        <section className="bg-surface py-0">
           <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
