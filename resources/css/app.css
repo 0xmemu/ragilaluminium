@@ -445,23 +445,28 @@
   }
 
   @container (min-width: 560px) {
-    .carousel-card { width: calc((100cqw - 1.5rem) / 3); }
+    /* 3 kartu: 2 gap x 16px = 32px = 2rem */
+    .carousel-card { width: calc((100cqw - 2rem) / 3); }
   }
 
   @container (min-width: 760px) {
-    .carousel-card { width: calc((100cqw - 2rem) / 4); }
+    /* 4 kartu: 3 gap x 16px = 48px = 3rem */
+    .carousel-card { width: calc((100cqw - 3rem) / 4); }
   }
 
   @container (min-width: 960px) {
-    .carousel-card { width: calc((100cqw - 2.5rem) / 4.5); }
+    /* 4.5 kartu: ~5 gap x 16px = 80px = 5rem */
+    .carousel-card { width: calc((100cqw - 5rem) / 4.5); }
   }
 
   @container (min-width: 1120px) {
-    .carousel-card { width: calc((100cqw - 3rem) / 5); }
+    /* 5 kartu: 4 gap x 16px = 64px = 4rem */
+    .carousel-card { width: calc((100cqw - 4rem) / 5); }
   }
 
   @container (min-width: 1400px) {
-    .carousel-card { width: calc((100cqw - 4rem) / 6); }
+    /* 6 kartu: 5 gap x 16px = 80px = 5rem */
+    .carousel-card { width: calc((100cqw - 5rem) / 6); }
   }
 
   /* Skala teks kartu model mengikuti dimensi kartu (container query).
