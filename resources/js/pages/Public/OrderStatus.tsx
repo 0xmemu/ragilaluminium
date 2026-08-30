@@ -365,8 +365,8 @@ export default function OrderStatus({
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pt-6 lg:pb-10">
         {showLookupForm ? (
-          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
-            <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-stretch lg:gap-8">
+            <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28 lg:self-start">
               <h2 className="text-lg font-semibold">Cek pesanan</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Gunakan data yang sama dengan saat checkout.
@@ -418,7 +418,7 @@ export default function OrderStatus({
                 <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
               ) : null}
               {!searched ? (
-                <div className="surface-panel flex min-h-[22rem] flex-col p-5 sm:p-8 lg:justify-center">
+                <div className="surface-panel flex min-h-[22rem] flex-col p-5 sm:p-8 lg:self-stretch lg:justify-center">
                   <div className="flex items-center gap-4">
                     <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary">
                       <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
