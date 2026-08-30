@@ -7,6 +7,7 @@ import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { PageHeader } from "@/components/public/page-header"
+import { ModelHero } from "@/components/public/model-hero"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Input } from "@/components/ui/input"
@@ -183,66 +184,18 @@ export default function Installations({
           </div>
         ) : (
           <div className="space-y-6 lg:space-y-8">
-            {/* Hero dua kolom — mengikuti halaman model produk */}
             {featured?.image_url ? (
-              <div className="container-page !px-0 md:!px-8 lg:!px-12">
-                <div className="lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
-                  {/* Kiri: thumb + overlay judul (mobile) */}
-                  <div>
-                    <div className="relative mx-auto aspect-square w-full overflow-hidden">
-                      <ResponsiveImage
-                        src={featured.image_url}
-                        alt={heading}
-                        loading="lazy"
-                        wrapperClassName="absolute inset-0 size-full !aspect-auto bg-surface-muted"
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5 lg:hidden">
-                        <h1 className="font-bold leading-tight tracking-tight text-white text-sm sm:text-base">
-                          {heading}
-                        </h1>
-                        {subtitle ? (
-                          <p className="mt-1.5 max-w-xl truncate text-[11px] leading-snug text-white/90 sm:text-[13px]">
-                            {subtitle}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Kanan: judul + subtitle + statistik (desktop) */}
-                  <div className="min-w-0 lg:pt-3">
-                    <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
-                      {heading}
-                    </h1>
-                    {subtitle ? (
-                      <p className="mt-3 hidden max-w-md text-sm leading-relaxed text-muted-foreground lg:block">
-                        {subtitle}
-                      </p>
-                    ) : null}
-
-                    <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
-                      <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-                        <span className="text-base font-bold leading-tight tracking-tight text-foreground">
-                          {installations.length}
-                        </span>
-                        <span className="text-[10px] font-medium text-muted-foreground">Produk</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-                        <span className="text-base font-bold leading-tight tracking-tight text-foreground">
-                          {(featured?.photo_count ?? 0) + (featured?.video_count ?? 0)}
-                        </span>
-                        <span className="text-[10px] font-medium text-muted-foreground">Hasil pemasangan</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-                        <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>
-                        <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ModelHero
+                title={heading}
+                description={subtitle}
+                slogan={subtitle}
+                thumbs={[{ id: "featured", src: featured.image_url, alt: heading }]}
+                stats={[
+                  { value: installations.length, label: "Produk" },
+                  { value: (featured?.photo_count ?? 0) + (featured?.video_count ?? 0), label: "Hasil pemasangan" },
+                  { value: "100%", label: "Garansi" },
+                ]}
+              />
             ) : null}
 
             <div id="inspirasi-pemasangan" className="container-page !px-2.5 md:!px-8 lg:!px-12 scroll-mt-24">

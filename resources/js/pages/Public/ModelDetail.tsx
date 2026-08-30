@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/public/page-header"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
+import { ModelHero } from "@/components/public/model-hero"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
@@ -182,22 +183,8 @@ export default function ModelDetail({
     return out.slice(0, 12)
   }, [model, rails, products])
 
-  const heroThumbsRef = React.useRef<HTMLDivElement>(null)
-  useDragScroll(heroThumbsRef)
-  const [heroActive, setHeroActive] = React.useState(0)
 
-  const handleHeroScroll = React.useCallback(() => {
-    const track = heroThumbsRef.current
-    if (!track) return
-    const index = Math.round(track.scrollLeft / Math.max(1, track.clientWidth))
-    setHeroActive(Math.max(0, Math.min(heroThumbs.length - 1, index)))
-  }, [heroThumbs.length])
 
-  const goHeroSlide = React.useCallback((index: number) => {
-    const track = heroThumbsRef.current
-    if (!track) return
-    track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" })
-  }, [])
 
   return (
     <PublicLayout>
@@ -227,129 +214,18 @@ export default function ModelDetail({
 
             <section className="pb-5">
         <div className="container-page !px-0 md:!px-8 lg:!px-12">
-          {/* Hero dua kolom: thumb diperkecil (kiri) + deskripsi & statistik (kanan) */}
-          <div className="lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
-            {/* Kiri: thumb + judul + keunggulan */}
-            <div>
-              <div className="relative mx-auto aspect-square w-full overflow-hidden">
-                <div
-                  ref={heroThumbsRef}
-                  onScroll={handleHeroScroll}
-                  className="absolute inset-0 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] data-[dragging=true]:cursor-grabbing"
-                >
-                  {heroThumbs.map((thumb) => (
-                    <button
-                      key={thumb.id}
-                      type="button"
-                      onClick={() => thumb.href && window.location.assign(thumb.href)}
-                      className="relative h-full w-full shrink-0 snap-start"
-                      aria-label={thumb.alt}
-                    >
-                      <ResponsiveImage
-                        src={thumb.src}
-                        alt={thumb.alt}
-                        loading="lazy"
-                        wrapperClassName="absolute inset-0 size-full !aspect-auto bg-surface-muted"
-                        className="h-full w-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
-
-                <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5 lg:hidden">
-                  <h1
-                    className={cn(
-                      "font-bold leading-tight tracking-tight text-white",
-                      "text-sm sm:text-base",
-                    )}
-                  >
-                    {model.title}
-                  </h1>
-
-                  {highlights.length ? (
-                    <div className="mt-3 flex flex-nowrap items-center gap-1.5 sm:gap-2" aria-label="Keunggulan model">
-                      {highlights.map((item) => (
-                        <span
-                          key={item.label}
-                          className="inline-flex min-w-0 flex-1 items-center justify-center truncate whitespace-nowrap rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-foreground sm:px-2.5 sm:text-[11px]"
-                        >
-                          {item.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-
-                {heroThumbs.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-1.5 flex items-center justify-center">
-                    {heroThumbs.map((thumb, index) => (
-                      <button
-                        key={`dot-${index}-${thumb.id}`}
-                        type="button"
-                        onClick={() => goHeroSlide(index)}
-                        aria-label={`Foto ${index + 1}`}
-                        className="relative flex size-6 items-center justify-center rounded-full"
-                      >
-                        <span
-                          className={cn(
-                            "h-1 rounded-full transition-all duration-300",
-                            index === heroActive ? "w-4 bg-white" : "w-1 bg-white/50 hover:bg-white/80",
-                          )}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            {/* Kanan: judul + pill + deskripsi + statistik (desktop) */}
-            <div className="min-w-0 lg:pt-3">
-              <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
-                {model.title}
-              </h1>
-
-              {highlights.length ? (
-                <div className="mt-3 hidden flex-wrap gap-2.5 lg:flex" aria-label="Keunggulan model">
-                  {highlights.map((item) => (
-                    <span
-                      key={item.label}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-4 py-2 text-[13px] font-medium text-foreground"
-                    >
-                      {item.label}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-
-              {model.desc ? (
-                <p className="mt-3 hidden max-w-md text-sm leading-relaxed text-muted-foreground lg:block">
-                  {model.desc}
-                </p>
-              ) : null}
-
-              <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
-                <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">
-                    {rails.length}
-                  </span>
-                  <span className="text-[10px] font-medium text-muted-foreground">Varian Model</span>
-                </div>
-                <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">
-                    {model.count ?? 0}
-                  </span>
-                  <span className="text-[10px] font-medium text-muted-foreground">Produk</span>
-                </div>
-                <div className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-surface px-2 py-3">
-                  <span className="text-base font-bold leading-tight tracking-tight text-foreground">100%</span>
-                  <span className="text-[10px] font-medium text-muted-foreground">Garansi</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ModelHero
+            title={model.title}
+            description={model.desc}
+            slogan={model.desc}
+            thumbs={heroThumbs}
+            stats={[
+              { value: rails.length, label: "Varian Model" },
+              { value: model.count ?? 0, label: "Produk" },
+              { value: "100%", label: "Garansi" },
+            ]}
+            hubHref={hubHref}
+          />
 
           {/* Konten 1 kolom penuh: varian & produk (carousel 5 kartu) */}
           <div className="mt-8">
