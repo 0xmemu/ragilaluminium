@@ -254,6 +254,38 @@ export default function Cart({
 
             <TrustAssuranceCard />
 
+            {/* Panel ringkasan desktop (lg+): MobileStickyCta disembunyikan di >=1024px,
+                 jadi checkout desktop butuh panel ini. Perilaku tombol identik dengan
+                 tombol di MobileStickyCta (form checkoutSelected, disabled sama persis). */}
+            <div className="hidden lg:block border-t border-border pt-3">
+              <dl className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted-foreground">Subtotal ({selectMode ? selectedIds.size : cartItems.length} barang)</dt>
+                  <dd className="tabular-nums font-semibold text-foreground">
+                    {formatCurrency(selectedSubtotal)}
+                  </dd>
+                </div>
+                {hasDiscount ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Total Potongan</dt>
+                    <dd className="tabular-nums font-semibold text-sale">
+                      −{formatCurrency(selectedDiscount)}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              <form onSubmit={checkoutSelected} className="mt-3 flex justify-end">
+                <Button
+                  type="submit"
+                  size="md"
+                  className="h-10 min-h-10 min-w-0 px-5 text-sm"
+                  disabled={(selectMode && noneSelected) || submitForm.processing}
+                >
+                  {selectMode ? `Checkout (${selectedIds.size})` : `Checkout (${cartItems.length})`}
+                  <Icon name="arrow-right" className="size-4" aria-hidden="true" />
+                </Button>
+              </form>
+            </div>
             {/* Ringkasan flat (prototype Sum) */}
             <div className="border-t border-border pt-3">
               <dl className="space-y-2 text-xs">
