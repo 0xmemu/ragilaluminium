@@ -28,6 +28,7 @@ export function ModelHero({
   title,
   description,
   slogan,
+  highlights,
   thumbs,
   stats,
   hubHref,
@@ -37,6 +38,8 @@ export function ModelHero({
   description?: string | null
   /** Slogan pendek (overlay mobile). */
   slogan?: string | null
+  /** Keunggulan model — danau global, sama di semua halaman. */
+  highlights?: Array<{ label: string }>
   thumbs: ModelHeroThumb[]
   stats: ModelHeroStat[]
   hubHref?: string | null
@@ -111,6 +114,18 @@ export function ModelHero({
                   {slogan}
                 </p>
               ) : null}
+              {highlights?.length ? (
+                <div className="mt-3 flex flex-nowrap items-center gap-1.5 sm:gap-2" aria-label="Keunggulan model">
+                  {highlights.map((item) => (
+                    <span
+                      key={item.label}
+                      className="inline-flex min-w-0 flex-1 items-center justify-center truncate whitespace-nowrap rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-foreground sm:px-2.5 sm:text-[11px]"
+                    >
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {thumbs.length > 1 ? (
@@ -141,6 +156,18 @@ export function ModelHero({
           <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
             {title}
           </h1>
+          {highlights?.length ? (
+            <div className="mt-3 hidden flex-wrap gap-2.5 lg:flex" aria-label="Keunggulan model">
+              {highlights.map((item) => (
+                <span
+                  key={item.label}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-4 py-2 text-[13px] font-medium text-foreground"
+                >
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
           {description ? (
             <p className="mt-3 hidden max-w-md text-sm leading-relaxed text-muted-foreground lg:block">
               {description}

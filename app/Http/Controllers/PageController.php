@@ -346,6 +346,9 @@ class PageController extends Controller
                 'model' => $modelCode,
                 'label' => $title,
             ],
+            'modelHighlights' => isset($modelCard) && is_array($modelCard)
+                ? ($modelCard['highlights'] ?? null)
+                : null,
             'indexHref' => route('installation.index'),
             'reviewsHref' => route('reviews.website'),
         ]);

@@ -19,6 +19,7 @@ export default function Installations({
   pageMeta,
   installations = [],
   featured = null,
+  modelHighlightsRaw = null,
   gallery = [],
   level = "model",
   modelMeta = null,
@@ -27,6 +28,7 @@ export default function Installations({
   pageMeta?: { title: string; heading: string; subtitle: string } | null
   installations?: InstallationItem[]
   featured?: InstallationItem | null
+  modelHighlightsRaw?: Array<{ label: string }> | null
   gallery?: { id: number; url: string; thumb?: string | null; is_video?: boolean; caption?: string | null }[]
   level?: "model" | "product"
   modelMeta?: { category: string; model: string; label: string } | null
@@ -34,6 +36,15 @@ export default function Installations({
   reviewsHref?: string
 }) {
   const isModelLevel = level !== "product"
+
+  const modelHighlights =
+    modelHighlightsRaw?.length === 3
+      ? modelHighlightsRaw
+      : [
+          { label: "Tampilan Bersih & Modern" },
+          { label: "Maksimalkan Pencahayaan" },
+          { label: "Cocok untuk Berbagai Ruangan" },
+        ]
   const heading = pageMeta?.heading?.trim() || "Hasil Pemasangan Kami"
   const subtitle =
     pageMeta?.subtitle?.trim() ||
@@ -189,6 +200,7 @@ export default function Installations({
                 title={heading}
                 description={subtitle}
                 slogan={subtitle}
+                highlights={modelHighlights}
                 thumbs={[{ id: "featured", src: featured.image_url, alt: heading }]}
                 stats={[
                   { value: installations.length, label: "Produk" },

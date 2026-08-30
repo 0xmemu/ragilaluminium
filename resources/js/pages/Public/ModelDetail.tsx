@@ -218,6 +218,7 @@ export default function ModelDetail({
             title={model.title}
             description={model.desc}
             slogan={model.desc}
+            highlights={highlights}
             thumbs={heroThumbs}
             stats={[
               { value: rails.length, label: "Varian Model" },
