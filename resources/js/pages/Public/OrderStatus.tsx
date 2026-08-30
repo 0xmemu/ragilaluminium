@@ -363,9 +363,9 @@ export default function OrderStatus({
         </div>
       </section>
 
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pt-6 lg:pb-10">
         {showLookupForm ? (
-          <div className="grid min-w-0 gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">
               <h2 className="text-lg font-semibold">Cek pesanan</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -418,15 +418,31 @@ export default function OrderStatus({
                 <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
               ) : null}
               {!searched ? (
-                <div className="flex min-h-[22rem] flex-col items-center justify-center border-y border-border py-10 text-center">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-md bg-surface-muted text-primary">
-                    <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
-                  </span>
-                  <h2 className="mt-6 text-xl font-semibold sm:text-2xl">Cek pesanan Anda</h2>
-                  <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
+                <div className="surface-panel flex min-h-[22rem] flex-col p-5 sm:p-8 lg:justify-center">
+                  <div className="flex items-center gap-4">
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary">
+                      <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
+                    </span>
+                    <h2 className="text-xl font-semibold sm:text-2xl">Cek pesanan Anda</h2>
+                  </div>
+                  <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
                     Setelah checkout di perangkat yang sama, pesanan biasanya tampil otomatis.
                     Jika daftar kosong, isi formulir di samping dengan nomor pesanan dan nomor HP.
                   </p>
+                  <ol className="mt-6 space-y-4">
+                    {[
+                      ["1", "Lakukan checkout seperti biasa"],
+                      ["2", "Catat nomor pesanan & nomor HP yang dipakai"],
+                      ["3", "Isi formulir, lalu lihat status pesanan Anda"],
+                    ].map(([step, text]) => (
+                      <li key={step} className="flex items-start gap-3">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">
+                          {step}
+                        </span>
+                        <span className="text-sm leading-6 text-muted-foreground">{text}</span>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               ) : order ? (
                 <OrderDetail
