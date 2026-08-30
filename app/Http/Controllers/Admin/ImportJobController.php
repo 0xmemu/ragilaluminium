@@ -221,7 +221,7 @@ class ImportJobController extends Controller
         ]);
     }
 
-    public function downloadCorrectionFile(ImportJob $import_job): StreamedResponse
+    public function downloadCorrectionFile(ImportJob $import_job): BinaryFileResponse
     {
         $failedQuery = $import_job->failedRows();
         ExportSafety::assertQueryWithinLimit($failedQuery);
