@@ -225,7 +225,7 @@ export default function ModelDetail({
         </div>
       </section>
 
-            <section className="pb-5">
+            <section className="pb-5 md:pt-4">
         <div className="container-page !px-0 md:!px-8 lg:!px-12">
           {/* Hero dua kolom: thumb diperkecil (kiri) + deskripsi & statistik (kanan) */}
           <div className="lg:grid lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
