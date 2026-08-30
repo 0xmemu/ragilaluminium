@@ -555,7 +555,7 @@ function TrustAssurance() {
 
 export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
   return (
-    <div className="order-tracking space-y-4 max-w-lg mx-auto">
+    <div className="order-tracking space-y-4 max-w-lg mx-auto lg:max-w-none lg:mx-0">
       {/* Banner delivered/completed: "sudah sampai" + CTA ulasan (paling atas) */}
       <CustomerReviewForm
         orderNumber={order.order_number}

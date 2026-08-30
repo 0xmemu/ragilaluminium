@@ -476,8 +476,8 @@ export default function OrderStatus({
         ) : (
           <div
             className={cn(
-              "grid gap-10 lg:items-start lg:gap-12",
-              sessionList.length > 0 && "lg:grid-cols-[16rem_minmax(0,1fr)]",
+              "grid gap-6 lg:items-start lg:gap-8",
+              sessionList.length > 0 && "lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]",
             )}
           >
             {pageErrors.cancel ? (
