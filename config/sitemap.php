@@ -294,6 +294,7 @@ return [
             [
                 'label' => 'Lacak Pengiriman',
                 'route' => 'order.status',
+                'hash' => 'lacak-pengiriman',
                 'icon' => 'truck',
                 'active' => ['order.status', 'order.status.lookup'],
             ],
