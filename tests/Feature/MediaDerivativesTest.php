@@ -188,8 +188,8 @@ class MediaDerivativesTest extends TestCase
 
         $response = $this->getJson('/api/catalog/windows');
         $response->assertOk();
-        $this->assertCount(14, $response->json('products'));
-        $this->assertSame(14, $response->json('pagination.per_page'));
+        $this->assertCount(15, $response->json('products'));
+        $this->assertSame(15, $response->json('pagination.per_page'));
     }
 
     protected function makePngBytes(int $w, int $h): string
