@@ -228,10 +228,10 @@ export default function ModelDetail({
             <section className="pb-5">
         <div className="container-page !px-0 md:!px-8 lg:!px-12">
           {/* Hero dua kolom: thumb diperkecil (kiri) + deskripsi & statistik (kanan) */}
-          <div className="lg:grid lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+          <div className="lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
             {/* Kiri: thumb + judul + keunggulan */}
             <div>
-              <div className="relative mx-auto aspect-square w-full max-w-[28rem] overflow-hidden lg:max-w-none">
+              <div className="relative mx-auto aspect-square w-full max-w-[24rem] overflow-hidden lg:max-w-none">
                 <div
                   ref={heroThumbsRef}
                   onScroll={handleHeroScroll}
