@@ -418,7 +418,7 @@ export default function OrderStatus({
                 <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
               ) : null}
               {!searched ? (
-                <div className="surface-panel flex flex-col p-5 sm:p-6 lg:self-stretch lg:p-8">
+                <div className="surface-panel flex flex-col p-5 sm:p-6 lg:h-full lg:p-8">
                   <div className="flex items-center gap-4">
                     <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary">
                       <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
