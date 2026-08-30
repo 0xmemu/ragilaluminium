@@ -216,7 +216,7 @@ protected function category(?string $category, Request $request, string $mode = 
                 // (belum ada pembelian → produk stok tertinggi tampil di depan).
                 fn ($q) => $q->orderByRaw(Product::popularityScoreSql().' DESC')->orderByDesc('stock_sort')->orderByDesc('id')
             )
-             ->paginate(14)
+             ->paginate(15)
             ->withQueryString();
 
         // P2-2.1: hasil katalog per kombinasi filter di-cache 5 menit;
