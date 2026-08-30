@@ -8,8 +8,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-                display: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+                sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+                display: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
                 mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'monospace'],
             },
             colors: {
