@@ -191,7 +191,7 @@ export default function Installations({
 
       {isModelLevel ? (
         <>
-          <section className="border-b border-border bg-surface">
+          <section className="bg-surface py-0">
             <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
               <div className="flex items-center justify-between gap-4 pt-2 pb-1.5 sm:pt-2.5 sm:pb-2">
                 <p className="text-xs text-muted-foreground sm:text-sm">
