@@ -520,8 +520,8 @@ export function CatalogNav({
         </div>
       </div>
 
-      {/* Baris 3 -> Ringkasan Filter & Jumlah Barang (tanpa garis, padding proporsional) */}
-      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-1.5 pb-2.5">
+      {/* Baris 3 -> Ringkasan Filter & Jumlah Barang (tanpa garis, pola padding standar) */}
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-2 pb-1.5 sm:pt-2.5 sm:pb-2">
         <div className="flex items-center justify-between gap-2 text-xs font-normal">
           <span className="truncate font-medium text-foreground">{summaryFilterLabel}</span>
           <span className="shrink-0 text-right text-muted-foreground">
