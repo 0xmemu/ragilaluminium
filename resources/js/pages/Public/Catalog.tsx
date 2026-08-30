@@ -108,7 +108,7 @@ function SearchFallbackEmpty({
           </div>
           <ProductCardGrid>
             {nearbySizes.map((product, index) => (
-              <ProductCard key={product.id} product={product} priority={index < 4} />
+              <ProductCard key={product.id} product={product} priority={index < 4} titleStyle="model" />
             ))}
           </ProductCardGrid>
         </section>
@@ -390,6 +390,7 @@ export default function Catalog({
                     product={product}
                     priority={index < 4}
                     emphasis="flash"
+                    titleStyle="model"
                   />
                 ))}
               </ProductCardGrid>
@@ -410,6 +411,7 @@ export default function Catalog({
                     product={product}
                     priority={!showYouMightLike && index < 4}
                     emphasis={isFlash ? "flash" : "default"}
+                    titleStyle="model"
                   />
                 ))}
               </ProductCardGrid>

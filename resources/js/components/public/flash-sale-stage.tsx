@@ -786,6 +786,7 @@ export function PromoFlashSaleSection({
                   product={product}
                   priority={index < 4}
                   emphasis="flash"
+                  titleStyle="model"
                 />
               </div>
             ))}
