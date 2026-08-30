@@ -461,7 +461,7 @@ function JnTCard({ order }: { order: PublicOrder }) {
   const shipment = order.vm?.shipment
 
   return (
-    <section className="order-tracking__jnt-card rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5">
+    <section id="lacak-pengiriman" className="order-tracking__jnt-card scroll-mt-20 rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5">
       {/* Brand Header J&T Cargo Icon */}
       <div className="space-y-1">
         <JntCargoLogo />

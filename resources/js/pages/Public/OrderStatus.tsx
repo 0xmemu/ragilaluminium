@@ -197,15 +197,7 @@ export default function OrderStatus({
     }
   }, [])
 
-  React.useEffect(() => {
-    if (typeof window === "undefined") return
-    if (window.location.hash !== "#lacak-pengiriman") return
-    // Tunggu hydrasi selesai agar posisi elemen stabil sebelum scroll.
-    const t = window.setTimeout(() => {
-      document.getElementById("lacak-pengiriman")?.scrollIntoView({ behavior: "smooth", block: "start" })
-    }, 150)
-    return () => window.clearTimeout(t)
-  }, [browserHydrated])
+
 
   React.useEffect(() => {
     for (const row of serverOrders) {
@@ -351,6 +343,17 @@ export default function OrderStatus({
   }
 
   const hasBrowserOrders = has_session_orders || sessionList.length > 0
+  const hashTarget = typeof window !== "undefined" && window.location.hash === "#lacak-pengiriman"
+  React.useEffect(() => {
+    if (!hashTarget) return
+    if (!browserHydrated || storedLoading) return
+    // Scroll hanya setelah konten (order / panduan) benar-benar dirender.
+    const t = window.setTimeout(() => {
+      document.getElementById("lacak-pengiriman")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [hashTarget, browserHydrated, storedLoading, shownOrder])
+
   const showLookupForm = browserHydrated && !storedLoading && !hasBrowserOrders
 
   return (
@@ -379,7 +382,7 @@ export default function OrderStatus({
         </div>
       </section>
 
-      <section id="lacak-pengiriman" className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pt-6 lg:pb-10 scroll-mt-20">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pt-6 lg:pb-10">
         {showLookupForm ? (
           <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-stretch lg:gap-8">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28 lg:self-start lg:p-7">
