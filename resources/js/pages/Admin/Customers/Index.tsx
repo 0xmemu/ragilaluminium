@@ -100,7 +100,7 @@ export default function CustomersIndex({
           <Button asChild variant="secondary">
             <a href={exportUrl}>
               <Icon name="download" className="size-4" aria-hidden="true" />
-              Unduh CSV
+              Unduh Excel
             </a>
           </Button>
         }
