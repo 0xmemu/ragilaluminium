@@ -117,7 +117,7 @@ export function CatalogNav({
             : categoryName
 
   return (
-    <section className="bg-surface" aria-label="Navigasi katalog produk">
+    <section className="bg-surface py-0" aria-label="Navigasi katalog produk">
       {breadcrumbItems && breadcrumbItems.length > 0 ? (
         <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
           <Breadcrumbs items={breadcrumbItems} />
