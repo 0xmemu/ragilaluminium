@@ -231,7 +231,7 @@ export default function ModelDetail({
           <div className="lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
             {/* Kiri: thumb + judul + keunggulan */}
             <div>
-              <div className="relative mx-auto aspect-square w-full max-w-[24rem] overflow-hidden lg:max-w-none">
+              <div className="relative mx-auto aspect-square w-full overflow-hidden">
                 <div
                   ref={heroThumbsRef}
                   onScroll={handleHeroScroll}
