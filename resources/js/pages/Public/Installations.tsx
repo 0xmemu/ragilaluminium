@@ -20,6 +20,7 @@ export default function Installations({
   installations = [],
   featured = null,
   modelHighlightsRaw = null,
+  modelDescription = null,
   gallery = [],
   level = "model",
   modelMeta = null,
@@ -29,6 +30,7 @@ export default function Installations({
   installations?: InstallationItem[]
   featured?: InstallationItem | null
   modelHighlightsRaw?: Array<{ label: string }> | null
+  modelDescription?: string | null
   gallery?: { id: number; url: string; thumb?: string | null; is_video?: boolean; caption?: string | null }[]
   level?: "model" | "product"
   modelMeta?: { category: string; model: string; label: string } | null
@@ -198,8 +200,8 @@ export default function Installations({
             {featured?.image_url ? (
               <ModelHero
                 title={heading}
-                description={subtitle}
-                slogan={subtitle}
+                description={modelDescription ?? subtitle}
+                slogan={modelDescription ?? subtitle}
                 highlights={modelHighlights}
                 thumbs={[{ id: "featured", src: featured.image_url, alt: heading }]}
                 stats={[
