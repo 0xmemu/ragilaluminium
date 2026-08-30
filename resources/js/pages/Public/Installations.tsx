@@ -168,21 +168,18 @@ export default function Installations({
 
         {isModelLevel ? (
           <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.history.back()}
-                  className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
-                  aria-label="Kembali"
-                >
-                  <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-                </button>
-                <h1 className="text-base font-bold tracking-tight text-foreground">
-                  {heading}
-                </h1>
-              </div>
-              <div className="flex shrink-0 items-center">{searchControl}</div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
+                aria-label="Kembali"
+              >
+                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+              </button>
+              <h1 className="text-base font-bold tracking-tight text-foreground">
+                {heading}
+              </h1>
             </div>
           </div>
         ) : (
