@@ -749,6 +749,7 @@
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
+    font-size: 11px;
   }
 
   .product-card__flash-label {
@@ -784,6 +785,8 @@
     align-items: center;
     gap: 4px;
     min-width: 0;
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .product-card__warranty {
