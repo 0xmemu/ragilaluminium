@@ -139,7 +139,7 @@ class InstallationMediaImportTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Public/Installations')
             ->where('level', 'model')
-            ->where('activeSort', 'newest')
+            ->where('activeSort', 'admin')
             ->has('installations', 1)
             ->where('installations.0.image_url', 'https://example.com/hasil.jpg')
             ->where('installations.0.product_count', 1)
@@ -149,7 +149,7 @@ class InstallationMediaImportTest extends TestCase
         $indexSorted = $this->get(route('installation.index', ['sort' => 'name']));
         $indexSorted->assertOk();
         $indexSorted->assertInertia(fn (Assert $page) => $page
-            ->where('activeSort', 'newest')
+            ->where('activeSort', 'admin')
             ->has('installations', 1)
         );
 
