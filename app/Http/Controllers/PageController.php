@@ -245,9 +245,9 @@ class PageController extends Controller
 
     public function installations(Request $request): Response
     {
-        $sort = (string) $request->input('sort', 'newest');
-        if (! in_array($sort, ['newest', 'photos'], true)) {
-            $sort = 'newest';
+        $sort = (string) $request->input('sort', 'admin');
+        if (! in_array($sort, ['admin', 'latest', 'oldest'], true)) {
+            $sort = 'admin';
         }
 
         $modelCards = collect(InstallationGallery::modelCards(48));
@@ -265,6 +265,7 @@ class PageController extends Controller
         return Inertia::render('Public/Installations', [
             'pageMeta' => $pageMeta,
             'installations' => $installations,
+            'models' => app(ModelProductService::class)->storefrontCards(0, null, null, $sort),
             'level' => 'model',
             'activeSort' => $sort,
             'reviewsHref' => route('reviews.website'),

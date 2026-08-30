@@ -1,4 +1,4 @@
-import { Head } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { InstallationCard } from "@/components/public/installation-card"
@@ -10,10 +10,13 @@ import { PageHeader } from "@/components/public/page-header"
 import { ModelHero } from "@/components/public/model-hero"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { EmptyState } from "@/components/ui/empty-state"
+import { ModelCategoryCard } from "@/components/public/model-category-card"
+import { SortMenu } from "@/components/public/model-sort-menu"
+import { formatNumber } from "@/lib/format"
 import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
-import type { InstallationItem } from "@/types"
+import type { InstallationItem, ModelCardData } from "@/types"
 
 export default function Installations({
   pageMeta,
@@ -24,6 +27,8 @@ export default function Installations({
   gallery = [],
   level = "model",
   modelMeta = null,
+  models = [],
+  activeSort = "admin",
   indexHref,
 }: {
   pageMeta?: { title: string; heading: string; subtitle: string } | null
@@ -35,6 +40,8 @@ export default function Installations({
   level?: "model" | "product"
   modelMeta?: { category: string; model: string; label: string } | null
   indexHref?: string
+  models?: ModelCardData[]
+  activeSort?: string
   reviewsHref?: string
 }) {
   const isModelLevel = level !== "product"
@@ -56,9 +63,26 @@ export default function Installations({
   const docTitle = pageMeta?.title?.trim() || "Hasil Pemasangan"
   const listingHref = indexHref || routeUrl("installation.index")
 
+  const totalModels = (models || []).reduce((sum, model) => sum + (Number(model.count) || 0), 0)
+
   // Urutan tampilan diatur admin (tidak ada kontrol urut di halaman pembeli).
   // Pembeli hanya bisa MENCARI model/produk tertentu via ikon search.
   const [searchOpen, setSearchOpen] = React.useState(false)
+  const [sort, setSort] = React.useState<string>(activeSort)
+
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSort(activeSort)
+  }, [activeSort])
+
+  function selectSort(value: string) {
+    setSort(value)
+    router.get(
+      routeUrl("installation.index"),
+      value ? { sort: value } : {},
+      { preserveState: true, preserveScroll: true, replace: true },
+    )
+  }
   const [searchQuery, setSearchQuery] = React.useState("")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -168,34 +192,35 @@ export default function Installations({
         )}
       </section>
 
-      <section className={isModelLevel ? "pt-4 pb-4 sm:pt-6 sm:pb-6" : "pt-0 pb-4 sm:pb-6"}>
-        {isModelLevel ? (
-          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-            {filteredInstallations.length ? (
-              <ShowcaseCardGrid className="gap-3 sm:gap-4">
-                {filteredInstallations.map((item) => (
-                  <InstallationCard
-                    key={item.id}
-                    item={{
-                      ...item,
-                      image: item.image ?? item.image_url,
-                    }}
-                  />
+      {isModelLevel ? (
+        <>
+          <section className="border-b border-border bg-surface">
+            <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+              <div className="flex items-center justify-between gap-4 pt-2 pb-1.5 sm:pt-2.5 sm:pb-2">
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  {formatNumber(totalModels)} model produk ditemukan
+                </p>
+                <SortMenu value={sort} onChange={selectSort} />
+              </div>
+            </div>
+          </section>
+          <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-5 md:py-8">
+            {models.length ? (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {models.map((model) => (
+                  <ModelCategoryCard key={`${model.category}-${model.model}`} model={model} />
                 ))}
-              </ShowcaseCardGrid>
+              </div>
             ) : (
               <EmptyState
-                icon="search"
-                title={needle ? "Tidak ada hasil pencarian" : "Belum ada dokumentasi pemasangan"}
-                description={
-                  needle
-                    ? `Tidak ada hasil pemasangan untuk “${searchQuery.trim()}”. Coba kata kunci lain.`
-                    : "Foto hasil pemasangan akan tampil di sini setelah tersedia."
-                }
+                icon="funnel"
+                title="Belum ada model yang cocok"
+                description="Model produk belum tersedia pada katalog aktif."
               />
             )}
-          </div>
-        ) : (
+          </section>
+        </>
+      ) : (
           <div className="space-y-6 lg:space-y-8">
             {featured?.image_url ? (
               <ModelHero
@@ -236,7 +261,6 @@ export default function Installations({
             </div>
           </div>
         )}
-      </section>
     </PublicLayout>
   )
 }
