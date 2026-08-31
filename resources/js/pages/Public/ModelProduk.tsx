@@ -3,9 +3,9 @@ import * as React from "react"
 
 import { SortArrowsIcon } from "@/components/public/filter-berdasarkan-control"
 import { PageHeader } from "@/components/public/page-header"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import { SortMenu } from "@/components/public/model-sort-menu"
 import { Icon } from "@/components/shared/icon"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,14 +56,12 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: "Model Produk" },
-            ]}
-          />
-        </div>
+        <PageTopBar
+          breadcrumbs={[
+            { label: "Beranda", href: routeUrl("home") },
+            { label: "Model Produk" },
+          ]}
+        />
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           <PageHeader title="Model Produk" container={false} className="border-b-0" />
         </div>

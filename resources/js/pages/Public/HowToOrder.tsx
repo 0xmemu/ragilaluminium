@@ -5,7 +5,7 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { ClosingCTASection } from "@/components/public/closing-cta"
 import { SectionHeading } from "@/components/shared/section-heading"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -55,26 +55,14 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
 
       {/* Baris Navigasi Breadcrumbs & Judul Halaman */}
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <div className="flex items-center gap-3">
-                        <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: "Cara pemesanan", href: null },
-            ]}
-          />
-          </div>
-        </div>
+        <PageTopBar
+          breadcrumbs={[
+            { label: "Beranda", href: routeUrl("home") },
+            { label: "Cara pemesanan", href: null },
+          ]}
+        />
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
-              aria-label="Kembali"
-            >
-              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-            </button>
             <h1 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
               {guide.heading}
             </h1>
