@@ -352,6 +352,7 @@ function OrderCardRow({
                     </p>
                   </div>
                 </div>
+                <span className="sr-only">x{formatNumber(item.quantity)}</span>
               </li>
             ))}
           </ul>
@@ -381,12 +382,17 @@ function OrderCardRow({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Item
           </p>
-          <span
-            className="inline-flex items-center rounded-md border border-border bg-surface-muted px-2 py-0.5 tabular-nums text-[13px] font-semibold text-foreground"
-            title="Total qty semua produk dalam pesanan ini"
-          >
-            x{formatNumber(order.items_total)}
-          </span>
+          <ul className="space-y-2.5" aria-label="Qty per produk">
+            {visibleItems.map((item) => (
+              <li
+                key={`qty-${item.id}`}
+                className="flex min-h-11 items-center tabular-nums text-[13px] font-semibold text-foreground"
+                title={`Qty ${item.name}`}
+              >
+                x{formatNumber(item.quantity)}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Dibayar Pembeli */}
