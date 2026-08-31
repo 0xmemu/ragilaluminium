@@ -33,6 +33,7 @@ interface OrderItemPreview {
   variation_2_option?: string | null
   quantity: number
   image?: string | null
+  note?: string | null
 }
 
 interface PrimaryAction {
@@ -351,6 +352,14 @@ function OrderCardRow({
                       {variationLabel(item) || item.variant_sku || "-"}
                     </p>
                   </div>
+                  <p
+                    className={cn(
+                      "mt-0.5 text-[11px]",
+                      item.note ? "text-foreground" : "text-muted-foreground/70",
+                    )}
+                  >
+                    Catatan: {item.note || "-"}
+                  </p>
                 </div>
                 <span className="sr-only">x{formatNumber(item.quantity)}</span>
               </li>
@@ -369,17 +378,7 @@ function OrderCardRow({
                   : "Tampilkan semua produk"}
             </button>
           ) : null}
-          <p
-            className={cn(
-              "rounded-md border px-3 py-2 text-xs leading-5",
-              order.notes
-                ? "border-info/20 bg-info/5 text-foreground"
-                : "border-border bg-muted/30 text-muted-foreground",
-            )}
-          >
-            <span className="font-semibold">Catatan: </span>
-            {order.notes || "-"}
-          </p>
+
         </div>
 
         {/* Item (total qty) */}
