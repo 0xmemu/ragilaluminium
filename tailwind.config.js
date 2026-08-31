@@ -88,6 +88,7 @@ export default {
                 reading: '68ch',
             },
             transitionTimingFunction: {
+                DEFAULT: "var(--ease-standard)",
                 standard: 'var(--ease-standard)',
                 emphasized: 'var(--ease-emphasized)',
             },

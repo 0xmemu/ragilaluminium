@@ -88,7 +88,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
                 </div>
 
                 {/* Content */}
-                <div className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md sm:p-5">
+                <div className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background p-4 shadow-xs transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md sm:p-5">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Langkah {index + 1}
                   </p>

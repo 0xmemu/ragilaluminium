@@ -115,7 +115,7 @@ export function TestimonialCard({
   const showOverlay = extra > 0
 
   const cardClassName = cn(
-    "testimonial-card @container group flex h-full min-w-0 flex-col rounded-xl border border-border bg-white p-4 transition-all duration-300 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none",
+    "testimonial-card @container group flex h-full min-w-0 flex-col rounded-xl border border-border bg-white p-4 transition-[color,background-color,border-color,box-shadow] duration-300 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none",
     reviewSectionHref ? "cursor-pointer" : null,
     hasImage ? "testimonial-card--with-image" : null,
   )

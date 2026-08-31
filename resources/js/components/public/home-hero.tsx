@@ -394,13 +394,13 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                     type="button"
                     key={index}
                     onClick={() => goTo(index)}
-                    className="relative flex size-6 items-center justify-center rounded-full transition-all before:absolute before:-inset-2 before:content-['']"
+                    className="relative flex size-6 items-center justify-center rounded-full transition-colors before:absolute before:-inset-2 before:content-['']"
                     aria-label={`Slide ${index + 1}`}
                     aria-current={index === visibleIndex ? "true" : undefined}
                   >
                     <span
                       className={cn(
-                        "h-1 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-all",
+                        "h-1 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-[width,background-color]",
                         index === visibleIndex ? "w-4 bg-white mix-blend-difference opacity-80" : "w-1 bg-white mix-blend-difference opacity-80",
                       )}
                     />

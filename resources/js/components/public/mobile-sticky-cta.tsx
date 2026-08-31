@@ -84,7 +84,7 @@ export function MobileStickyCta({
         role="region"
         aria-label={ariaLabel}
         className={cn(
-          "mobile-sticky-cta border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md lg:hidden transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+          "mobile-sticky-cta border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md lg:hidden transition-[transform,opacity] duration-300 ease-[var(--ease-standard)] will-change-transform",
           hidden && "pointer-events-none translate-y-[140%] opacity-0",
           className,
         )}

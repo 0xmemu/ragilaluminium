@@ -140,7 +140,7 @@ export function ModelHero({
                   >
                     <span
                       className={cn(
-                        "h-1 rounded-full transition-all duration-300",
+                        "h-1 rounded-full transition-[width] duration-300",
                         index === active ? "w-4 bg-white" : "w-1 bg-white/50 hover:bg-white/80",
                       )}
                     />
