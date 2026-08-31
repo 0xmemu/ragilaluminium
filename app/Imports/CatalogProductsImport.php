@@ -95,8 +95,13 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
 
             $variantSku = trim((string) ($data['variant_sku'] ?? ''));
             if ($autoMode && $variantSku === '') {
-                $hasVariation = trim((string) ($data['variation_1_option'] ?? '')) !== ''
-                    || trim((string) ($data['variation_2_option'] ?? '')) !== '';
+                $hasVariation = false;
+                for ($i = 1; $i <= 5; $i++) {
+                    if (trim((string) ($data['variation_'.$i.'_option'] ?? '')) !== '') {
+                        $hasVariation = true;
+                        break;
+                    }
+                }
                 if ($hasVariation) {
                     $n = ProductVariant::where('product_id', $product->id)->count() + 1;
                     $variantSku = $parentSku.'-'.$n;
@@ -115,6 +120,12 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         'variation_1_option' => $data['variation_1_option'] ?? null,
                         'variation_2_name' => $data['variation_2_name'] ?? null,
                         'variation_2_option' => $data['variation_2_option'] ?? null,
+                        'variation_3_name' => $data['variation_3_name'] ?? null,
+                        'variation_3_option' => $data['variation_3_option'] ?? null,
+                        'variation_4_name' => $data['variation_4_name'] ?? null,
+                        'variation_4_option' => $data['variation_4_option'] ?? null,
+                        'variation_5_name' => $data['variation_5_name'] ?? null,
+                        'variation_5_option' => $data['variation_5_option'] ?? null,
                         'price' => (float) ($data['price'] ?? 0),
                         'stock' => $stock,
                         'weight_kg' => $this->number($data, ['weight_kg', 'weight', 'packing_weight']),
