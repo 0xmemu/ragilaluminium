@@ -27,57 +27,28 @@ export interface HowToOrderData {
   steps: Array<{ step: string; title: string; description: string }>
 }
 
-function SectionTitle({
-  title,
-  actionHref,
-  actionLabel = "Lihat Semua",
-  tone = "default",
-}: {
-  title: string
-  actionHref?: string
-  actionLabel?: string
-  tone?: "default" | "on-primary"
-}) {
-  const onPrimary = tone === "on-primary"
-
-  return (
-    <SectionHeading
-      align="left"
-      size="default"
-      tone={tone}
-      fitHeading={false}
-      headingClassName="!text-[18px]"
-      className="gap-1"
-      title={title}
-      action={
-        actionHref ? (
-          <Link
-            href={actionHref}
-            className={cn(
-              "inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              onPrimary
-                ? "text-white/90 hover:text-white"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <span className="shrink-0">{actionLabel}</span>
-            <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
-          </Link>
-        ) : undefined
-      }
-    />
-  )
-}
-
 export function PilihModelProdukSection({ models }: { models: ModelCardData[] }) {
   const seeMoreHref = routeUrl("catalog.index")
 
   return (
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <SectionTitle
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
           title="Model Produk"
-          actionHref={seeMoreHref}
+          action={
+            <Link
+              href={seeMoreHref}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="shrink-0">{"Lihat Semua"}</span>
+              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
+            </Link>
+          }
         />
         {models.length ? (
           <ModelCardCarousel models={models} seeMoreHref={seeMoreHref} />
@@ -103,9 +74,22 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
   return (
     <section id="paling-banyak-dipesan" className="scroll-mt-20">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <SectionTitle
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
           title="Paling banyak dipesan"
-          actionHref={seeMoreHref}
+          action={
+            <Link
+              href={seeMoreHref}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="shrink-0">{"Lihat Semua"}</span>
+              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
+            </Link>
+          }
         />
         {products.length ? (
           <ProductCardCarousel products={products} seeMoreHref={seeMoreHref} />
@@ -283,10 +267,22 @@ export function CaraPesanSection({
   return (
     <section id="cara-pesan" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <SectionTitle
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
           title={title}
-          actionHref={routeUrl("cara-pemesanan")}
-          actionLabel="Lihat Panduan →"
+          action={
+            <Link
+              href={routeUrl("cara-pemesanan")}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="shrink-0">{"Lihat Panduan →"}</span>
+              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
+            </Link>
+          }
         />
 
         <div
@@ -374,10 +370,22 @@ export function HasilPemasanganSection({
   return (
     <section id="hasil-pemasangan" className="scroll-mt-20">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <SectionTitle
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
-          actionHref={seeMoreHref}
-          actionLabel="Lihat Semua"
+          action={
+            <Link
+              href={seeMoreHref}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="shrink-0">{"Lihat Semua"}</span>
+              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
+            </Link>
+          }
         />
         {items.length ? (
           <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
@@ -402,10 +410,22 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
   return (
     <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <SectionTitle
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
           title="Apa kata pelanggan kami"
-          actionHref={seeMoreHref}
-          actionLabel="Lihat Semua"
+          action={
+            <Link
+              href={seeMoreHref}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="shrink-0">{"Lihat Semua"}</span>
+              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
+            </Link>
+          }
         />
         {screenshots.length ? (
           <TestimonialCarousel
@@ -432,10 +452,22 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <SectionTitle
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
           title="Ulasan pelanggan di website"
-          actionHref={seeMoreHref}
-          actionLabel="Lihat Semua"
+          action={
+            <Link
+              href={seeMoreHref}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="shrink-0">{"Lihat Semua"}</span>
+              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
+            </Link>
+          }
         />
         {testimonials.length ? (
           <TestimonialCarousel

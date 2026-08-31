@@ -10,7 +10,7 @@ import {
   type CatalogNavFilters,
 } from "@/components/public/catalog-nav"
 
-import { PalingBanyakDipesanSection } from "@/components/public/paling-banyak-dipesan-section"
+import { PalingBanyakDipesanSection } from "@/components/public/home-sections"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { FilterSheetContent } from "@/components/public/filter-sidebar"
