@@ -2,14 +2,13 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { CartLineItem } from "@/components/public/cart-line-item"
-import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
+import { CartCheckoutSummary } from "@/components/public/cart-checkout-summary"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
-import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { CartItem } from "@/types"
 
@@ -103,7 +102,6 @@ export default function Cart({
     return sum + v
   }, 0)
   const selectedDiscount = Math.max(0, selectedCompare - selectedSubtotal)
-  const hasDiscount = selectedDiscount > 0
 
   const submitForm = useForm({ line_ids: [] as string[] })
   const removeSelectedForm = useForm({ line_ids: [] as string[] })
@@ -254,80 +252,42 @@ export default function Cart({
 
             <TrustAssuranceCard />
 
-            {/* Panel ringkasan desktop (lg+): MobileStickyCta disembunyikan di >=1024px,
-                 jadi checkout desktop butuh panel ini. Perilaku tombol identik dengan
-                 tombol di MobileStickyCta (form checkoutSelected, disabled sama persis). */}
+            {/* Satu sumber ringkasan+CTA: desktop lg+ pakai panel, mobile pakai ringkasan flat;
+                 sticky bawah mobile lewat variant sticky di MobileStickyCta. Perilaku tombol
+                 (checkoutSelected, disabled, label) satu sumber di CartCheckoutSummary. */}
             <div className="hidden lg:block border-t border-border pt-3">
-              <dl className="space-y-2 text-xs">
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">Subtotal ({selectMode ? selectedIds.size : cartItems.length} barang)</dt>
-                  <dd className="tabular-nums font-semibold text-foreground">
-                    {formatCurrency(selectedSubtotal)}
-                  </dd>
-                </div>
-                {hasDiscount ? (
-                  <div className="flex items-center justify-between gap-4">
-                    <dt className="text-muted-foreground">Total Potongan</dt>
-                    <dd className="tabular-nums font-semibold text-sale">
-                      −{formatCurrency(selectedDiscount)}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
-              <form onSubmit={checkoutSelected} className="mt-3 flex justify-end">
-                <Button
-                  type="submit"
-                  size="md"
-                  className="h-10 min-h-10 min-w-0 px-5 text-sm"
-                  disabled={(selectMode && noneSelected) || submitForm.processing}
-                >
-                  {selectMode ? `Checkout (${selectedIds.size})` : `Checkout (${cartItems.length})`}
-                  <Icon name="arrow-right" className="size-4" aria-hidden="true" />
-                </Button>
-              </form>
+              <CartCheckoutSummary
+                variant="panel"
+                itemCount={selectMode ? selectedIds.size : cartItems.length}
+                subtotal={selectedSubtotal}
+                discount={selectedDiscount}
+                disabled={selectMode && noneSelected}
+                processing={submitForm.processing}
+                onSubmit={checkoutSelected}
+              />
             </div>
-            {/* Ringkasan flat (mobile saja): di desktop dipakai panel ringkasan lg:block, jangan render dobel. */}
+            {/* Ringkasan flat (mobile saja): di desktop dipakai panel lg:block, jangan render dobel. */}
             <div className="border-t border-border pt-3 lg:hidden">
-              <dl className="space-y-2 text-xs">
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">Subtotal ({selectMode ? selectedIds.size : cartItems.length} barang)</dt>
-                  <dd className="tabular-nums font-semibold text-foreground">
-                    {formatCurrency(selectedSubtotal)}
-                  </dd>
-                </div>
-                {hasDiscount ? (
-                  <div className="flex items-center justify-between gap-4">
-                    <dt className="text-muted-foreground">Total Potongan</dt>
-                    <dd className="tabular-nums font-semibold text-sale">
-                      −{formatCurrency(selectedDiscount)}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
+              <CartCheckoutSummary
+                variant="panel"
+                itemCount={selectMode ? selectedIds.size : cartItems.length}
+                subtotal={selectedSubtotal}
+                discount={selectedDiscount}
+                disabled={selectMode && noneSelected}
+                processing={submitForm.processing}
+                onSubmit={checkoutSelected}
+              />
             </div>
 
-            <MobileStickyCta
-              aria-label="Lanjut checkout"
-              spacerClassName="h-[calc(var(--mobile-sticky-cta-height)+0.5rem)]"
-            >
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-                <span className="tabular-nums text-sm font-bold leading-5">
-                  {formatCurrency(selectedSubtotal)}
-                </span>
-              </div>
-              <form onSubmit={checkoutSelected}>
-                <Button
-                  type="submit"
-                  size="md"
-                  className="h-10 min-h-10 min-w-0 shrink-0 px-3 text-xs min-[375px]:px-5 min-[375px]:text-sm"
-                  disabled={(selectMode && noneSelected) || submitForm.processing}
-                >
-                  {selectMode ? `Checkout (${selectedIds.size})` : `Checkout (${cartItems.length})`}
-                  <Icon name="arrow-right" className="size-4" aria-hidden="true" />
-                </Button>
-              </form>
-            </MobileStickyCta>
+            <CartCheckoutSummary
+              variant="sticky"
+              itemCount={selectMode ? selectedIds.size : cartItems.length}
+              subtotal={selectedSubtotal}
+              discount={selectedDiscount}
+              disabled={selectMode && noneSelected}
+              processing={submitForm.processing}
+              onSubmit={checkoutSelected}
+            />
           </div>
         ) : (
           <div className="py-8">
