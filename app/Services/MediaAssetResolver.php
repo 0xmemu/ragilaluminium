@@ -19,6 +19,31 @@ final class MediaAssetResolver
         $normalized = $this->normalizeUrl($url);
         $hash = hash('sha256', $normalized);
 
+        // URL internal (host = media disk milik sendiri, diambil dari konfigurasi
+        // environment, bukan hardcode). File sudah ada di R2/storage: pakai objek
+        // yang ada langsung, TANPA membuat job download ulang. Fleksibel terhadap
+        // domain yang dipakai (test 333labs vs prod).
+        $objectKey = $this->internalObjectKey($url);
+        if ($objectKey !== null) {
+            $existing = MediaAsset::where('object_key', $objectKey)->first();
+            if ($existing) {
+                return $existing;
+            }
+
+            return MediaAsset::firstOrCreate(
+                ['source_url_hash' => $hash],
+                [
+                    'kind' => $kind,
+                    'source_url' => $url,
+                    'object_key' => $objectKey,
+                    'status' => 'ready',
+                    'visibility' => 'visible',
+                    'created_by_user_id' => $userId,
+                    'created_by_import_job_id' => $jobId,
+                ],
+            );
+        }
+
         return MediaAsset::firstOrCreate(
             ['source_url_hash' => $hash],
             [
@@ -30,6 +55,45 @@ final class MediaAssetResolver
                 'created_by_import_job_id' => $jobId,
             ],
         );
+    }
+
+    /**
+     * Jika URL menunjuk host media disk sendiri, kembalikan object_key yang
+     * bersangkutan (path setelah host). Host diambil dari config filesystems
+     * disk media + proxy, sehingga mengikuti environment (test/prod) tanpa
+     * hardcode. Hanya path media yang dikenal yang dianggap internal.
+     */
+    protected function internalObjectKey(string $url): ?string
+    {
+        $parts = parse_url(trim($url));
+        if (! is_array($parts) || empty($parts['host']) || empty($parts['path'])) {
+            return null;
+        }
+
+        $hosts = [];
+        foreach ([config('filesystems.disks.'.config('media.disk', 'media').'.url', ''), config('filesystems.disks.'.config('media.disk', 'media').'.proxy_url', '')] as $base) {
+            if (is_string($base) && $base !== '') {
+                $h = strtolower((string) parse_url($base, PHP_URL_HOST));
+                if ($h !== '') {
+                    $hosts[] = $h;
+                }
+            }
+        }
+        if ($hosts === []) {
+            return null;
+        }
+
+        $urlHost = strtolower((string) $parts['host']);
+        if (! in_array($urlHost, $hosts, true)) {
+            return null;
+        }
+
+        $path = ltrim((string) $parts['path'], '/');
+        if (! str_starts_with($path, 'media/library/') && ! str_starts_with($path, 'media-assets/')) {
+            return null;
+        }
+
+        return $path;
     }
 
     public function fromUploadedImage(UploadedFile $file, ?int $userId = null): MediaAsset
