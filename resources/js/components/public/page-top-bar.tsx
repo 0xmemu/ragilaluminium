@@ -12,9 +12,11 @@ import { Icon } from "@/components/shared/icon"
 export function PageTopBar({
   breadcrumbs,
   className,
+  singleLine,
 }: {
   breadcrumbs: BreadcrumbItem[]
   className?: string
+  singleLine?: boolean
 }) {
   const previousHref = breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 1].href : undefined
 
@@ -33,7 +35,7 @@ export function PageTopBar({
     <>
       <div className={className}>
         <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <Breadcrumbs items={breadcrumbs} />
+          <Breadcrumbs items={breadcrumbs} singleLine={singleLine} />
         </div>
         <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12 lg:hidden">
           <button

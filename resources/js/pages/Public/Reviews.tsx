@@ -10,7 +10,7 @@ import {
 import { GalleryLightbox, toGalleryItems } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import { Icon } from "@/components/shared/icon"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import { Button } from "@/components/ui/button"
 import { Radio } from "@/components/ui/radio"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -176,27 +176,15 @@ export default function Reviews({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <div className="flex items-center gap-3">
-                        <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: heading, href: null },
-            ]}
-          />
-          </div>
-        </div>
+        <PageTopBar
+          breadcrumbs={[
+            { label: "Beranda", href: routeUrl("home") },
+            { label: heading, href: null },
+          ]}
+        />
         <div className="container-page flex flex-col gap-4 py-2 sm:flex-row !px-2.5 md:!px-8 lg:!px-12 sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
-                aria-label="Kembali"
-              >
-                <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-              </button>
               <h1 className="text-base font-bold tracking-tight text-foreground">{heading}</h1>
             </div>
           </div>

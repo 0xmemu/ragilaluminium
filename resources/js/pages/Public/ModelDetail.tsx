@@ -15,7 +15,7 @@ import {
 } from "@/components/public/carousel-controls"
 import { ClosingCTASection } from "@/components/public/closing-cta"
 import { Icon } from "@/components/shared/icon"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import { PageHeader } from "@/components/public/page-header"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -196,17 +196,13 @@ export default function ModelDetail({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <div className="flex items-center gap-3">
-                        <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: "Model Produk", href: modelsHref },
-              { label: model.title, href: null },
-            ]}
-          />
-          </div>
-        </div>
+        <PageTopBar
+          breadcrumbs={[
+            { label: "Beranda", href: routeUrl("home") },
+            { label: "Model Produk", href: modelsHref },
+            { label: model.title, href: null },
+          ]}
+        />
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           <PageHeader title="Model Produk" container={false} className="border-b-0" />
         </div>

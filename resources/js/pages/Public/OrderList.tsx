@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { PageHeader } from "@/components/public/page-header"
@@ -193,14 +193,12 @@ export default function OrderList({
       <Head title="Pesanan Saya" />
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: "Pesanan Saya", href: null },
-            ]}
-          />
-        </div>
+        <PageTopBar
+          breadcrumbs={[
+            { label: "Beranda", href: routeUrl("home") },
+            { label: "Pesanan Saya", href: null },
+          ]}
+        />
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           <PageHeader title="Pesanan Saya" container={false} className="border-b-0" />
         </div>

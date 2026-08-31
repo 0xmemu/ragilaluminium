@@ -5,7 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { OrderTrackingDetail } from "@/components/public/order-tracking-detail"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -366,18 +366,8 @@ export default function OrderStatus({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Cek Status Pesanan" }]} />
-        </div>
+        <PageTopBar breadcrumbs={[{ label: "Beranda", href: routeUrl("home") }, { label: "Cek Status Pesanan" }]} />
         <div className="container-page flex items-center gap-2 py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
-          aria-label="Kembali"
-        >
-          <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-        </button>
         <h1 className="text-base font-bold text-foreground">Cek Status Pesanan</h1>
         </div>
       </section>
