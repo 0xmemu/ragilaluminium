@@ -22,7 +22,7 @@ final class MediaAssetResolver
         // URL internal (host = media disk milik sendiri, diambil dari konfigurasi
         // environment, bukan hardcode). File sudah ada di R2/storage: pakai objek
         // yang ada langsung, TANPA membuat job download ulang. Fleksibel terhadap
-        // domain yang dipakai (test 333labs vs prod).
+        // domain yang dipakai environment (test maupun prod).
         $objectKey = $this->internalObjectKey($url);
         if ($objectKey !== null) {
             $existing = MediaAsset::where('object_key', $objectKey)->first();
