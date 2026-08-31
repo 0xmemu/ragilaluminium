@@ -134,6 +134,11 @@ function OrderCard({ order }: { order: PublicOrder }) {
                           {item.product_name ?? item.name}
                         </span>
                       )}
+                      {item.variant_label ? (
+                        <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
+                          {item.variant_label}
+                        </span>
+                      ) : null}
                       {item.note ? (
                         <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
                           Catatan: {item.note}

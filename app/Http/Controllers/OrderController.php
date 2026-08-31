@@ -72,6 +72,11 @@ class OrderController extends Controller
                     'quantity' => $i->quantity,
                     'line_total' => (float) $i->line_total,
                     'note' => $i->note ?? null,
+                    'parent_sku' => $i->parent_sku,
+                    'variant_label' => collect([
+                        [$i->variation_1_name, $i->variation_1_option],
+                        [$i->variation_2_name, $i->variation_2_option],
+                    ])->filter(fn ($p) => filled($p[0]) && filled($p[1]))->map(fn ($p) => $p[0].': '.$p[1])->implode(' · ') ?: null,
                 ])->all(),
             ],
             'eta' => OrderEta::forOrder($order),
@@ -370,6 +375,11 @@ class OrderController extends Controller
                     'quantity' => $i->quantity,
                     'line_total' => isset($i->line_total) ? (float) $i->line_total : null,
                     'note' => $i->note ?? null,
+                    'parent_sku' => $i->parent_sku,
+                    'variant_label' => collect([
+                        [$i->variation_1_name, $i->variation_1_option],
+                        [$i->variation_2_name, $i->variation_2_option],
+                    ])->filter(fn ($p) => filled($p[0]) && filled($p[1]))->map(fn ($p) => $p[0].': '.$p[1])->implode(' · ') ?: null,
                     'image' => $img?->urlFor('thumb') ?? $img?->urlFor('card'),
                 ];
             })->all(),

@@ -400,6 +400,7 @@ export interface PublicOrderItem {
   image?: string | null
   /** Catatan per-produk dari pembeli (keputusan #11). */
   note?: string | null
+  variant_label?: string | null
 }
 
 export interface OrderEta {

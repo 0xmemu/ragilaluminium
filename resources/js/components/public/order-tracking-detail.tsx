@@ -213,6 +213,11 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
                       {title}
                     </span>
                   )}
+                  {item.variant_label ? (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {item.variant_label}
+                    </p>
+                  ) : null}
                   {item.note ? (
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       Catatan: {item.note}

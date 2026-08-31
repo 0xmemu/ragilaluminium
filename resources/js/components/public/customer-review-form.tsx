@@ -297,27 +297,52 @@ export function CustomerReviewForm({
             <p className="mt-0.5 text-xs text-muted-foreground">Bagikan pengalaman Anda agar bermanfaat bagi pembeli lain.</p>
           )}
         </div>
-        <Button
-          type="button"
-          disabled={hasOwnReview}
-          onClick={() => setSheetOpen(true)}
-          className="w-full sm:w-auto"
-        >
-          <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
-          {hasOwnReview ? "Ulasan Terkirim" : "Beri Ulasan"}
-        </Button>
+        {hasOwnReview && currentReview ? (
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className="flex w-full items-center gap-2 rounded-lg border border-success/25 bg-surface p-3 text-left transition hover:border-success/45 sm:w-auto"
+            aria-label="Lihat ulasan yang sudah Anda kirim"
+          >
+            <span className="flex items-center gap-0.5" aria-label={`Rating ${currentReview.rating} dari 5`}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Icon
+                  key={n}
+                  name="star"
+                  weight={n <= (currentReview.rating ?? 0) ? "fill" : "regular"}
+                  className={n <= (currentReview.rating ?? 0) ? "size-4 text-[#f59e0b]" : "size-4 text-muted-foreground"}
+                  aria-hidden="true"
+                />
+              ))}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+              {currentReview.message}
+            </span>
+            <span className="shrink-0 text-[11px] font-semibold text-primary underline-offset-2 hover:underline">
+              Lihat
+            </span>
+          </button>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
+            Beri Ulasan
+          </Button>
+        )}
       </div>
     </section>
   ) : (
     <Button
       type="button"
       variant="secondary"
-      disabled={hasOwnReview}
       onClick={() => setSheetOpen(true)}
       className={fullWidth ? "w-full" : "w-full sm:w-auto"}
     >
       <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
-      {hasOwnReview ? "Ulasan Terkirim" : "Beri Ulasan"}
+      {hasOwnReview ? "Lihat Ulasan" : "Beri Ulasan"}
     </Button>
   )
 
