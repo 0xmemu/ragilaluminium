@@ -369,12 +369,17 @@ function OrderCardRow({
                   : "Tampilkan semua produk"}
             </button>
           ) : null}
-          {order.notes ? (
-            <p className="rounded-md border border-info/20 bg-info/5 px-3 py-2 text-xs leading-5 text-foreground">
-              <span className="font-semibold">Catatan: </span>
-              {order.notes}
-            </p>
-          ) : null}
+          <p
+            className={cn(
+              "rounded-md border px-3 py-2 text-xs leading-5",
+              order.notes
+                ? "border-info/20 bg-info/5 text-foreground"
+                : "border-border bg-muted/30 text-muted-foreground",
+            )}
+          >
+            <span className="font-semibold">Catatan: </span>
+            {order.notes || "-"}
+          </p>
         </div>
 
         {/* Item (total qty) */}
