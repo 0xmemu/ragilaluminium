@@ -4,6 +4,7 @@ import * as React from "react"
 import { FlashSaleNavCountdown } from "@/components/public/flash-sale-stage"
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
+import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { useRotatingPlaceholder } from "@/hooks/use-rotating-placeholder"
@@ -651,12 +652,9 @@ export function PublicHeader() {
                       </ul>
                     </div>
                     <div className="bg-white p-3">
-                      <Link
-                        href={routeUrl("cart.index")}
-                        className="inline-flex min-h-[55px] w-full items-center justify-center rounded-full bg-primary px-8 text-sm font-bold text-white transition hover:bg-primary/90"
-                      >
-                        Lihat keranjang
-                      </Link>
+                      <Button asChild size="xl" className="w-full">
+                        <Link href={routeUrl("cart.index")}>Lihat keranjang</Link>
+                      </Button>
                     </div>
                   </>
                 ) : previewError ? (

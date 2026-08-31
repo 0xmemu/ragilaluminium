@@ -1,5 +1,7 @@
 import * as React from "react"
 
+import { buttonVariants } from "@/components/ui/button"
+
 import { cn } from "@/lib/utils"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
 
@@ -161,7 +163,7 @@ export function ModelHero({
               {highlights.map((item) => (
                 <span
                   key={item.label}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-4 py-2 text-[13px] font-medium text-foreground"
+                  className={buttonVariants({ variant: "tertiary", size: "sm" }) + " !min-h-0 cursor-default py-1.5 font-medium"}
                 >
                   {item.label}
                 </span>

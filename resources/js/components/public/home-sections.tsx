@@ -9,6 +9,7 @@ import {
 } from "@/components/public/home-carousels"
 import { Icon } from "@/components/shared/icon"
 import { SectionHeading } from "@/components/shared/section-heading"
+import { SectionHeadingAction } from "@/components/shared/section-heading-action"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { cn } from "@/lib/utils"
@@ -41,13 +42,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
           className="gap-1"
           title="Model Produk"
           action={
-            <Link
-              href={seeMoreHref}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
-            >
-              <span className="shrink-0">{"Lihat Semua"}</span>
-              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
-            </Link>
+            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
           }
         />
         {models.length ? (
@@ -82,13 +77,7 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
           className="gap-1"
           title="Paling banyak dipesan"
           action={
-            <Link
-              href={seeMoreHref}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
-            >
-              <span className="shrink-0">{"Lihat Semua"}</span>
-              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
-            </Link>
+            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
           }
         />
         {products.length ? (
@@ -275,13 +264,7 @@ export function CaraPesanSection({
           className="gap-1"
           title={title}
           action={
-            <Link
-              href={routeUrl("cara-pemesanan")}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
-            >
-              <span className="shrink-0">{"Lihat Panduan →"}</span>
-              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
-            </Link>
+            <SectionHeadingAction href={routeUrl("cara-pemesanan")}>Lihat Panduan →</SectionHeadingAction>
           }
         />
 
@@ -378,13 +361,7 @@ export function HasilPemasanganSection({
           className="gap-1"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           action={
-            <Link
-              href={seeMoreHref}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
-            >
-              <span className="shrink-0">{"Lihat Semua"}</span>
-              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
-            </Link>
+            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
           }
         />
         {items.length ? (
@@ -418,13 +395,7 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
           className="gap-1"
           title="Apa kata pelanggan kami"
           action={
-            <Link
-              href={seeMoreHref}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
-            >
-              <span className="shrink-0">{"Lihat Semua"}</span>
-              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
-            </Link>
+            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
           }
         />
         {screenshots.length ? (
@@ -460,13 +431,7 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
           className="gap-1"
           title="Ulasan pelanggan di website"
           action={
-            <Link
-              href={seeMoreHref}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end px-1 text-[12px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground"
-            >
-              <span className="shrink-0">{"Lihat Semua"}</span>
-              <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
-            </Link>
+            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
           }
         />
         {testimonials.length ? (
