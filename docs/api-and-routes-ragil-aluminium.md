@@ -156,6 +156,7 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `PUT /admin/hasil-pemasangan/meta` -> `Admin\InstallationGalleryController@updateMeta`  (name: `admin.hasil-pemasangan.meta.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/imports` -> `Admin\ImportJobController@index`  (name: `admin.imports.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/imports` -> `Admin\ImportJobController@store`  (name: `admin.imports.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/imports/preview-catalog` -> `Admin\ImportJobController@previewCatalog`  (name: `admin.imports.preview-catalog`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/imports/create` -> `Admin\ImportJobController@create`  (name: `admin.imports.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/imports/{import_job}` -> `Admin\ImportJobController@show`  (name: `admin.imports.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/imports/{import_job}/correction-file` -> `Admin\ImportJobController@downloadCorrectionFile`  (name: `admin.imports.correction-file`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
