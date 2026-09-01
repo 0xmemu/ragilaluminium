@@ -103,6 +103,7 @@ class ImportJobController extends Controller
     {
         return Inertia::render('Admin/ImportCreate', [
             'submitUrl' => route('admin.imports.store'),
+            'previewUrl' => route('admin.imports.preview-catalog'),
             'internalTemplateUrl' => route('admin.imports.internal-template'),
             'stockPriceTemplateUrl' => route('admin.imports.stock-price-template'),
             'types' => [
@@ -121,6 +122,8 @@ class ImportJobController extends Controller
             'manual_stock' => ['nullable', 'required_if:stock_mode,manual', 'integer', 'min:0'],
         ]);
 
+        $file = $request->file('file');
+
         $rowData = \Maatwebsite\Excel\Facades\Excel::toArray(new \App\Imports\InternalCatalogPreviewImport(), $file);
         $rows = $rowData[0] ?? [];
         $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['name'] ?? ''))) || ! empty(trim((string) ($r['parent_sku'] ?? '')))));
@@ -131,7 +134,6 @@ class ImportJobController extends Controller
             ]);
         }
 
-        $file = $request->file('file');
         $fileName = $file->getClientOriginalName();
         $name = MediaNamer::onDisk('import', $file->getClientOriginalExtension() ?: 'xlsx', 'imports', 'catalog');
         $storedPath = $file->storeAs('catalog', $name, 'imports');
@@ -249,6 +251,85 @@ class ImportJobController extends Controller
         }
 
         return redirect()->back()->withErrors('Berkas sumber tidak ditemukan, tidak bisa menjalankan ulang.');
+    }
+
+    /**
+     * Preview ringan untuk Import Katalog: klaim klasifikasi URL gambar per
+     * baris (internal = aset media sendiri yang siap pakai, eksternal = akan
+     * diunduh saat import, tidak valid = tidak bisa diproses). Read-only.
+     */
+    public function previewCatalog(Request $request)
+    {
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:xls,xlsx,xlsm,csv', 'max:51200'],
+        ]);
+        $file = $request->file('file');
+
+        $rows = \Maatwebsite\Excel\Facades\Excel::toArray(
+            new \App\Imports\InternalCatalogPreviewImport(),
+            $file
+        )[0] ?? [];
+        $rows = array_slice($rows, 0, 1000);
+
+        $resolver = app(\App\Services\MediaAssetResolver::class);
+        $diffs = [];
+        foreach ($rows as $index => $row) {
+            if (trim((string) ($row['name'] ?? '')) === '' && trim((string) ($row['parent_sku'] ?? '')) === '') {
+                continue;
+            }
+
+            $imageUrls = [];
+            foreach (range(1, 9) as $n) {
+                $u = trim((string) ($row['image_'.$n] ?? ''));
+                if ($u !== '') {
+                    $imageUrls[] = $u;
+                }
+            }
+
+            $mediaStats = ['internal' => 0, 'external' => 0, 'invalid' => 0];
+            $mediaDetail = [];
+            foreach ($imageUrls as $u) {
+                $objKey = null;
+                try {
+                    $objKey = $resolver->internalObjectKeyPublic($u);
+                } catch (\Throwable) {
+                    $objKey = null;
+                }
+                if ($objKey !== null) {
+                    $onDisk = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->exists($objKey);
+                    $cls = $onDisk ? 'internal' : 'invalid';
+                    if ($onDisk) {
+                        $mediaStats['internal']++;
+                    } else {
+                        $mediaStats['invalid']++;
+                    }
+                } else {
+                    $valid = filter_var($u, FILTER_VALIDATE_URL) && (bool) parse_url($u, PHP_URL_HOST);
+                    $cls = $valid ? 'external' : 'invalid';
+                    if ($valid) {
+                        $mediaStats['external']++;
+                    } else {
+                        $mediaStats['invalid']++;
+                    }
+                }
+                $mediaDetail[] = ['url' => $u, 'class' => $cls];
+            }
+
+            $diffs[] = [
+                'row' => $index + 2,
+                'name' => trim((string) ($row['name'] ?? '')),
+                'price' => $row['price'] ?? null,
+                'stock' => $row['stock'] ?? null,
+                'media' => $mediaDetail,
+                'media_stats' => $mediaStats,
+            ];
+        }
+
+        return response()->json([
+            'contract' => 'preview-only; tidak menulis data',
+            'rows' => $diffs,
+            'total' => count($diffs),
+        ]);
     }
 
     public function downloadInternalTemplate(): BinaryFileResponse
