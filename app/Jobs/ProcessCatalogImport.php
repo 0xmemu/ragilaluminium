@@ -82,6 +82,18 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
         }
 
         try {
+            // Progress denominator: job lama (sebelum 2026-09-01) tidak punya
+            // total_rows. Backfill sekali dari file sumber supaya halaman
+            // detail bisa menampilkan progres berjalan.
+            if (empty($job->total_rows)) {
+                $previewRows = \Maatwebsite\Excel\Facades\Excel::toArray(
+                    new \App\Imports\InternalCatalogPreviewImport(),
+                    $path
+                )[0] ?? [];
+                $counted = count(array_filter($previewRows, fn ($r) => ! empty(trim((string) ($r['name'] ?? ''))) || ! empty(trim((string) ($r['parent_sku'] ?? '')))));
+                $job->update(['total_rows' => $counted]);
+            }
+
             // Auto-detect Shopee dihapus (owner 2026-08-25): semua file diproses
             // sebagai format internal. File ekspor Shopee lama gagal baris
             // (parent_sku kosong) - BREAKING, lihat laporan task import-katalog.

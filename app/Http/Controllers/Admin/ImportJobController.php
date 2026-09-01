@@ -89,7 +89,9 @@ class ImportJobController extends Controller
                     'type' => self::typeLabel($j->type),
                     'source_file_name' => $j->source_file_name,
                     'status' => $j->status,
-                    'rows_summary' => ($j->success_rows ?? 0).' ok / '.($j->failed_rows ?? 0).' gagal',
+                    'rows_summary' => (($j->total_rows ?? 0) > 0
+                        ? min($j->processed_rows ?? 0, $j->total_rows).' / '.$j->total_rows.' · '
+                        : '').($j->success_rows ?? 0).' ok · '.($j->failed_rows ?? 0).' gagal',
                     'triggered_by' => $j->triggeredBy?->name ?? '-',
                     'href' => route('admin.imports.show', $j),
                     'actions' => $actions,
@@ -142,6 +144,7 @@ class ImportJobController extends Controller
             'type' => $validated['type'],
             'source_file_name' => $fileName,
             'source_file_path' => $storedPath,
+            'total_rows' => $rowCount,
             'stock_mode' => $validated['stock_mode'],
             'manual_stock' => $validated['stock_mode'] === 'manual'
                 ? (int) $validated['manual_stock']
@@ -171,33 +174,30 @@ class ImportJobController extends Controller
     {
         $import_job->load(['rows' => fn ($q) => $q->latest()->limit(50)]);
 
-        return Inertia::render('Admin/ResourceShow', [
-            'title' => 'Import #'.$import_job->id,
-            'subtitle' => $import_job->source_file_name,
-            'fields' => [
-                ['label' => 'Tipe', 'value' => $import_job->type],
-                ['label' => 'File', 'value' => $import_job->source_file_name],
-                ['label' => 'Sumber Stok', 'value' => $import_job->stock_mode === 'manual'
+        return Inertia::render('Admin/ImportShow', [
+            'importJob' => [
+                'id' => $import_job->id,
+                'type' => static::typeLabel($import_job->type),
+                'file' => $import_job->source_file_name,
+                'status' => $import_job->status,
+                'stock_source' => $import_job->stock_mode === 'manual'
                     ? 'Manual ('.$import_job->manual_stock.')'
-                    : 'Dari file'],
-                ['label' => 'Status', 'value' => $import_job->status],
-                ['label' => 'Berhasil', 'value' => $import_job->success_rows],
-                ['label' => 'Gagal', 'value' => $import_job->failed_rows],
-                ['label' => 'Total Baris', 'value' => $import_job->total_rows],
-                ['label' => 'Dimulai', 'value' => optional($import_job->started_at)?->toDateTimeString()],
-                ['label' => 'Selesai', 'value' => optional($import_job->completed_at)?->toDateTimeString()],
-            ],
-            'sections' => [
-                [
-                    'title' => 'Baris Terakhir',
-                    'rows' => $import_job->rows->map(fn ($r) => [
-                        'label' => 'Row '.$r->row_number.' � '.$r->status,
-                        'value' => (string) ($r->error_reason
-                            ?? (($r->raw_data['_activation_status'] ?? null) === 'archived'
-                                ? 'Diarsipkan: '.implode(', ', (array) ($r->raw_data['_activation_reasons'] ?? []))
-                                : '-')),
-                    ])->values()->all(),
-                ],
+                    : 'Dari file',
+                'total_rows' => (int) $import_job->total_rows,
+                'processed_rows' => (int) $import_job->processed_rows,
+                'success_rows' => (int) $import_job->success_rows,
+                'failed_rows' => (int) $import_job->failed_rows,
+                'started_at' => optional($import_job->started_at)?->toDateTimeString(),
+                'completed_at' => optional($import_job->completed_at)?->toDateTimeString(),
+                'error_message' => $import_job->global_error_message,
+                'rows' => $import_job->rows->map(fn ($r) => [
+                    'row_number' => (int) $r->row_number,
+                    'status' => $r->status,
+                    'reason' => (string) ($r->error_reason
+                        ?? (($r->raw_data['_activation_status'] ?? null) === 'archived'
+                            ? 'Diarsipkan: '.implode(', ', (array) ($r->raw_data['_activation_reasons'] ?? []))
+                            : '-')),
+                ])->values()->all(),
             ],
         ]);
     }
