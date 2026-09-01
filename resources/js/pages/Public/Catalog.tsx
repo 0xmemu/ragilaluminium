@@ -370,8 +370,30 @@ export default function Catalog({
       </div>
       {showYouMightLike || products.length ? (
         <>
+          {products.length ? (
+            <>
+              {showYouMightLike ? (
+                <h2 className="mb-4 text-base font-bold tracking-tight text-foreground sm:text-lg">
+                  Hasil pencarian
+                </h2>
+              ) : null}
+              <ProductCardGrid>
+                {products.map((product, index) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    priority={!showYouMightLike && index < 4}
+                    emphasis={isFlash ? "flash" : "default"}
+                    titleStyle="model"
+                  />
+                ))}
+              </ProductCardGrid>
+              <Pagination pagination={pagination} />
+            </>
+          ) : null}
+
           {showYouMightLike ? (
-            <section className="mb-8" aria-labelledby="you-might-like-heading">
+            <section className="mb-8 mt-10" aria-labelledby="you-might-like-heading">
               <div className="mb-4">
                 <h2
                   id="you-might-like-heading"
@@ -395,28 +417,6 @@ export default function Catalog({
                 ))}
               </ProductCardGrid>
             </section>
-          ) : null}
-
-          {products.length ? (
-            <>
-              {showYouMightLike ? (
-                <h2 className="mb-4 text-base font-bold tracking-tight text-foreground sm:text-lg">
-                  Hasil pencarian
-                </h2>
-              ) : null}
-              <ProductCardGrid>
-                {products.map((product, index) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    priority={!showYouMightLike && index < 4}
-                    emphasis={isFlash ? "flash" : "default"}
-                    titleStyle="model"
-                  />
-                ))}
-              </ProductCardGrid>
-              <Pagination pagination={pagination} />
-            </>
           ) : null}
         </>
       ) : searchQuery && searchFallback ? (

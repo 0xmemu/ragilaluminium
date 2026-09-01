@@ -178,7 +178,12 @@ class CatalogSearch
             $inner->orWhereHas('attributes', function ($qa) use ($term, $sizePatterns, $isSizeTerm) {
                 $qa->where(function ($attr) use ($term, $sizePatterns, $isSizeTerm) {
                     if (! $isSizeTerm) {
-                        self::likeClause($attr, 'attribute_value', '%'.$term.'%');
+                        // Atribut harga tidak ikut substring-match kata kunci:
+                        // promo_compare_price (dan harga pada umumnya) adalah
+                        // angka rupiah, bukan kata kunci produk; memasukkannya
+                        // memicu false positive (mis. cari "100" -> harga
+                        // 11351000). Match hanya pada atribut non-harga.
+                        self::likeClauseNonPrice($attr, 'attribute_value', '%'.$term.'%');
                     }
                     foreach ($sizePatterns as $pattern) {
                         self::likeClause($attr, 'attribute_value', $pattern, true);
@@ -734,5 +739,22 @@ class CatalogSearch
     protected static function likeClause(Builder $query, string $column, string $pattern, bool $or = false): void
     {
         $query->{$or ? 'orWhereRaw' : 'whereRaw'}("{$column} LIKE ? ESCAPE ?", [$pattern, '\\']);
+    }
+
+    /**
+     * likeClause untuk atribut, namun MENGECUALIKAN atribut harga
+     * (attribute_name mengandung 'price'/'harga'). Harga adalah angka rupiah,
+     * bukan kata kunci produk; memasukkannya ke substring-match kata kunci
+     * memicu false positive (mis. cari "100" cocok promo_compare_price
+     * 11351000). Dipanggil dalam grup where(...); chain AND hanya mengecek
+     * atribut non-harga yang nilainya cocok.
+     */
+    protected static function likeClauseNonPrice(Builder $query, string $column, string $pattern): void
+    {
+        $query->whereRaw("{$column} LIKE ? ESCAPE ?", [$pattern, '\\'])
+            ->where(function ($w) {
+                $w->whereRaw("LOWER(attribute_name) NOT LIKE '%price%'")
+                  ->whereRaw("LOWER(attribute_name) NOT LIKE '%harga%'");
+            });
     }
 }
