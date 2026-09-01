@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from "@inertiajs/react"
+import { useState } from "react"
 
 import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
@@ -10,13 +11,48 @@ import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
 
+type MediaClass = "internal" | "external" | "invalid"
+
+type PreviewMedia = {
+  url: string
+  class: MediaClass
+}
+
+type PreviewRow = {
+  row: number
+  name: string
+  price: unknown
+  stock: unknown
+  media: PreviewMedia[]
+  media_stats: Record<MediaClass, number>
+}
+
+type PreviewPayload = {
+  rows: PreviewRow[]
+  total: number
+}
+
+const MEDIA_LABEL: Record<MediaClass, string> = {
+  internal: "Internal siap",
+  external: "Eksternal (akan diunduh)",
+  invalid: "Tidak valid",
+}
+
+const MEDIA_CLASS_STYLES: Record<MediaClass, string> = {
+  internal: "text-success",
+  external: "text-info",
+  invalid: "text-destructive",
+}
+
 export default function ImportCreate({
   submitUrl,
+  previewUrl,
   internalTemplateUrl,
   stockPriceTemplateUrl,
   types,
 }: {
   submitUrl: string
+  previewUrl: string
   internalTemplateUrl: string
   stockPriceTemplateUrl: string
   types: SelectOption[]
@@ -32,11 +68,57 @@ export default function ImportCreate({
     stock_mode: "file",
     manual_stock: 0,
   })
+  const [preview, setPreview] = useState<PreviewPayload | null>(null)
+  const [previewing, setPreviewing] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+
+  function setFile(file: File | null) {
+    form.setData("file", file)
+    setPreview(null)
+    setPreviewError(null)
+  }
+
+  async function runPreview() {
+    if (!form.data.file) return
+    setPreviewing(true)
+    setPreviewError(null)
+    try {
+      const body = new FormData()
+      body.append("file", form.data.file)
+      const res = await fetch(previewUrl, {
+        method: "POST",
+        body,
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+      })
+      if (!res.ok) {
+        setPreviewError("Gagal memeriksa file. Pastikan format Excel atau CSV benar.")
+        setPreview(null)
+        return
+      }
+      setPreview((await res.json()) as PreviewPayload)
+    } catch {
+      setPreviewError("Gagal memeriksa file. Coba lagi.")
+      setPreview(null)
+    } finally {
+      setPreviewing(false)
+    }
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
     form.post(submitUrl, { forceFormData: true })
   }
+
+  const totals = preview
+    ? preview.rows.reduce(
+        (acc, row) => ({
+          internal: acc.internal + row.media_stats.internal,
+          external: acc.external + row.media_stats.external,
+          invalid: acc.invalid + row.media_stats.invalid,
+        }),
+        { internal: 0, external: 0, invalid: 0 },
+      )
+    : null
 
   return (
     <AdminLayout
@@ -129,7 +211,7 @@ export default function ImportCreate({
                     id="import-file"
                     accept=".xls,.xlsx,.xlsm,.csv"
                     file={form.data.file}
-                    onFileChange={(file) => form.setData("file", file)}
+                    onFileChange={setFile}
                     error={form.errors.file}
                     title="Pilih file katalog"
                     hint="XLS, XLSX, XLSM, atau CSV. Maksimal 50 MB."
@@ -139,6 +221,65 @@ export default function ImportCreate({
             </tbody>
           </table>
         </div>
+
+        {form.data.type === "catalog_import" && form.data.file ? (
+          <div className="space-y-3">
+            <Button type="button" variant="secondary" disabled={previewing} onClick={() => void runPreview()}>
+              {previewing ? "Memeriksa..." : "Periksa file"}
+            </Button>
+            {previewError ? <Alert tone="danger">{previewError}</Alert> : null}
+            {preview && totals ? (
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border bg-muted/40 px-4 py-2.5 text-xs">
+                  <span className="font-semibold">{preview.total} baris terbaca</span>
+                  <span className="text-success">{totals.internal} gambar internal siap</span>
+                  <span className="text-info">{totals.external} gambar eksternal (diunduh saat import)</span>
+                  {totals.invalid > 0 ? (
+                    <span className="text-destructive">{totals.invalid} URL tidak valid</span>
+                  ) : null}
+                </div>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="px-4 py-2 font-medium">Baris</th>
+                      <th className="px-4 py-2 font-medium">Nama produk</th>
+                      <th className="px-4 py-2 font-medium">Harga</th>
+                      <th className="px-4 py-2 font-medium">Stok</th>
+                      <th className="px-4 py-2 font-medium">Gambar</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {preview.rows.map((row) => (
+                      <tr key={row.row}>
+                        <td className="px-4 py-2 tabular-nums text-muted-foreground">{row.row}</td>
+                        <td className="px-4 py-2">{row.name || <span className="text-muted-foreground">(kosong)</span>}</td>
+                        <td className="px-4 py-2 tabular-nums">{row.price == null ? "-" : String(row.price)}</td>
+                        <td className="px-4 py-2 tabular-nums">{row.stock == null ? "-" : String(row.stock)}</td>
+                        <td className="px-4 py-2">
+                          {row.media.length === 0 ? (
+                            <span className="text-muted-foreground">Tidak ada</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {row.media.map((m, i) => (
+                                <span
+                                  key={`${row.row}-${i}`}
+                                  title={m.url}
+                                  className={MEDIA_CLASS_STYLES[m.class]}
+                                >
+                                  {MEDIA_LABEL[m.class]}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {form.progress ? (
           <div role="status">

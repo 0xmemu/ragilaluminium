@@ -63,6 +63,15 @@ final class MediaAssetResolver
      * disk media + proxy, sehingga mengikuti environment (test/prod) tanpa
      * hardcode. Hanya path media yang dikenal yang dianggap internal.
      */
+    /**
+     * Public wrapper untuk pengecekan preview: apakah URL menunjuk aset media
+     * internal (host dari config environment), dan object_key-nya apa.
+     */
+    public function internalObjectKeyPublic(string $url): ?string
+    {
+        return $this->internalObjectKey($url);
+    }
+
     protected function internalObjectKey(string $url): ?string
     {
         $parts = parse_url(trim($url));
