@@ -118,7 +118,7 @@ Indexes:
 - `updated_at` (`DATETIME`), nullable
 
 Indexes:
-- `idx_product_variants_variations` (IDX on `variation_1_name`, `variation_1_option`, `variation_2_name`, `variation_2_option`, `variation_3_name`, `variation_3_option` — Mysql prefix index)
+- `idx_product_variants_variations` (IDX on `variation_1_name`, `variation_1_option`, `variation_2_name`, `variation_2_option`, `variation_3_name`, `variation_3_option` (Mysql prefix index))
 - `idx_product_variants_product_id` (IDX on `product_id`)
 
 ### 1.3 `product_attributes`
