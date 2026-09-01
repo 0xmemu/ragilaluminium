@@ -98,7 +98,28 @@ final class MediaAssetResolver
         }
 
         $path = ltrim((string) $parts['path'], '/');
-        if (! str_starts_with($path, 'media/library/') && ! str_starts_with($path, 'media-assets/')) {
+
+        // Awalan path yang sah di media disk milik sendiri. Semua lokasi
+        // penyimpanan media harus terdaftar di sini supaya URL public-nya
+        // dikenali internal (tanpa download ulang). products/ = file hasil
+        // autoconvert (pdp/card/thumb), media/library/ = upload library,
+        // media-assets/ = arsip checksum. Tambahkan awalan baru di sini
+        // kalau ada lokasi penyimpanan media baru.
+        $knownPrefixes = ['media/library/', 'media-assets/', 'products/'];
+        $known = false;
+        foreach ($knownPrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $known = true;
+                break;
+            }
+        }
+        if (! $known) {
+            return null;
+        }
+
+        // Pastikan file benar-benar ada di disk sebelum dianggap internal;
+        // URL internal yang menunjuk file yang tidak ada = tidak valid.
+        if (! \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->exists($path)) {
             return null;
         }
 
