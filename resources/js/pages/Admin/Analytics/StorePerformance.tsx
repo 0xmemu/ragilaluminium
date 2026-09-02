@@ -488,7 +488,8 @@ export default function StorePerformance({
             <header className="border-b border-border px-4 py-3">
               <h3 className="text-base font-bold">{section.title}</h3>
             </header>
-            <div className="grid gap-0 sm:grid-cols-2 xl:grid-cols-5">
+            // 2026-09-02 (Komentar 27/28): KPI divisualkan 1 baris di desktop agar muat ratusan juta
+            <div className="grid gap-0 sm:grid-cols-2 xl:grid-cols-7">
               {section.kpis.map((kpi, index) => (
                 <article
                   key={kpi.key}
@@ -499,7 +500,7 @@ export default function StorePerformance({
                   )}
                 >
                   <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">{kpi.label}</p>
-                  <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{formatKpiValue(kpi)}</p>
+                  <p className="mt-2 text-lg font-bold tabular-nums tracking-tight xl:text-xl whitespace-nowrap truncate">{formatKpiValue(kpi)}</p>
                   {kpi.detail ? (
                     <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">{kpi.detail}</p>
                   ) : null}

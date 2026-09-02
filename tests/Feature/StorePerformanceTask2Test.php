@@ -237,8 +237,8 @@ class StorePerformanceTask2Test extends TestCase
         $this->assertContains('payments_received', $allKeys['payments']);
         $this->assertContains('cod_paid', $allKeys['payments']);
         $this->assertContains('payment_pending_count', $allKeys['payments']);
-        $this->assertContains('cancelled_orders', $allKeys['cancellations']);
-        $this->assertContains('cancellation_rate', $allKeys['cancellations']);
+        $this->assertContains('cancelled_orders', $allKeys['returns_cancellations']);
+        $this->assertContains('cancellation_rate', $allKeys['returns_cancellations']);
     }
 
     public function test_duplicate_cancel_event_same_order_counts_once(): void

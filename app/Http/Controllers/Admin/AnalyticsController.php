@@ -54,13 +54,7 @@ class AnalyticsController extends Controller
                 ['value' => 'all', 'label' => 'Semua'],
                 ['value' => 'custom', 'label' => 'Kustom'],
             ],
-            'granularityOptions' => [
-                ['value' => 'hour', 'label' => 'Per Jam'],
-                ['value' => 'day', 'label' => 'Per Hari'],
-                ['value' => 'week', 'label' => 'Per Minggu'],
-                ['value' => 'month', 'label' => 'Per Bulan'],
-                ['value' => 'year', 'label' => 'Per Tahun'],
-            ],
+            'granularityOptions' => $this->allowedGranularity($payload, from: is_string($from) ? $from : null, to: is_string($to) ? $to : null),
             'report' => $payload,
             'exportUrl' => route('admin.analytics.store-performance.export', [
                 'period' => $payload['range']['period'],
@@ -157,5 +151,38 @@ class AnalyticsController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Granularitas tren yang masuk akal untuk rentang yang dipilih (komentar 31).
+     * Menghindari "Per Jam" pada rentang mingguan/bulanan/tahunan (terlalu banyak titik),
+     * dan menyinkronkan opsi + default granularity dgn rentang aktif.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<int, array{value: string, label: string}>
+     */
+    protected function allowedGranularity(array $payload, ?string $from = null, ?string $to = null): array
+    {
+        $fromDate = $payload['range']['from_date_iso'] ?? $from;
+        $toDate = $payload['range']['to_date_iso'] ?? $to;
+
+        $spanDays = 1;
+        if ($fromDate && $toDate) {
+            try {
+                $spanDays = max(1, (int) \Carbon\Carbon::parse($fromDate)->diffInDays(\Carbon\Carbon::parse($toDate)) + 1);
+            } catch (\Throwable $e) {
+                $spanDays = 1;
+            }
+        }
+
+        $options = match (true) {
+            $spanDays <= 2 => [['value' => 'hour', 'label' => 'Per Jam'], ['value' => 'day', 'label' => 'Per Hari']],
+            $spanDays <= 7 => [['value' => 'day', 'label' => 'Per Hari'], ['value' => 'week', 'label' => 'Per Minggu']],
+            $spanDays <= 31 => [['value' => 'day', 'label' => 'Per Hari'], ['value' => 'week', 'label' => 'Per Minggu'], ['value' => 'month', 'label' => 'Per Bulan']],
+            $spanDays <= 366 => [['value' => 'week', 'label' => 'Per Minggu'], ['value' => 'month', 'label' => 'Per Bulan'], ['value' => 'year', 'label' => 'Per Tahun']],
+            default => [['value' => 'month', 'label' => 'Per Bulan'], ['value' => 'year', 'label' => 'Per Tahun']],
+        };
+
+        return $options;
     }
 }

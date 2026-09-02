@@ -159,9 +159,9 @@ class StorePerformanceService
         $salesKpis = [
             $this->kpi('omzet', 'Omset', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
-            $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number', 'Jumlah model berbeda (mis. Jendela Jungkit Ornamen, Swing) yang terjual pada periode.'),
-            $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number', 'Jumlah produk berbeda (per varian/ukuran) yang terjual.'),
-            $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number', 'Total qty (item) yang terjual; satu produk bisa dibeli lebih dari 1 unit.'),
+            $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
+            $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number'),
+            $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number'),
             $this->kpi('avg_unit_price', 'Harga Rata-rata per Unit', $current['avg_unit_price'], $previous['avg_unit_price'], 'currency'),
             $this->kpi('aov', 'Rata-rata Nilai Pesanan', $current['aov'], $previous['aov'], 'currency'),
         ];
@@ -220,8 +220,8 @@ class StorePerformanceService
         ];
 
         $returnCostKpis = [
-            $this->kpi('return_shipping_cost_total', 'Total Ongkir Retur', $current['return_shipping_cost_total'], $previous['return_shipping_cost_total'] ?? 0, 'currency', 'Biaya ongkir retur yang ditanggung toko pada periode ini (biaya operasional, bukan pengurang omzet).'),
-            $this->kpi('return_shipping_cost_cases', 'Kasus Retur dengan Ongkir', $current['return_shipping_cost_cases'], $previous['return_shipping_cost_cases'] ?? 0, 'number', 'Jumlah kasus retur selesai yang menanggung ongkir retur.'),
+            $this->kpi('return_shipping_cost_total', 'Ongkir Retur (Toko)', $current['return_shipping_cost_total'], $previous['return_shipping_cost_total'] ?? 0, 'currency', 'Total ongkir retur yang DITANGGUNG TOKO dari kasus retur selesai periode ini (bukan dibayar pembeli).'),
+            $this->kpi('return_shipping_cost_cases', 'Kasus Retur (Ongkir Toko)', $current['return_shipping_cost_cases'], $previous['return_shipping_cost_cases'] ?? 0, 'number', 'Jumlah kasus retur selesai yang ongkirnya ditanggung toko.'),
         ];
 
         return [
