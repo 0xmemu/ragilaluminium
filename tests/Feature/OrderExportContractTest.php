@@ -119,15 +119,30 @@ class OrderExportContractTest extends TestCase
         // dibedakan produk
         $this->assertSame('RA-A-1', $r1[5]);
         $this->assertSame('RA-B-1', $r2[5]);
-        // qty + harga per item
-        $this->assertSame(1, (int) $r1[8]);
-        $this->assertSame(2, (int) $r2[8]);
+        // qty + harga per item (harga = kolom mata uang Rp)
+        $this->assertSame('1', $r1[8]);
+        $this->assertSame('2', $r2[8]);
+        $this->assertSame('Rp 1,250,000', $r1[9]);
+        $this->assertSame('Rp 750,000', $r2[9]);
+        // diskon produk = mata uang; 0 tetap tampil (tidak dibuang writer)
+        $this->assertSame('Rp 50,000', $r1[12]);
+        $this->assertSame('Rp 0', $r2[12]);
         // type diskon
         $this->assertSame('Flashsale', $r1[13]);
         $this->assertSame('Reguler', $r2[13]);
+        // kolom uang level order tampil SEKALI di baris item pertama per pesanan
+        $this->assertSame('Rp 150,000', $r1[14]);
+        $this->assertSame('Rp 20,000', $r1[15]);
+        $this->assertSame('Rp 5,000', $r1[16]);
         // refund hanya dari case completed
         $this->assertSame('Rp 300,000', $r1[17]);
         $this->assertSame('Rp 25,000', $r1[18]);
+        // baris item berikutnya: kolom uang level order jadi '-'
+        $this->assertSame('-', $r2[14]);
+        $this->assertSame('-', $r2[15]);
+        $this->assertSame('-', $r2[16]);
+        $this->assertSame('-', $r2[17]);
+        $this->assertSame('-', $r2[18]);
         // resi
         $this->assertSame('RESI1234567890', $r1[19]);
         // alamat lengkap
@@ -182,6 +197,10 @@ class OrderExportContractTest extends TestCase
         $row = array_values(array_slice($sheet->toArray(null, true, true, true), 1, 1)[0]);
 
         $this->assertSame('Retur diproses (salah_ukuran)', $row[4]);
-        $this->assertEquals(0, $row[17], 'retur belum selesai = refund belum terjadi');
+        $this->assertSame('Rp 0', $row[14], 'ongkir 0 tetap tampil');
+        $this->assertSame('Rp 0', $row[15], 'subsidi 0 tetap tampil');
+        $this->assertSame('Rp 0', $row[16], 'biaya COD 0 tetap tampil');
+        $this->assertSame('Rp 0', $row[17], 'retur belum selesai = refund belum terjadi (0 tetap tampil 0)');
+        $this->assertSame('Rp 0', $row[18], 'ongkir retur 0 tetap tampil');
     }
 }

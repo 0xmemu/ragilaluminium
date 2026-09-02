@@ -41,6 +41,15 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
     /** @var list<string> kolom kuantitas (format #,##0) */
     protected array $quantityColumns = [];
 
+    /**
+     * Sel bernilai 0.0 yang dibuang Maatwebsite (fromArray loose-null
+     * comparison: 0 == null). Dicatat oleh trackZeroCells() lalu ditulis
+     * ulang via setCellValue di afterSheet supaya 0 tetap tampil.
+     *
+     * @var list<array{row:int,col:string}>
+     */
+    protected array $zeroCells = [];
+
     public function title(): string
     {
         return $this->sheetTitle;
@@ -122,6 +131,26 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
             $range = "{$col}2:{$col}{$lastRow}";
             $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+
+        // Tulis ulang sel 0.0 yang dibuang Maatwebsite (fromArray loose-null).
+        foreach ($this->zeroCells as $zc) {
+            $sheet->setCellValue($zc['col'].$zc['row'], 0.0);
+        }
+    }
+
+    /**
+     * Catat sel bernilai 0/0.0 pada baris export (nomor baris sheet, 1-based).
+     */
+    protected function trackZeroCells(array $row, int $rowNum): void
+    {
+        foreach ($row as $colIndex => $value) {
+            if ($value === 0 || $value === 0.0) {
+                $this->zeroCells[] = [
+                    'row' => $rowNum,
+                    'col' => Coordinate::stringFromColumnIndex($colIndex + 1),
+                ];
+            }
         }
     }
 

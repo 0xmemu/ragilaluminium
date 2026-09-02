@@ -15,6 +15,10 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
  * Export pesanan per-baris item produk (kontrak owner 2026-09-02, dari
  * Template_Order_Export.xlsx). 1 baris = 1 item produk; pesanan multi
  * produk menghasilkan beberapa baris dengan NO. ORDER + pelanggan sama.
+ * Kolom uang LEVEL ORDER (ongkir, subsidi, biaya COD, refund, ongkir
+ * retur) tampil SEKALI di baris item pertama per pesanan; baris item
+ * berikutnya "-" (revisi owner 2026-09-02: biaya COD berlaku per
+ * pengiriman/pesanan, bukan per produk).
  */
 class OrderExport extends RagilStyledExport implements FromCollection, WithHeadings
 {
@@ -29,10 +33,10 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
             'U' => 20, 'V' => 16, 'W' => 10, 'X' => 16, 'Y' => 18,
             'Z' => 18, 'AA' => 16, 'AB' => 34,
         ];
-        // HARGA, DISKON PRODUK, ONGKOS KIRIM, SUBSIDI ONGKIR, BIAYA COD,
-        // REFUND, ONGKIR RETUR
-        $this->currencyColumns = ['K', 'N', 'O', 'P', 'Q', 'R', 'S'];
-        $this->quantityColumns = ['J', 'L'];
+        // HARGA (J), DISKON PRODUK (M), ONGKOS KIRIM (O), SUBSIDI ONGKIR (P),
+        // BIAYA COD (Q), REFUND (R), ONGKIR RETUR (S)
+        $this->currencyColumns = ['J', 'M', 'O', 'P', 'Q', 'R', 'S'];
+        $this->quantityColumns = ['I', 'K'];
     }
 
     /**
@@ -76,7 +80,8 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                 $returnType = 'Pesanan dibatalkan';
             }
 
-            foreach ($order->items as $item) {
+            foreach ($order->items->values() as $index => $item) {
+                $rowNum = count($rows) + 2;
                 $variant = $item->productVariant;
                 $dims = [$variant?->width_cm, $variant?->height_cm, $variant?->depth_cm];
                 $volume = collect($dims)->every(fn ($d) => (float) $d > 0)
@@ -104,11 +109,11 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                     $volume,
                     (float) $item->line_discount,
                     $item->discount_source === 'flashsale' ? 'Flashsale' : 'Reguler',
-                    (float) $order->shipping_amount,
-                    (float) $order->shipping_subsidy_amount,
-                    (float) $order->cod_fee_amount,
-                    $refund,
-                    $returOngkir,
+                    $index === 0 ? (float) $order->shipping_amount : '-',
+                    $index === 0 ? (float) $order->shipping_subsidy_amount : '-',
+                    $index === 0 ? (float) $order->cod_fee_amount : '-',
+                    $index === 0 ? $refund : '-',
+                    $index === 0 ? $returOngkir : '-',
                     $waybill,
                     $order->customer_name,
                     $order->customer_phone,
@@ -119,6 +124,7 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                     $order->shipping_village ?: '-',
                     trim(($order->shipping_address_line1 ?? '').' '.($order->shipping_address_line2 ?? '')),
                 ];
+                $this->trackZeroCells($rows[count($rows) - 1], $rowNum);
             }
         }
 
