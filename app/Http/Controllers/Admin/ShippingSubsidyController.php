@@ -19,12 +19,12 @@ class ShippingSubsidyController extends Controller
         return Inertia::render('Admin/ShippingSubsidy/Edit', [
             'title' => 'Subsidi Ongkir',
             'description' => 'Potongan biaya pengiriman untuk pelanggan, dan kurir yang ikut skema subsidi.',
+            'submitUrl' => route('admin.shipping-subsidy.update'),
             'settings' => [
                 'enabled' => $settings['enabled'],
                 'subsidy_type' => $settings['subsidy_type'],
                 'subsidy_value' => $settings['subsidy_value'],
                 'jnt_enabled' => $settings['carriers']['jnt'],
-            'reason' => ['nullable', 'string', 'max:1000'],
             ],
         ]);
     }
