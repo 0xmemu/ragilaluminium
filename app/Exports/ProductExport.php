@@ -34,7 +34,7 @@ class ProductExport extends RagilStyledExport implements FromQuery, WithHeadings
     public function headings(): array
     {
         return array_map([ExportSafety::class, 'cell'], [
-            'SKU Induk', 'Nama Produk', 'Kategori', 'Model', 'Desain', 'Status',
+            'SKU Induk', 'Nama Produk', 'Kategori', 'Model', 'Sub Model', 'Status',
             'Harga Mulai', 'Total Stok', 'Jumlah Varian', 'Terjual', 'Diperbarui',
         ]);
     }

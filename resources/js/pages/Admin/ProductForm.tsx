@@ -274,7 +274,7 @@ export default function ProductForm({
                     {options.models.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </Select>
                 </Field>
-                <Field id="product-design" label="Sub model" hint="Pilihan sub model aktif untuk model terpilih. Kosongkan bila tanpa sub model." error={form.errors.design_variant}>
+                <Field id="product-design" label="Sub Model" hint="Pilihan sub model aktif untuk model terpilih. Kosongkan bila tanpa sub model." error={form.errors.design_variant}>
                   <Select value={form.data.design_variant} onChange={(event) => form.setData("design_variant", event.target.value)}>
                     <option value="">Tanpa sub model</option>
                     {options.designs

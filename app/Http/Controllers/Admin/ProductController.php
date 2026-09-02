@@ -233,7 +233,7 @@ class ProductController extends Controller
                 ['label' => 'Nama Pendek', 'value' => $product->short_name],
                 ['label' => 'Kategori', 'value' => $product->product_category],
                 ['label' => 'Model', 'value' => $product->product_model],
-                ['label' => 'Desain', 'value' => $product->design_variant],
+                ['label' => 'Sub Model', 'value' => $product->design_variant],
                 ['label' => 'Status', 'value' => $product->status],
                 ['label' => 'Home Paling Banyak Dipesan', 'value' => $product->homepage_popular ? 'Ya (urut '.$product->homepage_popular_sort.')' : 'Tidak'],
                 ['label' => 'Harga Min', 'value' => $product->min_price !== null ? number_format($product->min_price, 0, ',', '.') : null],

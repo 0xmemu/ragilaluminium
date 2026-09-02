@@ -449,7 +449,7 @@ export default function ProductsIndex({
                   <TableHead>Produk</TableHead>
                   <TableHead>Kategori</TableHead>
                   <TableHead>Model</TableHead>
-                  <TableHead>Desain</TableHead>
+                  <TableHead>Sub Model</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Harga</TableHead>
                   <TableHead>Stok</TableHead>
