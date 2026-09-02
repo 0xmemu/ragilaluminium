@@ -488,7 +488,6 @@ export default function StorePerformance({
             <header className="border-b border-border px-4 py-3">
               <h3 className="text-base font-bold">{section.title}</h3>
             </header>
-            // 2026-09-02 (Komentar 27/28): KPI divisualkan 1 baris di desktop agar muat ratusan juta
             <div className="grid gap-0 sm:grid-cols-2 xl:grid-cols-7">
               {section.kpis.map((kpi, index) => (
                 <article
