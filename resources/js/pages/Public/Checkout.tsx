@@ -139,6 +139,15 @@ export default function Checkout({
     )
   }
 
+  // Total pembayaran = subtotal - diskon - voucher + ongkir + COD.
+  // Sama rumusnya dengan CheckoutSummary (sumber tunggal angka).
+  const shippingNet = Number(shipping?.net ?? 0)
+  const codFee = Number(cod?.fee_amount ?? 0)
+  const checkoutTotal = Math.max(
+    0,
+    Number(subtotal || 0) - Number(discount_total || 0) - Number(voucher_discount || 0) + shippingNet + codFee,
+  )
+
   const steps = [
     { n: 1, label: "Detail pesanan", done: items.length > 0 },
     { n: 2, label: "Alamat pengiriman", done: details != null && !c.editingDetails },
@@ -220,6 +229,7 @@ export default function Checkout({
               cod={cod}
               pageErrors={pageErrors}
               c={c}
+              total={checkoutTotal}
             />
           </div>
 

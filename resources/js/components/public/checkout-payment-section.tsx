@@ -1,7 +1,6 @@
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { Radio } from "@/components/ui/radio"
-import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { CheckoutCodConfig } from "@/hooks/use-checkout"
@@ -14,12 +13,15 @@ export function CheckoutPaymentSection({
   cod,
   pageErrors,
   c,
+  total,
 }: {
   details: CheckoutDetails | null
   editingDetails: boolean
   cod: CheckoutCodConfig
   pageErrors: Record<string, string>
   c: CheckoutController
+  /** Total pembayaran untuk sticky bar (tampil semua breakpoint). */
+  total: number
 }) {
   const { paymentForm, placeOrder } = c
 
@@ -92,32 +94,32 @@ export function CheckoutPaymentSection({
             {paymentForm.errors.payment_method}
           </p>
         ) : null}
-        <Button
-          type="submit"
-          size="lg"
-          className="mt-4 hidden h-12 w-full lg:inline-flex font-bold"
-          disabled={!details || editingDetails || paymentForm.processing}
-        >
-          {paymentForm.processing
-            ? "Membuat pesanan..."
-            : !details
-              ? "Lengkapi alamat dulu"
-              : "Buat pesanan"}
-          <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-        </Button>
-
         {details && !editingDetails ? (
-          <MobileStickyCta aria-label="Buat pesanan" spacerClassName="h-[4.5rem]">
-            <Button
-              type="submit"
-              size="lg"
-              className="h-11 min-h-11 w-full font-bold"
-              disabled={paymentForm.processing}
-            >
-              {paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
-              <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-            </Button>
-          </MobileStickyCta>
+          <div
+            role="region"
+            aria-label="Buat pesanan"
+            className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md sm:-mx-5 sm:px-5"
+          >
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Total Pembayaran
+                </p>
+                <p className="truncate tabular-nums text-base font-bold text-primary sm:text-lg">
+                  {formatCurrency(total)}
+                </p>
+              </div>
+              <Button
+                type="submit"
+                size="lg"
+                className="h-11 min-h-11 shrink-0 px-5 font-bold"
+                disabled={paymentForm.processing}
+              >
+                {paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
+                <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
         ) : null}
       </form>
     </section>
