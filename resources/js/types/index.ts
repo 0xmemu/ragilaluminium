@@ -318,6 +318,7 @@ export interface ProductMedia {
   url?: string | null
   thumb?: string | null
   is_main_image: boolean
+  is_video?: boolean
   product_variant_id?: number | null
 }
 

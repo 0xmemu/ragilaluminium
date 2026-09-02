@@ -205,8 +205,14 @@ class ProductController extends Controller
             })->values()->all(),
             'media' => $product->media->map(fn ($m) => [
                 'id' => $m->id,
-                'url' => $m->urlFor('pdp') ?? $m->urlFor('card'),
-                'thumb' => $m->urlFor('thumb') ?? $m->urlFor('card'),
+                'is_video' => $m->mediaAsset?->kind === 'video',
+                // Video: url = file video, thumb = poster frame; gambar: pdp/card.
+                'url' => $m->mediaAsset?->kind === 'video'
+                    ? ($m->urlFor('video') ?? $m->urlFor('card'))
+                    : ($m->urlFor('pdp') ?? $m->urlFor('card')),
+                'thumb' => $m->mediaAsset?->kind === 'video'
+                    ? ($m->urlFor('poster') ?? $m->urlFor('thumb'))
+                    : ($m->urlFor('thumb') ?? $m->urlFor('card')),
                 'is_main_image' => (bool) $m->is_main_image,
                 'product_variant_id' => $m->product_variant_id,
             ])->values()->all(),

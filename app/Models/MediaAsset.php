@@ -67,6 +67,12 @@ class MediaAsset extends Model
         $variant = in_array($variant, ['thumb', 'card', 'pdp', 'poster', 'video'], true) ? $variant : 'card';
         $derivatives = $this->derivatives ?? [];
 
+        // Video: varian 'video' harus mengembalikan FILE VIDEO (object_key), bukan
+        // poster.webp yang seharusnya hanya jadi thumbnail <img>.
+        if ($variant === 'video' && $this->object_key && $this->status === 'ready') {
+            return $this->publicUrlForPath($this->object_key);
+        }
+
         foreach ([$variant, 'card', 'pdp', 'thumb', 'poster'] as $key) {
             if (! empty($derivatives[$key]['path'])) {
                 return $this->publicUrlForPath((string) $derivatives[$key]['path']);

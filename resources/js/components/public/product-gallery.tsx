@@ -29,7 +29,11 @@ export function ProductGallery({
     () =>
       items
         .filter((item) => Boolean(item.url))
-        .map((item) => ({ src: item.url!, alt: `${title}, foto ${item.id}` })),
+        .map((item) => ({
+          src: item.url!,
+          alt: `${title}, ${item.is_video ? "video" : "foto"} ${item.id}`,
+          is_video: Boolean(item.is_video),
+        })),
     [items, title],
   )
 
@@ -115,7 +119,19 @@ export function ProductGallery({
             >
               {items.map((item, index) => (
                 <div key={item.id} className="flex h-full w-full shrink-0 items-center justify-center bg-white">
-                  <button
+                  {item.is_video ? (
+                    <video
+                      key={item.id}
+                      src={item.url ?? ""}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      poster={item.thumb ?? undefined}
+                      className="size-full bg-black object-contain"
+                      aria-label={`Video produk ${index + 1}`}
+                    />
+                  ) : (
+                    <button
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation()
@@ -132,7 +148,9 @@ export function ProductGallery({
                       wrapperClassName="size-full bg-white"
                       className="!object-contain"
                     />
-                  </button>
+                      </button>
+                  )}
+
                 </div>
               ))}
             </div>
@@ -166,7 +184,7 @@ export function ProductGallery({
               className="mt-2 flex gap-2 overflow-x-auto px-4 pb-2"
               aria-label="Pilih foto produk"
             >
-              {items.slice(0, 4).map((item, index) => (
+              {items.map((item, index) => (
                 <button
                   type="button"
                   key={item.id}
@@ -180,26 +198,25 @@ export function ProductGallery({
                       : "border-transparent hover:border-border",
                   )}
                 >
-                  <ResponsiveImage
-                    src={item.thumb ?? item.url}
-                    alt=""
-                    wrapperClassName="size-full bg-white"
-                    className="object-contain"
-                  />
+                  {item.is_video ? (
+                    <>
+                      <img src={item.thumb ?? item.url ?? ""} alt="" className="size-full bg-white object-contain" loading="lazy" />
+                      <span className="absolute inset-0 z-10 flex items-center justify-center">
+                        <span className="flex size-6 items-center justify-center rounded-full bg-foreground/70 text-background">
+                          <Icon name="play" className="size-3" weight="fill" aria-hidden="true" />
+                        </span>
+                      </span>
+                    </>
+                  ) : (
+                    <ResponsiveImage
+                      src={item.thumb ?? item.url}
+                      alt=""
+                      wrapperClassName="size-full bg-white"
+                      className="object-contain"
+                    />
+                  )}
                 </button>
               ))}
-              {/* Penanda foto lainnya: hanya jika foto >5 (slot 5 pas); klik lanjut ke foto ke-5 dst */}
-              {items.length > 5 ? (
-                <button
-                  type="button"
-                  onClick={() => setLightboxIndex(5)}
-                  className="flex size-16 lg:size-12 shrink-0 cursor-pointer select-none flex-col items-center justify-center gap-0.5 self-center rounded-[3px] bg-black/30 !opacity-100 transition hover:bg-black/50"
-                >
-                  <span className="pointer-events-none text-base font-semibold leading-none text-muted-foreground">
-                    {items.length - 5}+
-                  </span>
-                </button>
-              ) : null}
             </div>
           ) : null}
 
