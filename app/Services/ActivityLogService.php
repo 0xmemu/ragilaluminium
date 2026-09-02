@@ -161,7 +161,7 @@ class ActivityLogService
         $actor = $this->actorLabel($log);
 
         return match ($log->event_type) {
-            'auth.login' => sprintf('%s login ke sistem%s', $actor, isset($payload['ip']) ? ' dari IP '.$payload['ip'] : ''),
+            'auth.login' => sprintf('%s login ke sistem', $actor),
             'auth.profile_updated' => sprintf(
                 '%s memperbarui profil%s',
                 $actor,
@@ -303,10 +303,64 @@ class ActivityLogService
             'product.sub_model_reordered' => sprintf('Urutan sub model diperbarui (%s item)', $payload['count'] ?? 0),
             'product.category_updated' => sprintf('Kategori diperbarui%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
             'product.duplicated' => sprintf('Produk diduplikasi%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'settings.version_created' => $this->describeSettingVersion($log, $payload, $actor),
+            'whatsapp.logged_out' => sprintf(
+                'Gateway WhatsApp keluar dari sesi%s',
+                isset($payload['source']) ? ' · sumber: '.$payload['source'] : ''
+            ),
             default => $this->humanizeEventType($log->event_type),
         };
     }
 
+    /**
+     * Deskripsi perubahan pengaturan operasional — tampilkan field yang berubah (before → after).
+     */
+    protected function describeSettingVersion(EventLog $log, array $payload, string $actor): string
+    {
+        $key = $payload['setting_key'] ?? null;
+        $label = $key === 'cod' ? 'Biaya COD' : (string) $key;
+
+        $before = is_array($log->before) ? $log->before : [];
+        $after = is_array($log->after) ? $log->after : [];
+
+        // Format nilai biar mudah dibaca
+        $fmt = function (mixed $v, string $field): string {
+            if (is_array($v)) return json_encode($v, JSON_UNESCAPED_UNICODE);
+            if ($field === 'enabled') return $v ? 'aktif' : 'nonaktif';
+            if ($field === 'fee_value') return is_numeric($v) ? number_format((float) $v, 0, ',', '.').'%' : (string) $v;
+            if ($field === 'max_order_amount') return ($v === null || $v === '') ? 'tanpa batas' : 'Rp '.number_format((float) $v, 0, ',', '.');
+            if ($field === 'subsidy_value') return is_numeric($v) ? number_format((float) $v, 2, ',', '.') : (string) $v;
+            return $v === null ? '-' : (string) $v;
+        };
+
+        $changes = [];
+        foreach (array_unique(array_merge(array_keys($before), array_keys($after))) as $field) {
+            $b = $before[$field] ?? null;
+            $a = $after[$field] ?? null;
+            if ($b !== $a) {
+                $fieldLabel = match ($field) {
+                    'enabled' => 'status',
+                    'fee_type' => 'jenis biaya',
+                    'fee_value' => 'nilai biaya',
+                    'max_order_amount' => 'batas belanja',
+                    'subsidy_type' => 'skema subsidi',
+                    'subsidy_value' => 'nilai subsidi',
+                    'jnt_enabled' => 'kurir J&T',
+                    'carriers' => 'kurir',
+                    default => $field,
+                };
+                $changes[] = $fieldLabel.' '.$this->fmtLog($fmt($b, $field)).' → '.$this->fmtLog($fmt($a, $field));
+            }
+        }
+
+        $base = sprintf('%s memperbarui pengaturan %s (versi %s)', $actor, $label, $payload['version'] ?? '?');
+        if ($changes) {
+            return $base.' · '.implode('; ', $changes);
+        }
+        return $base;
+    }
+
+    protected function fmtLog(string $v): string { return $v; }
     protected function paymentStatusLabel(?string $code): string
     {
         return match ($code) {
