@@ -198,7 +198,7 @@ class StorePerformanceService
         $paymentsKpis = [
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
             $this->kpi('cod_paid', 'COD Dibayar', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Nominal payment COD yang selesai pada periode.'),
-            $this->kpi('payment_pending_count', 'Pembayaran Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Jumlah payment record berstatus pending saat ini.'),
+            $this->kpi('payment_pending_count', 'Pembayaran Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum cair pada order aktif. COD memang lunas saat paket tiba sehingga tidak dihitung di sini.'),
         ];
 
         $cancellationsKpis = [
@@ -465,9 +465,13 @@ class StorePerformanceService
         // COD: hanya payment record method=cod yang completed (pakai ledger, bukan sum orders).
         $cod = (float) $completed->where('payment_method', 'cod')->sum('amount');
 
-        // Pending count: snapshot pending saat ini (status pending sekarang).
+        // Perbaikan 2026-09-02: pending hanya non-COD pada order aktif. COD memang
+        // lunas saat paket tiba (pending-nya bisnis normal), dan order cancelled
+        // tidak lagi relevan ditindaklanjuti.
         $pendingCount = (int) Payment::query()
             ->where('status', 'pending')
+            ->where('payment_method', '!=', 'cod')
+            ->whereHas('order', fn ($q) => $q->whereIn('order_status', self::OPEN_STATUSES))
             ->count();
 
         return [
