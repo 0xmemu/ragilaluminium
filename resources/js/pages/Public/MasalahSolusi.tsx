@@ -265,10 +265,10 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
         />
       </section>
 
-      <section>
+      <section className="py-6 sm:py-8">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           {items.length ? (
-            <ol className="mx-auto grid max-w-3xl gap-3">
+            <ol className="mx-auto grid max-w-3xl gap-3.5">
               {items.map((item, index) => {
                 const open = openId === item.id
                 const panelId = `masalah-panel-${item.id}`
@@ -278,7 +278,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                   <li key={item.id} className="overflow-hidden border border-border bg-surface">
                     <button
                       type="button"
-                      className="flex w-full items-center gap-4 px-4 py-4 text-left sm:px-5"
+                      className="flex w-full items-center gap-4 px-4 py-5 text-left sm:px-6"
                       onClick={() => setOpenId(open ? null : item.id)}
                       aria-expanded={open}
                       aria-controls={panelId}
@@ -286,13 +286,13 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                     >
                       <span
                         className={cn(
-                          "tabular-nums flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+                          "tabular-nums flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:size-10 sm:text-base",
                           open ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary",
                         )}
                       >
                         {index + 1}
                       </span>
-                      <span className="min-w-0 flex-1 text-sm font-semibold text-foreground sm:text-lg">
+                      <span className="min-w-0 flex-1 text-base font-semibold tracking-tight text-foreground sm:text-xl">
                         {item.problem}
                       </span>
                       <Icon
@@ -310,12 +310,12 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                         id={panelId}
                         role="region"
                         aria-labelledby={`masalah-trigger-${item.id}`}
-                        className="border-t border-border px-4 pb-5 pt-4 sm:px-5"
+                        className="border-t border-border px-4 pb-6 pt-4 sm:px-6"
                       >
                         {solution.type === "rich" ? (
                           <RichSolutionPanel content={solution.content} whatsappUrl={whatsappUrl} />
                         ) : (
-                          <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                          <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground sm:text-[15px]">
                             {solution.content}
                           </p>
                         )}
@@ -333,22 +333,37 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
             />
           )}
 
-          <div className="mx-auto mt-12 max-w-xl text-center">
-            <p className="text-sm text-muted-foreground">Masih ragu spesifikasi yang tepat?</p>
-            <div className="mt-4 flex justify-center gap-2">
-              <Button asChild variant="secondary" className="px-4 sm:px-6">
-                <Link href={routeUrl("faq")}>Lihat FAQ</Link>
-              </Button>
-              <Button asChild className="px-4 sm:px-6">
+          <div className="mx-auto mt-10 max-w-2xl overflow-hidden rounded-lg border border-border bg-surface text-center sm:mt-12">
+            <div className="px-5 py-6 sm:px-8 sm:py-8">
+              <p className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                Masih ragu spesifikasi yang tepat?
+              </p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen.
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {whatsappUrl ? (
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                    <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                    Konsultasi WhatsApp
-                  </a>
+                  <Button asChild className="px-4 sm:px-6">
+                    <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                      <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+                      Konsultasi WhatsApp
+                    </a>
+                  </Button>
                 ) : (
-                  <Link href={routeUrl("contact")}>Hubungi Kami</Link>
+                  <Button asChild className="px-4 sm:px-6">
+                    <Link href={routeUrl("contact")}>Hubungi Kami</Link>
+                  </Button>
                 )}
-              </Button>
+                <Button asChild variant="secondary" className="px-4 sm:px-6">
+                  <Link href={routeUrl("faq")}>Lihat FAQ</Link>
+                </Button>
+                <Button asChild variant="secondary" className="px-4 sm:px-6">
+                  <Link href={routeUrl("cara-pemesanan")}>Cara Pemesanan</Link>
+                </Button>
+                <Button asChild variant="ghost" className="px-4 sm:px-6">
+                  <Link href={routeUrl("products")}>Lihat Produk</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

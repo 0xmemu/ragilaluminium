@@ -114,15 +114,15 @@ function PointList({
   items: Array<{ icon: ComponentProps<typeof Icon>["name"]; title: string; body: string }>
 }) {
   return (
-    <ul className="mt-4 space-y-4">
+    <ul className="mt-5 space-y-5">
       {items.map((item) => (
-        <li key={item.title} className="flex gap-3">
-          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <Icon name={item.icon} className="size-4" weight="bold" aria-hidden="true" />
+        <li key={item.title} className="flex gap-4">
+          <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon name={item.icon} className="size-5" weight="bold" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold tracking-tight text-foreground">{item.title}</p>
-            <p className="mt-0.5 text-sm leading-6 text-muted-foreground">{item.body}</p>
+            <p className="text-[15px] font-bold tracking-tight text-foreground sm:text-base">{item.title}</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p>
           </div>
         </li>
       ))}
@@ -209,21 +209,25 @@ export default function About({ page }: { page: PageData }) {
         />
       </section>
 
-      <div className="container-page pt-4 !px-2.5 md:!px-8 lg:!px-12">
-        <BrandWordmark className="[&_img]:h-12 [&_img]:w-auto [&_img]:max-w-[min(100%,16rem)] sm:[&_img]:h-14" />
+      <div className="container-page py-6 !px-2.5 md:!px-10 lg:!px-12 sm:py-8">
+        <BrandWordmark className="[&_img]:h-14 [&_img]:w-auto [&_img]:max-w-[min(100%,18rem)] sm:[&_img]:h-16" />
+        <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
+          Produsen jendela & pintu aluminium presisi untuk hunian dan proyek di seluruh Indonesia.
+          Dikerjakan di workshop sendiri, dikirim dengan packing kayu aman.
+        </p>
       </div>
 
-      <div className="container-page space-y-6 !px-2.5 md:!px-8 lg:!px-12 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
+      <div className="container-page space-y-8 !px-2.5 md:!px-8 lg:!px-12 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-0 md:space-y-0">
         <div className="space-y-6">
           <section aria-labelledby="why-ragil">
-            <h2 id="why-ragil" className="text-base font-bold tracking-tight text-foreground">
+            <h2 id="why-ragil" className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
               Kenapa Memilih Ragil Aluminium
             </h2>
             <PointList items={WHY_POINTS} />
           </section>
 
           <section aria-labelledby="process-ragil">
-            <h2 id="process-ragil" className="text-base font-bold tracking-tight text-foreground">
+            <h2 id="process-ragil" className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
               Proses & Produk Kami
             </h2>
             <PointList items={PROCESS_POINTS} />
@@ -232,14 +236,14 @@ export default function About({ page }: { page: PageData }) {
 
         <div className="space-y-6">
           <section aria-labelledby="trust-ragil">
-            <h2 id="trust-ragil" className="text-base font-bold tracking-tight text-foreground">
+            <h2 id="trust-ragil" className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
               Dipercaya oleh Banyak Pelanggan
             </h2>
             <PointList items={trustPoints} />
           </section>
 
           <section aria-labelledby="how-ragil">
-            <h2 id="how-ragil" className="text-base font-bold tracking-tight text-foreground">
+            <h2 id="how-ragil" className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
               Cara Kerja Kami
             </h2>
             <PointList items={WORK_STEPS.map(s => ({ ...s, body: s.body }))} />
@@ -247,17 +251,17 @@ export default function About({ page }: { page: PageData }) {
         </div>
       </div>
 
-      <div className="container-page space-y-8 !px-2.5 md:!px-8 lg:!px-12">
+      <div className="container-page space-y-10 !px-2.5 py-2 md:!px-8 lg:!px-12">
         <section aria-labelledby="store-contact">
-          <h2 id="store-contact" className="text-base font-bold tracking-tight text-foreground">
+          <h2 id="store-contact" className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
             Informasi Kontak
           </h2>
 
           <div className="mt-4">
             <div className="surface-panel grid gap-0 lg:grid-cols-[1fr_1.2fr] lg:overflow-hidden">
-              <div className="p-5">
-                <p className="text-lg font-semibold">Kontak Ragil Aluminium</p>
-                <p className="mt-3 text-xs leading-6 text-muted-foreground">{brand.address}</p>
+              <div className="p-6 sm:p-7">
+                <p className="text-xl font-bold tracking-tight">Kontak Ragil Aluminium</p>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{brand.address}</p>
                 <div className="mt-4 grid gap-2">
                   {whatsappUrl ? (
                     <Button asChild>
@@ -306,7 +310,7 @@ export default function About({ page }: { page: PageData }) {
           <section aria-label="Sosial dan marketplace" className="grid gap-6 md:grid-cols-2">
             {socials.length ? (
               <div>
-                <h2 id="store-social" className="text-base font-bold tracking-tight text-foreground">
+                <h2 id="store-social" className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
                   Ikuti Kami
                 </h2>
                 <ul className="mt-3 flex flex-wrap gap-2">
@@ -319,7 +323,7 @@ export default function About({ page }: { page: PageData }) {
 
             {marketplaces.length ? (
               <div>
-                <h2 id="store-marketplace" className="text-base font-bold tracking-tight text-foreground">
+                <h2 id="store-marketplace" className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
                   Marketplace
                 </h2>
                 <ul className="mt-3 flex flex-wrap gap-2">
