@@ -2,16 +2,14 @@
 
 namespace App\Imports;
 
-use App\Jobs\DownloadMediaAsset;
 use App\Models\ImportJob;
 use App\Models\ImportJobRow;
 use App\Models\Product;
 use App\Models\ProductAttribute;
-use App\Models\ProductMedia;
 use App\Models\ProductVariant;
-use App\Services\MediaAssetResolver;
 use App\Services\ImportedProductActivationService;
 use App\Support\InstallationGallery;
+use App\Support\ProductMediaStubUpserter;
 use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -146,7 +144,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             for ($i = 1; $i <= 9; $i++) {
                 $url = $data['image_'.$i] ?? $data['image_url_'.$i] ?? null;
                 if ($url && filter_var($url, FILTER_VALIDATE_URL)) {
-                    $this->upsertMediaStub(
+                    $this->mediaUpserter()->upsert(
                         productId: $product->id,
                         variantId: $variant?->id,
                         url: (string) $url,
@@ -161,7 +159,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             for ($i = 1; $i <= 9; $i++) {
                 $url = $data['installation_image_'.$i] ?? null;
                 if ($url && filter_var($url, FILTER_VALIDATE_URL)) {
-                    $this->upsertMediaStub(
+                    $this->mediaUpserter()->upsert(
                         productId: $product->id,
                         variantId: $variant?->id,
                         url: (string) $url,
@@ -269,53 +267,9 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         }
     }
 
-    protected function upsertMediaStub(
-        int $productId,
-        ?int $variantId,
-        string $url,
-        int $position,
-        bool $isMain,
-        bool $showInCatalog,
-        bool $isInstallation,
-    ): void {
-        $asset = app(MediaAssetResolver::class)->fromSourceUrl($url, jobId: $this->jobId);
-        $mediaQuery = ProductMedia::query()
-            ->where('product_id', $productId)
-            ->where('media_asset_id', $asset->id);
-        if ($variantId === null) {
-            $mediaQuery->whereNull('product_variant_id');
-        } else {
-            $mediaQuery->where('product_variant_id', $variantId);
-        }
-        $media = $mediaQuery->first() ?? new ProductMedia([
-            'product_id' => $productId,
-            'product_variant_id' => $variantId,
-            'media_asset_id' => $asset->id,
-            'source_url' => $url,
-            'created_by_import_job_id' => $this->jobId,
-        ]);
-
-        $updates = [
-            'last_updated_by_import_job_id' => $this->jobId,
-            'media_asset_id' => $asset->id,
-            'source_url' => $url,
-            'status' => $asset->status === 'ready' ? 'downloaded' : 'pending',
-            'position' => $showInCatalog ? $position : ($media->position ?: $position),
-            'is_main_image' => $showInCatalog && $isMain ? true : (bool) $media->is_main_image,
-            'show_in_catalog' => $showInCatalog || (bool) $media->show_in_catalog,
-            'is_installation' => $isInstallation || (bool) $media->is_installation,
-        ];
-
-        if ($updates['is_main_image']) {
-            ProductMedia::where('product_id', $productId)
-                ->where('id', '!=', $media->id)
-                ->update(['is_main_image' => false]);
-        }
-        $media->fill($updates)->save();
-
-        if ($asset->status === 'pending') {
-            DownloadMediaAsset::dispatch($asset->id);
-        }
+    protected function mediaUpserter(): ProductMediaStubUpserter
+    {
+        return new ProductMediaStubUpserter($this->jobId);
     }
 
     public function chunkSize(): int

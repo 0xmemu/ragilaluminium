@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Exports\CatalogTemplateExport;
+use App\Exports\MediaUpdateTemplateExport;
 use App\Exports\StockPriceTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessCatalogImport;
@@ -26,6 +27,7 @@ class ImportJobController extends Controller
         return match ($type) {
             'catalog_import' => 'Import Katalog',
             'stock_price_update' => 'Update Harga & Stok',
+            'media_update' => 'Update Media',
             'shopee_mass_upload' => 'Shopee Mass Upload (historis)',
             'shopee_mass_update' => 'Shopee Mass Update (historis)',
             'internal_bulk_update' => 'Internal Bulk Update (historis)',
@@ -108,9 +110,11 @@ class ImportJobController extends Controller
             'previewUrl' => route('admin.imports.preview-catalog'),
             'internalTemplateUrl' => route('admin.imports.internal-template'),
             'stockPriceTemplateUrl' => route('admin.imports.stock-price-template'),
+            'mediaUpdateTemplateUrl' => route('admin.imports.media-update-template'),
             'types' => [
                 ['value' => 'catalog_import', 'label' => 'Import Katalog'],
                 ['value' => 'stock_price_update', 'label' => 'Update Harga & Stok'],
+                ['value' => 'media_update', 'label' => 'Update Media'],
             ],
         ]);
     }
@@ -118,7 +122,7 @@ class ImportJobController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'type' => ['required', 'in:catalog_import,stock_price_update'],
+            'type' => ['required', 'in:catalog_import,stock_price_update,media_update'],
             'file' => ['required', 'file', 'mimes:xls,xlsx,xlsm,csv', 'max:51200'],
             'stock_mode' => ['required', 'in:file,manual'],
             'manual_stock' => ['nullable', 'required_if:stock_mode,manual', 'integer', 'min:0'],
@@ -318,6 +322,7 @@ class ImportJobController extends Controller
             $diffs[] = [
                 'row' => $index + 2,
                 'name' => trim((string) ($row['name'] ?? '')),
+                'parent_sku' => trim((string) ($row['parent_sku'] ?? '')),
                 'price' => $row['price'] ?? null,
                 'stock' => $row['stock'] ?? null,
                 'media' => $mediaDetail,
@@ -340,6 +345,11 @@ class ImportJobController extends Controller
     public function downloadStockPriceTemplate(): BinaryFileResponse
     {
         return Excel::download(new StockPriceTemplateExport(), 'template-update-harga-stok.xlsx');
+    }
+
+    public function downloadMediaUpdateTemplate(): BinaryFileResponse
+    {
+        return Excel::download(new MediaUpdateTemplateExport(), 'template-update-media.xlsx');
     }
     public function previewInternal(Request $request)
     {

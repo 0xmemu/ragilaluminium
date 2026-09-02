@@ -21,6 +21,7 @@ type PreviewMedia = {
 type PreviewRow = {
   row: number
   name: string
+  parent_sku: string
   price: unknown
   stock: unknown
   media: PreviewMedia[]
@@ -49,12 +50,14 @@ export default function ImportCreate({
   previewUrl,
   internalTemplateUrl,
   stockPriceTemplateUrl,
+  mediaUpdateTemplateUrl,
   types,
 }: {
   submitUrl: string
   previewUrl: string
   internalTemplateUrl: string
   stockPriceTemplateUrl: string
+  mediaUpdateTemplateUrl: string
   types: SelectOption[]
 }) {
   const form = useForm<{
@@ -122,13 +125,17 @@ export default function ImportCreate({
 
   return (
     <AdminLayout
-      title="Import katalog"
-      description="Dua mode: Import Katalog (buat/perbarui produk lengkap) dan Update Harga & Stok (ubah price/stock saja)."
+      title="Import Produk"
+      description="Tiga mode: Import Katalog (buat/perbarui produk lengkap), Update Harga & Stok (ubah price/stock saja), dan Update Media (ganti atau tambah foto via URL)."
       actions={
         <div className="flex flex-wrap gap-2">
           {form.data.type === "stock_price_update" ? (
             <Button asChild variant="secondary">
               <a href={stockPriceTemplateUrl} download>Unduh Template Excel</a>
+            </Button>
+          ) : form.data.type === "media_update" ? (
+            <Button asChild variant="secondary">
+              <a href={mediaUpdateTemplateUrl} download>Unduh Template Excel</a>
             </Button>
           ) : (
             <Button asChild variant="secondary">
@@ -141,7 +148,7 @@ export default function ImportCreate({
         </div>
       }
     >
-      <Head title="Import Katalog | Admin" />
+      <Head title="Import Produk | Admin" />
 
       <form onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
@@ -166,6 +173,7 @@ export default function ImportCreate({
                   {form.errors.type ? <p className="mt-1 text-xs text-destructive">{form.errors.type}</p> : null}
                 </td>
               </tr>
+              {form.data.type !== "media_update" ? (
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
                   Sumber stok <span className="text-destructive">*</span>
@@ -202,6 +210,7 @@ export default function ImportCreate({
                   </p>
                 </td>
               </tr>
+              ) : null}
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
                   File katalog <span className="text-destructive">*</span>
@@ -222,7 +231,7 @@ export default function ImportCreate({
           </table>
         </div>
 
-        {form.data.type === "catalog_import" && form.data.file ? (
+        {(form.data.type === "catalog_import" || form.data.type === "media_update") && form.data.file ? (
           <div className="space-y-3">
             <Button type="button" variant="secondary" disabled={previewing} onClick={() => void runPreview()}>
               {previewing ? "Memeriksa..." : "Periksa file"}
@@ -252,7 +261,7 @@ export default function ImportCreate({
                     {preview.rows.map((row) => (
                       <tr key={row.row}>
                         <td className="px-4 py-2 tabular-nums text-muted-foreground">{row.row}</td>
-                        <td className="px-4 py-2">{row.name || <span className="text-muted-foreground">(kosong)</span>}</td>
+                        <td className="px-4 py-2">{row.name || row.parent_sku || <span className="text-muted-foreground">(kosong)</span>}</td>
                         <td className="px-4 py-2 tabular-nums">{row.price == null ? "-" : String(row.price)}</td>
                         <td className="px-4 py-2 tabular-nums">{row.stock == null ? "-" : String(row.stock)}</td>
                         <td className="px-4 py-2">
@@ -293,12 +302,18 @@ export default function ImportCreate({
           </div>
         ) : null}
 
-        <Alert tone="info">
-          Import memakai kontrak pengiriman admin: berat, tinggi, panjang (width), dan lebar/tebal
-          packing wajib lebih dari 0. Baris yang belum lengkap tetap berhasil diproses tetapi produknya
-          diarsipkan dengan alasan yang tampil pada data baris; tidak ada status draft. Media yang belum
-          selesai diproses masuk antrean media.
-        </Alert>
+        {form.data.type === "catalog_import" ? (
+          <Alert tone="info">
+            Import memakai kontrak pengiriman admin: berat, tinggi, panjang (width), dan lebar/tebal
+            packing wajib lebih dari 0. Baris yang belum lengkap tetap berhasil diproses tetapi produknya
+            diarsipkan dengan alasan yang tampil pada data baris; tidak ada status draft. Media yang belum
+            selesai diproses masuk antrean media.
+          </Alert>
+        ) : (
+          <Alert tone="info">
+            Mode ini hanya mengubah kolom yang dipilih. SKU yang tidak dikenal ditandai gagal dan tidak membuat produk baru.
+          </Alert>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button asChild variant="secondary">

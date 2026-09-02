@@ -246,7 +246,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('media/logs/{log}', [ProductMediaController::class, 'destroyLog'])->name('media.logs.destroy');
     Route::post('media/logs/prune', [ProductMediaController::class, 'pruneLogs'])->name('media.logs.prune');
     Route::get('media/status', [ProductMediaController::class, 'status'])->name('media.status');
-    Route::get('media', [ProductMediaController::class, 'index'])->name('media.index');
     Route::get('kelola/produk/{product}/media', [ProductMediaController::class, 'byProduct'])->name('products.media.byProduct');
     Route::post('kelola/produk/{product}/media', [ProductMediaController::class, 'store'])->name('products.media.store');
     Route::post('kelola/produk/{product}/media/bulk', [ProductMediaController::class, 'bulkProductMedia'])->name('products.media.bulk');
@@ -263,6 +262,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Imports
     Route::get('imports/internal-template', [ImportJobController::class, 'downloadInternalTemplate'])->name('imports.internal-template');
     Route::get('imports/stock-price-template', [ImportJobController::class, 'downloadStockPriceTemplate'])->name('imports.stock-price-template');
+    Route::get('imports/media-update-template', [ImportJobController::class, 'downloadMediaUpdateTemplate'])->name('imports.media-update-template');
     Route::post('imports/preview', [ImportJobController::class, 'previewInternal'])->name('imports.preview');
     Route::post('imports/preview-catalog', [ImportJobController::class, 'previewCatalog'])->name('imports.preview-catalog');
     Route::get('imports', [ImportJobController::class, 'index'])->name('imports.index');

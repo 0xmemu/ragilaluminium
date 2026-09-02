@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Imports\CatalogProductsImport;
+use App\Imports\ImportMediaUpdate;
 use App\Imports\ImportStockPriceUpdate;
 use App\Models\ImportJob;
 use App\Support\CatalogTaxonomy;
@@ -97,9 +98,11 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             // Auto-detect Shopee dihapus (owner 2026-08-25): semua file diproses
             // sebagai format internal. File ekspor Shopee lama gagal baris
             // (parent_sku kosong) - BREAKING, lihat laporan task import-katalog.
-            $importer = $job->type === 'stock_price_update'
-                ? new ImportStockPriceUpdate($this->jobId)
-                : new CatalogProductsImport($this->jobId);
+            $importer = match ($job->type) {
+                'stock_price_update' => new ImportStockPriceUpdate($this->jobId),
+                'media_update' => new ImportMediaUpdate($this->jobId),
+                default => new CatalogProductsImport($this->jobId),
+            };
             Excel::import($importer, $path);
         } catch (\Throwable $e) {
             $job->update([
