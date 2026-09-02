@@ -157,13 +157,14 @@ class StorePerformanceService
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
 
         $salesKpis = [
-            $this->kpi('omzet', 'Penjualan Gross', $current['revenue'], $previous['revenue'], 'currency'),
+            $this->kpi('omzet', 'Omset', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
             $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
             $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number'),
             $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number'),
             $this->kpi('avg_unit_price', 'Harga Rata-rata per Unit', $current['avg_unit_price'], $previous['avg_unit_price'], 'currency'),
             $this->kpi('aov', 'Rata-rata Nilai Pesanan', $current['aov'], $previous['aov'], 'currency'),
+            $this->kpi('completed_orders', 'Pesanan Selesai', $current['completed_orders'], $previous['completed_orders'], 'number'),
         ];
 
         $trafficKpis = [
@@ -183,7 +184,6 @@ class StorePerformanceService
             $this->kpi('new_customers', 'Customer Baru', $current['new_customers'], $previous['new_customers'], 'number'),
             $this->kpi('repeat_customers', 'Customer Order Ulang', $current['repeat_customers'], $previous['repeat_customers'], 'number'),
             $this->kpi('repeat_order_rate', 'Rasio Pembelian Ulang', $current['repeat_order_rate'], $previous['repeat_order_rate'], 'percent'),
-            $this->kpi('completed_orders', 'Pesanan Selesai', $current['completed_orders'], $previous['completed_orders'], 'number'),
         ];
 
         $opsKpis = [
@@ -254,11 +254,11 @@ class StorePerformanceService
                 'gross_revenue' => $current['gross_revenue'],
                 'refund_adjustments' => $current['refund_adjustments'],
                 'net_revenue' => $current['net_revenue'],
-                'definition' => 'Penjualan Gross = total nilai pesanan yang dibayar atau COD lunas pada periode (tanpa potongan). Penjualan Bersih = penjualan gross dikurangi refund dari retur yang benar-benar selesai.',
+                'definition' => 'Omset = total nilai pesanan yang sudah dibayar/COD lunas pada periode (tanpa potongan). Omset net = omset dikurangi nilai refund dari retur yang benar-benar selesai.',
             ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
-                ['key' => 'traffic', 'title' => 'Kunjungan & Layanan', 'kpis' => $trafficKpis],
+                ['key' => 'traffic', 'title' => 'Kunjungan & Customer', 'kpis' => $trafficKpis],
                 ['key' => 'operations', 'title' => 'Operasional', 'kpis' => $opsKpis],
                 ['key' => 'payments', 'title' => 'Pembayaran', 'kpis' => $paymentsKpis],
                 ['key' => 'returns_cancellations', 'title' => 'Retur & Pembatalan', 'kpis' => array_merge($returnsKpis, $returnCostKpis, $cancellationsKpis)],

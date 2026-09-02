@@ -148,6 +148,14 @@ function formatPrevious(kpi: Kpi): string {
       return formatNumber(kpi.previous)
   }
 }
+// P2-3: privacy - nomor WA customer ditampilkan sebagian (6285••••1617).
+function maskPhone(phone: string): string {
+  if (!phone) return "-"
+  const visible = phone.slice(-4)
+  const head = phone.slice(0, 4)
+  return `${head}${"•".repeat(Math.max(phone.length - 8, 2))}${visible}`
+}
+
 // P0-2: freshness "Data diperbarui ..." - format ISO ke "2 Sep 2026, 22:01 WIB".
 function formatGeneratedAt(iso: string): string {
   const d = new Date(iso)
@@ -329,6 +337,24 @@ export default function StorePerformance({
   const [to, setTo] = React.useState(filters.to)
   const [granularity, setGranularity] = React.useState(filters.granularity)
 
+  // P1: akses KPI lintas section utk Ringkasan Utama & Perlu Perhatian.
+  const kpiMap = React.useMemo(() => {
+    const map: Record<string, (typeof report)["sections"][number]["kpis"][number]> = {}
+    for (const sec of report.sections) for (const k of sec.kpis) map[k.key] = k
+    return map
+  }, [report])
+
+  const attentionItems = [
+    { key: "open_orders", label: "Pesanan belum selesai", href: routeUrl("admin.orders.index", { order_status: "processing" }) },
+    { key: "payment_pending_count", label: "Pembayaran pending", href: routeUrl("admin.payments.index", { status: "pending" }) },
+    { key: "dispatched_orders", label: "Pesanan dalam pengiriman", href: routeUrl("admin.orders.index", { order_status: "shipped" }) },
+    { key: "returns_open", label: "Retur aktif", href: routeUrl("admin.orders.index", { order_status: "return_in_process" }) },
+  ]
+  const [chartTab, setChartTab] = React.useState(0)
+  const attentionRows = attentionItems
+    .map((item) => ({ ...item, value: kpiMap[item.key]?.value ?? 0 }))
+    .filter((row) => row.value > 0)
+
   function apply(next?: Partial<{ period: string; from: string; to: string; granularity: string }>) {
     const payload = {
       period: next?.period ?? period,
@@ -497,12 +523,101 @@ export default function StorePerformance({
         </div>
       </section>
 
+      {/* P1-2: Ringkasan Utama - 5 KPI penentu keputusan, angka besar. */}
+      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {[
+          { key: "omzet", label: "Penjualan Gross" },
+          { key: "payments_received", label: "Pembayaran Diterima" },
+          { key: "orders", label: "Pesanan Masuk" },
+          { key: "units", label: "Unit Terjual" },
+          { key: "open_orders", label: "Pesanan Belum Selesai" },
+        ].map((item) => {
+          const kpi = kpiMap[item.key]
+          if (!kpi) return null
+          return (
+            <div key={item.key} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground">{item.label}</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
+                {item.key === "omzet" || item.key === "payments_received" ? formatCurrency(kpi.value) : formatNumber(kpi.value)}
+              </p>
+            </div>
+          )
+        })}
+      </section>
+
+      {/* P1-1: Perlu Perhatian - action queue, hanya baris dengan nilai > 0; link ke daftar terfilter. */}
+      <section aria-label="Perlu perhatian" className="mb-6 rounded-lg border border-warning/30 bg-warning/5 p-4">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <Icon name="alert-circle" className="size-4 text-warning" aria-hidden="true" />
+          Perlu Perhatian
+        </h3>
+        {attentionRows.length ? (
+          <ul className="mt-3 divide-y divide-border">
+            {attentionRows.map((row) => (
+              <li key={row.key} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="text-foreground">
+                  <span className="font-bold tabular-nums">{formatNumber(row.value)}</span> {row.label}
+                </span>
+                <a href={row.href} className="shrink-0 text-xs font-semibold text-info underline underline-offset-2 hover:no-underline">
+                  Lihat
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">Tidak ada pekerjaan yang mendesak.</p>
+        )}
+      </section>
+
       <div className="space-y-6">
         {report.sections.map((section) => (
           <section key={section.key} className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
             <header className="border-b border-border px-4 py-3">
               <h3 className="text-base font-bold">{section.title}</h3>
             </header>
+            {section.key === "returns_cancellations" ? (
+              /* P1-3/P2-1: detail retur & pembatalan disembunyikan (progressive disclosure),
+                 dibagi 3 subgrup agar 14 KPI tidak jadi satu grid rata. */
+              <details className="group">
+                <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground">
+                  <span className="inline-flex items-center gap-2">
+                    <Icon name="chevron-right" className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
+                    Tampilkan detail retur & pembatalan ({section.kpis.length} metrik)
+                  </span>
+                </summary>
+                {[
+                  { title: "Retur", keys: ["returns", "returns_created", "returns_open", "returns_completed", "return_rate_created", "return_rate_completed", "return_value"] },
+                  { title: "Pembatalan", keys: ["cancelled_orders", "cancelled_by_customer", "cancelled_by_store", "cancellation_rate"] },
+                  { title: "Biaya", keys: ["refund_given", "return_shipping_cost_total", "return_shipping_cost_cases"] },
+                ].map((group) => {
+                  const kpis = group.keys
+                    .map((key) => section.kpis.find((k) => k.key === key))
+                    .filter((k): k is (typeof section.kpis)[number] => Boolean(k))
+                  if (!kpis.length) return null
+                  return (
+                    <div key={group.title} className="border-t border-border px-4 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group.title}</p>
+                      <div className="mt-2 grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {kpis.map((kpi) => (
+                          <div key={kpi.key} className="min-w-0">
+                            <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground" title={kpi.detail ?? undefined}>{kpi.label}</p>
+                            <p
+                              className="mt-1 text-base font-bold tabular-nums whitespace-nowrap truncate"
+                              title={[kpi.detail, `${report.range.compare_label}: ${formatPrevious(kpi)}`].filter(Boolean).join(" · ")}
+                            >
+                              {formatKpiValue(kpi)}
+                            </p>
+                            <p className={cn("text-[11px] font-semibold", (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) === 0 && "text-muted-foreground")}>
+                              {kpi.change_percent === null ? "Baru pada periode ini" : (kpi.change_percent ?? 0) === 0 ? "Tidak berubah" : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </details>
+            ) : (
             <div className="grid gap-0 sm:grid-cols-2 xl:grid-cols-7">
               {section.kpis.map((kpi, index) => (
                 <article
@@ -513,11 +628,13 @@ export default function StorePerformance({
                     index >= 2 && "xl:border-l",
                   )}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">{kpi.label}</p>
-                  <p className="mt-2 text-lg font-bold tabular-nums tracking-tight xl:text-xl whitespace-nowrap truncate">{formatKpiValue(kpi)}</p>
-                  {kpi.detail ? (
-                    <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">{kpi.detail}</p>
-                  ) : null}
+                  <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground" title={kpi.detail ?? undefined}>{kpi.label}</p>
+                  <p
+                    className="mt-2 text-lg font-bold tabular-nums tracking-tight xl:text-xl whitespace-nowrap truncate"
+                    title={[kpi.detail, `${report.range.compare_label}: ${formatPrevious(kpi)}`].filter(Boolean).join(" · ")}
+                  >
+                    {formatKpiValue(kpi)}
+                  </p>
                   <p
                     className={cn(
                       "mt-2 text-xs font-semibold",
@@ -535,56 +652,77 @@ export default function StorePerformance({
                         ? "Tidak berubah"
                         : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {report.range.compare_label} ({formatPrevious(kpi)})
-                  </p>
                 </article>
               ))}
             </div>
+            )}
           </section>
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        {report.charts.map((chart) => (
-          <section key={chart.key} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <h3 className="text-sm font-bold">
-                {chart.title} (
-                  {report.range.granularity === "hour"
-                    ? "Per Jam"
-                    : report.range.granularity === "week"
-                      ? "Per Minggu"
-                      : report.range.granularity === "month"
-                        ? "Per Bulan"
-                        : report.range.granularity === "year"
-                          ? "Per Tahun"
-                          : "Per Hari"}
-                )
-              </h3>
-              <div className="text-right">
-                <p className="text-[11px] text-muted-foreground">Total</p>
-                <p className="text-sm font-bold tabular-nums">
-                  {chart.total_format === "currency" ? formatCurrency(chart.total) : formatNumber(chart.total)}
+      <div className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
+        {/* P1-4: satu grafik bertab (Penjualan/Pengunjung/Unit) menggantikan tiga grafik kecil. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Tren utama</h3>
+          <div className="flex gap-1" role="tablist" aria-label="Pilih metrik tren">
+            {report.charts.map((chart, idx) => (
+              <button
+                key={chart.key}
+                type="button"
+                role="tab"
+                aria-selected={chartTab === idx}
+                onClick={() => setChartTab(idx)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                  chartTab === idx
+                    ? "border-foreground bg-foreground text-background"
+                    : "border border-border bg-surface text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {chart.title.replace(/^Tren /, "")}
+              </button>
+            ))}
+          </div>
+        </div>
+        {(() => {
+          const chart = report.charts[chartTab] ?? report.charts[0]
+          if (!chart) return null
+          const granLabel =
+            report.range.granularity === "hour" ? "Per Jam"
+            : report.range.granularity === "week" ? "Per Minggu"
+            : report.range.granularity === "month" ? "Per Bulan"
+            : report.range.granularity === "year" ? "Per Tahun"
+            : "Per Hari"
+          return (
+            <div className="mt-3">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  {chart.title} · {granLabel}
                 </p>
+                <div className="text-right">
+                  <p className="text-[11px] text-muted-foreground">Total</p>
+                  <p className="text-sm font-bold tabular-nums">
+                    {chart.total_format === "currency" ? formatCurrency(chart.total) : formatNumber(chart.total)}
+                  </p>
+                </div>
               </div>
+              {chart.series.length ? (
+                <React.Suspense fallback={<div className="mt-2 h-32 w-full animate-pulse rounded-md bg-muted" aria-label="Memuat grafik" />}>
+                  <TrendChart series={chart.series} />
+                </React.Suspense>
+              ) : (
+                <p className="mt-6 text-sm text-muted-foreground">Data belum cukup untuk menampilkan tren periode ini.</p>
+              )}
+              {chart.key === "visitors" && chart.series.length ? (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Total = pengunjung unik sepanjang periode; grafik = kehadiran unik per{" "}
+                  {report.range.granularity === "hour" ? "jam" : report.range.granularity === "week" ? "minggu" : report.range.granularity === "month" ? "bulan" : "hari"}.
+                  Jumlah bar dapat melebihi total unik karena pengunjung yang kembali dihitung di tiap periode.
+                </p>
+              ) : null}
             </div>
-            {chart.series.length ? (
-              <React.Suspense fallback={<div className="mt-2 h-32 w-full animate-pulse rounded-md bg-muted" aria-label="Memuat grafik" />}>
-                <TrendChart series={chart.series} />
-              </React.Suspense>
-            ) : (
-              <p className="mt-6 text-sm text-muted-foreground">Belum ada data tren.</p>
-            )}
-            {chart.key === "visitors" && chart.series.length ? (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Total = pengunjung unik sepanjang periode; grafik = kehadiran unik per{" "}
-                {report.range.granularity === "hour" ? "jam" : report.range.granularity === "week" ? "minggu" : report.range.granularity === "month" ? "bulan" : "hari"}.
-                Jumlah bar dapat melebihi total unik karena pengunjung yang kembali dihitung di tiap periode.
-              </p>
-            ) : null}
-          </section>
-        ))}
+          )
+        })()}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
@@ -677,7 +815,7 @@ export default function StorePerformance({
                       <tr key={customer.customer_phone} className="border-t border-border">
                         <td className="px-4 py-3">
                           <p className="font-semibold">{customer.customer_name}</p>
-                          <p className="font-mono text-[11px] text-muted-foreground">{customer.customer_phone}</p>
+                          <p className="font-mono text-[11px] text-muted-foreground">{maskPhone(customer.customer_phone)}</p>
                           {customer.last_order_at ? (
                             <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
                           ) : null}
@@ -696,7 +834,7 @@ export default function StorePerformance({
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-muted-foreground">Customer</p>
                       <p className="mt-1 font-semibold">{customer.customer_name}</p>
-                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{customer.customer_phone}</p>
+                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{maskPhone(customer.customer_phone)}</p>
                       {customer.last_order_at ? (
                         <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
                       ) : null}
@@ -729,16 +867,24 @@ export default function StorePerformance({
 
       {report.payment_mix.length ? (
         <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <h3 className="text-base font-bold">Bauran metode bayar (omzet)</h3>
+          <h3 className="text-base font-bold">Bauran metode bayar</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Berdasarkan metode pembayaran pada pesanan fulfillment dalam periode terpilih; persentase dari Penjualan Gross.
+          </p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-3">
-            {report.payment_mix.map((row) => (
-              <li key={row.method} className="rounded-md border border-border px-3 py-2 text-sm">
-                <p className="font-semibold uppercase">{row.method}</p>
-                <p className="tabular-nums text-muted-foreground">
-                  {formatNumber(row.count)} order · {formatCurrency(row.revenue)}
-                </p>
-              </li>
-            ))}
+            {report.payment_mix.map((row) => {
+              const gross = report.financial.gross_revenue
+              const pct = gross > 0 ? Math.round((row.revenue / gross) * 1000) / 10 : 0
+              return (
+                <li key={row.method} className="rounded-md border border-border px-3 py-2 text-sm">
+                  <p className="font-semibold uppercase">{row.method}</p>
+                  <p className="tabular-nums text-muted-foreground">
+                    {formatNumber(row.count)} order · {pct}% dari Penjualan Gross
+                  </p>
+                  <p className="tabular-nums font-semibold">{formatCurrency(row.revenue)}</p>
+                </li>
+              )
+            })}
           </ul>
         </section>
       ) : null}
