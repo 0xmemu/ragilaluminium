@@ -23,6 +23,12 @@ class OrderExportContractTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
+        $prodA = Product::create(['parent_sku' => 'RA-A', 'name' => 'Produk A', 'category_id' => 1, 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'status' => 'archived']);
+        $prodB = Product::create(['parent_sku' => 'RA-B', 'name' => 'Produk B', 'category_id' => 1, 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'status' => 'archived']);
+        // berat beda: A 5 kg (qty 1), B 1 kg (qty 2) -> total berat 7, total unit 3
+        $varA = ProductVariant::create(['product_id' => $prodA->id, 'variant_sku' => 'RA-A-1', 'price' => 1250000, 'stock' => 5, 'weight_kg' => 5.0, 'width_cm' => 100, 'height_cm' => 200, 'depth_cm' => 10, 'status' => 'active']);
+        $varB = ProductVariant::create(['product_id' => $prodB->id, 'variant_sku' => 'RA-B-1', 'price' => 750000, 'stock' => 5, 'weight_kg' => 1.0, 'width_cm' => 100, 'height_cm' => 200, 'depth_cm' => 10, 'status' => 'active']);
+
         $order = Order::create([
             'order_number' => 'ORD-EXP-001',
             'customer_name' => 'Budi Santoso',
@@ -49,7 +55,8 @@ class OrderExportContractTest extends TestCase
         // dua produk beda = dua baris
         OrderItem::create([
             'order_id' => $order->id,
-            'product_id' => Product::create(['parent_sku' => 'PSKU-'.substr(md5(uniqid()), 0, 6), 'name' => 'Produk Uji', 'category_id' => 1, 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'status' => 'archived'])->id,
+            'product_id' => $prodA->id,
+            'product_variant_id' => $varA->id,
             'parent_sku' => 'RA-A',
             'variant_sku' => 'RA-A-1',
             'name' => 'Jendela Jungkit A',
@@ -62,7 +69,8 @@ class OrderExportContractTest extends TestCase
         ]);
         OrderItem::create([
             'order_id' => $order->id,
-            'product_id' => Product::create(['parent_sku' => 'PSKU-'.substr(md5(uniqid()), 0, 6), 'name' => 'Produk Uji', 'category_id' => 1, 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'status' => 'archived'])->id,
+            'product_id' => $prodB->id,
+            'product_variant_id' => $varB->id,
             'parent_sku' => 'RA-B',
             'variant_sku' => 'RA-B-1',
             'name' => 'Pintu Sliding B',
@@ -138,29 +146,28 @@ class OrderExportContractTest extends TestCase
         // type diskon
         $this->assertSame('Flashsale', $r1[13]);
         $this->assertSame('Reguler', $r2[13]);
-        // Biaya level order DIBAGI proporsional ke semua item:
-        // bagian item = (nilai item / subtotal 2.750.000) x biaya total.
-        // Item A nilai 1.250.000 (rasio 0,4545), item B 1.500.000 (0,5455).
-        // ONGKOS 150.000: A 68.182, B 81.818 (jumlah 150.000)
-        $this->assertSame('68,182', $r1[14]);
-        $this->assertSame('81,818', $r2[14]);
-        // SUBSIDI 20.000: A 9.091, B 10.909
-        $this->assertSame('9,091', $r1[15]);
-        $this->assertSame('10,909', $r2[15]);
-        // BIAYA COD 5.000: A 2.273, B 2.727 (jumlah 5.000)
-        $this->assertSame('2,273', $r1[16]);
-        $this->assertSame('2,727', $r2[16]);
-        // REFUND 300.000: A 136.364, B 163.636
-        $this->assertSame('136,364', $r1[17]);
-        $this->assertSame('163,636', $r2[17]);
-        // ONGKIR RETUR 25.000: A 11.364, B 13.636
-        $this->assertSame('11,364', $r1[18]);
-        $this->assertSame('13,636', $r2[18]);
-        // penghasilan bersih per item:
-        // A: 1.250.000 - 50.000 - (9.091 + 2.273 + 136.364 + 11.364) = 1.040.909
-        $this->assertSame('1,040,909', $r1[19]);
-        // B: 1.500.000 - 0 - (10.909 + 2.727 + 163.636 + 13.636) = 1.309.091
-        $this->assertSame('1,309,091', $r2[19]);
+        // Biaya level order: COD & REFUND = rata per unit; ONGKIR/SUBSIDI/RETUR = proporsional berat.
+        // Total unit 3 (A=1, B=2); total berat 7 (A=5kg, B=1kg x2).
+        // ONGKOS 150.000 x berat: A = 150.000 x 5/7 = 107.143; B = 150.000 x 2/7 = 42.857
+        $this->assertSame('107,143', $r1[14]);
+        $this->assertSame('42,857', $r2[14]);
+        // SUBSIDI 20.000 x berat: A = 14.286; B = 5.714
+        $this->assertSame('14,286', $r1[15]);
+        $this->assertSame('5,714', $r2[15]);
+        // BIAYA COD 5.000 rata per unit: A = 5.000 x 1/3 = 1.667; B = 5.000 x 2/3 = 3.333
+        $this->assertSame('1,667', $r1[16]);
+        $this->assertSame('3,333', $r2[16]);
+        // REFUND 300.000 rata per unit: A = 100.000; B = 200.000
+        $this->assertSame('100,000', $r1[17]);
+        $this->assertSame('200,000', $r2[17]);
+        // ONGKIR RETUR 25.000 x berat: A = 17.857; B = 7.143
+        $this->assertSame('17,857', $r1[18]);
+        $this->assertSame('7,143', $r2[18]);
+        // penghasilan bersih per item (net = nilai - diskon - total bagian biaya):
+        // A: 1.250.000 - 50.000 - 133.810 = 1.066.190
+        $this->assertSame('1,066,190', $r1[19]);
+        // B: 1.500.000 - 0 - 216.190 = 1.283.810
+        $this->assertSame('1,283,810', $r2[19]);
         // resi
         $this->assertSame('RESI1234567890', $r1[20]);
         // alamat lengkap
@@ -170,14 +177,16 @@ class OrderExportContractTest extends TestCase
         // nilai sel tetap NUMERIK (format hanya tampilan) -> sistem bisa membaca
         $raw = array_values(array_slice($ss->getSheetByName('Laporan Pesanan')->toArray(null, true, false), 1, 2)[0]);
         $this->assertEquals(1250000.0, (float) $raw[9]);
-        $this->assertEqualsWithDelta(2272.727, (float) $raw[16], 0.01, 'COD item A = 5.000 x 0,4545');
-        $this->assertEqualsWithDelta(1040909.09, (float) $raw[19], 0.01, 'net item A eksak');
+        $this->assertEqualsWithDelta(1666.667, (float) $raw[16], 0.01, 'COD item A = 5.000 x (1/3)');
+        $this->assertEqualsWithDelta(1066190.48, (float) $raw[19], 0.01, 'net item A eksak');
 
         // sheet Panduan menjelaskan pembagian biaya
         $guide = $ss->getSheetByName('Panduan')->toArray();
         $guideText = implode(' | ', array_map(fn ($r) => implode(' ', $r), $guide));
         $this->assertStringContainsString('PEMBAGIAN BIAYA', $guideText);
-        $this->assertStringContainsString('proporsional', $guideText);
+        $this->assertStringContainsString('RATA per unit', $guideText);
+        $this->assertStringContainsString('proporsional BERAT', $guideText);
+        $this->assertStringContainsString('cartWeightKg', $guideText);
         $this->assertStringContainsString('PENGHASILAN BERSIH', $guideText);
         $this->assertStringContainsString('tanpa "Rp"', $guideText);
         $this->assertStringContainsString('order_number', $guideText);
