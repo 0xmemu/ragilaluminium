@@ -102,9 +102,9 @@ class StorePerformanceExport extends RagilStyledExport implements FromArray
         $r++;
         $fin = $this->payload['financial'] ?? [];
         foreach ([
-            ['Penjualan (Gross)', $fin['gross_revenue'] ?? 0],
+            ['Penjualan Gross', $fin['gross_revenue'] ?? 0],
             ['Penjualan Bersih', $fin['net_revenue'] ?? 0],
-            ['Refund Diberikan', $fin['refund_adjustments'] ?? 0],
+            ['Refund Retur', $fin['refund_adjustments'] ?? 0],
         ] as [$label, $value]) {
             $rows[] = ['', $guard($label), $guard($value), '', ''];
             $currency[] = [$r, 3];

@@ -157,7 +157,7 @@ class StorePerformanceService
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
 
         $salesKpis = [
-            $this->kpi('omzet', 'Omset', $current['revenue'], $previous['revenue'], 'currency'),
+            $this->kpi('omzet', 'Penjualan Gross', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
             $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
             $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number'),
@@ -254,7 +254,7 @@ class StorePerformanceService
                 'gross_revenue' => $current['gross_revenue'],
                 'refund_adjustments' => $current['refund_adjustments'],
                 'net_revenue' => $current['net_revenue'],
-                'definition' => 'Omset = total nilai pesanan yang sudah dibayar/COD lunas pada periode (tanpa potongan). Omset net = omset dikurangi nilai refund dari retur yang benar-benar selesai.',
+                'definition' => 'Penjualan Gross = total nilai pesanan yang dibayar atau COD lunas pada periode (tanpa potongan). Penjualan Bersih = penjualan gross dikurangi refund dari retur yang benar-benar selesai.',
             ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],

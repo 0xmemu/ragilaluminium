@@ -482,15 +482,15 @@ export default function StorePerformance({
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3" aria-label="Ringkasan keuangan">
           <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
-            <p className="text-xs font-semibold text-muted-foreground">Omset gross</p>
+            <p className="text-xs font-semibold text-muted-foreground">Penjualan Gross</p>
             <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.gross_revenue)}</p>
           </div>
           <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
-            <p className="text-xs font-semibold text-muted-foreground">Penyesuaian refund</p>
+            <p className="text-xs font-semibold text-muted-foreground">Refund Retur</p>
             <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.refund_adjustments)}</p>
           </div>
           <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
-            <p className="text-xs font-semibold text-muted-foreground">Omset net</p>
+            <p className="text-xs font-semibold text-muted-foreground">Penjualan Bersih</p>
             <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.net_revenue)}</p>
           </div>
           <p className="text-xs text-muted-foreground sm:col-span-3">{report.financial.definition}</p>

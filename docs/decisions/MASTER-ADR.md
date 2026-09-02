@@ -1027,3 +1027,167 @@ Negatif: perlu provisioning VPS baru (failover/hand-holding ke backend).
 
 - `scripts/prod/provision.sh` (uji container Ubuntu 24.04: PHP 8.3.33, Composer 2.10, Node 22 OK).
 - `PRODUCTION.md`, `docs/plans/prod-readiness-fix-plan-2026-08-21.md`.
+
+
+---
+
+# ADR-015: Definisi Omzet & Blok "Tandai Sampai" manual
+
+## Status
+
+Accepted
+
+## Date
+
+2026-08-22
+
+## Context
+
+Ada dua definisi angka finansial yang berbeda arti dan bisa disalahartikan sebagai bug:
+"Omset" (berbasis status pesanan) dan "Pembayaran Diterima" (berbasis uang masuk / paid_at).
+Keputusan sebelumnya (rule R4) mengakui omzet COD hanya saat order selesai (completed), transfer
+sejak processing, menjelaskan perbedaan yang membingungkan owner (pesanan selesai belakangan tak
+masuk omzet hari ini) dan status pesanan.
+
+## Decision
+
+1. **Omzet = nilai pesanan yang DIBUAT dalam periode, difilter status.** Semua order (transfer
+   & COD) dihitung omzet mulai status processing, apa pun metode bayarnya. Hapus pengecualian
+   "COD hanya saat completed". COD yang masih processing sudah diakui omzet (transaksi sudah
+   terjadi), sementara realisasi uang COD baru diakui saat completed dan diukur terpisah lewat
+   metrik "Pembayaran Diterima" (paid_at). Dasar tetap orders.created_at; pesanan lama yang
+   selesai hari ini tetap dihitung pada periode pembuatannya.
+2. **Label dashboard jujur**: card omzet bertulis "Belum terealisasi · nilai pesanan yang dibuat
+   hari ini (bukan uang diterima)" agar tidak disalahartikan sebagai cash.
+3. **Blok "Tandai Sampai" manual**: transisi shipped -> delivered hanya dilakukan dari tracking
+   pengiriman J&T (source carrier), bukan tombol admin. Sesuai spek legacy web_spek.md ("Tidak
+   ada tombol Tandai Sampai") dan mencegah "delivered" diklaim tanpa bukti tracking. delivered
+   -> completed tetap manual admin (settle).
+
+## Consequences
+
+- Omzet naik lebih awal untuk pesanan COD dibanding rule lama; angka omzet bukan uang yang
+  benar-benar masuk. Perlu label jujur (poin 2) untuk menghindari misread.
+- Admin tidak bisa lagi memajukan shipped -> delivered secara manual; menunggu webhook tracking.
+- Konsisten di metricsFor, series, topProducts, customers (total_spent), paymentMix.
+
+## Alternatives considered
+
+- Membedakan omzet jadi dua metrik baru (dibuat-hari-ini vs selesai-hari-ini) -> terlalu besar,
+  sesuai keputusan owner pidahkan label saja.
+- Meninggalkan admin bisa Tandai Sampai -> dibuang, spec tegas tanpa tombol itu.
+
+## References / Evidence
+
+- `app/Services/StorePerformanceService.php` `paidRevenueStatusSql` (rule R4 baru).
+- `app/Http/Controllers/Admin/OrderController.php` `primaryActionFor` & guard updateStatus (blok delivered).
+- `docs/features/08-store-performance.md`, `docs/MEMORY.md`.
+- Spek legacy `web_spek.md` (BAB 4: Pesanan Sampai otomatis dari tracking, tanpa Tandai Sampai).
+
+
+---
+
+# ADR-016: Konsolidasi Flash Sale ke satu sumber kebenaran (kampanye)
+
+## Status
+
+Accepted
+
+## Date
+
+2026-08-22
+
+## Context
+
+Flash Sale punya DUA sistem paralel yang sama-sama "memiliki" satu konsep: kampanye `promotions`
+(per-varian, dibaca PriceService untuk harga final, via `admin.promotions?type=flash_sale`) dan
+atribut legacy `product_attributes` (`promo_flash_sale` / `flash_sale` / `promo_compare_price`,
+dikelola route lama `admin.flash-sale.*`). Banyak reader masih memakai atribut untuk badge/label,
+sementara harga pakai kampanye. Audit data live: 50 produk ber-atribut flash, kampanye hanya
+menarget 6 => 44 produk menampilkan badge FLASH SALE tanpa harga diskon (badge vs harga divergen).
+
+## Decision
+
+Satu sumber kebenaran = kampanye. 1) Alihkan semua pembaca badge/label ke kampanye-first
+(ProductPromotionMetadata, HomepagePromotions, DashboardController, SearchController).
+2) Hapus 100 atribut legacy via migrasi forward-only (verifikasi compare-hanya ∩ flash = empty
+sebelum hapus). 3) Hapus FlashSaleController, view Admin/FlashSale/*, route admin.flash-sale.*.
+4) Periode flash-sale didrive kampanye (`FlashSalePeriodSettings::get()` prefer
+`CampaignService::flashPeriod()`), fallback cms_pages hanya path uji. 5) Regenerate ziggy agar
+route legacy tak tersisa di frontend. Storefront `/flash-sale` (CatalogController@flashSale) tetap
+(dan bersifat catalog, bukan legacy admin).
+
+## Consequences
+
+- Badge dan harga flash-sale selalu konsisten (satu sumber).
+- Admin mengelola flash-sale lewat halaman Promo (type=flash_sale) sebagaimana promo toko.
+- Test & dokumen yang menunjuk route/atribut legacy dihapus/dikoreksi.
+
+## Alternatives considered
+
+- Mempertahankan atribut sebagai sumber label dan sinkron otomatis dengan kampanye -> dua jalur
+  untuk satu konsep tetap ada, rawan divergen lagi. Ditolak.
+- Membiarkan atribut stale sebagai fallback -> menyembunyikan, bukan membereskan. Ditolak.
+
+## References / Evidence
+
+- `app/Services/CampaignService.php` `flashProductIds()` / `flashPeriod()`.
+- `app/Support/FlashSalePeriodSettings.php` `get()` (prefer kampanye).
+- `app/Support/ProductPromotionMetadata.php`, `app/Http/Controllers/CatalogController.php`.
+- `docs/features/08-store-performance.md`, skill `flash-sale-two-sot-consolidation.md`.
+
+---
+
+# ADR-018: Vocabulary finansial seragam — Penjualan Gross / Refund Retur / Penjualan Bersih
+
+## Status
+
+Accepted
+
+## Date
+
+2026-09-02
+
+## Context
+
+Review UX Performa Toko (2026-09-02) menemukan risiko campuran istilah antar permukaan:
+dashboard memakai "Omset", halaman Performa Toko "Omset gross", export "Gross Revenue".
+Owner meminta SATU vocabulary final yang dipakai seragam di semua permukaan agar admin
+tidak salah membaca angka.
+
+Definisi teknis tidak berubah (mengikuti ADR-015): gross = SUM(total_amount) pesanan
+berstatus fulfillment (processing..return_*); refund = refund_amount kasus retur selesai;
+net = gross - refund; Pembayaran Diterima = SUM(payments.amount) ber-status completed
+dengan paid_at pada periode (ledger).
+
+## Decision
+
+1. Label seragam (id-ID) di SEMUA permukaan (dashboard, Performa Toko, tooltip, export
+   XLSX, laporan income):
+   - "Omset" / "Omset gross" / "Gross Revenue" -> **Penjualan Gross**
+   - "Penyesuaian refund" -> **Refund Retur**
+   - "Omset net" / "Net Revenue" -> **Penjualan Bersih**
+   - "Pembayaran Diterima" tetap (sudah benar).
+2. KPI key teknis (gross_revenue, net_revenue, refund_adjustments) TIDAK berubah:
+   hanya label tampilan yang diganti; tidak ada perubahan query/angka.
+3. Definisi tooltip mengikuti rumus di atas, satu kalimat per metrik.
+
+## Consequences
+
+- Semua permukaan memakai istilah yang sama; tidak ada "campuran vocabulary".
+- Laporan/export lama yang memakai istilah lama dianggap usang saat dibuka ulang.
+- Dokumen & skill yang menyinggung "Omset" sebagai label UI dikoreksi bertahap;
+  angka dan rumus tidak berubah.
+
+## Alternatives considered
+
+- Mempertahankan "Omset" (kontrak existing ADR-015) -> ditolak owner karena risiko
+  salah baca antar permukaan tetap ada.
+- Ganti hanya di halaman Performa Toko -> ditolak karena justru menciptakan campuran.
+
+## References / Evidence
+
+- Review UX Performa Toko 2026-09-02 (P0-1: angka terverifikasi cocok DB).
+- `app/Services/StorePerformanceService.php` (metricsFor, definition),
+  `Admin/Analytics/StorePerformance.tsx`, `app/Exports/StorePerformanceExport.php`,
+  `Admin/Dashboard.tsx`.

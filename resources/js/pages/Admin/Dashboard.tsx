@@ -260,7 +260,7 @@ function TrendBars({ trend }: { trend: PerformaTrend }) {
   const max = Math.max(...trend.series.map((point) => point.value), 1)
 
   return (
-    <div className="mt-3 flex h-16 items-end gap-1" role="img" aria-label="Tren omzet sesuai periode aktif">
+    <div className="mt-3 flex h-16 items-end gap-1" role="img" aria-label="Tren penjualan sesuai periode aktif">
       {trend.series.map((point) => (
         <div key={point.bucket} className="flex min-w-0 flex-1 items-end" title={`${point.label}: ${formatCurrency(point.value)}`}>
           <div
@@ -589,7 +589,7 @@ export default function Dashboard({
             </div>
             <div className="mt-4 border-t border-border pt-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">Tren omzet</p>
+                <p className="text-xs font-medium text-muted-foreground">Tren Penjualan</p>
                 <p className="tabular-nums text-xs font-semibold text-foreground">
                   {formatCurrency(performa.trend.total)}
                 </p>
