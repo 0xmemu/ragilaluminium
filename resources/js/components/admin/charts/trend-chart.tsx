@@ -15,7 +15,10 @@ export default function TrendChart<T extends { label: string }>({ series }: { se
   const chartConfig = {
     value: {
       label: "Nilai",
-      color: "var(--primary)",
+      // Merah brand (token --sale): konsisten di admin gelap & terang.
+      // Jangan pakai --primary: di admin dia hitam pekat (mode terang) atau
+      // putih (mode gelap) sehingga tren sulit dibaca.
+      color: "hsl(var(--sale))",
     },
   } satisfies ChartConfig
 
