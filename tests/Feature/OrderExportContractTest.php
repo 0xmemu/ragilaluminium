@@ -104,13 +104,14 @@ class OrderExportContractTest extends TestCase
         $headings = $sheet->rangeToArray('A1:AC1')[0];
         $rows = $sheet->toArray(null, true, true, true);
 
-        $this->assertSame('NO. ORDER', $headings[0]);
-        $this->assertSame('SKU ID', $headings[5]);
-        $this->assertSame('TYPE DISKON', $headings[13]);
-        $this->assertSame('ONGKIR RETUR DITANGGUNG TOKO', $headings[18]);
-        $this->assertSame('PENGHASILAN BERSIH', $headings[19]);
-        $this->assertSame('NOMOR RESI', $headings[20]);
-        $this->assertSame('ALAMAT LENGKAP', $headings[28]);
+        // header memakai NAMA SISTEM (kunci DB snake_case), bukan label karangan
+        $this->assertSame('order_number', $headings[0]);
+        $this->assertSame('variant_sku', $headings[5]);
+        $this->assertSame('discount_source', $headings[13]);
+        $this->assertSame('additional_shipping_amount', $headings[18]);
+        $this->assertSame('net_income', $headings[19]);
+        $this->assertSame('waybill_number', $headings[20]);
+        $this->assertSame('shipping_address', $headings[28]);
         $this->assertCount(29, $headings);
 
         $dataRows = array_values(array_slice($rows, 1, 2));
@@ -179,6 +180,9 @@ class OrderExportContractTest extends TestCase
         $this->assertStringContainsString('proporsional', $guideText);
         $this->assertStringContainsString('PENGHASILAN BERSIH', $guideText);
         $this->assertStringContainsString('tanpa "Rp"', $guideText);
+        $this->assertStringContainsString('order_number', $guideText);
+        $this->assertStringContainsString('paid_at', $guideText);
+        $this->assertStringContainsString('cod_fee_amount', $guideText);
     }
 
     public function test_running_return_shows_zero_refund(): void

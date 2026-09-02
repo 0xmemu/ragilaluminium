@@ -29,7 +29,9 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
  * PENGHASILAN BERSIH per item = (harga x qty) - diskon produk - (bagian
  * subsidi + bagian biaya COD + bagian refund + bagian ongkir retur).
  * Format angka POLOS tanpa "Rp" (nilai sel tetap numerik, bisa dibaca
- * Excel/tools). Penjelasan aturan ada di sheet Panduan.
+ * Excel/tools). Header kolom memakai NAMA SISTEM (kunci DB snake_case,
+ * mis. paid_at, variant_sku, cod_fee_amount) supaya mudah dikenali dan
+ * diproses, bukan label karangan. Penjelasan aturan ada di sheet Panduan.
  */
 class OrderExport implements WithMultipleSheets
 {
@@ -183,13 +185,13 @@ class OrderExportDataSheet extends RagilStyledExport implements FromCollection, 
     public function headings(): array
     {
         return array_map([ExportSafety::class, 'cell'], [
-            'NO. ORDER', 'ORDER STATUS', 'DIPESAN SAAT', 'DIBAYAR SAAT',
-            'Cancelation/Return Type', 'SKU ID', 'NAMA PRODUK', 'VARIASI',
-            'QTY', 'HARGA', 'BERAT(KG)', 'VOLUME', 'DISKON PRODUK',
-            'TYPE DISKON', 'ONGKOS KIRIM', 'SUBSIDI ONGKIR', 'BIAYA COD',
-            'REFUND', 'ONGKIR RETUR DITANGGUNG TOKO', 'PENGHASILAN BERSIH',
-            'NOMOR RESI', 'NAMA PELANGGAN', 'NO. WA', 'KODE POS', 'PROVINSI',
-            'KABUPATEN/KOTA', 'KECAMATAN', 'DESA', 'ALAMAT LENGKAP',
+            'order_number', 'order_status', 'created_at', 'paid_at',
+            'return_case', 'variant_sku', 'name', 'variation',
+            'quantity', 'unit_price', 'weight_kg', 'volume', 'line_discount',
+            'discount_source', 'shipping_amount', 'shipping_subsidy_amount', 'cod_fee_amount',
+            'refund_amount', 'additional_shipping_amount', 'net_income',
+            'waybill_number', 'customer_name', 'customer_phone', 'shipping_postal_code', 'shipping_province',
+            'shipping_city', 'shipping_district', 'shipping_village', 'shipping_address',
         ]);
     }
 }
@@ -206,9 +208,10 @@ class OrderExportGuideSheet implements FromArray, WithTitle, WithEvents
             ['PANDUAN EXPORT PESANAN', 'Ragil Aluminium'],
             [],
             ['ATURAN BARIS', 'Setiap baris = 1 item produk. Pesanan dengan beberapa produk menjadi beberapa baris dengan NO. ORDER dan data pelanggan yang sama.'],
-            ['PEMBAGIAN BIAYA', 'Biaya level pesanan (ONGKOS KIRIM, SUBSIDI ONGKIR, BIAYA COD, REFUND, ONGKIR RETUR) dibagi proporsional ke semua item: bagian item = (nilai item / subtotal pesanan) x biaya total. Jumlah nilai kolom di semua baris pesanan = nilai biaya pesanan.'],
-            ['PENGHASILAN BERSIH', 'Per item: (harga x qty) - DISKON PRODUK - (bagian SUBSIDI ONGKIR + bagian BIAYA COD + bagian REFUND + bagian ONGKIR RETUR). Ongkos kirim tidak mengurangi karena dibayar pelanggan.'],
+            ['PEMBAGIAN BIAYA', 'Biaya level pesanan (shipping_amount, shipping_subsidy_amount, cod_fee_amount, refund_amount, additional_shipping_amount) dibagi proporsional ke semua item: bagian item = (nilai item / subtotal pesanan) x biaya total. Jumlah nilai kolom di semua baris pesanan = nilai biaya pesanan.'],
+            ['PENGHASILAN BERSIH', 'Per item: (unit_price x quantity) - line_discount - (bagian shipping_subsidy_amount + bagian cod_fee_amount + bagian refund_amount + bagian additional_shipping_amount). Ongkos kirim (shipping_amount) tidak mengurangi karena dibayar pelanggan.'],
             ['FORMAT ANGKA', 'Semua kolom uang memakai angka polos tanpa "Rp" (contoh: 3.000.000). Nilai sel tetap numerik, aman dijumlah dan bisa dibaca Excel maupun tools lain.'],
+            ['NAMA KOLOM', 'Header memakai nama sistem (kunci DB snake_case): order_number, created_at, paid_at, variant_sku, unit_price, quantity, shipping_amount, cod_fee_amount, refund_amount, net_income, waybill_number, customer_name, customer_phone, shipping_*. Tujuannya supaya sistem/tools bisa mengenali kolom tanpa penerjemahan.'],
         ];
     }
 
