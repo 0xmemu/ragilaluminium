@@ -833,7 +833,8 @@ export default function Dashboard({
                 const isPerhatian = item.ready && !item.verified
                 const isGagal = !item.ready && (item.status_label ?? "").toLowerCase().includes("gagal")
                 const isBelum = !item.ready && !isGagal
-                const statusLabel = isSehat ? "Sehat" : isPerhatian ? "Perlu Perhatian" : isGagal ? "Gagal atau Offline" : "Belum Dikonfigurasi"
+                // Kontrak 2026-09-02 (komentar 6): label isPerhatian diperjelas - sudah tersambung tapi belum diverifikasi.
+                const statusLabel = isSehat ? "Sehat" : isPerhatian ? "Tersambung · Belum Verifikasi" : isGagal ? "Gagal atau Offline" : "Belum Dikonfigurasi"
                 const dotClass = isSehat ? "bg-[var(--success)]" : isPerhatian ? "bg-[var(--warning)]" : isGagal ? "bg-[var(--destructive)]" : "bg-muted-foreground/40"
                 const badgeClass = isSehat
                   ? "bg-success/10 text-success"

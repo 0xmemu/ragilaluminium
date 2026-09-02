@@ -10,6 +10,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/admin/ui/tooltip"
 
 
 interface Kpi {
@@ -350,7 +351,26 @@ export default function StorePerformance({
       <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
+            <div className="flex items-center gap-2">
             <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Tinjauan bisnis</p>
+            <TooltipProvider>
+              <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                  <button type="button" className="inline-flex items-center text-muted-foreground hover:text-foreground" aria-label="Panduan metrik">
+                    <Icon name="circle-help" className="size-4" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs leading-relaxed">
+                  <p className="font-semibold">Cara membaca metrik</p>
+                  <ul className="mt-1 list-disc pl-4">
+                    <li>Omset = total nilai pesanan yang dibayar/COD lunas (gross); net dikurangi refund retur selesai.</li>
+                    <li>Model / Produk / Unit: jumlah model berbeda, produk (varian/ukuran) berbeda, dan total qty item.</li>
+                    <li>Operasional = pemenuhan pesanan (antrean, waktu konfirmasi & proses).</li>
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
             <h2 className="mt-1 text-xl font-bold">{report.range.label}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {report.range.from_date} – {report.range.to_date} · {report.range.compare_label}

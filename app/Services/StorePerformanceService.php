@@ -159,8 +159,9 @@ class StorePerformanceService
         $salesKpis = [
             $this->kpi('omzet', 'Omset', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
-            $this->kpi('models', 'Model/Sub Model Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
-            $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number'),
+            $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number', 'Jumlah model berbeda (mis. Jendela Jungkit Ornamen, Swing) yang terjual pada periode.'),
+            $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number', 'Jumlah produk berbeda (per varian/ukuran) yang terjual.'),
+            $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number', 'Total qty (item) yang terjual; satu produk bisa dibeli lebih dari 1 unit.'),
             $this->kpi('avg_unit_price', 'Harga Rata-rata per Unit', $current['avg_unit_price'], $previous['avg_unit_price'], 'currency'),
             $this->kpi('aov', 'Rata-rata Nilai Pesanan', $current['aov'], $previous['aov'], 'currency'),
         ];
@@ -186,17 +187,12 @@ class StorePerformanceService
         ];
 
         $opsKpis = [
-            $this->kpi('open_orders', 'Pesanan Belum Selesai', $current['open_orders'], $previous['open_orders'], 'number'),
-            $this->kpi('returns', 'Jumlah Retur', $current['return_orders'], $previous['return_orders'], 'number'),
-            $this->kpi('return_value', 'Nilai Retur', $current['return_value'], $previous['return_value'], 'currency'),
-            $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
-            $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
-            $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
-            $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
-            $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk fulfillment.'),
-            $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur selesai dibanding pesanan selesai.'),
-            $this->kpi('avg_confirm_hours', 'Rata-rata Waktu Konfirmasi', $current['avg_confirm_hours'], $previous['avg_confirm_hours'], 'hours'),
-            $this->kpi('avg_process_days', 'Rata-rata Waktu Proses', $current['avg_process_days'], $previous['avg_process_days'], 'days'),
+            // Operasional = FULFILLMENT (bukan retur). Kontrak 2026-09-02: retur dipindah
+            // ke section 'Retur & Pembatalan' supaya Operasional bersih dari dominasi retur.
+            $this->kpi('open_orders', 'Pesanan Belum Selesai', $current['open_orders'], $previous['open_orders'], 'number', 'Pesanan yang masuk fulfillment dan belum selesai pada periode.'),
+            $this->kpi('dispatched_orders', 'Dalam Pengiriman', $current['dispatched_orders'], $previous['dispatched_orders'], 'number', 'Pesanan berstatus dikirim/dalam perjalanan pada periode.'),
+            $this->kpi('avg_confirm_hours', 'Rata-rata Waktu Konfirmasi', $current['avg_confirm_hours'], $previous['avg_confirm_hours'], 'hours', 'Waktu dari pesan masuk sampai dikonfirmasi.'),
+            $this->kpi('avg_process_days', 'Rata-rata Waktu Proses', $current['avg_process_days'], $previous['avg_process_days'], 'days', 'Waktu dari dikonfirmasi sampai disiapkan/siap kirim.'),
         ];
 
         $paymentsKpis = [
@@ -210,6 +206,17 @@ class StorePerformanceService
             $this->kpi('cancelled_by_customer', 'Dibatalkan Pelanggan', $current['cancelled_by_customer'], $previous['cancelled_by_customer'], 'number', 'Pembatalan oleh pelanggan (created_by_user_id kosong).'),
             $this->kpi('cancelled_by_store', 'Dibatalkan Toko', $current['cancelled_by_store'], $previous['cancelled_by_store'], 'number', 'Pembatalan oleh admin/toko (created_by_user_id terisi).'),
             $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Dihitung dari event pembatalan pada periode dibandingkan pesanan yang masuk fulfillment pada periode.'),
+        ];
+
+        $returnsKpis = [
+            $this->kpi('returns', 'Jumlah Retur', $current['return_orders'], $previous['return_orders'], 'number'),
+            $this->kpi('return_value', 'Nilai Retur', $current['return_value'], $previous['return_value'], 'currency'),
+            $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
+            $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
+            $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
+            $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
+            $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk fulfillment.'),
+            $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur selesai dibanding pesanan selesai.'),
         ];
 
         $returnCostKpis = [
@@ -245,15 +252,14 @@ class StorePerformanceService
                 'gross_revenue' => $current['gross_revenue'],
                 'refund_adjustments' => $current['refund_adjustments'],
                 'net_revenue' => $current['net_revenue'],
-                'definition' => 'Omset adalah gross dari order fulfillment/return; net dikurangi refund pada return case yang benar-benar selesai.',
+                'definition' => 'Omset = total nilai pesanan yang sudah dibayar/COD lunas pada periode (tanpa potongan). Omset net = omset dikurangi nilai refund dari retur yang benar-benar selesai.',
             ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
                 ['key' => 'traffic', 'title' => 'Kunjungan & Layanan', 'kpis' => $trafficKpis],
                 ['key' => 'operations', 'title' => 'Operasional', 'kpis' => $opsKpis],
                 ['key' => 'payments', 'title' => 'Pembayaran', 'kpis' => $paymentsKpis],
-                ['key' => 'cancellations', 'title' => 'Pembatalan', 'kpis' => $cancellationsKpis],
-                ['key' => 'return_costs', 'title' => 'Biaya Retur', 'kpis' => $returnCostKpis],
+                ['key' => 'returns_cancellations', 'title' => 'Retur & Pembatalan', 'kpis' => array_merge($returnsKpis, $returnCostKpis, $cancellationsKpis)],
             ],
             'return_shipping_costs' => $current['return_shipping_cost_list'],
             'charts' => [
@@ -308,10 +314,21 @@ class StorePerformanceService
             ? 0
             : $this->distinctModelCount($revenueOrderIds);
 
+        // Produk berbeda (per varian/ukuran) yang terjual - distinct SKU dari snapshot.
+        $productsSold = $revenueOrderIds->isEmpty()
+            ? 0
+            : (int) OrderItem::query()
+                ->whereIn('order_id', $revenueOrderIds)
+                ->whereNotNull('variant_sku')
+                ->where('variant_sku', '!=', '')
+                ->distinct('variant_sku')
+                ->count('variant_sku');
+
         $avgUnitPrice = $units > 0 ? round($revenue / $units, 2) : 0.0;
 
         $completedOrders = (clone $base)->whereIn('order_status', self::COMPLETED_STATUSES)->count();
         $openOrders = (clone $base)->whereIn('order_status', self::OPEN_STATUSES)->count();
+        $dispatchedOrders = (clone $base)->where('order_status', 'shipped')->count();
 
         $returnCases = OrderReturnCase::query()
             ->where('status', 'completed')
@@ -347,6 +364,7 @@ class StorePerformanceService
             'net_revenue' => round($netRevenue, 2),
             'units' => $units,
             'models_sold' => $modelsSold,
+            'products_sold' => $productsSold,
             'avg_unit_price' => $avgUnitPrice,
             'visitors' => $visitors,
             'conversion_rate' => $conversionRate,
@@ -354,6 +372,7 @@ class StorePerformanceService
             'repeat_customers' => $repeatCustomers,
             'completed_orders' => $completedOrders,
             'open_orders' => $openOrders,
+            'dispatched_orders' => $dispatchedOrders,
             'return_orders' => $returnOrders,
             'return_value' => round($returnValue, 2),
             'avg_confirm_hours' => $this->avgConfirmHours($from, $to),
