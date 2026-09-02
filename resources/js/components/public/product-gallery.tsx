@@ -195,7 +195,12 @@ export function ProductGallery({
               className="mt-2 flex gap-2 overflow-x-auto px-4 pb-2"
               aria-label="Pilih foto produk"
             >
-              {items.map((item, index) => (
+              {/* K3/K7: strip thumb maks 5; thumb ke-5 menandai total media (5/N) di pojok kanan bawah. */}
+              {items.slice(0, 5).map((item, index) => {
+                const isLast = index === 4
+                const hiddenCount = items.length - 5
+                const showCountBadge = isLast && hiddenCount > 0
+                return (
                 <button
                   type="button"
                   key={item.id}
@@ -226,8 +231,14 @@ export function ProductGallery({
                       className="object-contain"
                     />
                   )}
+                  {showCountBadge ? (
+                    <span className="absolute inset-x-0 bottom-0 z-20 bg-foreground/60 py-0.5 text-center text-[10px] font-bold leading-tight text-white">
+                      5/{items.length}
+                    </span>
+                  ) : null}
                 </button>
-              ))}
+                )
+              })}
             </div>
           ) : null}
 

@@ -128,21 +128,25 @@ export default function ProductDetail({
         </div>
       </section>
 
-      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 flex h-11 items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.08)] lg:hidden">
-          <button
-            type="button"
-            onClick={handlePdpBack}
-            className="-ml-2 inline-flex size-11 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Kembali"
-          >
-            <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-          </button>
-          <ShareActionButton title={title} url={shareUrl} />
-      </div>
+
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-4 pt-0 lg:pt-10 lg:pb-10">
         <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
-          <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} />
+          {/* K4/K5 (mobile): back & share overlay di atas thumb galeri; desktop tetap dari layout lama */}
+          <div className="relative lg:contents">
+            <button
+              type="button"
+              onClick={handlePdpBack}
+              className="absolute left-2 top-2 z-20 inline-flex size-11 items-center justify-center rounded-full bg-surface/85 text-foreground shadow-md backdrop-blur-sm transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+              aria-label="Kembali"
+            >
+              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+            </button>
+            <div className="absolute right-2 top-2 z-20 lg:hidden">
+              <ShareActionButton title={title} url={shareUrl} />
+            </div>
+            <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} />
+          </div>
 
           <div className="min-w-0 lg:sticky lg:top-28">
             <ProductBuyBox
