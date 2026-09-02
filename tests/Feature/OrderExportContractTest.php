@@ -97,7 +97,10 @@ class OrderExportContractTest extends TestCase
         Excel::store($export, 'exp.xlsx', 'imports');
         $path = \Illuminate\Support\Facades\Storage::disk('imports')->path('exp.xlsx');
 
-        $sheet = IOFactory::load($path)->getActiveSheet();
+        $ss = IOFactory::load($path);
+        $this->assertSame(['Laporan Pesanan', 'Panduan'], $ss->getSheetNames(), 'XLSX punya sheet data + panduan');
+
+        $sheet = $ss->getSheetByName('Laporan Pesanan');
         $headings = $sheet->rangeToArray('A1:AC1')[0];
         $rows = $sheet->toArray(null, true, true, true);
 
@@ -123,41 +126,59 @@ class OrderExportContractTest extends TestCase
         // dibedakan produk
         $this->assertSame('RA-A-1', $r1[5]);
         $this->assertSame('RA-B-1', $r2[5]);
-        // qty + harga per item (harga = kolom mata uang Rp)
+        // qty + harga per item (format angka polos, tanpa Rp)
         $this->assertSame('1', $r1[8]);
         $this->assertSame('2', $r2[8]);
-        $this->assertSame('Rp 1,250,000', $r1[9]);
-        $this->assertSame('Rp 750,000', $r2[9]);
-        // diskon produk = mata uang; 0 tetap tampil (tidak dibuang writer)
-        $this->assertSame('Rp 50,000', $r1[12]);
-        $this->assertSame('Rp 0', $r2[12]);
+        $this->assertSame('1,250,000', $r1[9]);
+        $this->assertSame('750,000', $r2[9]);
+        // diskon produk; 0 tetap tampil (tidak dibuang writer)
+        $this->assertSame('50,000', $r1[12]);
+        $this->assertSame('0', $r2[12]);
         // type diskon
         $this->assertSame('Flashsale', $r1[13]);
         $this->assertSame('Reguler', $r2[13]);
-        // kolom uang level order tampil SEKALI di baris item pertama per pesanan
-        $this->assertSame('Rp 150,000', $r1[14]);
-        $this->assertSame('Rp 20,000', $r1[15]);
-        $this->assertSame('Rp 5,000', $r1[16]);
-        // refund hanya dari case completed
-        $this->assertSame('Rp 300,000', $r1[17]);
-        $this->assertSame('Rp 25,000', $r1[18]);
-        // baris item berikutnya: kolom uang level order jadi '-'
-        $this->assertSame('-', $r2[14]);
-        $this->assertSame('-', $r2[15]);
-        $this->assertSame('-', $r2[16]);
-        $this->assertSame('-', $r2[17]);
-        $this->assertSame('-', $r2[18]);
-        // penghasilan bersih per item: (harga x qty) - diskon - bagian biaya order
-        // biaya order = subsidi 20.000 + COD 5.000 + refund 300.000 + ongkir retur 25.000 = 350.000
-        // item A: 1.250.000 - 50.000 - (1.250.000/2.750.000 x 350.000) = 1.040.909,09
-        $this->assertSame('Rp 1,040,909', $r1[19]);
-        // item B: 1.500.000 - 0 - (1.500.000/2.750.000 x 350.000) = 1.309.090,91
-        $this->assertSame('Rp 1,309,091', $r2[19]);
+        // Biaya level order DIBAGI proporsional ke semua item:
+        // bagian item = (nilai item / subtotal 2.750.000) x biaya total.
+        // Item A nilai 1.250.000 (rasio 0,4545), item B 1.500.000 (0,5455).
+        // ONGKOS 150.000: A 68.182, B 81.818 (jumlah 150.000)
+        $this->assertSame('68,182', $r1[14]);
+        $this->assertSame('81,818', $r2[14]);
+        // SUBSIDI 20.000: A 9.091, B 10.909
+        $this->assertSame('9,091', $r1[15]);
+        $this->assertSame('10,909', $r2[15]);
+        // BIAYA COD 5.000: A 2.273, B 2.727 (jumlah 5.000)
+        $this->assertSame('2,273', $r1[16]);
+        $this->assertSame('2,727', $r2[16]);
+        // REFUND 300.000: A 136.364, B 163.636
+        $this->assertSame('136,364', $r1[17]);
+        $this->assertSame('163,636', $r2[17]);
+        // ONGKIR RETUR 25.000: A 11.364, B 13.636
+        $this->assertSame('11,364', $r1[18]);
+        $this->assertSame('13,636', $r2[18]);
+        // penghasilan bersih per item:
+        // A: 1.250.000 - 50.000 - (9.091 + 2.273 + 136.364 + 11.364) = 1.040.909
+        $this->assertSame('1,040,909', $r1[19]);
+        // B: 1.500.000 - 0 - (10.909 + 2.727 + 163.636 + 13.636) = 1.309.091
+        $this->assertSame('1,309,091', $r2[19]);
         // resi
         $this->assertSame('RESI1234567890', $r1[20]);
         // alamat lengkap
         $this->assertSame('53411', $r1[23]);
         $this->assertSame('Banjarnegara', $r1[26]);
+
+        // nilai sel tetap NUMERIK (format hanya tampilan) -> sistem bisa membaca
+        $raw = array_values(array_slice($ss->getSheetByName('Laporan Pesanan')->toArray(null, true, false), 1, 2)[0]);
+        $this->assertEquals(1250000.0, (float) $raw[9]);
+        $this->assertEqualsWithDelta(2272.727, (float) $raw[16], 0.01, 'COD item A = 5.000 x 0,4545');
+        $this->assertEqualsWithDelta(1040909.09, (float) $raw[19], 0.01, 'net item A eksak');
+
+        // sheet Panduan menjelaskan pembagian biaya
+        $guide = $ss->getSheetByName('Panduan')->toArray();
+        $guideText = implode(' | ', array_map(fn ($r) => implode(' ', $r), $guide));
+        $this->assertStringContainsString('PEMBAGIAN BIAYA', $guideText);
+        $this->assertStringContainsString('proporsional', $guideText);
+        $this->assertStringContainsString('PENGHASILAN BERSIH', $guideText);
+        $this->assertStringContainsString('tanpa "Rp"', $guideText);
     }
 
     public function test_running_return_shows_zero_refund(): void
@@ -201,18 +222,19 @@ class OrderExportContractTest extends TestCase
 
         $export = new \App\Exports\OrderExport(Order::query());
         Excel::store($export, 'exp2.xlsx', 'imports');
-        $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load(
+        $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load(
             \Illuminate\Support\Facades\Storage::disk('imports')->path('exp2.xlsx')
-        )->getActiveSheet();
+        );
+        $sheet = $ss->getSheetByName('Laporan Pesanan');
         $row = array_values(array_slice($sheet->toArray(null, true, true, true), 1, 1)[0]);
 
         $this->assertSame('Retur diproses (salah_ukuran)', $row[4]);
-        $this->assertSame('Rp 0', $row[14], 'ongkir 0 tetap tampil');
-        $this->assertSame('Rp 0', $row[15], 'subsidi 0 tetap tampil');
-        $this->assertSame('Rp 0', $row[16], 'biaya COD 0 tetap tampil');
-        $this->assertSame('Rp 0', $row[17], 'retur belum selesai = refund belum terjadi (0 tetap tampil 0)');
-        $this->assertSame('Rp 0', $row[18], 'ongkir retur 0 tetap tampil');
+        $this->assertSame('0', $row[14], 'ongkir 0 tetap tampil');
+        $this->assertSame('0', $row[15], 'subsidi 0 tetap tampil');
+        $this->assertSame('0', $row[16], 'biaya COD 0 tetap tampil');
+        $this->assertSame('0', $row[17], 'retur belum selesai = refund belum terjadi (0 tetap tampil 0)');
+        $this->assertSame('0', $row[18], 'ongkir retur 0 tetap tampil');
         // tanpa biaya order, penghasilan bersih = harga produk
-        $this->assertSame('Rp 500,000', $row[19]);
+        $this->assertSame('500,000', $row[19]);
     }
 }

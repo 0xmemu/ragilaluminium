@@ -7,25 +7,48 @@ use App\Models\Order;
 use App\Support\ExportSafety;
 use App\Support\OrderEventLabels;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 /**
  * Export pesanan per-baris item produk (kontrak owner 2026-09-02, dari
  * Template_Order_Export.xlsx). 1 baris = 1 item produk; pesanan multi
  * produk menghasilkan beberapa baris dengan NO. ORDER + pelanggan sama.
- * Kolom uang LEVEL ORDER (ongkir, subsidi, biaya COD, refund, ongkir
- * retur) tampil SEKALI di baris item pertama per pesanan; baris item
- * berikutnya "-" (revisi owner 2026-09-02: biaya COD berlaku per
- * pengiriman/pesanan, bukan per produk).
- * PENGHASILAN BERSIH per item = (harga x qty) - diskon produk - bagian
- * proporsional biaya order (subsidi ongkir + biaya COD + refund + ongkir
- * retur), proporsi = nilai item / subtotal pesanan. Jumlah kolom = net
- * pesanan. Semua kolom uang memakai format "Rp" #,##0 (nilai tetap
- * numerik, aman dijumlah).
+ *
+ * Biaya level pesanan (ongkos kirim, subsidi ongkir, biaya COD, refund,
+ * ongkir retur) DIBAGI proporsional ke semua item (revisi owner 2026-09-02:
+ * bagian item = nilai item / subtotal x biaya total), supaya setiap baris
+ * berdiri sendiri dan kolom bisa dijumlah.
+ * PENGHASILAN BERSIH per item = (harga x qty) - diskon produk - (bagian
+ * subsidi + bagian biaya COD + bagian refund + bagian ongkir retur).
+ * Format angka POLOS tanpa "Rp" (nilai sel tetap numerik, bisa dibaca
+ * Excel/tools). Penjelasan aturan ada di sheet Panduan.
  */
-class OrderExport extends RagilStyledExport implements FromCollection, WithHeadings
+class OrderExport implements WithMultipleSheets
+{
+    public function __construct(protected Builder $query)
+    {
+    }
+
+    public function sheets(): array
+    {
+        return [
+            new OrderExportDataSheet($this->query),
+            new OrderExportGuideSheet(),
+        ];
+    }
+}
+
+// ------ DATA (sheet pertama, per-item rows) ------
+
+class OrderExportDataSheet extends RagilStyledExport implements FromCollection, WithHeadings
 {
     public function __construct(protected Builder $query)
     {
@@ -42,6 +65,8 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
         // BIAYA COD (Q), REFUND (R), ONGKIR RETUR (S), PENGHASILAN BERSIH (T)
         $this->currencyColumns = ['J', 'M', 'O', 'P', 'Q', 'R', 'S', 'T'];
         $this->quantityColumns = ['I', 'K'];
+        // Format polos tanpa "Rp": minimal human error, pivot-friendly, tetap numerik.
+        $this->currencyFormat = '#,##0';
     }
 
     /**
@@ -75,15 +100,6 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
             $runningCase = $order->returnCases->firstWhere('status', 'open');
             $refund = (float) ($completedCase->refund_amount ?? 0);
             $returOngkir = (float) ($completedCase->additional_shipping_amount ?? 0);
-            // Biaya yang ditanggung toko (level order): subsidi ongkir,
-            // biaya COD, refund terjadi, ongkir retur. Ongkos kirim TIDAK
-            // dikurangi (dibayar pelanggan).
-            $orderSubtotal = (float) $order->subtotal_amount;
-            $orderCosts = (float) $order->shipping_subsidy_amount
-                + (float) $order->cod_fee_amount
-                + $refund
-                + $returOngkir;
-
             $returnType = '-';
             if ($runningCase) {
                 $returnType = 'Retur diproses ('.($runningCase->reason ?? '-').')';
@@ -94,7 +110,13 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                 $returnType = 'Pesanan dibatalkan';
             }
 
-            foreach ($order->items->values() as $index => $item) {
+            // Biaya level pesanan: dibagi proporsional per item.
+            $orderSubtotal = (float) $order->subtotal_amount;
+            $orderShipping = (float) $order->shipping_amount;
+            $orderSubsidy = (float) $order->shipping_subsidy_amount;
+            $orderCod = (float) $order->cod_fee_amount;
+
+            foreach ($order->items->values() as $item) {
                 $rowNum = count($rows) + 2;
                 $variant = $item->productVariant;
                 $dims = [$variant?->width_cm, $variant?->height_cm, $variant?->depth_cm];
@@ -107,12 +129,16 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                 ])->filter()->implode(', ');
 
                 $itemValue = (float) $item->unit_price * (int) $item->quantity;
-                $costShare = $orderSubtotal > 0
-                    ? $orderCosts * ($itemValue / $orderSubtotal)
-                    : 0.0;
-                // Nilai dibiarkan mentah (tanpa round): pembulatan dilakukan
-                // format tampilan #,##0. Dengan begitu SUM Excel = net pesanan eksak.
-                $netIncome = $itemValue - (float) $item->line_discount - $costShare;
+                $ratio = $orderSubtotal > 0 ? $itemValue / $orderSubtotal : 0.0;
+                $shareShipping = $orderShipping * $ratio;
+                $shareSubsidy = $orderSubsidy * $ratio;
+                $shareCod = $orderCod * $ratio;
+                $shareRefund = $refund * $ratio;
+                $shareReturOngkir = $returOngkir * $ratio;
+                // Nilai mentah tanpa round: pembulatan dilakukan format tampilan,
+                // supaya SUM Excel = total net pesanan eksak.
+                $netIncome = $itemValue - (float) $item->line_discount
+                    - ($shareSubsidy + $shareCod + $shareRefund + $shareReturOngkir);
 
                 $rows[] = [
                     $order->order_number,
@@ -131,11 +157,11 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                     $volume,
                     (float) $item->line_discount,
                     $item->discount_source === 'flashsale' ? 'Flashsale' : 'Reguler',
-                    $index === 0 ? (float) $order->shipping_amount : '-',
-                    $index === 0 ? (float) $order->shipping_subsidy_amount : '-',
-                    $index === 0 ? (float) $order->cod_fee_amount : '-',
-                    $index === 0 ? $refund : '-',
-                    $index === 0 ? $returOngkir : '-',
+                    $shareShipping,
+                    $shareSubsidy,
+                    $shareCod,
+                    $shareRefund,
+                    $shareReturOngkir,
                     $netIncome,
                     $waybill,
                     $order->customer_name,
@@ -166,5 +192,53 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
             'KABUPATEN/KOTA', 'KECAMATAN', 'DESA', 'ALAMAT LENGKAP',
         ]);
     }
+}
 
+// ------ PANDUAN (sheet kedua, penjelasan aturan) ------
+
+class OrderExportGuideSheet implements FromArray, WithTitle, WithEvents
+{
+    use \Maatwebsite\Excel\Concerns\RegistersEventListeners;
+
+    public function array(): array
+    {
+        return [
+            ['PANDUAN EXPORT PESANAN', 'Ragil Aluminium'],
+            [],
+            ['ATURAN BARIS', 'Setiap baris = 1 item produk. Pesanan dengan beberapa produk menjadi beberapa baris dengan NO. ORDER dan data pelanggan yang sama.'],
+            ['PEMBAGIAN BIAYA', 'Biaya level pesanan (ONGKOS KIRIM, SUBSIDI ONGKIR, BIAYA COD, REFUND, ONGKIR RETUR) dibagi proporsional ke semua item: bagian item = (nilai item / subtotal pesanan) x biaya total. Jumlah nilai kolom di semua baris pesanan = nilai biaya pesanan.'],
+            ['PENGHASILAN BERSIH', 'Per item: (harga x qty) - DISKON PRODUK - (bagian SUBSIDI ONGKIR + bagian BIAYA COD + bagian REFUND + bagian ONGKIR RETUR). Ongkos kirim tidak mengurangi karena dibayar pelanggan.'],
+            ['FORMAT ANGKA', 'Semua kolom uang memakai angka polos tanpa "Rp" (contoh: 3.000.000). Nilai sel tetap numerik, aman dijumlah dan bisa dibaca Excel maupun tools lain.'],
+        ];
+    }
+
+    public function title(): string
+    {
+        return 'Panduan';
+    }
+
+    public function afterSheet(AfterSheet $event): void
+    {
+        $sheet = $event->sheet->getDelegate();
+
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(24);
+
+        $last = $sheet->getHighestRow();
+        $sheet->getStyle('A3:B'.$last)->applyFromArray([
+            'font' => ['size' => 10, 'color' => ['argb' => 'FF333333']],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_TOP],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
+        ]);
+        for ($r = 3; $r <= $last; $r++) {
+            $sheet->getStyle('A'.$r)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFC20000']],
+            ]);
+        }
+
+        $sheet->getColumnDimension('A')->setWidth(26);
+        $sheet->getColumnDimension('B')->setWidth(100);
+    }
 }

@@ -38,6 +38,12 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
     /** @var list<string> kolom mata uang (format "Rp" #,##0) */
     protected array $currencyColumns = [];
 
+    /**
+     * Format angka kolom mata uang. Default "Rp" #,##0; export yang mau
+     * angka polos (mis. laporan pesanan, pivot-friendly) set '#,##0'.
+     */
+    protected string $currencyFormat = '"Rp" #,##0';
+
     /** @var list<string> kolom kuantitas (format #,##0) */
     protected array $quantityColumns = [];
 
@@ -122,7 +128,7 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
         // Format kolom mata uang: rata kanan + "Rp" #,##0.
         foreach ($this->currencyColumns as $col) {
             $range = "{$col}2:{$col}{$lastRow}";
-            $sheet->getStyle($range)->getNumberFormat()->setFormatCode('"Rp" #,##0');
+            $sheet->getStyle($range)->getNumberFormat()->setFormatCode($this->currencyFormat);
             $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
