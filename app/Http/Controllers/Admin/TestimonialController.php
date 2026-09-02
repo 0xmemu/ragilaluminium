@@ -150,6 +150,7 @@ class TestimonialController extends Controller
             : route('admin.testimonials.index', ['tab' => 'website']);
 
         return Inertia::render('Admin/Testimonials/Form', [
+            'backUrl' => $indexUrl,
             'testimonial' => null,
             'products' => $this->productOptions(),
             'sources' => array_values($sources),
@@ -198,6 +199,7 @@ class TestimonialController extends Controller
             : route('admin.testimonials.index', ['tab' => 'website']);
 
         return Inertia::render('Admin/Testimonials/Form', [
+            'backUrl' => $indexUrl,
             'testimonial' => [
                 'id' => $testimonial->id,
                 'customer_name' => $testimonial->customer_name,
@@ -510,7 +512,7 @@ class TestimonialController extends Controller
                         : null,
                     'edit_href' => $product
                         ? route('admin.products.media.byProduct', $product)
-                        : route('admin.media.index'),
+                        : route('admin.media.library'),
                     'publish_url' => null,
                     'unpublish_url' => null,
                 ];

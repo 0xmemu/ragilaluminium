@@ -19,6 +19,7 @@ class GalleryItemController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/Testimonials/GalleryForm', [
+            'backUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
             'item' => null,
             'submitUrl' => route('admin.gallery-items.store'),
             'indexUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
@@ -42,6 +43,7 @@ class GalleryItemController extends Controller
     public function edit(CmsGalleryItem $galleryItem): Response
     {
         return Inertia::render('Admin/Testimonials/GalleryForm', [
+            'backUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
             'item' => [
                 'id' => $galleryItem->id,
                 'label' => $galleryItem->label,

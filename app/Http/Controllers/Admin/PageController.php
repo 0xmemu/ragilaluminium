@@ -42,6 +42,7 @@ class PageController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/CmsPageForm', [
+            'backUrl' => route('admin.pages.index'),
             'page' => null,
             'submitUrl' => route('admin.pages.store'),
         ]);
@@ -66,6 +67,7 @@ class PageController extends Controller
     public function edit(CmsPage $page): Response
     {
         return Inertia::render('Admin/CmsPageForm', [
+            'backUrl' => route('admin.pages.index'),
             'page' => [
                 'id' => $page->id,
                 'slug' => $page->slug,

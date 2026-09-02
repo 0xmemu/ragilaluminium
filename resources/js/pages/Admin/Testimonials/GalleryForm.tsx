@@ -19,11 +19,13 @@ export default function GalleryForm({
   item,
   submitUrl,
   indexUrl,
+  backUrl,
   presignUrl,
 }: {
   item: GalleryRecord | null
   submitUrl: string
   indexUrl: string
+  backUrl?: string | null
   presignUrl: string
 }) {
   const editing = Boolean(item)
@@ -83,14 +85,14 @@ export default function GalleryForm({
           if (xhr.status >= 200 && xhr.status < 300) resolve()
           else reject(new Error(`Upload ke penyimpanan gagal (${xhr.status})`))
         }
-        xhr.onerror = () => reject(new Error("Upload gagal — periksa koneksi internet."))
+        xhr.onerror = () => reject(new Error("Upload gagal. Periksa koneksi internet."))
         xhr.send(file)
       })
       setUploadProgress(100)
       form.setData("object_key", presigned.object_key)
       form.setData("image_url", "")
     } catch (error) {
-      setDirectError(error instanceof Error ? error.message : "Upload gagal — coba lagi.")
+      setDirectError(error instanceof Error ? error.message : "Upload gagal. Coba lagi.")
       throw error
     } finally {
       setUploading(false)
@@ -100,6 +102,7 @@ export default function GalleryForm({
 
   return (
     <AdminLayout
+      backUrl={backUrl}
       title={editing ? "Edit ulasan foto" : "Tambah ulasan foto"}
       description="Foto hasil pemasangan untuk beranda dan halaman /reviews#hasil-pemasangan."
       actions={
@@ -122,10 +125,10 @@ export default function GalleryForm({
           if (editing) form.put(submitUrl)
           else form.post(submitUrl)
         }}
-        className="mx-auto max-w-3xl space-y-6"
+        className="w-full space-y-5"
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <section className="overflow-hidden rounded-lg border border-border bg-card">
           {/* Stripe: thumbnail kiri, field inline kanan */}
           <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start">
             <div className="size-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted">

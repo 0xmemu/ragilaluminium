@@ -52,8 +52,10 @@ export default function ImportCreate({
   stockPriceTemplateUrl,
   mediaUpdateTemplateUrl,
   types,
+  backUrl,
 }: {
   submitUrl: string
+  backUrl?: string | null
   previewUrl: string
   internalTemplateUrl: string
   stockPriceTemplateUrl: string
@@ -125,6 +127,7 @@ export default function ImportCreate({
 
   return (
     <AdminLayout
+      backUrl={backUrl}
       title="Import Produk"
       description="Tiga mode: Import Katalog (buat/perbarui produk lengkap), Update Harga & Stok (ubah price/stock saja), dan Update Media (ganti atau tambah foto via URL)."
       actions={

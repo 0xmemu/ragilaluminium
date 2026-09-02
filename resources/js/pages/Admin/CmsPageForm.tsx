@@ -20,9 +20,11 @@ interface CmsPageRecord {
 export default function CmsPageForm({
   page,
   submitUrl,
+  backUrl,
 }: {
   page: CmsPageRecord | null
   submitUrl: string
+  backUrl?: string | null
 }) {
   const editing = Boolean(page)
   const form = useForm({
@@ -45,6 +47,7 @@ export default function CmsPageForm({
 
   return (
     <AdminLayout
+      backUrl={backUrl}
       title={editing ? "Edit halaman CMS" : "Tambah halaman CMS"}
       description={editing ? page?.slug : "Konten publik disimpan sebagai HTML terstruktur."}
       actions={
@@ -63,7 +66,7 @@ export default function CmsPageForm({
         }}
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)] xl:items-start"
       >
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
           <FormErrorSummary errors={form.errors} />
           <div className="mt-1 grid gap-4 sm:grid-cols-2">
             <Field id="cms-title" label="Judul" required error={form.errors.title}>
@@ -117,7 +120,7 @@ export default function CmsPageForm({
           </div>
         </section>
 
-        <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
+        <aside className="rounded-lg border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">
             Preview aman
           </p>

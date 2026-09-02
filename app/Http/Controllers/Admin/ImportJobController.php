@@ -106,6 +106,7 @@ class ImportJobController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/ImportCreate', [
+            'backUrl' => route('admin.imports.index'),
             'submitUrl' => route('admin.imports.store'),
             'previewUrl' => route('admin.imports.preview-catalog'),
             'internalTemplateUrl' => route('admin.imports.internal-template'),

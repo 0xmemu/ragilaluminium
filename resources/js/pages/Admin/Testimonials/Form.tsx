@@ -39,6 +39,7 @@ export default function TestimonialForm({
   intent = "website",
   submitUrl,
   indexUrl,
+  backUrl,
   moderateUrl = null,
   reviewMode = false,
   verifiedOrders = [],
@@ -50,6 +51,7 @@ export default function TestimonialForm({
   intent?: "marketplace" | "website" | "admin-order"
   submitUrl: string
   indexUrl: string
+  backUrl?: string | null
   moderateUrl?: string | null
   reviewMode?: boolean
   verifiedOrders?: Array<{ id: number; label: string; status: string }>
@@ -93,6 +95,7 @@ export default function TestimonialForm({
 
   return (
     <AdminLayout
+      backUrl={backUrl}
       title={
         editing
           ? isMarketplaceIntent
@@ -129,11 +132,11 @@ export default function TestimonialForm({
           }))
           form.post(submitUrl, { forceFormData: true })
         }}
-        className="mx-auto max-w-3xl space-y-6"
+        className="w-full space-y-5"
         encType="multipart/form-data"
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <section className="overflow-hidden rounded-lg border border-border bg-card">
           {/* Stripe media: thumbnail kiri, upload + URL inline kanan */}
           <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start">
             <div className="size-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
@@ -149,7 +152,7 @@ export default function TestimonialForm({
                 </div>
               )}
             </div>
-            <div className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
               <Field
                 id="testimonial-image-file"
                 label="Unggah screenshot"
@@ -226,7 +229,7 @@ export default function TestimonialForm({
                 label="URL gambar tambahan"
                 error={form.errors.image_urls}
                 className="sm:col-span-2"
-                hint="Opsional. Satu URL per baris — ulasan bisa punya lebih dari satu foto (di storefront bisa digeser saat diperbesar)."
+                hint="Opsional. Satu URL per baris. Ulasan bisa punya lebih dari satu foto (di storefront bisa digeser saat diperbesar)."
               >
                 <Textarea rows={3} value={form.data.image_urls} onChange={(event) => form.setData("image_urls", event.target.value)} placeholder="https://contoh.com/foto-2.jpg" />
               </Field>
