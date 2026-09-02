@@ -337,6 +337,12 @@ function OrderCardRow({
                     <p className="line-clamp-2 flex-1 text-[13px] font-medium leading-5 text-foreground">
                       {item.name}
                     </p>
+                    <span
+                      className="shrink-0 tabular-nums text-[13px] font-semibold text-foreground"
+                      title={`Qty ${item.name}`}
+                    >
+                      x{formatNumber(item.quantity)}
+                    </span>
                     <button
                       type="button"
                       onClick={() => copyItemText(item.name)}
@@ -379,24 +385,6 @@ function OrderCardRow({
             </button>
           ) : null}
 
-        </div>
-
-        {/* Item (total qty) */}
-        <div className="min-w-0 pt-3 xl:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Item
-          </p>
-          <ul className="space-y-2.5" aria-label="Qty per produk">
-            {visibleItems.map((item) => (
-              <li
-                key={`qty-${item.id}`}
-                className="flex min-h-11 items-center tabular-nums text-[13px] font-semibold text-foreground"
-                title={`Qty ${item.name}`}
-              >
-                x{formatNumber(item.quantity)}
-              </li>
-            ))}
-          </ul>
         </div>
 
         {/* Dibayar Pembeli */}
