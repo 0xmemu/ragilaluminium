@@ -19,6 +19,11 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
  * retur) tampil SEKALI di baris item pertama per pesanan; baris item
  * berikutnya "-" (revisi owner 2026-09-02: biaya COD berlaku per
  * pengiriman/pesanan, bukan per produk).
+ * PENGHASILAN BERSIH per item = (harga x qty) - diskon produk - bagian
+ * proporsional biaya order (subsidi ongkir + biaya COD + refund + ongkir
+ * retur), proporsi = nilai item / subtotal pesanan. Jumlah kolom = net
+ * pesanan. Semua kolom uang memakai format "Rp" #,##0 (nilai tetap
+ * numerik, aman dijumlah).
  */
 class OrderExport extends RagilStyledExport implements FromCollection, WithHeadings
 {
@@ -29,13 +34,13 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
             'A' => 18, 'B' => 16, 'C' => 14, 'D' => 18, 'E' => 18,
             'F' => 18, 'G' => 20, 'H' => 18, 'I' => 14, 'J' => 12,
             'K' => 13, 'L' => 10, 'M' => 13, 'N' => 14, 'O' => 14,
-            'P' => 14, 'Q' => 12, 'R' => 12, 'S' => 16, 'T' => 20,
-            'U' => 20, 'V' => 16, 'W' => 10, 'X' => 16, 'Y' => 18,
-            'Z' => 18, 'AA' => 16, 'AB' => 34,
+            'P' => 14, 'Q' => 12, 'R' => 12, 'S' => 16, 'T' => 16,
+            'U' => 20, 'V' => 20, 'W' => 16, 'X' => 10, 'Y' => 16,
+            'Z' => 18, 'AA' => 18, 'AB' => 16, 'AC' => 34,
         ];
         // HARGA (J), DISKON PRODUK (M), ONGKOS KIRIM (O), SUBSIDI ONGKIR (P),
-        // BIAYA COD (Q), REFUND (R), ONGKIR RETUR (S)
-        $this->currencyColumns = ['J', 'M', 'O', 'P', 'Q', 'R', 'S'];
+        // BIAYA COD (Q), REFUND (R), ONGKIR RETUR (S), PENGHASILAN BERSIH (T)
+        $this->currencyColumns = ['J', 'M', 'O', 'P', 'Q', 'R', 'S', 'T'];
         $this->quantityColumns = ['I', 'K'];
     }
 
@@ -70,6 +75,15 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
             $runningCase = $order->returnCases->firstWhere('status', 'open');
             $refund = (float) ($completedCase->refund_amount ?? 0);
             $returOngkir = (float) ($completedCase->additional_shipping_amount ?? 0);
+            // Biaya yang ditanggung toko (level order): subsidi ongkir,
+            // biaya COD, refund terjadi, ongkir retur. Ongkos kirim TIDAK
+            // dikurangi (dibayar pelanggan).
+            $orderSubtotal = (float) $order->subtotal_amount;
+            $orderCosts = (float) $order->shipping_subsidy_amount
+                + (float) $order->cod_fee_amount
+                + $refund
+                + $returOngkir;
+
             $returnType = '-';
             if ($runningCase) {
                 $returnType = 'Retur diproses ('.($runningCase->reason ?? '-').')';
@@ -91,6 +105,14 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                     $item->variation_1_name ? $item->variation_1_name.': '.$item->variation_1_option : null,
                     $item->variation_2_name ? $item->variation_2_name.': '.$item->variation_2_option : null,
                 ])->filter()->implode(', ');
+
+                $itemValue = (float) $item->unit_price * (int) $item->quantity;
+                $costShare = $orderSubtotal > 0
+                    ? $orderCosts * ($itemValue / $orderSubtotal)
+                    : 0.0;
+                // Nilai dibiarkan mentah (tanpa round): pembulatan dilakukan
+                // format tampilan #,##0. Dengan begitu SUM Excel = net pesanan eksak.
+                $netIncome = $itemValue - (float) $item->line_discount - $costShare;
 
                 $rows[] = [
                     $order->order_number,
@@ -114,6 +136,7 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
                     $index === 0 ? (float) $order->cod_fee_amount : '-',
                     $index === 0 ? $refund : '-',
                     $index === 0 ? $returOngkir : '-',
+                    $netIncome,
                     $waybill,
                     $order->customer_name,
                     $order->customer_phone,
@@ -138,8 +161,8 @@ class OrderExport extends RagilStyledExport implements FromCollection, WithHeadi
             'Cancelation/Return Type', 'SKU ID', 'NAMA PRODUK', 'VARIASI',
             'QTY', 'HARGA', 'BERAT(KG)', 'VOLUME', 'DISKON PRODUK',
             'TYPE DISKON', 'ONGKOS KIRIM', 'SUBSIDI ONGKIR', 'BIAYA COD',
-            'REFUND', 'ONGKIR RETUR DITANGGUNG TOKO', 'NOMOR RESI',
-            'NAMA PELANGGAN', 'NO. WA', 'KODE POS', 'PROVINSI',
+            'REFUND', 'ONGKIR RETUR DITANGGUNG TOKO', 'PENGHASILAN BERSIH',
+            'NOMOR RESI', 'NAMA PELANGGAN', 'NO. WA', 'KODE POS', 'PROVINSI',
             'KABUPATEN/KOTA', 'KECAMATAN', 'DESA', 'ALAMAT LENGKAP',
         ]);
     }

@@ -36,11 +36,11 @@ class OrderExportContractTest extends TestCase
             'order_status' => 'completed',
             'payment_status' => 'paid',
             'shipping_status' => 'delivered',
-            'subtotal_amount' => 2000000,
+            'subtotal_amount' => 2750000,
             'shipping_amount' => 150000,
             'shipping_subsidy_amount' => 20000,
             'discount_amount' => 0,
-            'total_amount' => 2130000,
+            'total_amount' => 2885000,
             'payment_method' => 'cod',
             'cod_flag' => true,
             'cod_fee_amount' => 5000,
@@ -98,13 +98,17 @@ class OrderExportContractTest extends TestCase
         $path = \Illuminate\Support\Facades\Storage::disk('imports')->path('exp.xlsx');
 
         $sheet = IOFactory::load($path)->getActiveSheet();
-        $headings = $sheet->rangeToArray('A1:AB1')[0];
+        $headings = $sheet->rangeToArray('A1:AC1')[0];
         $rows = $sheet->toArray(null, true, true, true);
 
         $this->assertSame('NO. ORDER', $headings[0]);
         $this->assertSame('SKU ID', $headings[5]);
         $this->assertSame('TYPE DISKON', $headings[13]);
-        $this->assertSame('ALAMAT LENGKAP', $headings[27]);
+        $this->assertSame('ONGKIR RETUR DITANGGUNG TOKO', $headings[18]);
+        $this->assertSame('PENGHASILAN BERSIH', $headings[19]);
+        $this->assertSame('NOMOR RESI', $headings[20]);
+        $this->assertSame('ALAMAT LENGKAP', $headings[28]);
+        $this->assertCount(29, $headings);
 
         $dataRows = array_values(array_slice($rows, 1, 2));
         $this->assertCount(2, $dataRows, '2 item = 2 baris');
@@ -114,8 +118,8 @@ class OrderExportContractTest extends TestCase
         // baris sama-sama punya no order + pelanggan sama
         $this->assertSame('ORD-EXP-001', $r1[0]);
         $this->assertSame('ORD-EXP-001', $r2[0]);
-        $this->assertSame('Budi Santoso', $r1[20]);
-        $this->assertSame('Budi Santoso', $r2[20]);
+        $this->assertSame('Budi Santoso', $r1[21]);
+        $this->assertSame('Budi Santoso', $r2[21]);
         // dibedakan produk
         $this->assertSame('RA-A-1', $r1[5]);
         $this->assertSame('RA-B-1', $r2[5]);
@@ -143,11 +147,17 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('-', $r2[16]);
         $this->assertSame('-', $r2[17]);
         $this->assertSame('-', $r2[18]);
+        // penghasilan bersih per item: (harga x qty) - diskon - bagian biaya order
+        // biaya order = subsidi 20.000 + COD 5.000 + refund 300.000 + ongkir retur 25.000 = 350.000
+        // item A: 1.250.000 - 50.000 - (1.250.000/2.750.000 x 350.000) = 1.040.909,09
+        $this->assertSame('Rp 1,040,909', $r1[19]);
+        // item B: 1.500.000 - 0 - (1.500.000/2.750.000 x 350.000) = 1.309.090,91
+        $this->assertSame('Rp 1,309,091', $r2[19]);
         // resi
-        $this->assertSame('RESI1234567890', $r1[19]);
+        $this->assertSame('RESI1234567890', $r1[20]);
         // alamat lengkap
-        $this->assertSame('53411', $r1[22]);
-        $this->assertSame('Banjarnegara', $r1[25]);
+        $this->assertSame('53411', $r1[23]);
+        $this->assertSame('Banjarnegara', $r1[26]);
     }
 
     public function test_running_return_shows_zero_refund(): void
@@ -202,5 +212,7 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('Rp 0', $row[16], 'biaya COD 0 tetap tampil');
         $this->assertSame('Rp 0', $row[17], 'retur belum selesai = refund belum terjadi (0 tetap tampil 0)');
         $this->assertSame('Rp 0', $row[18], 'ongkir retur 0 tetap tampil');
+        // tanpa biaya order, penghasilan bersih = harga produk
+        $this->assertSame('Rp 500,000', $row[19]);
     }
 }
