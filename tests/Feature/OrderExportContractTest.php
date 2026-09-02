@@ -152,10 +152,9 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('Reguler', $r2[13]);
         // Biaya level order: COD & REFUND = rata per unit; ONGKIR/SUBSIDI/RETUR = proporsional berat.
         // Total unit 3 (A=1, B=2); total berat 7 (A=5kg, B=1kg x2).
-        // ONGKOS = nilai PESANAN (tarif J&T satu hitungan per kiriman):
-        // tampil sekali di baris item pertama, baris lain '-'
-        $this->assertSame('150,000', $r1[14]);
-        $this->assertSame('-', $r2[14]);
+        // ONGKOS 150.000 dibagi RATA per unit: A = 150.000 x 1/3 = 50.000; B = 150.000 x 2/3 = 100.000
+        $this->assertSame('50,000', $r1[14]);
+        $this->assertSame('100,000', $r2[14]);
         // SUBSIDI 20.000 dibagi RATA per unit: A = 20.000 x 1/3 = 6.667; B = 20.000 x 2/3 = 13.333
         $this->assertSame('6,667', $r1[15]);
         $this->assertSame('13,333', $r2[15]);
@@ -192,7 +191,8 @@ class OrderExportContractTest extends TestCase
         $this->assertStringContainsString('RATA per unit', $guideText);
         $this->assertStringContainsString('sekali di baris item pertama', $guideText);
         $this->assertStringContainsString('dibayar pembeli', $guideText);
-        $this->assertStringContainsString('5.000 per produk', $guideText, 'contoh owner: ongkir 100.000 subsidi 10% = 10.000, 2 produk -> 5.000/produk');
+        $this->assertStringContainsString('50.000 per produk', $guideText, 'contoh owner: ongkir 100.000, 2 produk -> 50.000/produk');
+        $this->assertStringContainsString('5.000 per produk', $guideText);
         $this->assertStringContainsString('PENGHASILAN BERSIH', $guideText);
         $this->assertStringContainsString('tanpa "Rp"', $guideText);
         $this->assertStringContainsString('order_number', $guideText);
@@ -307,9 +307,9 @@ class OrderExportContractTest extends TestCase
         $r1 = array_values($rows[0]);
         $r2 = array_values($rows[1]);
 
-        // ongkir 100.000 dibayar pembeli: tampil sekali di baris pertama
-        $this->assertSame('100,000', $r1[14]);
-        $this->assertSame('-', $r2[14]);
+        // ongkir 100.000 dibagi rata ke 2 produk: 50.000 per baris (contoh owner)
+        $this->assertSame('50,000', $r1[14]);
+        $this->assertSame('50,000', $r2[14]);
         // subsidi 10.000 dibagi rata ke 2 produk: 5.000 per produk (contoh owner)
         $this->assertSame('5,000', $r1[15]);
         $this->assertSame('5,000', $r2[15]);
