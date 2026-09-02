@@ -23,16 +23,16 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
  * produk menghasilkan beberapa baris dengan NO. ORDER + pelanggan sama.
  *
  * Biaya level pesanan (revisi owner 2026-09-02):
- *  - cod_fee_amount & refund_amount: RATA per unit (qty item / total unit),
+ *  - HANYA cod_fee_amount yang dibagi RATA per unit (qty item / total unit),
  *    karena biaya COD = % dari nilai yang dibayar pelanggan dan mencakup
- *    semua unit yang dibeli (aturan owner);
- *  - shipping_amount, shipping_subsidy_amount, additional_shipping_amount:
- *    nilai PESANAN (tampil sekali di baris item pertama, baris lain "-").
- *    Tarif ongkir J&T dihitung SEKALI dari TOTAL berat semua produk+qty
- *    (ShippingService::cartWeightKg), bukan dijumlah per produk, jadi tidak
- *    bisa dibagi per item tanpa menyesatkan.
+ *    semua unit yang dibeli (aturan owner: "yang dibagi biaya COD saja");
+ *  - shipping_amount, shipping_subsidy_amount, refund_amount,
+ *    additional_shipping_amount: nilai PESANAN, tampil sekali di baris item
+ *    pertama, baris lain "-". Tarif ongkir J&T dihitung SEKALI dari total
+ *    berat semua produk+qty (ShippingService::cartWeightKg), bukan dijumlah
+ *    per produk; refund juga tidak dibagi (bukan biaya per unit).
  * PENGHASILAN BERSIH per item = (harga x qty) - diskon produk - bagian rata
- * per unit dari (subsidi + biaya COD + refund + ongkir retur).
+ * per unit biaya COD.
  * Format angka POLOS tanpa "Rp" (nilai sel tetap numerik, bisa dibaca
  * Excel/tools). Header kolom memakai NAMA SISTEM (kunci DB snake_case,
  * mis. paid_at, variant_sku, cod_fee_amount) supaya mudah dikenali dan
@@ -139,17 +139,11 @@ class OrderExportDataSheet extends RagilStyledExport implements FromCollection, 
                 $itemValue = (float) $item->unit_price * (int) $item->quantity;
                 $qty = max(1, (int) $item->quantity);
                 $qtyRatio = $qty / $totalQty;
-                // COD & refund: rata per unit. Ongkir/subsidi/ongkir retur:
-                // nilai PESANAN (tarif J&T satu hitungan per kiriman), jadi
-                // kolomnya tampil hanya di baris item pertama.
+                // HANYA biaya COD dibagi rata per unit (aturan owner).
                 $shareCod = $orderCod * $qtyRatio;
-                $shareRefund = $refund * $qtyRatio;
-                $shareSubsidy = $orderSubsidy * $qtyRatio;
-                $shareReturOngkir = $returOngkir * $qtyRatio;
                 // Nilai mentah tanpa round: pembulatan dilakukan format tampilan,
                 // supaya SUM Excel = total net pesanan eksak.
-                $netIncome = $itemValue - (float) $item->line_discount
-                    - ($shareSubsidy + $shareCod + $shareRefund + $shareReturOngkir);
+                $netIncome = $itemValue - (float) $item->line_discount - $shareCod;
 
                 $rows[] = [
                     $order->order_number,
@@ -171,7 +165,7 @@ class OrderExportDataSheet extends RagilStyledExport implements FromCollection, 
                     $index === 0 ? (float) $order->shipping_amount : '-',
                     $index === 0 ? (float) $order->shipping_subsidy_amount : '-',
                     $shareCod,
-                    $shareRefund,
+                    $index === 0 ? $refund : '-',
                     $index === 0 ? (float) $returOngkir : '-',
                     $netIncome,
                     $waybill,
@@ -217,8 +211,8 @@ class OrderExportGuideSheet implements FromArray, WithTitle, WithEvents
             ['PANDUAN EXPORT PESANAN', 'Ragil Aluminium'],
             [],
             ['ATURAN BARIS', 'Setiap baris = 1 item produk. Pesanan dengan beberapa produk menjadi beberapa baris dengan NO. ORDER dan data pelanggan yang sama.'],
-            ['PEMBAGIAN BIAYA', 'cod_fee_amount dan refund_amount dibagi RATA per unit (bagian = biaya total x qty item / total unit), karena biaya COD adalah persentase dari nilai yang dibayar pelanggan dan mencakup semua unit. shipping_amount, shipping_subsidy_amount, additional_shipping_amount TIDAK dibagi: tarif ongkir J&T dihitung SEKALI dari total berat semua produk dan qty dalam satu kiriman (ShippingService::cartWeightKg), bukan dijumlah per produk, jadi kolomnya tampil sekali di baris item pertama per pesanan. Jumlah tiap kolom di semua baris = biaya pesanan.'],
-            ['PENGHASILAN BERSIH', 'Per item: (unit_price x quantity) - line_discount - bagian rata per unit dari (shipping_subsidy_amount + cod_fee_amount + refund_amount + additional_shipping_amount). Ongkos kirim (shipping_amount) tidak mengurangi karena dibayar pelanggan. Karena ongkir dihitung sekali per kiriman, bagikan di net_income adalah alokasi laporan (rata per unit), bukan tarif per produk.'],
+            ['PEMBAGIAN BIAYA', 'HANYA cod_fee_amount yang dibagi RATA per unit (bagian = biaya COD total x qty item / total unit), karena biaya COD adalah persentase dari nilai yang dibayar pelanggan dan mencakup semua unit. shipping_amount, shipping_subsidy_amount, refund_amount, additional_shipping_amount TIDAK dibagi: tarif ongkir J&T dihitung SEKALI dari total berat semua produk dan qty dalam satu kiriman (ShippingService::cartWeightKg), bukan dijumlah per produk, dan refund bukan biaya per unit. Kolom-kolom itu tampil sekali di baris item pertama per pesanan. Jumlah tiap kolom di semua baris = biaya pesanan.'],
+            ['PENGHASILAN BERSIH', 'Per item: (unit_price x quantity) - line_discount - bagian rata per unit biaya COD (cod_fee_amount x qty item / total unit). Ongkos kirim, subsidi ongkir, refund, dan ongkir retur tidak dikurangkan di kolom ini (bukan biaya per unit; tampil sebagai kolom terpisah di baris item pertama pesanan). Jumlah kolom = total nilai pesanan dikurangi diskon dan total biaya COD.'],
             ['FORMAT ANGKA', 'Semua kolom uang memakai angka polos tanpa "Rp" (contoh: 3.000.000). Nilai sel tetap numerik, aman dijumlah dan bisa dibaca Excel maupun tools lain.'],
             ['NAMA KOLOM', 'Header memakai nama sistem (kunci DB snake_case): order_number, created_at, paid_at, variant_sku, unit_price, quantity, shipping_amount, cod_fee_amount, refund_amount, net_income, waybill_number, customer_name, customer_phone, shipping_*. Tujuannya supaya sistem/tools bisa mengenali kolom tanpa penerjemahan.'],
         ];

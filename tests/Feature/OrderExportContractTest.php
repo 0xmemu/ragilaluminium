@@ -161,18 +161,17 @@ class OrderExportContractTest extends TestCase
         // BIAYA COD 5.000 rata per unit: A = 5.000 x 1/3 = 1.667; B = 5.000 x 2/3 = 3.333
         $this->assertSame('1,667', $r1[16]);
         $this->assertSame('3,333', $r2[16]);
-        // REFUND 300.000 rata per unit: A = 100.000; B = 200.000
-        $this->assertSame('100,000', $r1[17]);
-        $this->assertSame('200,000', $r2[17]);
+        // REFUND = nilai pesanan (bukan biaya per unit): sekali di baris pertama
+        $this->assertSame('300,000', $r1[17]);
+        $this->assertSame('-', $r2[17]);
         // ONGKIR RETUR = nilai pesanan: sekali di baris pertama
         $this->assertSame('25,000', $r1[18]);
         $this->assertSame('-', $r2[18]);
-        // penghasilan bersih: net = nilai - diskon - bagian RATA PER UNIT biaya order
-        // biaya = subsidi 20.000 + COD 5.000 + refund 300.000 + retur 25.000 = 350.000
-        // per unit = 350.000/3 = 116.667; A qty1: 1.250.000 - 50.000 - 116.667 = 1.083.333
-        $this->assertSame('1,083,333', $r1[19]);
-        // B qty2: 1.500.000 - 0 - 233.333 = 1.266.667
-        $this->assertSame('1,266,667', $r2[19]);
+        // penghasilan bersih: HANYA bagian biaya COD yang dikurangi (rata per unit)
+        // A qty1: 1.250.000 - 50.000 - (5.000 x 1/3) = 1.198.333
+        $this->assertSame('1,198,333', $r1[19]);
+        // B qty2: 1.500.000 - (5.000 x 2/3) = 1.496.667
+        $this->assertSame('1,496,667', $r2[19]);
         // resi
         $this->assertSame('RESI1234567890', $r1[20]);
         // alamat lengkap
@@ -183,7 +182,7 @@ class OrderExportContractTest extends TestCase
         $raw = array_values(array_slice($ss->getSheetByName('Laporan Pesanan')->toArray(null, true, false), 1, 2)[0]);
         $this->assertEquals(1250000.0, (float) $raw[9]);
         $this->assertEqualsWithDelta(1666.667, (float) $raw[16], 0.01, 'COD item A = 5.000 x (1/3)');
-        $this->assertEqualsWithDelta(1083333.33, (float) $raw[19], 0.01, 'net item A eksak');
+        $this->assertEqualsWithDelta(1198333.33, (float) $raw[19], 0.01, 'net item A = 1.250.000 - 50.000 - 1.666,67');
 
         // sheet Panduan menjelaskan pembagian biaya
         $guide = $ss->getSheetByName('Panduan')->toArray();
