@@ -161,10 +161,9 @@ class ShippingService
         } catch (Throwable $e) {
             // Gunakan debug agar tidak spam log saat J&T belum siap atau down.
             // Warning hanya dicatat saat integration benar-benar aktif.
-            Log::channel('jnt')->warning('JNT tariff unavailable; using provisional local estimate', [
+            Log::channel('jnt')->debug('JNT tariff unavailable; using provisional local estimate', [
                 'exception_class' => $e::class,
                 'exception_message' => $e->getMessage(),
-                'trace_first' => collect(explode("\n", $e->getTraceAsString()))->first(fn ($l) => str_contains($l, 'ShippingService')),
                 'jnt_enabled' => config('jnt.enabled'),
             ]);
         }
