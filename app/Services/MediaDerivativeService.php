@@ -172,12 +172,59 @@ class MediaDerivativeService
         }
         fclose($stream);
 
-        return [
+        $out = [
             'path' => $path,
             'url' => $disk->url($path),
             'mime_type' => $mimeType,
             'size_bytes' => (int) ($disk->size($path) ?: filesize($absoluteSourcePath) ?: 0),
         ];
+
+        // Poster frame: Media Library menampilkan thumbnail via <img>; tanpa poster.webp
+        // kartu video memakai file .mp4 sebagai img yang pasti gagal render (owner 2026-09-02).
+        $poster = $this->generateVideoPoster($absoluteSourcePath, $checksum, $disk);
+        if ($poster !== null) {
+            $out['poster'] = $poster;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Ekstrak 1 frame (0.5s) sebagai poster WebP via ffmpeg. Return null bila
+     * ffmpeg tidak tersedia/gagal - upload video tetap sukses tanpa poster.
+     *
+     * @return array{path: string, url: string}|null
+     */
+    public function generateVideoPoster(string $absoluteSourcePath, string $checksum, $disk = null): ?array
+    {
+        $ffmpeg = trim((string) shell_exec('command -v ffmpeg'));
+        if ($ffmpeg === '') {
+            return null;
+        }
+
+        $tmpPoster = tempnam(sys_get_temp_dir(), 'vidposter_');
+        if ($tmpPoster === false) {
+            return null;
+        }
+        $target = $tmpPoster . '.webp';
+        @rename($tmpPoster, $target);
+
+        $cmd = $ffmpeg . ' -y -ss 0.5 -i ' . escapeshellarg($absoluteSourcePath)
+            . ' -frames:v 1 -vf scale=\'min(400,iw)\':-2 '
+            . escapeshellarg($target) . ' 2>&1';
+        shell_exec($cmd);
+
+        if (! file_exists($target) || filesize($target) < 500) {
+            @unlink($target);
+            return null;
+        }
+
+        $disk = $disk ?? Storage::disk(config('media.disk', 'media'));
+        $posterPath = "media-assets/{$checksum}/poster.webp";
+        $put = $disk->put($posterPath, fopen($target, 'r'), ['visibility' => 'public']);
+        @unlink($target);
+
+        return $put ? ['path' => $posterPath, 'url' => $disk->url($posterPath)] : null;
     }
 
     public function keepOriginal(): bool
