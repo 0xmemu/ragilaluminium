@@ -165,7 +165,7 @@ function variationLabel(item: OrderItemPreview): string {
 
 /** Grid kolom: produk | bayar | status pesanan | pembayaran | usia | pengiriman | aksi */
 const orderRowGridClass =
-  "xl:grid xl:grid-cols-[minmax(0,2.6fr)_minmax(3.5rem,0.32fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
+  "xl:grid xl:grid-cols-[minmax(0,2.92fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
@@ -176,8 +176,10 @@ function OrderListColumnHeader() {
       )}
       aria-hidden="true"
     >
-      <span>Produk</span>
-      <span>Item</span>
+      <div className="flex items-baseline justify-between">
+        <span>Produk</span>
+        <span>Item</span>
+      </div>
       <span>Dibayar pembeli</span>
       <span>Status pesanan</span>
       <span>Pembayaran</span>
@@ -316,14 +318,13 @@ function OrderCardRow({
 
       <div className={cn(orderRowGridClass, "gap-y-3 divide-y divide-border p-4 xl:divide-y-0")}>
         {/* Produk */}
-        <div className="min-w-0 space-y-2 xl:contents">
+        <div className="min-w-0 space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Produk
           </p>
-          <ul className="xl:contents">
+          <ul className="space-y-2.5">
             {visibleItems.map((item) => (
-              <React.Fragment key={item.id}>
-              <li className="flex gap-2.5 xl:col-start-1">
+              <li key={item.id} className="flex gap-2.5">
                 <div className="size-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                   {item.image ? (
                     <img src={item.image} alt="" className="size-full object-cover" />
@@ -338,12 +339,6 @@ function OrderCardRow({
                     <p className="line-clamp-2 flex-1 text-[13px] font-medium leading-5 text-foreground">
                       {item.name}
                     </p>
-                    <span
-                      className="shrink-0 tabular-nums text-[13px] font-semibold text-foreground"
-                      title={`Qty ${item.name}`}
-                    >
-                      x{formatNumber(item.quantity)}
-                    </span>
                     <button
                       type="button"
                       onClick={() => copyItemText(item.name)}
@@ -368,15 +363,13 @@ function OrderCardRow({
                     Catatan: {item.note || "-"}
                   </p>
                 </div>
-                <span className="sr-only">x{formatNumber(item.quantity)}</span>
+                <span
+                  className="ml-auto shrink-0 self-start tabular-nums text-[13px] font-semibold text-foreground"
+                  title={`Qty ${item.name}`}
+                >
+                  x{formatNumber(item.quantity)}
+                </span>
               </li>
-              <li
-                className="hidden items-start self-start tabular-nums text-[13px] font-semibold text-foreground xl:col-start-2 xl:flex"
-                title={`Qty ${item.name}`}
-              >
-                x{formatNumber(item.quantity)}
-              </li>
-              </React.Fragment>
             ))}
           </ul>
           {order.items_total > 2 ? (
@@ -393,24 +386,6 @@ function OrderCardRow({
             </button>
           ) : null}
 
-        </div>
-
-        {/* Item (qty per produk) */}
-        <div className="min-w-0 space-y-2 pt-3 xl:contents">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
-            Item
-          </p>
-          <ul className="xl:contents" aria-label="Qty per produk">
-            {visibleItems.map((item) => (
-              <li
-                key={`qty-${item.id}`}
-                className="flex min-h-11 items-start tabular-nums text-[13px] font-semibold text-foreground xl:hidden"
-                title={`Qty ${item.name}`}
-              >
-                x{formatNumber(item.quantity)}
-              </li>
-            ))}
-          </ul>
         </div>
 
         {/* Dibayar Pembeli */}
