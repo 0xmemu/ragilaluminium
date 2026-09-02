@@ -49,6 +49,7 @@ class ModelProductController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/ModelProducts/Form', [
+            'backUrl' => route('admin.model-products.index'),
             'modelProduct' => null,
             'types' => CmsModelProduct::TYPES,
             'statuses' => CmsModelProduct::STATUSES,
@@ -84,6 +85,7 @@ class ModelProductController extends Controller
     public function edit(CmsModelProduct $modelProduct): Response
     {
         return Inertia::render('Admin/ModelProducts/Form', [
+            'backUrl' => route('admin.model-products.index'),
             'modelProduct' => [
                 'id' => $modelProduct->id,
                 'name' => $modelProduct->name,
