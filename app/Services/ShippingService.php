@@ -69,6 +69,21 @@ class ShippingService
     ): array {
         $weightKg = max($weightKg, 1.0);
 
+        // Area (kecamatan) adalah kunci pencocokan master J&T. Bila form
+        // belum mengirimnya tetapi postal_code tersedia, resolusi dari
+        // dataset postal (level kecamatan) supaya tarif REAL dihitung,
+        // bukan jatuh ke estimasi provisional.
+        if (($destinationArea === null || trim($destinationArea) === '') && filled($postalCode)) {
+            $resolved = DB::table('postal_code_mappings')
+                ->where('postal_code', trim((string) $postalCode))
+                ->distinct()
+                ->orderBy('district_name')
+                ->value('district_name');
+            if (is_string($resolved) && $resolved !== '') {
+                $destinationArea = $resolved;
+            }
+        }
+
         if (! $this->jnt->isEnabled()) {
             $freight = $this->localEstimate($weightKg);
             $applied = ShippingSubsidySettings::apply($freight, 'jnt');
