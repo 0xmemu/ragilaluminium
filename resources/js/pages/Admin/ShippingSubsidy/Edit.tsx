@@ -164,11 +164,6 @@ export default function ShippingSubsidyEdit({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
-          </Button>
-        </div>
       </form>
     </AdminLayout>
   )
