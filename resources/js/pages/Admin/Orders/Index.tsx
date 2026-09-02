@@ -165,7 +165,7 @@ function variationLabel(item: OrderItemPreview): string {
 
 /** Grid kolom: produk | bayar | status pesanan | pembayaran | usia | pengiriman | aksi */
 const orderRowGridClass =
-  "xl:grid xl:grid-cols-[minmax(0,2.6fr)_minmax(3.5rem,0.32fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
+  "xl:grid xl:grid-cols-[minmax(0,2.6fr)_minmax(6.5rem,0.85fr)_minmax(7.5rem,0.95fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)_minmax(8.5rem,1fr)_minmax(6rem,0.75fr)] xl:items-start xl:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
@@ -177,7 +177,6 @@ function OrderListColumnHeader() {
       aria-hidden="true"
     >
       <span>Produk</span>
-      <span>Item</span>
       <span>Dibayar pembeli</span>
       <span>Status pesanan</span>
       <span>Pembayaran</span>
