@@ -73,7 +73,7 @@ class PageController extends Controller
             }
         }
 
-        return Inertia::render('Public/InformasiToko', [
+        return Inertia::render('Public/About', [
             'page' => [
                 'title' => $title,
                 'heading' => $heading,

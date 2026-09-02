@@ -171,7 +171,7 @@ function PlatformChip({ item }: { item: SocialLink }) {
   )
 }
 
-export default function InformasiToko({ page }: { page: PageData }) {
+export default function About({ page }: { page: PageData }) {
   const { brand, consultationWhatsApp, platforms = [] } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
   const phoneHref = brand.phone ? `tel:${brand.phone.replace(/[^\d+]/g, "")}` : null
