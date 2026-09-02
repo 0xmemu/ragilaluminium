@@ -192,7 +192,7 @@ export function ProductGallery({
 
           {items.length > 1 ? (
             <div
-              className="mt-2 flex gap-2 overflow-x-auto px-4 pb-2"
+              className="mt-2 flex gap-2 overflow-x-auto pr-0 pl-4 pb-2 lg:pr-4"
               aria-label="Pilih foto produk"
             >
               {/* K3/K7: strip thumb maks 5; thumb ke-5 menandai total media (5/N) di pojok kanan bawah. */}
@@ -208,7 +208,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative size-16 lg:size-12 shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "relative aspect-square h-auto min-w-0 flex-1 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:h-12 lg:w-12 lg:flex-none",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
