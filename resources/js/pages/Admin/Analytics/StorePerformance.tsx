@@ -88,6 +88,7 @@ interface Report {
     compare_to_date: string
     is_running: boolean
   }
+  generated_at: string
   financial: {
     gross_revenue: number
     refund_adjustments: number
@@ -147,6 +148,14 @@ function formatPrevious(kpi: Kpi): string {
       return formatNumber(kpi.previous)
   }
 }
+// P0-2: freshness "Data diperbarui ..." - format ISO ke "2 Sep 2026, 22:01 WIB".
+function formatGeneratedAt(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return "-"
+  const t = d.toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  return t.replace(".", ":") + " WIB"
+}
+
 // KPI-005: durasi -> "X jam Y menit". days=true ditampilkan "X hari Y jam".
 function formatDuration(value: number, isDays = false): string {
   if (!Number.isFinite(value) || value <= 0) return "0 menit"
@@ -338,12 +347,18 @@ export default function StorePerformance({
       title={title}
       description={description}
       actions={
-        <Button asChild variant="secondary">
-          <a href={exportUrl}>
-            <Icon name="download" className="size-4" aria-hidden="true" />
-            Unduh Laporan
-          </a>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => router.reload({ only: ["report", "filters"] })}>
+            <Icon name="refresh" className="size-4" aria-hidden="true" />
+            Perbarui
+          </Button>
+          <Button asChild variant="secondary">
+            <a href={exportUrl}>
+              <Icon name="download" className="size-4" aria-hidden="true" />
+              Unduh Laporan
+            </a>
+          </Button>
+        </div>
       }
     >
       <Head title={`${title} | Admin`} />
@@ -373,7 +388,7 @@ export default function StorePerformance({
           </div>
             <h2 className="mt-1 text-xl font-bold">{report.range.label}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {report.range.from_date} – {report.range.to_date} · {report.range.compare_label}
+              {report.range.from_date} – {report.range.to_date} · {report.range.compare_label} · Data diperbarui {formatGeneratedAt(report.generated_at)}
             </p>
           </div>
           <div className="flex flex-wrap items-end gap-2">

@@ -248,6 +248,8 @@ class StorePerformanceService
                 'to_date_iso' => $range['to']->toDateString(),
                 'is_running' => $range['is_running'],
             ],
+            // P0-2 freshness: waktu laporan dibangun (WIB) utk indikator 'Data diperbarui'.
+            'generated_at' => now()->timezone(config('app.timezone', 'Asia/Jakarta'))->toIso8601String(),
             'financial' => [
                 'gross_revenue' => $current['gross_revenue'],
                 'refund_adjustments' => $current['refund_adjustments'],
