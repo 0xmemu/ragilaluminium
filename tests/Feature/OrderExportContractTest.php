@@ -156,8 +156,9 @@ class OrderExportContractTest extends TestCase
         // tampil sekali di baris item pertama, baris lain '-'
         $this->assertSame('150,000', $r1[14]);
         $this->assertSame('-', $r2[14]);
-        $this->assertSame('20,000', $r1[15]);
-        $this->assertSame('-', $r2[15]);
+        // SUBSIDI 20.000 dibagi RATA per unit: A = 20.000 x 1/3 = 6.667; B = 20.000 x 2/3 = 13.333
+        $this->assertSame('6,667', $r1[15]);
+        $this->assertSame('13,333', $r2[15]);
         // BIAYA COD 5.000 rata per unit: A = 5.000 x 1/3 = 1.667; B = 5.000 x 2/3 = 3.333
         $this->assertSame('1,667', $r1[16]);
         $this->assertSame('3,333', $r2[16]);
@@ -167,11 +168,11 @@ class OrderExportContractTest extends TestCase
         // ONGKIR RETUR = nilai pesanan: sekali di baris pertama
         $this->assertSame('25,000', $r1[18]);
         $this->assertSame('-', $r2[18]);
-        // penghasilan bersih: HANYA bagian biaya COD yang dikurangi (rata per unit)
-        // A qty1: 1.250.000 - 50.000 - (5.000 x 1/3) = 1.198.333
-        $this->assertSame('1,198,333', $r1[19]);
-        // B qty2: 1.500.000 - (5.000 x 2/3) = 1.496.667
-        $this->assertSame('1,496,667', $r2[19]);
+        // penghasilan bersih = nilai - diskon - (bagian subsidi + bagian COD), rata per unit
+        // A qty1: 1.250.000 - 50.000 - (6.667 + 1.667) = 1.191.667
+        $this->assertSame('1,191,667', $r1[19]);
+        // B qty2: 1.500.000 - (13.333 + 3.333) = 1.483.333
+        $this->assertSame('1,483,333', $r2[19]);
         // resi
         $this->assertSame('RESI1234567890', $r1[20]);
         // alamat lengkap
@@ -182,7 +183,7 @@ class OrderExportContractTest extends TestCase
         $raw = array_values(array_slice($ss->getSheetByName('Laporan Pesanan')->toArray(null, true, false), 1, 2)[0]);
         $this->assertEquals(1250000.0, (float) $raw[9]);
         $this->assertEqualsWithDelta(1666.667, (float) $raw[16], 0.01, 'COD item A = 5.000 x (1/3)');
-        $this->assertEqualsWithDelta(1198333.33, (float) $raw[19], 0.01, 'net item A = 1.250.000 - 50.000 - 1.666,67');
+        $this->assertEqualsWithDelta(1191666.67, (float) $raw[19], 0.01, 'net item A = 1.250.000 - 50.000 - (6.666,67 + 1.666,67)');
 
         // sheet Panduan menjelaskan pembagian biaya
         $guide = $ss->getSheetByName('Panduan')->toArray();
@@ -190,8 +191,8 @@ class OrderExportContractTest extends TestCase
         $this->assertStringContainsString('PEMBAGIAN BIAYA', $guideText);
         $this->assertStringContainsString('RATA per unit', $guideText);
         $this->assertStringContainsString('sekali di baris item pertama', $guideText);
-        $this->assertStringContainsString('cartWeightKg', $guideText);
-        $this->assertStringContainsString('TIDAK dibagi', $guideText);
+        $this->assertStringContainsString('dibayar pembeli', $guideText);
+        $this->assertStringContainsString('5.000 per produk', $guideText, 'contoh owner: ongkir 100.000 subsidi 10% = 10.000, 2 produk -> 5.000/produk');
         $this->assertStringContainsString('PENGHASILAN BERSIH', $guideText);
         $this->assertStringContainsString('tanpa "Rp"', $guideText);
         $this->assertStringContainsString('order_number', $guideText);
@@ -255,4 +256,69 @@ class OrderExportContractTest extends TestCase
         // tanpa biaya order, penghasilan bersih = harga produk
         $this->assertSame('500,000', $row[19]);
     }
+
+    public function test_subsidi_ongkir_dibagi_rata_per_produk_contoh_owner(): void
+    {
+        $order = Order::create([
+            'order_number' => 'ORD-EXP-003',
+            'customer_name' => 'Tono',
+            'customer_phone' => '081111112222',
+            'shipping_address_line1' => 'Jl. Melati 1',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50100',
+            'order_status' => 'completed',
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+            'subtotal_amount' => 3500000,
+            'shipping_amount' => 100000,
+            'shipping_subsidy_amount' => 10000,
+            'discount_amount' => 0,
+            'total_amount' => 3600000,
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+
+        foreach ([['RA-D', 'RA-D-1', 'Produk D', 1500000], ['RA-E', 'RA-E-1', 'Produk E', 2000000]] as [$ps, $vs, $nm, $harga]) {
+            $prod = Product::create(['parent_sku' => $ps, 'name' => $nm, 'category_id' => 1, 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'status' => 'archived']);
+            $var = ProductVariant::create(['product_id' => $prod->id, 'variant_sku' => $vs, 'price' => $harga, 'stock' => 5, 'weight_kg' => 1.0, 'status' => 'active']);
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $prod->id,
+                'product_variant_id' => $var->id,
+                'parent_sku' => $ps,
+                'variant_sku' => $vs,
+                'name' => $nm,
+                'unit_price' => $harga,
+                'quantity' => 1,
+                'line_subtotal' => $harga,
+                'line_discount' => 0,
+                'discount_source' => 'reg',
+                'line_total' => $harga,
+            ]);
+        }
+
+        $export = new \App\Exports\OrderExport(Order::query()->where('order_number', 'ORD-EXP-003'));
+        Excel::store($export, 'exp3.xlsx', 'imports');
+        $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load(
+            \Illuminate\Support\Facades\Storage::disk('imports')->path('exp3.xlsx')
+        )->getSheetByName('Laporan Pesanan');
+        $rows = array_values(array_slice($sheet->toArray(null, true, true, true), 1, 2));
+        $r1 = array_values($rows[0]);
+        $r2 = array_values($rows[1]);
+
+        // ongkir 100.000 dibayar pembeli: tampil sekali di baris pertama
+        $this->assertSame('100,000', $r1[14]);
+        $this->assertSame('-', $r2[14]);
+        // subsidi 10.000 dibagi rata ke 2 produk: 5.000 per produk (contoh owner)
+        $this->assertSame('5,000', $r1[15]);
+        $this->assertSame('5,000', $r2[15]);
+        // tidak ada COD -> 0 tetap tampil
+        $this->assertSame('0', $r1[16]);
+        $this->assertSame('0', $r2[16]);
+        // net = harga - (bagian subsidi + bagian COD): 1.500.000 - 5.000 = 1.495.000
+        $this->assertSame('1,495,000', $r1[19]);
+        $this->assertSame('1,995,000', $r2[19]);
+    }
+
 }
