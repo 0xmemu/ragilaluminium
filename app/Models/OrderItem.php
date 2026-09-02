@@ -25,6 +25,7 @@ class OrderItem extends Model
         'quantity',
         'line_subtotal',
         'line_discount',
+        'discount_source',
         'line_total',
         'note',
     ];

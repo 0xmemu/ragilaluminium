@@ -122,6 +122,7 @@ class OrderService
                         $lineDiscount = $compareUnit !== null && $compareUnit > $unitPrice
                             ? ($compareUnit - $unitPrice) * $qty
                             : 0.0;
+                        $flashSale = (bool) ($pricing['flash_sale'] ?? false);
                         $subtotal += $lineSubtotal;
                         $discountTotal += $lineDiscount;
 
@@ -133,6 +134,7 @@ class OrderService
                             'unitPrice',
                             'lineSubtotal',
                             'lineDiscount',
+                            'flashSale',
                         );
                     }
 
@@ -546,7 +548,8 @@ class OrderService
                 $subtotal += $lineSubtotal;
                 $discountTotal += $lineDiscount;
 
-                $lines[] = compact('itemId', 'oldItem', 'product', 'variant', 'qty', 'unitPrice', 'lineSubtotal', 'lineDiscount');
+                $flashSale = (bool) ($pricing['flash_sale'] ?? false);
+                $lines[] = compact('itemId', 'oldItem', 'product', 'variant', 'qty', 'unitPrice', 'lineSubtotal', 'lineDiscount', 'flashSale');
             }
 
             if (empty($lines)) {
@@ -648,6 +651,7 @@ class OrderService
                         'unit_price' => $line['unitPrice'],
                         'line_subtotal' => $line['lineSubtotal'],
                         'line_discount' => $line['lineDiscount'],
+                        'discount_source' => ($line['flashSale'] ? 'flashsale' : 'reg'),
                         'line_total' => $line['lineSubtotal'],
                     ]);
                     $lineIds[] = $oldItem->id;
@@ -668,6 +672,7 @@ class OrderService
                     'quantity' => $line['qty'],
                     'line_subtotal' => $line['lineSubtotal'],
                     'line_discount' => $line['lineDiscount'],
+                    'discount_source' => ($line['flashSale'] ? 'flashsale' : 'reg'),
                     'line_total' => $line['lineSubtotal'],
                 ]);
                 $changes[] = [
