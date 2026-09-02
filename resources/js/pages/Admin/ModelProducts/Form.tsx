@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -24,6 +24,36 @@ interface ModelRecord {
   sort_order: number
 }
 
+// Template label pill (kontrak owner 2026-09-02: maksimal 2 kata).
+// Admin pilih dari daftar ini saat mengisi kata kunci; input manual tetap
+// bisa selama tidak lebih dari 2 kata.
+const PILL_PRESETS: string[] = [
+  "Tahan Air",
+  "Anti Debu",
+  "Kaca Kuat",
+  "Hemat Ruang",
+  "Gerak Ringan",
+  "Klasik Elegan",
+  "Ventilasi Penuh",
+  "Mudah Dirawat",
+  "Sirkulasi Baik",
+  "Buka Penuh",
+  "Sirkulasi Optimal",
+  "Anti Basah",
+  "Rapi Modern",
+  "Bukaan Lebar",
+  "Bukaan Samping",
+  "Privasi Terjaga",
+  "Cahaya Maksimal",
+  "Tampilan Modern",
+  "Kedap Debu",
+  "Garansi Penuh",
+]
+
+function wordCount(value: string): number {
+  return value.trim().length === 0 ? 0 : value.trim().split(/\s+/).length
+}
+
 export default function ModelProductForm({
   modelProduct,
   types,
@@ -32,6 +62,7 @@ export default function ModelProductForm({
   models,
   submitUrl,
   indexUrl,
+  backUrl,
 }: {
   modelProduct: ModelRecord | null
   types: string[]
@@ -40,6 +71,7 @@ export default function ModelProductForm({
   models: Array<{ value: string; label: string }>
   submitUrl: string
   indexUrl: string
+  backUrl?: string | null
 }) {
   const editing = Boolean(modelProduct)
   const form = useForm({
@@ -57,6 +89,7 @@ export default function ModelProductForm({
 
   return (
     <AdminLayout
+      backUrl={backUrl}
       title={editing ? "Edit model produk" : "Tambah model produk"}
       description="Tautkan ke kategori/model katalog agar statistik dan link storefront akurat."
       actions={
@@ -67,7 +100,7 @@ export default function ModelProductForm({
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Model Produk | Admin`} />
       <form
-        className="mx-auto max-w-3xl space-y-6"
+        className="w-full space-y-5"
         onSubmit={(event) => {
           event.preventDefault()
           if (editing) form.put(submitUrl)
@@ -75,146 +108,232 @@ export default function ModelProductForm({
         }}
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="model-name" label="Nama tampilan" required error={form.errors.name} className="sm:col-span-2">
-              <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} />
-            </Field>
-            <Field id="model-category" label="Kategori katalog" error={form.errors.product_category}>
-              <Select
-                value={form.data.product_category}
-                onChange={(event) => form.setData("product_category", event.target.value)}
-              >
-                <option value="">— Pilih —</option>
-                {categories.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field id="model-code" label="Kode model katalog" error={form.errors.product_model}>
-              <Select
-                value={form.data.product_model}
-                onChange={(event) => form.setData("product_model", event.target.value)}
-              >
-                <option value="">— Pilih —</option>
-                {models.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field id="model-type" label="Tipe desain" required error={form.errors.type}>
-              <Select value={form.data.type} onChange={(event) => form.setData("type", event.target.value)}>
-                {types.map((type) => (
-                  <option key={type} value={type}>{humanize(type)}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field id="model-status" label="Status" required error={form.errors.status}>
-              <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
-                {statuses.map((status) => (
-                  <option key={status} value={status}>{humanize(status)}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field id="model-image" label="URL gambar" error={form.errors.image_url} className="sm:col-span-2">
-              <Input
-                type="url"
-                value={form.data.image_url}
-                onChange={(event) => form.setData("image_url", event.target.value)}
-              />
-            </Field>
-            {form.data.image_url ? (
-              <img
-                src={form.data.image_url}
-                alt=""
-                className="max-h-48 w-full border border-border object-cover sm:col-span-2"
-              />
-            ) : null}
-            <Field
-              id="model-description"
-              label="Deskripsi model"
-              hint="Tampil di halaman detail model storefront. Kosongkan untuk memakai teks default sistem."
-              error={form.errors.description}
-              className="sm:col-span-2"
-            >
-              <Textarea
-                rows={5}
-                value={form.data.description}
-                onChange={(event) => form.setData("description", event.target.value)}
-                placeholder="Contoh: Jendela sliding cocok untuk ruangan dengan bukaan lebar…"
-              />
-            </Field>
-            <Field
-              id="model-keywords"
-              label="Kata kunci (opsional)"
-              hint="Tiap baris menjadi satu pill di hero halaman detail model. Kosongkan untuk memakai kata kunci default sistem. Maksimal 6."
-              error={form.errors.keywords}
-              className="sm:col-span-2"
-            >
-              <div className="space-y-2">
-                {form.data.keywords.map((keyword, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      className="min-w-0 flex-1"
-                      value={form.data.keywords[index]}
-                      onChange={(event) => {
-                        const next = form.data.keywords.map((item, i) =>
-                          i === index ? event.target.value : item,
-                        )
-                        form.setData("keywords", next)
-                      }}
-                      placeholder={`Kata kunci ${index + 1}, contoh: Tahan Cipratan Air`}
-                    />
+
+        <div className="overflow-hidden rounded-lg border border-border">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Nama tampilan <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} className="h-8 text-xs" />
+                  {form.errors.name ? <p className="mt-1 text-xs text-destructive">{form.errors.name}</p> : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kategori katalog
+                </th>
+                <td className="px-4 py-2.5">
+                  <Select
+                    value={form.data.product_category}
+                    onChange={(event) => form.setData("product_category", event.target.value)}
+                    className="h-8 w-72 text-xs"
+                  >
+                    <option value="">Pilih</option>
+                    {categories.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </Select>
+                  {form.errors.product_category ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.product_category}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kode model katalog
+                </th>
+                <td className="px-4 py-2.5">
+                  <Select
+                    value={form.data.product_model}
+                    onChange={(event) => form.setData("product_model", event.target.value)}
+                    className="h-8 w-72 text-xs"
+                  >
+                    <option value="">Pilih</option>
+                    {models.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </Select>
+                  {form.errors.product_model ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.product_model}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Tipe desain <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Select value={form.data.type} onChange={(event) => form.setData("type", event.target.value)} className="h-8 w-64 text-xs">
+                    {types.map((type) => (
+                      <option key={type} value={type}>{humanize(type)}</option>
+                    ))}
+                  </Select>
+                  {form.errors.type ? <p className="mt-1 text-xs text-destructive">{form.errors.type}</p> : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Status <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} className="h-8 w-48 text-xs">
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>{humanize(status)}</option>
+                    ))}
+                  </Select>
+                  {form.errors.status ? <p className="mt-1 text-xs text-destructive">{form.errors.status}</p> : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">URL gambar</th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    type="url"
+                    value={form.data.image_url}
+                    onChange={(event) => form.setData("image_url", event.target.value)}
+                    className="h-8 text-xs"
+                  />
+                  {form.errors.image_url ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.image_url}</p>
+                  ) : null}
+                  {form.data.image_url ? (
+                    <img src={form.data.image_url} alt="" className="mt-2 max-h-40 border border-border object-cover" />
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Deskripsi model</th>
+                <td className="px-4 py-2.5">
+                  <Textarea
+                    rows={3}
+                    value={form.data.description}
+                    onChange={(event) => form.setData("description", event.target.value)}
+                    className="text-xs"
+                    placeholder="Contoh: Jendela sliding cocok untuk ruangan dengan bukaan lebar…"
+                  />
+                  {form.errors.description ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Tampil di halaman detail model storefront. Kosongkan untuk memakai teks default sistem.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kata kunci (opsional)
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="max-w-lg space-y-2">
+                    {form.data.keywords.map((keyword, index) => {
+                      const over = wordCount(keyword) > 2
+                      return (
+                      <div key={index} className="flex items-center gap-2">
+                        <Select
+                          className="h-8 w-44 shrink-0 text-xs"
+                          value=""
+                          onChange={(event) => {
+                            if (!event.target.value) return
+                            const next = form.data.keywords.map((item, i) =>
+                              i === index ? event.target.value : item,
+                            )
+                            form.setData("keywords", next)
+                          }}
+                          aria-label={`Pilih template label ${index + 1}`}
+                        >
+                          <option value="">Template...</option>
+                          {PILL_PRESETS.filter((preset) => !form.data.keywords.includes(preset) || preset === keyword).map((preset) => (
+                            <option key={preset} value={preset}>{preset}</option>
+                          ))}
+                        </Select>
+                        <Input
+                          className={`h-8 min-w-0 flex-1 text-xs ${over ? "border-destructive" : ""}`}
+                          value={form.data.keywords[index]}
+                          onChange={(event) => {
+                            const next = form.data.keywords.map((item, i) =>
+                              i === index ? event.target.value : item,
+                            )
+                            form.setData("keywords", next)
+                          }}
+                          placeholder={`Label ${index + 1}, maks 2 kata`}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="size-8 shrink-0 px-0"
+                          disabled={form.data.keywords.length <= 1}
+                          onClick={() => {
+                            const next = form.data.keywords.filter((_, i) => i !== index)
+                            form.setData("keywords", next)
+                          }}
+                          aria-label={`Hapus kata kunci ${index + 1}`}
+                        >
+                          <Icon name="trash-2" className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                      )
+                    })}
                     <Button
                       type="button"
-                      variant="ghost"
-                      className="size-8 shrink-0 px-0"
-                      disabled={form.data.keywords.length <= 1}
-                      onClick={() => {
-                        const next = form.data.keywords.filter((_, i) => i !== index)
-                        form.setData("keywords", next)
-                      }}
-                      aria-label={`Hapus kata kunci ${index + 1}`}
+                      variant="secondary"
+                      size="sm"
+                      disabled={form.data.keywords.length >= 6}
+                      onClick={() => form.setData("keywords", [...form.data.keywords, ""])}
                     >
-                      <Icon name="trash-2" className="size-4" aria-hidden="true" />
+                      <Icon name="plus" className="size-4" aria-hidden="true" />
+                      Tambah kata kunci
                     </Button>
                   </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={form.data.keywords.length >= 6}
-                  onClick={() => form.setData("keywords", [...form.data.keywords, ""])}
-                >
-                  <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah kata kunci
-                </Button>
-              </div>
-            </Field>
-            <Field
-              id="model-menu-href"
-              label="URL menu kustom (opsional)"
-              hint="Dipakai di menu kategori beranda. Kosongkan untuk memakai link otomatis ke halaman model."
-              error={form.errors.menu_href}
-              className="sm:col-span-2"
-            >
-              <Input
-                type="url"
-                value={form.data.menu_href}
-                onChange={(event) => form.setData("menu_href", event.target.value)}
-                placeholder="https://… atau /products/…"
-              />
-            </Field>
-            <Field id="model-sort" label="Urutan" error={form.errors.sort_order}>
-              <Input
-                type="number"
-                min="0"
-                value={form.data.sort_order}
-                onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-              />
-            </Field>
-          </div>
-        </section>
+                  {form.errors.keywords ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.keywords}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Tiap baris menjadi satu pill di hero halaman detail model. Pilih dari template atau tulis sendiri, maksimal 2 kata. Maksimal 6 pill.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  URL menu kustom (opsional)
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    type="url"
+                    value={form.data.menu_href}
+                    onChange={(event) => form.setData("menu_href", event.target.value)}
+                    className="h-8 text-xs"
+                    placeholder="https://… atau /products/…"
+                  />
+                  {form.errors.menu_href ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.menu_href}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Dipakai di menu kategori beranda. Kosongkan untuk memakai link otomatis ke halaman model.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Urutan</th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.data.sort_order}
+                    onChange={(event) => form.setData("sort_order", Number(event.target.value))}
+                    className="h-8 w-32 text-xs"
+                  />
+                  {form.errors.sort_order ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.sort_order}</p>
+                  ) : null}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <div className="flex justify-end gap-2">
           <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
           <Button type="submit" disabled={form.processing}>

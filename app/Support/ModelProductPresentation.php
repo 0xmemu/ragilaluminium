@@ -23,35 +23,35 @@ class ModelProductPresentation
                 'subtitle' => 'Timeless & Minimalis',
                 'desc' => 'Desain sederhana dengan kaca mati polos yang memberi kesan bersih, terang, dan elegan untuk setiap hunian. Cocok untuk memaksimalkan pencahayaan alami tanpa mengurangi privasi.',
                 'highlights' => [
-                    ['icon' => 'sparkle', 'label' => 'Tampilan Bersih & Modern'],
-                    ['icon' => 'sun', 'label' => 'Maksimalkan Pencahayaan'],
-                    ['icon' => 'shield-check', 'label' => 'Cocok untuk Berbagai Ruangan'],
+                    ['icon' => 'sparkle', 'label' => 'Tampilan Modern'],
+                    ['icon' => 'sun', 'label' => 'Cahaya Maksimal'],
+                    ['icon' => 'shield-check', 'label' => 'Serbaguna'],
                 ],
             ],
             'JUNGKIT' => [
                 'subtitle' => 'Praktis & Aman',
                 'desc' => 'Jendela jungkit cocok untuk kamar mandi dan dapur. Aman dari cipratan air hujan sambil tetap memberi sirkulasi udara.',
                 'highlights' => [
-                    ['icon' => 'sparkle', 'label' => 'Tahan Cipratan Air'],
-                    ['icon' => 'sun', 'label' => 'Sirkulasi Udara Optimal'],
-                    ['icon' => 'shield-check', 'label' => 'Aman untuk Area Basah'],
+                    ['icon' => 'sparkle', 'label' => 'Tahan Air'],
+                    ['icon' => 'sun', 'label' => 'Sirkulasi Optimal'],
+                    ['icon' => 'shield-check', 'label' => 'Anti Basah'],
                 ],
             ],
             'SLIDING' => [
                 'subtitle' => 'Luas & Rapi',
                 'desc' => 'Jendela sliding cocok untuk ruangan dengan bukaan lebar dan memberikan kesan rapi pada rumah Anda.',
                 'highlights' => [
-                    ['icon' => 'columns-3', 'label' => 'Bukaan Lebar Hemat Ruang'],
-                    ['icon' => 'sparkle', 'label' => 'Tampilan Rapi Modern'],
-                    ['icon' => 'shield-check', 'label' => 'Kokoh untuk Sehari-hari'],
+                    ['icon' => 'columns-3', 'label' => 'Bukaan Lebar'],
+                    ['icon' => 'sparkle', 'label' => 'Rapi Modern'],
+                    ['icon' => 'shield-check', 'label' => 'Kokoh Harian'],
                 ],
             ],
             'SWING' => [
                 'subtitle' => 'Klasik & Kokoh',
                 'desc' => 'Bukaan samping dengan engsel kokoh. Sirkulasi udara optimal untuk ruang tamu dan kamar tidur.',
                 'highlights' => [
-                    ['icon' => 'door-open', 'label' => 'Bukaan Samping Lebar'],
-                    ['icon' => 'sun', 'label' => 'Sirkulasi Udara Optimal'],
+                    ['icon' => 'door-open', 'label' => 'Bukaan Samping'],
+                    ['icon' => 'sun', 'label' => 'Sirkulasi Optimal'],
                     ['icon' => 'shield-check', 'label' => 'Engsel Kokoh'],
                 ],
             ],
@@ -61,7 +61,7 @@ class ModelProductPresentation
                 'highlights' => [
                     ['icon' => 'columns-3', 'label' => 'Ventilasi Merata'],
                     ['icon' => 'sun', 'label' => 'Cahaya Alami'],
-                    ['icon' => 'shield-check', 'label' => 'Privasi Tetap Terjaga'],
+                    ['icon' => 'shield-check', 'label' => 'Privasi Terjaga'],
                 ],
             ],
         ];
@@ -72,7 +72,7 @@ class ModelProductPresentation
             'highlights' => [
                 ['icon' => 'sparkle', 'label' => 'Desain Rapi'],
                 ['icon' => 'package', 'label' => 'Siap Dikirim'],
-                ['icon' => 'shield-check', 'label' => 'Garansi 100 persen'],
+                ['icon' => 'shield-check', 'label' => 'Garansi Penuh'],
             ],
         ];
     }

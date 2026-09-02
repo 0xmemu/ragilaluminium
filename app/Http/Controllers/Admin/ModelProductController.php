@@ -201,6 +201,15 @@ class ModelProductController extends Controller
             ),
             fn (string $row) => $row !== '',
         )) ?: null;
+
+        // Kontrak owner 2026-09-02: label pill maksimal 2 kata.
+        $tooLong = collect($validated['keywords'] ?? [])
+            ->first(fn (string $row) => str_word_count($row) > 2);
+        if ($tooLong !== null) {
+            return back()
+                ->withErrors(['keywords' => 'Kata kunci "' . $tooLong . '" lebih dari 2 kata. Gunakan maksimal 2 kata per label pill, atau pilih dari template.'])
+                ->withInput();
+        }
         $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
 
         return $validated;
