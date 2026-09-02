@@ -18,7 +18,6 @@ interface AdminNavItemData {
   capability?: string
   /** Filter tambahan berbasis query string (mis. type=flash_sale pada route yang sama). */
   activeType?: "store" | "flash_sale"
-  children?: AdminNavItemData[]
 }
 
 function AdminBrand() {
@@ -59,11 +58,9 @@ function AdminBrand() {
 function AdminNavLink({
   item,
   onNavigate,
-  isChild = false,
 }: {
   item: AdminNavItemData
   onNavigate?: () => void
-  isChild?: boolean
 }) {
   let active = isRouteActive(item.active ?? [item.route])
   if (item.activeType && typeof window !== "undefined") {
@@ -80,28 +77,26 @@ function AdminNavLink({
       }}
       className={cn(
         "group/item flex h-8 items-center gap-2.5 rounded-lg text-[13px] font-medium transition duration-100",
-        isChild ? "py-1.5 pl-8 pr-2.5" : "h-9 px-2.5",
+        "h-9 px-2.5",
         active
           ? "bg-secondary text-foreground"
           : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
       )}
       aria-current={active ? "page" : undefined}
     >
-      {!isChild ? (
-        <Icon
-          name={item.icon ?? "package"}
-          className={cn(
-            "size-4 shrink-0 transition",
-            active
-              ? "text-foreground"
-              : "text-muted-foreground/80 group-hover/item:text-foreground",
-          )}
-          weight={active ? "fill" : "regular"}
-          aria-hidden="true"
-        />
-      ) : null}
+      <Icon
+        name={item.icon ?? "package"}
+        className={cn(
+          "size-4 shrink-0 transition",
+          active
+            ? "text-foreground"
+            : "text-muted-foreground/80 group-hover/item:text-foreground",
+        )}
+        weight={active ? "fill" : "regular"}
+        aria-hidden="true"
+      />
       <span className="truncate">{item.label}</span>
-      {!isChild && item.route === "admin.media.library" ? (
+      {item.route === "admin.media.library" ? (
         <MediaBadge />
       ) : null}
     </Link>
@@ -119,68 +114,6 @@ function MediaBadge() {
   )
 }
 
-/** Item menu dengan submenu inline (pola Ant Design vertical inline submenu). */
-function AdminNavGroup({
-  item,
-  onNavigate,
-}: {
-  item: AdminNavItemData
-  onNavigate?: () => void
-}) {
-  const children = item.children ?? []
-  const childActive = children.some((child) => isRouteActive(child.active ?? [child.route]))
-  const [open, setOpen] = React.useState<boolean>(childActive)
-
-  // Ikuti route berubah (navigasi antar halaman) — buka grup saat anaknya aktif.
-  React.useEffect(() => {
-    if (childActive) setOpen(true)
-  }, [childActive])
-
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className={cn(
-          "flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition duration-100",
-          childActive
-            ? "bg-secondary text-foreground"
-            : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-        )}
-      >
-        <Icon
-          name={item.icon ?? "package"}
-          className={cn(
-            "size-4 shrink-0 transition",
-            childActive
-              ? "text-foreground"
-              : "text-muted-foreground/80 group-hover/item:text-foreground",
-          )}
-          weight={childActive ? "fill" : "regular"}
-          aria-hidden="true"
-        />
-        <span className="truncate">{item.label}</span>
-        <Icon
-          name="caret-down"
-          className={cn(
-            "ml-auto size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </button>
-      {open ? (
-        <ul className="mt-0.5 space-y-0.5">
-          {children.map((child) => (
-            <AdminNavLink key={child.label} item={child} onNavigate={onNavigate} isChild />
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  )
-}
-
 export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const { nav } = usePage<SharedPageProps>().props
   const capabilities = useAdminCapabilities()
@@ -188,9 +121,6 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
 
   function canShowItem(item: AdminNavItemData): boolean {
     if (!item.capability) return true
-    if (item.children?.length) {
-      return can(item.capability, capabilities) || item.children.some((child) => can(child.capability ?? item.capability ?? "", capabilities))
-    }
     return can(item.capability, capabilities)
   }
 
@@ -215,13 +145,9 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
               </p>
             ) : null}
             <ul className="space-y-0.5">
-              {visibleItems.map((item: AdminNavItemData) =>
-                item.children?.length ? (
-                  <AdminNavGroup key={item.label} item={item} onNavigate={onNavigate} />
-                ) : (
-                  <AdminNavLink key={item.label} item={item} onNavigate={onNavigate} />
-                ),
-              )}
+              {visibleItems.map((item: AdminNavItemData) => (
+                <AdminNavLink key={item.label} item={item} onNavigate={onNavigate} />
+              ))}
             </ul>
           </div>
           )
