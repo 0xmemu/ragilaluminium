@@ -140,6 +140,10 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('2', $r2[8]);
         $this->assertSame('1,250,000', $r1[9]);
         $this->assertSame('750,000', $r2[9]);
+        // berat & volume per item (relasi productVariant ke-load, fix eager load)
+        $this->assertSame('5', $r1[10], 'berat A = 5 kg x 1');
+        $this->assertSame('2', $r2[10], 'berat B = 1 kg x 2');
+        $this->assertSame('200 x 100 x 10 cm', $r1[11]);
         // diskon produk; 0 tetap tampil (tidak dibuang writer)
         $this->assertSame('50,000', $r1[12]);
         $this->assertSame('0', $r2[12]);
@@ -148,26 +152,27 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('Reguler', $r2[13]);
         // Biaya level order: COD & REFUND = rata per unit; ONGKIR/SUBSIDI/RETUR = proporsional berat.
         // Total unit 3 (A=1, B=2); total berat 7 (A=5kg, B=1kg x2).
-        // ONGKOS 150.000 x berat: A = 150.000 x 5/7 = 107.143; B = 150.000 x 2/7 = 42.857
-        $this->assertSame('107,143', $r1[14]);
-        $this->assertSame('42,857', $r2[14]);
-        // SUBSIDI 20.000 x berat: A = 14.286; B = 5.714
-        $this->assertSame('14,286', $r1[15]);
-        $this->assertSame('5,714', $r2[15]);
+        // ONGKOS = nilai PESANAN (tarif J&T satu hitungan per kiriman):
+        // tampil sekali di baris item pertama, baris lain '-'
+        $this->assertSame('150,000', $r1[14]);
+        $this->assertSame('-', $r2[14]);
+        $this->assertSame('20,000', $r1[15]);
+        $this->assertSame('-', $r2[15]);
         // BIAYA COD 5.000 rata per unit: A = 5.000 x 1/3 = 1.667; B = 5.000 x 2/3 = 3.333
         $this->assertSame('1,667', $r1[16]);
         $this->assertSame('3,333', $r2[16]);
         // REFUND 300.000 rata per unit: A = 100.000; B = 200.000
         $this->assertSame('100,000', $r1[17]);
         $this->assertSame('200,000', $r2[17]);
-        // ONGKIR RETUR 25.000 x berat: A = 17.857; B = 7.143
-        $this->assertSame('17,857', $r1[18]);
-        $this->assertSame('7,143', $r2[18]);
-        // penghasilan bersih per item (net = nilai - diskon - total bagian biaya):
-        // A: 1.250.000 - 50.000 - 133.810 = 1.066.190
-        $this->assertSame('1,066,190', $r1[19]);
-        // B: 1.500.000 - 0 - 216.190 = 1.283.810
-        $this->assertSame('1,283,810', $r2[19]);
+        // ONGKIR RETUR = nilai pesanan: sekali di baris pertama
+        $this->assertSame('25,000', $r1[18]);
+        $this->assertSame('-', $r2[18]);
+        // penghasilan bersih: net = nilai - diskon - bagian RATA PER UNIT biaya order
+        // biaya = subsidi 20.000 + COD 5.000 + refund 300.000 + retur 25.000 = 350.000
+        // per unit = 350.000/3 = 116.667; A qty1: 1.250.000 - 50.000 - 116.667 = 1.083.333
+        $this->assertSame('1,083,333', $r1[19]);
+        // B qty2: 1.500.000 - 0 - 233.333 = 1.266.667
+        $this->assertSame('1,266,667', $r2[19]);
         // resi
         $this->assertSame('RESI1234567890', $r1[20]);
         // alamat lengkap
@@ -178,15 +183,16 @@ class OrderExportContractTest extends TestCase
         $raw = array_values(array_slice($ss->getSheetByName('Laporan Pesanan')->toArray(null, true, false), 1, 2)[0]);
         $this->assertEquals(1250000.0, (float) $raw[9]);
         $this->assertEqualsWithDelta(1666.667, (float) $raw[16], 0.01, 'COD item A = 5.000 x (1/3)');
-        $this->assertEqualsWithDelta(1066190.48, (float) $raw[19], 0.01, 'net item A eksak');
+        $this->assertEqualsWithDelta(1083333.33, (float) $raw[19], 0.01, 'net item A eksak');
 
         // sheet Panduan menjelaskan pembagian biaya
         $guide = $ss->getSheetByName('Panduan')->toArray();
         $guideText = implode(' | ', array_map(fn ($r) => implode(' ', $r), $guide));
         $this->assertStringContainsString('PEMBAGIAN BIAYA', $guideText);
         $this->assertStringContainsString('RATA per unit', $guideText);
-        $this->assertStringContainsString('proporsional BERAT', $guideText);
+        $this->assertStringContainsString('sekali di baris item pertama', $guideText);
         $this->assertStringContainsString('cartWeightKg', $guideText);
+        $this->assertStringContainsString('TIDAK dibagi', $guideText);
         $this->assertStringContainsString('PENGHASILAN BERSIH', $guideText);
         $this->assertStringContainsString('tanpa "Rp"', $guideText);
         $this->assertStringContainsString('order_number', $guideText);
