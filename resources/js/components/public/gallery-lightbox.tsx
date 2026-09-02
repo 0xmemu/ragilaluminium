@@ -7,6 +7,7 @@ type GalleryItem = {
   src: string
   alt: string
   name?: string | null
+  is_video?: boolean
 }
 
 /** Lightbox fullscreen tanpa frame. Swipe real-time (drag ikut jari/mouse) + tombol + keyboard. */
@@ -157,13 +158,24 @@ export function GalleryLightbox({
       >
         {items.map((item) => (
           <div key={item.src} className="flex h-full w-full shrink-0 items-center justify-center">
-            <img
-              src={item.src}
-              alt={item.alt}
-              onClick={(event) => event.stopPropagation()}
-              className="max-h-[90dvh] max-w-[92vw] select-none object-contain"
-              draggable={false}
-            />
+            {item.is_video ? (
+              <video
+                src={item.src}
+                controls
+                autoPlay
+                playsInline
+                onClick={(event) => event.stopPropagation()}
+                className="max-h-[90dvh] max-w-[92vw] select-none bg-black object-contain"
+              />
+            ) : (
+              <img
+                src={item.src}
+                alt={item.alt}
+                onClick={(event) => event.stopPropagation()}
+                className="max-h-[90dvh] max-w-[92vw] select-none object-contain"
+                draggable={false}
+              />
+            )}
           </div>
         ))}
       </div>

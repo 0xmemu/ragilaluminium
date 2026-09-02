@@ -120,16 +120,27 @@ export function ProductGallery({
               {items.map((item, index) => (
                 <div key={item.id} className="flex h-full w-full shrink-0 items-center justify-center bg-white">
                   {item.is_video ? (
-                    <video
-                      key={item.id}
-                      src={item.url ?? ""}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      poster={item.thumb ?? undefined}
-                      className="size-full bg-black object-contain"
-                      aria-label={`Video produk ${index + 1}`}
-                    />
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        if (!didSwipe.current) setLightboxIndex(index)
+                      }}
+                      className="relative size-full select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      aria-label={`Perbesar video produk ${index + 1}`}
+                    >
+                      <img
+                        src={item.thumb ?? ""}
+                        alt={`${title}, video ${index + 1}`}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        className="size-full bg-white object-contain"
+                      />
+                      <span className="absolute inset-0 z-10 flex items-center justify-center">
+                        <span className="flex size-14 items-center justify-center rounded-full bg-foreground/70 text-background shadow-lg transition-transform group-hover/gallery:scale-105">
+                          <Icon name="play" className="size-6" weight="fill" aria-hidden="true" />
+                        </span>
+                      </span>
+                    </button>
                   ) : (
                     <button
                     type="button"
