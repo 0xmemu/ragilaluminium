@@ -51,14 +51,9 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
             { label: "Beranda", href: routeUrl("home") },
             { label: "Sering ditanyakan", href: null },
           ]}
+
+          title={guide.heading}
         />
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold tracking-tight text-foreground">
-              {guide.heading}
-            </h1>
-          </div>
-        </div>
       </section>
 
       <section>

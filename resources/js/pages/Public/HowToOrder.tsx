@@ -60,14 +60,9 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
             { label: "Beranda", href: routeUrl("home") },
             { label: "Cara pemesanan", href: null },
           ]}
+
+          title={guide.heading}
         />
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
-              {guide.heading}
-            </h1>
-          </div>
-        </div>
       </section>
 
       {/* Bagian 1: 4 Langkah Pemesanan (Mobile-optimized Horizontal Cards) */}

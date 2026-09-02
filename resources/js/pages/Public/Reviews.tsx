@@ -177,18 +177,12 @@ export default function Reviews({
 
       <section className="border-b border-border bg-surface">
         <PageTopBar
+          title={heading}
           breadcrumbs={[
             { label: "Beranda", href: routeUrl("home") },
             { label: heading, href: null },
           ]}
         />
-        <div className="container-page flex flex-col gap-4 py-2 sm:flex-row !px-2.5 md:!px-8 lg:!px-12 sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold tracking-tight text-foreground">{heading}</h1>
-            </div>
-          </div>
-        </div>
       </section>
 
       {total ? (

@@ -75,16 +75,11 @@ export default function InstallationDetail({
       <Head title={docTitle} />
 
       <section className="border-b border-border bg-surface">
-        <PageTopBar breadcrumbs={crumbs} />
-        <div className="container-page flex flex-col gap-3 py-2 sm:flex-row !px-2.5 md:!px-8 lg:!px-12 sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold tracking-tight text-foreground">
-                {product.name}
-              </h1>
-            </div>
-            </div>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
+        <PageTopBar
+          title={product.name}
+          breadcrumbs={crumbs}
+          right={
+            <div className="flex flex-wrap justify-end gap-2">
               {modelHref ? (
                 <Button asChild variant="secondary" className="w-full sm:w-auto">
                   <Link href={modelHref}>Produk model ini</Link>
@@ -97,7 +92,8 @@ export default function InstallationDetail({
                 <Link href={product.href}>Lihat produk</Link>
               </Button>
             </div>
-          </div>
+          }
+        />
       </section>
 
       {/* Item pemasangan — card gaya checkout: gambar + nama + kategori/model + harga */}

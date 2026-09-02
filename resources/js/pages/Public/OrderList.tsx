@@ -6,7 +6,6 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { PageTopBar } from "@/components/public/page-top-bar"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
-import { PageHeader } from "@/components/public/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import PublicLayout from "@/layouts/public-layout"
@@ -194,14 +193,12 @@ export default function OrderList({
 
       <section className="border-b border-border bg-surface">
         <PageTopBar
+          title="Pesanan Saya"
           breadcrumbs={[
             { label: "Beranda", href: routeUrl("home") },
             { label: "Pesanan Saya", href: null },
           ]}
         />
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <PageHeader title="Pesanan Saya" container={false} className="border-b-0" />
-        </div>
       </section>
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4">

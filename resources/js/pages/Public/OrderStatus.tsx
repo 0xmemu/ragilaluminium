@@ -366,10 +366,10 @@ export default function OrderStatus({
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <PageTopBar breadcrumbs={[{ label: "Beranda", href: routeUrl("home") }, { label: "Cek Status Pesanan" }]} />
-        <div className="container-page flex items-center gap-2 py-2 !px-2.5 md:!px-8 lg:!px-12">
-        <h1 className="text-base font-bold text-foreground">Cek Status Pesanan</h1>
-        </div>
+        <PageTopBar
+          title="Cek Status Pesanan"
+          breadcrumbs={[{ label: "Beranda", href: routeUrl("home") }, { label: "Cek Status Pesanan" }]}
+        />
       </section>
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pt-6 lg:pb-10">

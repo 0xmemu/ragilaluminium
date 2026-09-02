@@ -47,22 +47,12 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
 
       <section className="border-b border-border bg-surface">
         <PageTopBar
+          title={isContact ? "Hubungi Kami" : heading}
           breadcrumbs={[
             { label: "Beranda", href: routeUrl("home") },
             { label: page.title, href: null },
           ]}
         />
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
-          {isContact ? (
-            <h1 className="text-base font-bold tracking-tight text-foreground">
-              Hubungi Kami
-            </h1>
-          ) : (
-            <p className={cn("max-w-3xl font-bold leading-snug tracking-tight text-foreground", isLegal ? "text-lg" : "text-lg")}>
-              {heading}
-            </p>
-          )}
-        </div>
       </section>
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12">

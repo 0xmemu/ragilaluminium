@@ -2,7 +2,6 @@ import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { SortArrowsIcon } from "@/components/public/filter-berdasarkan-control"
-import { PageHeader } from "@/components/public/page-header"
 import { PageTopBar } from "@/components/public/page-top-bar"
 import { SortMenu } from "@/components/public/model-sort-menu"
 import { Icon } from "@/components/shared/icon"
@@ -57,14 +56,12 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
 
       <section className="border-b border-border bg-surface">
         <PageTopBar
+          title="Model Produk"
           breadcrumbs={[
             { label: "Beranda", href: routeUrl("home") },
             { label: "Model Produk" },
           ]}
         />
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <PageHeader title="Model Produk" container={false} className="border-b-0" />
-        </div>
       </section>
 
       <section className="bg-surface py-0">

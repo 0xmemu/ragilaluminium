@@ -6,7 +6,6 @@ import { InstallationMediaGallery } from "@/components/public/installation-media
 import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { PageTopBar } from "@/components/public/page-top-bar"
-import { PageHeader } from "@/components/public/page-header"
 import { ModelHero } from "@/components/public/model-hero"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -147,6 +146,7 @@ export default function Installations({
 
       <section className="border-b border-border bg-surface">
         <PageTopBar
+          title={isModelLevel ? heading : "Hasil Pemasangan"}
           singleLine={!isModelLevel}
           breadcrumbs={
             isModelLevel
@@ -161,20 +161,6 @@ export default function Installations({
                 ]
           }
         />
-
-        {isModelLevel ? (
-          <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold tracking-tight text-foreground">
-                {heading}
-              </h1>
-            </div>
-          </div>
-        ) : (
-          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-            <PageHeader title="Hasil Pemasangan" container={false} className="border-b-0" />
-          </div>
-        )}
       </section>
 
       {isModelLevel ? (

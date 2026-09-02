@@ -260,14 +260,9 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
             { label: "Beranda", href: routeUrl("home") },
             { label: "Masalah & solusi", href: null },
           ]}
+
+          title={pageHeading}
         />
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold tracking-tight text-foreground">
-              {pageHeading}
-            </h1>
-          </div>
-        </div>
       </section>
 
       <section>
