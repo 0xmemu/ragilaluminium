@@ -278,7 +278,7 @@ function MetricTile({
       <p className="tabular-nums mt-1 text-xl font-semibold tracking-tight text-foreground">
         {value}
       </p>
-      {delta ? <div className="mt-1">{delta}</div> : null}
+      {delta ? <div className="mt-1 text-xs text-muted-foreground">{delta}</div> : null}
     </div>
   )
 }
