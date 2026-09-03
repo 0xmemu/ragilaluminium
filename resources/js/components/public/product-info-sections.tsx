@@ -310,7 +310,7 @@ export function ProductInfoSections({
             items={installationMedia}
             index={installationIndex}
             onIndexChange={setInstallationIndex}
-            productName={product.short_name || product.name}
+            productName={product.name}
           />
         </section>
       ) : null}
