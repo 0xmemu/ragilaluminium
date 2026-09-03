@@ -151,9 +151,10 @@ export default function Reviews({
         />
       )
     }
-    // Halaman ulasan = 1 kolom (list vertikal), bukan grid.
+    // Screenshot = galeri 2 kolom (2 gambar per baris); ulasan teks tetap 1 kolom.
+    const grid = variant === "screenshot"
     return (
-      <ul className="flex flex-col gap-3">
+      <ul className={grid ? "grid grid-cols-2 gap-2 md:gap-3" : "flex flex-col gap-3"}>
         {items.map((testimonial) => {
           const itemIndex = galleryItems.findIndex((g) => g.src === testimonial.image_url)
           return (
