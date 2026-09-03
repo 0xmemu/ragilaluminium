@@ -197,6 +197,10 @@ class ProductController extends Controller
                 'parent_sku' => ShopeeStyleSku::nextParentSku(),
             ]);
 
+            // Template atribut: isi otomatis dari sub model (tidak menimpa atribut
+            // yang sudah ada). Aturan lengkap di docs/decisions/ADR-019.
+            app(\App\Services\AttributeTemplateService::class)->applyToProduct($product);
+
             if ($createInitialVariant) {
                 ProductVariant::create([
                     'product_id' => $product->id,

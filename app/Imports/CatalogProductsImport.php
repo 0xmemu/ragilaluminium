@@ -243,6 +243,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             }
         }
 
+        $createdCount = 0;
         foreach ($attributes as $attribute) {
             if (! is_array($attribute)) {
                 continue;
@@ -263,6 +264,13 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     'source' => 'import',
                 ]
             );
+            $createdCount++;
+        }
+
+        // Tidak ada spesifikasi di baris import: isi dari template per sub model
+        // (ADR-019). Tidak menimpa apa pun bila template kosong.
+        if ($createdCount === 0) {
+            app(\App\Services\AttributeTemplateService::class)->applyToProduct($product);
         }
     }
 

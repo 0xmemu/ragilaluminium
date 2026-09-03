@@ -61,6 +61,7 @@ class SubModelController extends Controller
         }
 
         return Inertia::render('Admin/SubModelForm', [
+            'backUrl' => route('admin.sub-models.index'),
             'title' => 'Tambah Sub Model',
             'subModel' => null,
             'productModel' => $model,
@@ -108,6 +109,7 @@ class SubModelController extends Controller
     public function edit(Request $request, SubModel $subModel): Response
     {
         return Inertia::render('Admin/SubModelForm', [
+            'backUrl' => route('admin.sub-models.index'),
             'title' => 'Edit Sub Model',
             'subModel' => [
                 'id' => $subModel->id,
@@ -118,6 +120,10 @@ class SubModelController extends Controller
                 'image_url' => $subModel->image_url,
                 'is_active' => $subModel->is_active,
             ],
+            'attributeTemplates' => $subModel->attributeTemplates()
+                ->orderBy('sort_order')->orderBy('id')
+                ->get(['id', 'attribute_name', 'attribute_value'])
+                ->all(),
             'productModel' => $subModel->product_model,
             'modelOptions' => collect(SubModel::MODELS)
                 ->map(fn (string $m) => ['value' => $m, 'label' => CatalogLabels::model($m)])
@@ -134,9 +140,29 @@ class SubModelController extends Controller
             'description' => ['nullable', 'string'],
             'image_url' => ['nullable', 'url', 'max:1024'],
             'is_active' => ['sometimes', 'boolean'],
+            'templates' => ['nullable', 'array', 'max:30'],
+            'templates.*.attribute_name' => ['required_with:templates', 'string', 'max:100'],
+            'templates.*.attribute_value' => ['required_with:templates', 'string', 'max:255'],
         ]);
         $validated['is_active'] = $request->boolean('is_active');
         $subModel->update($validated);
+
+        // Template atribut (ADR-019): daftar dari form menggantikan template lama.
+        $subModel->attributeTemplates()->delete();
+        foreach ($request->input('templates', []) as $index => $templateRow) {
+            $name = trim((string) ($templateRow['attribute_name'] ?? ''));
+            $value = trim((string) ($templateRow['attribute_value'] ?? ''));
+            if ($name === '' || $value === '') {
+                continue;
+            }
+            \App\Models\SubModelAttributeTemplate::create([
+                'sub_model_id' => $subModel->id,
+                'product_model' => $subModel->product_model,
+                'attribute_name' => $name,
+                'attribute_value' => $value,
+                'sort_order' => $index * 10,
+            ]);
+        }
 
         ActivityLogService::record('product.sub_model_updated', 'sub_model', $subModel->id, [
             'name' => $subModel->name,

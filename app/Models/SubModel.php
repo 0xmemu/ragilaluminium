@@ -40,4 +40,9 @@ class SubModel extends Model
         return $this->hasMany(Product::class, 'design_variant', 'code')
             ->whereColumn('products.product_model', 'sub_models.product_model');
     }
+
+    public function attributeTemplates(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\SubModelAttributeTemplate::class, 'sub_model_id');
+    }
 }
