@@ -11,15 +11,18 @@ import {
  * TrendChart dipisah dari halaman StorePerformance agar recharts di-load
  * lazy (chunk terpisah) dan tidak membebani bundle halaman admin utama.
  *
- * Warna bar per titik: NAIK (>= titik sebelumnya) hijau, TURUN merah
- * (feedback owner: "tren hijau merah tidak muncul lagi" - sebelumnya satu
- * warna merah semua). Titik pertama netral (abu) karena belum ada pembanding.
+ * GAYA TREN = TIRU DASHBOARD (owner: "dashboard lebih oke, pake yang itu"):
+ * Dashboard memakai polos single-color (TrendBars bg-primary/70, Sparkline
+ * stroke primary) tanpa pewarnaan naik/turun. Jadi TrendChart disamakan:
+ * bar satu warna primary konsisten, tanpa Cell hijau/merah.
  */
 export default function TrendChart<T extends { label: string; value: number }>({ series }: { series: T[] }) {
   const chartConfig = {
     value: {
       label: "Nilai",
-      color: "hsl(var(--sale))",
+      // Sama dgn Dashboard (bg-primary/70). Jangan --primary penuh: di admin
+      // terang dia hitam pekat, terlalu berat utk banyak bar.
+      color: "hsl(var(--primary) / 0.7)",
     },
   } satisfies ChartConfig
 
@@ -38,25 +41,7 @@ export default function TrendChart<T extends { label: string; value: number }>({
           cursor={{ fill: "var(--accent)" }}
           content={<ChartTooltipContent />}
         />
-        <Bar dataKey="value" radius={2}>
-          {series.map((point, index) => {
-            const prev = index > 0 ? series[index - 1].value : null
-            const up = prev !== null && point.value >= prev
-            const down = prev !== null && point.value < prev
-            return (
-              <Cell
-                key={point.label}
-                fill={
-                  up
-                    ? "hsl(var(--success))"
-                    : down
-                      ? "hsl(var(--sale))"
-                      : "hsl(var(--muted-foreground))"
-                }
-              />
-            )
-          })}
-        </Bar>
+        <Bar dataKey="value" radius={2} fill="var(--color-value)" />
       </BarChart>
     </ChartContainer>
   )
