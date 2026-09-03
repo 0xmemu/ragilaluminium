@@ -154,7 +154,6 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')],
             'short_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'category_id' => ['required', 'integer'],
             'product_category' => ['required', Rule::in(array_merge(
                 \App\Support\CategoryUrl::productCategoryCodes(),
                 ['WINDOW', 'DOOR', 'BOUVEN'], // legacy data lama tetap valid
@@ -168,6 +167,8 @@ class ProductController extends Controller
             'initial_price' => ['nullable', 'required_if:create_initial_variant,true', 'numeric', 'min:0'],
             'randomize_stock' => ['sometimes', 'boolean'],
             'initial_stock' => ['nullable', 'required_if:create_initial_variant,true', 'integer', 'min:0'],
+        ], [], [
+            'name' => 'Nama produk',
         ]);
         $wizard = $request->input('workflow') === 'wizard';
         $createInitialVariant = $request->boolean('create_initial_variant');
@@ -283,7 +284,6 @@ class ProductController extends Controller
                 'name' => $product->name,
                 'short_name' => $product->short_name,
                 'description' => $product->description,
-                'category_id' => $product->category_id,
                 'product_category' => $product->product_category,
                 'product_model' => $product->product_model,
                 'design_variant' => $product->design_variant,
@@ -320,7 +320,6 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
             'short_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'category_id' => ['required', 'integer'],
             'product_category' => ['required', Rule::in(array_merge(
                 \App\Support\CategoryUrl::productCategoryCodes(),
                 ['WINDOW', 'DOOR', 'BOUVEN'], // legacy data lama tetap valid
@@ -331,6 +330,8 @@ class ProductController extends Controller
             'homepage_popular' => ['sometimes', 'boolean'],
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'wizard_step' => ['nullable', 'in:identity,variants,media,review'],
+        ], [], [
+            'name' => 'Nama produk',
         ]);
         $requestedStatus = $validated['status'];
         $wizardStep = $validated['wizard_step'] ?? null;
@@ -372,7 +373,6 @@ class ProductController extends Controller
                 'name' => $name,
                 'short_name' => $product->short_name,
                 'description' => $product->description,
-                'category_id' => $product->category_id,
                 'product_category' => $product->product_category,
                 'product_model' => $product->product_model,
                 'design_variant' => $product->design_variant,

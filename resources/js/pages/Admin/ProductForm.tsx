@@ -12,7 +12,7 @@ import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
 
-type WizardStep = "identity" | "variants" | "media" | "review"
+type WizardStep = "identity" | "variants" | "media" | "review" | null
 
 interface VariantDraft {
   variation_1_name: string
@@ -40,7 +40,6 @@ interface ProductFormData {
   name: string
   short_name: string
   description: string
-  category_id: number | string
   product_category: string
   product_model: string
   design_variant: string
@@ -114,7 +113,6 @@ export default function ProductForm({
     name: product?.name ?? "",
     short_name: product?.short_name ?? "",
     description: product?.description ?? "",
-    category_id: product?.category_id ?? "",
     product_category: product?.product_category ?? options.categories[0]?.value ?? "JENDELA",
     product_model: product?.product_model ?? options.models[0]?.value ?? "SLIDING",
     design_variant: product?.design_variant ?? options.designs[0]?.value ?? "POLOS",
@@ -124,7 +122,7 @@ export default function ProductForm({
   })
   const variantsForm = useForm<{ wizard_step: WizardStep; randomize_stock: boolean; variants: VariantDraft[] }>({
     wizard_step: "media",
-    randomize_stock: true,
+    randomize_stock: false,
     variants: [emptyVariant()],
   })
   const publishForm = useForm({})
@@ -144,7 +142,10 @@ export default function ProductForm({
   function submitIdentity(status: "active" | "archived", event: React.FormEvent) {
     event.preventDefault()
     form.setData("status", status)
-    form.setData("wizard_step", "variants")
+    // Simpan & Aktifkan hanya berarti di EDIT (checklist sudah ada): tanpa
+    // wizard_step sehingga backend menjalankan publish (validasi checklist server).
+    // Pada produk baru tetap arsip + lanjut ke varian (checklist belum lengkap).
+    form.setData("wizard_step", status === "active" && editing ? null : "variants")
 
     if (editing) {
       form.put(submitUrl)
@@ -233,14 +234,6 @@ export default function ProductForm({
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <Field id="product-parent-sku" label="Parent SKU">
                   <Input value={product?.parent_sku ?? "(otomatis saat disimpan)"} readOnly disabled className="font-mono" />
-                </Field>
-                <Field id="product-category-id" label="ID kategori Shopee" required error={form.errors.category_id}>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={form.data.category_id}
-                    onChange={(event) => form.setData("category_id", event.target.value)}
-                  />
                 </Field>
                 <Field id="product-name" label="Nama produk" required error={form.errors.name} className="sm:col-span-2">
                   <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} />
@@ -363,11 +356,11 @@ export default function ProductForm({
                       ["depth_cm", "Tebal (cm)"],
                     ] as Array<[keyof VariantDraft, string]>).map(([key, label]) => (
                       <Field key={key} id={`wizard-variant-${index}-${key}`} label={label} error={variantsForm.errors[`variants.${index}.${key}`]}>
-                        <Input type={key === "price" || key.includes("_cm") || key === "stock" ? "number" : "text"} min={key === "price" || key === "stock" || key.includes("_cm") ? "0" : undefined} step={key === "price" || key === "stock" ? "1" : "0.01"} value={variant[key]} onChange={(event) => updateVariant(index, key, event.target.value)} />
+                        <Input type={key === "price" || key.includes("_cm") || key === "stock" ? "number" : "text"} min={key === "price" || key === "stock" || key.includes("_cm") ? "0" : undefined} step={key === "price" || key === "stock" ? "1" : "0.01"} value={variant[key]} onFocus={(event) => event.target.select()} onChange={(event) => updateVariant(index, key, event.target.value)} />
                       </Field>
                     ))}
                   </div>
-                    {!variantsForm.data.randomize_stock ? <Field key="manual-stock" id={"wizard-variant-stock-" + index} label="Stok awal manual" error={(variantsForm.errors as Record<string, string | undefined>)["variants." + index + ".stock"]}><Input type="number" min="0" step="1" value={variant.stock ?? ""} onChange={(event) => updateVariant(index, "stock", event.target.value)} /></Field> : null}
+                    {!variantsForm.data.randomize_stock ? <Field key="manual-stock" id={"wizard-variant-stock-" + index} label="Stok awal manual" error={(variantsForm.errors as Record<string, string | undefined>)["variants." + index + ".stock"]}><Input type="number" min="0" step="1" value={variant.stock ?? ""} onFocus={(event) => event.target.select()} onChange={(event) => updateVariant(index, "stock", event.target.value)} /></Field> : null}
                 </article>
               ))}
               <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-6">

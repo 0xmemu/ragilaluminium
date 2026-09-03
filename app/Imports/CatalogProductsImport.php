@@ -83,7 +83,6 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     'short_name' => $this->deriveShortName($data),
                     'search_keywords' => $this->deriveKeywords($data, $productCategory),
                     'description' => $data['description'] ?? null,
-                    'category_id' => (int) ($data['category_id'] ?? 0),
                     'product_category' => $productCategory,
                     'product_model' => \App\Support\CatalogLabels::normalizeModel($data['product_model'] ?? 'SLIDING') ?? 'SLIDING',
                     'design_variant' => \App\Support\CatalogLabels::normalizeDesign($data['design_variant'] ?? 'POLOS') ?? 'POLOS',

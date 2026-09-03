@@ -116,6 +116,9 @@ class ProductVariantController extends Controller
             'variants.*.height_cm' => ['nullable', 'numeric', 'min:0'],
             'variants.*.depth_cm' => ['nullable', 'numeric', 'min:0'],
             'variants.*.status' => ['required', 'in:active,inactive,archived'],
+        ], [], [
+            'variants.*.stock' => 'Stok awal manual',
+            'variants.*.price' => 'Harga',
         ]);
 
         $stockSettings = OperationalSettings::get(OperationalSettings::STOCK_RANDOMIZATION);

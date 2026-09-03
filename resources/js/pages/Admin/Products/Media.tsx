@@ -901,7 +901,7 @@ export default function ProductMediaPage({
               id="media-variant"
               label="Tautkan ke varian"
               error={form.errors.product_variant_id}
-              hint="Pilih Warna / Kaca agar galeri PDP ikut berganti."
+              hint="Pilih Warna / Kaca agar galeri PDP ikut berganti. Catatan checklist publikasi: minimal satu foto WAJIB ditautkan ke varian, baru produk bisa diaktifkan."
             >
               <Select
                 value={form.data.product_variant_id}
