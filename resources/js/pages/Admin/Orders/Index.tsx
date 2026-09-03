@@ -273,17 +273,7 @@ function OrderCardRow({
               Catatan admin
             </span>
           ) : null}
-          {order.whatsapp_url ? (
-            <a
-              href={order.whatsapp_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-              aria-label={`WhatsApp ${order.customer_name}`}
-            >
-              <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
-            </a>
-          ) : null}
+          
           <span className="hidden sm:inline">
             {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
