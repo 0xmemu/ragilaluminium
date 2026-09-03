@@ -73,7 +73,7 @@ class OrderController extends Controller
         if (! in_array($shippingStatus, ['pending_pickup', 'in_process', 'in_transit', 'delivered', 'cancelled'], true)) {
             $shippingStatus = '';
         }
-        if (! in_array($datePreset, ['today', '7d', 'range'], true)) {
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
             $datePreset = '';
         }
 
@@ -116,7 +116,9 @@ class OrderController extends Controller
                 fn ($q) => $q->where('updated_at', '<', now()->subHours(self::OLDER_THAN_HOURS[$olderThan]))
             )
             ->when($datePreset === 'today', fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+            ->when($datePreset === '3d', fn ($q) => $q->where('created_at', '>=', now()->subDays(3)->startOfDay()))
             ->when($datePreset === '7d', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)->startOfDay()))
+            ->when($datePreset === '30d', fn ($q) => $q->where('created_at', '>=', now()->subDays(30)->startOfDay()))
             ->when(
                 $datePreset === 'range' && $dateFrom !== '',
                 fn ($q) => $q->whereDate('created_at', '>=', $dateFrom)
@@ -200,7 +202,7 @@ class OrderController extends Controller
         if (! in_array($shippingStatus, ['pending_pickup', 'in_process', 'in_transit', 'delivered', 'cancelled'], true)) {
             $shippingStatus = '';
         }
-        if (! in_array($datePreset, ['today', '7d', 'range'], true)) {
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
             $datePreset = '';
         }
 
@@ -231,7 +233,9 @@ class OrderController extends Controller
                 fn ($q) => $q->where('updated_at', '<', now()->subHours(self::OLDER_THAN_HOURS[$olderThan]))
             )
             ->when($datePreset === 'today', fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+            ->when($datePreset === '3d', fn ($q) => $q->where('created_at', '>=', now()->subDays(3)->startOfDay()))
             ->when($datePreset === '7d', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)->startOfDay()))
+            ->when($datePreset === '30d', fn ($q) => $q->where('created_at', '>=', now()->subDays(30)->startOfDay()))
             ->when(
                 $datePreset === 'range' && $dateFrom !== '',
                 fn ($q) => $q->whereDate('created_at', '>=', $dateFrom)
