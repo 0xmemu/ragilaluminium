@@ -4,6 +4,7 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
+import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
 import { cn } from "@/lib/utils"
 import type { Testimonial } from "@/types"
 
@@ -156,24 +157,12 @@ export function TestimonialCard({
           {photos.slice(0, shown).map((src, index) => {
             const isBadge = showOverlay && index === shown - 1
             return (
-              <span
+              <ReviewPhotoThumb
                 key={src + "-" + index}
-                className="relative size-14 shrink-0 overflow-hidden rounded-[6px] bg-surface-muted"
-              >
-                <ResponsiveImage
-                  src={src}
-                  alt={imageAlt}
-                  wrapperClassName="size-full bg-surface-muted"
-                  className="size-full object-cover"
-                />
-                {isBadge ? (
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <span className="text-base font-semibold leading-none tabular-nums text-muted-foreground">
-                      +{extra}
-                    </span>
-                  </span>
-                ) : null}
-              </span>
+                src={src}
+                alt={imageAlt}
+                overlayCount={isBadge ? extra : undefined}
+              />
             )
           })}
         </div>

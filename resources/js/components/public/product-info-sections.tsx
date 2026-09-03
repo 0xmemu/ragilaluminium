@@ -2,6 +2,7 @@ import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { InstallationLightbox, type InstallationLightboxItem } from "@/components/public/installation-lightbox"
+import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
 
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
@@ -204,30 +205,24 @@ export function ProductInfoSections({
                   {photos.length ? (
                     <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
                       {photos.slice(0, 3).map((src, index) => (
-                        <button
-                          type="button"
+                        <ReviewPhotoThumb
                           key={`${src}-${index}`}
-                          onClick={() => {
+                          src={src}
+                          alt={`Foto ulasan ${review.customer_name} ${index + 1}`}
+                          asButton
+                          onButtonClick={() => {
                             setPreviewReview(review)
                             setPreviewIndex(index)
                           }}
-                          className="group/img relative size-14 shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          aria-label={`Foto ulasan ${review.customer_name} ${index + 1}`}
-                        >
-                          <ResponsiveImage
-                            src={src}
-                            alt={`Foto ulasan ${review.customer_name}`}
-                            wrapperClassName="size-full bg-surface-muted"
-                            className="size-full object-cover transition duration-300 group-hover/img:scale-[1.03]"
-                          />
-                        </button>
+                          buttonClassName="bg-surface-muted"
+                        />
                       ))}
                       {photos.length > 3 ? (
-                        <span className="flex size-14 shrink-0 select-none items-center justify-center rounded-[6px] bg-black/50">
-                          <span className="text-base font-semibold leading-none text-muted-foreground">
-                            {photos.length - 3}+
-                          </span>
-                        </span>
+                        <ReviewPhotoThumb
+                          src={photos[2] ?? ""}
+                          alt=""
+                          overlayCount={photos.length - 3}
+                        />
                       ) : null}
                     </div>
                   ) : null}
