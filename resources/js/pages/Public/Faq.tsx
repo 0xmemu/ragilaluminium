@@ -5,7 +5,6 @@ import { Icon } from "@/components/shared/icon"
 import { ClosingCTASection } from "@/components/public/closing-cta"
 import { HelpPageFrame } from "@/components/public/help-page-frame"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -39,20 +38,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
   const [openId, setOpenId] = React.useState<number | null>(guide.groups[0]?.items[0]?.id ?? null)
-  const [activeCategory, setActiveCategory] = React.useState<string>("all")
-  const [query, setQuery] = React.useState("")
-  const normalizedQuery = query.trim().toLowerCase()
   const visibleGroups = guide.groups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) =>
-        activeCategory !== "all" && group.category !== activeCategory
-          ? false
-          : !normalizedQuery || `${item.question} ${item.answer}`.toLowerCase().includes(normalizedQuery),
-      ),
-    }))
-    .filter((group) => group.items.length > 0)
-  const resultCount = visibleGroups.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
     <PublicLayout>
@@ -79,51 +65,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
           />
         )}
       >
-        <div className="mb-5">
-          <label htmlFor="faq-search" className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Cari jawaban
-          </label>
-          <div className="relative">
-            <Icon name="search" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="faq-search"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Cari pertanyaan tentang ukuran, kaca, COD..."
-              className="pl-10 pr-12"
-            />
-            {query ? (
-              <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian FAQ" className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span aria-hidden="true">×</span>
-              </button>
-            ) : null}
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">
-            {normalizedQuery ? `${resultCount} pertanyaan ditemukan` : `${resultCount} pertanyaan`}
-          </p>
-        </div>
-
         <div>
-          <div className="mb-5">
-            <label htmlFor="faq-category" className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Kategori
-            </label>
-            <select
-              id="faq-category"
-              value={activeCategory}
-              onChange={(event) => setActiveCategory(event.target.value)}
-              className="flex min-h-11 w-full rounded-lg border border-input bg-surface px-3.5 py-2.5 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
-            >
-              <option value="all">Semua kategori · {guide.categories.reduce((sum, category) => sum + category.count, 0)} pertanyaan</option>
-              {guide.categories.map((category) => (
-                <option key={category.key} value={category.key}>
-                  {category.label} · {category.count} pertanyaan
-                </option>
-              ))}
-            </select>
-          </div>
-
           {visibleGroups.length ? (
             <div className="grid gap-6">
               {visibleGroups.map((group) => (
@@ -171,8 +113,8 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
           ) : (
             <EmptyState
               icon="circle-help"
-              title={normalizedQuery ? "Pertanyaan tidak ditemukan" : "Belum ada pertanyaan"}
-              description={normalizedQuery ? "Coba kata kunci lain atau chat kami melalui WhatsApp." : "Tim kami siap membantu lewat WhatsApp jika Anda punya pertanyaan."}
+              title="Belum ada pertanyaan"
+              description="Tim kami siap membantu lewat WhatsApp jika Anda punya pertanyaan."
               className="mx-auto max-w-lg"
             />
           )}
