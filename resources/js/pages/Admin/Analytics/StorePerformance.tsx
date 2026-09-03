@@ -333,7 +333,7 @@ export default function StorePerformance({
   exportUrl: string
 }) {
   const [refreshing, setRefreshing] = React.useState(false)
-  const [refreshedAt, setRefreshedAt] = React.useState<string | null>(null)
+  const [refreshError, setRefreshError] = React.useState(false)
   const [period, setPeriod] = React.useState(filters.period)
   const [from, setFrom] = React.useState(filters.from)
   const [to, setTo] = React.useState(filters.to)
@@ -376,28 +376,23 @@ export default function StorePerformance({
       description={description}
       actions={
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              disabled={refreshing}
-              onClick={() => {
-                setRefreshing(true)
-                router.reload({
-                  only: ["report", "filters"],
-                  onFinish: () => {
-                    setRefreshing(false)
-                    setRefreshedAt(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).replace(".", ":"))
-                  },
-                })
-              }}
-            >
-              <Icon name="refresh" className={"size-4" + (refreshing ? " animate-spin" : "")} aria-hidden="true" />
-              {refreshing ? "Memperbarui..." : "Perbarui"}
-            </Button>
-            {refreshedAt ? (
-              <span className="text-xs text-muted-foreground">Diperbarui {refreshedAt}</span>
-            ) : null}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRefreshing(true)
+              setRefreshError(false)
+              router.reload({
+                only: ["report", "filters"],
+                onError: () => setRefreshError(true),
+                onFinish: () => setRefreshing(false),
+              })
+            }}
+            disabled={refreshing}
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border px-3 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-wait disabled:opacity-60"
+          >
+            <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+            {refreshing ? "Memuat..." : "Refresh data"}
+          </button>
           <Button asChild variant="secondary">
             <a href={exportUrl}>
               <Icon name="download" className="size-4" aria-hidden="true" />
@@ -435,9 +430,19 @@ export default function StorePerformance({
             </TooltipProvider>
           </div>
             <h2 className="mt-1 text-xl font-bold">{report.range.label}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {report.range.from_date} – {report.range.to_date} · {report.range.compare_label} · Data diperbarui {formatGeneratedAt(report.generated_at)}
+            <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+              {refreshing
+                ? "Memperbarui data..."
+                : `Data diperbarui: ${formatGeneratedAt(report.generated_at)}`}
             </p>
+            <p className="text-xs text-muted-foreground">
+              {report.range.from_date} – {report.range.to_date} · {report.range.compare_label}
+            </p>
+            {refreshError ? (
+              <p className="mt-1 text-xs font-medium text-destructive" role="status">
+                Data belum diperbarui. Coba refresh lagi.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
