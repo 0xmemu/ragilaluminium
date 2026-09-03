@@ -1,6 +1,8 @@
 import { Link } from "@inertiajs/react"
 import * as React from "react"
 
+import { InstallationLightbox, type InstallationLightboxItem } from "@/components/public/installation-lightbox"
+
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
@@ -91,7 +93,7 @@ export function ProductInfoSections({
 }: {
   product: ProductDetailData
   attributes: ProductAttribute[]
-  installationMedia?: Array<{ id: number; url: string; thumb?: string | null }>
+  installationMedia?: Array<{ id: number; url: string; thumb?: string | null; is_video?: boolean }>
   reviews: Testimonial[]
   averageRating: number | null
   ratingLabel: string | null
@@ -100,6 +102,8 @@ export function ProductInfoSections({
   const [previewReview, setPreviewReview] = React.useState<Testimonial | null>(null)
   const [previewIndex, setPreviewIndex] = React.useState(0)
   const [reviewsOpen, setReviewsOpen] = React.useState(false)
+  const [installationOpen, setInstallationOpen] = React.useState(false)
+  const [installationIndex, setInstallationIndex] = React.useState(0)
 
   const visibleAttributes = attributes.filter(
     (a) => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name),
@@ -154,39 +158,6 @@ export function ProductInfoSections({
         ) : null}
       </div>
 
-      {installationMedia.length ? (
-        <section id="hasil-pemasangan" className="mt-4 scroll-mt-28">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
-            <Link
-              href={
-                product.product_category && product.product_model
-                  ? routeUrl("installation.model", {
-                      category: product.product_category.toLowerCase(),
-                      model: product.product_model,
-                    })
-                  : routeUrl("installation.index")
-              }
-              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-            >
-              <span>Lihat Semua</span>
-              <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
-            </Link>
-          </div>
-          <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {installationMedia.slice(0, 8).map((item) => (
-              <li key={item.id} className="relative flex aspect-[4/3] min-w-0 items-center overflow-hidden border border-border bg-white">
-                <ResponsiveImage
-                  src={item.url}
-                  alt=""
-                  wrapperClassName="size-full bg-white"
-                  className="!object-contain"
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {/* Penilaian & Ulasan */}
       <section id="penilaian-ulasan" className="mt-4 scroll-mt-28">
@@ -283,6 +254,66 @@ export function ProductInfoSections({
           </div>
         ) : null}
       </section>
+
+      {/* Hasil pemasangan: 3 kartu 1:1 (radius 3px). Lebih dari 3 -> overlay +N pada kartu ke-3, klik membuka lightbox swipeable. */}
+      {installationMedia.length ? (
+        <section id="hasil-pemasangan" className="mt-4 scroll-mt-28">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
+            <Link
+              href={
+                product.product_category && product.product_model
+                  ? routeUrl("installation.model", {
+                      category: product.product_category.toLowerCase(),
+                      model: product.product_model,
+                    })
+                  : routeUrl("installation.index")
+              }
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              <span>Lihat Semua</span>
+              <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
+            </Link>
+          </div>
+          <ul className="mt-3 grid grid-cols-3 gap-1.5">
+            {installationMedia.slice(0, 3).map((item, index) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInstallationIndex(index)
+                    setInstallationOpen(true)
+                  }}
+                  className="group relative block aspect-square w-full overflow-hidden rounded-[3px] border border-border bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  aria-label={`Perbesar ${item.is_video ? "video" : "foto"} pemasangan ${index + 1}`}
+                >
+                  <ResponsiveImage
+                    src={item.url}
+                    alt=""
+                    wrapperClassName="size-full bg-white"
+                    className="!object-cover transition duration-300 group-hover:scale-[1.03]"
+                  />
+                  {index === 2 && installationMedia.length > 3 ? (
+                    <span className="absolute inset-0 z-10 flex items-center justify-center bg-black/55">
+                      <span className="text-base font-bold leading-none text-white">
+                        +{installationMedia.length - 3}
+                      </span>
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <InstallationLightbox
+            open={installationOpen}
+            onOpenChange={setInstallationOpen}
+            items={installationMedia}
+            index={installationIndex}
+            onIndexChange={setInstallationIndex}
+            productName={product.short_name || product.name}
+          />
+        </section>
+      ) : null}
 
       <DialogPrimitive.Root open={reviewsOpen} onOpenChange={setReviewsOpen}>
         <DialogPrimitive.Portal>
