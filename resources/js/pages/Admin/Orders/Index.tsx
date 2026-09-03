@@ -1,6 +1,8 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -193,8 +195,10 @@ function OrderListColumnHeader() {
 function OrderCardRow({
   order,
   queryState,
+  onInputResi,
 }: {
   order: OrderCard
+  onInputResi?: (order: OrderCard) => void
   queryState: {
     order_status: string
     q: string
@@ -249,7 +253,7 @@ function OrderCardRow({
 
   function applyPrimary() {
     if (order.primary_action?.kind === "input_resi") {
-      router.visit(`${order.href}#lacak-pesanan`)
+      onInputResi?.(order)
       return
     }
     if (!order.primary_action?.next_status) return
@@ -658,6 +662,51 @@ export default function OrdersIndex({
     })
   }
 
+  // Popup input resi langsung dari daftar: form + verifikasi pelanggan & alamat.
+  // Sistem tidak menilai benar/salah; admin yang memastikan sebelum menyimpan.
+  const [resiOrder, setResiOrder] = React.useState<OrderCard | null>(null)
+  const [resiForm, setResiForm] = React.useState({ waybill_number: "", mark_shipped: true })
+  const [resiBusy, setResiBusy] = React.useState(false)
+  const [resiError, setResiError] = React.useState<string | null>(null)
+
+  function submitResi(event: React.FormEvent) {
+    event.preventDefault()
+    if (!resiOrder) return
+    setResiBusy(true)
+    setResiError(null)
+    router.post(
+      routeUrl("admin.orders.shipping.store", { order: resiOrder.id }),
+      {
+        waybill_number: resiForm.waybill_number,
+        mark_shipped: resiForm.mark_shipped,
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setResiOrder(null)
+          setResiForm({ waybill_number: "", mark_shipped: true })
+        },
+        onError: (errors) => {
+          const map = (errors ?? {}) as Record<string, string>
+          setResiError(map.waybill_number ?? map.mark_shipped ?? "Gagal menyimpan resi. Periksa kembali isian.")
+        },
+        onFinish: () => setResiBusy(false),
+      },
+    )
+  }
+
+  function resiAddress(order: OrderCard): string {
+    return [
+      order.shipping_address_line1,
+      order.shipping_address_line2,
+      order.shipping_village,
+      order.shipping_district,
+      order.shipping_city,
+      order.shipping_province,
+      order.shipping_postal_code,
+    ].filter(Boolean).join(", ")
+  }
+
   return (
     <AdminLayout title={title} description={description}>
       <Head title={`${title} | Admin`} />
@@ -882,7 +931,7 @@ export default function OrdersIndex({
               <div className="space-y-3 xl:min-w-[60rem]">
                 <OrderListColumnHeader />
                 {orders.map((order) => (
-                  <OrderCardRow key={order.id} order={order} queryState={queryState} />
+                  <OrderCardRow key={order.id} order={order} queryState={queryState} onInputResi={setResiOrder} />
                 ))}
               </div>
             </div>
@@ -924,6 +973,119 @@ export default function OrdersIndex({
       ) : null}
 
       <Pagination pagination={pagination} />
+
+      {/* Popup input resi dari daftar: verifikasi pelanggan + alamat, admin yang konfirmasi */}
+      <DialogPrimitive.Root open={Boolean(resiOrder)} onOpenChange={(open) => { if (!open) setResiOrder(null) }}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed inset-x-0 bottom-0 z-[80] flex max-h-[88dvh] w-full flex-col gap-0 overflow-hidden rounded-t-2xl bg-white shadow-[0_-8px_40px_rgba(10,0,0,0.2)]",
+              "data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-[100%] data-[state=open]:duration-400 data-[state=open]:ease-[cubic-bezier(0.16,1,0.3,1)]",
+              "data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom-[100%] data-[state=closed]:duration-250 data-[state=closed]:ease-[cubic-bezier(0.32,0,0.67,0)]",
+              "sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(32rem,100%)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Input nomor resi</DialogPrimitive.Title>
+            <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-border sm:hidden" />
+            <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-3">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-foreground">Input resi</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {resiOrder?.order_number} · {resiOrder?.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResiOrder(null)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup resi"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">
+              {resiOrder ? (
+                <>
+                <section className="rounded-lg border border-border bg-surface-muted/60 p-3">
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <Icon name="user" className="size-3.5" aria-hidden="true" />
+                    Verifikasi pelanggan
+                  </p>
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
+                    <dt className="text-muted-foreground">Nama</dt>
+                    <dd className="min-w-0 break-words font-medium text-foreground">{resiOrder.customer_name}</dd>
+                    <dt className="text-muted-foreground">Telepon</dt>
+                    <dd className="min-w-0 break-words font-medium text-foreground">{resiOrder.customer_phone || "-"}</dd>
+                  </dl>
+                  {resiOrder.whatsapp_url ? (
+                    <a
+                      href={resiOrder.whatsapp_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-info underline underline-offset-2 hover:no-underline"
+                    >
+                      <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
+                      Konfirmasi via WhatsApp
+                    </a>
+                  ) : null}
+                </section>
+
+                <section className="mt-3 rounded-lg border border-border bg-surface-muted/60 p-3">
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <Icon name="map-pin" className="size-3.5" aria-hidden="true" />
+                    Verifikasi alamat tujuan
+                  </p>
+                  <p className="mt-2 break-words text-[13px] leading-5 text-foreground">
+                    {resiAddress(resiOrder) || "-"}
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Pastikan nama, telepon, dan alamat sudah benar sebelum menyimpan resi. Sistem tidak memvalidasi kebenaran data; admin yang menentukan.
+                  </p>
+                </section>
+
+                <form onSubmit={submitResi} className="mt-4 space-y-3">
+                  {resiError ? (
+                    <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{resiError}</p>
+                  ) : null}
+                  <p className="text-[11px] leading-4 text-muted-foreground">
+                    Resi dibuat di J&T di luar website. Simpan nomor resi yang sudah diterbitkan kurir di sini.
+                  </p>
+                  <label className="grid gap-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Nomor resi *</span>
+                    <input
+                      type="text"
+                      required
+                      value={resiForm.waybill_number}
+                      onChange={(event) => setResiForm((prev) => ({ ...prev, waybill_number: event.target.value }))}
+                      placeholder="Mis. JT1234567890"
+                      className="h-9 rounded-md border border-border bg-surface px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={resiForm.mark_shipped}
+                      onChange={(event) => setResiForm((prev) => ({ ...prev, mark_shipped: event.target.checked }))}
+                      className="size-4 rounded border-border"
+                    />
+                    Tandai pesanan sebagai dikirim setelah resi tersimpan
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={resiBusy}
+                    className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover disabled:opacity-50"
+                  >
+                    {resiBusy ? "Menyimpan..." : "Simpan resi"}
+                  </button>
+                </form>
+                </>
+              ) : null}
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </AdminLayout>
   )
 }

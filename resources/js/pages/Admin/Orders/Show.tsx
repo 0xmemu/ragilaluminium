@@ -1,6 +1,9 @@
 import { Head, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { cn } from "@/lib/utils"
+
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
@@ -934,6 +937,9 @@ export default function OrderShow({
     mark_shipped: true,
 
   })
+  // Popup input resi: form + ringkasan verifikasi alamat/pelanggan.
+  // Sistem tidak menilai benar/salah; admin yang memastikan lalu menyimpan.
+  const [resiOpen, setResiOpen] = React.useState(false)
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [showAllEvents, setShowAllEvents] = React.useState(false)
@@ -987,7 +993,7 @@ export default function OrderShow({
 
   function runPrimary() {
     if (primaryAction?.kind === "input_resi") {
-      lacakRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      setResiOpen(true)
       return
     }
     if (!primaryAction?.next_status) return
@@ -996,7 +1002,10 @@ export default function OrderShow({
 
   function storeShipping(event: React.FormEvent) {
     event.preventDefault()
-    shippingForm.post(shippingActions.createUrl, { preserveScroll: true })
+    shippingForm.post(shippingActions.createUrl, {
+      preserveScroll: true,
+      onSuccess: () => setResiOpen(false),
+    })
   }
 
   function refreshShipping() {
@@ -1219,6 +1228,105 @@ export default function OrderShow({
           />
         ) : null}
       </Card>
+
+      {/* Popup input resi: form + verifikasi alamat & pelanggan.
+          Sistem tidak menilai benar/salah; admin memastikan data sebelum menyimpan. */}
+      <DialogPrimitive.Root open={resiOpen} onOpenChange={setResiOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-black/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed inset-x-0 bottom-0 z-[70] flex max-h-[88dvh] w-full flex-col gap-0 overflow-hidden rounded-t-2xl bg-white shadow-[0_-8px_40px_rgba(10,0,0,0.2)]",
+              "data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-[100%] data-[state=open]:duration-400 data-[state=open]:ease-[cubic-bezier(0.16,1,0.3,1)]",
+              "data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom-[100%] data-[state=closed]:duration-250 data-[state=closed]:ease-[cubic-bezier(0.32,0,0.67,0)]",
+              "sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(32rem,100%)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Input nomor resi</DialogPrimitive.Title>
+            <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-border sm:hidden" />
+            <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-3">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-foreground">Input resi</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {order.order_number} · {order.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResiOpen(false)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup resi"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">
+              {/* Verifikasi pelanggan: sistem hanya menampilkan data, admin yang memastikan */}
+              <section className="rounded-lg border border-border bg-surface-muted/60 p-3">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <Icon name="user" className="size-3.5" aria-hidden="true" />
+                  Verifikasi pelanggan
+                </p>
+                <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
+                  <dt className="text-muted-foreground">Nama</dt>
+                  <dd className="min-w-0 break-words font-medium text-foreground">{order.customer_name}</dd>
+                  <dt className="text-muted-foreground">Telepon</dt>
+                  <dd className="min-w-0 break-words font-medium text-foreground">{order.customer_phone || "-"}</dd>
+                </dl>
+                {order.whatsapp_url ? (
+                  <a
+                    href={order.whatsapp_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-info underline underline-offset-2 hover:no-underline"
+                  >
+                    <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
+                    Konfirmasi via WhatsApp
+                  </a>
+                ) : null}
+              </section>
+
+              {/* Verifikasi alamat tujuan */}
+              <section className="mt-3 rounded-lg border border-border bg-surface-muted/60 p-3">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <Icon name="map-pin" className="size-3.5" aria-hidden="true" />
+                  Verifikasi alamat tujuan
+                </p>
+                <p className="mt-2 break-words text-[13px] leading-5 text-foreground">
+                  {fullAddress(order) || "-"}
+                </p>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  Pastikan nama, telepon, dan alamat sudah benar sebelum menyimpan resi. Sistem tidak memvalidasi kebenaran data; admin yang menentukan.
+                </p>
+              </section>
+
+              <form onSubmit={storeShipping} className="mt-4 space-y-3">
+                <FormErrorSummary errors={shippingForm.errors} />
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  Resi dibuat di J&T di luar website. Simpan nomor resi yang sudah diterbitkan kurir di sini.
+                </p>
+                <Field id="popup-waybill" label="Nomor resi" required error={shippingForm.errors.waybill_number}>
+                  <Input
+                    value={shippingForm.data.waybill_number}
+                    onChange={(event) => shippingForm.setData("waybill_number", event.target.value)}
+                    placeholder="Mis. JT1234567890"
+                  />
+                </Field>
+                <Checkbox
+                  compact
+                  checked={Boolean(shippingForm.data.mark_shipped)}
+                  onChange={(event) => shippingForm.setData("mark_shipped", event.target.checked)}
+                  label="Tandai pesanan sebagai dikirim setelah resi tersimpan"
+                />
+                <Button type="submit" className="w-full" size="sm" disabled={shippingForm.processing}>
+                  {shippingForm.processing ? "Menyimpan..." : "Simpan resi"}
+                </Button>
+              </form>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {/* Input resi - aksi utama diprioritaskan */}
       {(needsResi || order.order_status === "processing") ? (
