@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
-    public const REPLY_SIGNATURE = "\n\nBalas pesan ini dengan \"OKE\"";
+    public const REPLY_SIGNATURE = "\n\nBalas pesan ini jika ada pertanyaan mengenai pesanan kakak";
 
     public function __construct(protected OrderService $orders) {}
 
