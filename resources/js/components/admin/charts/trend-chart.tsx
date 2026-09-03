@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, XAxis } from "recharts"
 
 import {
   ChartContainer,
@@ -10,14 +10,15 @@ import {
 /**
  * TrendChart dipisah dari halaman StorePerformance agar recharts di-load
  * lazy (chunk terpisah) dan tidak membebani bundle halaman admin utama.
+ *
+ * Warna bar per titik: NAIK (>= titik sebelumnya) hijau, TURUN merah
+ * (feedback owner: "tren hijau merah tidak muncul lagi" - sebelumnya satu
+ * warna merah semua). Titik pertama netral (abu) karena belum ada pembanding.
  */
-export default function TrendChart<T extends { label: string }>({ series }: { series: T[] }) {
+export default function TrendChart<T extends { label: string; value: number }>({ series }: { series: T[] }) {
   const chartConfig = {
     value: {
       label: "Nilai",
-      // Merah brand (token --sale): konsisten di admin gelap & terang.
-      // Jangan pakai --primary: di admin dia hitam pekat (mode terang) atau
-      // putih (mode gelap) sehingga tren sulit dibaca.
       color: "hsl(var(--sale))",
     },
   } satisfies ChartConfig
@@ -37,7 +38,25 @@ export default function TrendChart<T extends { label: string }>({ series }: { se
           cursor={{ fill: "var(--accent)" }}
           content={<ChartTooltipContent />}
         />
-        <Bar dataKey="value" radius={2} fill="var(--color-value)" />
+        <Bar dataKey="value" radius={2}>
+          {series.map((point, index) => {
+            const prev = index > 0 ? series[index - 1].value : null
+            const up = prev !== null && point.value >= prev
+            const down = prev !== null && point.value < prev
+            return (
+              <Cell
+                key={point.label}
+                fill={
+                  up
+                    ? "hsl(var(--success))"
+                    : down
+                      ? "hsl(var(--sale))"
+                      : "hsl(var(--muted-foreground))"
+                }
+              />
+            )
+          })}
+        </Bar>
       </BarChart>
     </ChartContainer>
   )
