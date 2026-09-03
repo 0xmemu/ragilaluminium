@@ -113,9 +113,9 @@ class ImportJobController extends Controller
             'stockPriceTemplateUrl' => route('admin.imports.stock-price-template'),
             'mediaUpdateTemplateUrl' => route('admin.imports.media-update-template'),
             'types' => [
-                ['value' => 'catalog_import', 'label' => 'Import Katalog'],
-                ['value' => 'stock_price_update', 'label' => 'Update Harga & Stok'],
-                ['value' => 'media_update', 'label' => 'Update Media'],
+                ['value' => 'catalog_import', 'label' => 'Import Katalog (produk & varian baru, lengkap)'],
+                ['value' => 'stock_price_update', 'label' => 'Update Harga & Stok (hanya harga/stok; media tidak disentuh)'],
+                ['value' => 'media_update', 'label' => 'Update Media (hanya foto/video; harga & stok tidak disentuh)'],
             ],
         ]);
     }
@@ -134,7 +134,9 @@ class ImportJobController extends Controller
         $rowData = \Maatwebsite\Excel\Facades\Excel::toArray(new \App\Imports\InternalCatalogPreviewImport(), $file);
         $rows = $rowData[0] ?? [];
         $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['name'] ?? ''))) || ! empty(trim((string) ($r['parent_sku'] ?? '')))));
-        $rowLimit = $validated['type'] === 'stock_price_update' ? 10000 : 5000;
+        // Batas baris dinaikkan untuk katalog besar: 10.000 produk x 4 varian
+        // = 40.000 baris. Proses tetap chunk 1.000 baris + job background.
+        $rowLimit = 50000;
         if ($rowCount > $rowLimit) {
             return redirect()->back()->withErrors([
                 'file' => 'Jumlah baris ('.$rowCount.') melebihi batas maksimal ('.$rowLimit.').',

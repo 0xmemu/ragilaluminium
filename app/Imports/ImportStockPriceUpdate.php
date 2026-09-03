@@ -76,22 +76,26 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
                     ->first();
             }
 
+            $stockRaw = $data['stock'] ?? null;
+            // Aturan: kolom kosong = nilai TIDAK diubah. Mode 'manual' selalu
+            // menetapkan stok dari konfigurasi job (perilaku asli dipertahankan).
+            $stock = $job->stock_mode === 'manual'
+                ? (int) $job->manual_stock
+                : (($stockRaw === '' || $stockRaw === null) ? null : max(0, (int) $stockRaw));
+
             if ($variant) {
-                $stock = $job->stock_mode === 'manual'
-                    ? (int) $job->manual_stock
-                    : max(0, (int) ($data['stock'] ?? 0));
-                $variant->update([
-                    'price' => $this->price($data, $variant->price),
-                    'stock' => $stock,
-                ]);
+                $updates = ['price' => $this->price($data, $variant->price)];
+                if ($stock !== null) {
+                    $updates['stock'] = $stock;
+                }
+                $variant->update($updates);
             } else {
-                $stock = $job->stock_mode === 'manual'
-                    ? (int) $job->manual_stock
-                    : max(0, (int) ($data['stock'] ?? 0));
-                $product->update([
-                    'price' => $this->price($data, $product->price),
-                    'stock' => $stock,
-                ]);
+                // Produk tanpa varian: harga/stok tidak bisa diperbarui karena
+                // kolom price/stock hanya ada di product_variants. Gagalkan
+                // baris agar admin tahu (bukan diam-diam tidak berubah).
+                throw new \RuntimeException(
+                    'Varian tidak ditemukan untuk '.$parentSku.'. Harga/stok hanya bisa diupdate per varian.'
+                );
             }
 
             ImportJobRow::create([
