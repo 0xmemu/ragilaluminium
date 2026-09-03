@@ -388,7 +388,6 @@ export default function Catalog({
                   />
                 ))}
               </ProductCardGrid>
-              <Pagination pagination={pagination} />
             </>
           ) : null}
 
@@ -487,7 +486,10 @@ export default function Catalog({
   const listingBody = (
     <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
       {/* Filter desktop via topnav (pill) - sidebar dihapus; sheet tetap utk mobile. */}
-      {productGallery}
+      <div className="flex flex-col gap-8">
+        {productGallery}
+        {products.length ? <Pagination pagination={pagination} className="mt-0" /> : null}
+      </div>
     </section>
   )
 

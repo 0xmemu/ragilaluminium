@@ -107,15 +107,11 @@ export function CatalogNav({
 
   // Label ringkasan filter aktif di sebelah kiri baris info
   const summaryFilterLabel =
-    activeModelLabel
-      ? `${categoryName} ${activeModelLabel}`
-      : activeDesignLabel
-        ? activeDesignLabel
-        : isFlash
-          ? "Flash Sale"
-          : searchQuery
-            ? `Pencarian: ${searchQuery}`
-            : categoryName
+    isFlash
+      ? "Flash Sale"
+      : searchQuery
+        ? `Pencarian: ${searchQuery}`
+        : categoryName
 
   return (
     <section className="bg-surface py-0" aria-label="Navigasi katalog produk">
