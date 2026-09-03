@@ -561,7 +561,6 @@ export default function StorePerformance({
           <p className="text-xs font-semibold text-muted-foreground">Penjualan Bersih</p>
           <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.net_revenue)}</p>
         </div>
-        <p className="text-xs text-muted-foreground sm:col-span-3">{report.financial.definition}</p>
       </div>
 
       {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
