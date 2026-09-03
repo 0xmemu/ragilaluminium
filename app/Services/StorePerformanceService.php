@@ -255,7 +255,9 @@ class StorePerformanceService
                 'gross_revenue' => $current['gross_revenue'],
                 'refund_adjustments' => $current['refund_adjustments'],
                 'net_revenue' => $current['net_revenue'],
-                'definition' => 'Omset = total nilai pesanan yang sudah dibayar/COD lunas pada periode (tanpa potongan). Omset net = omset dikurangi nilai refund dari retur yang benar-benar selesai.',
+                'buyer_orders' => $current['orders'],
+                'visitors' => $current['visitors'],
+                'definition' => 'Penjualan Gross = total nilai pesanan yang masuk proses pada periode (sebelum potongan apa pun). Penjualan Bersih = gross dikurangi refund retur yang benar-benar selesai. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],

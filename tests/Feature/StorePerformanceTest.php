@@ -25,7 +25,7 @@ class StorePerformanceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Analytics/StorePerformance')
                 ->has('report.sections', 5)
-                ->has('report.charts', 3)
+                ->has('report.charts', 4)
                 ->where('filters.period', 'today'));
     }
 

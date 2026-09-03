@@ -120,6 +120,8 @@ interface Report {
 }
 
 function formatKpiValue(kpi: Kpi): string {
+  // Bedakan "Rp 0" (memang nol, data ada) vs "Belum ada data" (null).
+  if (kpi.value === null || Number.isNaN(kpi.value)) return "Belum ada data"
   switch (kpi.format) {
     case "currency":
       return formatCurrency(kpi.value)
@@ -533,40 +535,30 @@ export default function StorePerformance({
           </p>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3" aria-label="Ringkasan keuangan">
-          <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
-            <p className="text-xs font-semibold text-muted-foreground">Penjualan Gross</p>
-            <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.gross_revenue)}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
-            <p className="text-xs font-semibold text-muted-foreground">Refund Retur</p>
-            <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.refund_adjustments)}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
-            <p className="text-xs font-semibold text-muted-foreground">Penjualan Bersih</p>
-            <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.net_revenue)}</p>
-          </div>
-          <p className="text-xs text-muted-foreground sm:col-span-3">{report.financial.definition}</p>
-        </div>
       </section>
 
       {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
           dengan delta % vs periode pembanding. */}
-      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[
-          { key: "omzet", label: "Penjualan Gross", fmt: "currency" as const },
-          { key: "net_revenue", label: "Penjualan Bersih", fmt: "currency" as const },
-          { key: "orders", label: "Pesanan Masuk", fmt: "number" as const },
-          { key: "units", label: "Unit Terjual", fmt: "number" as const },
-          { key: "conversion", label: "Pengunjung yang Membeli", fmt: "percent" as const },
-          { key: "open_orders", label: "Pesanan Belum Selesai", fmt: "number" as const },
+          { key: "omzet", label: "Penjualan Gross", fmt: "currency" as const, primary: true, hint: "Total nilai pesanan yang masuk proses pada periode (sebelum potongan)." },
+          { key: "payments_received", label: "Pembayaran Diterima", fmt: "currency" as const, primary: true, hint: "Uang yang benar-benar masuk (payment selesai dengan paid_at) pada periode." },
+          { key: "orders", label: "Pesanan Masuk", fmt: "number" as const, primary: false, hint: undefined },
+          { key: "units", label: "Unit Terjual", fmt: "number" as const, primary: false, hint: undefined },
+          { key: "conversion", label: "Pengunjung yang Membeli", fmt: "percent" as const, primary: false, hint: "Pesanan dibanding pengunjung unik." },
         ].map((item) => {
           const kpi = kpiMap[item.key]
           if (!kpi) return null
           return (
-            <div key={item.key} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-semibold text-muted-foreground">{item.label}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
+            <div
+              key={item.key}
+              className={cn(
+                "rounded-lg border bg-card p-4",
+                item.primary ? "border-border shadow-sm" : "border-border/60 bg-surface",
+              )}
+            >
+              <p className="text-xs font-medium text-muted-foreground" title={(item.hint ?? kpi.detail) || undefined}>{item.label}</p>
+              <p className={cn("mt-1 font-bold tabular-nums tracking-tight", item.primary ? "text-2xl" : "text-xl")}>
                 {item.fmt === "currency" ? formatCurrency(kpi.value) : item.fmt === "percent" ? formatNumber(kpi.value) + "%" : formatNumber(kpi.value)}
               </p>
               <p
@@ -639,7 +631,7 @@ export default function StorePerformance({
                   if (!kpis.length) return null
                   return (
                     <div key={group.title} className="border-t border-border px-4 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group.title}</p>
+                      <p className="text-[11px] font-bold tracking-wider text-muted-foreground">{group.title}</p>
                       <ul className="mt-1 divide-y divide-border">
                         {kpis.map((kpi) => (
                           <li
@@ -671,11 +663,11 @@ export default function StorePerformance({
                 <article
                   key={kpi.key}
                   className={cn(
-                    "px-4 py-5",
+                    "px-4 py-4",
                     index > 0 && "border-t border-border sm:border-t-0 sm:border-l",
                   )}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground" title={kpi.detail ?? undefined}>{kpi.label}</p>
+                  <p className="text-xs font-medium text-muted-foreground" title={kpi.detail ?? undefined}>{kpi.label}</p>
                   <p
                     className="mt-2 text-lg font-bold tabular-nums tracking-tight xl:text-xl whitespace-nowrap truncate"
                     title={[kpi.detail, `${report.range.compare_label}: ${formatPrevious(kpi)}`].filter(Boolean).join(" · ")}
