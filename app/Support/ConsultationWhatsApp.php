@@ -144,7 +144,7 @@ class ConsultationWhatsApp
     {
         return [
             'directUrl' => self::directUrl(),
-            'directLabel' => 'Chat Langsung Di WhatsApp',
+            'directLabel' => 'Chat langsung di WhatsApp',
             'phoneLabel' => 'Nomor HP/WhatsApp',
             'phoneHint' => '*Kami akan langsung menghubungi Anda',
             'submitLabel' => 'Konsultasi',

@@ -15,6 +15,8 @@ import type { SharedPageProps } from "@/types"
  *   - `compact` (default)  : tombol kecil h-7, single — reproduksi persis CTA homepage.
  *   - `compact={false}`    : tombol besar h-9, bisa multi-tombol (primary + secondary),
  *                            cocok untuk pola CTA HowToOrder.
+ *
+ * Kontrak owner (2026-09-02): MAKSIMAL 2 tombol per CTA. Sisanya dipotong otomatis.
  */
 type CtaAction = {
   label: string
@@ -40,9 +42,10 @@ export function ClosingCTASection({
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
 
+  const MAX_ACTIONS = 2
   const effectiveActions: CtaAction[] =
     actions && actions.length > 0
-      ? actions
+      ? actions.slice(0, MAX_ACTIONS)
       : [
           {
             label: "Chat WhatsApp",
@@ -57,16 +60,10 @@ export function ClosingCTASection({
     <section id={id} className="scroll-mt-20">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <div className="flex flex-col items-center gap-1 rounded-xl bg-primary px-5 py-5 text-center shadow-sm sm:px-8">
-          <p className="text-xs font-semibold tracking-tight text-primary-foreground/90 sm:text-sm">
+          <p className="text-xs font-semibold tracking-tight text-primary-foreground/90">
             {eyebrow}
           </p>
-          <h2
-            className={
-              compact
-                ? "text-balance text-[17px] font-bold leading-snug tracking-tight text-primary-foreground sm:text-xl"
-                : "text-balance text-[17px] font-bold leading-snug tracking-tight text-primary-foreground sm:text-xl"
-            }
-          >
+          <h2 className="text-balance text-sm font-bold leading-snug tracking-tight text-primary-foreground ![text-transform:none]">
             {heading}
           </h2>
 

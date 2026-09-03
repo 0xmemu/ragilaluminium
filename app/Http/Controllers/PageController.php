@@ -79,6 +79,10 @@ class PageController extends Controller
                 'heading' => $heading,
                 'body' => $body,
             ],
+            'stats' => [
+                // Angka nyata dari database (bukan klaim marketing) utk trust strip halaman Tentang Kami.
+                'variant_count' => \App\Models\ProductVariant::query()->count(),
+            ],
         ]);
     }
 
