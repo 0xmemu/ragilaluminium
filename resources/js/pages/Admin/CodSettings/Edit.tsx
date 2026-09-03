@@ -108,7 +108,7 @@ export default function CodSettingsEdit({
                     <p className="mt-1 text-xs text-destructive">{form.errors.fee_value}</p>
                   ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Nilai biaya (%). Ditambahkan ke total tagihan saat pelanggan memilih COD - dihitung dari subtotal setelah voucher.
+                    Nilai biaya (%). Rumus: biaya COD = {form.data.fee_value || 0}% x (subtotal produk + ongkir yang dibayar pembeli). Contoh: belanja Rp 100.000 dengan ongkir Rp 20.000, biaya COD = 4% x Rp 120.000 = Rp 4.800.
                   </p>
                 </td>
               </tr>
