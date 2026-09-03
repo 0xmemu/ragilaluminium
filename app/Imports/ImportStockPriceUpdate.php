@@ -81,7 +81,7 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
             // menetapkan stok dari konfigurasi job (perilaku asli dipertahankan).
             $stock = $job->stock_mode === 'manual'
                 ? (int) $job->manual_stock
-                : (($stockRaw === '' || $stockRaw === null) ? null : max(0, (int) $stockRaw));
+                : \App\Services\StockCellParser::resolve($stockRaw);
 
             if ($variant) {
                 $updates = ['price' => $this->price($data, $variant->price)];

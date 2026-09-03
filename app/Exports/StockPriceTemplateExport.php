@@ -166,7 +166,7 @@ class StockPriceGuideSheet implements FromArray, WithTitle, WithEvents
             ['parent_sku', 'WAJIB BILA TANPA variant_sku', 'Kode produk utama. Harus sudah ada; tidak dikenal = baris gagal.'],
             ['variant_sku', 'OPTIONAL', 'Kode varian. Kosongkan untuk menuju varian default produk.'],
             ['price', 'OPTIONAL', 'Harga satuan baru (Rupiah, angka, tanpa titik ribuan). Sel kosong = harga tidak diubah.'],
-            ['stock', 'OPTIONAL', 'Stok baru (bilangan bulat >= 0). Sel kosong = stok tidak diubah.'],
+            ['stock', 'OPTIONAL', 'Stok baru (bilangan bulat >= 0). Sel kosong = stok tidak diubah. Bisa juga \"random 8000-9000\" untuk stok acak pada rentang itu (inklusi).'],
             ['CATATAN', '', 'Kolom lain di file diabaikan. SKU tidak dikenal ditandai gagal, tidak membuat produk baru.'],
         ];
     }

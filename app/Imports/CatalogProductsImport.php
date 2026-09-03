@@ -108,7 +108,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             if ($variantSku !== '') {
                 $stock = $job->stock_mode === 'manual'
                     ? (int) $job->manual_stock
-                    : (int) ($data['stock'] ?? 0);
+                    : (\App\Services\StockCellParser::resolve($data['stock'] ?? null) ?? 0);
                 $variant = ProductVariant::updateOrCreate(
                     ['variant_sku' => $variantSku],
                     [

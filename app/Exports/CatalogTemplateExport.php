@@ -324,7 +324,7 @@ class CatalogTemplateGuideSheet implements FromArray, WithTitle, WithEvents
             ['variation_5_name', 'OPTIONAL', 'Nama variasi kelima untuk baris ini.'],
             ['variation_5_option', 'OPTIONAL', 'Nilai opsi kelima untuk baris ini.'],
             ['price', 'WAJIB', 'Harga varian (Rupiah, angka, tanpa titik ribuan).'],
-            ['stock', 'WAJIB', 'Stok varian (bilangan bulat >= 0).'],
+            ['stock', 'WAJIB', 'Stok varian (bilangan bulat >= 0). Bisa juga \"random 8000-9000\" untuk mengisi stok acak pada rentang itu (inklusi).'],
             ['weight_kg', 'OPTIONAL', 'Berat dalam kilogram (desimal titik).'],
             ['height_cm', 'OPTIONAL', 'Tinggi dalam cm.'],
             ['width_cm', 'OPTIONAL', 'Lebar dalam cm.'],
