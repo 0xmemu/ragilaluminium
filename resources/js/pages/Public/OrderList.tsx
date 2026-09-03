@@ -225,7 +225,7 @@ export default function OrderList({
       </section>
 
       {/* CTA Kepercayaan — reuse komponen bersama (sama dengan Cart/Checkout) */}
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] pt-6 lg:pb-8">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-6 pt-6 lg:pb-8">
         <TrustAssuranceCard />
       </section>
     </PublicLayout>

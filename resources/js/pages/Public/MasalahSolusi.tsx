@@ -1,9 +1,9 @@
-import { Head, Link, usePage } from "@inertiajs/react"
+import { Head, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { PageTopBar } from "@/components/public/page-top-bar"
-import { Button } from "@/components/ui/button"
+import { ClosingCTASection } from "@/components/public/closing-cta"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import PublicLayout from "@/layouts/public-layout"
@@ -231,13 +231,18 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
   const guideItems = guide?.items
   const items = React.useMemo(() => guideItems ?? [], [guideItems])
-  const [openId, setOpenId] = React.useState<number | null>(items[0]?.id ?? null)
+  const [openId, setOpenId] = React.useState<number | null>(null)
 
   React.useEffect(() => {
-    if (openId !== null && !items.some((item) => item.id === openId)) {
-      // Keep the accordion selection valid when CMS content changes.
+    // Selalu buka item pertama ketika items tersedia (default terbuka),
+    // dan jaga pilihan tetap valid saat konten CMS berubah.
+    const firstId = items[0]?.id ?? null
+    if (openId === null && firstId !== null) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOpenId(items[0]?.id ?? null)
+      setOpenId(firstId)
+    } else if (openId !== null && !items.some((item) => item.id === openId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpenId(firstId)
     }
   }, [items, openId])
 
@@ -268,7 +273,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       <section className="py-6 sm:py-8">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           {items.length ? (
-            <ol className="mx-auto grid max-w-3xl gap-3.5">
+            <ol className="mx-auto grid max-w-2xl gap-3.5">
               {items.map((item, index) => {
                 const open = openId === item.id
                 const panelId = `masalah-panel-${item.id}`
@@ -286,13 +291,13 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                     >
                       <span
                         className={cn(
-                          "tabular-nums flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:size-10 sm:text-base",
+                          "tabular-nums flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:size-10",
                           open ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary",
                         )}
                       >
                         {index + 1}
                       </span>
-                      <span className="min-w-0 flex-1 text-base font-semibold tracking-tight text-foreground sm:text-xl">
+                      <span className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-foreground">
                         {item.problem}
                       </span>
                       <Icon
@@ -315,7 +320,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                         {solution.type === "rich" ? (
                           <RichSolutionPanel content={solution.content} whatsappUrl={whatsappUrl} />
                         ) : (
-                          <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground sm:text-[15px]">
+                          <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                             {solution.content}
                           </p>
                         )}
@@ -333,39 +338,21 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
             />
           )}
 
-          <div className="mx-auto mt-10 max-w-2xl overflow-hidden rounded-lg border border-border bg-surface text-center sm:mt-12">
-            <div className="px-5 py-6 sm:px-8 sm:py-8">
-              <p className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
-                Masih ragu spesifikasi yang tepat?
-              </p>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen.
-              </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                {whatsappUrl ? (
-                  <Button asChild className="px-4 sm:px-6">
-                    <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                      <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                      Konsultasi WhatsApp
-                    </a>
-                  </Button>
-                ) : (
-                  <Button asChild className="px-4 sm:px-6">
-                    <Link href={routeUrl("contact")}>Hubungi Kami</Link>
-                  </Button>
-                )}
-                <Button asChild variant="secondary" className="px-4 sm:px-6">
-                  <Link href={routeUrl("faq")}>Lihat FAQ</Link>
-                </Button>
-                <Button asChild variant="secondary" className="px-4 sm:px-6">
-                  <Link href={routeUrl("cara-pemesanan")}>Cara Pemesanan</Link>
-                </Button>
-                <Button asChild variant="ghost" className="px-4 sm:px-6">
-                  <Link href={routeUrl("products")}>Lihat Produk</Link>
-                </Button>
-              </div>
-            </div>
-          </div>
+          <ClosingCTASection
+            compact={false}
+            eyebrow="Masih ragu spesifikasi yang tepat?"
+            heading="Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen"
+            actions={[
+              {
+                label: "Konsultasi WhatsApp",
+                href: whatsappUrl ?? routeUrl("contact"),
+                variant: "primary",
+                whatsappIcon: true,
+                external: true,
+              },
+              { label: "Lihat FAQ", href: routeUrl("faq"), variant: "secondary" },
+            ]}
+          />
         </div>
       </section>
     </PublicLayout>

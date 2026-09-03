@@ -2,6 +2,7 @@ import { Head, Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { ClosingCTASection } from "@/components/public/closing-cta"
 import { PageTopBar } from "@/components/public/page-top-bar"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -57,7 +58,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
       </section>
 
       <section>
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-6 lg:pb-8">
           {guide.groups.length ? (
             <div className="mx-auto max-w-3xl">
               {guide.groups.map((group, groupIndex) => (
@@ -115,24 +116,15 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
             />
           )}
 
-          <div className="mx-auto mt-6 max-w-xl text-center">
-            <p className="text-sm text-muted-foreground">Tidak menemukan jawaban?</p>
-            <div className="mt-3 flex justify-center gap-2">
-              <Button asChild variant="secondary" className="px-4 sm:px-6">
-                <Link href={routeUrl("cara-pemesanan")}>Lihat cara pemesanan</Link>
-              </Button>
-              <Button asChild className="px-4 sm:px-6">
-                {whatsappUrl ? (
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                    <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                    Chat WhatsApp
-                  </a>
-                ) : (
-                  <Link href={routeUrl("contact")}>Hubungi Kami</Link>
-                )}
-              </Button>
-            </div>
-          </div>
+          <ClosingCTASection
+            eyebrow="Tidak menemukan jawaban?"
+            heading="Kami siap bantu lewat WhatsApp"
+            compact={false}
+            actions={[
+              { label: "Lihat cara pemesanan", href: routeUrl("cara-pemesanan"), variant: "secondary" },
+              { label: "Chat WhatsApp", href: whatsappUrl ?? routeUrl("contact"), variant: "primary", whatsappIcon: true, external: true },
+            ]}
+          />
         </div>
       </section>
     </PublicLayout>

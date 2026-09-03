@@ -206,7 +206,6 @@ export default function ModelDetail({
       </section>
 
             <section className="pb-5">
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           <ModelHero
             title={model.title}
             description={model.desc}
@@ -222,7 +221,7 @@ export default function ModelDetail({
           />
 
           {/* Konten 1 kolom penuh: varian & produk (carousel 5 kartu) */}
-          <div className="mt-8">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12 mt-8">
             {rails.length === 1 ? (
               <section aria-labelledby="single-design-heading">
                 <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
@@ -269,7 +268,6 @@ export default function ModelDetail({
               />
             )}
           </div>
-        </div>
       </section>
       <ClosingCTASection />
     </PublicLayout>

@@ -215,7 +215,7 @@ export default function Reviews({
       ) : null}
 
 
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pb-8">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-6 lg:pb-8">
         <div className="min-w-0">
           <div className="flex flex-col gap-8">
             {isSs ? (

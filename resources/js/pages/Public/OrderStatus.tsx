@@ -372,7 +372,7 @@ export default function OrderStatus({
         />
       </section>
 
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] lg:pt-6 lg:pb-10">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-6 lg:pt-6 lg:pb-10">
         {showLookupForm ? (
           <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-stretch lg:gap-8">
             <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28 lg:self-start lg:p-7">
