@@ -332,6 +332,8 @@ export default function StorePerformance({
   report: Report
   exportUrl: string
 }) {
+  const [refreshing, setRefreshing] = React.useState(false)
+  const [refreshedAt, setRefreshedAt] = React.useState<string | null>(null)
   const [period, setPeriod] = React.useState(filters.period)
   const [from, setFrom] = React.useState(filters.from)
   const [to, setTo] = React.useState(filters.to)
@@ -374,10 +376,28 @@ export default function StorePerformance({
       description={description}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => router.reload({ only: ["report", "filters"] })}>
-            <Icon name="refresh" className="size-4" aria-hidden="true" />
-            Perbarui
-          </Button>
+          <div className="flex flex-col items-end gap-0.5">
+            <Button
+              variant="secondary"
+              disabled={refreshing}
+              onClick={() => {
+                setRefreshing(true)
+                router.reload({
+                  only: ["report", "filters"],
+                  onFinish: () => {
+                    setRefreshing(false)
+                    setRefreshedAt(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).replace(".", ":"))
+                  },
+                })
+              }}
+            >
+              <Icon name="refresh" className={"size-4" + (refreshing ? " animate-spin" : "")} aria-hidden="true" />
+              {refreshing ? "Memperbarui..." : "Perbarui"}
+            </Button>
+            {refreshedAt ? (
+              <span className="text-[10px] text-muted-foreground">Diperbarui {refreshedAt}</span>
+            ) : null}
+          </div>
           <Button asChild variant="secondary">
             <a href={exportUrl}>
               <Icon name="download" className="size-4" aria-hidden="true" />
