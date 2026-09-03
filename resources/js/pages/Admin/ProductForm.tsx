@@ -19,6 +19,12 @@ interface VariantDraft {
   variation_1_option: string
   variation_2_name: string
   variation_2_option: string
+  variation_3_name: string
+  variation_3_option: string
+  variation_4_name: string
+  variation_4_option: string
+  variation_5_name: string
+  variation_5_option: string
   price: string
   promo_price: string
   stock?: string | number
@@ -66,6 +72,12 @@ function emptyVariant(): VariantDraft {
     variation_1_option: "",
     variation_2_name: "",
     variation_2_option: "",
+    variation_3_name: "",
+    variation_3_option: "",
+    variation_4_name: "",
+    variation_4_option: "",
+    variation_5_name: "",
+    variation_5_option: "",
     price: "",
     promo_price: "",
     stock: "0",
@@ -344,6 +356,12 @@ export default function ProductForm({
                           ["variation_1_option", "Nilai opsi 1"],
                           ["variation_2_name", "Nama opsi 2"],
                           ["variation_2_option", "Nilai opsi 2"],
+                          ["variation_3_name", "Nama opsi 3"],
+                          ["variation_3_option", "Nilai opsi 3"],
+                          ["variation_4_name", "Nama opsi 4"],
+                          ["variation_4_option", "Nilai opsi 4"],
+                          ["variation_5_name", "Nama opsi 5"],
+                          ["variation_5_option", "Nilai opsi 5"],
                           ["price", "Harga"],
                           ["weight_kg", "Berat (kg)"],
                           ["width_cm", "Lebar (cm)"],
