@@ -354,6 +354,17 @@ class OrderController extends Controller
             'payment_method' => $order->payment_method,
             'shipping_status' => $order->shipping_status,
             'total_amount' => (float) $order->total_amount,
+            'billing' => [
+                'subtotal' => (float) $order->subtotal_amount,
+                'discount' => (float) $order->discount_amount,
+                'voucher_discount' => (float) $order->voucher_discount_amount,
+                'shipping_gross' => (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount,
+                'shipping_subsidy' => (float) $order->shipping_subsidy_amount,
+                'shipping_net' => (float) $order->shipping_amount,
+                'cod_fee' => (float) ($order->cod_fee_amount ?? 0),
+                'insurance' => (float) ($order->shipping_insurance_amount ?? 0),
+                'total' => (float) $order->total_amount,
+            ],
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
             'shipping_address' => trim(implode(', ', array_filter([

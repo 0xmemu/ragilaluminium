@@ -589,6 +589,17 @@ export interface PublicOrder {
   created_at?: string
   shipping_status: string
   total_amount: number
+  billing?: {
+    subtotal: number
+    discount: number
+    voucher_discount: number
+    shipping_gross: number
+    shipping_subsidy: number
+    shipping_net: number
+    cod_fee: number
+    insurance: number
+    total: number
+  }
   customer_name: string
   customer_phone?: string | null
   shipping_address?: string | null

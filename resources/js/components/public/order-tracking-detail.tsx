@@ -240,6 +240,39 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
           })}
         </ul>
       ) : null}
+
+      {/* Breakdown biaya: sumber total, agar pelanggan tidak menebak darimana total berasal. */}
+      {(() => {
+        const b = order.billing
+        if (!b) return null
+        const rows: Array<{ label: string; value: number; tone?: "sub" | "sale" }> = [
+          { label: "Subtotal Produk", value: b.subtotal },
+          { label: "Potongan harga", value: -b.discount, tone: "sale" },
+          { label: "Voucher", value: -b.voucher_discount, tone: "sale" },
+          { label: "Ongkir asli (tarif kurir)", value: b.shipping_gross },
+          { label: "Subsidi ongkir", value: -b.shipping_subsidy, tone: "sale" },
+          { label: "Ongkir dibayar", value: b.shipping_net },
+          { label: "Biaya COD", value: b.cod_fee },
+          { label: "Asuransi", value: b.insurance },
+        ]
+        return (
+          <dl className="mt-1 space-y-1.5 border-t border-border pt-3 text-[11px]">
+            {rows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-4">
+                <dt className="text-muted-foreground">{row.label}</dt>
+                <dd className={cn("tabular-nums font-semibold", row.tone === "sale" ? "text-sale" : "text-foreground")}>
+                  {row.value < 0 ? `−${formatCurrency(Math.abs(row.value))}` : formatCurrency(row.value)}
+                </dd>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-1.5">
+              <dt className="font-bold text-foreground">Total Pembayaran</dt>
+              <dd className="tabular-nums font-bold text-foreground">{formatCurrency(b.total)}</dd>
+            </div>
+          </dl>
+        )
+      })()}
+
       {/* Detail Pengiriman (revisi final 4: di dalam kartu ringkasan) */}
       <DetailPengiriman order={order} />
     </section>
@@ -259,9 +292,9 @@ function DetailPengiriman({ order }: { order: PublicOrder }) {
 
   return (
     <div className="order-tracking__detail-pengiriman mt-4 border-t border-border pt-3">
-      <h3 className="text-xs font-bold tracking-tight text-muted-foreground">
+      <p className="text-xs font-bold tracking-tight text-muted-foreground">
         Detail Pengiriman
-      </h3>
+      </p>
       <div className="mt-2">
         <p className="text-sm font-semibold text-foreground">
           {recipient.customerName}
@@ -404,7 +437,7 @@ function LacakPesanan({ order }: { order: PublicOrder }) {
             {index < lastIndex ? (
               <span
                 aria-hidden="true"
-                className="absolute left-[13px] top-7 h-[calc(100%-1.25rem)] w-0.5 bg-border"
+                className="absolute left-[13px] top-8 h-[calc(100%-2.5rem)] w-0.5 bg-border"
               />
             ) : null}
             <span
@@ -506,9 +539,9 @@ function JnTCard({ order }: { order: PublicOrder }) {
 
       {/* Lacak Pesanan: current status card (kontrak 6) */}
       <div className="pt-2 border-t border-border">
-        <h3 className="text-xs font-bold tracking-tight text-foreground mb-3">
+        <p className="text-xs font-bold tracking-tight text-foreground mb-3">
           Lacak Pesanan
-        </h3>
+        </p>
         <LacakPesanan order={order} />
       </div>
     </section>
