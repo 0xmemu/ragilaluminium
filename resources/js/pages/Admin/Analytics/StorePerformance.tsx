@@ -541,9 +541,10 @@ export default function StorePerformance({
 
       {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
           dengan delta % vs periode pembanding. */}
-      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
           { key: "omzet", label: "Penjualan Gross", fmt: "currency" as const, primary: true, hint: "Total nilai pesanan yang masuk proses pada periode (sebelum potongan)." },
+          { key: "net_revenue", label: "Penjualan Bersih", fmt: "currency" as const, primary: true, hint: "Gross dikurangi refund retur yang benar-benar selesai." },
           { key: "payments_received", label: "Pembayaran Diterima", fmt: "currency" as const, primary: true, hint: "Uang yang benar-benar masuk (payment selesai dengan paid_at) pada periode." },
           { key: "orders", label: "Pesanan Masuk", fmt: "number" as const, primary: false, hint: undefined },
           { key: "units", label: "Unit Terjual", fmt: "number" as const, primary: false, hint: undefined },
