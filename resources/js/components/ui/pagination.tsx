@@ -25,12 +25,12 @@ function parsePaginationLink(label: string): { kind: PaginationLinkKind; text: s
   return { kind: "page", text: cleaned }
 }
 
-export function Pagination({ pagination }: { pagination?: PaginationData | null }) {
+export function Pagination({ pagination, className }: { pagination?: PaginationData | null; className?: string }) {
   if (!pagination || pagination.last_page <= 1) return null
 
   return (
     <nav
-      className="mt-5 flex items-center justify-center gap-2 border-t border-border pt-4"
+      className={cn("mt-5 flex items-center justify-center gap-2 border-t border-border pt-4", className)}
       aria-label="Paginasi"
     >
       <div className="flex flex-wrap items-center justify-center gap-2">
