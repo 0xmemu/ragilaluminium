@@ -152,7 +152,7 @@ export function TestimonialCard({
       ) : null}
 
       {photos.length ? (
-        <div ref={photoRowRef} className="mt-auto flex items-center gap-1.5 pt-2.5">
+        <div ref={photoRowRef} className="mt-2.5 flex items-center gap-1.5">
           {photos.slice(0, shown).map((src, index) => {
             const isBadge = showOverlay && index === shown - 1
             return (
