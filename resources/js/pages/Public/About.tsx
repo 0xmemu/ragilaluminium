@@ -128,7 +128,21 @@ function PlatformGroup({ title, items }: { title: string; items: SocialLink[] })
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">Segera hadir</p>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {(title === "Ikuti kami"
+            ? ["Instagram", "Facebook", "TikTok"]
+            : ["Shopee", "Tokopedia"]
+          ).map((name) => (
+            <li key={name}>
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-3 py-1.5 opacity-70">
+                <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
+                  <Icon name="storefront" className="size-4" aria-hidden="true" />
+                </span>
+                <span className="text-xs font-semibold tracking-tight text-muted-foreground">{name}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )
@@ -181,31 +195,12 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <section aria-label="Tentang Ragil Aluminium" className="surface-panel mt-4 px-5 py-8 text-center sm:px-10 sm:py-10">
           <BrandWordmark className="mx-auto [&_img]:h-12 [&_img]:w-auto [&_img]:max-w-[min(100%,17rem)] sm:[&_img]:h-14" />
-          <p className="mt-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Tentang Ragil Aluminium
-          </p>
           <h2 className="mx-auto mt-2 max-w-xl text-base font-bold leading-snug tracking-tight text-foreground ![text-transform:none]">
             <span className="text-primary">Sejak 2008</span> memproduksi jendela &amp; pintu aluminium
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
             Jendela dan pintu aluminium untuk rumah dan proyek di seluruh Indonesia.
           </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <span className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground">
-              Dibuat di workshop sendiri
-            </span>
-            <span className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground">
-              Dikirim dengan packing kayu yang aman
-            </span>
-          </div>
-          <div className="mt-6 flex justify-center">
-            <Button asChild size="lg">
-              <a href={whatsappUrl ?? routeUrl("contact")} target="_blank" rel="noreferrer">
-                <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                {whatsappLabel}
-              </a>
-            </Button>
-          </div>
         </section>
       </div>
 
@@ -283,7 +278,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
               ))}
             </ul>
           </div>
-          <div className="flex flex-col justify-center gap-3 rounded-lg border border-border bg-white p-5">
+          <div className="flex flex-col justify-center gap-3 rounded-lg border border-border bg-surface-muted p-5">
             <p className="text-sm leading-6 text-muted-foreground">
               Lihat foto produk yang sudah terpasang di rumah dan proyek pelanggan kami.
             </p>
@@ -300,22 +295,17 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
       {/* Kontak: WhatsApp utama, kontak sekunder, alamat + peta */}
       <div className="container-page mt-8 !px-2.5 md:!px-8 lg:!px-12">
         <section aria-labelledby="store-contact">
-          <h2 id="store-contact" className="text-sm font-bold tracking-tight text-foreground ![text-transform:none]">
-            Kontak
-          </h2>
-          <div className="mt-3 grid gap-3 lg:grid-cols-[1.15fr_1fr]">
-            <div className="surface-panel p-5 sm:p-6">
-              <p className="text-sm font-bold tracking-tight text-foreground">
-                Butuh bantuan memilih model atau ukuran?
-              </p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">Tim kami siap membantu Anda.</p>
-              <div className="mt-4">
-                <Button asChild>
-                  <a href={whatsappUrl ?? routeUrl("contact")} target="_blank" rel="noreferrer">
-                    <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                    {whatsappLabel}
-                  </a>
-                </Button>
+          <div className="mt-3 grid gap-3 lg:grid-cols-1">
+            <div className="surface-panel overflow-hidden p-5 sm:p-6">
+              <p className="text-sm font-bold tracking-tight text-foreground">Workshop Ragil Aluminium</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
+              <div className="mt-4 overflow-hidden rounded-lg border border-border">
+                <iframe
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(brand.address)}&z=15&output=embed`}
+                  title="Lokasi Workshop Ragil Aluminium"
+                  loading="lazy"
+                  className="h-56 w-full border-0"
+                />
               </div>
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
                 {phoneHref ? (
@@ -334,15 +324,11 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
               <p className="mt-3 text-xs text-muted-foreground">
                 {brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB"}
               </p>
-            </div>
-            <div className="surface-panel p-5 sm:p-6">
-              <p className="text-sm font-bold tracking-tight text-foreground">Workshop Ragil Aluminium</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
               <div className="mt-4">
-                <Button asChild variant="secondary" size="sm">
-                  <a href={brand.maps_url ?? "#"} target="_blank" rel="noreferrer">
-                    <Icon name="map-pin" className="h-4 w-4" aria-hidden="true" />
-                    Buka lokasi di Google Maps
+                <Button asChild>
+                  <a href={whatsappUrl ?? routeUrl("contact")} target="_blank" rel="noreferrer">
+                    <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+                    {whatsappLabel}
                   </a>
                 </Button>
               </div>
