@@ -640,22 +640,27 @@ export default function StorePerformance({
                   return (
                     <div key={group.title} className="border-t border-border px-4 py-3">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group.title}</p>
-                      <div className="mt-2 grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <ul className="mt-1 divide-y divide-border">
                         {kpis.map((kpi) => (
-                          <div key={kpi.key} className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground" title={kpi.detail ?? undefined}>{kpi.label}</p>
-                            <p
-                              className="mt-1 text-base font-bold tabular-nums whitespace-nowrap truncate"
-                              title={[kpi.detail, `${report.range.compare_label}: ${formatPrevious(kpi)}`].filter(Boolean).join(" · ")}
-                            >
-                              {formatKpiValue(kpi)}
-                            </p>
-                            <p className={cn("text-[11px] font-semibold", (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) === 0 && "text-muted-foreground")}>
-                              {kpi.change_percent === null ? "Baru pada periode ini" : (kpi.change_percent ?? 0) === 0 ? "Tidak berubah" : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
-                            </p>
-                          </div>
+                          <li
+                            key={kpi.key}
+                            className="flex items-center justify-between gap-3 py-2"
+                            title={[kpi.detail, `${report.range.compare_label}: ${formatPrevious(kpi)}`].filter(Boolean).join(" · ")}
+                          >
+                            <span className="min-w-0 text-xs font-semibold text-muted-foreground">{kpi.label}</span>
+                            <span className="flex shrink-0 items-center gap-2">
+                              <span
+                                className="text-sm font-bold tabular-nums whitespace-nowrap"
+                              >
+                                {formatKpiValue(kpi)}
+                              </span>
+                              <span className={cn("w-16 text-right text-[11px] font-semibold", (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) === 0 && "text-muted-foreground")}>
+                                {kpi.change_percent === null ? "-" : (kpi.change_percent ?? 0) === 0 ? "-" : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
+                              </span>
+                            </span>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     </div>
                   )
                 })}
