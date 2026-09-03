@@ -494,36 +494,7 @@ export default function OrderStatus({
             ) : null}
 
 
-            {sessionList.length > 1 ? (
-              <nav aria-label="Pesanan tersimpan" className="surface-panel p-3 lg:sticky lg:top-28">
-                <p className="px-2 pb-2 text-xs font-semibold text-muted-foreground">Pesanan tersimpan</p>
-                <ul className="grid gap-1">
-                  {sessionList.map((row) => {
-                    const activeRow = shownOrder?.order_number === row.order_number
-                    return (
-                      <li key={row.order_number}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveNumber(row.order_number)}
-                          aria-current={activeRow ? "true" : undefined}
-                          className={cn(
-                            "flex min-h-10 w-full items-center justify-between gap-2 rounded-md px-2.5 text-sm transition",
-                            activeRow
-                              ? "bg-accent/60 font-semibold text-foreground"
-                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                          )}
-                        >
-                          <span className="truncate font-mono text-xs">{row.order_number}</span>
-                          {activeRow ? (
-                            <Icon name="check" className="size-4 shrink-0 text-primary" aria-hidden="true" />
-                          ) : null}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </nav>
-            ) : null}
+            {null}
 
             <div className="min-w-0">
               {storedLoading ? (
