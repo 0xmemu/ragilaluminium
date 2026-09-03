@@ -211,7 +211,7 @@ export function ProductInfoSections({
                             setPreviewReview(review)
                             setPreviewIndex(index)
                           }}
-                          className="group/img relative size-14 shrink-0 overflow-hidden rounded-[6px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          className="group/img relative size-14 shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           aria-label={`Foto ulasan ${review.customer_name} ${index + 1}`}
                         >
                           <ResponsiveImage
