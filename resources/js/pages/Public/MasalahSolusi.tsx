@@ -2,7 +2,7 @@ import { Head, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { PageTopBar } from "@/components/public/page-top-bar"
+import { HelpPageFrame } from "@/components/public/help-page-frame"
 import { ClosingCTASection } from "@/components/public/closing-cta"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -254,19 +254,15 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
         />
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <PageTopBar
-          breadcrumbs={[
-            { label: "Beranda", href: routeUrl("home") },
-            { label: "Masalah & solusi", href: null },
-          ]}
+      <HelpPageFrame
+        title={pageHeading}
+        breadcrumbs={[
+          { label: "Beranda", href: routeUrl("home") },
+          { label: "Masalah & solusi", href: null },
+        ]}
+        subtitle={pageSubtitle || "Temukan solusi untuk masalah yang mungkin Anda hadapi."}
+      >
 
-          title={pageHeading}
-        />
-      </section>
-
-      <section className="py-6 sm:py-8">
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           {items.length ? (
             <ol className="mx-auto grid max-w-xl gap-3.5">
               {items.map((item, index) => {
@@ -348,8 +344,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
               { label: "Lihat FAQ", href: routeUrl("faq"), variant: "secondary" },
             ]}
           />
-        </div>
-      </section>
+      </HelpPageFrame>
     </PublicLayout>
   )
 }
