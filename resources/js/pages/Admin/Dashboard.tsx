@@ -154,17 +154,6 @@ interface ImportMediaSummary {
   }
 }
 
-interface IntegrationReadinessItem {
-  key: string
-  label: string
-  icon: string
-  ready: boolean
-  verified: boolean
-  status_label: string
-  detail: string
-  href: string
-}
-
 interface DashboardProps {
   greetingName: string
   todayLabel: string
@@ -178,7 +167,6 @@ interface DashboardProps {
   quickActions: QuickAction[]
   recentOrders: RecentOrderRow[]
   productCount: number
-  integrationReadiness?: IntegrationReadinessItem[]
 }
 
 function greetingPrefix(date = new Date()): string {
@@ -323,7 +311,6 @@ export default function Dashboard({
   quickActions = [],
   recentOrders = [],
   productCount = 0,
-  integrationReadiness = [],
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
   const [refreshing, setRefreshing] = React.useState(false)
@@ -818,54 +805,6 @@ export default function Dashboard({
           )}
         </SectionCard>
 
-        {/* Integration readiness panel */}
-        {integrationReadiness.length > 0 && (
-          <SectionCard
-            title="Status Integrasi"
-            icon="settings"
-            description="Koneksi eksternal dan layanan pendukung."
-            className="lg:col-span-12"
-            contentClassName="p-0"
-          >
-            <ul className="divide-y divide-border">
-              {integrationReadiness.map((item: IntegrationReadinessItem) => {
-                const isSehat = item.ready && item.verified
-                const isPerhatian = item.ready && !item.verified
-                const isGagal = !item.ready && (item.status_label ?? "").toLowerCase().includes("gagal")
-                const isBelum = !item.ready && !isGagal
-                // Kontrak 2026-09-02 (komentar 6): label isPerhatian diperjelas - sudah tersambung tapi belum diverifikasi.
-                const statusLabel = isSehat ? "Sehat" : isPerhatian ? "Tersambung · Belum Verifikasi" : isGagal ? "Gagal atau Offline" : "Belum Dikonfigurasi"
-                const dotClass = isSehat ? "bg-[var(--success)]" : isPerhatian ? "bg-[var(--warning)]" : isGagal ? "bg-[var(--destructive)]" : "bg-muted-foreground/40"
-                const badgeClass = isSehat
-                  ? "bg-success/10 text-success"
-                  : isPerhatian
-                    ? "bg-warning/10 text-warning"
-                    : isGagal
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-muted text-muted-foreground"
-                return (
-                  <li key={item.key} className="flex items-center justify-between gap-3 px-5 py-3">
-                    <span className="flex min-w-0 items-center gap-3">
-                      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${dotClass}`} />
-                      <span className="min-w-0">
-                        <span className="text-[13px] font-medium text-foreground">{item.label}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">{item.detail}</span>
-                      </span>
-                    </span>
-                    <span className="shrink-0">
-                      <Link
-                        href={item.href}
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition hover:bg-opacity-80 ${badgeClass}`}
-                      >
-                        {statusLabel}
-                      </Link>
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          </SectionCard>
-        )}
 
       </div>
     </AdminLayout>

@@ -173,6 +173,14 @@ class DashboardController extends Controller
                     ->count(),
                 'href' => route('admin.orders.index', ['order_status' => 'awaiting_confirmation']),
             ],
+            // WhatsApp belum terhubung = notifikasi pesanan tidak terkirim:
+            // harus segera ditangani, layak masuk daftar perhatian (bukan panel pasif).
+            [
+                'key' => 'wa_disconnected',
+                'label' => 'WhatsApp Belum Terhubung',
+                'count' => ($whatsappReadiness['configured'] ?? false) ? 0 : 1,
+                'href' => route('admin.whatsapp.connection'),
+            ],
         ];
 
         $severityMap = [
@@ -183,6 +191,7 @@ class DashboardController extends Controller
             'issue_orders' => 'high',
             'transfer_unpaid' => 'medium',
             'cod_pending' => 'low',
+            'wa_disconnected' => 'high',
         ];
         // Beri 'severity' pada tiap item attention utk tone badge di UI (danger/warning/info).
         $attention = collect($attention)->map(function (array $item) use ($severityMap): array {
@@ -258,7 +267,7 @@ class DashboardController extends Controller
                     'failed' => (int) ($assetStatusCounts['failed'] ?? 0),
                     'archived' => (int) MediaAsset::where('visibility', 'archived')->count(),
                 ],
-                'href' => route('admin.media.index'),
+                'href' => route('admin.media.library'),
             ],
         ];
 
@@ -267,7 +276,7 @@ class DashboardController extends Controller
                 'key' => 'failed_media_attachments',
                 'label' => 'Attachment Media Gagal Unduh',
                 'count' => $failedMedia,
-                'href' => route('admin.media.index', ['status' => 'failed']),
+                'href' => route('admin.media.library', ['status' => 'failed']),
             ];
         }
         if ($failedMediaAssets > 0) {
@@ -275,7 +284,7 @@ class DashboardController extends Controller
                 'key' => 'failed_media_assets',
                 'label' => 'Shared Media Gagal Diproses',
                 'count' => $failedMediaAssets,
-                'href' => route('admin.media.index', ['asset_status' => 'failed']),
+                'href' => route('admin.media.library', ['status' => 'failed']),
             ];
         }
         if ($pendingMedia + $pendingMediaAssets > 0) {
@@ -283,7 +292,7 @@ class DashboardController extends Controller
                 'key' => 'pending_media',
                 'label' => 'Media Menunggu Diproses',
                 'count' => $pendingMedia + $pendingMediaAssets,
-                'href' => route('admin.media.index'),
+                'href' => route('admin.media.library'),
             ];
         }
         if ($failedImports > 0) {
@@ -463,7 +472,7 @@ class DashboardController extends Controller
                         ? 'Konfigurasi ada, object storage belum diuji'
                         : 'Konfigurasi object storage belum lengkap',
                     'detail' => $mediaDriver === 's3' ? 'Object storage aktif' : 'Disk lokal development',
-                    'href' => route('admin.media.index'),
+                    'href' => route('admin.media.library'),
                 ],
                 [
                     'key' => 'queue',
@@ -554,7 +563,7 @@ class DashboardController extends Controller
                 [
                     'label' => 'Kelola Media',
                     'description' => 'Cek foto produk dan shared asset',
-                    'href' => route('admin.media.index'),
+                    'href' => route('admin.media.library'),
                     'icon' => 'images',
                 ],
             ],
