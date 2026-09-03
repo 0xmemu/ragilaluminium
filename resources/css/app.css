@@ -984,8 +984,9 @@
   .mobile-sticky-cta {
     position: fixed;
     inset-inline: 0;
-    bottom: var(--mobile-bottom-nav-height);
-    z-index: 40;
+    /* Di atas bottom navbar (3.5rem + safe area) - tidak pernah bertumpuk */
+    bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
   }
 
   .pb-mobile-sticky-cta {
