@@ -16,6 +16,8 @@ import {
 } from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+
+const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl, withQuery } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -241,23 +243,6 @@ function Sparkline({ values }: { values: number[] }) {
         points={points}
       />
     </svg>
-  )
-}
-
-function TrendBars({ trend }: { trend: PerformaTrend }) {
-  const max = Math.max(...trend.series.map((point) => point.value), 1)
-
-  return (
-    <div className="mt-3 flex h-16 items-end gap-1" role="img" aria-label="Tren penjualan sesuai periode aktif">
-      {trend.series.map((point) => (
-        <div key={point.bucket} className="flex min-w-0 flex-1 items-end" title={`${point.label}: ${formatCurrency(point.value)}`}>
-          <div
-            className="w-full rounded-sm bg-primary/70"
-            style={{ height: `${Math.max(4, (point.value / max) * 100)}%` }}
-          />
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -575,13 +560,22 @@ export default function Dashboard({
               ))}
             </div>
             <div className="mt-4 border-t border-border pt-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <p className="text-xs font-medium text-muted-foreground">Tren Penjualan</p>
-                <p className="tabular-nums text-xs font-semibold text-foreground">
-                  {formatCurrency(performa.trend.total)}
-                </p>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p>
+                  <p className="text-lg font-bold tabular-nums tracking-tight text-foreground">
+                    {formatCurrency(performa.trend.total)}
+                  </p>
+                </div>
               </div>
-              <TrendBars trend={performa.trend} />
+              {performa.trend.series.length ? (
+                <React.Suspense fallback={<div className="mt-2 h-32 w-full animate-pulse rounded-md bg-muted" aria-label="Memuat grafik" />}>
+                  <TrendChart series={performa.trend.series.map((point) => ({ label: point.label, value: point.value }))} />
+                </React.Suspense>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">Data belum cukup untuk menampilkan tren.</p>
+              )}
             </div>
           </Card>
         </section>
