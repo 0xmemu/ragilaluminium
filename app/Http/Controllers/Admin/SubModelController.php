@@ -124,6 +124,12 @@ class SubModelController extends Controller
                 ->orderBy('sort_order')->orderBy('id')
                 ->get(['id', 'attribute_name', 'attribute_value'])
                 ->all(),
+            'modelTemplates' => \App\Models\SubModelAttributeTemplate::query()
+                ->whereNull('sub_model_id')
+                ->where('product_model', $subModel->product_model)
+                ->orderBy('sort_order')->orderBy('id')
+                ->get(['id', 'attribute_name', 'attribute_value'])
+                ->all(),
             'productModel' => $subModel->product_model,
             'modelOptions' => collect(SubModel::MODELS)
                 ->map(fn (string $m) => ['value' => $m, 'label' => CatalogLabels::model($m)])
@@ -143,6 +149,9 @@ class SubModelController extends Controller
             'templates' => ['nullable', 'array', 'max:30'],
             'templates.*.attribute_name' => ['required_with:templates', 'string', 'max:100'],
             'templates.*.attribute_value' => ['required_with:templates', 'string', 'max:255'],
+            'model_templates' => ['nullable', 'array', 'max:30'],
+            'model_templates.*.attribute_name' => ['required_with:model_templates', 'string', 'max:100'],
+            'model_templates.*.attribute_value' => ['required_with:model_templates', 'string', 'max:255'],
         ]);
         $validated['is_active'] = $request->boolean('is_active');
         $subModel->update($validated);
@@ -157,6 +166,26 @@ class SubModelController extends Controller
             }
             \App\Models\SubModelAttributeTemplate::create([
                 'sub_model_id' => $subModel->id,
+                'product_model' => $subModel->product_model,
+                'attribute_name' => $name,
+                'attribute_value' => $value,
+                'sort_order' => $index * 10,
+            ]);
+        }
+
+        // Template DEFAULT MODEL (sub_model_id null) juga diganti dari form.
+        \App\Models\SubModelAttributeTemplate::query()
+            ->whereNull('sub_model_id')
+            ->where('product_model', $subModel->product_model)
+            ->delete();
+        foreach ($request->input('model_templates', []) as $index => $templateRow) {
+            $name = trim((string) ($templateRow['attribute_name'] ?? ''));
+            $value = trim((string) ($templateRow['attribute_value'] ?? ''));
+            if ($name === '' || $value === '') {
+                continue;
+            }
+            \App\Models\SubModelAttributeTemplate::create([
+                'sub_model_id' => null,
                 'product_model' => $subModel->product_model,
                 'attribute_name' => $name,
                 'attribute_value' => $value,

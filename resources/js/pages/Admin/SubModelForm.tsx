@@ -23,12 +23,14 @@ interface SubModelData {
   image_url?: string | null
   is_active: boolean
   templates?: TemplateRow[]
+  model_templates?: TemplateRow[]
 }
 
 export default function SubModelForm({
   title,
   subModel,
   attributeTemplates = [],
+  modelTemplates = [],
   productModel,
   modelOptions,
   submitUrl,
@@ -38,6 +40,7 @@ export default function SubModelForm({
   title: string
   subModel: SubModelData | null
   attributeTemplates?: Array<TemplateRow & { id?: number }>
+  modelTemplates?: Array<TemplateRow & { id?: number }>
   productModel: string
   modelOptions: Array<{ value: string; label: string }>
   submitUrl: string
@@ -53,6 +56,10 @@ export default function SubModelForm({
     image_url: subModel?.image_url ?? "",
     is_active: subModel?.is_active ?? true,
     templates: attributeTemplates.map((row) => ({
+      attribute_name: row.attribute_name,
+      attribute_value: row.attribute_value,
+    })),
+    model_templates: modelTemplates.map((row) => ({
       attribute_name: row.attribute_name,
       attribute_value: row.attribute_value,
     })),
@@ -192,6 +199,7 @@ export default function SubModelForm({
         </div>
 
         {editing ? (
+          <>
           <section className="rounded-lg border border-border bg-card">
             <div className="border-b border-border p-5">
               <h2 className="text-base font-semibold">Template atribut produk</h2>
@@ -240,6 +248,62 @@ export default function SubModelForm({
               </Button>
             </div>
           </section>
+
+          <section className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border p-5">
+              <h2 className="text-base font-semibold">Template default model</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Dipakai bila sub model tidak punya template sendiri — berlaku untuk semua produk model ini tanpa sub model tertentu. Berguna untuk nilai bersama seperti Material.
+              </p>
+            </div>
+            <div className="p-5">
+              {(form.data.model_templates ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">Belum ada template default untuk model ini.</p>
+              ) : null}
+              <div className="space-y-2">
+                {(form.data.model_templates ?? []).map((row, index) => (
+                  <div key={index} className="grid grid-cols-[1fr_1.4fr_auto] items-center gap-2">
+                    <Input
+                      value={row.attribute_name}
+                      onChange={(event) => {
+                        const next = (form.data.model_templates ?? []).map((r, i) => (i === index ? { ...r, attribute_name: event.target.value } : r))
+                        form.setData("model_templates", next)
+                      }}
+                      placeholder="Nama (mis. Material)"
+                      className="h-8 text-xs"
+                    />
+                    <Input
+                      value={row.attribute_value}
+                      onChange={(event) => {
+                        const next = (form.data.model_templates ?? []).map((r, i) => (i === index ? { ...r, attribute_value: event.target.value } : r))
+                        form.setData("model_templates", next)
+                      }}
+                      placeholder="Nilai (mis. Aluminium)"
+                      className="h-8 text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => form.setData("model_templates", (form.data.model_templates ?? []).filter((_, i) => i !== index))}
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={() => form.setData("model_templates", [...(form.data.model_templates ?? []), { attribute_name: "", attribute_value: "" }])}
+              >
+                Tambah baris template default
+              </Button>
+            </div>
+          </section>
+          </>
         ) : null}
 
         <div className="flex flex-wrap justify-between gap-3">
