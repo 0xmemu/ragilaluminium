@@ -61,7 +61,7 @@ function DesignProductRail({
       <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
         <h3
           id={headingId}
-          className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
+          className="min-w-0 truncate text-base font-bold leading-tight tracking-tight text-foreground"
         >
           {variant.title}
         </h3>
@@ -228,7 +228,7 @@ export default function ModelDetail({
                 <div className="mb-3 flex min-w-0 items-center justify-between gap-3 sm:mb-4">
                   <h2
                     id="single-design-heading"
-                    className="min-w-0 truncate text-[clamp(1rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight text-foreground"
+                    className="min-w-0 truncate text-base font-bold leading-tight tracking-tight text-foreground"
                   >
                     {rails[0].title}
                   </h2>

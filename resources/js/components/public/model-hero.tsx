@@ -106,8 +106,8 @@ export function ModelHero({
               />
             )}
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] bg-gradient-to-b from-transparent to-black/60" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-12 p-3.5 sm:p-5 lg:hidden">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[140px] bg-gradient-to-b from-transparent to-black/60" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-3.5 p-3.5 sm:p-5 lg:hidden">
               <h1 className="font-bold leading-tight tracking-tight text-white text-sm sm:text-base">
                 {title}
               </h1>
