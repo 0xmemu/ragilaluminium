@@ -52,18 +52,6 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
           { label: "Beranda", href: routeUrl("home") },
           { label: "Sering ditanyakan", href: null },
         ]}
-        subtitle={guide.subtitle || "Jawaban singkat untuk pertanyaan yang sering diajukan pembeli."}
-        footer={(
-          <ClosingCTASection
-            eyebrow="Masih punya pertanyaan?"
-            heading="Tim kami siap membantu lewat WhatsApp"
-            compact={false}
-            actions={[
-              { label: "Chat WhatsApp", href: whatsappUrl ?? routeUrl("contact"), variant: "primary", whatsappIcon: true, external: true },
-              { label: "Lihat cara pemesanan", href: routeUrl("cara-pemesanan"), variant: "secondary" },
-            ]}
-          />
-        )}
       >
         <div>
           {visibleGroups.length ? (
@@ -71,10 +59,9 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
               {visibleGroups.map((group) => (
                 <section key={group.category} aria-labelledby={`faq-category-${group.category}`}>
                   <div className="mb-2.5 flex items-end justify-between gap-3">
-                    <h2 id={`faq-category-${group.category}`} className="text-base font-bold tracking-tight text-foreground">
+                    <h2 id={`faq-category-${group.category}`} className="text-sm font-bold tracking-tight text-foreground">
                       {group.category}
                     </h2>
-                    <span className="tabular-nums shrink-0 text-xs text-muted-foreground">{group.items.length} pertanyaan</span>
                   </div>
                   <ul className="overflow-hidden rounded-lg border border-border bg-surface">
                     {group.items.map((item, itemIndex) => {
@@ -120,6 +107,16 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
           )}
         </div>
       </HelpPageFrame>
+
+      <ClosingCTASection
+        eyebrow="Masih punya pertanyaan?"
+        heading="Tim kami siap membantu lewat WhatsApp"
+        compact
+        actions={[
+          { label: "Chat WhatsApp", href: whatsappUrl ?? routeUrl("contact"), variant: "primary", whatsappIcon: true, external: true },
+          { label: "Cara pemesanan", href: routeUrl("cara-pemesanan"), variant: "secondary" },
+        ]}
+      />
     </PublicLayout>
   )
 }

@@ -12,7 +12,7 @@ export function HelpPageFrame({
 }: {
   title: ReactNode
   breadcrumbs: BreadcrumbItem[]
-  subtitle: string
+  subtitle?: string
   children: ReactNode
   footer?: ReactNode
 }) {
@@ -23,7 +23,10 @@ export function HelpPageFrame({
       </section>
       <section className="container-page !px-2.5 py-5 md:!px-8 md:py-8 lg:!px-12">
         <div className="mx-auto max-w-4xl">
-          <div>{children}</div>
+          <div className="surface-panel bg-surface px-5 py-5 sm:px-7 sm:py-6">
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
+          </div>
+          <div className="mt-6">{children}</div>
           {footer ? <div className="mt-8">{footer}</div> : null}
         </div>
       </section>
