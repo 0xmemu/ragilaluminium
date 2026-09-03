@@ -330,24 +330,23 @@ class DashboardController extends Controller
             $performaPeriod = 'today';
         }
 
-        // StorePerformanceService is the canonical read model for dashboard sales metrics.
+        // StorePerformanceService is the canonical read model for dashboard sales
+        // metrics. SATU SUMBER: kartu Penjualan (Gross) mengikuti filter
+        // performa_period (owner 2026-09-04) - tanpa perhitungan terpisah.
         $performance = $this->performance->build($performaPeriod);
-        $todayPerformance = $performaPeriod === 'today'
-            ? $performance
-            : $this->performance->build('today');
-        $todaySalesKpis = collect($todayPerformance['sections'] ?? [])
+        $salesKpis = collect($performance['sections'] ?? [])
             ->firstWhere('key', 'sales')['kpis'] ?? [];
-        $todaySales = collect($todaySalesKpis)->keyBy('key');
-        $todayOmzet = $todaySales->get('omzet', []);
-        $todayOrders = $todaySales->get('orders', []);
-        $todayUnits = $todaySales->get('units', []);
-        $revenueChart = collect($todayPerformance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
-        $todaysRevenue = (float) ($todayOmzet['value'] ?? 0);
-        $todaysOrders = (int) ($todayOrders['value'] ?? 0);
-        $todaysUnits = (int) ($todayUnits['value'] ?? 0);
-        $revenueChangePercent = $todayOmzet['change_percent'] ?? 0;
-        $ordersDelta = $todaysOrders - (int) ($todayOrders['previous'] ?? 0);
-        $unitsDelta = $todaysUnits - (int) ($todayUnits['previous'] ?? 0);
+        $sales = collect($salesKpis)->keyBy('key');
+        $omzetKpi = $sales->get('omzet', []);
+        $ordersKpi = $sales->get('orders', []);
+        $unitsKpi = $sales->get('units', []);
+        $revenueChart = collect($performance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
+        $todaysRevenue = (float) ($omzetKpi['value'] ?? 0);
+        $todaysOrders = (int) ($ordersKpi['value'] ?? 0);
+        $todaysUnits = (int) ($unitsKpi['value'] ?? 0);
+        $revenueChangePercent = $omzetKpi['change_percent'] ?? 0;
+        $ordersDelta = $todaysOrders - (int) ($ordersKpi['previous'] ?? 0);
+        $unitsDelta = $todaysUnits - (int) ($unitsKpi['previous'] ?? 0);
         $revenueSparkline = collect($revenueChart['series'] ?? [])->pluck('value')->map(fn ($value) => (float) $value)->values()->all();
 
         $trafficKpis = collect($performance['sections'] ?? [])

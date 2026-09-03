@@ -411,7 +411,7 @@ export default function Dashboard({
               <div className="flex flex-wrap items-start justify-between gap-4 p-4 pb-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Penjualan (Gross) Hari Ini
+                    Penjualan (Gross) {performa.period_label}
                   </p>
                   <p className="mt-0.5 text-[11px] font-medium text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
                     Nilai pesanan yang masuk alur fulfillment · bukan pembayaran diterima atau laba
