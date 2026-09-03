@@ -1262,17 +1262,19 @@ export default function OrderShow({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">
-              {/* Verifikasi pelanggan: sistem hanya menampilkan data, admin yang memastikan */}
+              {/* Verifikasi pelanggan + alamat dalam satu card: sistem hanya menampilkan data, admin yang memastikan */}
               <section className="rounded-lg border border-border bg-surface-muted/60 p-3">
                 <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   <Icon name="user" className="size-3.5" aria-hidden="true" />
-                  Verifikasi pelanggan
+                  Verifikasi pelanggan & alamat
                 </p>
                 <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
                   <dt className="text-muted-foreground">Nama</dt>
                   <dd className="min-w-0 break-words font-medium text-foreground">{order.customer_name}</dd>
                   <dt className="text-muted-foreground">Telepon</dt>
                   <dd className="min-w-0 break-words font-medium text-foreground">{order.customer_phone || "-"}</dd>
+                  <dt className="text-muted-foreground align-top">Alamat</dt>
+                  <dd className="min-w-0 break-words font-medium leading-5 text-foreground">{fullAddress(order) || "-"}</dd>
                 </dl>
                 {order.whatsapp_url ? (
                   <a
@@ -1285,17 +1287,6 @@ export default function OrderShow({
                     Konfirmasi via WhatsApp
                   </a>
                 ) : null}
-              </section>
-
-              {/* Verifikasi alamat tujuan */}
-              <section className="mt-3 rounded-lg border border-border bg-surface-muted/60 p-3">
-                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <Icon name="map-pin" className="size-3.5" aria-hidden="true" />
-                  Verifikasi alamat tujuan
-                </p>
-                <p className="mt-2 break-words text-[13px] leading-5 text-foreground">
-                  {fullAddress(order) || "-"}
-                </p>
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
                   Pastikan nama, telepon, dan alamat sudah benar sebelum menyimpan resi. Sistem tidak memvalidasi kebenaran data; admin yang menentukan.
                 </p>

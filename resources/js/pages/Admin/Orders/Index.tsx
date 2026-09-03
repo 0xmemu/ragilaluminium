@@ -213,13 +213,6 @@ function OrderCardRow({
 }) {
   const [expanded, setExpanded] = React.useState(false)
 
-  async function copyItemText(value: string) {
-    try {
-      await navigator.clipboard.writeText(value)
-    } catch {
-      // ignore
-    }
-  }
   const [busy, setBusy] = React.useState(false)
   const { printing, handlePrint } = usePrintOrder()
 
@@ -264,19 +257,7 @@ function OrderCardRow({
     <article className="overflow-hidden rounded-lg border border-border bg-card shadow-soft transition-colors hover:border-foreground/10">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-[10px] font-semibold text-muted-foreground">
-            {order.customer_name.slice(0, 1).toUpperCase()}
-          </span>
           <span className="truncate font-medium text-foreground">{order.customer_name}</span>
-          {order.admin_notes?.trim() ? (
-            <span
-              title={order.admin_notes}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
-            >
-              <Icon name="file-text" className="size-3" aria-hidden="true" />
-              Catatan admin
-            </span>
-          ) : null}
           {order.whatsapp_url ? (
             <a
               href={order.whatsapp_url}
@@ -343,15 +324,6 @@ function OrderCardRow({
                     <p className="line-clamp-2 flex-1 text-[13px] font-medium leading-5 text-foreground">
                       {item.name}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => copyItemText(item.name)}
-                      className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                      aria-label={`Salin ukuran & nama: ${item.name}`}
-                      title="Salin ukuran & nama produk"
-                    >
-                      <Icon name="copy" className="size-3" aria-hidden="true" />
-                    </button>
                   </div>
                   <div className="mt-0.5 flex items-center gap-2">
                     <p className="line-clamp-1 text-xs text-muted-foreground">
@@ -400,13 +372,7 @@ function OrderCardRow({
           <p className="tabular-nums text-sm font-semibold text-foreground">
             {formatCurrency(order.total_amount)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {order.payment_method_label ||
-              (order.payment_method ? humanize(order.payment_method) : "Metode -")}
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-            {order.payment_label || statusMeta(order.payment_status).label}
-          </p>
+
         </div>
 
         {/* Status Pesanan */}
@@ -530,6 +496,13 @@ function OrderCardRow({
               reasonPlaceholder="Misalnya: pelanggan meminta pembatalan"
               onConfirm={(reason) => applyStatus("cancelled", reason)}
             />
+          ) : null}
+
+          {order.admin_notes?.trim() ? (
+            <p className="mt-2 w-full max-w-[16rem] xl:ml-auto xl:text-right">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Catatan admin</span>
+              <span className="mt-0.5 block break-words text-[11px] leading-4 text-foreground">{order.admin_notes}</span>
+            </p>
           ) : null}
         </div>
       </div>
@@ -1011,13 +984,15 @@ export default function OrdersIndex({
                 <section className="rounded-lg border border-border bg-surface-muted/60 p-3">
                   <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     <Icon name="user" className="size-3.5" aria-hidden="true" />
-                    Verifikasi pelanggan
+                    Verifikasi pelanggan & alamat
                   </p>
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
                     <dt className="text-muted-foreground">Nama</dt>
                     <dd className="min-w-0 break-words font-medium text-foreground">{resiOrder.customer_name}</dd>
                     <dt className="text-muted-foreground">Telepon</dt>
                     <dd className="min-w-0 break-words font-medium text-foreground">{resiOrder.customer_phone || "-"}</dd>
+                    <dt className="text-muted-foreground align-top">Alamat</dt>
+                    <dd className="min-w-0 break-words font-medium leading-5 text-foreground">{resiAddress(resiOrder) || "-"}</dd>
                   </dl>
                   {resiOrder.whatsapp_url ? (
                     <a
@@ -1030,16 +1005,6 @@ export default function OrdersIndex({
                       Konfirmasi via WhatsApp
                     </a>
                   ) : null}
-                </section>
-
-                <section className="mt-3 rounded-lg border border-border bg-surface-muted/60 p-3">
-                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    <Icon name="map-pin" className="size-3.5" aria-hidden="true" />
-                    Verifikasi alamat tujuan
-                  </p>
-                  <p className="mt-2 break-words text-[13px] leading-5 text-foreground">
-                    {resiAddress(resiOrder) || "-"}
-                  </p>
                   <p className="mt-1.5 text-[11px] text-muted-foreground">
                     Pastikan nama, telepon, dan alamat sudah benar sebelum menyimpan resi. Sistem tidak memvalidasi kebenaran data; admin yang menentukan.
                   </p>
