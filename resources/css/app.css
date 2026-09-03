@@ -409,15 +409,10 @@
       box-shadow 300ms var(--ease-standard);
   }
 
-  /* Efek hover hanya perangkat pointer mouse (kontrak 2026-09-02):
-     di perangkat sentuh :hover "sticky" membuat tap pertama terasa
-     tidak langsung terklik. */
-  @media (hover: hover) {
-    .product-card:hover {
-      transform: translateY(-4px);
-      border-color: hsl(var(--foreground) / 0.25);
-      box-shadow: 0 10px 24px rgb(10 0 0 / 0.14);
-    }
+  .product-card:hover {
+    transform: translateY(-4px);
+    border-color: hsl(var(--foreground) / 0.25);
+    box-shadow: 0 10px 24px rgb(10 0 0 / 0.14);
   }
 
   /* Modifier: chrome Flash Sale (ring tipis + bayangan merah lembut). */
@@ -436,12 +431,10 @@
     box-shadow: none;
   }
 
-  @media (hover: hover) {
-    .product-card--model:hover {
-      transform: none;
-      border-color: #b9c2bd;
-      box-shadow: none;
-    }
+  .product-card--model:hover {
+    transform: none;
+    border-color: #b9c2bd;
+    box-shadow: none;
   }
 
   .product-card--model .product-card__content {

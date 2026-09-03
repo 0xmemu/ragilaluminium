@@ -1,7 +1,7 @@
 import * as React from "react"
 
 const DRAG_THRESHOLD_PX = 6
-const CLICK_SUPPRESS_PX = 8
+const CLICK_SUPPRESS_PX = 16
 const MOMENTUM_FRICTION = 0.92
 const MOMENTUM_MIN_VELOCITY = 0.05
 
