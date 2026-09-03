@@ -159,7 +159,14 @@ export function ProductInfoSections({
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-bold text-foreground">Hasil pemasangan</h2>
             <Link
-              href={routeUrl("installation.show", { parent_sku: product.parent_sku })}
+              href={
+                product.product_category && product.product_model
+                  ? routeUrl("installation.model", {
+                      category: product.product_category.toLowerCase(),
+                      model: product.product_model,
+                    })
+                  : routeUrl("installation.index")
+              }
               className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
               <span>Lihat Semua</span>

@@ -360,36 +360,6 @@ class PageController extends Controller
         ]);
     }
 
-    public function installationShow(string $parent_sku): Response
-    {
-        $product = Product::visible()
-            ->where('parent_sku', $parent_sku)
-            ->firstOrFail();
-
-        $gallery = InstallationGallery::forProduct($product);
-        if ($gallery === null) {
-            abort(404);
-        }
-
-        $modelHref = InstallationGallery::modelHref(
-            $gallery['product']['category'] ?? null,
-            $gallery['product']['model'] ?? null,
-        );
-
-        return Inertia::render('Public/InstallationDetail', [
-            'pageMeta' => InstallationPageSettings::forStorefront(),
-            'product' => $gallery['product'],
-            'media' => $gallery['media'],
-            'indexHref' => route('installation.index'),
-            'modelHref' => $modelHref,
-            'modelLabel' => ($gallery['product']['category'] && $gallery['product']['model'])
-                ? CatalogLabels::modelCardTitle(
-                    $gallery['product']['category'],
-                    $gallery['product']['model'],
-                )
-                : null,
-        ]);
-    }
 
     /**
      * @param  array<string, mixed>  $item

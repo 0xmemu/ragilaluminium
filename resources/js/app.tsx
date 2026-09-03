@@ -36,7 +36,6 @@ createInertiaApp({
       "./pages/Public/Reviews.tsx",
       "./pages/Public/About.tsx",
       "./pages/Public/Installations.tsx",
-      "./pages/Public/InstallationDetail.tsx",
       "./pages/Public/OrderConfirmation.tsx",
       "./pages/Public/Checkout.tsx",
       "./pages/Public/MasalahSolusi.tsx",

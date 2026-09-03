@@ -139,8 +139,7 @@ Route::get('/hasil-pemasangan/{category}/{model}', [PageController::class, 'inst
         'model' => '[A-Za-z0-9_-]+',
     ])
     ->name('installation.model');
-Route::get('/hasil-pemasangan/{parent_sku}', [PageController::class, 'installationShow'])
-    ->name('installation.show');
+
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/validate', [CheckoutController::class, 'validateDetails'])->middleware('throttle:20,1')->name('checkout.validate');

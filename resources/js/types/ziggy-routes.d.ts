@@ -81,12 +81,6 @@ declare module 'ziggy-js' {
             "required": true
         }
     ],
-    "installation.show": [
-        {
-            "name": "parent_sku",
-            "required": true
-        }
-    ],
     "checkout.index": [],
     "checkout.validate": [],
     "checkout.voucher.apply": [],

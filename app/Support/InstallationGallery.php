@@ -118,7 +118,7 @@ class InstallationGallery
                     'model' => $model,
                     'source' => 'catalog',
                     'product_sku' => $product->parent_sku,
-                    'href' => route('installation.show', ['parent_sku' => $product->parent_sku], absolute: false),
+                    'href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
                     'product_href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
                 ];
             })
@@ -409,7 +409,7 @@ class InstallationGallery
                 'model' => $product->product_model ? strtoupper((string) $product->product_model) : null,
                 'source' => 'import',
                 'product_sku' => $product->parent_sku,
-                'href' => route('installation.show', ['parent_sku' => $product->parent_sku], absolute: false),
+                'href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
                 'product_href' => route('product.show', ['parent_sku' => $product->parent_sku], absolute: false),
             ];
 
