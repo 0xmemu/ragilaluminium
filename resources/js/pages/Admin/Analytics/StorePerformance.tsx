@@ -649,8 +649,8 @@ export default function StorePerformance({
                               >
                                 {formatKpiValue(kpi)}
                               </span>
-                              <span className={cn("w-16 text-right text-[11px] font-semibold", (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) === 0 && "text-muted-foreground")}>
-                                {kpi.change_percent === null ? "-" : (kpi.change_percent ?? 0) === 0 ? "-" : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
+                              <span className={cn("w-16 text-right text-[11px] font-semibold", kpi.change_percent === null && "text-[10px] font-normal text-muted-foreground/70", (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) === 0 && "text-muted-foreground")}>
+                                {kpi.change_percent === null ? "Baru" : (kpi.change_percent ?? 0) === 0 ? "-" : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
                               </span>
                             </span>
                           </li>
