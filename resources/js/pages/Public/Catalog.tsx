@@ -484,13 +484,14 @@ export default function Catalog({
   )
 
   const listingBody = (
-    <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-6 lg:pb-8">
-      {/* Filter desktop via topnav (pill) - sidebar dihapus; sheet tetap utk mobile. */}
-      <div className="flex flex-col gap-8">
+    <>
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4">
         {productGallery}
-        {products.length ? <Pagination pagination={pagination} className="mt-0" /> : null}
       </div>
-    </section>
+      {products.length ? (
+        <Pagination pagination={pagination} className="mt-0" />
+      ) : null}
+    </>
   )
 
   return (
