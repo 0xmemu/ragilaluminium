@@ -12,6 +12,7 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useCheckout, type CheckoutCodConfig } from "@/hooks/use-checkout"
 import PublicLayout from "@/layouts/public-layout"
+import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { CheckoutDetails, OrderEta, SharedPageProps } from "@/types"
@@ -123,7 +124,7 @@ export default function Checkout({
             </div>
           </div>
         </section>
-        <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] md:!px-8 lg:!px-12 lg:py-8">
+        <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+5.5rem)] md:!px-8 lg:!px-12 lg:pb-[calc(5.5rem+1rem)]">
           <EmptyState
             icon="shopping-cart"
             title="Keranjang kosong"
@@ -215,7 +216,7 @@ export default function Checkout({
         </div>
       </section>
 
-      <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] md:!px-8 lg:!px-12 lg:py-8">
+      <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+5.5rem)] md:!px-8 lg:!px-12 lg:pb-[calc(5.5rem+1rem)]">
         {pageErrors.checkout ? (
           <Alert tone="danger" title={pageErrors.checkout} className="mb-4" />
         ) : null}
@@ -247,6 +248,36 @@ export default function Checkout({
           />
         </div>
       </section>
+
+      {/* Sticky bar bawah viewport: total + tombol submit form pembayaran */}
+      {details && !c.editingDetails ? (
+        <div
+          role="region"
+          aria-label="Buat pesanan"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md sm:px-6 lg:px-10"
+        >
+          <div className="container-page flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Total Pembayaran
+              </p>
+              <p className="truncate tabular-nums text-base font-bold text-primary sm:text-lg">
+                {formatCurrency(checkoutTotal)}
+              </p>
+            </div>
+            <Button
+              type="submit"
+              form="checkout-payment-form"
+              size="lg"
+              className="h-11 min-h-11 shrink-0 px-5 font-bold"
+              disabled={!details || c.editingDetails || c.paymentForm.processing}
+            >
+              {c.paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
+              <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </PublicLayout>
   )
 }
