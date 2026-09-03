@@ -234,11 +234,10 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
   const [openId, setOpenId] = React.useState<number | null>(null)
 
   React.useEffect(() => {
-    // Default buka item pertama, tetapi jangan ikut bereaksi saat user menutupnya.
-    // Jika openId ikut menjadi dependency, klik tutup langsung dibuka ulang (glitch).
-    const firstId = items[0]?.id ?? null
+    // Jaga pilihan tetap valid saat konten CMS berubah (semua tertutup secara default,
+    // konsisten dengan halaman FAQ - tidak ada item yang otomatis terbuka).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOpenId((current) => (current !== null && items.some((item) => item.id === current) ? current : firstId))
+    setOpenId((current) => (current !== null && items.some((item) => item.id === current) ? current : null))
   }, [items])
 
   const pageTitle = guide?.title ?? "Masalah & Solusi"
