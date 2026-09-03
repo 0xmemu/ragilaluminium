@@ -22,6 +22,7 @@ export interface CheckoutVoucher {
   stackable?: boolean
   target_type?: "general" | "model" | "product"
   target_label?: string
+  discount_percent?: number | null
   vouchers?: Array<{
     code: string
     name: string
@@ -29,6 +30,7 @@ export interface CheckoutVoucher {
     stackable?: boolean
     target_type?: "general" | "model" | "product"
     target_label?: string
+    discount_percent?: number | null
   }>
 }
 
@@ -43,6 +45,7 @@ export interface CheckoutShippingQuote {
   insurance?: number
   insurance_available?: boolean
   message?: string | null
+  carrier_eta?: string | null
 }
 
 export interface UseCheckoutOptions {
@@ -130,7 +133,7 @@ export function useCheckout({
   const showCodFee =
     paymentForm.data.payment_method === "cod" && cod.enabled && cod.allowed && cod.fee_amount > 0
   const [voucherCode, setVoucherCode] = React.useState(voucher?.code ?? "")
-  const [voucherOpen, setVoucherOpen] = React.useState(hasVoucher)
+  const [voucherOpen, setVoucherOpen] = React.useState(false)
   const voucherForm = useForm({ code: voucher?.code ?? "" })
   const [insurance, setInsurance] = React.useState(initialInsurance)
 
@@ -420,6 +423,7 @@ export function useCheckout({
           insurance: insuranceAmount,
           insurance_available: insuranceAvailable,
           message: typeof source.message === "string" ? source.message : null,
+          carrier_eta: typeof source.carrier_eta === "string" ? source.carrier_eta : null,
         })
       } catch (error) {
         if ((error as Error)?.name !== "AbortError") setShippingQuote(null)

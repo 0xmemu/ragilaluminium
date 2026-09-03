@@ -82,6 +82,7 @@ class VoucherService
                 'stackable' => (bool) $voucher->stackable,
                 'target_type' => $voucher->target_type ?? StoreVoucher::TARGET_GENERAL,
                 'target_label' => $voucher->targetLabel(),
+                'discount_percent' => $voucher->discount_type === 'percent' ? (float) $voucher->discount_value : null,
             ];
         }
 

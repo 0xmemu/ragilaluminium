@@ -1,9 +1,6 @@
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Alert } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { formatCurrency } from "@/lib/format"
 import { displayEtaRangeLabel } from "@/lib/order-eta-display"
@@ -41,6 +38,31 @@ export interface CheckoutShipping {
   insurance?: number
   insurance_available?: boolean
   message?: string | null
+  carrier_eta?: string | null
+}
+
+/** Parse ETA J&T "1-3" atau "3" menjadi {min,max}; null bila tidak valid. */
+function parseCarrierEta(value: string | null | undefined): { min: number; max: number } | null {
+  const raw = (value ?? "").trim()
+  if (!raw) return null
+  const range = raw.match(/^(\d+)\s*-\s*(\d+)$/)
+  if (range) {
+    const min = Math.max(1, Number(range[1]))
+    const max = Math.max(min, Number(range[2]))
+    return { min, max }
+  }
+  if (/^\d+$/.test(raw)) {
+    const days = Math.max(1, Number(raw))
+    return { min: days, max: days }
+  }
+  return null
+}
+
+
+function formatPercent(value: number): string {
+  const rounded = Math.round((value + Number.EPSILON) * 100) / 100
+  const text = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",")
+  return text + "%"
 }
 
 export function CheckoutSummary({
@@ -89,6 +111,25 @@ export function CheckoutSummary({
   const codFee = showCodFee ? Number(cod.fee_amount || 0) : 0
   const discount = Number(discountTotal || 0) + (hasVoucher ? Number(voucherDiscount || 0) : 0)
   const finalTotal = Math.max(0, Number(subtotal || 0) - discount + shippingCost + codFee)
+
+  // Estimasi tiba = ETA J&T utk rute (carrier_eta); +1 hari hanya di batas lambat.
+  // Fallback: pakai rentang dasar dari props eta (konfigurasi) saat J&T belum menghitung.
+  const liveEta = React.useMemo(() => {
+    if (!eta) return null
+    const carrierEta = (effectiveShipping as { carrier_eta?: string | null } | null)?.carrier_eta ?? null
+    const base = carrierEta
+      ? parseCarrierEta(carrierEta)
+      : { min: (eta as { base_min_days?: number }).base_min_days ?? 2, max: (eta as { base_max_days?: number }).base_max_days ?? 5 }
+    if (!base) return eta
+    // Kontrak owner: min = ETA J&T, max = J&T + 1 hari (buffer hanya di batas lambat).
+    const start = new Date()
+    start.setDate(start.getDate() + base.min)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date()
+    end.setDate(end.getDate() + base.max + 1)
+    end.setHours(23, 59, 59, 0)
+    return { ...eta, start_at: start.toISOString(), end_at: end.toISOString(), carrier_eta: carrierEta }
+  }, [eta, effectiveShipping])
 
   return (
     <aside className="surface-panel min-w-0 p-4 sm:p-5 lg:sticky lg:top-28">
@@ -189,6 +230,9 @@ export function CheckoutSummary({
                 <p key={entry.code} className="flex items-start justify-between gap-2">
                   <span className="min-w-0 break-words">
                     {entry.name}
+                    {entry.discount_percent != null ? (
+                      <span className="font-medium text-primary"> · {formatPercent(entry.discount_percent)}</span>
+                    ) : null}
                     {entry.target_label && entry.target_label !== "Semua produk" ? (
                       <span className="font-medium text-primary"> · {entry.target_label}</span>
                     ) : null}
@@ -206,7 +250,7 @@ export function CheckoutSummary({
           </div>
         ) : null}
 
-        {voucherOpen ? (
+        {voucherOpen && !hasVoucher ? (
           <form onSubmit={applyVoucher} className="mt-2 space-y-1.5">
             <div className="flex items-center gap-1.5">
               <input
@@ -350,10 +394,10 @@ export function CheckoutSummary({
           </div>
         ) : null}
 
-        {eta ? (
+        {liveEta ? (
           <div className="flex justify-between gap-4 border-t border-border pt-2.5">
             <dt className="text-muted-foreground min-w-0 break-words">Estimasi tiba</dt>
-            <dd className="text-right font-semibold text-primary">{displayEtaRangeLabel(eta)}</dd>
+            <dd className="text-right font-semibold text-primary">{liveEta ? displayEtaRangeLabel(liveEta) : null}</dd>
           </div>
         ) : null}
 
