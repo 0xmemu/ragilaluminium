@@ -211,6 +211,8 @@ class InstallationGallery
         $media = ProductMedia::query()
             ->where('product_id', $product->id)
             ->visible()
+            ->installation()
+            ->with('mediaAsset')
             ->orderBy('position')
             ->orderBy('id')
             ->get();
@@ -266,10 +268,11 @@ class InstallationGallery
 
         return ProductMedia::query()
             ->visible()
+            ->installation()
             ->whereHas('product', fn ($q) => $q->visible()
                 ->where('product_category', $category)
                 ->where('product_model', $model))
-            ->with(['product:id,parent_sku,name'])
+            ->with(['mediaAsset', 'product:id,parent_sku,name'])
             ->orderByDesc('id')
             ->limit($limit)
             ->get()
@@ -358,7 +361,8 @@ class InstallationGallery
     {
         return ProductMedia::query()
             ->visible()
-            ->with(['product:id,parent_sku,name,short_name,product_category,product_model,status'])
+            ->installation()
+            ->with(['mediaAsset', 'product:id,parent_sku,name,short_name,product_category,product_model,status'])
             ->orderByDesc('id')
             ->get()
             ->filter(function (ProductMedia $item) {
