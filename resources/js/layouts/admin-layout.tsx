@@ -241,14 +241,13 @@ export function AdminLayout({
 
         <FlashMessages />
 
-        <PageGuide routeName={pageGuideRoute} className="fixed right-6 top-[118px] z-40 hidden md:flex md:right-8" />
-
         <main id="admin-content" tabIndex={-1} className="admin-main outline-none">
           {(title || actions) && (
-            <div className="px-4 pb-5 pt-6 md:px-6 lg:px-8">
+            <div className="relative px-4 pb-5 pt-6 md:px-6 lg:px-8">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
                   <AdminBreadcrumbs items={breadcrumbItems} className="mb-[26px]" />
+                  <PageGuide routeName={pageGuideRoute} className="absolute right-4 top-[30px] md:right-6 lg:right-8" />
                   {title && backUrl ? (
                     <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                       <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
