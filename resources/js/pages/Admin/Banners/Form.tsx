@@ -178,7 +178,7 @@ export default function BannerForm({
                 id="image"
                 label="Upload gambar"
                 error={form.errors.image}
-                hint="Satu gambar sumber dipakai untuk desktop & mobile. Layout banner paten 2,4:1 — siapkan canvas 2,4:1 (mis. 2048 × 852 px) agar tidak ter-crop. Gambar otomatis dikonversi WebP (pdp 1400px) agar landing page cepat. Tanpa upload, link produk aktif bisa mengisi gambar dari produk."
+                hint="Satu gambar sumber dipakai untuk desktop & mobile. Rasio banner paten 2,4:1; rekomendasi resolusi 1600 × 664 px agar tajam di desktop besar dan tidak ter-crop. Gambar otomatis dikonversi WebP agar landing page tetap cepat. Tanpa upload, link produk aktif bisa mengisi gambar dari produk."
               >
                 <Input
                   type="file"
