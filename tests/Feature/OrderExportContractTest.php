@@ -161,17 +161,18 @@ class OrderExportContractTest extends TestCase
         // BIAYA COD 5.000 rata per unit: A = 5.000 x 1/3 = 1.667; B = 5.000 x 2/3 = 3.333
         $this->assertSame('1,667', $r1[16]);
         $this->assertSame('3,333', $r2[16]);
-        // REFUND = nilai pesanan (bukan biaya per unit): sekali di baris pertama
-        $this->assertSame('300,000', $r1[17]);
-        $this->assertSame('-', $r2[17]);
-        // ONGKIR RETUR = nilai pesanan: sekali di baris pertama
-        $this->assertSame('25,000', $r1[18]);
-        $this->assertSame('-', $r2[18]);
-        // penghasilan bersih = nilai - diskon - (bagian subsidi + bagian COD), rata per unit
-        // A qty1: 1.250.000 - 50.000 - (6.667 + 1.667) = 1.191.667
-        $this->assertSame('1,191,667', $r1[19]);
-        // B qty2: 1.500.000 - (13.333 + 3.333) = 1.483.333
-        $this->assertSame('1,483,333', $r2[19]);
+        // REFUND 300.000 dibagi RATA per unit: A = 100.000; B = 200.000
+        $this->assertSame('100,000', $r1[17]);
+        $this->assertSame('200,000', $r2[17]);
+        // ONGKIR RETUR 25.000 dibagi RATA per unit: A = 8.333; B = 16.667
+        $this->assertSame('8,333', $r1[18]);
+        $this->assertSame('16,667', $r2[18]);
+        // penghasilan bersih = nilai - diskon - bagian semua biaya (kecuali ongkir), rata per unit
+        // biaya per unit = (20.000 + 5.000 + 300.000 + 25.000)/3 = 116.667
+        // A qty1: 1.250.000 - 50.000 - 116.667 = 1.083.333
+        $this->assertSame('1,083,333', $r1[19]);
+        // B qty2: 1.500.000 - 233.333 = 1.266.667
+        $this->assertSame('1,266,667', $r2[19]);
         // resi
         $this->assertSame('RESI1234567890', $r1[20]);
         // alamat lengkap
@@ -182,17 +183,16 @@ class OrderExportContractTest extends TestCase
         $raw = array_values(array_slice($ss->getSheetByName('Laporan Pesanan')->toArray(null, true, false), 1, 2)[0]);
         $this->assertEquals(1250000.0, (float) $raw[9]);
         $this->assertEqualsWithDelta(1666.667, (float) $raw[16], 0.01, 'COD item A = 5.000 x (1/3)');
-        $this->assertEqualsWithDelta(1191666.67, (float) $raw[19], 0.01, 'net item A = 1.250.000 - 50.000 - (6.666,67 + 1.666,67)');
+        $this->assertEqualsWithDelta(1083333.33, (float) $raw[19], 0.01, 'net item A = 1.250.000 - 50.000 - 116.666,67');
 
         // sheet Panduan menjelaskan pembagian biaya
         $guide = $ss->getSheetByName('Panduan')->toArray();
         $guideText = implode(' | ', array_map(fn ($r) => implode(' ', $r), $guide));
         $this->assertStringContainsString('PEMBAGIAN BIAYA', $guideText);
         $this->assertStringContainsString('RATA per unit', $guideText);
-        $this->assertStringContainsString('sekali di baris item pertama', $guideText);
         $this->assertStringContainsString('dibayar pembeli', $guideText);
         $this->assertStringContainsString('50.000 per produk', $guideText, 'contoh owner: ongkir 100.000, 2 produk -> 50.000/produk');
-        $this->assertStringContainsString('5.000 per produk', $guideText);
+        $this->assertStringContainsString('cartWeightKg', $guideText);
         $this->assertStringContainsString('PENGHASILAN BERSIH', $guideText);
         $this->assertStringContainsString('tanpa "Rp"', $guideText);
         $this->assertStringContainsString('order_number', $guideText);
