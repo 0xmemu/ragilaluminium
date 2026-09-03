@@ -22,13 +22,18 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
  * Template_Order_Export.xlsx). 1 baris = 1 item produk; pesanan multi
  * produk menghasilkan beberapa baris dengan NO. ORDER + pelanggan sama.
  *
- * Biaya level pesanan (revisi owner 2026-09-02): SEMUA kolom biaya
- * (shipping_amount, shipping_subsidy_amount, cod_fee_amount, refund_amount,
- * additional_shipping_amount) dibagi RATA per unit (qty item / total unit,
- * satu baris per produk, kolom qty), sistemnya mirip biaya COD.
+ * Biaya level pesanan (revisi owner 2026-09-02):
+ *  - shipping_amount, shipping_subsidy_amount, cod_fee_amount dibagi RATA
+ *    per unit (qty item / total unit, satu baris per produk, kolom qty),
+ *    sistemnya mirip biaya COD.
+ *  - refund_amount & additional_shipping_amount DIKAITKAN ke item yang
+ *    BENAR-BENAR diretur (order_return_items, case completed), proporsional
+ *    nilai diretur: barang yang diretur = income-nya hilang di baris itu;
+ *    produk lain tidak kena. Barang direttur penuh -> net negatif (rugi dari
+ *    biaya COD/subsidi yang tetap terpakai).
  * PENGHASILAN BERSIH per item = (harga x qty) - diskon produk - (bagian rata
- * per unit subsidi + COD + refund + ongkir retur). Ongkir TIDAK mengurangi
- * karena dibayar pembeli. Ada refund/ongkir retur -> net otomatis mengecil.
+ * per unit subsidi + COD) - refund - ongkir retur (item direktur). Ongkir
+ * TIDAK mengurangi karena dibayar pembeli.
  * Format angka POLOS tanpa "Rp" (nilai sel tetap numerik, bisa dibaca
  * Excel/tools). Header kolom memakai NAMA SISTEM (kunci DB snake_case,
  * mis. paid_at, variant_sku, cod_fee_amount) supaya mudah dikenali dan
@@ -88,6 +93,7 @@ class OrderExportDataSheet extends RagilStyledExport implements FromCollection, 
                 'payments:id,order_id,status,paid_at',
                 'shippingRecords:id,order_id,waybill_number',
                 'returnCases:id,order_id,status,resolution_type,reason,refund_amount,additional_shipping_amount',
+                'returnCases.items:id,return_case_id,order_item_id,requested_quantity,returned_quantity',
             ])
             ->get();
 
@@ -103,6 +109,23 @@ class OrderExportDataSheet extends RagilStyledExport implements FromCollection, 
             $runningCase = $order->returnCases->firstWhere('status', 'open');
             $refund = (float) ($completedCase->refund_amount ?? 0);
             $returOngkir = (float) ($completedCase->additional_shipping_amount ?? 0);
+
+            // Peta retur yang SUDAH TERJADI (case completed): order_item_id ->
+            // qty direktur + total nilai direktur (utk proporsi refund).
+            $returnedByItem = [];
+            $totalReturnedValue = 0.0;
+            foreach ($order->returnCases->where('status', 'completed') as $rc) {
+                foreach ($rc->items as $ri) {
+                    $q = (int) $ri->returned_quantity;
+                    if ($q <= 0) {
+                        continue;
+                    }
+                    $oi = $order->items->firstWhere('id', $ri->order_item_id);
+                    $price = $oi ? (float) $oi->unit_price : 0.0;
+                    $returnedByItem[$ri->order_item_id] = ($returnedByItem[$ri->order_item_id] ?? 0) + $q;
+                    $totalReturnedValue += $q * $price;
+                }
+            }
             $returnType = '-';
             if ($runningCase) {
                 $returnType = 'Retur diproses ('.($runningCase->reason ?? '-').')';
@@ -135,12 +158,19 @@ class OrderExportDataSheet extends RagilStyledExport implements FromCollection, 
                 $itemValue = (float) $item->unit_price * (int) $item->quantity;
                 $qty = max(1, (int) $item->quantity);
                 $qtyRatio = $qty / $totalQty;
-                // Semua biaya order dibagi rata per unit (aturan owner).
+                // Ongkir/subsidi/COD dibagi rata per unit (aturan owner).
                 $shareShipping = $orderShipping * $qtyRatio;
                 $shareSubsidy = $orderSubsidy * $qtyRatio;
                 $shareCod = $orderCod * $qtyRatio;
-                $shareRefund = $refund * $qtyRatio;
-                $shareReturOngkir = $returOngkir * $qtyRatio;
+                // Refund & ongkir retur dikaitkan ke item yang benar-benar diretur.
+                $returnedQty = $returnedByItem[$item->id] ?? 0;
+                $itemReturnedValue = $returnedQty * (float) $item->unit_price;
+                $shareRefund = $totalReturnedValue > 0
+                    ? $refund * ($itemReturnedValue / $totalReturnedValue)
+                    : 0.0;
+                $shareReturOngkir = $totalReturnedValue > 0
+                    ? $returOngkir * ($itemReturnedValue / $totalReturnedValue)
+                    : 0.0;
                 // Nilai mentah tanpa round: pembulatan dilakukan format tampilan,
                 // supaya SUM Excel = total net pesanan eksak.
                 $netIncome = $itemValue - (float) $item->line_discount
@@ -212,8 +242,8 @@ class OrderExportGuideSheet implements FromArray, WithTitle, WithEvents
             ['PANDUAN EXPORT PESANAN', 'Ragil Aluminium'],
             [],
             ['ATURAN BARIS', 'Setiap baris = 1 item produk. Pesanan dengan beberapa produk menjadi beberapa baris dengan NO. ORDER dan data pelanggan yang sama.'],
-            ['PEMBAGIAN BIAYA', 'SEMUA kolom biaya (shipping_amount, shipping_subsidy_amount, cod_fee_amount, refund_amount, additional_shipping_amount) dibagi RATA per unit: bagian = biaya total x qty item / total unit, satu baris per produk dengan kolom qty. Contoh (owner): ongkir 100.000 untuk 2 produk -> 50.000 per produk; subsidi 10% (10.000) -> 5.000 per produk. Tarif ongkir J&T tetap dihitung SEKALI dari total berat semua produk (ShippingService::cartWeightKg); pembagian per unit hanya tampilan laporan, jumlah kolom = tarif pesanan. Jumlah tiap kolom di semua baris = nilai pesanan.'],
-            ['PENGHASILAN BERSIH', 'Per item: (unit_price x quantity) - line_discount - (bagian shipping_subsidy_amount + bagian cod_fee_amount + bagian refund_amount + bagian additional_shipping_amount), semua dibagi rata per unit. Ada refund atau ongkir retur -> net otomatis mengecil. Ongkos kirim (shipping_amount) tidak dikurangi karena dibayar pembeli. Jumlah kolom = total nilai pesanan dikurangi diskon, subsidi, COD, refund, dan ongkir retur.'],
+            ['PEMBAGIAN BIAYA', 'shipping_amount, shipping_subsidy_amount, cod_fee_amount dibagi RATA per unit: bagian = biaya total x qty item / total unit, satu baris per produk dengan kolom qty. Contoh (owner): ongkir 100.000 untuk 2 produk -> 50.000 per produk; subsidi 10% (10.000) -> 5.000 per produk. Tarif ongkir J&T tetap dihitung SEKALI dari total berat semua produk (ShippingService::cartWeightKg); pembagian per unit hanya tampilan laporan, jumlah kolom = tarif pesanan. refund_amount dan additional_shipping_amount DIKAITKAN ke item yang benar-benar diretur (proporsional nilai diretur, dari data retur), bukan disebar ke semua produk. Jumlah tiap kolom di semua baris = nilai pesanan.'],
+            ['PENGHASILAN BERSIH', 'Per item: (unit_price x quantity) - line_discount - (bagian shipping_subsidy_amount + bagian cod_fee_amount, rata per unit) - refund_amount - additional_shipping_amount (hanya yang dikaitkan ke item direttur). Barang yang diretur tidak menghasilkan income; barang direttur penuh => net bernilai negatif (toko tetap menanggung COD/subsidi). Ongkos kirim (shipping_amount) tidak dikurangi karena dibayar pembeli. Jumlah kolom = total nilai pesanan dikurangi diskon, subsidi, COD, refund, dan ongkir retur.'],
             ['FORMAT ANGKA', 'Semua kolom uang memakai angka polos tanpa "Rp" (contoh: 3.000.000). Nilai sel tetap numerik, aman dijumlah dan bisa dibaca Excel maupun tools lain.'],
             ['NAMA KOLOM', 'Header memakai nama sistem (kunci DB snake_case): order_number, created_at, paid_at, variant_sku, unit_price, quantity, shipping_amount, cod_fee_amount, refund_amount, net_income, waybill_number, customer_name, customer_phone, shipping_*. Tujuannya supaya sistem/tools bisa mengenali kolom tanpa penerjemahan.'],
         ];
