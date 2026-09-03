@@ -37,7 +37,7 @@ class ProductController extends Controller
                         ->orderByDesc('is_main_image')
                         ->orderBy('position')
                         ->orderBy('id'),
-                    'installationMedia' => fn ($q) => $q->visible()->installation()->orderBy('position'),
+                    'installationMedia' => fn ($q) => $q->visible()->installation()->with('mediaAsset')->orderBy('position'),
                 ])
                 ->firstOrFail(),
         );
