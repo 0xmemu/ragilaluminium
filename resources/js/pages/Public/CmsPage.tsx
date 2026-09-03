@@ -24,7 +24,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
     () =>
       DOMPurify.sanitize(page.body, {
         USE_PROFILES: { html: true },
-        FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "h1", "h2", "h3", "h4", "h5", "h6"],
+        FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "h1"],
         FORBID_ATTR: ["style", "onerror", "onclick"],
       }),
     [page.body],
@@ -55,7 +55,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
         />
       </section>
 
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-4 pb-[calc(var(--mobile-bottom-nav-height)+1.5rem)] lg:py-8">
         {isLegal ? (
           <div className="mx-auto max-w-3xl border-t border-border pt-8">
             <article className="cms-content" dangerouslySetInnerHTML={{ __html: cleanBody }} />
@@ -63,7 +63,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
         ) : isContact ? (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,44rem)_18rem] lg:justify-between">
             <div className="min-w-0 space-y-4 order-2 lg:order-1">
-              <article className={cn("cms-content", "text-xs leading-5")} dangerouslySetInnerHTML={{ __html: cleanBody }} />
+              <article className={cn("cms-content", "text-sm leading-relaxed")} dangerouslySetInnerHTML={{ __html: cleanBody }} />
             </div>
 
             <aside className="order-1 lg:order-2 lg:sticky lg:top-28 lg:self-start">
