@@ -22,7 +22,6 @@ final class ImportedProductActivationService
             'prices' => 'harga setiap varian',
             'main_image_ready' => 'gambar utama siap',
             'photo_coverage' => 'cakupan foto varian',
-            'specifications' => 'spesifikasi',
             'explanation' => 'penjelasan produk',
             'shipping_data' => 'data pengiriman (berat dan dimensi packing > 0)',
         ];
