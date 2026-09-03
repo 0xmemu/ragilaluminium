@@ -350,16 +350,7 @@ export default function StorePerformance({
     return map
   }, [report])
 
-  const attentionItems = [
-    { key: "open_orders", label: "Pesanan belum selesai", href: routeUrl("admin.orders.index", { order_status: "processing" }) },
-    { key: "payment_pending_count", label: "Pembayaran pending", href: routeUrl("admin.payments.index", { status: "pending" }) },
-    { key: "dispatched_orders", label: "Pesanan dalam pengiriman", href: routeUrl("admin.orders.index", { order_status: "shipped" }) },
-    { key: "returns_open", label: "Retur aktif", href: routeUrl("admin.orders.index", { order_status: "return_in_process" }) },
-  ]
   const [chartTab, setChartTab] = React.useState(0)
-  const attentionRows = attentionItems
-    .map((item) => ({ ...item, value: kpiMap[item.key]?.value ?? 0 }))
-    .filter((row) => row.value > 0)
 
   function apply(next?: Partial<{ period: string; from: string; to: string; granularity: string }>) {
     const payload = {
@@ -539,27 +530,6 @@ export default function StorePerformance({
 
       </section>
 
-      {/* P1-1: Perlu Perhatian - action queue; section disembunyikan bila tidak ada item. */}
-      {attentionRows.length ? (
-      <section aria-label="Perlu perhatian" className="mb-6 rounded-lg border border-warning/30 bg-warning/5 p-4">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
-          <Icon name="alert-circle" className="size-4 text-warning" aria-hidden="true" />
-          Perlu Perhatian
-        </h3>
-        <ul className="mt-3 divide-y divide-border">
-            {attentionRows.map((row) => (
-              <li key={row.key} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span className="text-foreground">
-                  <span className="font-bold tabular-nums">{formatNumber(row.value)}</span> {row.label}
-                </span>
-                <a href={row.href} className="shrink-0 text-xs font-semibold text-info underline underline-offset-2 hover:no-underline">
-                  Lihat
-                </a>
-              </li>
-            ))}
-          </ul>
-      </section>
-      ) : null}
 
       {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
           dengan delta % vs periode pembanding. */}
