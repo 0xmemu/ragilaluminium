@@ -232,6 +232,7 @@ export default function Reviews({
                   "Belum ada screenshot pelanggan",
                   "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
                 )}
+                {pagination ? <Pagination pagination={pagination} /> : null}
               </section>
             ) : (
               <section id="ulasan-website" className="scroll-mt-20">

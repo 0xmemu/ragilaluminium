@@ -182,11 +182,9 @@ class PageController extends Controller
         $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
             ->orderBy('sort_order')
             ->orderByDesc('id')
-            ->limit(120)
-            ->get()
-            ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
-            ->values()
-            ->all();
+            ->paginate(12)
+            ->withQueryString()
+            ->through(fn (CmsTestimonial $t) => $t->toPublicArray());
 
         $websiteTotal = (clone $published)->website()->count();
 
