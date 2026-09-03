@@ -262,43 +262,31 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
         ]}
         subtitle={pageSubtitle || "Temukan solusi untuk masalah yang mungkin Anda hadapi."}
       >
-
+        <div>
           {items.length ? (
-            <ol className="mx-auto grid max-w-xl gap-3.5">
+            <ul className="overflow-hidden rounded-lg border border-border bg-surface">
               {items.map((item, index) => {
                 const open = openId === item.id
                 const panelId = `masalah-panel-${item.id}`
                 const solution = resolveSolution(item.solution)
 
                 return (
-                  <li key={item.id} className="overflow-hidden border border-border bg-surface">
+                  <li key={item.id} className="border-b border-border last:border-b-0">
                     <button
                       type="button"
-                      className="flex w-full items-center gap-4 px-4 py-5 text-left sm:px-6"
+                      className="flex min-h-14 w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5"
                       onClick={() => setOpenId(open ? null : item.id)}
                       aria-expanded={open}
                       aria-controls={panelId}
                       id={`masalah-trigger-${item.id}`}
                     >
-                      <span
-                        className={cn(
-                          "tabular-nums flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:size-10",
-                          open ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary",
-                        )}
-                      >
-                        {index + 1}
+                      <span className="flex min-w-0 items-start gap-3">
+                        <span className="tabular-nums mt-0.5 text-xs font-bold text-primary/70">{String(index + 1).padStart(2, "0")}</span>
+                        <span className="text-sm font-semibold leading-5 text-foreground">{item.problem}</span>
                       </span>
-                      <span className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-foreground">
-                        {item.problem}
+                      <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${open ? "bg-primary/10 text-primary" : "bg-surface-muted text-muted-foreground"}`}>
+                        <Icon name={open ? "chevron-up" : "chevron-down"} className="size-3.5" aria-hidden="true" />
                       </span>
-                      <Icon
-                        name={open ? "chevron-up" : "chevron-down"}
-                        className={cn(
-                          "size-4 shrink-0",
-                          open ? "text-primary" : "text-muted-foreground",
-                        )}
-                        aria-hidden="true"
-                      />
                     </button>
 
                     {open ? (
@@ -306,7 +294,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                         id={panelId}
                         role="region"
                         aria-labelledby={`masalah-trigger-${item.id}`}
-                        className="border-t border-border px-4 pb-6 pt-4 sm:px-6"
+                        className="border-t border-border bg-surface-muted/45 px-4 pb-4 pt-3 sm:px-5"
                       >
                         {solution.type === "rich" ? (
                           <RichSolutionPanel content={solution.content} whatsappUrl={whatsappUrl} />
@@ -320,7 +308,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
                   </li>
                 )
               })}
-            </ol>
+            </ul>
           ) : (
             <EmptyState
               title="Konten segera hadir"
@@ -329,22 +317,24 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
             />
           )}
 
-          <ClosingCTASection
-            compact={false}
-            eyebrow="Masih ragu spesifikasi yang tepat?"
-            heading="Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen"
-            actions={[
-              {
-                label: "Konsultasi WhatsApp",
-                href: whatsappUrl ?? routeUrl("contact"),
-                variant: "primary",
-                whatsappIcon: true,
-                external: true,
-              },
-              { label: "Lihat FAQ", href: routeUrl("faq"), variant: "secondary" },
-            ]}
-          />
+        </div>
       </HelpPageFrame>
+
+      <ClosingCTASection
+        compact={false}
+        eyebrow="Masih ragu spesifikasi yang tepat?"
+        heading="Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen"
+        actions={[
+          {
+            label: "Konsultasi WhatsApp",
+            href: whatsappUrl ?? routeUrl("contact"),
+            variant: "primary",
+            whatsappIcon: true,
+            external: true,
+          },
+          { label: "Lihat FAQ", href: routeUrl("faq"), variant: "secondary" },
+        ]}
+      />
     </PublicLayout>
   )
 }
