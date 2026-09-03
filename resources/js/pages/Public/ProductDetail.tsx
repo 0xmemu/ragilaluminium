@@ -137,7 +137,7 @@ export default function ProductDetail({
             <button
               type="button"
               onClick={handlePdpBack}
-              className="absolute left-2 top-2 z-20 inline-flex size-11 items-center justify-center rounded-full bg-surface/85 text-foreground shadow-md backdrop-blur-sm transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+              className="absolute left-2 top-2 z-20 inline-flex size-11 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
