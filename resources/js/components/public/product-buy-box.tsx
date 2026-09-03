@@ -76,7 +76,7 @@ export function ProductBuyBox({
     <>
       {/* Nama produk - baris 1 ukuran, baris 2 model (split otomatis), font body */}
       <div className="mt-0.5 flex items-start justify-between gap-3">
-        <h1 className="min-w-0 flex-1 text-sm lg:text-[21px] font-normal tracking-tight text-foreground [text-wrap:normal]">
+        <h1 style={{ textWrap: "wrap" }} className="min-w-0 flex-1 text-sm lg:text-[21px] font-normal tracking-tight text-foreground">
           <span className="block">
             {titleLine1}
             {titleLine2 ? ` ${titleLine2}` : ""}
