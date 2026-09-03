@@ -539,6 +539,28 @@ export default function StorePerformance({
 
       </section>
 
+      {/* P1-1: Perlu Perhatian - action queue; section disembunyikan bila tidak ada item. */}
+      {attentionRows.length ? (
+      <section aria-label="Perlu perhatian" className="mb-6 rounded-lg border border-warning/30 bg-warning/5 p-4">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <Icon name="alert-circle" className="size-4 text-warning" aria-hidden="true" />
+          Perlu Perhatian
+        </h3>
+        <ul className="mt-3 divide-y divide-border">
+            {attentionRows.map((row) => (
+              <li key={row.key} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="text-foreground">
+                  <span className="font-bold tabular-nums">{formatNumber(row.value)}</span> {row.label}
+                </span>
+                <a href={row.href} className="shrink-0 text-xs font-semibold text-info underline underline-offset-2 hover:no-underline">
+                  Lihat
+                </a>
+              </li>
+            ))}
+          </ul>
+      </section>
+      ) : null}
+
       {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
           dengan delta % vs periode pembanding. */}
       <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -585,27 +607,6 @@ export default function StorePerformance({
         })}
       </section>
 
-      {/* P1-1: Perlu Perhatian - action queue; section disembunyikan bila tidak ada item. */}
-      {attentionRows.length ? (
-      <section aria-label="Perlu perhatian" className="mb-6 rounded-lg border border-warning/30 bg-warning/5 p-4">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
-          <Icon name="alert-circle" className="size-4 text-warning" aria-hidden="true" />
-          Perlu Perhatian
-        </h3>
-        <ul className="mt-3 divide-y divide-border">
-            {attentionRows.map((row) => (
-              <li key={row.key} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span className="text-foreground">
-                  <span className="font-bold tabular-nums">{formatNumber(row.value)}</span> {row.label}
-                </span>
-                <a href={row.href} className="shrink-0 text-xs font-semibold text-info underline underline-offset-2 hover:no-underline">
-                  Lihat
-                </a>
-              </li>
-            ))}
-          </ul>
-      </section>
-      ) : null}
 
       <div className="space-y-6">
         {report.sections.map((section) => (
