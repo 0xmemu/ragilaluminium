@@ -254,7 +254,8 @@ export default function Checkout({
         <div
           role="region"
           aria-label="Buat pesanan"
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md sm:px-6 lg:px-10"
+          className="fixed inset-x-0 z-40 border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md sm:px-6 lg:hidden"
+          style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}
         >
           <div className="container-page flex items-center gap-3">
             <div className="min-w-0 flex-1">
