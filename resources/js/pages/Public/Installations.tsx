@@ -7,6 +7,7 @@ import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
 import { Icon } from "@/components/shared/icon"
 import { PageTopBar } from "@/components/public/page-top-bar"
 import { ModelHero } from "@/components/public/model-hero"
+import { ShowcaseListingFrame } from "@/components/public/showcase-listing-frame"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { EmptyState } from "@/components/ui/empty-state"
 import { SortMenu } from "@/components/public/model-sort-menu"
@@ -164,17 +165,15 @@ export default function Installations({
 
       {isModelLevel ? (
         <>
-          <section className="bg-surface py-0">
-            <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-              <div className="flex items-center justify-between gap-4 pt-2 pb-1.5 sm:pt-2.5 sm:pb-2">
-                <p className="text-xs text-muted-foreground sm:text-sm">
-                  {formatNumber(totalModels)} model produk ditemukan
-                </p>
-                <SortMenu value={sort} onChange={selectSort} />
-              </div>
-            </div>
-          </section>
-          <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-5 md:py-8">
+          <ShowcaseListingFrame
+            title={heading}
+            breadcrumbs={[
+              { label: "Beranda", href: routeUrl("home") },
+              { label: "Hasil Pemasangan" },
+            ]}
+            countLabel={`${formatNumber(totalModels)} model produk ditemukan`}
+            toolbar={<SortMenu value={sort} onChange={selectSort} />}
+          >
             {installations.length ? (
               <ShowcaseCardGrid>
                 {installations.map((item) => (
@@ -188,7 +187,7 @@ export default function Installations({
                 description="Model produk belum tersedia pada katalog aktif."
               />
             )}
-          </section>
+          </ShowcaseListingFrame>
         </>
       ) : (
           <div className="space-y-6 lg:space-y-8">

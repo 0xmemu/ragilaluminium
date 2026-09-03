@@ -76,6 +76,7 @@ export function CatalogNav({
   priceMin = "",
   priceMax = "",
   breadcrumbItems,
+  showHeader = true,
 }: {
   category: string
   categoryName: string
@@ -99,6 +100,7 @@ export function CatalogNav({
   priceMin?: string
   priceMax?: string
   breadcrumbItems?: BreadcrumbItem[]
+  showHeader?: boolean
 }) {
   const activeModelObj = filterModels.find((m) => m.value === activeModel)
   const activeModelLabel = activeModelObj ? activeModelObj.label : null
@@ -115,10 +117,12 @@ export function CatalogNav({
 
   return (
     <section className="bg-surface py-0" aria-label="Navigasi katalog produk">
-      <PageTopBar
-        breadcrumbs={breadcrumbItems ?? [{ label: categoryName, href: null }]}
-        title={categoryName}
-      />
+      {showHeader ? (
+        <PageTopBar
+          breadcrumbs={breadcrumbItems ?? [{ label: categoryName, href: null }]}
+          title={categoryName}
+        />
+      ) : null}
 
       {/* Baris 2 -> Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis */}
       <div className="border-y border-border bg-surface">

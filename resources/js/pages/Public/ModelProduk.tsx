@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ModelCategoryCard } from "@/components/public/model-category-card"
+import { ShowcaseListingFrame } from "@/components/public/showcase-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -54,28 +55,15 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
         />
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <PageTopBar
-          title="Model Produk"
-          breadcrumbs={[
-            { label: "Beranda", href: routeUrl("home") },
-            { label: "Model Produk" },
-          ]}
-        />
-      </section>
-
-      <section className="bg-surface py-0">
-        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <div className="flex items-center justify-between gap-4 pt-2 pb-1.5 sm:pt-2.5 sm:pb-2">
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              {formatNumber(totalCount)} model produk ditemukan
-            </p>
-            <SortMenu value={sort} onChange={selectSort} />
-          </div>
-        </div>
-      </section>
-
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-5 md:py-8">
+      <ShowcaseListingFrame
+        title="Model Produk"
+        breadcrumbs={[
+          { label: "Beranda", href: routeUrl("home") },
+          { label: "Model Produk" },
+        ]}
+        countLabel={`${formatNumber(totalCount)} model produk ditemukan`}
+        toolbar={<SortMenu value={sort} onChange={selectSort} />}
+      >
         {models.length ? (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {models.map((model) => (
@@ -89,7 +77,7 @@ export default function ModelProduk({ models = [], activeSort = "admin" }: Model
             description="Model produk belum tersedia pada katalog aktif."
           />
         )}
-      </section>
+      </ShowcaseListingFrame>
     </PublicLayout>
   )
 }

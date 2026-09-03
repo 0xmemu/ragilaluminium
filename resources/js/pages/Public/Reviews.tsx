@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Radio } from "@/components/ui/radio"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
+import { ReviewListingFrame } from "@/components/public/review-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -186,72 +187,65 @@ export default function Reviews({
         />
       </section>
 
-      {total ? (
-        <section className="bg-surface py-0">
-          <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">
-                <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
-                {averageRating ? (
-                  <span className="inline-flex items-center gap-1">
-                    <span className="mx-1.5 text-muted-foreground">·</span>
-                    <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
-                    <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
-                  </span>
-                ) : null}
-              </p>
-              <FilterBerdasarkanControl
-                id="reviews-sort"
-                variant="plain"
-                value={sortFilter}
-                options={sortOptions}
-                onChange={setSortFilter}
-                ariaLabel="Urutkan ulasan"
-                menuLabel="Urutkan"
-              />
+      <ReviewListingFrame
+        title={heading}
+        breadcrumbs={[
+          { label: "Beranda", href: routeUrl("home") },
+          { label: heading, href: null },
+        ]}
+        summary={total ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
+              {averageRating ? (
+                <span className="inline-flex items-center gap-1">
+                  <span className="mx-1.5 text-muted-foreground">·</span>
+                  <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
+                  <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
+                </span>
+              ) : null}
+            </p>
+            <FilterBerdasarkanControl
+              id="reviews-sort"
+              variant="plain"
+              value={sortFilter}
+              options={sortOptions}
+              onChange={setSortFilter}
+              ariaLabel="Urutkan ulasan"
+              menuLabel="Urutkan"
+            />
+          </div>
+        ) : null}
+        pagination={pagination}
+      >
+        {isSs ? (
+          <section id="apa-kata-pelanggan" className="scroll-mt-20">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-foreground">Screenshot pelanggan</h2>
+              <span className="tabular-nums text-sm text-muted-foreground">
+                {formatNumber(marketplace.length)}
+              </span>
             </div>
-          </div>
-        </section>
-      ) : null}
-
-
-      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-6 lg:pb-8">
-        <div className="min-w-0">
-          <div className="flex flex-col gap-8">
-            {isSs ? (
-              <section id="apa-kata-pelanggan" className="scroll-mt-20">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-base font-bold text-foreground">Screenshot pelanggan</h2>
-                  <span className="tabular-nums text-sm text-muted-foreground">
-                    {formatNumber(marketplace.length)}
-                  </span>
-                </div>
-                {renderGrid(
-                  marketplace,
-                  "screenshot",
-                  "Belum ada screenshot pelanggan",
-                  "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
-                )}
-              </section>
-            ) : (
-              <section id="ulasan-website" className="scroll-mt-20">
-                {renderGrid(
-                  websiteFiltered,
-                  "review",
-                  sortFilter === "best"
-                    ? "Belum ada ulasan terbaik"
-                    : "Belum ada ulasan website",
-                  sortFilter === "best"
-                    ? "Ulasan dengan rating 4-5 belum tersedia. Coba urutan lain."
-                    : "Ulasan dari pembeli website akan tampil di sini.",
-                )}
-              </section>
+            {renderGrid(
+              marketplace,
+              "screenshot",
+              "Belum ada screenshot pelanggan",
+              "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
             )}
-            {pagination ? <Pagination pagination={pagination} className="mt-0" /> : null}
-          </div>
-        </div>
-      </section>
-
+          </section>
+        ) : (
+          <section id="ulasan-website" className="scroll-mt-20">
+            {renderGrid(
+              websiteFiltered,
+              "review",
+              sortFilter === "best" ? "Belum ada ulasan terbaik" : "Belum ada ulasan website",
+              sortFilter === "best"
+                ? "Ulasan dengan rating 4-5 belum tersedia. Coba urutan lain."
+                : "Ulasan dari pembeli website akan tampil di sini.",
+            )}
+          </section>
+        )}
+      </ReviewListingFrame>
       {isSs && galleryItems.length ? (
         <GalleryLightbox
           items={galleryItems}

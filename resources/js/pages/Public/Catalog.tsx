@@ -20,6 +20,7 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
+import { ProductListingFrame } from "@/components/public/product-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 import type {
@@ -349,6 +350,7 @@ export default function Catalog({
       priceMin={filters.priceMin}
       priceMax={filters.priceMax}
       onReset={reset}
+      showHeader={false}
       breadcrumbItems={[
         { label: "Beranda", href: routeUrl("home") },
         ...(listingAllProducts
@@ -484,14 +486,22 @@ export default function Catalog({
   )
 
   const listingBody = (
-    <>
-      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4">
-        {productGallery}
-      </div>
-      {products.length ? (
-        <Pagination pagination={pagination} className="mt-0" />
-      ) : null}
-    </>
+    <ProductListingFrame
+      title={categoryName}
+      breadcrumbs={[
+        { label: "Beranda", href: routeUrl("home") },
+        ...(listingAllProducts
+          ? [{ label: categoryName }]
+          : [
+              { label: "Model Produk", href: routeUrl("catalog.index") },
+              { label: categoryName },
+            ]),
+      ]}
+      toolbar={catalogNav}
+      pagination={products.length ? <Pagination pagination={pagination} className="mt-0" /> : null}
+    >
+      {productGallery}
+    </ProductListingFrame>
   )
 
   return (
@@ -512,8 +522,6 @@ export default function Catalog({
           }
         />
       </Head>
-
-      {catalogNav}
 
       {fromTopSold && flashCarouselProducts.length > 0 ? (
         <FlashSaleCarouselSection products={flashCarouselProducts} />
