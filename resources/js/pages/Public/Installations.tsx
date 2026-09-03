@@ -9,7 +9,6 @@ import { PageTopBar } from "@/components/public/page-top-bar"
 import { ModelHero } from "@/components/public/model-hero"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { EmptyState } from "@/components/ui/empty-state"
-import { ModelCategoryCard } from "@/components/public/model-category-card"
 import { SortMenu } from "@/components/public/model-sort-menu"
 import { formatNumber } from "@/lib/format"
 import { Input } from "@/components/ui/input"
@@ -176,12 +175,12 @@ export default function Installations({
             </div>
           </section>
           <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-5 md:py-8">
-            {models.length ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {models.map((model) => (
-                  <ModelCategoryCard key={`${model.category}-${model.model}`} model={model} />
+            {installations.length ? (
+              <ShowcaseCardGrid>
+                {installations.map((item) => (
+                  <InstallationCard key={item.id} item={item} />
                 ))}
-              </div>
+              </ShowcaseCardGrid>
             ) : (
               <EmptyState
                 icon="funnel"
