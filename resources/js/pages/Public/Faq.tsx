@@ -5,6 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { ClosingCTASection } from "@/components/public/closing-cta"
 import { HelpPageFrame } from "@/components/public/help-page-frame"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -39,9 +40,19 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
   const [openId, setOpenId] = React.useState<number | null>(guide.groups[0]?.items[0]?.id ?? null)
   const [activeCategory, setActiveCategory] = React.useState<string>("all")
-  const visibleGroups = activeCategory === "all"
-    ? guide.groups
-    : guide.groups.filter((group) => group.category === activeCategory)
+  const [query, setQuery] = React.useState("")
+  const normalizedQuery = query.trim().toLowerCase()
+  const visibleGroups = guide.groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        activeCategory !== "all" && group.category !== activeCategory
+          ? false
+          : !normalizedQuery || `${item.question} ${item.answer}`.toLowerCase().includes(normalizedQuery),
+      ),
+    }))
+    .filter((group) => group.items.length > 0)
+  const resultCount = visibleGroups.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
     <PublicLayout>
@@ -68,10 +79,35 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
           />
         )}
       >
+        <div className="mb-5">
+          <label htmlFor="faq-search" className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Cari jawaban
+          </label>
+          <div className="relative">
+            <Icon name="search" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="faq-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Cari pertanyaan tentang ukuran, kaca, COD..."
+              className="pl-10 pr-12"
+            />
+            {query ? (
+              <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian FAQ" className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <span aria-hidden="true">×</span>
+              </button>
+            ) : null}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">
+            {normalizedQuery ? `${resultCount} pertanyaan ditemukan` : `${resultCount} pertanyaan`}
+          </p>
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-8">
           <aside className="lg:sticky lg:top-24">
             <div className="mb-2 flex items-center justify-between gap-3 lg:block">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pilih topik</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Kategori FAQ</p>
               <span className="tabular-nums text-xs text-muted-foreground lg:hidden">
                 {guide.categories.reduce((sum, category) => sum + category.count, 0)} pertanyaan
               </span>
@@ -151,7 +187,12 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                 ))}
               </div>
             ) : (
-              <EmptyState icon="circle-help" title="Belum ada pertanyaan" description="Tim kami siap membantu lewat WhatsApp jika Anda punya pertanyaan." className="mx-auto max-w-lg" />
+              <EmptyState
+                icon="circle-help"
+                title={normalizedQuery ? "Pertanyaan tidak ditemukan" : "Belum ada pertanyaan"}
+                description={normalizedQuery ? "Coba kata kunci lain atau chat kami melalui WhatsApp." : "Tim kami siap membantu lewat WhatsApp jika Anda punya pertanyaan."}
+                className="mx-auto max-w-lg"
+              />
             )}
           </div>
         </div>
