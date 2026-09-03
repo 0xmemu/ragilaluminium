@@ -61,7 +61,7 @@ export function OptionMenu({
         aria-expanded={open}
         aria-label={label}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-semibold text-foreground transition hover:bg-muted"
+        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium text-foreground transition hover:bg-muted"
       >
         <span className="max-w-[9rem] truncate">{selected?.label ?? label}</span>
         <Icon
@@ -87,7 +87,7 @@ export function OptionMenu({
                 <button
                   type="button"
                   className={cn(
-                    "flex w-full items-center px-3 py-2 text-left text-xs font-semibold transition",
+                    "flex w-full items-center px-3 py-2 text-left text-xs font-medium transition",
                     active
                       ? "bg-accent text-accent-foreground"
                       : "text-foreground hover:bg-muted",
