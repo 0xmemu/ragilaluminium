@@ -7,12 +7,14 @@ export function ProductListingFrame({
   title,
   breadcrumbs,
   toolbar,
+  beforeChildren,
   children,
   pagination,
 }: {
   title: ReactNode
   breadcrumbs: BreadcrumbItem[]
   toolbar: ReactNode
+  beforeChildren?: ReactNode
   children: ReactNode
   pagination: ReactNode
 }) {
@@ -22,6 +24,7 @@ export function ProductListingFrame({
         <PageTopBar title={title} breadcrumbs={breadcrumbs} />
       </section>
       {toolbar}
+      {beforeChildren}
       <section className="container-page !px-2.5 pt-4 md:!px-8 lg:!px-12">
         {children}
       </section>

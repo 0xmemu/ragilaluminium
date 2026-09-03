@@ -498,6 +498,9 @@ export default function Catalog({
             ]),
       ]}
       toolbar={catalogNav}
+      beforeChildren={fromTopSold && flashCarouselProducts.length > 0 ? (
+        <FlashSaleCarouselSection products={flashCarouselProducts} />
+      ) : null}
       pagination={products.length ? <Pagination pagination={pagination} className="mt-0" /> : null}
     >
       {productGallery}
@@ -522,10 +525,6 @@ export default function Catalog({
           }
         />
       </Head>
-
-      {fromTopSold && flashCarouselProducts.length > 0 ? (
-        <FlashSaleCarouselSection products={flashCarouselProducts} />
-      ) : null}
 
       {listingBody}
 
