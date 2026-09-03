@@ -105,7 +105,9 @@ class CodSettingsTest extends TestCase
         $order = Order::query()->latest('id')->first();
         $this->assertNotNull($order);
         $this->assertTrue((bool) $order->cod_flag);
-        $this->assertEquals(100000.0, (float) $order->cod_fee_amount);
+        // Keputusan owner 2026-09-03: COD = fee% x (subtotal dibayar + ongkir NET)
+        // subtotal 1.000.000 + ongkir net 60.000 = 1.060.000 x 10% = 106.000.
+        $this->assertEquals(106000.0, (float) $order->cod_fee_amount);
         $this->assertEquals(
             (float) $order->subtotal_amount
                 + (float) $order->shipping_amount

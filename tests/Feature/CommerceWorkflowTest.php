@@ -195,10 +195,12 @@ class CommerceWorkflowTest extends TestCase
         $this->assertEquals(200000.0, (float) $order->voucher_discount_amount);
         $this->assertEquals(100000.0, (float) $order->shipping_amount);
         $this->assertEquals(30000.0, (float) $order->shipping_subsidy_amount);
-        $this->assertEquals(80000.0, (float) $order->cod_fee_amount);
+        // Keputusan owner 2026-09-03: COD = fee% x (subtotal setelah voucher + ongkir NET).
+        // (1.000.000 - 200.000 + 100.000) x 10% = 90.000.
+        $this->assertEquals(90000.0, (float) $order->cod_fee_amount);
         $this->assertTrue((bool) $order->cod_flag);
 
-        $expected = 1000000 + 100000 - 200000 + 80000;
+        $expected = 1000000 + 100000 - 200000 + 90000;
         $this->assertEquals($expected, (float) $order->total_amount);
         $this->assertEquals(
             (float) $order->subtotal_amount

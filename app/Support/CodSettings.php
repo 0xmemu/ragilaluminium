@@ -105,14 +105,23 @@ class CodSettings
         return self::get()['enabled'];
     }
 
-    public static function calculateFee(float $subtotalAfterVoucher): float
+    /**
+     * Biaya COD = persen dari (subtotal produk yang dibayar pembeli + ongkir net
+     * yang dibayar pembeli). Ongkir yang dihitung adalah NET (setelah subsidi) —
+     * subsidi bukan bagian dari nilai yang ditagih ke penerima (keputusan owner
+     * 2026-09-03, mengikuti praktik integrasi J&T: fee COD dihitung dari harga
+     * paket termasuk ongkir).
+     */
+    public static function calculateFee(float $subtotalAfterVoucher, float $shippingNet = 0): float
     {
         $settings = self::get();
         if (! $settings['enabled'] || $settings['fee_value'] <= 0) {
             return 0.0;
         }
 
-        return round(max(0, $subtotalAfterVoucher) * ($settings['fee_value'] / 100), 2);
+        $basis = max(0, $subtotalAfterVoucher) + max(0, $shippingNet);
+
+        return round($basis * ($settings['fee_value'] / 100), 2);
     }
 
     public static function assertAllowedForSubtotal(float $subtotalAfterVoucher): void

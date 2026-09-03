@@ -157,10 +157,11 @@ class PricePromoOrderContractTest extends TestCase
         $this->assertEquals(90000.0, (float) $order->voucher_discount_amount);
         $this->assertEquals(50000.0, (float) $order->shipping_amount);
         $this->assertEquals(20000.0, (float) $order->shipping_subsidy_amount);
-        // COD = 10% dari (900000 - 90000) = 81000.
-        $this->assertEquals(81000.0, (float) $order->cod_fee_amount);
+        // Keputusan owner 2026-09-03: COD = fee% x (subtotal setelah voucher + ongkir NET).
+        // (900.000 - 90.000 + 50.000) x 10% = 86.000.
+        $this->assertEquals(86000.0, (float) $order->cod_fee_amount);
         // total = subtotal + ongkir(net) - voucher + COD.
-        $this->assertEquals(941000.0, (float) $order->total_amount);
+        $this->assertEquals(946000.0, (float) $order->total_amount);
         $this->assertEquals(
             (float) $order->subtotal_amount + (float) $order->shipping_amount
                 - (float) $order->voucher_discount_amount + (float) $order->cod_fee_amount,

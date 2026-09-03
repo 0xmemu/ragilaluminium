@@ -156,7 +156,7 @@ class OrderService
                     $codFee = 0.0;
                     if ($paymentMethod === 'cod') {
                         CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
-                        $codFee = CodSettings::calculateFee($subtotalAfterVoucher);
+                        $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost);
                     }
 
                     $total = max(0, $subtotal + $shippingCost - $voucherDiscount + $codFee);
@@ -616,10 +616,6 @@ class OrderService
 
             $isCod = (bool) $locked->cod_flag || $locked->payment_method === 'cod';
             $codFee = 0.0;
-            if ($isCod) {
-                CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
-                $codFee = CodSettings::calculateFee($subtotalAfterVoucher);
-            }
 
             $shippingInsurance = max(0, (float) ($locked->shipping_insurance_amount ?? 0));
 
@@ -632,6 +628,10 @@ class OrderService
             );
             $shippingCost = $breakdown['net'];
             $shippingSubsidy = $breakdown['subsidy'];
+            if ($isCod) {
+                CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
+                $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost);
+            }
             $total = max(0, $subtotal + $shippingCost - $voucherDiscount + $codFee);
 
             // Persist baris.

@@ -58,7 +58,7 @@ class CheckoutController extends Controller
 
         $cod = CodSettings::get();
         $subtotalAfterVoucher = max(0, (float) $priced['subtotal'] - $voucherDiscount);
-        $codFeePreview = $cod['enabled'] ? CodSettings::calculateFee($subtotalAfterVoucher) : 0.0;
+        $codFeePreview = 0.0;
         $codAllowed = $cod['enabled'];
         $codBlockReason = null;
         if ($cod['enabled'] && $cod['max_order_amount'] !== null && $cod['max_order_amount'] > 0
@@ -96,7 +96,17 @@ class CheckoutController extends Controller
                 'rough_estimate' => $breakdown['rough_estimate'],
                 'manual_review' => $breakdown['manual_review'],
                 'message' => $breakdown['message'],
+                'carrier_eta' => $breakdown['carrier_eta'] ?? null,
             ];
+        }
+
+        // Biaya COD = persen x (subtotal dibayar + ongkir NET dibayar pembeli);
+        // fee preview baru valid setelah ongkir (net) tersedia (keputusan owner 2026-09-03).
+        if ($cod['enabled']) {
+            $codFeePreview = CodSettings::calculateFee(
+                $subtotalAfterVoucher,
+                (float) ($shippingPreview['net'] ?? 0),
+            );
         }
 
         $items = collect($priced['items'])->map(function (array $item) {
