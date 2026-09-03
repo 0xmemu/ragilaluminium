@@ -21,9 +21,9 @@ export function BackToTop() {
       aria-label="Kembali ke atas"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       className={cn(
-        "fixed bottom-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] right-3 z-40",
-        buttonVariants({ variant: "primary", size: "icon" }) + " size-10 shadow-md",
-        "transition-colors duration-200 hover:bg-primary-hover",
+        "fixed bottom-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+1rem)] right-3 z-40 aspect-square rounded-full p-0",
+        buttonVariants({ variant: "primary", size: "icon" }) + " size-10 shadow-md !bg-foreground/70 !text-background backdrop-blur-sm",
+        "transition-colors duration-200 hover:!bg-foreground",
         "lg:bottom-6 lg:right-6",
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0",
       )}
