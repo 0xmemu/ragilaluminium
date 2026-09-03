@@ -45,31 +45,76 @@ export function ProductGallery({
   const galleryRef = React.useRef<HTMLDivElement>(null)
   const didSwipe = React.useRef(false)
 
+  // Ref untuk drag real-time TANPA setState per frame (re-render per move bikin jank).
+  const galleryDragRef = React.useRef(0)
+  const galleryTrackRef = React.useRef<HTMLDivElement | null>(null)
+  const galleryLastX = React.useRef(0)
+  const galleryLastT = React.useRef(0)
+  const galleryVelocity = React.useRef(0)
+
+  /** Terapkan transform langsung ke DOM: drag + damping di ujung kiri/kanan. */
+  function applyGalleryTransform(dx: number) {
+    const track = galleryTrackRef.current
+    if (!track) return
+    const atStart = activeMediaIndex === 0
+    const atEnd = activeMediaIndex === items.length - 1
+    let effective = dx
+    if ((atStart && dx > 0) || (atEnd && dx < 0)) {
+      // Rubber-band: 1/3 dari jarak di ujung.
+      effective = dx / 3
+    }
+    const base = -(activeMediaIndex * 100)
+    const pct = galleryWidth ? (effective / galleryWidth) * 100 : 0
+    track.style.transform = `translateX(calc(${base}% + ${pct}%))`
+  }
+
   function onGalleryTouchStart(event: React.TouchEvent) {
     if (items.length <= 1) return
     const t = event.touches[0]
     galleryStartX.current = t.clientX
+    galleryLastX.current = t.clientX
+    galleryLastT.current = performance.now()
+    galleryVelocity.current = 0
     setGalleryWidth(galleryRef.current?.clientWidth ?? 0)
     didSwipe.current = false
     setGalleryDragging(true)
     setGalleryDrag(0)
+    galleryDragRef.current = 0
+    if (galleryTrackRef.current) galleryTrackRef.current.style.transition = 'none'
   }
 
   function onGalleryTouchMove(event: React.TouchEvent) {
     if (!galleryDragging) return
     const dx = event.touches[0].clientX - galleryStartX.current
     if (Math.abs(dx) > 8) didSwipe.current = true
-    setGalleryDrag(dx)
+    galleryDragRef.current = dx
+    // velocity px/ms untuk deteksi flick
+    const now = performance.now()
+    const dt = now - galleryLastT.current
+    if (dt > 0) {
+      galleryVelocity.current = (event.touches[0].clientX - galleryLastX.current) / dt
+      galleryLastX.current = event.touches[0].clientX
+      galleryLastT.current = now
+    }
+    applyGalleryTransform(dx)
   }
 
   function onGalleryTouchEnd() {
     if (!galleryDragging) return
     setGalleryDragging(false)
+    const dx = galleryDragRef.current
     const threshold = galleryWidth * 0.2
-    if (Math.abs(galleryDrag) > threshold) {
-      moveGallery(galleryDrag < 0 ? 1 : -1)
+    // Flick: geser cepat (|v| > 0.5 px/ms) dengan jarak minimal 24px tetap pindah.
+    const flick = Math.abs(galleryVelocity.current) > 0.5 && Math.abs(dx) > 24
+    if (Math.abs(dx) > threshold || flick) {
+      moveGallery(galleryDrag < 0 || dx < 0 ? 1 : -1)
+    } else {
+      // Kembali ke posisi aktif (bukan nol) dengan transisi halus.
+      if (galleryTrackRef.current) galleryTrackRef.current.style.transition = ''
+      applyGalleryTransform(0)
     }
     setGalleryDrag(0)
+    galleryDragRef.current = 0
   }
 
   function moveGallery(direction: -1 | 1) {
@@ -95,10 +140,11 @@ export function ProductGallery({
 
 
   return (
-    <div className="group/gallery -mx-5 min-w-0 sm:-mx-10 lg:mx-0" aria-label="Galeri produk">
+    <div className="group/gallery -mx-2.5 min-w-0 sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
       {activeMedia ? (
         <>
           <div
+            data-gallery-main
             ref={galleryRef}
             onTouchStart={onGalleryTouchStart}
             onTouchMove={onGalleryTouchMove}
@@ -108,12 +154,13 @@ export function ProductGallery({
           >
             {/* Horizontal strip: semua gambar sejajar - swipe real-time */}
             <div
-              className="flex h-full touch-pan-y"
+              ref={galleryTrackRef}
+              className="flex h-full touch-pan-y will-change-transform"
               onClick={(event) => {
                 if (!didSwipe.current && event.target === event.currentTarget) setLightboxIndex(activeMediaIndex)
               }}
               style={{
-                transform: `translateX(${-activeMediaIndex * 100 + (galleryWidth ? (galleryDrag / galleryWidth) * 100 : 0)}%)`,
+                transform: `translateX(${-activeMediaIndex * 100 + (galleryWidth && galleryDrag ? (galleryDrag / galleryWidth) * 100 : 0)}%)`,
                 transition: galleryDragging ? 'none' : 'transform 320ms cubic-bezier(0.22,1,0.36,1)',
               }}
             >
@@ -132,7 +179,7 @@ export function ProductGallery({
                       <img
                         src={item.thumb ?? ""}
                         alt={`${title}, video ${index + 1}`}
-                        loading={index === 0 ? "eager" : "lazy"}
+                        loading={index <= activeMediaIndex + 1 ? "eager" : "lazy"}
                         className="size-full bg-white object-contain"
                       />
                       <span className="absolute inset-0 z-10 flex items-center justify-center">
@@ -154,7 +201,7 @@ export function ProductGallery({
                     <ResponsiveImage
                       src={item.url}
                       alt={`${title}, foto ${index + 1}`}
-                      loading={index === 0 ? "eager" : "lazy"}
+                      loading={index <= activeMediaIndex + 1 ? "eager" : "lazy"}
                       fetchPriority={index === 0 ? "high" : undefined}
                       wrapperClassName="size-full bg-white"
                       className="!object-contain"
@@ -188,11 +235,26 @@ export function ProductGallery({
                 </button>
               </>
             ) : null}
+
+          {items.length > 1 ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                if (!didSwipe.current) setLightboxIndex(activeMediaIndex)
+              }}
+              data-gallery-counter="1" className="absolute bottom-2 right-2 z-20 inline-flex items-center rounded-full bg-surface/85 px-2.5 py-1 text-[11px] font-bold tabular-nums text-foreground shadow-md backdrop-blur-sm transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Buka foto ${activeMediaIndex + 1} dari ${items.length}`}
+            >
+              {activeMediaIndex + 1}/{items.length}
+            </button>
+          ) : null}
           </div>
 
           {items.length > 1 ? (
             <div
-              className="mt-2 flex gap-2 overflow-x-auto pr-0 pl-4 pb-2 lg:pr-4"
+              data-gallery-strip
+              className="mt-2 flex gap-2 overflow-x-auto px-2.5 pb-2 sm:px-8 lg:px-0"
               aria-label="Pilih foto produk"
             >
               {/* K3/K7: strip thumb maks 5; thumb ke-5 menandai total media (5/N) di pojok kanan bawah. */}
@@ -204,8 +266,11 @@ export function ProductGallery({
                 <button
                   type="button"
                   key={item.id}
-                  onClick={() => setActiveMediaIndex(index)}
-                  aria-label={`Tampilkan foto ${index + 1}`}
+                  onClick={() => {
+                    setActiveMediaIndex(index)
+                    if (isLast && hiddenCount > 0) setLightboxIndex(index)
+                  }}
+                  aria-label={isLast && hiddenCount > 0 ? `Lihat ${items.length} foto` : `Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
                     "relative aspect-square h-auto min-w-0 flex-1 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:h-12 lg:w-12 lg:flex-none",
@@ -232,10 +297,11 @@ export function ProductGallery({
                     />
                   )}
                   {showCountBadge ? (
-                    <span className="absolute inset-x-0 bottom-0 z-20 bg-foreground/60 py-0.5 text-center text-[10px] font-bold leading-tight text-white">
-                      5/{items.length}
+                    <span data-gallery-more-count="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white">
+                      +{hiddenCount}
                     </span>
                   ) : null}
+
                 </button>
                 )
               })}

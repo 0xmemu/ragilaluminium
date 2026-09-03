@@ -14,6 +14,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   archived: { label: "Diarsipkan", tone: "neutral" },
   draft: { label: "Draft", tone: "neutral" },
   awaiting_confirmation: { label: "Menunggu Konfirmasi", tone: "warning" },
+  confirmed: { label: "Menunggu Konfirmasi", tone: "warning" },
   running: { label: "Sedang diproses", tone: "info" },
   completed: { label: "Selesai", tone: "success" },
   failed: { label: "Gagal", tone: "danger" },

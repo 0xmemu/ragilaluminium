@@ -138,7 +138,7 @@ export function GalleryLightbox({
           >
             <Icon name="arrow-right" className="h-6 w-6" weight="bold" aria-hidden="true" />
           </button>
-          <span className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs tabular-nums text-white/80">
+          <span className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-full bg-white/10 px-3 py-1 text-xs tabular-nums text-white/80">
             {index + 1} / {count}
           </span>
         </>

@@ -160,7 +160,7 @@ class OrderTrackingViewModel
             // Belum lanjut ke delivery -> order pending (belum konfirmasi/proses) utk COD.
             // Kontrak A: order baru/menunggu verifikasi = "Pesanan sedang dikonfirmasi".
             if ($status === 'awaiting_confirmation') {
-                return $this->mk('confirmed', 'Pesanan menunggu konfirmasi', 'neutral',
+                return $this->mk('awaiting_confirmation', 'Pesanan menunggu konfirmasi', 'warning',
                     'Pesanan menunggu konfirmasi',
                     'Kami sedang memverifikasi pesanan Anda.');
             }
@@ -336,7 +336,7 @@ class OrderTrackingViewModel
         // Status order sebelum processing (COD belum di-proses / transfer belum lanjut)
         if ($isCod && in_array($status, ['awaiting_confirmation'], true)) {
             $paymentStep['state'] = 'current';
-            $paymentStep['label'] = 'Pesanan dikonfirmasi';
+            $paymentStep['label'] = 'Menunggu konfirmasi';
             unset($paymentStep['occurredAt']);
 
             return [$orderMade, $paymentStep];
