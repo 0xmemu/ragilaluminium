@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { SectionCard } from "@/components/admin/section-card"
@@ -13,9 +13,9 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import {
-  PrintAddressArea,
-  usePrintAddress,
-} from "@/components/shared/print-address"
+  PrintOrderArea,
+  usePrintOrder,
+} from "@/components/shared/print-order-customer"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
@@ -157,17 +157,6 @@ interface OrderEvent {
   created_at: string | null
   user_id?: number | null
 }
-
-const orderStatuses = [
-  "awaiting_confirmation",
-  "processing",
-  "shipped",
-  "delivered",
-  "completed",
-  "issue",
-  "return_in_process",
-  "cancelled",
-]
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "-"
@@ -503,7 +492,6 @@ function OrderEditPanel({
     </div>
   )
 }
-
 
 interface ReturnCaseItem {
   id: number
@@ -940,23 +928,18 @@ export default function OrderShow({
   const lacakRef = React.useRef<HTMLElement | null>(null)
   const statusForm = useForm({ order_status: order.order_status })
   const [statusBusy, setStatusBusy] = React.useState(false)
-  const paymentForm = useForm({
-    payment_method: isCod ? "cod" : "transfer",
-    amount: String(Math.round(order.total_amount)),
-    status: isCod ? "pending" : "completed",
-    transaction_reference: "",
-    evidence_url: "",
-    paid_at: "",
-  })
+
   const shippingForm = useForm({
     waybill_number: "",
     mark_shipped: true,
+
   })
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [showAllEvents, setShowAllEvents] = React.useState(false)
   const [showAllWa, setShowAllWa] = React.useState(false)
-  const { printing, handlePrint } = usePrintAddress()
+  const [editingNotes, setEditingNotes] = React.useState(false)
+  const { printing, handlePrint } = usePrintOrder()
   const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
   const capabilities = useAdminCapabilities()
   const [liveChangedNotice, setLiveChangedNotice] = React.useState<string | null>(null)
@@ -1011,14 +994,6 @@ export default function OrderShow({
     updateStatus(primaryAction.next_status)
   }
 
-  function storePayment(event: React.FormEvent) {
-    event.preventDefault()
-    paymentForm.post(routeUrl("admin.payments.store", { order: order.id }), {
-      preserveScroll: true,
-      onSuccess: () => paymentForm.reset("transaction_reference", "evidence_url", "paid_at"),
-    })
-  }
-
   function storeShipping(event: React.FormEvent) {
     event.preventDefault()
     shippingForm.post(shippingActions.createUrl, { preserveScroll: true })
@@ -1050,19 +1025,11 @@ export default function OrderShow({
     null
   const needsResi = !latestShipping?.waybill_number
 
-
   return (
     <AdminLayout
       title={`Pesanan ${order.order_number}`}
       description={order.customer_name}
-      actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.orders.index")}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali
-          </Link>
-        </Button>
-      }
+      backUrl={routeUrl("admin.orders.index")}
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
 
@@ -1093,30 +1060,61 @@ export default function OrderShow({
             <span className="inline-flex min-h-6 items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
               {order.payment_label || statusMeta(order.payment_status).label}
             </span>
-            <span className="inline-flex min-h-6 items-center rounded-full border border-border px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {isCod ? "COD" : "Transfer"}
-            </span>
           </div>
+          {order.payments?.[0] ? (
+            <div className="mt-2 space-y-0.5 text-[13px]">
+              <p className="tabular-nums font-semibold text-foreground">
+                {formatCurrency(order.payments[0].amount)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatDateTime(order.payments[0].paid_at)}
+              </p>
+              {order.payments[0].evidence_url ? (
+                <a
+                  href={order.payments[0].evidence_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  Lihat bukti transfer
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Penerima</p>
           <p className="mt-1.5 text-sm font-semibold">{order.customer_name}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
+          <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
+          <p className="mt-1.5 text-[13px] leading-5 text-foreground">
+            {fullAddress(order) || "-"}
           </p>
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => copyText(fullAddress(order))}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <Icon name="copy" className="size-3" aria-hidden="true" />
+              Salin
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <Icon name="printer" className="size-3" aria-hidden="true" />
+              Cetak
+            </button>
+          </div>
         </div>
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Ringkasan</p>
           <p className="mt-1.5 text-xs text-muted-foreground">
             {formatNumber(order.product_count)} produk · {formatNumber(order.unit_count)} unit
           </p>
-          <p className="tabular-nums mt-1 text-xl font-semibold tracking-tight">
-            {formatCurrency(order.total_amount)}
-          </p>
         </div>
       </Card>
-
 
       {/* Aksi utama */}
       {liveChangedNotice ? (
@@ -1187,11 +1185,23 @@ export default function OrderShow({
           <Icon name="copy" className="size-3.5" aria-hidden="true" />
           Salin alamat
         </Button>
-        {workflowLinks.map((link) => (
-          <Button key={link.href} asChild variant="ghost">
-            <Link href={link.href}>{link.label}</Link>
-          </Button>
-        ))}
+        {workflowLinks.length > 0 ? (
+          <div className="relative">
+            <select
+              onChange={(e) => {
+                if (e.target.value) window.location.href = e.target.value;
+              }}
+              value=""
+              className="appearance-none rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent cursor-pointer"
+              aria-label="Menu lainnya"
+            >
+              <option value="" disabled>Lainnya</option>
+              {workflowLinks.map((link) => (
+                <option key={link.href} value={link.href}>{link.label}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         {order.order_status !== "cancelled" && can("orders.cancel", capabilities) ? (
           <ConfirmAction
             trigger={
@@ -1209,6 +1219,35 @@ export default function OrderShow({
           />
         ) : null}
       </Card>
+
+      {/* Input resi - aksi utama diprioritaskan */}
+      {(needsResi || order.order_status === "processing") ? (
+        <SectionCard title="Input resi">
+          <form onSubmit={storeShipping} className="space-y-3">
+            <FormErrorSummary errors={shippingForm.errors} />
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              Resi dibuat di J&T di luar website. Simpan nomor resi yang sudah diterbitkan kurir di sini.
+            </p>
+            <Field id="waybill" label="Nomor resi" required error={shippingForm.errors.waybill_number}>
+              <Input
+                value={shippingForm.data.waybill_number}
+                onChange={(event) => shippingForm.setData("waybill_number", event.target.value)}
+                placeholder="Mis. JT1234567890"
+              />
+            </Field>
+
+            <Checkbox
+              compact
+              checked={Boolean(shippingForm.data.mark_shipped)}
+              onChange={(event) => shippingForm.setData("mark_shipped", event.target.checked)}
+              label="Tandai pesanan sebagai dikirim setelah resi tersimpan"
+            />
+            <Button type="submit" className="w-full" size="sm" disabled={shippingForm.processing}>
+              {shippingForm.processing ? "Menyimpan..." : "Simpan resi"}
+            </Button>
+          </form>
+        </SectionCard>
+      ) : null}
 
       {/* Riwayat - 3 kolom */}
       <section className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -1311,14 +1350,13 @@ export default function OrderShow({
         </SectionCard>
       </section>
 
-      {order.flow_hint ? (
-        <p className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
-          {order.flow_hint}
-        </p>
-
-      ) : null}
-
-      <ReturnCasePanel order={order} cases={order.return_cases ?? returnCases} eligibility={returnEligibility ?? { eligible: false, reason: null, deadline: null }} />
+      {(() => {
+        const cases = order.return_cases ?? returnCases
+        const elig = returnEligibility ?? { eligible: false, reason: null, deadline: null }
+        const hasActiveCase = cases.some((c) => c.status !== "resolved" && c.status !== "rejected")
+        if (!hasActiveCase && !elig.eligible) return null
+        return <ReturnCasePanel order={order} cases={cases} eligibility={elig} />
+      })()}
 
       {/* Konten utama + aside */}
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
@@ -1459,295 +1497,136 @@ export default function OrderShow({
             </dl>
           </SectionCard>
 
-
-          <SectionCard
-            title="Alamat pengiriman"
-            action={
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => copyText(fullAddress(order))}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                >
-                  <Icon name="copy" className="size-3" aria-hidden="true" />
-                  Salin
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                >
-                  <Icon name="printer" className="size-3" aria-hidden="true" />
-                  Cetak
-                </button>
-              </div>
-            }
-          >
-            <p className="text-sm font-semibold">{order.customer_name}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone}</p>
-            <p className="mt-3 text-[13px] leading-6 text-foreground">
-              {fullAddress(order) || "-"}
-            </p>
+          <SectionCard title="Status pengiriman">
+            <section ref={lacakRef} id="lacak-pesanan">
+              <ShippingTrackPanel
+                embedded
+                track={
+                  tracking ?? {
+                    shipping_status: order.shipping_status,
+                    carrier_name: latestShipping?.carrier_name,
+                    waybill_number: latestShipping?.waybill_number,
+                    record_status: latestShipping?.status,
+                    status_raw: latestShipping?.status_raw,
+                    last_status_at: latestShipping?.last_status_at,
+                    tracking_url: latestShipping?.tracking_url,
+                    order_status: order.order_status,
+                    payment_status: order.payment_status,
+                    payment_method: order.payment_method,
+                    total_amount: order.total_amount,
+                  }
+                }
+                timeline={tracking?.timeline}
+                jntEnabled={shippingActions.jntEnabled}
+                refreshBusy={refreshBusy}
+                onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
+                onCopyWaybill={copyText}
+              />
+            </section>
           </SectionCard>
 
-          <SectionCard title="Pembayaran tercatat" contentClassName="p-0">
-            {order.payments.length ? (
-              <ul className="divide-y divide-border">
-                {order.payments.map((payment) => (
-                  <li
-                    key={payment.id}
-                    className="flex items-center justify-between gap-3 px-5 py-3.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-medium">{humanize(payment.payment_method)}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {payment.transaction_reference || formatDateTime(payment.paid_at)}
-                      </p>
-                      {payment.evidence_url ? (
-                        <a
-                          href={payment.evidence_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                        >
-                          Lihat bukti transfer
-                        </a>
-                      ) : null}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <StatusBadge status={payment.status} />
-                      <p className="tabular-nums mt-1 text-[13px] font-semibold">
-                        {formatCurrency(payment.amount)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="px-5 py-5 text-xs text-muted-foreground">Belum ada pembayaran.</p>
-            )}
-          </SectionCard>
         </div>
 
+        <aside className="space-y-3">
+          <div className="rounded-lg border border-border bg-card">
 
-        <aside className="space-y-4">
-          <SectionCard title="Catatan pembeli">
-            <p className="whitespace-pre-wrap text-[13px] leading-6 text-muted-foreground">
-              {order.notes?.trim() || "Tidak ada catatan dari pembeli."}
-            </p>
-          </SectionCard>
+            {/* Catatan pembeli */}
+            <div className="border-b border-border px-4 py-3">
+              <p className="text-xs font-medium text-muted-foreground">Catatan pembeli</p>
+              <p className="mt-1 whitespace-pre-wrap text-[13px] leading-5 text-foreground">
+                {order.notes?.trim() || "Tidak ada catatan dari pembeli."}
+              </p>
+            </div>
 
-          <SectionCard
-            title="Catatan internal"
-            description="Hanya terlihat admin - tidak masuk invoice atau WhatsApp."
-          >
-            <div className="space-y-2.5">
-              <Textarea
-                rows={4}
-                value={adminNotes}
-                onChange={(event) => setAdminNotes(event.target.value)}
-                placeholder="Tulis catatan internal untuk pesanan ini…"
-                maxLength={5000}
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={adminNotesBusy}
-                  onClick={() => saveAdminNotes(adminNotes)}
-                >
-                  {adminNotesBusy ? "Menyimpan..." : "Simpan catatan"}
-                </Button>
-                {order.admin_notes?.trim() ? (
+            {/* Catatan internal */}
+            <div className="border-b border-border px-4 py-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Catatan internal</p>
+              {order.admin_notes?.trim() && !editingNotes ? (
+                <div className="space-y-2">
+                  <p className="whitespace-pre-wrap text-[13px] leading-5 text-foreground">
+                    {order.admin_notes}
+                  </p>
                   <Button
                     type="button"
-                    variant="ghost"
                     size="sm"
-                    disabled={adminNotesBusy}
-                    onClick={() => {
-                      setAdminNotes("")
-                      saveAdminNotes("")
-                    }}
+                    variant="outline"
+                    onClick={() => setEditingNotes(true)}
                   >
-                    Hapus
+                    Edit
                   </Button>
-                ) : null}
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Textarea
+                    rows={3}
+                    value={adminNotes}
+                    onChange={(event) => setAdminNotes(event.target.value)}
+                    placeholder="Tulis catatan internal untuk pesanan ini…"
+                    maxLength={5000}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={adminNotesBusy}
+                      onClick={() => { saveAdminNotes(adminNotes); setEditingNotes(false); }}
+                    >
+                      {adminNotesBusy ? "Menyimpan..." : (order.admin_notes?.trim() ? "Simpan" : "Tambah")}
+                    </Button>
+                    {order.admin_notes?.trim() ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={adminNotesBusy}
+                          onClick={() => { setAdminNotes(""); saveAdminNotes(""); setEditingNotes(false); }}
+                        >
+                          Hapus
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setEditingNotes(false); setAdminNotes(order.admin_notes ?? ""); }}
+                        >
+                          Batal
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              )}
             </div>
-          </SectionCard>
-
-          <section ref={lacakRef} id="lacak-pesanan" className="space-y-4">
-            <ShippingTrackPanel
-              track={
-                tracking ?? {
-                  shipping_status: order.shipping_status,
-                  carrier_name: latestShipping?.carrier_name,
-                  waybill_number: latestShipping?.waybill_number,
-                  record_status: latestShipping?.status,
-                  status_raw: latestShipping?.status_raw,
-                  last_status_at: latestShipping?.last_status_at,
-                  tracking_url: latestShipping?.tracking_url,
-                  order_status: order.order_status,
-                  payment_status: order.payment_status,
-                  payment_method: order.payment_method,
-                  total_amount: order.total_amount,
-                }
-              }
-              timeline={tracking?.timeline}
-              jntEnabled={shippingActions.jntEnabled}
-              refreshBusy={refreshBusy}
-              onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
-              onCopyWaybill={copyText}
-            />
 
             {isCod && order.order_status === "delivered" ? (
-              <p className="rounded-lg border border-warning/25 bg-warning/10 px-4 py-3 text-xs font-medium leading-5 text-warning-foreground">
-                Paket diterima - pastikan pembayaran COD sudah dikonfirmasi.
-              </p>
+              <div className="border-b border-border px-4 py-3">
+                <p className="rounded border border-warning/25 bg-warning/10 px-3 py-2 text-[11px] leading-4 text-warning-foreground">
+                  Paket diterima - pastikan COD sudah dikonfirmasi.
+                </p>
+              </div>
             ) : null}
 
-            {needsResi || order.order_status === "processing" ? (
-              <SectionCard title="Input resi">
-                <form onSubmit={storeShipping} className="space-y-3.5">
-                  <FormErrorSummary errors={shippingForm.errors} />
-                  <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
-                    Resi dibuat di J&T di luar website. Simpan nomor resi yang sudah diterbitkan kurir di sini.
-                  </p>
-                  <Field
-                    id="waybill"
-                    label="Nomor resi"
-                    required
-                    error={shippingForm.errors.waybill_number}
-                  >
-                    <Input
-                      value={shippingForm.data.waybill_number}
-                      onChange={(event) =>
-                        shippingForm.setData("waybill_number", event.target.value)
-                      }
-                      placeholder="Mis. JT1234567890"
-                    />
-                  </Field>
-                  <Checkbox
-                    compact
-                    checked={Boolean(shippingForm.data.mark_shipped)}
-                    onChange={(event) =>
-                      shippingForm.setData("mark_shipped", event.target.checked)
-                    }
-                    label="Tandai pesanan sebagai dikirim setelah resi tersimpan"
-                  />
-                  <Button type="submit" className="w-full" disabled={shippingForm.processing}>
-                    {shippingForm.processing ? "Menyimpan..." : "Simpan resi"}
-                  </Button>
-                </form>
-              </SectionCard>
-            ) : null}
-          </section>
 
-
-          <div id="konfirmasi-order" className="scroll-mt-20 space-y-4">
-          <SectionCard title="Ubah status">
-            <Select
-              value={statusForm.data.order_status}
-              onChange={(event) => statusForm.setData("order_status", event.target.value)}
-              aria-label="Status pesanan"
-            >
-              {orderStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {statusMeta(status).label}
-                </option>
-              ))}
-            </Select>
-            {statusForm.errors.order_status ? (
-              <p className="mt-2 text-xs font-medium text-destructive">
-                {statusForm.errors.order_status}
-              </p>
-            ) : null}
-            <Button
-              className="mt-3 w-full"
-              disabled={statusBusy || statusForm.data.order_status === order.order_status}
-              onClick={() => updateStatus()}
-            >
-              {statusBusy ? "Menyimpan..." : "Simpan status"}
-            </Button>
-          </SectionCard>
-
-          <SectionCard
-            title={isCod ? "Pembayaran COD" : "Konfirmasi transfer"}
-            description={
-              isCod
-                ? "Tagihan COD biasanya dikonfirmasi saat paket sampai."
-                : "Isi referensi bukti transfer, status selesai, lalu simpan."
-            }
-          >
-            <form onSubmit={storePayment} className="space-y-3.5">
-              <FormErrorSummary errors={paymentForm.errors} />
-              <Field id="payment-method" label="Metode" required error={paymentForm.errors.payment_method}>
-                <Select
-                  value={paymentForm.data.payment_method}
-                  onChange={(event) => paymentForm.setData("payment_method", event.target.value)}
-                >
-                  <option value="cod">COD</option>
-                  <option value="transfer">Transfer</option>
-                  <option value="gateway">Gateway</option>
-                </Select>
-              </Field>
-              <Field id="payment-amount" label="Jumlah" required error={paymentForm.errors.amount}>
-                <Input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={paymentForm.data.amount}
-                  onChange={(event) => paymentForm.setData("amount", event.target.value)}
-                />
-              </Field>
-              <Field id="payment-status" label="Status" required error={paymentForm.errors.status}>
-                <Select
-                  value={paymentForm.data.status}
-                  onChange={(event) => paymentForm.setData("status", event.target.value)}
-                >
-                  {["pending", "completed", "failed", "refunded"].map((status) => (
-                    <option key={status} value={status}>
-                      {statusMeta(status).label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field
-                id="payment-reference"
-                label={isCod ? "Catatan COD (opsional)" : "No. referensi / bukti transfer"}
-                error={paymentForm.errors.transaction_reference}
-              >
-                <Input
-                  value={paymentForm.data.transaction_reference}
-                  onChange={(event) =>
-                    paymentForm.setData("transaction_reference", event.target.value)
-                  }
-                  placeholder={isCod ? "Mis. kurir konfirmasi lunas" : "Mis. TRX123 / jam transfer"}
-                />
-              </Field>
-              <Button type="submit" className="w-full" disabled={paymentForm.processing}>
-                {paymentForm.processing
-                  ? "Menyimpan..."
-                  : isCod
-                    ? "Catat pembayaran COD"
-                    : "Konfirmasi transfer"}
-              </Button>
-            </form>
-          </SectionCard>
           </div>
         </aside>
       </div>
       {printing ? (
-        <PrintAddressArea
+        <PrintOrderArea
           data={{
             ...order,
             items: order.items.map((item) => ({
               id: item.id,
               name: item.name,
+              variant_sku: item.variant_sku,
+              variation_1_name: item.variation_1_name,
+              variation_1_option: item.variation_1_option,
+              variation_2_name: item.variation_2_name,
+              variation_2_option: item.variation_2_option,
               quantity: item.quantity,
               unit_price: item.unit_price,
+              line_total: item.line_total,
               note: item.note,
-              variation_label: variationLabel(item),
             })),
           }}
         />
