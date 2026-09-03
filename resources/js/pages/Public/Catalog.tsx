@@ -364,7 +364,7 @@ export default function Catalog({
   const showYouMightLike = Boolean(searchQuery?.trim()) && youMightLike.length > 0
 
   const productGallery = (
-    <div aria-busy={loading} className="pt-4">
+    <div aria-busy={loading}>
       <div className="sr-only" role="status" aria-live="polite">
         {loading ? "Memuat produk" : "Daftar produk selesai dimuat"}
       </div>
@@ -484,7 +484,7 @@ export default function Catalog({
   )
 
   const listingBody = (
-    <section className="container-page !px-2.5 md:!px-8 lg:!px-12">
+    <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pt-4 pb-6 lg:pb-8">
       {/* Filter desktop via topnav (pill) - sidebar dihapus; sheet tetap utk mobile. */}
       <div className="flex flex-col gap-8">
         {productGallery}
