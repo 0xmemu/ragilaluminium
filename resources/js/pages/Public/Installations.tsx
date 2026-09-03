@@ -144,24 +144,19 @@ export default function Installations({
         <meta name="description" content={subtitle} />
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <PageTopBar
-          title={isModelLevel ? heading : "Hasil Pemasangan"}
-          singleLine={!isModelLevel}
-          breadcrumbs={
-            isModelLevel
-              ? [
-                  { label: "Beranda", href: routeUrl("home") },
-                  { label: "Hasil Pemasangan" },
-                ]
-              : [
-                  { label: "Beranda", href: routeUrl("home") },
-                  { label: "Hasil Pemasangan", href: listingHref },
-                  { label: modelMeta?.label || heading },
-                ]
-          }
-        />
-      </section>
+      {!isModelLevel ? (
+        <section className="border-b border-border bg-surface">
+          <PageTopBar
+            title="Hasil Pemasangan"
+            singleLine
+            breadcrumbs={[
+              { label: "Beranda", href: routeUrl("home") },
+              { label: "Hasil Pemasangan", href: listingHref },
+              { label: modelMeta?.label || heading },
+            ]}
+          />
+        </section>
+      ) : null}
 
       {isModelLevel ? (
         <>

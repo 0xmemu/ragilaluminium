@@ -177,16 +177,6 @@ export default function Reviews({
         <meta name="description" content={subtitle} />
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <PageTopBar
-          title={heading}
-          breadcrumbs={[
-            { label: "Beranda", href: routeUrl("home") },
-            { label: heading, href: null },
-          ]}
-        />
-      </section>
-
       <ReviewListingFrame
         title={heading}
         breadcrumbs={[
