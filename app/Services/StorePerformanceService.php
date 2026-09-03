@@ -196,6 +196,7 @@ class StorePerformanceService
         ];
 
         $paymentsKpis = [
+            $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Gross dikurangi refund retur yang benar-benar selesai.'),
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
             $this->kpi('cod_paid', 'COD Dibayar', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Nominal payment COD yang selesai pada periode.'),
             $this->kpi('payment_pending_count', 'Pembayaran Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum cair pada order aktif. COD memang lunas saat paket tiba sehingga tidak dihitung di sini.'),
@@ -278,6 +279,13 @@ class StorePerformanceService
                     'total' => $current['visitors'],
                     'total_format' => 'number',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'visitors'),
+                ],
+                [
+                    'key' => 'conversion_rate',
+                    'title' => 'Tren Pengunjung yang Membeli',
+                    'total' => $current['conversion_rate'],
+                    'total_format' => 'number',
+                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'conversion_rate'),
                 ],
                 [
                     'key' => 'units',
@@ -514,6 +522,34 @@ class StorePerformanceService
         }
 
         $buckets = $this->emptyBuckets($from, $to, $granularity);
+
+        if ($metric === 'conversion_rate') {
+            // Rasio pesanan (paid/COD lunas) dibanding pengunjung unik per bucket, dalam %.
+            $orderRows = Order::query()
+                ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
+                ->selectRaw('COUNT(*) as value')
+                ->whereBetween('created_at', [$from, $to])
+                ->whereRaw($this->paidRevenueStatusSql())
+                ->groupBy('bucket')
+                ->pluck('value', 'bucket');
+            $visitorRows = PerformanceVisitorEvent::query()
+                ->selectRaw($this->bucketSelect('visited_at', $granularity).' as bucket')
+                ->selectRaw('COUNT(DISTINCT visitor_hash) as value')
+                ->whereBetween('visited_at', [$from, $to])
+                ->groupBy('bucket')
+                ->pluck('value', 'bucket');
+
+            return collect($buckets)->map(function (array $bucket) use ($orderRows, $visitorRows) {
+                $visitors = (float) ($visitorRows[$bucket['key']] ?? 0);
+                $orders = (float) ($orderRows[$bucket['key']] ?? 0);
+
+                return [
+                    'bucket' => $bucket['key'],
+                    'label' => $bucket['label'],
+                    'value' => $visitors > 0 ? round(($orders / $visitors) * 100, 2) : 0.0,
+                ];
+            })->values()->all();
+        }
 
         if ($metric === 'units') {
             $rows = OrderItem::query()

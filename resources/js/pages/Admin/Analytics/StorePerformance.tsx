@@ -404,9 +404,11 @@ export default function StorePerformance({
                 <TooltipContent side="right" className="max-w-xs leading-relaxed">
                   <p className="font-semibold">Cara membaca metrik</p>
                   <ul className="mt-1 list-disc pl-4">
-                    <li>Omset = total nilai pesanan yang dibayar/COD lunas (gross); net dikurangi refund retur selesai.</li>
+                    <li>Penjualan Gross = nilai pesanan yang dibayar/COD lunas (belum dipotong apa pun).</li>
+                    <li>Penjualan Bersih = gross dikurangi refund dari retur yang benar-benar selesai.</li>
+                    <li>Pengunjung yang Membeli = rasio pesanan dibanding pengunjung unik; ada angkanya di kategori Kunjungan & Customer.</li>
                     <li>Model / Produk / Unit: jumlah model berbeda, produk (varian/ukuran) berbeda, dan total qty item.</li>
-                    <li>Operasional = pemenuhan pesanan (antrean, waktu konfirmasi & proses).</li>
+                    <li>Retur & Pembatalan dilipat di bawah; Refund hanya salah satu metrik di sana, bukan ringkasan utama.</li>
                   </ul>
                 </TooltipContent>
               </Tooltip>
@@ -523,14 +525,16 @@ export default function StorePerformance({
         </div>
       </section>
 
-      {/* P1-2: Ringkasan Utama - 5 KPI penentu keputusan, angka besar. */}
-      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
+          dengan delta % vs periode pembanding. */}
+      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { key: "omzet", label: "Penjualan Gross" },
-          { key: "payments_received", label: "Pembayaran Diterima" },
-          { key: "orders", label: "Pesanan Masuk" },
-          { key: "units", label: "Unit Terjual" },
-          { key: "open_orders", label: "Pesanan Belum Selesai" },
+          { key: "omzet", label: "Penjualan Gross", fmt: "currency" as const },
+          { key: "net_revenue", label: "Penjualan Bersih", fmt: "currency" as const },
+          { key: "orders", label: "Pesanan Masuk", fmt: "number" as const },
+          { key: "units", label: "Unit Terjual", fmt: "number" as const },
+          { key: "conversion", label: "Pengunjung yang Membeli", fmt: "percent" as const },
+          { key: "open_orders", label: "Pesanan Belum Selesai", fmt: "number" as const },
         ].map((item) => {
           const kpi = kpiMap[item.key]
           if (!kpi) return null
@@ -538,21 +542,37 @@ export default function StorePerformance({
             <div key={item.key} className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <p className="text-xs font-semibold text-muted-foreground">{item.label}</p>
               <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
-                {item.key === "omzet" || item.key === "payments_received" ? formatCurrency(kpi.value) : formatNumber(kpi.value)}
+                {item.fmt === "currency" ? formatCurrency(kpi.value) : item.fmt === "percent" ? formatNumber(kpi.value) + "%" : formatNumber(kpi.value)}
+              </p>
+              <p
+                className={cn(
+                  "mt-1 text-xs font-semibold",
+                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success",
+                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
+                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
+                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success",
+                  (kpi.change_percent ?? 0) === 0 && "text-muted-foreground",
+                )}
+              >
+                {kpi.change_percent === null
+                  ? "Baru pada periode ini"
+                  : (kpi.change_percent ?? 0) === 0
+                    ? "Tidak berubah"
+                    : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
               </p>
             </div>
           )
         })}
       </section>
 
-      {/* P1-1: Perlu Perhatian - action queue, hanya baris dengan nilai > 0; link ke daftar terfilter. */}
+      {/* P1-1: Perlu Perhatian - action queue; section disembunyikan bila tidak ada item. */}
+      {attentionRows.length ? (
       <section aria-label="Perlu perhatian" className="mb-6 rounded-lg border border-warning/30 bg-warning/5 p-4">
         <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
           <Icon name="alert-circle" className="size-4 text-warning" aria-hidden="true" />
           Perlu Perhatian
         </h3>
-        {attentionRows.length ? (
-          <ul className="mt-3 divide-y divide-border">
+        <ul className="mt-3 divide-y divide-border">
             {attentionRows.map((row) => (
               <li key={row.key} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <span className="text-foreground">
@@ -564,10 +584,8 @@ export default function StorePerformance({
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">Tidak ada pekerjaan yang mendesak.</p>
-        )}
       </section>
+      ) : null}
 
       <div className="space-y-6">
         {report.sections.map((section) => (
@@ -618,14 +636,13 @@ export default function StorePerformance({
                 })}
               </details>
             ) : (
-            <div className="grid gap-0 sm:grid-cols-2 xl:grid-cols-7">
+            <div className="grid gap-0 grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
               {section.kpis.map((kpi, index) => (
                 <article
                   key={kpi.key}
                   className={cn(
                     "px-4 py-5",
                     index > 0 && "border-t border-border sm:border-t-0 sm:border-l",
-                    index >= 2 && "xl:border-l",
                   )}
                 >
                   <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground" title={kpi.detail ?? undefined}>{kpi.label}</p>
@@ -702,7 +719,7 @@ export default function StorePerformance({
                 <div className="text-right">
                   <p className="text-[11px] text-muted-foreground">Total</p>
                   <p className="text-sm font-bold tabular-nums">
-                    {chart.total_format === "currency" ? formatCurrency(chart.total) : formatNumber(chart.total)}
+                    {chart.total_format === "currency" ? formatCurrency(chart.total) : chart.key === "conversion_rate" ? formatNumber(chart.total) + "%" : formatNumber(chart.total)}
                   </p>
                 </div>
               </div>

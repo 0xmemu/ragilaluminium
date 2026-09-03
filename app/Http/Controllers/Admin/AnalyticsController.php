@@ -37,7 +37,7 @@ class AnalyticsController extends Controller
 
         return Inertia::render('Admin/Analytics/StorePerformance', [
             'title' => 'Performa Toko',
-            'description' => '', // Komentar 2026-09-02: subtitle bertele-tele dibuang; cukup judul & metrik.
+            'description' => 'Ringkasan bisnis toko: penjualan, pengunjung, operasional, dan pembayaran pada periode terpilih.',
             'filters' => [
                 'period' => $payload['range']['period'],
                 'from' => $payload['range']['from_date_iso'] ?? $payload['range']['from_date'],
