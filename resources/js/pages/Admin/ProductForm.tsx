@@ -86,7 +86,7 @@ export default function ProductForm({
   attributesHref,
   wizardStep = "identity",
   variants = [],
-  completion = { active_variants: false, prices: false, main_image_ready: false, photo_coverage: false, specifications: false, explanation: false, shipping_data: false },
+  completion = { active_variants: false, prices: false, main_image_ready: false, photo_coverage: false, explanation: false, shipping_data: false },
   options,
   backUrl,
 }: {
@@ -99,7 +99,7 @@ export default function ProductForm({
   attributesHref?: string
   wizardStep?: WizardStep
   variants?: VariantRecord[]
-  completion?: { active_variants: boolean; prices: boolean; main_image_ready: boolean; photo_coverage: boolean; specifications: boolean; explanation: boolean; shipping_data: boolean }
+  completion?: { active_variants: boolean; prices: boolean; main_image_ready: boolean; photo_coverage: boolean; explanation: boolean; shipping_data: boolean }
   options: {
     categories: SelectOption[]
     models: SelectOption[]
@@ -400,7 +400,6 @@ export default function ProductForm({
                   <ReviewRow label="Gambar utama katalog sudah siap" ready={completion.main_image_ready} />
                   <ReviewRow label="Foto pada grup varian lengkap" ready={completion.photo_coverage} />
                   <ReviewRow label="Semua varian memiliki harga manual" ready={completion.prices} />
-                  <ReviewRow label="Spesifikasi produk" ready={completion.specifications} />
                   <ReviewRow label="Penjelasan produk" ready={completion.explanation} />
                   <ReviewRow label="Data pengiriman tiap varian" ready={completion.shipping_data} />
                 </div>
@@ -421,14 +420,6 @@ export default function ProductForm({
                 <ChecklistRow label="Harga manual semua varian" ready={completion.prices} />
                 <ChecklistRow label="Gambar utama siap" ready={completion.main_image_ready} />
                 <ChecklistRow label="Foto ditautkan ke varian" ready={completion.photo_coverage} />
-                {attributesHref ? (
-                  <li className="flex items-center justify-between gap-2 text-sm">
-                    <Link href={attributesHref} className="text-foreground underline-offset-4 hover:underline">Spesifikasi produk</Link>
-                    <span className={`text-sm font-semibold ${completion.specifications ? "text-success" : "text-warning"}`}>{completion.specifications ? "Siap" : "Perlu"}</span>
-                  </li>
-                ) : (
-                  <ChecklistRow label="Spesifikasi produk" ready={completion.specifications} />
-                )}
                 <ChecklistRow label="Penjelasan produk" ready={completion.explanation} />
                 <ChecklistRow label="Data pengiriman" ready={completion.shipping_data} />
               </ul>

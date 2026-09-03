@@ -309,7 +309,7 @@ class CatalogTemplateGuideSheet implements FromArray, WithTitle, WithEvents
             ['name', 'WAJIB', 'Nama produk yang tampil di toko. Baris dengan nama sama dianggap varian dari produk yang sama.'],
             ['SKU (parent & varian)', 'OTOMATIS', 'Tidak perlu diisi. Sistem membuat SKU otomatis (pola RGL-{angka acak} untuk produk, RGL-{parent}-{urutan} untuk varian). SKU terlihat setelah ekspor atau template update harga/stok.'],
 
-            ['description', 'OPTIONAL', 'Deskripsi produk.'],
+            ['description', 'WAJIB', 'Deskripsi produk. Produk tanpa deskripsi tidak dapat diaktifkan di katalog.'],
             ['product_category', 'WAJIB', 'Kategori. Pilih dari dropdown. Kategori tak dikenal ditandai untuk tinjauan admin.'],
             ['product_model', 'WAJIB', 'Model. Pilih dari dropdown.'],
             ['design_variant', 'WAJIB', 'Sub Model. Pilih dari dropdown.'],

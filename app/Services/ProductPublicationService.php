@@ -35,10 +35,6 @@ final class ProductPublicationService
                 fn ($media): bool => $media->product_variant_id !== null
                     && $activeVariantIds->contains($media->product_variant_id)
             );
-        $hasSpecifications = $product->attributes->contains(
-            fn ($attribute): bool => trim((string) $attribute->attribute_name) !== ''
-                && trim((string) $attribute->attribute_value) !== ''
-        );
         $hasExplanation = trim((string) $product->description) !== '';
         $hasShippingData = $hasActiveVariants && $activeVariants->every(
             fn ($variant): bool => (float) $variant->weight_kg > 0
@@ -53,7 +49,6 @@ final class ProductPublicationService
             'main_image_ready' => $hasReadyMainImage,
             'photo_coverage' => $hasPhotoCoverage,
             'missing_colors' => [],
-            'specifications' => $hasSpecifications,
             'explanation' => $hasExplanation,
             'shipping_data' => $hasShippingData,
         ];
@@ -78,10 +73,6 @@ final class ProductPublicationService
 
         if (! $completion['photo_coverage']) {
             $errors['photo_coverage'] = 'Pasang minimal satu foto siap pada grup/varian produk.';
-        }
-
-        if (! $completion['specifications']) {
-            $errors['specifications'] = 'Tambahkan minimal satu spesifikasi produk.';
         }
 
         if (! $completion['explanation']) {
