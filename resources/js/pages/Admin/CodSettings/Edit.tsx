@@ -108,7 +108,7 @@ export default function CodSettingsEdit({
                     <p className="mt-1 text-xs text-destructive">{form.errors.fee_value}</p>
                   ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Nilai biaya (%). Rumus: biaya COD = {form.data.fee_value || 0}% x (subtotal produk + ongkir yang dibayar pembeli). Contoh: belanja Rp 100.000 dengan ongkir Rp 20.000, biaya COD = 4% x Rp 120.000 = Rp 4.800.
+                    Nilai biaya (%). Rumus: biaya COD = {form.data.fee_value || 0}% x (subtotal produk + ongkir yang dibayar pembeli). Subtotal produk dihitung dari harga yang sudah dikurangi diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, ongkir Rp 20.000. Biaya COD = 4% x (Rp 90.000 + Rp 20.000) = Rp 4.400.
                   </p>
                 </td>
               </tr>
