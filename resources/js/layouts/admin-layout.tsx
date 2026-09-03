@@ -8,6 +8,7 @@ import { NotificationBell, type NotificationItem } from "@/components/admin/noti
 import { AdminNavigation } from "@/components/admin/admin-navigation"
 import { Button } from "@/components/admin/ui/button"
 import { AdminBreadcrumbs, resolveAdminBreadcrumb } from "@/components/admin/ui/breadcrumb"
+import { PageGuide } from "@/components/admin/page-guide"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +81,15 @@ export function AdminLayout({
     }
     return resolveAdminBreadcrumb(nav?.admin ?? {}, routeName)
   }, [nav])
+  const pageGuideRoute = React.useMemo(() => {
+    const current = (globalThis as { route?: (...args: unknown[]) => { current: (p?: string | string[]) => string | boolean | undefined } }).route
+    try {
+      const value = current?.().current()
+      return typeof value === "string" ? value : undefined
+    } catch {
+      return undefined
+    }
+  }, [])
 
   // Tombol Kembali hanya muncul saat controller mengirim backUrl eksplisit
   // (halaman sub: create/edit/detail). Halaman index/menu utama TIDAK tampil.
@@ -236,7 +246,12 @@ export function AdminLayout({
             <div className="px-4 pb-5 pt-6 md:px-6 lg:px-8">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
-                  <AdminBreadcrumbs items={breadcrumbItems} className="mb-[26px]" />
+                  <div className="mb-[26px] flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <AdminBreadcrumbs items={breadcrumbItems} />
+                    </div>
+                    <PageGuide routeName={pageGuideRoute} />
+                  </div>
                   {title && backUrl ? (
                     <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                       <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
