@@ -30,7 +30,7 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
 
   return (
     <nav
-      className={cn("mt-5 flex items-center justify-center gap-2 border-t border-border pt-4", className)}
+      className={cn("mt-5 flex items-center justify-center gap-2 border-t border-border py-5", className)}
       aria-label="Paginasi"
     >
       <div className="flex flex-wrap items-center justify-center gap-2">
