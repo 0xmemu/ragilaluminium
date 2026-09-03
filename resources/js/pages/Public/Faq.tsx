@@ -37,7 +37,7 @@ interface FaqGuide {
 export default function Faq({ guide }: { guide: FaqGuide }) {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
-  const [openId, setOpenId] = React.useState<number | null>(guide.groups[0]?.items[0]?.id ?? null)
+  const [openId, setOpenId] = React.useState<number | null>(null)
   const visibleGroups = guide.groups
 
   return (
