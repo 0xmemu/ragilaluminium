@@ -9,7 +9,8 @@ import {
   categoryHrefFor,
   type CatalogCategoryLink,
 } from "@/components/public/catalog-listing-sidebar"
-import { Breadcrumbs, type BreadcrumbItem } from "@/components/ui/breadcrumbs"
+import type { BreadcrumbItem } from "@/components/ui/breadcrumbs"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import { Icon } from "@/components/shared/icon"
 import { Input } from "@/components/ui/input"
 import {
@@ -118,27 +119,10 @@ export function CatalogNav({
 
   return (
     <section className="bg-surface py-0" aria-label="Navigasi katalog produk">
-      {breadcrumbItems && breadcrumbItems.length > 0 ? (
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
-      ) : null}
-      {/* Baris 1 -> Judul halaman: Back button & Category Name */}
-      <div className="container-page flex items-center justify-between gap-3 !px-2.5 md:!px-8 lg:!px-12 py-2.5 sm:py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:hidden"
-            aria-label="Kembali"
-          >
-            <Icon name="arrow-left" className="size-5" aria-hidden="true" />
-          </button>
-          <h1 className="min-w-0 truncate text-base font-bold tracking-tight text-foreground">
-            {categoryName}
-          </h1>
-        </div>
-      </div>
+      <PageTopBar
+        breadcrumbs={breadcrumbItems ?? [{ label: categoryName, href: null }]}
+        title={categoryName}
+      />
 
       {/* Baris 2 -> Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis */}
       <div className="border-y border-border bg-surface">

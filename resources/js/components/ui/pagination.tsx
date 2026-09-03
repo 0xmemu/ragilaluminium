@@ -57,9 +57,9 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
           const classes = cn(
             "inline-flex items-center justify-center text-xs transition",
             isEllipsis
-              ? "h-8 w-8 px-0 text-muted-foreground font-medium"
+              ? "h-9 min-w-9 px-2 text-muted-foreground font-medium"
               : cn(
-                  "h-8 w-8 shrink-0 rounded-full border",
+                  "h-9 min-w-9 px-2 shrink-0 rounded-full border",
                   link.active
                     ? "border-primary bg-primary text-primary-foreground font-semibold shadow-sm"
                     : "border-border bg-surface text-foreground font-medium hover:border-foreground/30 hover:bg-accent",
