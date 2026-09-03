@@ -94,6 +94,19 @@ export function CheckoutPaymentSection({
             {paymentForm.errors.payment_method}
           </p>
         ) : null}
+        <Button
+          type="submit"
+          size="lg"
+          className="mt-4 hidden h-12 w-full lg:inline-flex font-bold"
+          disabled={!details || editingDetails || paymentForm.processing}
+        >
+          {paymentForm.processing
+            ? "Membuat pesanan..."
+            : !details
+              ? "Lengkapi alamat dulu"
+              : "Buat pesanan"}
+          <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
+        </Button>
       </form>
     </section>
   )
