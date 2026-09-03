@@ -376,9 +376,9 @@ export default function StorePerformance({
       description={description}
       actions={
         <div className="flex items-center gap-2">
-          <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-2">
             <Button
-              variant="secondary"
+              variant="ghost"
               disabled={refreshing}
               onClick={() => {
                 setRefreshing(true)
@@ -395,7 +395,7 @@ export default function StorePerformance({
               {refreshing ? "Memperbarui..." : "Perbarui"}
             </Button>
             {refreshedAt ? (
-              <span className="text-[10px] text-muted-foreground">Diperbarui {refreshedAt}</span>
+              <span className="text-xs text-muted-foreground">Diperbarui {refreshedAt}</span>
             ) : null}
           </div>
           <Button asChild variant="secondary">
