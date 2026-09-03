@@ -234,17 +234,12 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
   const [openId, setOpenId] = React.useState<number | null>(null)
 
   React.useEffect(() => {
-    // Selalu buka item pertama ketika items tersedia (default terbuka),
-    // dan jaga pilihan tetap valid saat konten CMS berubah.
+    // Default buka item pertama, tetapi jangan ikut bereaksi saat user menutupnya.
+    // Jika openId ikut menjadi dependency, klik tutup langsung dibuka ulang (glitch).
     const firstId = items[0]?.id ?? null
-    if (openId === null && firstId !== null) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOpenId(firstId)
-    } else if (openId !== null && !items.some((item) => item.id === openId)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOpenId(firstId)
-    }
-  }, [items, openId])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpenId((current) => (current !== null && items.some((item) => item.id === current) ? current : firstId))
+  }, [items])
 
   const pageTitle = guide?.title ?? "Masalah & Solusi"
   const pageHeading = guide?.heading ?? "Masalah & Solusi"
@@ -273,7 +268,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       <section className="py-6 sm:py-8">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
           {items.length ? (
-            <ol className="mx-auto grid max-w-2xl gap-3.5">
+            <ol className="mx-auto grid max-w-xl gap-3.5">
               {items.map((item, index) => {
                 const open = openId === item.id
                 const panelId = `masalah-panel-${item.id}`
