@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
+    public const REPLY_SIGNATURE = "\n\nBalas pesan ini dengan \"OKE\"";
+
     public function __construct(protected OrderService $orders) {}
 
     public function sendTemplateMessage(string $phone, string $internalKey, array $variables = [], ?int $orderId = null): ?WhatsAppMessage
@@ -360,7 +362,11 @@ class WhatsAppService
             $body = str_replace('{{'.($index + 1).'}}', (string) $value, $body);
         }
 
-        return trim($body) !== '' ? trim($body) : implode("\n", $variables);
+        $rendered = trim($body) !== '' ? trim($body) : implode("\n", $variables);
+
+        // Kontrak owner 2026-09-03: footer balasan wajib di SEMUA pesan template
+        // agar sesi WhatsApp tidak ter-flag spam karena tanpa interaksi.
+        return $rendered . self::REPLY_SIGNATURE;
     }
 
     protected function toBaileysChatId(string $phone): string
