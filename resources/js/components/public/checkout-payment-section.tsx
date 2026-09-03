@@ -37,7 +37,7 @@ export function CheckoutPaymentSection({
           <span>Lengkapi detail pengiriman di atas untuk cek ketersediaan COD dan perhitungan ongkir sebelum pesanan dibuat.</span>
         </div>
       ) : null}
-      <form onSubmit={placeOrder} className="mt-4">
+      <form id="checkout-payment-form" onSubmit={placeOrder} className="mt-4">
         <fieldset disabled={paymentForm.processing}>
           <legend className="sr-only">Metode pembayaran</legend>
           <div className="grid gap-3">
@@ -93,33 +93,6 @@ export function CheckoutPaymentSection({
           <p className="mt-3 text-xs font-medium text-destructive">
             {paymentForm.errors.payment_method}
           </p>
-        ) : null}
-        {details && !editingDetails ? (
-          <div
-            role="region"
-            aria-label="Buat pesanan"
-            className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md sm:-mx-5 sm:px-5"
-          >
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Total Pembayaran
-                </p>
-                <p className="truncate tabular-nums text-base font-bold text-primary sm:text-lg">
-                  {formatCurrency(total)}
-                </p>
-              </div>
-              <Button
-                type="submit"
-                size="lg"
-                className="h-11 min-h-11 shrink-0 px-5 font-bold"
-                disabled={paymentForm.processing}
-              >
-                {paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
-                <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
         ) : null}
       </form>
     </section>
