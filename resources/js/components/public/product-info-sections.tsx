@@ -275,7 +275,7 @@ export function ProductInfoSections({
               <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
             </Link>
           </div>
-          <ul className="mt-3 grid grid-cols-3 gap-1.5">
+          <ul className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-3">
             {installationMedia.slice(0, 3).map((item, index) => (
               <li key={item.id}>
                 <button
