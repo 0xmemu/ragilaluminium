@@ -93,6 +93,8 @@ interface Report {
     gross_revenue: number
     refund_adjustments: number
     net_revenue: number
+    buyer_orders?: number
+    visitors?: number
     definition: string
   }
   sections: Section[]
@@ -536,6 +538,31 @@ export default function StorePerformance({
         </div>
 
       </section>
+
+      {/* Ringkasan keuangan: Gross, Bersih, dan Pengunjung yang Membeli (angka absolut).
+          Refund/retur tidak lagi di strip utama, detailnya di kategori Retur & Pembatalan. */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-3" aria-label="Ringkasan keuangan">
+        <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
+          <p className="text-xs font-semibold text-muted-foreground">Penjualan Gross</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.gross_revenue)}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
+          <p className="text-xs font-semibold text-muted-foreground">Pengunjung yang Membeli</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">
+            {formatNumber(report.financial.buyer_orders ?? 0)}
+            {report.financial.visitors ? (
+              <span className="ml-1.5 text-xs font-semibold text-muted-foreground">
+                dari {formatNumber(report.financial.visitors)} pengunjung
+              </span>
+            ) : null}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
+          <p className="text-xs font-semibold text-muted-foreground">Penjualan Bersih</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(report.financial.net_revenue)}</p>
+        </div>
+        <p className="text-xs text-muted-foreground sm:col-span-3">{report.financial.definition}</p>
+      </div>
 
       {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
           dengan delta % vs periode pembanding. */}
