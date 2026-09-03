@@ -295,6 +295,7 @@ class ProductController extends Controller
             'publishUrl' => route('admin.products.publish', $product),
             'variantBulkUrl' => route('admin.products.variants.bulk', $product),
             'mediaHref' => route('admin.products.media.byProduct', $product),
+                'attributesHref' => route('admin.products.attributes.index', $product),
             'wizardStep' => in_array($requestStep = request()->query('step'), ['identity', 'variants', 'media', 'review'], true)
                 ? $requestStep
                 : 'identity',

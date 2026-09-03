@@ -545,7 +545,7 @@ export default function ProductMediaPage({
         {
           preserveScroll: true,
           onSuccess: () => {
-            form.reset("upload", "source_url", "is_main_image")
+            form.reset("upload", "source_url", "is_main_image", "show_in_catalog", "is_installation", "installation_caption", "product_variant_id")
             form.setData("position", 1)
             form.setData("visibility", "visible")
           },
@@ -782,7 +782,7 @@ export default function ProductMediaPage({
               forceFormData: true,
               preserveScroll: true,
               onSuccess: () => {
-                form.reset("source_url", "upload", "is_main_image")
+                form.reset("source_url", "upload", "is_main_image", "show_in_catalog", "is_installation", "installation_caption", "product_variant_id")
                 form.setData("position", 1)
                 form.setData("visibility", "visible")
               },
