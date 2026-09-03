@@ -25,18 +25,23 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  */
 class StorePerformanceExport implements WithMultipleSheets
 {
-    public function __construct(protected array $payload)
+    /**
+     * @param string|null $sheetSuffix Label bulan utk export multi-bulan
+     *                                 (mis. " Jan 2026") -> nama sheet unik
+     *                                 per bulan dalam satu file.
+     */
+    public function __construct(protected array $payload, protected ?string $sheetSuffix = null)
     {
     }
 
     public function sheets(): array
     {
         return [
-            new StorePerformanceSummarySheet($this->payload),
-            new StorePerformanceTopProductsSheet($this->payload),
-            new StorePerformanceCustomersSheet($this->payload),
-            new StorePerformanceReturnCostSheet($this->payload),
-            new StorePerformanceGuideSheet($this->payload),
+            new StorePerformanceSummarySheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceTopProductsSheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceCustomersSheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceReturnCostSheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceGuideSheet($this->payload, $this->sheetSuffix),
         ];
     }
 }
@@ -50,10 +55,13 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
     /** @var list<array{0: int, 1: int, 2: string}> [baris, indeks kolom, format] */
     protected array $numberCells = [];
 
-    public function __construct(protected array $payload)
+    public function __construct(protected array $payload, protected ?string $sheetSuffix = null)
     {
         $this->currencyFormat = '#,##0';
         $this->configure();
+        if ($this->sheetSuffix !== null && $this->sheetSuffix !== '') {
+            $this->sheetTitle = $this->sheetTitle.' ('.$this->sheetSuffix.')';
+        }
     }
 
     abstract protected function configure(): void;
@@ -299,7 +307,7 @@ class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\E
 {
     use \Maatwebsite\Excel\Concerns\RegistersEventListeners;
 
-    public function __construct(protected array $payload)
+    public function __construct(protected array $payload, protected ?string $sheetSuffix = null)
     {
     }
 
@@ -321,7 +329,9 @@ class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\E
 
     public function title(): string
     {
-        return 'Panduan';
+        return $this->sheetSuffix !== null && $this->sheetSuffix !== ''
+            ? 'Panduan ('.$this->sheetSuffix.')'
+            : 'Panduan';
     }
 
     public function afterSheet(AfterSheet $event): void

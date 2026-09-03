@@ -337,6 +337,11 @@ export default function StorePerformance({
   exportUrl: string
 }) {
   const [refreshing, setRefreshing] = React.useState(false)
+  const [exportOpen, setExportOpen] = React.useState(false)
+  const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
+  const [exportFrom, setExportFrom] = React.useState("")
+  const [exportTo, setExportTo] = React.useState("")
+  const [exportGranularity, setExportGranularity] = React.useState("day")
   const [refreshError, setRefreshError] = React.useState(false)
   const [period, setPeriod] = React.useState(filters.period)
   const [from, setFrom] = React.useState(filters.from)
@@ -351,6 +356,20 @@ export default function StorePerformance({
   }, [report])
 
   const [chartTab, setChartTab] = React.useState(0)
+
+  function buildExportUrl(): string {
+    try {
+      const url = new URL(exportUrl, window.location.origin)
+      if (exportRange === "custom" && exportFrom && exportTo) {
+        url.searchParams.set("export_from", exportFrom)
+        url.searchParams.set("export_to", exportTo)
+      }
+      url.searchParams.set("export_granularity", exportGranularity)
+      return url.toString()
+    } catch {
+      return exportUrl
+    }
+  }
 
   function apply(next?: Partial<{ period: string; from: string; to: string; granularity: string }>) {
     const payload = {
@@ -388,12 +407,53 @@ export default function StorePerformance({
             <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
             {refreshing ? "Memuat..." : "Refresh data"}
           </button>
-          <Button asChild variant="secondary">
-            <a href={exportUrl}>
+          <div className="relative">
+            <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
               <Icon name="download" className="size-4" aria-hidden="true" />
               Unduh Laporan
-            </a>
-          </Button>
+            </Button>
+            {exportOpen ? (
+              <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-lg">
+                <p className="text-xs font-bold">Rentang waktu export</p>
+                <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs">
+                  <input type="radio" name="export_range" checked={exportRange === "screen"} onChange={() => setExportRange("screen")} />
+                  Ikuti periode di layar
+                </label>
+                <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs">
+                  <input type="radio" name="export_range" checked={exportRange === "custom"} onChange={() => setExportRange("custom")} />
+                  Kustom
+                </label>
+                {exportRange === "custom" ? (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="h-8 w-32 text-xs" aria-label="Dari tanggal" />
+                    <span className="text-xs text-muted-foreground">s/d</span>
+                    <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="h-8 w-32 text-xs" aria-label="Sampai tanggal" />
+                  </div>
+                ) : null}
+                <p className="mt-3 text-xs font-bold">Granularitas data</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  Rentang &gt; 1 bulan otomatis dipecah: satu file, sheet per bulan.
+                </p>
+                <select
+                  value={exportGranularity}
+                  onChange={(e) => setExportGranularity(e.target.value)}
+                  className="mt-1 h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                  aria-label="Granularitas export"
+                >
+                  <option value="hour">Per Jam</option>
+                  <option value="day">Per Hari</option>
+                  <option value="week">Per Minggu</option>
+                  <option value="month">Per Bulan</option>
+                </select>
+                <a
+                  href={buildExportUrl()}
+                  className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  Unduh XLSX
+                </a>
+              </div>
+            ) : null}
+          </div>
         </div>
       }
     >

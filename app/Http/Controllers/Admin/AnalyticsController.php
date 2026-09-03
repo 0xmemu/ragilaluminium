@@ -108,16 +108,55 @@ class AnalyticsController extends Controller
     public function exportStorePerformance(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $period = (string) $request->input('period', 'today');
+        $from = is_string($request->input('from')) ? $request->input('from') : null;
+        $to = is_string($request->input('to')) ? $request->input('to') : null;
+        $granularity = is_string($request->input('granularity')) ? $request->input('granularity') : null;
+
+        // Rentang & granularitas KHUSUS export (independen dari filter layar);
+        // fallback ke filter layar bila tidak diisi.
+        $exportFrom = is_string($request->input('export_from')) && $request->input('export_from') !== '' ? $request->input('export_from') : $from;
+        $exportTo = is_string($request->input('export_to')) && $request->input('export_to') !== '' ? $request->input('export_to') : $to;
+        $exportGranularity = is_string($request->input('export_granularity')) && $request->input('export_granularity') !== '' ? $request->input('export_granularity') : $granularity;
+
         $payload = $this->performance->build(
             period: $period,
-            from: is_string($request->input('from')) ? $request->input('from') : null,
-            to: is_string($request->input('to')) ? $request->input('to') : null,
-            granularity: is_string($request->input('granularity')) ? $request->input('granularity') : null,
+            from: $exportFrom,
+            to: $exportTo,
+            granularity: $exportGranularity,
         );
 
-        $filename = 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx';
-
         ExportSafety::assertPerformancePayloadWithinLimit($payload);
+
+        // Span > 31 hari: pecah per bulan kalender -> satu file, set sheet
+        // lengkap per bulan (nama sheet ber-suffix nama bulan).
+        $fromDate = \Carbon\Carbon::parse($payload['range']['from_date_iso']);
+        $toDate = \Carbon\Carbon::parse($payload['range']['to_date_iso']);
+        $spanDays = $fromDate->diffInDays($toDate) + 1;
+
+        if ($spanDays > 31) {
+            $sheets = [];
+            $cursor = $fromDate->copy()->startOfDay();
+            while ($cursor->lte($toDate)) {
+                $monthFrom = $cursor->copy()->startOfMonth();
+                $monthTo = $cursor->copy()->endOfMonth()->min($toDate)->endOfDay();
+                $monthPayload = $this->performance->build(
+                    period: 'custom',
+                    from: $monthFrom->toDateString(),
+                    to: $monthTo->toDateString(),
+                    granularity: $exportGranularity,
+                );
+                ExportSafety::assertPerformancePayloadWithinLimit($monthPayload);
+                $suffix = $monthFrom->translatedFormat('M Y');
+                $sheets = array_merge($sheets, (new StorePerformanceExport($monthPayload, $suffix))->sheets());
+                $cursor = $monthTo->copy()->addDay()->startOfDay();
+            }
+
+            return Excel::download(
+                new \App\Exports\StorePerformanceMonthlyExport($sheets),
+                'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx',
+            );
+        }
+
         return Excel::download(new StorePerformanceExport($payload), 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx');
     }
 
