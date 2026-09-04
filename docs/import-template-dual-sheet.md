@@ -1,66 +1,43 @@
-# Template Import Katalog: Skema Dua Sheet (Varian + Kombinasi)
+# Template Import Katalog: Skema Owner (Data/Contoh/Panduan)
 
-Update: 2026-09-04. Menggantikan skema kolom tunggal lama sebagai template default.
-File lama tetap bisa diproses (back-compat).
+Update: 2026-09-05. Menggantikan skema dua sheet (Varian+Kombinasi) sebagai
+format default, sesuai rancangan owner (2026-09-05).
 
 ## Struktur file
 
-Sheet 1 "Kombinasi" (sheet pertama, dibaca import engine):
+Sheet 1 "Data" (diproses importer) - 1 baris = 1 KOMBINASI varian jadi:
 
-```text
-name, description, product_category, product_model, design_variant, specifications,
-option_1, option_2, option_3, option_4, option_5,
-price, stock, weight_kg, height_cm, width_cm, depth_cm,
-installation_image_url
-```
+- Identitas produk: name, description, product_category, product_model,
+  design_variant, specifications. Cukup di baris pertama produk; baris
+  lanjutan diwarisi.
+- Definisi varian (sekali di baris pertama produk): variation_1_name +
+  variation_1_option_1..4, variation_2_name + variation_2_option_1..4.
+  Tambah pilihan = copy kolom (option_5, option_6, dst). Maks 5 varian name.
+- Per kombinasi: variantion_combination ("Putih, Kaca Bening", urut sesuai
+  varian), price_variantion_combination, stock (opsional).
+- Gambar: image_1..2 (katalog umum), image_variation_1_option_1..4 +
+  image_variation_2_option_1..4 (per opsi; cukup diisi sekali di baris
+  pertama produk), shared_media_1..2 (media bersama, boleh video),
+  installation_image_1..2 (tambah = copy kolom).
+- Baris penanda "CONTOH: hapus..." diabaikan importer.
 
-- 1 baris = 1 varian jadi (kombinasi opsi). `price` + `stock` WAJIB per baris.
-- Kolom identitas (name s.d. specifications) cukup di baris PERTAMA produk;
-  baris lanjutan diwarisi dari baris atasnya.
-- `option_1` = nilai varian ke-1, `option_2` = varian ke-2, urut mengikuti
-  urutan varian di sheet Varian.
-- `installation_image_url` = foto hasil pemasangan umum (opsional).
-- Dropdown validasi untuk kategori/model/desain tersedia di template.
+Sheet 2 "Contoh": ilustrasi 12 kombinasi (4 warna x 3 kaca), tidak diproses.
+Sheet 3 "Panduan": penjelasan kolom.
 
-Sheet 2 "Varian" (definisi opsi + gambar per opsi):
+Ejaan: importer menerima variantion_* dan variation_* (termasuk
+image_variantion_name_N_option_M dari file rancangan owner).
 
-```text
-varian_name | option | image_url | installation_image_url
-Warna       | Hitam  | https://... |
-            | Putih  | https://... |
-Kaca        | Bening | https://... | https://... (pasang)
-```
+## Back-compat
 
-- 1 baris = 1 opsi. `varian_name` ditulis di baris opsi pertama varian itu.
-- `image_url` per opsi: gambar ini dipakai varian mana pun yang memakai opsi tsb.
-- `installation_image_url` per opsi: foto pemasangan khusus opsi (opsional).
-- Tambah varian = tambah nama varian baru. Tambah opsi = tambah baris. Tanpa batas.
-
-Sheet 3 "Panduan" berisi ringkasan aturan.
-
-## Default template
-
-- 2 varian name siap isi (Warna, Kaca), masing-masing baris opsi disiapkan 4.
-- Kombinasi menyediakan kolom option_1..option_5 (varian ke-3..5 tinggal diisi;
-  butuh varian ke-3 berarti isi option_3 di sheet Kombinasi).
-
-## Batas
-
-- Maks 5 varian name (kolom DB `product_variants.variation_1..5_*`).
-- Opsi per varian bebas (baris bebas).
-- 50.000 baris per file.
-- Baris tanpa opsi varian sama sekali diabaikan importer.
-
-## Back-compat (file lama)
-
-Kolom legacy tetap diterima: `variation_1..5_name/option`, `image_1..9`,
-`installation_image_1..9`. File yang punya sheet "Varian" otomatis diproses
-dengan skema baru; gambar legacy tidak dicampur dengan gambar per opsi.
-`parent_sku`/`variant_sku` eksplisit tetap didukung untuk mode update.
+- Skema dua sheet sebelumnya (Varian + Kombinasi): tetap diproses.
+- Skema lama: variation_1..5_name/option, image_1..9, installation_image_1..9:
+  tetap diproses.
+- File owner yang dicampur (image_1 umum + gambar per opsi): didukung;
+  gambar per opsi ditaruh di posisi 10+, shared media di 51+, installation 100+.
 
 ## Alur internal
 
-- Template: `App\Exports\CatalogTemplateExport` (3 sheet class).
-- Parser sheet Varian: `App\Support\VariantSheetParser`.
-- Import: `App\Imports\CatalogProductsImport` (baca sheet pertama + parser).
-- Row counting & preview: `Admin\ImportJobController@store/previewCatalog`.
+- Template: App\Exports\CatalogTemplateExport (Data/Contoh/Panduan).
+- Import: App\Imports\CatalogProductsImport (cell() toleran ejaan,
+  groupVariantNames/groupOptionImages per grup produk).
+- Parser sheet Varian lama: App\Support\VariantSheetParser (dipertahankan).

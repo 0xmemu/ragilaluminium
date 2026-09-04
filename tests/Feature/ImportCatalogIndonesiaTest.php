@@ -117,7 +117,9 @@ class ImportCatalogIndonesiaTest extends TestCase
         $this->assertCount(3, $names);
         $first = $ss->getSheet(0)->toArray()[0];
         $this->assertContains('name', $first);
-        $this->assertContains('price', $first);
+        // Format owner 09-05: harga per kombinasi varian.
+        $this->assertContains('price_variantion_combination', $first);
+        $this->assertContains('variantion_combination', $first);
     }
 
     public function test_template_stock_price_xlsx(): void

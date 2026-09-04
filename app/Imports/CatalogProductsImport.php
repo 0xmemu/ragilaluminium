@@ -30,6 +30,22 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
     protected array $optionInstallations = [];
 
     /**
+     * Definisi varian per grup produk (by name): [N => name] dari baris
+     * pertama (desain owner: daftar opsi ditulis sekali di baris pertama).
+     *
+     * @var array<string, array<int, string>>
+     */
+    protected array $groupVariantNames = [];
+
+    /**
+     * Gambar per opsi varian per grup produk:
+     * [name grupp][optionKey(lowercase)] => URL.
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected array $groupOptionImages = [];
+
+    /**
      * Identitas produk terakhir yang terlihat (baris pertama grup).
      * Baris lanjutan kombinasi cukup berisi option + price + stock; kolom
      * identitas diwarisi dari sini (perilaku ala marketplace).
@@ -99,6 +115,12 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         for ($i = 1; $i <= 5; $i++) {
             if (trim((string) ($data['variation_'.$i.'_option'] ?? '')) !== '') { $hasAnyOption = true; break; }
         }
+        // Desain owner: kolom kombinasi menandai baris varian jadi.
+        if ($this->cell($data, 'variantion_combination') !== null
+            || $this->cell($data, 'variation_combination') !== null
+            || $this->cell($data, 'price_variantion_combination') !== null) {
+            $hasAnyOption = true;
+        }
         $hasVariantSku = trim((string) ($data['variant_sku'] ?? '')) !== '';
         $hasLegacyImage = false;
         for ($i = 1; $i <= 9; $i++) {
@@ -118,6 +140,13 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             return;
         }
 
+        // Baris penanda contoh di sheet Data (template baru) diabaikan.
+        foreach ($data as $cell) {
+            if (stripos((string) $cell, 'CONTOH:') === 0) {
+                return;
+            }
+        }
+
         // Baris dari sheet "Varian" (memuat kolom varian_name/option tanpa
         // price): dikonsumsi VariantSheetParser, bukan baris produk.
         if (array_key_exists('varian_name', $data) && ! array_key_exists('price', $data)) {
@@ -130,6 +159,41 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             'product_model', 'design_variant', 'specifications',
             'weight_kg', 'height_cm', 'width_cm', 'depth_cm',
         ];
+        $rowName = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
+        if ($rowName !== '') {
+            // Definisi varian (desain owner): variation_N_name + option_1..M
+            // hanya di baris pertama grup; simpan utk dipakai baris lanjutan.
+            $defs = [];
+            $optionImages = [];
+            for ($n = 1; $n <= 5; $n++) {
+                $vname = $this->cell($data, 'variation_'.$n.'_name');
+                if ($vname === null) {
+                    continue;
+                }
+                $defs[$n] = $vname;
+                for ($m = 1; $m <= 30; $m++) {
+                    // Kolom opsi: variation_N_option_M
+                    $opt = $this->cell($data, 'variation_'.$n.'_option_'.$m);
+                    if ($opt === null) {
+                        break;
+                    }
+                    $imgKey = 'image_variation_'.$n.'_option_'.$m;
+                    $img = $this->cell($data, $imgKey);
+                    if ($img !== null && filter_var($img, FILTER_VALIDATE_URL)) {
+                        $optionImages[\App\Support\VariantSheetParser::optionKey($opt)] = $img;
+                    }
+                }
+            }
+            if ($defs !== []) {
+                $this->groupVariantNames[$rowName] = $defs;
+            }
+            if ($optionImages !== []) {
+                $this->groupOptionImages[$rowName] = array_merge(
+                    $this->groupOptionImages[$rowName] ?? [],
+                    $optionImages,
+                );
+            }
+        }
         if (trim((string) ($data['name'] ?? $data['product_name'] ?? '')) !== '') {
             foreach ($identityKeys as $key) {
                 if (isset($data[$key]) && trim((string) $data[$key]) !== '') {
@@ -223,6 +287,11 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         break;
                     }
                 }
+                // Desain owner: kolom kombinasi + harga per kombinasi.
+                if ($this->cell($data, 'variantion_combination') !== null
+                    || $this->cell($data, 'variation_combination') !== null) {
+                    $hasVariation = true;
+                }
                 if ($hasVariation) {
                     $n = ProductVariant::where('product_id', $product->id)->count() + 1;
                     $variantSku = $parentSku.'-'.$n;
@@ -247,7 +316,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         'variation_4_option' => $this->variantOption($data, 4),
                         'variation_5_name' => $this->variantName($data, 5),
                         'variation_5_option' => $this->variantOption($data, 5),
-                        'price' => (float) ($data['price'] ?? 0),
+                        'price' => (float) ($this->cell($data, 'price_variantion_combination') ?? $data['price'] ?? 0),
                         'stock' => $stock,
                         'weight_kg' => $this->number($data, ['weight_kg', 'weight', 'packing_weight']),
                         'height_cm' => $this->number($data, ['height_cm', 'height', 'packing_height']),
@@ -293,6 +362,74 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         showInCatalog: false,
                         isInstallation: true,
                     );
+                }
+            }
+
+            // Desain owner (09-05): image_variation_N_option_M per opsi varian,
+            // shared_media_1..2 media bersama. Hanya diterapkan bila file
+            // memakai kolom owner dan TIDAK mencampur image legacy/sheet Varian.
+            $ownerImages = [];
+            $ownerName = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
+            if ($ownerName === '' && isset($this->lastIdentity['name'])) {
+                $ownerName = trim((string) $this->lastIdentity['name']);
+            }
+            for ($n = 1; $n <= 5; $n++) {
+                for ($m = 1; $m <= 30; $m++) {
+                    $url = $this->cell($data, 'image_variation_'.$n.'_option_'.$m);
+                    if ($url === null) { break; }
+                    $opt = $this->cell($data, 'variation_'.$n.'_option_'.$m);
+                    if ($opt !== null && filter_var($url, FILTER_VALIDATE_URL)) {
+                        $ownerImages[\App\Support\VariantSheetParser::optionKey($opt)] = $url;
+                    }
+                }
+            }
+            if ($ownerName !== '' && isset($this->groupOptionImages[$ownerName])) {
+                $ownerImages += $this->groupOptionImages[$ownerName];
+            }
+
+            $ownerMediaWritten = false;
+            if ($ownerImages !== []
+                && ($this->variantSheet === null || count($this->variantSheet['variants']) === 0)) {
+                $variantOptionValues = [];
+                for ($n = 1; $n <= 5; $n++) {
+                    $value = $this->variantOption($data, $n);
+                    if ($value !== null && $value !== '') {
+                        $variantOptionValues[] = \App\Support\VariantSheetParser::optionKey($value);
+                    }
+                }
+                $position = 10;
+                $isFirstMedia = true;
+                foreach ($variantOptionValues as $optionKey) {
+                    $url = $ownerImages[$optionKey] ?? null;
+                    if ($url === null) { continue; }
+                    $this->mediaUpserter()->upsert(
+                        productId: $product->id,
+                        variantId: $variant?->id,
+                        url: $url,
+                        position: $position,
+                        isMain: $isFirstMedia,
+                        showInCatalog: true,
+                        isInstallation: false,
+                    );
+                    $isFirstMedia = false;
+                    $position++;
+                    $ownerMediaWritten = true;
+                }
+                // shared_media_1..N: media bersama (foto/video), tampil semua kombinasi.
+                for ($n = 1; $n <= 9; $n++) {
+                    $shared = $this->cell($data, 'shared_media_'.$n);
+                    if ($shared === null) { break; }
+                    if (filter_var($shared, FILTER_VALIDATE_URL)) {
+                        $this->mediaUpserter()->upsert(
+                            productId: $product->id,
+                            variantId: $variant?->id,
+                            url: $shared,
+                            position: 50 + $n,
+                            isMain: false,
+                            showInCatalog: true,
+                            isInstallation: false,
+                        );
+                    }
                 }
             }
 
@@ -459,6 +596,29 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
     }
 
     /**
+     * Baca nilai header dgn toleransi ejaan "variantion"/"variation"
+     * (desain owner 2026-09-05 memakai "variantion").
+     */
+    protected function cell(array $data, string $key): ?string
+    {
+        $alt = str_replace('variation', 'variantion', $key);
+        // Ejaan owner: image_variantion_name_1_option_1 (ada "name").
+        $altName = null;
+        if (preg_match('/^image_variation_(\d+)_option_(\d+)$/', $key, $mm)) {
+            $altName = 'image_variantion_name_'.$mm[1].'_option_'.$mm[2];
+        }
+        foreach (array_filter([$key, $alt, $altName]) as $k) {
+            if (array_key_exists($k, $data)) {
+                $v = trim((string) $data[$k]);
+                if ($v !== '') {
+                    return $v;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Nama varian ke-N untuk baris ini.
      * Skema baru: dari daftar varian sheet Varian (urutan kemunculan).
      * Legacy: kolom variation_N_name langsung.
@@ -468,6 +628,14 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         $legacy = isset($data['variation_'.$n.'_name']) ? trim((string) $data['variation_'.$n.'_name']) : '';
         if ($legacy !== '') {
             return $legacy;
+        }
+        // Desain owner: nama varian di baris pertama grup (by name).
+        $name = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
+        if ($name === '' && isset($this->lastIdentity['name'])) {
+            $name = trim((string) $this->lastIdentity['name']);
+        }
+        if ($name !== '' && isset($this->groupVariantNames[$name][$n])) {
+            return $this->groupVariantNames[$name][$n];
         }
         if ($this->variantSheet !== null && isset($this->variantSheet['variants'][$n - 1])) {
             return $this->variantSheet['variants'][$n - 1]['name'];
@@ -485,6 +653,17 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         $new = isset($data['option_'.$n]) ? trim((string) $data['option_'.$n]) : '';
         if ($new !== '') {
             return $new;
+        }
+        // Desain owner: variantion_combination = "Putih, Kaca Bening"
+        // (kata ke-N = opsi varian ke-N).
+        $combo = $this->cell($data, 'variantion_combination')
+            ?? $this->cell($data, 'variation_combination');
+        if ($combo !== null) {
+            $parts = array_map('trim', explode(',', $combo));
+            if (isset($parts[$n - 1]) && $parts[$n - 1] !== '') {
+                return $parts[$n - 1];
+            }
+            return null;
         }
         $legacy = isset($data['variation_'.$n.'_option']) ? trim((string) $data['variation_'.$n.'_option']) : '';
         return $legacy !== '' ? $legacy : null;
