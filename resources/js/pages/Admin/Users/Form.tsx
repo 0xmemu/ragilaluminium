@@ -1,8 +1,11 @@
 import { Head, Link, useForm } from "@inertiajs/react"
+import * as React from "react"
+
+import { Icon } from "@/components/shared/icon"
 
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -27,10 +30,10 @@ export default function UserForm({
   isSelf?: boolean
 }) {
   const editing = Boolean(user)
+  const [copied, setCopied] = React.useState(false)
   const form = useForm({
     name: user?.name ?? "",
     username: user?.username ?? "",
-    email: user?.email ?? "",
     password: "",
     password_confirmation: "",
     status: user?.status ?? "active",
@@ -44,8 +47,8 @@ export default function UserForm({
         editing
           ? isSelf
             ? "Anda mengedit akun sendiri. Ganti password pribadi juga bisa lewat Profil Saya."
-            : user?.email
-          : "Buat username unik dan kirim kredensial awal ke email penerima."
+            : user?.username
+          : "Buat username dan password untuk akun admin baru."
       }
       actions={
         <Button asChild variant="secondary">
@@ -61,158 +64,194 @@ export default function UserForm({
           if (editing) form.put(submitUrl)
           else form.post(submitUrl)
         }}
-        className="mx-auto max-w-2xl space-y-6"
+        className="w-full space-y-5"
       >
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          {editing && user ? (
-            <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-border pb-5">
-              <StatusBadge status={user.status} />
-              <p className="text-xs font-semibold text-muted-foreground">Admin (hak setara)</p>
-              {isSelf ? (
-                <p className="text-xs font-semibold text-primary">Ini akun yang sedang Anda pakai</p>
+        <div className="overflow-hidden rounded-lg border border-border">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              {editing && user ? (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status akun</th>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={user.status} />
+                      <span className="text-xs font-semibold text-muted-foreground">Admin (hak setara)</span>
+                      {isSelf ? (
+                        <span className="text-xs font-semibold text-primary">Ini akun yang sedang Anda pakai</span>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
               ) : null}
-            </div>
-          ) : null}
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Nama <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    value={form.data.name}
+                    onChange={(event) => form.setData("name", event.target.value)}
+                    autoComplete="name"
+                    className="h-8 text-xs"
+                  />
+                  {form.errors.name ? <p className="mt-1 text-xs text-destructive">{form.errors.name}</p> : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Username <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    value={form.data.username}
+                    onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
+                    autoComplete="username"
+                    placeholder="contoh: admin.ragil"
+                    className="h-8 text-xs"
+                  />
+                  {form.errors.username ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.username}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Unik untuk setiap akun. Gunakan huruf, angka, titik, garis bawah, atau tanda hubung.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  {editing ? "Password baru" : "Password awal"}
+                  {!editing ? <span className="text-destructive"> *</span> : null}
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="text"
+                      value={form.data.password}
+                      onChange={(event) => form.setData("password", event.target.value)}
+                      autoComplete="new-password"
+                      placeholder={editing ? "Kosongkan jika tidak diubah" : "Tulis manual atau Generate"}
+                      className="h-8 flex-1 text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-8 shrink-0 text-xs"
+                      onClick={() => {
+                        const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
+                        const array = new Uint32Array(14)
+                        crypto.getRandomValues(array)
+                        const generated = Array.from(array, (n) => charset[n % charset.length]).join("")
+                        form.setData("password", generated)
+                        form.setData("password_confirmation", generated)
+                      }}
+                    >
+                      <Icon name="sparkles" className="h-3.5 w-3.5" aria-hidden="true" />
+                      Generate
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-8 w-8 shrink-0 p-0"
+                      aria-label="Salin password"
+                      title="Salin password"
+                      onClick={async () => {
+                        if (!form.data.password) return
+                        try {
+                          await navigator.clipboard.writeText(form.data.password)
+                          setCopied(true)
+                          window.setTimeout(() => setCopied(false), 1500)
+                        } catch {
+                          // clipboard ditolak browser: biarkan manual
+                        }
+                      }}
+                    >
+                      <Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Button>
+                  </div>
+                  {form.errors.password ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.password}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {editing
+                      ? "Kosongkan jika password tidak diubah. Password tidak dikirim ke email; bagikan langsung ke penerima."
+                      : "Minimal 8 karakter. Password tidak dikirim ke email; bagikan langsung ke penerima (tombol salin tersedia)."}
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  {editing ? "Ulangi password baru" : "Ulangi password awal"}
+                  {!editing ? <span className="text-destructive"> *</span> : null}
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    type="password"
+                    value={form.data.password_confirmation}
+                    onChange={(event) => form.setData("password_confirmation", event.target.value)}
+                    autoComplete="new-password"
+                    className="h-8 text-xs"
+                  />
+                  {form.errors.password_confirmation ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.password_confirmation}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Status <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Select
+                    value={form.data.status}
+                    onChange={(event) => form.setData("status", event.target.value)}
+                    disabled={isSelf}
+                    className="h-8 w-44 text-xs"
+                  >
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                  </Select>
+                  {form.errors.status ? <p className="mt-1 text-xs text-destructive">{form.errors.status}</p> : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Nonaktif = tidak bisa login. Semua admin aktif punya akses panel yang sama.
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-          <div className="grid gap-4">
-            <Field id="user-name" label="Nama" required error={form.errors.name}>
-              <Input
-                value={form.data.name}
-                onChange={(event) => form.setData("name", event.target.value)}
-                autoComplete="name"
-              />
-            </Field>
-
-            <Field
-              id="user-username"
-              label="Username"
-              required
-              error={form.errors.username}
-              hint="Unik untuk setiap akun. Gunakan huruf, angka, titik, garis bawah, atau tanda hubung."
-            >
-              <Input
-                value={form.data.username}
-                onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
-                autoComplete="username"
-                placeholder="contoh: admin.ragil"
-              />
-            </Field>
-
-            <Field
-              id="user-email"
-              label="Email penerima kredensial"
-              required
-              error={form.errors.email}
-              hint="Satu email boleh digunakan untuk beberapa username."
-            >
-              <Input
-                type="email"
-                value={form.data.email}
-                onChange={(event) => form.setData("email", event.target.value)}
-                autoComplete="email"
-              />
-            </Field>
-
-            <Field
-              id="user-password"
-              label={editing ? "Password baru" : "Password awal"}
-              required={!editing}
-              error={form.errors.password}
-              hint={
-                editing
-                  ? "Kosongkan jika password tidak diubah."
-                  : "Minimal 8 karakter dan dikirim sekali ke email penerima."
-              }
-            >
-              <Input
-                type="password"
-                value={form.data.password}
-                onChange={(event) => form.setData("password", event.target.value)}
-                autoComplete="new-password"
-              />
-            </Field>
-
-            <Field
-              id="user-password-confirmation"
-              label={editing ? "Ulangi password baru" : "Ulangi password awal"}
-              required={!editing}
-              error={form.errors.password_confirmation}
-            >
-              <Input
-                type="password"
-                value={form.data.password_confirmation}
-                onChange={(event) => form.setData("password_confirmation", event.target.value)}
-                autoComplete="new-password"
-              />
-            </Field>
-
-            <Field
-              id="user-status"
-              label="Status"
-              required
-              error={form.errors.status}
-              hint="Nonaktif = tidak bisa login. Semua admin aktif punya akses panel yang sama."
-            >
-              <Select
-                value={form.data.status}
-                onChange={(event) => form.setData("status", event.target.value)}
-                disabled={isSelf}
-              >
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-              </Select>
-            </Field>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2 border-t border-border pt-5">
-            <Button asChild variant="secondary">
-              <Link href={routeUrl("admin.users.index")}>Batal</Link>
-            </Button>
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan akun"}
-            </Button>
-          </div>
-        </section>
+        <div className="flex justify-end gap-2">
+          <Button asChild variant="secondary">
+            <Link href={routeUrl("admin.users.index")}>Batal</Link>
+          </Button>
+          <Button type="submit" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan akun"}
+          </Button>
+        </div>
       </form>
 
       {editing && user && !isSelf ? (
-        <section className="mx-auto mt-6 max-w-2xl rounded-lg border border-destructive/25 bg-destructive/5 p-5">
-          <h2 className="text-lg font-semibold">Status akses login</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Nonaktifkan akses login tanpa menghapus akun. Aktifkan kembali bila staf perlu masuk lagi.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              onClick={() =>
-                statusForm.post(routeUrl("admin.users.activate", { user: user.id }), {
-                  preserveScroll: true,
-                })
-              }
-              disabled={statusForm.processing || user.status === "active"}
-            >
-              Aktifkan
-            </Button>
-            <ConfirmAction
-              trigger={
-                <Button variant="destructive" disabled={user.status === "inactive"}>
-                  Nonaktifkan
-                </Button>
-              }
-              title="Nonaktifkan akun?"
-              description={`${user.name} tidak dapat login sampai akun diaktifkan kembali.`}
-              confirmLabel="Nonaktifkan"
-              processing={statusForm.processing}
-              onConfirm={() =>
-                statusForm.post(routeUrl("admin.users.deactivate", { user: user.id }), {
-                  preserveScroll: true,
-                })
-              }
-            />
-          </div>
-        </section>
+        <div className="mt-4">
+          <ConfirmAction
+            trigger={
+              <Button variant="destructive" size="sm">
+                Nonaktifkan akun
+              </Button>
+            }
+            title="Nonaktifkan akun?"
+            description={`${user.name} tidak akan bisa login lagi sampai diaktifkan kembali.`}
+            confirmLabel="Nonaktifkan"
+            variant="destructive"
+            processing={statusForm.processing}
+            onConfirm={() => {
+              statusForm.post(routeUrl("admin.users.deactivate", { user: user.id }), {
+                preserveScroll: true,
+              })
+            }}
+          />
+        </div>
       ) : null}
     </AdminLayout>
   )

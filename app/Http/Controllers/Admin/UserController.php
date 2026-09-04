@@ -104,18 +104,19 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:3', 'max:64', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,username'],
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
 
         $validated['role'] = self::STORE_ADMIN_ROLE;
         $validated['username'] = strtolower(trim((string) $validated['username']));
+        $validated['email'] = $validated['email'] ?? null;
         $initialPassword = (string) $validated['password'];
 
         $user = User::create($validated);
         $credentialsDelivered = false;
-        if (config('mail.default') !== 'log') {
+        if ($user->email && config('mail.default') !== 'log') {
             try {
                 $user->notify(new AdminAccountCredentials($user->username, $initialPassword));
                 $credentialsDelivered = true;
@@ -137,9 +138,11 @@ class UserController extends Controller
             $request->user()?->id,
         );
 
-        $message = $credentialsDelivered
-            ? 'Akun admin dibuat dan kredensial awal dikirim ke email penerima.'
-            : 'Akun admin dibuat. Email kredensial belum dikirim karena layanan email belum dikonfigurasi.';
+        $message = $user->email
+            ? ($credentialsDelivered
+                ? 'Akun admin dibuat dan kredensial awal dikirim ke email penerima.'
+                : 'Akun admin dibuat. Email kredensial belum dikirim karena layanan email belum dikonfigurasi.')
+            : 'Akun admin dibuat. Bagikan username dan password langsung ke penerima (tanpa email).';
 
         return redirect()->route('admin.users.index')->with('success', $message);
     }
@@ -166,7 +169,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:3', 'max:64', 'regex:/^[a-zA-Z0-9._-]+$/', Rule::unique('users', 'username')->ignore($user->id)],
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
@@ -194,6 +197,7 @@ class UserController extends Controller
         // Equal-admin: never persist hierarchical roles from the form.
         $validated['role'] = self::STORE_ADMIN_ROLE;
         $validated['username'] = strtolower(trim((string) $validated['username']));
+        $validated['email'] = $validated['email'] ?? $user->email;
 
         $user->update($validated);
 
