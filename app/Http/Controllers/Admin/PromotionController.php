@@ -359,9 +359,9 @@ class PromotionController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get()
-                // value = KODE sub model (products.design_variant menyimpan kode,
-                // bukan ID) - sinkron dgn CampaignService::matchingItem.
-                ->map(fn (SubModel $s) => ['value' => (string) $s->code, 'model' => $s->product_model, 'label' => CatalogLabels::model($s->product_model).' · '.$s->name])
+                // value = "model:code" - pasangan presisi (design_variant kode
+                // sub model berulang antar model; "Polos" ada di 4 model).
+                ->map(fn (SubModel $s) => ['value' => $s->product_model.':'.$s->code, 'model' => $s->product_model, 'label' => CatalogLabels::model($s->product_model).' · '.$s->name])
                 ->all(),
             'productOptions' => Product::query()
                 ->where('status', 'active')

@@ -398,10 +398,13 @@ final class CampaignService
             );
         }
 
-        if ($subModelTargets->isNotEmpty()) {
-            $productIds = $productIds->concat(
-                Product::whereIn('design_variant', $subModelTargets->all())->pluck('id')
-            );
+        foreach ($subModelTargets as $subTarget) {
+            $t = $this->parseSubModelTarget($subTarget);
+            $query = Product::query()->where('design_variant', $t['code']);
+            if ($t['model'] !== null) {
+                $query->where('product_model', $t['model']);
+            }
+            $productIds = $productIds->concat($query->pluck('id'));
         }
 
         // Produk yang dikecualikan (target product excluded) dikeluarkan.
@@ -474,6 +477,38 @@ final class CampaignService
         return $covered->unique('product_id')->values();
     }
 
+    /**
+     * Cek kecocokan item target sub model terhadap produk.
+     * target_id "model:code" = presisi per model; kode polos = global.
+     */
+    private function subModelItemMatches(PromotionItem $item, Product $product): bool
+    {
+        $t = $this->parseSubModelTarget((string) $item->target_id);
+
+        if ($t['code'] !== $product->design_variant) {
+            return false;
+        }
+
+        return $t['model'] === null || $product->product_model === $t['model'];
+    }
+
+    /**
+     * Parse target_id sub model: "model:code" = presisi per model;
+     * kode polos (tanpa prefix) = global semua model (back-compat).
+     *
+     * @return array{model: ?string, code: string}
+     */
+    private function parseSubModelTarget(string $targetId): array
+    {
+        if (str_contains($targetId, ':')) {
+            [$model, $code] = explode(':', $targetId, 2);
+
+            return ['model' => $model, 'code' => $code];
+        }
+
+        return ['model' => null, 'code' => $targetId];
+    }
+
     private function matchingItem(Promotion $campaign, Product $product, ?ProductVariant $variant = null): ?PromotionItem
     {
         $matched = null;
@@ -483,7 +518,7 @@ final class CampaignService
                 PromotionItem::TARGET_PRODUCT => (int) $item->target_id === (int) $product->id
                     || ($variant !== null && (int) $item->target_id === (int) $variant->id),
                 PromotionItem::TARGET_MODEL => (string) $item->target_id === $product->product_model,
-                PromotionItem::TARGET_SUB_MODEL => (string) $item->target_id === $product->design_variant,
+                PromotionItem::TARGET_SUB_MODEL => $this->subModelItemMatches($item, $product),
                 default => false,
             };
 
