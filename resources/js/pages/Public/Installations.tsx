@@ -148,7 +148,7 @@ export default function Installations({
 
             <div id="inspirasi-pemasangan" className="container-page !px-2.5 pb-10 md:!px-8 lg:!px-12 scroll-mt-24">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
-                <h2 className="text-lg font-bold tracking-tight text-foreground">
+                <h2 className="!text-base font-bold tracking-tight text-foreground">
                   Inspirasi Pemasangan
                 </h2>
               </div>
