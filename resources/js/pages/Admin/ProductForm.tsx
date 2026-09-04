@@ -313,7 +313,7 @@ export default function ProductForm({
               {variantDefs.map((def, defIndex) => (
                 <div key={defIndex} className="rounded-lg border border-border bg-surface-muted/40 p-4">
                   <div className="flex items-center gap-2">
-                    <Field id={`variant-def-name-${defIndex}`} label="Nama varian" className="flex-1">
+                    <Field id={`variant-def-name-${defIndex}`} label="Nama varian" className="w-44 shrink-0">
                       <Input
                         value={def.name}
                         onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, name: event.target.value } : d)))}
@@ -338,7 +338,7 @@ export default function ProductForm({
                           value={option}
                           onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? event.target.value : o)) } : d)))}
                           onKeyDown={blockEnter}
-                          className="w-24 bg-transparent text-xs text-foreground outline-none"
+                          className="w-32 bg-transparent text-sm text-foreground outline-none"
                           aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
                         />
                         <button
