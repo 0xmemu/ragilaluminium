@@ -110,7 +110,7 @@ class StorePerformanceExportTest extends TestCase
         );
 
         $this->assertSame(
-            ['Ringkasan', 'Produk Terlaris', 'Pelanggan Terbaik', 'Biaya Retur', 'Panduan'],
+            ['Ringkasan', 'Income Detail', 'Item Terjual', 'Produk Terlaris', 'Pelanggan Terbaik', 'Biaya Retur', 'Panduan'],
             $ss->getSheetNames()
         );
 

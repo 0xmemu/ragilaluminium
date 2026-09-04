@@ -206,6 +206,7 @@ class StorePerformanceService
             $this->kpi('cancelled_orders', 'Pesanan Dibatalkan', $current['cancelled_orders'], $previous['cancelled_orders'], 'number', 'Dihitung dari event pembatalan pada periode.'),
             $this->kpi('cancelled_by_customer', 'Dibatalkan Pelanggan', $current['cancelled_by_customer'], $previous['cancelled_by_customer'], 'number', 'Pembatalan oleh pelanggan (created_by_user_id kosong).'),
             $this->kpi('cancelled_by_store', 'Dibatalkan Toko', $current['cancelled_by_store'], $previous['cancelled_by_store'], 'number', 'Pembatalan oleh admin/toko (created_by_user_id terisi).'),
+            $this->kpi('cancelled_value', 'Nilai Pesanan Dibatalkan', $current['cancelled_value'], $previous['cancelled_value'] ?? 0, 'currency', 'Total nilai pesanan yang dibatalkan pada periode. Tidak termasuk dalam Penjualan Gross.'),
             $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Dihitung dari event pembatalan pada periode dibandingkan pesanan yang masuk fulfillment pada periode.'),
         ];
 
@@ -410,6 +411,7 @@ class StorePerformanceService
             'cod_paid' => round($paymentCounts['cod'], 2),
             'payment_pending_count' => $paymentCounts['pending_count'],
             'cancelled_orders' => $cancellationCounts['total'],
+            'cancelled_value' => $cancellationCounts['value'],
             'cancelled_by_customer' => $cancellationCounts['customer'],
             'cancelled_by_store' => $cancellationCounts['store'],
             'cancellation_rate' => $orders + $cancellationCounts['total'] > 0
@@ -597,7 +599,7 @@ class StorePerformanceService
      * timestamp = event_logs.created_at, actor = created_by_user_id.
      * Dedupe per entity_id (status cancelled terminal -> maks 1, guard retry).
      *
-     * @return array{total: int, customer: int, store: int}
+     * @return array{total: int, customer: int, store: int, value: float}
      */
     protected function cancellationCounts(Carbon $from, Carbon $to): array
     {
@@ -615,10 +617,18 @@ class StorePerformanceService
         $customer = $dedup->filter(fn (EventLog $e): bool => $e->created_by_user_id === null)->count();
         $store = $dedup->filter(fn (EventLog $e): bool => $e->created_by_user_id !== null)->count();
 
+        // Nilai rupiah pesanan batal (owner 2026-09-04): SUM(total_amount) order
+        // yang dibatalkan pada periode - dedupe per order sama dengan count.
+        $orderIds = $dedup->pluck('entity_id')->all();
+        $cancelledValue = (float) Order::query()
+            ->whereIn('id', $orderIds)
+            ->sum('total_amount');
+
         return [
             'total' => $dedup->count(),
             'customer' => $customer,
             'store' => $store,
+            'value' => round($cancelledValue, 2),
         ];
     }
     /**
