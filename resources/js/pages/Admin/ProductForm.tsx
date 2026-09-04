@@ -283,11 +283,7 @@ export default function ProductForm({
       backUrl={routeUrl("admin.products.index")}
       title={editing ? "Edit produk" : "Tambah produk"}
       description={editing ? `Lengkapi ${product?.parent_sku}. Semua tahap di satu halaman.` : "Isi dari atas ke bawah, lalu simpan. Semua tahap di satu halaman."}
-      actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.products.index")}>Keluar</Link>
-        </Button>
-      }
+      actions={null}
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Produk | Admin`} />
 
@@ -581,19 +577,24 @@ export default function ProductForm({
         {editing ? (
           <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
             <h2 className="text-xl font-semibold">Aktifkan produk</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Periksa syarat berikut. Produk tetap draf sampai semua siap.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Periksa syarat berikut. Semua siap berarti produk bisa diaktifkan.</p>
             <div className="mt-6 space-y-3">
               <ReviewRow label="Nama produk" ready={Boolean(product?.name)} />
               <ReviewRow label="Foto utama terpasang" ready={pickedMedia.length > 0} />
               <ReviewRow label="Berat & dimensi (pengiriman)" ready={Boolean(form.data.weight_kg && form.data.width_cm && form.data.height_cm && form.data.depth_cm)} />
-              <ReviewRow label="Varian aktif" ready={combos.length === 0 ? true : Boolean(product && (product as unknown as { variants_count?: number }).variants_count)} />
+              <ReviewRow label="Varian aktif" ready={combos.length === 0 ? true : Boolean((incomingVariants?.length ?? 0) > 0)} />
             </div>
             <div className="mt-8 border-t border-border pt-6">
-              {publishUrl ? (
-                <Button type="button" disabled={publishing} onClick={publish}>
-                  {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
+              <div className="flex flex-wrap gap-3">
+                <Button type="submit" variant="secondary" disabled={saving}>
+                  {saving ? "Menyimpan..." : "Simpan"}
                 </Button>
-              ) : null}
+                {publishUrl ? (
+                  <Button type="button" disabled={publishing} onClick={publish}>
+                    {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </section>
         ) : null}
