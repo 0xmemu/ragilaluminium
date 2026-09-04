@@ -229,7 +229,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             $name = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
             // Auto-mode: kolom parent_sku tidak diisi (template create). Sistem
             // mengelompokkan varian berdasarkan NAMA produk (grouping by name),
-            // dan membuat parent_sku baru (RGL-{acak}) untuk produk baru.
+            // dan membuat parent_sku baru (RA + token acak, kontrak SKU Fase 4).
             $autoMode = $parentSku === '';
             if ($autoMode) {
                 $existingByName = $name !== ''
@@ -302,8 +302,9 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     $hasVariation = true;
                 }
                 if ($hasVariation) {
-                    $n = ProductVariant::where('product_id', $product->id)->count() + 1;
-                    $variantSku = $parentSku.'-'.$n;
+                    // Kontrak SKU: varian = RA + token acak mandiri (bukan
+                    // parent-nomor urut).
+                    $variantSku = \App\Support\ShopeeStyleSku::nextVariantSku($product);
                 }
             }
             $variant = null;
@@ -743,11 +744,9 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
 
     protected function generateParentSku(): string
     {
-        do {
-            $sku = 'RGL-'.random_int(100000, 999999);
-        } while (Product::where('parent_sku', $sku)->exists());
-
-        return $sku;
+        // Kontrak SKU (Fase 4): produk website = RA + token acak
+        // (ShopeeStyleSku::nextParentSku). Prefix RGL-{angka} usang.
+        return \App\Support\ShopeeStyleSku::nextParentSku();
     }
 
 }
