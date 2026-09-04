@@ -205,6 +205,11 @@ export default function ProductForm({
     }
   }
 
+  // Enter di kolom varian tidak meng-submit form (pemicu 405 lama).
+  const blockEnter = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter") event.preventDefault()
+  }
+
   function publish(event: React.FormEvent) {
     event.preventDefault()
     if (!publishUrl) return
@@ -312,6 +317,7 @@ export default function ProductForm({
                       <Input
                         value={def.name}
                         onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, name: event.target.value } : d)))}
+                        onKeyDown={blockEnter}
                         placeholder="Mis. Warna"
                       />
                     </Field>
@@ -331,6 +337,7 @@ export default function ProductForm({
                         <input
                           value={option}
                           onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? event.target.value : o)) } : d)))}
+                          onKeyDown={blockEnter}
                           className="w-24 bg-transparent text-xs text-foreground outline-none"
                           aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
                         />
