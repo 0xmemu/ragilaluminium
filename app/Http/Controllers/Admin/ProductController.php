@@ -343,13 +343,16 @@ class ProductController extends Controller
             ->with('success', 'Produk berhasil dibuat dengan SKU '.$product->parent_sku.'.');
     }
 
-    /** Format dimensi tanpa desimal bermakna: 1.000 -> "1", 100.00 -> "100", 20.5 -> "20.5". */
+    /**
+     * Format dimensi tanpa desimal bermakna: 1.000 -> "1", 100.00 -> "100".
+     * Desimal asli ditulis dgn koma (konvensi Indonesia): 30.5 -> "30,5".
+     */
     public static function cleanDimension($value): string
     {
         $s = number_format((float) $value, 3, '.', '');
         $s = rtrim($s, '0');
         $s = rtrim($s, '.');
-        return $s;
+        return str_replace('.', ',', $s);
     }
 
     public function show(Product $product): Response
@@ -502,6 +505,14 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product, ProductPublicationService $publication): RedirectResponse
     {
+        // Dimensi boleh diketik dgn koma desimal (30,5); normalisasi ke titik
+        // sebelum validasi numeric.
+        $request->merge([
+            'weight_kg' => str_replace(',', '.', (string) $request->input('weight_kg', '')),
+            'height_cm' => str_replace(',', '.', (string) $request->input('height_cm', '')),
+            'width_cm' => str_replace(',', '.', (string) $request->input('width_cm', '')),
+            'depth_cm' => str_replace(',', '.', (string) $request->input('depth_cm', '')),
+        ]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
 
