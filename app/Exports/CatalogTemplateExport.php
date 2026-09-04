@@ -155,7 +155,7 @@ class CatalogDataSheet implements FromArray, WithTitle, WithEvents
         $this->listValidation($sheet, 'C', ['JENDELA', 'PINTU', 'BOVEN'], $last);
         $this->listValidation($sheet, 'D', ['SWING', 'SLIDING', 'JUNGKIT', 'KACA MATI'], $last);
         $this->listValidation($sheet, 'E', ['POLOS', 'ORNAMEN', 'KOMBINASI'], $last);
-        $sheet->freezePane('C3');
+        
     }
 
     protected function listValidation($sheet, string $col, array $values, int $lastRow): void
