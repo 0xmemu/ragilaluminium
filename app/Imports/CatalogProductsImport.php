@@ -30,6 +30,15 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
     protected array $optionInstallations = [];
 
     /**
+     * Media umum produk yang sudah ditulis pada sesi ini:
+     * [productId][kelas media][position] => true. Kelas: legacy (image_1..9),
+     * shared, installrow (installation umum), owneropt (gambar per opsi).
+     *
+     * @var array<int, array<string, array<int, bool>>>
+     */
+    protected array $writtenMedia = [];
+
+    /**
      * Definisi varian per grup produk (by name): [N => name] dari baris
      * pertama (desain owner: daftar opsi ditulis sekali di baris pertama).
      *
@@ -338,6 +347,13 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                 $url = $data['image_'.$i] ?? $data['image_url_'.$i] ?? null;
                 if ($url && filter_var($url, FILTER_VALIDATE_URL)) {
                     $legacyImageWritten = true;
+                    // Media umum produk: kolom sama terulang di tiap baris
+                    // kombinasi. Tulis sekali per produk+posisi agar tidak
+                    // menumpuk duplikat.
+                    if ($this->writtenMedia[$product->id]['legacy'][$i] ?? false) {
+                        continue;
+                    }
+                    $this->writtenMedia[$product->id]['legacy'][$i] = true;
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
                         variantId: $variant?->id,
@@ -353,6 +369,10 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             for ($i = 1; $i <= 9; $i++) {
                 $url = $data['installation_image_'.$i] ?? null;
                 if ($url && filter_var($url, FILTER_VALIDATE_URL)) {
+                    if ($this->writtenMedia[$product->id]['install'][$i] ?? false) {
+                        continue;
+                    }
+                    $this->writtenMedia[$product->id]['install'][$i] = true;
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
                         variantId: $variant?->id,
@@ -402,9 +422,17 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                 foreach ($variantOptionValues as $optionKey) {
                     $url = $ownerImages[$optionKey] ?? null;
                     if ($url === null) { continue; }
+                    // Gambar per opsi milik PRODUK (bukan per kombinasi):
+                    // tulis sekali per produk+posisi, baris lanjutan lewati.
+                    if ($this->writtenMedia[$product->id]['owneropt'][$position] ?? false) {
+                        $isFirstMedia = false;
+                        $position++;
+                        continue;
+                    }
+                    $this->writtenMedia[$product->id]['owneropt'][$position] = true;
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
-                        variantId: $variant?->id,
+                        variantId: null,
                         url: $url,
                         position: $position,
                         isMain: $isFirstMedia,
@@ -420,9 +448,13 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     $shared = $this->cell($data, 'shared_media_'.$n);
                     if ($shared === null) { break; }
                     if (filter_var($shared, FILTER_VALIDATE_URL)) {
+                        if ($this->writtenMedia[$product->id]['shared'][$n] ?? false) {
+                            continue;
+                        }
+                        $this->writtenMedia[$product->id]['shared'][$n] = true;
                         $this->mediaUpserter()->upsert(
                             productId: $product->id,
-                            variantId: $variant?->id,
+                            variantId: null,
                             url: $shared,
                             position: 50 + $n,
                             isMain: false,
@@ -480,15 +512,18 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             // installation_image_url umum per baris kombinasi (skema baru, opsional).
             $rowInstallationUrl = trim((string) ($data['installation_image_url'] ?? ''));
             if ($rowInstallationUrl !== '' && filter_var($rowInstallationUrl, FILTER_VALIDATE_URL)) {
-                $this->mediaUpserter()->upsert(
-                    productId: $product->id,
-                    variantId: $variant?->id,
-                    url: $rowInstallationUrl,
-                    position: 199,
-                    isMain: false,
-                    showInCatalog: false,
-                    isInstallation: true,
-                );
+                if (! ($this->writtenMedia[$product->id]['installrow'][0] ?? false)) {
+                    $this->writtenMedia[$product->id]['installrow'][0] = true;
+                    $this->mediaUpserter()->upsert(
+                        productId: $product->id,
+                        variantId: $variant?->id,
+                        url: $rowInstallationUrl,
+                        position: 199,
+                        isMain: false,
+                        showInCatalog: false,
+                        isInstallation: true,
+                    );
+                }
             }
 
             $activation = app(ImportedProductActivationService::class)->apply($product);

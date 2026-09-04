@@ -23,6 +23,11 @@ class Product extends Model
         'product_category',
         'product_model',
         'design_variant',
+        // ADR-021: dimensi/berat milik produk.
+        'weight_kg',
+        'width_cm',
+        'height_cm',
+        'depth_cm',
         'status',
         'homepage_popular',
         'homepage_popular_sort',
@@ -101,12 +106,16 @@ class Product extends Model
 
     public function mainImage()
     {
+        // oldestOfMany('position') menghasilkan agregat MAX(id)+MIN(position): jika dua media
+        // bernomor position sama (main + duplikat), MAX(id) bisa memilih yang BUKAN main image
+        // lalu filter is_main_image mengosongkan hasil. Pakai orderBy deterministik saja.
         return $this->hasOne(ProductMedia::class)
             ->with('mediaAsset')
             ->where('is_main_image', true)
             ->where('show_in_catalog', true)
             ->where('visibility', 'visible')
-            ->oldestOfMany('position');
+            ->orderBy('position')
+            ->orderBy('id');
     }
 
     public function createdBy(): BelongsTo
