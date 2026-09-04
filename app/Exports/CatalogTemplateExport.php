@@ -75,46 +75,9 @@ class CatalogDataSheet implements FromArray, WithTitle, WithEvents
 
     public function array(): array
     {
-        $headers = CatalogTemplateExport::dataHeaders();
-        // 2 baris contoh nyata + penanda hapus (importer memproses sheet ini).
-        $example = array_fill(0, count($headers), null);
-        $at = fn (string $key) => array_search($key, $headers, true);
-        $example[$at('name')] = 'CONTOH: hapus 2 baris contoh ini sebelum import';
-        $example[$at('name')] = 'Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing Ornamen';
-        $example[$at('description')] = 'Jendela jungkit aluminium ornamen. Gratis packing kayu, kirim seluruh Indonesia.';
-        $example[$at('product_category')] = 'JENDELA';
-        $example[$at('product_model')] = 'SWING';
-        $example[$at('design_variant')] = 'ORNAMEN';
-        $example[$at('variation_1_name')] = 'Warna';
-        $example[$at('variation_1_option_1')] = 'Putih';
-        $example[$at('variation_1_option_2')] = 'Hitam';
-        $example[$at('variation_1_option_3')] = 'Coklat';
-        $example[$at('variation_1_option_4')] = 'Serat Kayu';
-        $example[$at('variation_2_name')] = 'Kaca';
-        $example[$at('variation_2_option_1')] = 'Kaca Bening';
-        $example[$at('variation_2_option_2')] = 'Kaca Riben';
-        $example[$at('variation_2_option_3')] = 'Kaca Es';
-        $example[$at('variantion_combination')] = 'Putih, Kaca Bening';
-        $example[$at('price_variantion_combination')] = '200000';
-        $example[$at('stock')] = '5';
-        $example[$at('weight_kg')] = '1';
-        $example[$at('height_cm')] = '100';
-        $example[$at('width_cm')] = '200';
-        $example[$at('depth_cm')] = '20';
-        $example[$at('specifications')] = '[{"name":"Bahan","value":"Aluminium"}]';
-        $example[$at('image_1')] = 'https://media.example.com/jendela-depan.webp';
-        $example[$at('image_2')] = 'https://media.example.com/jendela-detail.webp';
-        $example[$at('image_variation_1_option_1')] = 'https://media.example.com/warna-putih.webp';
-        $example[$at('image_variation_1_option_2')] = 'https://media.example.com/warna-hitam.webp';
-        $example[$at('image_variation_1_option_3')] = 'https://media.example.com/warna-coklat.webp';
-        $example[$at('image_variation_1_option_4')] = 'https://media.example.com/warna-serat-kayu.webp';
-        $example[$at('image_variation_2_option_1')] = 'https://media.example.com/kaca-bening.webp';
-        $example[$at('image_variation_2_option_2')] = 'https://media.example.com/kaca-riben.webp';
-        $example[$at('image_variation_2_option_3')] = 'https://media.example.com/kaca-es.webp';
-        $example[$at('shared_media_1')] = 'https://media.example.com/video-produk.mp4';
-        $example[$at('installation_image_1')] = 'https://media.example.com/pemasangan-1.webp';
-
-        return [$headers, $example];
+        // Sheet utama murni data: header saja, tanpa baris contoh, tanpa
+        // styling khusus (contoh ada di sheet Contoh).
+        return [CatalogTemplateExport::dataHeaders()];
     }
 
     public function title(): string
@@ -133,8 +96,6 @@ class CatalogDataSheet implements FromArray, WithTitle, WithEvents
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(26);
-        $sheet->getStyle('A2:'.$lastCol.'2')->getFont()->getColor()->setArgb('FF8A4A00');
-        $sheet->getStyle('A2:'.$lastCol.'2')->getFont()->setItalic(true);
 
         foreach (['A' => 34, 'B' => 40, 'C' => 17, 'D' => 13, 'E' => 13,
             'F' => 14, 'G' => 14, 'H' => 14, 'I' => 14, 'J' => 14,
@@ -164,12 +125,12 @@ class CatalogDataSheet implements FromArray, WithTitle, WithEvents
         if (strlen($formula) > 250) {
             return;
         }
-        $v = $sheet->getCell($col.'3')->getDataValidation();
+        $v = $sheet->getCell($col.'2')->getDataValidation();
         $v->setType(DataValidation::TYPE_LIST);
         $v->setAllowBlank(true);
         $v->setShowDropDown(true);
         $v->setFormula1('"'.$formula.'"');
-        $sheet->setDataValidation($col.'3:'.$col.$lastRow, $v);
+        $sheet->setDataValidation($col.'2:'.$col.$lastRow, $v);
     }
 }
 
@@ -184,65 +145,65 @@ class CatalogExampleSheet implements FromArray, WithTitle, WithEvents
         $headers = CatalogTemplateExport::dataHeaders();
         $rows = [
             ['CONTOH ISI DATA IMPORT KATALOG'],
-            ['Sheet Data adalah sheet yang diproses. Tabel di bawah hanya ilustrasi cara mengisi, tidak diproses.'],
+            ['Copy pola ini ke sheet Data. 1 baris = 1 kombinasi varian jadi. Kolom identitas & definisi varian cukup di baris pertama produk.'],
             [],
             $headers,
         ];
 
-        $ex = fn (array $overrides) => array_merge(
-            array_fill(0, count($headers), null),
-            $overrides,
-        );
         $at = fn (string $key) => array_search($key, $headers, true);
 
-        // Kombinasi 4 warna x 3 kaca = 12 baris, persis pola rancangan owner.
+        // 1 produk, 12 kombinasi (4 warna x 3 kaca). Baris pertama lengkap;
+        // baris lanjutan hanya kombinasi + harga + stok (identitas diwarisi).
         $combos = [
-            ['Putih', 'Kaca Bening', '200000'],
-            ['Putih', 'Kaca Riben', '200000'],
-            ['Putih', 'Kaca Es', '300000'],
-            ['Hitam', 'Kaca Bening', '200000'],
-            ['Hitam', 'Kaca Riben', '200000'],
-            ['Hitam', 'Kaca Es', '300000'],
-            ['Coklat', 'Kaca Bening', '200000'],
-            ['Coklat', 'Kaca Riben', '200000'],
-            ['Coklat', 'Kaca Es', '300000'],
-            ['Serat Kayu', 'Kaca Bening', '250000'],
-            ['Serat Kayu', 'Kaca Riben', '250000'],
-            ['Serat Kayu', 'Kaca Es', '350000'],
+            ['Putih', 'Kaca Bening', '200000', '5'],
+            ['Putih', 'Kaca Riben', '200000', '5'],
+            ['Putih', 'Kaca Es', '300000', '3'],
+            ['Hitam', 'Kaca Bening', '200000', '5'],
+            ['Hitam', 'Kaca Riben', '200000', '5'],
+            ['Hitam', 'Kaca Es', '300000', '3'],
+            ['Coklat', 'Kaca Bening', '200000', '5'],
+            ['Coklat', 'Kaca Riben', '200000', '5'],
+            ['Coklat', 'Kaca Es', '300000', '3'],
+            ['Serat Kayu', 'Kaca Bening', '250000', '2'],
+            ['Serat Kayu', 'Kaca Riben', '250000', '2'],
+            ['Serat Kayu', 'Kaca Es', '350000', '2'],
         ];
-        $first = true;
-        foreach ($combos as [$warna, $kaca, $price]) {
-            $row = $ex([
-                $at('name') => 'Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing Ornamen',
-                $at('description') => 'Jendela jungkit aluminium ornamen. Gratis packing kayu, kirim seluruh Indonesia.',
-                $at('product_category') => 'JENDELA',
-                $at('product_model') => 'SWING',
-                $at('design_variant') => 'ORNAMEN',
-                $at('variation_1_name') => 'Warna',
-                $at('variation_1_option_1') => 'Putih',
-                $at('variation_1_option_2') => 'Hitam',
-                $at('variation_1_option_3') => 'Coklat',
-                $at('variation_1_option_4') => 'Serat Kayu',
-                $at('variation_2_name') => 'Kaca',
-                $at('variation_2_option_1') => 'Kaca Bening',
-                $at('variation_2_option_2') => 'Kaca Riben',
-                $at('variation_2_option_3') => 'Kaca Es',
-                $at('variantion_combination') => $warna.', '.$kaca,
-                $at('price_variantion_combination') => $price,
-                $at('stock') => '5',
-                $at('weight_kg') => '1',
-                $at('height_cm') => '100',
-                $at('width_cm') => '200',
-                $at('depth_cm') => '20',
-                $at('specifications') => '[{"name":"Bahan","value":"Aluminium"}]',
-                $at('image_1') => $first ? 'https://media.example.com/jendela-depan.webp' : null,
-                $at('image_variation_1_option_1') => $first ? 'https://media.example.com/warna-putih.webp' : null,
-                $at('image_variation_1_option_2') => $first ? 'https://media.example.com/warna-hitam.webp' : null,
-                $at('image_variation_2_option_1') => $first ? 'https://media.example.com/kaca-bening.webp' : null,
-                $at('installation_image_1') => $first ? 'https://media.example.com/pemasangan-1.webp' : null,
-            ]);
+        foreach ($combos as $i => [$warna, $kaca, $price, $stock]) {
+            $row = array_fill(0, count($headers), null);
+            if ($i === 0) {
+                $row[$at('name')] = 'Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing Ornamen';
+                $row[$at('description')] = 'Jendela jungkit aluminium ornamen. Gratis packing kayu, kirim seluruh Indonesia.';
+                $row[$at('product_category')] = 'JENDELA';
+                $row[$at('product_model')] = 'SWING';
+                $row[$at('design_variant')] = 'ORNAMEN';
+                $row[$at('variation_1_name')] = 'Warna';
+                $row[$at('variation_1_option_1')] = 'Putih';
+                $row[$at('variation_1_option_2')] = 'Hitam';
+                $row[$at('variation_1_option_3')] = 'Coklat';
+                $row[$at('variation_1_option_4')] = 'Serat Kayu';
+                $row[$at('variation_2_name')] = 'Kaca';
+                $row[$at('variation_2_option_1')] = 'Kaca Bening';
+                $row[$at('variation_2_option_2')] = 'Kaca Riben';
+                $row[$at('variation_2_option_3')] = 'Kaca Es';
+                $row[$at('weight_kg')] = '1';
+                $row[$at('height_cm')] = '100';
+                $row[$at('width_cm')] = '200';
+                $row[$at('depth_cm')] = '20';
+                $row[$at('specifications')] = 'Bahan: Aluminium\nKusen: 3 inch';
+                $row[$at('image_1')] = 'https://media.333labs.tech/.../jendela-depan.webp';
+                $row[$at('image_variation_1_option_1')] = 'https://media.333labs.tech/.../warna-putih.webp';
+                $row[$at('image_variation_1_option_2')] = 'https://media.333labs.tech/.../warna-hitam.webp';
+                $row[$at('image_variation_1_option_3')] = 'https://media.333labs.tech/.../warna-coklat.webp';
+                $row[$at('image_variation_1_option_4')] = 'https://media.333labs.tech/.../warna-serat-kayu.webp';
+                $row[$at('image_variation_2_option_1')] = 'https://media.333labs.tech/.../kaca-bening.webp';
+                $row[$at('image_variation_2_option_2')] = 'https://media.333labs.tech/.../kaca-riben.webp';
+                $row[$at('image_variation_2_option_3')] = 'https://media.333labs.tech/.../kaca-es.webp';
+                $row[$at('installation_image_1')] = 'https://media.333labs.tech/.../pemasangan-1.webp';
+            }
+            $row[$at('variantion_combination')] = $warna.', '.$kaca;
+            $row[$at('price_variantion_combination')] = $price;
+            $row[$at('stock')] = $stock;
             $rows[] = $row;
-            $first = false;
         }
 
         return $rows;
@@ -266,12 +227,23 @@ class CatalogExampleSheet implements FromArray, WithTitle, WithEvents
         $sheet->getRowDimension(4)->setRowHeight(30);
         $sheet->getStyle('A5:AK16')->applyFromArray([
             'font' => ['size' => 10],
+            'alignment' => ['wrapText' => true],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
         ]);
-        foreach (['A' => 34, 'O' => 22, 'P' => 18, 'B' => 40, 'V' => 34] as $col => $width) {
+        foreach (['A' => 34, 'B' => 40, 'C' => 17, 'D' => 13, 'E' => 13,
+            'F' => 14, 'G' => 14, 'H' => 14, 'I' => 14, 'J' => 14,
+            'K' => 14, 'L' => 14, 'M' => 14, 'N' => 14,
+            'O' => 22, 'P' => 18, 'Q' => 9,
+            'R' => 10, 'S' => 10, 'T' => 10, 'U' => 10, 'V' => 34,
+            'W' => 40, 'X' => 40,
+            'Y' => 40, 'Z' => 40, 'AA' => 40, 'AB' => 40,
+            'AC' => 40, 'AD' => 40, 'AE' => 40, 'AF' => 40,
+            'AG' => 40, 'AH' => 40,
+            'AI' => 40, 'AJ' => 40,
+        ] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
-        $sheet->freezePane('A5');
+        $sheet->freezePane('C5');
     }
 }
 
