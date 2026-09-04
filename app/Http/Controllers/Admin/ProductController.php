@@ -451,10 +451,11 @@ class ProductController extends Controller
                 'status' => $product->status,
                 'homepage_popular' => $product->homepage_popular,
                 'homepage_popular_sort' => $product->homepage_popular_sort,
-                'weight_kg' => $product->weight_kg !== null ? (string) $product->weight_kg : '',
-                'height_cm' => $product->height_cm !== null ? (string) $product->height_cm : '',
-                'width_cm' => $product->width_cm !== null ? (string) $product->width_cm : '',
-                'depth_cm' => $product->depth_cm !== null ? (string) $product->depth_cm : '',
+                // Tampilkan tanpa desimal bermakna (1.000 -> 1, 100.00 -> 100).
+                'weight_kg' => $product->weight_kg !== null ? rtrim(rtrim((string) (float) $product->weight_kg, '0'), '.') : '',
+                'height_cm' => $product->height_cm !== null ? rtrim(rtrim((string) (float) $product->height_cm, '0'), '.') : '',
+                'width_cm' => $product->width_cm !== null ? rtrim(rtrim((string) (float) $product->width_cm, '0'), '.') : '',
+                'depth_cm' => $product->depth_cm !== null ? rtrim(rtrim((string) (float) $product->depth_cm, '0'), '.') : '',
                 // ADR-020: media katalog dimuat di form utama.
                 'media' => $product->media
                     ->where('is_installation', false)
