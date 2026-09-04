@@ -530,6 +530,10 @@ export default function OrdersIndex({
   pagination,
   exportUrl,
 }: OrdersIndexProps) {
+  const [exportOpen, setExportOpen] = React.useState(false)
+  const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
+  const [exportFrom, setExportFrom] = React.useState("")
+  const [exportTo, setExportTo] = React.useState("")
   const [q, setQ] = React.useState(searchQuery)
   const [rangeFrom, setRangeFrom] = React.useState(dateFrom)
   const [rangeTo, setRangeTo] = React.useState(dateTo)
@@ -619,6 +623,20 @@ export default function OrdersIndex({
 
   function resetAllFilters() {
     router.get(routeUrl("admin.orders.index"), {}, { preserveState: false, preserveScroll: true })
+  }
+
+  function buildExportUrl(): string {
+    try {
+      const url = new URL(exportUrl, window.location.origin)
+      if (exportRange === "custom" && exportFrom && exportTo) {
+        url.searchParams.set("date_preset", "range")
+        url.searchParams.set("date_from", exportFrom)
+        url.searchParams.set("date_to", exportTo)
+      }
+      return url.toString()
+    } catch {
+      return exportUrl
+    }
   }
 
   function submitSearch(event: React.FormEvent) {
@@ -723,6 +741,43 @@ export default function OrdersIndex({
       </div>
 
 
+      {/* Export popup: rentang waktu (model Unduh Laporan Performa Toko).
+          Posisi di header area, bukan di slot actions toolbar. */}
+      <div className="mb-3 flex items-center justify-end">
+        <div className="relative">
+          <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
+            <Icon name="download" className="size-3.5" aria-hidden="true" />
+            Export
+          </Button>
+          {exportOpen ? (
+            <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-lg">
+              <p className="text-xs font-bold">Rentang waktu export</p>
+              <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs">
+                <input type="radio" name="orders_export_range" checked={exportRange === "screen"} onChange={() => setExportRange("screen")} />
+                Ikuti filter di layar
+              </label>
+              <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs">
+                <input type="radio" name="orders_export_range" checked={exportRange === "custom"} onChange={() => setExportRange("custom")} />
+                Kustom
+              </label>
+              {exportRange === "custom" ? (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="h-8 w-32 text-xs" aria-label="Dari tanggal" />
+                  <span className="text-xs text-muted-foreground">s/d</span>
+                  <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="h-8 w-32 text-xs" aria-label="Sampai tanggal" />
+                </div>
+              ) : null}
+              <a
+                href={buildExportUrl()}
+                className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Unduh XLSX
+              </a>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       {/* Baris kontrol seragam: search | sort/filter | summary | actions */}
       <ListToolbar
         search={{
@@ -740,14 +795,6 @@ export default function OrdersIndex({
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
           </Select>
-        }
-        actions={
-          <Button asChild variant="secondary">
-            <a href={exportUrl}>
-              <Icon name="download" className="size-3.5" aria-hidden="true" />
-              Export
-            </a>
-          </Button>
         }
         className="mb-4"
       >
