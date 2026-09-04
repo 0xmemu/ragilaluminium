@@ -29,7 +29,7 @@ export function ShowcaseListingFrame({
           </div>
         </div>
       </section>
-      <section className="container-page !px-2.5 py-5 md:!px-8 md:py-8 lg:!px-12">
+      <section className="container-page !px-2.5 py-2.5 md:!px-8 lg:!px-12">
         {children}
       </section>
     </>
