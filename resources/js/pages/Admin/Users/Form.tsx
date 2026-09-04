@@ -173,11 +173,6 @@ export default function UserForm({
                   {form.errors.password ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.password}</p>
                   ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {editing
-                      ? "Kosongkan jika password tidak diubah. Password tidak dikirim ke email; bagikan langsung ke penerima."
-                      : "Minimal 8 karakter. Password tidak dikirim ke email; bagikan langsung ke penerima (tombol salin tersedia)."}
-                  </p>
                 </td>
               </tr>
               <tr>
