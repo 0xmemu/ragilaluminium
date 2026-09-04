@@ -254,30 +254,8 @@ export function CatalogProductListingSidebar({
         </FilterSidebarSection>
       ) : null}
 
-      {filterModels.length ? (
-        <FilterSidebarSection title="Model Bukaan" subtitle={activeModelLabel}>
-          <ModelFilterOptions
-            name={`catalog-model-${fieldSuffix}`}
-            models={filterModels}
-            activeModel={activeModel}
-            onSelect={selectModel}
-          />
-        </FilterSidebarSection>
-      ) : null}
-
-      {filterDesigns.length ? (
-        <FilterSidebarSection title="Desain" subtitle={activeDesignLabel}>
-          <DesignFilterOptions
-            name={`catalog-design-${fieldSuffix}`}
-            designs={filterDesigns}
-            activeDesign={activeDesign}
-            onSelect={selectDesign}
-          />
-        </FilterSidebarSection>
-      ) : null}
-
       <FilterSidebarSection title="Rentang Harga" defaultOpen>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5">
           <Field id={`price-min-${fieldSuffix}`} label="Minimum">
             <Input
               type="number"
@@ -286,6 +264,7 @@ export function CatalogProductListingSidebar({
               value={filters.priceMin}
               onChange={(event) => onFiltersChange({ priceMin: event.target.value })}
               placeholder="Rp0"
+              className="h-8 text-xs"
             />
           </Field>
           <Field id={`price-max-${fieldSuffix}`} label="Maksimum">
@@ -296,11 +275,12 @@ export function CatalogProductListingSidebar({
               value={filters.priceMax}
               onChange={(event) => onFiltersChange({ priceMax: event.target.value })}
               placeholder="Tanpa Batas"
+              className="h-8 text-xs"
             />
           </Field>
         </div>
         {variant === "live" ? (
-          <Button type="button" variant="secondary" className="mt-3 w-full" onClick={onApplyPrice}>
+          <Button type="button" variant="secondary" size="sm" className="mt-2 h-8 w-full text-xs" onClick={onApplyPrice}>
             Terapkan Harga
           </Button>
         ) : null}

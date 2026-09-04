@@ -280,15 +280,35 @@ export default function Catalog({
     activeCategory: category,
   }
 
+  const [sheetPrice, setSheetPrice] = React.useState<{ min: string; max: string } | null>(null)
+  // Harga di sheet langsung fetch (debounced) - tidak perlu tombol Terapkan.
+  const priceApplyRef = React.useRef<number | null>(null)
+  React.useEffect(() => {
+    if (sheetPrice !== null) {
+      window.clearTimeout(priceApplyRef.current ?? undefined)
+      priceApplyRef.current = window.setTimeout(() => {
+        visit({ priceMin: sheetPrice.min, priceMax: sheetPrice.max })
+      }, 600)
+      return () => window.clearTimeout(priceApplyRef.current ?? undefined)
+    }
+  }, [sheetPrice])
+
   const filterSheetContent = (
     <>
       <CatalogProductListingSidebar
         {...sidebarProps}
         variant="draft"
         fieldSuffix="sheet"
-        onFiltersChange={(next) =>
+        onApplyPrice={undefined}
+        onFiltersChange={(next) => {
           setFilters((current) => ({ ...current, ...next }))
-        }
+          if ("priceMin" in next || "priceMax" in next) {
+            setSheetPrice((current) => ({
+              min: "priceMin" in next ? next.priceMin ?? "" : current?.min ?? "",
+              max: "priceMax" in next ? next.priceMax ?? "" : current?.max ?? "",
+            }))
+          }
+        }}
       />
     </>
   )
