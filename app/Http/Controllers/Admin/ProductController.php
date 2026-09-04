@@ -176,7 +176,8 @@ class ProductController extends Controller
             'variant_defs' => ['nullable', 'array', 'max:5'],
             'variant_defs.*.name' => ['required_with:variant_defs', 'string', 'max:100'],
             'variant_defs.*.options' => ['required_with:variant_defs', 'array', 'min:1', 'max:50'],
-            'variant_defs.*.options.*' => ['required_with:variant_defs.*.options', 'string', 'max:255'],
+            'variant_defs.*.options.*.value' => ['required_with:variant_defs.*.options', 'string', 'max:255'],
+            'variant_defs.*.options.*.media_asset_id' => ['nullable', 'integer'],
             // ADR-021: kombinasi (produk kartesian) dengan harga & stok per kombinasi.
             'combinations' => ['nullable', 'array', 'max:100'],
             'combinations.*.options' => ['required_with:combinations', 'array'],
@@ -247,6 +248,19 @@ class ProductController extends Controller
             $combinations = $request->input('combinations', []);
             if (is_array($defs) && $defs !== [] && is_array($combinations) && $combinations !== []) {
                 $defs = array_values(array_filter($defs, fn ($d) => trim((string) ($d['name'] ?? '')) !== ''));
+                // ADR-021: opsi = {value, media_asset_id}; simpan utk attach media varian.
+                $optionMedia = [];
+                foreach ($defs as $defIndex => $def) {
+                    $normalized = [];
+                    foreach ((array) ($def['options'] ?? []) as $option) {
+                        if (is_array($option)) {
+                            $normalized[] = ['value' => (string) ($option['value'] ?? ''), 'media_asset_id' => $option['media_asset_id'] ?? null];
+                        } else {
+                            $normalized[] = ['value' => (string) $option, 'media_asset_id' => null];
+                        }
+                    }
+                    $defs[$defIndex]['options'] = $normalized;
+                }
                 foreach ($combinations as $combination) {
                     $options = array_values((array) ($combination['options'] ?? []));
                     if (count($options) !== count($defs)) {
@@ -261,6 +275,34 @@ class ProductController extends Controller
                         $slot = $defIndex + 1;
                         $row['variation_'.$slot.'_name'] = $def['name'];
                         $row['variation_'.$slot.'_option'] = $options[$defIndex];
+                    }
+                    // ADR-021: gambar per opsi -> media varian (is_main utk opsi pertama yg punya gambar).
+                    $resolverForVariant = app(\App\Services\MediaAssetResolver::class);
+                    $optionMediaAttached = 0;
+                    foreach ($defs as $defIndex => $def) {
+                        $optionValueKey = mb_strtolower(trim((string) $options[$defIndex]));
+                        foreach ($def['options'] as $defOption) {
+                            if (mb_strtolower(trim((string) $defOption['value'])) !== $optionValueKey) {
+                                continue;
+                            }
+                            $assetId = $defOption['media_asset_id'] ?? null;
+                            if (! $assetId || $optionMediaAttached > 0) {
+                                continue;
+                            }
+                            $asset = \App\Models\MediaAsset::find((int) $assetId);
+                            if (! $asset || $asset->status !== 'ready') {
+                                continue;
+                            }
+                            $resolverForVariant->attach($product, $asset, [
+                                'product_variant_id' => $variant->id,
+                                'position' => 1,
+                                'is_main_image' => true,
+                                'show_in_catalog' => true,
+                                'is_installation' => false,
+                                'visibility' => 'visible',
+                            ], (int) $request->user()->id);
+                            $optionMediaAttached++;
+                        }
                     }
                     $stockRaw = trim((string) ($combination['stock'] ?? ''));
                     $row['variant_sku'] = ShopeeStyleSku::nextVariantSku($product);

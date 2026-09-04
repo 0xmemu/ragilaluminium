@@ -65,7 +65,10 @@ interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"
 
 type WizardStep = "identity" | "variants" | "media" | "review" | null
 
-type VariantDef = { name: string; options: string[] }
+type VariationOption = { value: string; media_asset_id?: number | null; thumb_url?: string | null }
+type VariantDef = { name: string; options: VariationOption[] }
+
+const emptyOption = (): VariationOption => ({ value: "" })
 type Combination = { options: string[]; price: string; stock: string }
 
 /** Produk kartesian dari definisi varian: [Warna(Hitam,Putih) x Kaca(Bening,Es)] -> 4 kombinasi. */
@@ -77,7 +80,8 @@ function buildCombinations(defs: VariantDef[]): Array<{ options: string[]; label
     const next: Array<{ options: string[]; label: string }> = []
     for (const combo of combos) {
       for (const option of def.options) {
-        next.push({ options: [...combo.options, option], label: (combo.label ? combo.label + " / " : "") + option })
+        const value = option.value
+        next.push({ options: [...combo.options, value], label: (combo.label ? combo.label + " / " : "") + value })
       }
     }
     combos = next
@@ -123,7 +127,22 @@ export default function ProductForm({
   // dikirim bersama submit sebagai media_asset_ids. Foto pertama = gambar utama.
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>([])
+  const [optionPicker, setOptionPicker] = React.useState<{ defIndex: number; optionIndex: number } | null>(null)
 
+  React.useEffect(() => {
+    if (!editing) return
+    const raw = (product as unknown as { variant_defs?: Array<{ name?: string; options?: Array<{ value?: string; media_asset_id?: number | null; thumb_url?: string | null }> }> } | null)?.variant_defs
+    if (raw && raw.length) {
+      setVariantDefs(raw.map((def) => ({
+        name: def.name ?? "",
+        options: (def.options ?? []).map((option) => ({
+          value: option.value ?? "",
+          media_asset_id: option.media_asset_id ?? null,
+          thumb_url: option.thumb_url ?? null,
+        })),
+      })))
+    }
+  }, [editing])
   React.useEffect(() => {
     if (!editing || !product?.media) return
     setPickedMedia(product.media.map((m) => ({
@@ -165,7 +184,13 @@ export default function ProductForm({
       ...form.data,
       status,
       media_asset_ids: pickedMedia.map((m) => m.assetId),
-      variant_defs: variantDefs,
+      variant_defs: variantDefs.map((def) => ({
+        name: def.name,
+        options: def.options.map((option) => ({
+          value: option.value,
+          media_asset_id: option.media_asset_id ?? null,
+        })),
+      })),
       combinations: combos.map((combo, comboIndex) => ({
         options: combo.options,
         price: combinations[String(comboIndex)]?.price ?? "",
@@ -322,10 +347,23 @@ export default function ProductForm({
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {def.options.map((option, optionIndex) => (
-                      <span key={optionIndex} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1">
+                      <span key={optionIndex} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1">
+                        <button
+                          type="button"
+                          onClick={() => setOptionPicker({ defIndex, optionIndex })}
+                          className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-muted"
+                          aria-label={`Gambar untuk ${option.value || "opsi " + (optionIndex + 1)}`}
+                          title="Pilih gambar opsi"
+                        >
+                          {option.thumb_url ? (
+                            <img src={option.thumb_url} alt="" className="size-full object-cover" />
+                          ) : (
+                            <svg className="size-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                          )}
+                        </button>
                         <input
-                          value={option}
-                          onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? event.target.value : o)) } : d)))}
+                          value={option.value}
+                          onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? { ...o, value: event.target.value } : o)) } : d)))}
                           onKeyDown={blockEnter}
                           className="w-32 bg-transparent text-sm text-foreground outline-none"
                           aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
@@ -342,7 +380,7 @@ export default function ProductForm({
                     ))}
                     <button
                       type="button"
-                      onClick={() => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: [...d.options, ""] } : d)))}
+                      onClick={() => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: [...d.options, emptyOption()] } : d)))}
                       className="inline-flex h-7 items-center rounded-md border border-dashed border-border px-2 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                     >
                       + Tambah opsi
@@ -354,7 +392,7 @@ export default function ProductForm({
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setVariantDefs((prev) => [...prev, { name: "", options: [""] }])}
+                  onClick={() => setVariantDefs((prev) => [...prev, { name: "", options: [emptyOption()] }])}
                 >
                   Tambah varian
                 </Button>
@@ -500,6 +538,19 @@ export default function ProductForm({
         ) : null}
       </div>
 
+      <MediaPicker
+        open={optionPicker !== null}
+        onClose={() => setOptionPicker(null)}
+        multiple={false}
+        title="Gambar opsi varian"
+        onPick={(media) => {
+          if (optionPicker === null || media.length === 0) return
+          const { defIndex, optionIndex } = optionPicker
+          const picked = media[0]
+          setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? { ...o, media_asset_id: picked.assetId, thumb_url: picked.thumbUrl } : o)) } : d)))
+          setOptionPicker(null)
+        }}
+      />
       <MediaPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
