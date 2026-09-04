@@ -51,17 +51,19 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
       if (timer.current) clearInterval(timer.current)
       return
     }
+    // Polling via Inertia partial reload: hanya properti importJob yang
+    // dimuat ulang, halaman tidak di-render ulang penuh. Fetch manual dengan
+    // header X-Inertia tanpa X-Inertia-Version akan kena 409 konflik versi
+    // sehingga loading bar tidak pernah maju.
     timer.current = setInterval(() => {
-      void fetch(routeUrl("admin.imports.show", { import_job: job.id }), {
-        headers: { Accept: "application/json", "X-Inertia": "true", "X-Requested-With": "XMLHttpRequest" },
+      router.reload({
+        only: ["importJob"],
+        onSuccess: (page) => {
+          const props = page.props.importJob as ImportJobView | undefined
+          if (props) setJob(props)
+        },
       })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          const props = data?.props?.importJob
-          if (props) setJob(props as ImportJobView)
-        })
-        .catch(() => undefined)
-    }, 3000)
+    }, 2500)
     return () => {
       if (timer.current) clearInterval(timer.current)
     }
@@ -121,7 +123,7 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
             </div>
             {active ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                Halaman menyegarkan otomatis setiap 3 detik sampai import selesai.
+                Halaman menyegarkan otomatis setiap beberapa detik sampai import selesai.
               </p>
             ) : null}
           </div>
@@ -131,37 +133,44 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
           ) : null}
         </div>
 
-        {job.rows.length > 0 ? (
+        {job.status === "completed" ? (
+          <div className="rounded-lg border border-success/30 bg-success/5 p-5">
+            <p className="text-sm font-semibold text-success">
+              Import selesai: {job.success_rows} baris berhasil diimpor
+              {job.failed_rows > 0 ? `, ${job.failed_rows} gagal` : ""}.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Produk baru masuk sebagai arsip. Terbitkan dari halaman Produk untuk menampilkannya di toko.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild variant="secondary">
+                <Link href={routeUrl("admin.products.index")}>Lihat Produk</Link>
+              </Button>
+            </div>
+          </div>
+        ) : job.failed_rows > 0 ? (
           <div className="overflow-hidden rounded-lg border border-border">
             <div className="border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-semibold">
-              Baris terakhir (maks. 50)
+              Baris yang gagal
             </div>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
                   <th className="px-4 py-2 font-medium">Baris</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium">Keterangan</th>
+                  <th className="px-4 py-2 font-medium">Alasan gagal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {job.rows.map((row) => (
+                {job.rows.filter((row) => row.status !== "success").map((row) => (
                   <tr key={row.row_number}>
                     <td className="px-4 py-2 tabular-nums text-muted-foreground">{row.row_number}</td>
-                    <td className="px-4 py-2">{row.status}</td>
                     <td className="px-4 py-2">{row.reason}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <Alert tone="info">
-            {job.total_rows > 0
-              ? "Hasil per baris akan tampil di sini saat import berjalan."
-              : "Belum ada data baris."}
-          </Alert>
-        )}
+        ) : null}
       </div>
     </AdminLayout>
   )
