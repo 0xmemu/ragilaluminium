@@ -47,6 +47,13 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
     protected array $groupVariantNames = [];
 
     /**
+     * Definisi opsi per grup produk: [name][n][m] => nilai opsi.
+     *
+     * @var array<string, array<int, array<int, string>>>
+     */
+    protected array $groupOptionDefs = [];
+
+    /**
      * Gambar per opsi varian per grup produk:
      * [name grupp][optionKey(lowercase)] => URL.
      *
@@ -174,6 +181,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             // hanya di baris pertama grup; simpan utk dipakai baris lanjutan.
             $defs = [];
             $optionImages = [];
+            $optionDefs = [];
             for ($n = 1; $n <= 5; $n++) {
                 $vname = $this->cell($data, 'variation_'.$n.'_name');
                 if ($vname === null) {
@@ -186,6 +194,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     if ($opt === null) {
                         break;
                     }
+                    $optionDefs[$n][$m] = $opt;
                     $imgKey = 'image_variation_'.$n.'_option_'.$m;
                     $img = $this->cell($data, $imgKey);
                     if ($img !== null && filter_var($img, FILTER_VALIDATE_URL)) {
@@ -195,6 +204,9 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             }
             if ($defs !== []) {
                 $this->groupVariantNames[$rowName] = $defs;
+            }
+            if ($optionDefs !== []) {
+                $this->groupOptionDefs[$rowName] = $optionDefs;
             }
             if ($optionImages !== []) {
                 $this->groupOptionImages[$rowName] = array_merge(
@@ -411,20 +423,32 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             $ownerMediaWritten = false;
             if ($ownerImages !== []
                 && ($this->variantSheet === null || count($this->variantSheet['variants']) === 0)) {
-                $variantOptionValues = [];
+                // Gambar per opsi milik PRODUK dan harus tertaut untuk SEMUA
+                // opsi yang punya URL (dari definisi variation_N_option_M baris
+                // pertama grup), bukan hanya opsi yang muncul di kolom
+                // kombinasi baris ini. Urutan taut = urutan opsi per varian.
+                $orderedUrls = [];
+                $ownerName = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
+                if ($ownerName === '' && isset($this->lastIdentity['name'])) {
+                    $ownerName = trim((string) $this->lastIdentity['name']);
+                }
+                $defs = $this->groupVariantNames[$ownerName] ?? [];
                 for ($n = 1; $n <= 5; $n++) {
-                    $value = $this->variantOption($data, $n);
-                    if ($value !== null && $value !== '') {
-                        $variantOptionValues[] = \App\Support\VariantSheetParser::optionKey($value);
+                    if (! isset($defs[$n])) { continue; }
+                    for ($m = 1; $m <= 30; $m++) {
+                        $opt = $this->cell($data, 'variation_'.$n.'_option_'.$m)
+                            ?? ($this->groupOptionDefs[$ownerName][$n][$m] ?? null);
+                        if ($opt === null) { break; }
+                        $key = \App\Support\VariantSheetParser::optionKey($opt);
+                        $url = $ownerImages[$key] ?? null;
+                        if ($url !== null) {
+                            $orderedUrls[$key] = $url;
+                        }
                     }
                 }
                 $position = 10;
                 $isFirstMedia = true;
-                foreach ($variantOptionValues as $optionKey) {
-                    $url = $ownerImages[$optionKey] ?? null;
-                    if ($url === null) { continue; }
-                    // Gambar per opsi milik PRODUK (bukan per kombinasi):
-                    // tulis sekali per produk+posisi, baris lanjutan lewati.
+                                foreach ($orderedUrls as $optionKey => $url) {
                     if ($this->writtenMedia[$product->id]['owneropt'][$position] ?? false) {
                         $isFirstMedia = false;
                         $position++;
