@@ -33,7 +33,7 @@ function mediaStatusMeta(status: string): { label: string; tone: "neutral" | "in
 
 // --- Types ---
 interface FolderNode {
-  id: number | string
+  id: number
   name: string
   assets_count: number
   children: FolderNode[]
@@ -74,29 +74,91 @@ function FolderTree({ nodes, currentFolderId, onSelect }: {
   currentFolderId: string
   onSelect: (id: string) => void
 }) {
+  const [menuFor, setMenuFor] = React.useState<number | null>(null)
+
+  function submitFolderAction(folderId: number, action: "rename" | "archive", name?: string) {
+    const fd = new FormData()
+    if (action === "rename") {
+      if (!name?.trim()) return
+      fd.append("name", name.trim())
+      router.post(routeUrl("admin.media.folders.rename", { folder: folderId }), fd, { preserveState: true })
+    } else {
+      router.post(routeUrl("admin.media.folders.archive", { folder: folderId }), fd, { preserveState: true })
+    }
+    setMenuFor(null)
+  }
+
+  function createSubfolder(parentId: number) {
+    const name = window.prompt("Nama subfolder baru:")
+    if (name?.trim()) {
+      const fd = new FormData()
+      fd.append("name", name.trim())
+      fd.append("parent_id", String(parentId))
+      router.post(routeUrl("admin.media.folders.store"), fd, { preserveState: true })
+    }
+    setMenuFor(null)
+  }
+
   return (
     <ul className="space-y-0.5">
       {nodes.map((node) => {
         const isActive = String(node.id) === currentFolderId
         const hasChildren = node.children.length > 0
+        const isOpen = menuFor === node.id
         return (
-          <li key={node.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(String(node.id))}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors",
-                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-card-hover",
-              )}
-            >
-              <Icon name="folder" className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">{node.name}</span>
-              {node.assets_count > 0 ? (
-                <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                  {node.assets_count}
-                </span>
-              ) : null}
-            </button>
+          <li key={node.id} className="relative">
+            <div className={cn("group/folder flex items-center gap-1 rounded-md", isActive && "bg-primary/10")}>
+              <button
+                type="button"
+                onClick={() => onSelect(String(node.id))}
+                className={cn(
+                  "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground hover:bg-card-hover",
+                )}
+              >
+                <Icon name={isActive ? "folder-open" : "folder"} className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{node.name}</span>
+                {node.assets_count > 0 ? (
+                  <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                    {node.assets_count}
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                aria-label={`Menu folder ${node.name}`}
+                title="Menu folder"
+                onClick={() => setMenuFor(isOpen ? null : node.id)}
+                className={cn(
+                  "mr-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-foreground",
+                  isOpen ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100",
+                )}
+              >
+                <Icon name="dots-three" className="size-3.5" aria-hidden="true" />
+              </button>
+            </div>
+            {isOpen ? (
+              <div className="absolute right-0 top-full z-30 mt-1 w-44 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
+                <button type="button" onClick={() => createSubfolder(node.id)} className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover">
+                  Buat subfolder
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = window.prompt("Nama folder baru:", node.name)
+                    if (name?.trim()) submitFolderAction(node.id, "rename", name)
+                  }}
+                  className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                >
+                  Rename
+                </button>
+                <ConfirmAction
+                  trigger={<span className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-card-hover">Arsipkan</span>}
+                  title="Arsipkan folder?" description="Aset di dalamnya ikut diarsipkan." confirmLabel="Arsipkan"
+                  onConfirm={() => submitFolderAction(node.id, "archive")}
+                />
+              </div>
+            ) : null}
             {hasChildren ? (
               <div className="ml-3 border-l border-border pl-2">
                 <FolderTree nodes={node.children} currentFolderId={currentFolderId} onSelect={onSelect} />
@@ -302,14 +364,13 @@ async function copyText(text: string): Promise<boolean> {
 
 // ====== MAIN PAGE ======
 export default function MediaLibrary({
-  assets, pagination, filters, folders, historyHref, indexHref,
+  assets, pagination, filters, folders, historyHref,
 }: {
   assets: LibraryAsset[]
   pagination: PaginationData | null
   filters: LibraryFilters
   folders: FolderNode[]
   historyHref: string
-  indexHref: string
 }) {
   const { csrf } = usePage<SharedPageProps>().props
   const [q, setQ] = React.useState(filters.q)
@@ -317,6 +378,7 @@ export default function MediaLibrary({
   const [status, setStatus] = React.useState(filters.status)
   const [visibility, setVisibility] = React.useState(filters.visibility)
   const [folderId, setFolderId] = React.useState(filters.folder_id)
+  const [showSidebar, setShowSidebar] = React.useState(true)
   const [selectedIds, setSelectedIds] = React.useState<number[]>([])
   const [showUploadModal, setShowUploadModal] = React.useState(false)
   const [copiedId, setCopiedId] = React.useState<number | null>(null)
@@ -468,9 +530,6 @@ export default function MediaLibrary({
           <Button type="button" onClick={() => setShowUploadModal(true)}>
             <Icon name="upload" className="size-4" aria-hidden="true" /> Unggah Media
           </Button>
-          <Button asChild variant="secondary">
-            <Link href={indexHref}><Icon name="arrow-left" className="size-4" aria-hidden="true" /> Media produk</Link>
-          </Button>
         </div>
       }
     >
@@ -485,8 +544,27 @@ export default function MediaLibrary({
       />
       <UploadTracker uploads={uploads} onDismiss={() => setUploads([])} />
 
+      {/* Toggle panel folder: ikon folder, kiri */}
+      <div className="mb-2 flex items-center">
+        <button
+          type="button"
+          onClick={() => setShowSidebar((v) => !v)}
+          aria-label={showSidebar ? "Sembunyikan panel folder" : "Tampilkan panel folder"}
+          title={showSidebar ? "Sembunyikan panel folder" : "Tampilkan panel folder"}
+          className={cn(
+            "inline-flex size-8 items-center justify-center rounded-md border border-border transition",
+            showSidebar
+              ? "bg-primary/10 text-primary"
+              : "bg-card text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Icon name={showSidebar ? "folder-open" : "folder"} className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+
       <div className="flex gap-4">
-        {/* Sidebar folder */}
+        {/* Sidebar folder (bisa disembunyikan agar galeri lebih lebar) */}
+        {showSidebar ? (
         <aside className="w-64 shrink-0">
           <div className="mb-2 space-y-1">
             <button
@@ -524,6 +602,7 @@ export default function MediaLibrary({
           </div>
           <FolderTree nodes={folders} currentFolderId={folderId} onSelect={(id) => { setFolderId(id); runSearch({ folder_id: id }) }} />
         </aside>
+        ) : null}
 
         {/* Main content */}
         <div className="min-w-0 flex-1">
@@ -531,7 +610,7 @@ export default function MediaLibrary({
           <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
             <div className="min-w-52 flex-1">
               <label className="text-xs font-semibold text-muted-foreground">Cari label / URL</label>
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="mis. produck, banner…" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="mis. produk, banner…" />
             </div>
             <div className="w-36">
               <label className="text-xs font-semibold text-muted-foreground">Jenis</label>
@@ -562,7 +641,7 @@ export default function MediaLibrary({
               </Select>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link href={historyHref}><Icon name="clock" className="size-3.5" aria-hidden="true" /> Riwayat</Link>
+              <Link href={historyHref}><Icon name="clock" className="size-3.5" aria-hidden="true" /> Aktivitas Media</Link>
             </Button>
           </div>
 
@@ -599,13 +678,54 @@ export default function MediaLibrary({
             </div>
           ) : null}
 
+          {/* Pilih semua */}
+          {assets.length > 0 ? (
+            <div className="mb-3 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedIds(assets.map((a) => a.id))}
+                disabled={selectedIds.length === assets.length}
+              >
+                Pilih semua
+              </Button>
+              {selectedIds.length > 0 ? (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                  Kosongkan
+                </Button>
+              ) : null}
+              <span className="text-xs text-muted-foreground">Klik kartu untuk memilih; klik lagi untuk batal.</span>
+            </div>
+          ) : null}
+
           {/* Grid */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {assets.map((asset) => {
               const meta = mediaStatusMeta(asset.status)
               const isCopied = copiedId === asset.id
               return (
-                <div key={asset.id} className="group relative overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-md">
+                <div
+                  key={asset.id}
+                  role="checkbox"
+                  aria-checked={selectedIds.includes(asset.id)}
+                  tabIndex={0}
+                  onClick={(e) => {
+                    // Tombol/link di dalam card tetap berfungsi normal.
+                    const target = e.target as HTMLElement
+                    if (target.closest('button, a, input, [data-no-select]')) return
+                    toggleSelected(asset.id)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      const target = e.target as HTMLElement
+                      if (target.closest('button, a, input, [data-no-select]')) return
+                      e.preventDefault()
+                      toggleSelected(asset.id)
+                    }
+                  }}
+                  className={`group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md ${selectedIds.includes(asset.id) ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}
+                >
                   <div className="relative aspect-square overflow-hidden bg-muted">
                     {asset.thumb_url ? (
                       <img src={asset.thumb_url} alt={asset.label} className="h-full w-full object-cover" loading="lazy" />
@@ -638,8 +758,9 @@ export default function MediaLibrary({
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(asset.id)}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={() => toggleSelected(asset.id)}
-                      className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary opacity-0 transition-opacity group-hover:opacity-100"
+                      className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary"
                       aria-label={`Pilih ${asset.label}`}
                     />
                   </div>
