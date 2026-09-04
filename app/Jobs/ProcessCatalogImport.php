@@ -101,7 +101,7 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             $importer = match ($job->type) {
                 'stock_price_update' => new ImportStockPriceUpdate($this->jobId),
                 'media_update' => new ImportMediaUpdate($this->jobId),
-                default => new CatalogProductsImport($this->jobId),
+                default => new CatalogProductsImport($this->jobId, $path),
             };
             Excel::import($importer, $path);
         } catch (\Throwable $e) {

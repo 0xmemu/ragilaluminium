@@ -133,7 +133,11 @@ class ImportJobController extends Controller
 
         $rowData = \Maatwebsite\Excel\Facades\Excel::toArray(new \App\Imports\InternalCatalogPreviewImport(), $file);
         $rows = $rowData[0] ?? [];
-        $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['name'] ?? ''))) || ! empty(trim((string) ($r['parent_sku'] ?? '')))));
+        // Skema dua-sheet (template baru): baris produk = punya option_1 atau
+        // name/parent_sku. Skema lama: cukup name/parent_sku.
+        $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['name'] ?? '')))
+            || ! empty(trim((string) ($r['parent_sku'] ?? '')))
+            || ! empty(trim((string) ($r['option_1'] ?? '')))));
         // Batas baris dinaikkan untuk katalog besar: 10.000 produk x 4 varian
         // = 40.000 baris. Proses tetap chunk 1.000 baris + job background.
         $rowLimit = 50000;
@@ -278,11 +282,32 @@ class ImportJobController extends Controller
         )[0] ?? [];
         $rows = array_slice($rows, 0, 1000);
 
+        // Skema baru: gabungkan gambar per opsi dari sheet Varian (jika ada).
+        $variantImages = [];
+        try {
+            $variantSheet = \App\Support\VariantSheetParser::extractVariantRows($file->getRealPath());
+            if ($variantSheet !== null) {
+                $parsed = \App\Support\VariantSheetParser::parse($variantSheet['rows']);
+                $variantImages = \App\Support\VariantSheetParser::optionImageMap($parsed['variants'])['images'];
+            }
+        } catch (\Throwable) {
+            $variantImages = [];
+        }
+
         $resolver = app(\App\Services\MediaAssetResolver::class);
         $diffs = [];
+        $lastSeenName = '';
         foreach ($rows as $index => $row) {
-            if (trim((string) ($row['name'] ?? '')) === '' && trim((string) ($row['parent_sku'] ?? '')) === '') {
+            $rowName = trim((string) ($row['name'] ?? ''));
+            $hasOptions = trim((string) ($row['option_1'] ?? '')) !== '';
+            if ($rowName === '' && trim((string) ($row['parent_sku'] ?? '')) === '' && ! $hasOptions) {
                 continue;
+            }
+            if ($rowName === '' && $hasOptions && $lastSeenName !== '') {
+                $rowName = $lastSeenName; // baris lanjutan: identitas diwarisi
+            }
+            if ($rowName !== '') {
+                $lastSeenName = $rowName;
             }
 
             $imageUrls = [];
@@ -290,6 +315,19 @@ class ImportJobController extends Controller
                 $u = trim((string) ($row['image_'.$n] ?? ''));
                 if ($u !== '') {
                     $imageUrls[] = $u;
+                }
+            }
+            // Skema baru: gambar per opsi dari sheet Varian, diurut sesuai opsi baris.
+            if ($imageUrls === [] && $variantImages !== []) {
+                for ($n = 1; $n <= 5; $n++) {
+                    $opt = trim((string) ($row['option_'.$n] ?? ''));
+                    if ($opt === '') {
+                        continue;
+                    }
+                    $u = $variantImages[\App\Support\VariantSheetParser::optionKey($opt)] ?? null;
+                    if ($u !== null) {
+                        $imageUrls[] = $u;
+                    }
                 }
             }
 
