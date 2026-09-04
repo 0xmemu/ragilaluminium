@@ -71,6 +71,7 @@ type Combination = { options: string[]; price: string; stock: string }
 /** Produk kartesian dari definisi varian: [Warna(Hitam,Putih) x Kaca(Bening,Es)] -> 4 kombinasi. */
 function buildCombinations(defs: VariantDef[]): Array<{ options: string[]; label: string }> {
   if (!defs.length || defs.some((d) => !d.options.length)) return []
+  // Opsi boleh masih kosong (baru diketik); kombinasi tetap dihitung.
   let combos: Array<{ options: string[]; label: string }> = [{ options: [], label: "" }]
   for (const def of defs) {
     const next: Array<{ options: string[]; label: string }> = []
@@ -141,18 +142,9 @@ export default function ProductForm({
   const combos = buildCombinations(variantDefs)
 
   const combinationKey = (options: string[]) => options.join("|")
+  // Ketikan opsi mengubah key teks; simpan nilai harga/stok per INDEX kombinasi agar tidak hilang saat mengetik.
 
-  React.useEffect(() => {
-    // Buang kombinasi yang tidak lagi valid saat definisi berubah.
-    setCombinations((prev) => {
-      const valid = new Set(combos.map((c) => combinationKey(c.options)))
-      const next: typeof prev = {}
-      for (const [key, value] of Object.entries(prev)) {
-        if (valid.has(key)) next[key] = value
-      }
-      return next
-    })
-  }, [variantDefs])
+
 
   const [saving, setSaving] = React.useState(false)
   const [publishing, setPublishing] = React.useState(false)
@@ -174,14 +166,11 @@ export default function ProductForm({
       status,
       media_asset_ids: pickedMedia.map((m) => m.assetId),
       variant_defs: variantDefs,
-      combinations: combos.map((combo) => {
-        const key = combinationKey(combo.options)
-        return {
-          options: combo.options,
-          price: combinations[key]?.price ?? "",
-          stock: combinations[key]?.stock ?? "",
-        }
-      }),
+      combinations: combos.map((combo, comboIndex) => ({
+        options: combo.options,
+        price: combinations[String(comboIndex)]?.price ?? "",
+        stock: combinations[String(comboIndex)]?.stock ?? "",
+      })),
     }
   }
 
@@ -385,8 +374,8 @@ export default function ProductForm({
                     </tr>
                   </thead>
                   <tbody>
-                    {combos.map((combo) => {
-                      const key = combinationKey(combo.options)
+                    {combos.map((combo, comboIndex) => {
+                      const key = String(comboIndex)
                       const value = combinations[key] ?? { price: "", stock: "" }
                       return (
                         <tr key={key} className="border-t border-border">
