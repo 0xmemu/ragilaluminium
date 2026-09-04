@@ -584,13 +584,7 @@ export default function ProductForm({
               <ReviewRow label="Berat & dimensi (pengiriman)" ready={Boolean(form.data.weight_kg && form.data.width_cm && form.data.height_cm && form.data.depth_cm)} />
               <ReviewRow label="Varian aktif" ready={combos.length === 0 ? true : Boolean((incomingVariants?.length ?? 0) > 0)} />
             </div>
-            <div className="mt-8 border-t border-border pt-6">
-              {publishUrl && !isActive ? (
-                <Button type="button" disabled={publishing} onClick={publish}>
-                  {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
-                </Button>
-              ) : null}
-            </div>
+
           </section>
         ) : null}
       </div>
