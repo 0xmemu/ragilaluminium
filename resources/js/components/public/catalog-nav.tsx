@@ -135,8 +135,8 @@ export function CatalogNav({
                 className={cn(
                   "relative inline-flex h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border px-1 sm:px-1.5 text-[11px] sm:text-xs font-normal transition sm:hidden",
                   activeFilterCount > 0
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-surface-muted text-foreground hover:border-foreground/40",
+                    ? "border-foreground/50 bg-surface-muted text-foreground font-medium"
+                    : "border-border bg-background text-foreground/80 hover:text-foreground",
                 )}
               >
                 <Icon name="sliders" className="size-3 shrink-0" aria-hidden="true" />
@@ -162,8 +162,8 @@ export function CatalogNav({
                 className={cn(
                   "relative hidden h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border px-1 sm:px-1.5 text-[11px] sm:text-xs font-normal transition sm:inline-flex",
                   activeFilterCount > 0
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-surface-muted text-foreground hover:border-foreground/40",
+                    ? "border-foreground/50 bg-surface-muted text-foreground font-medium"
+                    : "border-border bg-background text-foreground/80 hover:text-foreground",
                 )}
               >
                 <Icon name="sliders" className="size-3 shrink-0" aria-hidden="true" />
