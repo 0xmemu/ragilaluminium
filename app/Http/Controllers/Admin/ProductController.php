@@ -343,6 +343,15 @@ class ProductController extends Controller
             ->with('success', 'Produk berhasil dibuat dengan SKU '.$product->parent_sku.'.');
     }
 
+    /** Format dimensi tanpa desimal bermakna: 1.000 -> "1", 100.00 -> "100", 20.5 -> "20.5". */
+    public static function cleanDimension($value): string
+    {
+        $s = number_format((float) $value, 3, '.', '');
+        $s = rtrim($s, '0');
+        $s = rtrim($s, '.');
+        return $s;
+    }
+
     public function show(Product $product): Response
     {
         $product->load(['variants', 'attributes', 'media']);
@@ -452,10 +461,10 @@ class ProductController extends Controller
                 'homepage_popular' => $product->homepage_popular,
                 'homepage_popular_sort' => $product->homepage_popular_sort,
                 // Tampilkan tanpa desimal bermakna (1.000 -> 1, 100.00 -> 100).
-                'weight_kg' => $product->weight_kg !== null ? rtrim(rtrim((string) (float) $product->weight_kg, '0'), '.') : '',
-                'height_cm' => $product->height_cm !== null ? rtrim(rtrim((string) (float) $product->height_cm, '0'), '.') : '',
-                'width_cm' => $product->width_cm !== null ? rtrim(rtrim((string) (float) $product->width_cm, '0'), '.') : '',
-                'depth_cm' => $product->depth_cm !== null ? rtrim(rtrim((string) (float) $product->depth_cm, '0'), '.') : '',
+                'weight_kg' => $product->weight_kg !== null ? self::cleanDimension($product->weight_kg) : '',
+                'height_cm' => $product->height_cm !== null ? self::cleanDimension($product->height_cm) : '',
+                'width_cm' => $product->width_cm !== null ? self::cleanDimension($product->width_cm) : '',
+                'depth_cm' => $product->depth_cm !== null ? self::cleanDimension($product->depth_cm) : '',
                 // ADR-020: media katalog dimuat di form utama.
                 'media' => $product->media
                     ->where('is_installation', false)
