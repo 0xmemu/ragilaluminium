@@ -128,6 +128,16 @@ export default function ProductForm({
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>([])
   const [optionPicker, setOptionPicker] = React.useState<{ defIndex: number; optionIndex: number } | null>(null)
+  const [dragMediaIndex, setDragMediaIndex] = React.useState<number | null>(null)
+  const reorderMedia = (from: number, to: number) => {
+    if (from === to) return
+    setPickedMedia((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    })
+  }
 
   React.useEffect(() => {
     if (!editing) return
@@ -462,7 +472,21 @@ export default function ProductForm({
             {pickedMedia.length ? (
               <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {pickedMedia.map((media, index) => (
-                  <li key={media.assetId} className="relative">
+                  <li
+                    key={media.assetId}
+                    className="relative cursor-grab active:cursor-grabbing"
+                    draggable
+                    onDragStart={(event) => setDragMediaIndex(index)}
+                    onDragOver={(event) => {
+                      if (dragMediaIndex !== null && dragMediaIndex !== index) event.preventDefault()
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      if (dragMediaIndex !== null) reorderMedia(dragMediaIndex, index)
+                      setDragMediaIndex(null)
+                    }}
+                    onDragEnd={() => setDragMediaIndex(null)}
+                  >
                     <span className="relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
                       {media.thumbUrl ? (
                         <img src={media.thumbUrl} alt="" className="size-full object-cover" />

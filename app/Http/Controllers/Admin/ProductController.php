@@ -430,6 +430,7 @@ class ProductController extends Controller
             'wizardStep' => in_array($requestStep = request()->query('step'), ['identity', 'variants', 'media', 'review'], true)
                 ? $requestStep
                 : 'identity',
+            'variant_defs' => $variantDefs,
             'variants' => $product->variants->map(fn (ProductVariant $variant) => [
                 'id' => $variant->id,
                 'variant_sku' => $variant->variant_sku,
