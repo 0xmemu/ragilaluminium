@@ -396,7 +396,46 @@ class ProductController extends Controller
 
     public function edit(Product $product): Response
     {
-        $product->load(['variants', 'attributes', 'media']);
+        $product->load(['variants', 'attributes', 'media.mediaAsset']);
+
+        // ADR-021: rekonstruksi definisi varian utk form (nama+opsi unik urut slot,
+        // plus gambar per opsi dari media varian).
+        $variantDefs = [];
+        $activeVariants = $product->variants->filter(fn ($v) => $v->status === 'active')->values();
+        $slotCount = 0;
+        foreach ($activeVariants as $v) {
+            for ($s = 1; $s <= 5; $s++) {
+                if (trim((string) $v->{'variation_'.$s.'_option'}) !== '') {
+                    $slotCount = max($slotCount, $s);
+                }
+            }
+        }
+        for ($s = 1; $s <= $slotCount; $s++) {
+            $name = '';
+            $options = [];
+            $seen = [];
+            foreach ($activeVariants as $v) {
+                $option = trim((string) $v->{'variation_'.$s.'_option'});
+                if ($option === '') {
+                    continue;
+                }
+                $name = (string) $v->{'variation_'.$s.'_name'};
+                $key = mb_strtolower($option);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $media = $product->media->first(fn ($m) => $m->product_variant_id === $v->id);
+                $options[] = [
+                    'value' => $option,
+                    'media_asset_id' => ($media && $media->mediaAsset) ? $media->mediaAsset->id : null,
+                    'thumb_url' => ($media && $media->mediaAsset) ? $media->mediaAsset->urlFor('thumb') : null,
+                ];
+            }
+            if ($options !== []) {
+                $variantDefs[] = ['name' => $name, 'options' => $options];
+            }
+        }
 
         return Inertia::render('Admin/ProductForm', [
             'backUrl' => route('admin.products.index'),
