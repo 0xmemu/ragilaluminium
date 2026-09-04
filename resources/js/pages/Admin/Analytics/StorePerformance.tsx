@@ -216,6 +216,17 @@ function Sparkline({ values }: { values: number[] }) {
   )
 }
 
+function ChangeBadge({ percent }: { percent: number }) {
+  const up = percent > 0
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Icon name={up ? "trend-up" : "trend-down"} className="size-3.5" aria-hidden="true" />
+      {up ? "+" : MINUS}
+      {formatNumber(Math.abs(percent))}%
+    </span>
+  )
+}
+
 type ProductBreakdown = {
   product_id: number
   parent_sku: string
@@ -682,7 +693,7 @@ export default function StorePerformance({
                   ? "Baru pada periode ini"
                   : (kpi.change_percent ?? 0) === 0
                     ? "Tidak berubah"
-                    : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
+                    : <ChangeBadge percent={kpi.change_percent} />}
               </p>
             </div>
           )
@@ -733,7 +744,7 @@ export default function StorePerformance({
                                 {formatKpiValue(kpi)}
                               </span>
                               <span className={cn("w-16 text-right text-[11px] font-semibold", kpi.change_percent === null && "text-[10px] font-normal text-muted-foreground/70", (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) === 0 && "text-muted-foreground")}>
-                                {kpi.change_percent === null ? "Baru" : (kpi.change_percent ?? 0) === 0 ? "-" : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
+                                {kpi.change_percent === null ? "Baru" : (kpi.change_percent ?? 0) === 0 ? "-" : <ChangeBadge percent={kpi.change_percent} />}
                               </span>
                             </span>
                           </li>
@@ -775,7 +786,7 @@ export default function StorePerformance({
                       ? "Baru pada periode ini"
                       : (kpi.change_percent ?? 0) === 0
                         ? "Tidak berubah"
-                        : (kpi.change_percent > 0 ? "▲ +" : "▼ " + MINUS) + formatNumber(Math.abs(kpi.change_percent)) + "%"}
+                        : <ChangeBadge percent={kpi.change_percent} />}
                   </p>
                 </article>
               ))}
