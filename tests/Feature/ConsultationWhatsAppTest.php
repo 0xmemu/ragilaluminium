@@ -4,10 +4,20 @@ namespace Tests\Feature;
 
 use App\Models\WhatsAppTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 
 class ConsultationWhatsAppTest extends \Tests\TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Isolasi environment: cache nomor session WA dari dev (bot tersambung)
+        // tidak boleh bocor ke asersi brand.phone (fallback ke config).
+        Cache::forget('whatsapp.active_session_phone');
+    }
 
     public function test_consultation_send_creates_outbound_whatsapp_message(): void
     {
@@ -87,15 +97,19 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
 
     public function test_storefront_brand_phone_follows_whatsapp_business_phone(): void
     {
+        Cache::forget('whatsapp.active_session_phone');
         config([
             'services.whatsapp.business_phone' => '6281776370707',
+            // Matikan Baileys agar activeSessionPhone() tidak menimpa dgn nomor
+            // session live dari environment dev.
+            'services.whatsapp.baileys.base_url' => null,
             'sitemap.brand.phone' => '+62 851-9966-6810',
         ]);
 
         $this->get(route('about'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Public/InformasiToko')
+                ->component('Public/About')
                 ->where('brand.phone', '+62 817-7637-0707')
                 ->where('consultationWhatsApp.phone', '+62 817-7637-0707')
                 ->where('consultationWhatsApp.directUrl', fn ($url) => is_string($url) && str_starts_with($url, 'https://wa.me/6281776370707')));
@@ -103,8 +117,10 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
 
     public function test_storefront_brand_phone_falls_back_to_sitemap_when_whatsapp_unset(): void
     {
+        Cache::forget('whatsapp.active_session_phone');
         config([
             'services.whatsapp.business_phone' => null,
+            'services.whatsapp.baileys.base_url' => null,
             'sitemap.brand.phone' => '+62 851-9966-6810',
         ]);
 

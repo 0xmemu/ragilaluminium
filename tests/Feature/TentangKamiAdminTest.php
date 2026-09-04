@@ -41,7 +41,7 @@ class TentangKamiAdminTest extends TestCase
         $this->get(route('about'))
             ->assertOk()
             ->assertInertia(fn (Assert $assert) => $assert
-                ->component('Public/InformasiToko')
+                ->component('Public/About')
                 ->where('page.heading', 'Siapa Kami')
                 ->where('page.body', '<p>Kami membuat jendela aluminium premium.</p>'));
     }

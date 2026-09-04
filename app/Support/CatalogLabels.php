@@ -190,12 +190,14 @@ class CatalogLabels
     }
 
     /**
-     * Suffix desain untuk label garis produk; POLOS tidak ditambahkan.
+     * Suffix desain untuk label garis produk. POLOS ikut disebut agar kartu
+     * produk tidak ambigu di halaman model yang campur beberapa desain
+     * (owner 2026-09-04: "Boven Jungkit Polos" jangan tampil "Boven Jungkit").
      */
     public static function designSuffix(?string $code): string
     {
         $key = self::normalizeDesign($code);
-        if ($key === null || $key === 'POLOS') {
+        if ($key === null) {
             return '';
         }
 
