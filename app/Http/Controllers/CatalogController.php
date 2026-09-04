@@ -77,7 +77,16 @@ class CatalogController extends Controller
         if ($categoryCode === null || $categoryCode === 'LAINNYA' || $modelCode === '' || $designCode === null) {
             abort(404);
         }
-        $request->merge(['model' => $modelCode, 'design' => $designCode]);
+        // Filter UI (query string) menimpa nilai path bila eksplisit - supaya
+        // memilih desain/model lain dari halaman ini berfungsi. Path = fallback.
+        $request->merge([
+            'model' => $request->input('model') !== null
+                ? CatalogLabels::normalizeModel((string) $request->input('model'))
+                : $modelCode,
+            'design' => $request->input('design') !== null
+                ? CatalogLabels::normalizeDesign((string) $request->input('design'))
+                : $designCode,
+        ]);
 
         return $this->category($categoryCode, $request);
     }
@@ -648,10 +657,12 @@ protected function category(?string $category, Request $request, string $mode = 
             $rails[] = [
                 'value' => $code,
                 'label' => CatalogLabels::design($code) ?: $code,
+                // Desain selalu disebut (termasuk Polos) agar tidak ambigu
+                // saat satu model punya beberapa desain (owner 2026-09-04).
                 'title' => trim(implode(' ', array_filter([
                     CatalogLabels::category($categoryCode),
                     CatalogLabels::model($modelCode),
-                    $code !== 'POLOS' ? CatalogLabels::design($code) : null,
+                    CatalogLabels::design($code),
                 ]))),
                 'image' => InertiaCatalog::cardImage($sample),
                 'count' => $railProducts->count(),
