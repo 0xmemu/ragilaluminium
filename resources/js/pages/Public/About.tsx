@@ -116,6 +116,17 @@ function PlatformChip({ item }: { item: SocialLink }) {
   )
 }
 
+const PLATFORM_ICONS: Record<string, string> = {
+  shopee: "/images/icons/social/shopee.svg",
+  tokopedia: "/images/icons/social/tokopedia.png",
+  lazada: "/images/icons/social/lazada.png",
+  tiktok_shop: "/images/icons/social/tiktok.svg?v=2",
+  instagram: "/images/icons/social/instagram.svg",
+  tiktok: "/images/icons/social/tiktok.svg?v=2",
+  youtube: "/images/icons/social/youtube.svg",
+  facebook: "/images/icons/social/facebook.svg",
+}
+
 function PlatformGroup({ title, items }: { title: string; items: SocialLink[] }) {
   const live = items.filter((item) => isLiveHref(item.href))
   return (
@@ -130,18 +141,38 @@ function PlatformGroup({ title, items }: { title: string; items: SocialLink[] })
       ) : (
         <ul className="mt-3 flex flex-wrap gap-2">
           {(title === "Ikuti kami"
-            ? ["Instagram", "Facebook", "TikTok"]
-            : ["Shopee", "Tokopedia"]
-          ).map((name) => (
-            <li key={name}>
-              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-3 py-1.5 opacity-70">
-                <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
-                  <Icon name="storefront" className="size-4" aria-hidden="true" />
+            ? [
+                { name: "Instagram", key: "instagram" },
+                { name: "Facebook", key: "facebook" },
+                { name: "TikTok", key: "tiktok" },
+              ]
+            : [
+                { name: "Shopee", key: "shopee" },
+                { name: "Tokopedia", key: "tokopedia" },
+              ]
+          ).map((platform) => {
+            const iconSrc = PLATFORM_ICONS[platform.key]
+            return (
+              <li key={platform.name}>
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-3 py-1.5 opacity-80">
+                  {iconSrc ? (
+                    <img
+                      src={iconSrc}
+                      alt=""
+                      className="size-5 shrink-0 object-contain"
+                      width={20}
+                      height={20}
+                    />
+                  ) : (
+                    <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
+                      <Icon name="storefront" className="size-4" aria-hidden="true" />
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold tracking-tight text-foreground">{platform.name}</span>
                 </span>
-                <span className="text-xs font-semibold tracking-tight text-muted-foreground">{name}</span>
-              </span>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
@@ -151,7 +182,7 @@ function PlatformGroup({ title, items }: { title: string; items: SocialLink[] })
 export default function About({ page, stats }: { page: PageData; stats?: AboutStats }) {
   const { brand, consultationWhatsApp, platforms = [] } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
-  const whatsappLabel = consultationWhatsApp?.directLabel ?? "Chat langsung di WhatsApp"
+  const whatsappLabel = consultationWhatsApp?.directLabel ?? "Chat WhatsApp"
   const phoneHref = brand.phone ? `tel:${brand.phone.replace(/[^\d+]/g, "")}` : null
   const heading = page.heading?.trim() || "Tentang Kami"
 
