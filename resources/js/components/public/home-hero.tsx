@@ -148,22 +148,33 @@ function HeroSlideContent({
     )
   }
 
-  if (slide.image) {
-    return (
-      <div className="relative h-full w-full overflow-hidden rounded-[5px]">
-        <ResponsiveImage
-          src={slide.image}
-          alt={slide.image_alt ?? slide.headline}
-          loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "auto"}
-          wrapperClassName="absolute inset-0"
-          className="object-cover object-center"
-        />
-      </div>
-    )
-  }
+  // Banner gambar dari admin TETAP clickable: seluruh slide dibungkus link ke
+  // link_url banner (sama seperti kartu teks). Swipe tetap jalan karena drag
+  // handler men-suppress click hanya saat benar-benar dragged.
+  const content = slide.image ? (
+    <div className="relative h-full w-full overflow-hidden rounded-[5px]">
+      <ResponsiveImage
+        src={slide.image}
+        alt={slide.image_alt ?? slide.headline}
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
+        wrapperClassName="absolute inset-0"
+        className="object-cover object-center"
+      />
+    </div>
+  ) : (
+    <HeroPromoCard slide={slide} />
+  )
 
-  return <HeroPromoCard slide={slide} />
+  return (
+    <Link
+      href={slide.href}
+      className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      aria-label={slide.image_alt ?? (slide.headline || "Lihat promo")}
+    >
+      {content}
+    </Link>
+  )
 }
 
 /** Section banner homepage: slider promo full-width di atas + carousel slot banner. */
