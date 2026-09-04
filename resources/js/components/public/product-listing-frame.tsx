@@ -29,7 +29,7 @@ export function ProductListingFrame({
         {children}
       </section>
       {/* Standar padding bawah halaman (pb-10, seperti PDP) sebelum spacer navbar. */}
-      <div className="pb-10">{pagination}</div>
+      <div className="pb-5">{pagination}</div>
     </>
   )
 }

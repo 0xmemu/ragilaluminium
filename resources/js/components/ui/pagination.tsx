@@ -91,7 +91,7 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
   }
 
   return (
-    <nav className={cn("mt-5 flex items-center justify-center gap-2 border-t border-border py-5", className)} aria-label="Paginasi">
+    <nav className={cn("mt-5 flex items-center justify-center gap-2 border-t border-border", className)} aria-label="Paginasi">
       <div className="pag-viewport flex items-center justify-center gap-2">
         {navButton("previous", prevUrl?.url)}
 
