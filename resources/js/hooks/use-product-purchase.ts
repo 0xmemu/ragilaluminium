@@ -96,9 +96,11 @@ export function useProductPurchase({
       const vid = Number(item.product_variant_id)
       return vid && matchingVariantIds.has(vid)
     })
-    if (dedicated.length) return dedicated
-
     const productLevel = media.filter((item) => item.product_variant_id == null)
+    // Varian yang punya foto khusus: foto varian tampil duluan (auto jadi foto
+    // aktif), foto level produk menyusul supaya galeri tidak menyusut jadi
+    // satu foto. Varian tanpa foto khusus: fallback foto level produk.
+    if (dedicated.length) return [...dedicated, ...productLevel]
     return productLevel
   }, [media, selections, variants])
 
