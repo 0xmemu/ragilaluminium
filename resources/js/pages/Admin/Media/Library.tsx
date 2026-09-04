@@ -68,6 +68,14 @@ interface ProductOption {
   label: string
 }
 
+function flattenFolders(nodes: FolderNode[], depth = 0, out: Array<{ id: number; name: string; indent: string; assets_count: number }> = []) {
+  for (const node of nodes) {
+    out.push({ id: node.id, name: node.name, indent: "\u00a0".repeat(depth * 4) + (depth > 0 ? "\u21b3 " : ""), assets_count: node.assets_count ?? 0 })
+    flattenFolders(node.children, depth + 1, out)
+  }
+  return out
+}
+
 // --- FolderTree component ---
 function FolderTree({ nodes, currentFolderId, onSelect }: {
   nodes: FolderNode[]
@@ -664,11 +672,11 @@ export default function MediaLibrary({
                 title="Hapus" description="Aset yang masih digunakan akan diarsipkan, bukan dihapus." confirmLabel="Hapus"
                 onConfirm={() => runBulkAction("delete")}
               />
-              <Select value={bulkMoveTarget} onChange={(e) => setBulkMoveTarget(e.target.value)} className="w-48">
+              <Select value={bulkMoveTarget} onChange={(e) => setBulkMoveTarget(e.target.value)} className="w-56">
                 <option value="">Pindah ke folder…</option>
-                <option value="0">Inbox</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
+                <option value="0">Inbox (tanpa folder)</option>
+                {flattenFolders(folders).map((f) => (
+                  <option key={f.id} value={f.id}>{f.indent}{f.name} ({f.assets_count})</option>
                 ))}
               </Select>
               {bulkMoveTarget ? (
@@ -734,6 +742,11 @@ export default function MediaLibrary({
                         <Icon name={asset.kind === "video" ? "video" : "image"} className="size-8" aria-hidden="true" />
                       </div>
                     )}
+                    <span
+                      className="absolute bottom-1.5 left-1.5 size-2.5 rounded-full ring-2 ring-surface"
+                      style={{ backgroundColor: asset.status === "ready" ? "#2b734e" : asset.status === "failed" ? "#c20000" : asset.status === "archived" ? "#666666" : "#8d570c" }}
+                      title={meta.label}
+                    />
                     {asset.status === "ready" ? (
                       <button
                         type="button"
@@ -764,19 +777,31 @@ export default function MediaLibrary({
                       aria-label={`Pilih ${asset.label}`}
                     />
                   </div>
-                  <div className="space-y-1 p-2.5">
-                    <p className="truncate text-xs font-medium text-foreground" title={asset.label}>{asset.label}</p>
-                    <StatusBadge label={meta.label} tone={meta.tone} />
-                    {asset.usage_count > 0 ? (
-                      <p className="text-[10px] text-muted-foreground">Digunakan di {asset.usage_count} tempat</p>
-                    ) : null}
-                    <div className="flex items-center gap-2">
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setAttachingId(asset.id)}>
-                        <Icon name="link" className="size-3" aria-hidden="true" /> Pasang
-                      </Button>
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]">
-                        <Link href={asset.attach_url}><Icon name="info" className="size-3" aria-hidden="true" /> Detail</Link>
-                      </Button>
+                  <div className="flex items-center justify-between gap-2 p-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-foreground" title={asset.label}>{asset.label}</p>
+                      {asset.usage_count > 0 ? (
+                        <p className="text-[10px] text-muted-foreground">Dipakai {asset.usage_count}x</p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => setAttachingId(asset.id)}
+                        className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface hover:text-foreground"
+                        title="Pasang ke produk"
+                        aria-label={`Pasang ${asset.label}`}
+                      >
+                        <Icon name="link" className="size-3.5" aria-hidden="true" />
+                      </button>
+                      <Link
+                        href={asset.attach_url}
+                        className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface hover:text-foreground"
+                        title="Detail"
+                        aria-label={`Detail ${asset.label}`}
+                      >
+                        <Icon name="info" className="size-3.5" aria-hidden="true" />
+                      </Link>
                     </div>
                   </div>
                 </div>
