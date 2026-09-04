@@ -45,13 +45,15 @@ export default function Installations({
 }) {
   const isModelLevel = level !== "product"
 
+  // Kontrak owner: label pill maksimal 2 kata (ikut model produk).
+  // Fallback lama 3-4 kata membuat pill terpotong di mobile.
   const modelHighlights =
     modelHighlightsRaw?.length === 3
       ? modelHighlightsRaw
       : [
-          { label: "Tampilan Bersih & Modern" },
-          { label: "Maksimalkan Pencahayaan" },
-          { label: "Cocok untuk Berbagai Ruangan" },
+          { label: "Bersih & Modern" },
+          { label: "Cahaya Optimal" },
+          { label: "Serbaguna" },
         ]
   const heading = pageMeta?.heading?.trim() || "Hasil Pemasangan Kami"
   const subtitle =
@@ -65,8 +67,6 @@ export default function Installations({
   const totalModels = (models || []).reduce((sum, model) => sum + (Number(model.count) || 0), 0)
 
   // Urutan tampilan diatur admin (tidak ada kontrol urut di halaman pembeli).
-  // Pembeli hanya bisa MENCARI model/produk tertentu via ikon search.
-  const [searchOpen, setSearchOpen] = React.useState(false)
   const [sort, setSort] = React.useState<string>(activeSort)
 
   React.useEffect(() => {
@@ -82,61 +82,6 @@ export default function Installations({
       { preserveState: true, preserveScroll: true, replace: true },
     )
   }
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const searchInputRef = React.useRef<HTMLInputElement>(null)
-
-  const needle = searchQuery.trim().toLowerCase()
-  const filteredInstallations = needle
-    ? installations.filter((item) =>
-        [item.label, item.subtitle, item.desc, item.model]
-          .filter(Boolean)
-          .some((text) => String(text).toLowerCase().includes(needle)),
-      )
-    : installations
-  const filteredGallery = needle
-    ? gallery.filter((item) =>
-        [item.caption, item.url]
-          .filter(Boolean)
-          .some((text) => String(text).toLowerCase().includes(needle)),
-      )
-    : gallery
-
-  React.useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus()
-  }, [searchOpen])
-
-  const searchControl = (
-    <div className="relative flex shrink-0 items-center gap-2">
-      {searchOpen ? (
-        <Input
-          ref={searchInputRef}
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setSearchOpen(false)
-              setSearchQuery("")
-            }
-          }}
-          placeholder={isModelLevel ? "Cari model produk…" : "Cari di dokumentasi…"}
-          aria-label="Cari hasil pemasangan"
-          className="h-9 w-40 rounded-full sm:w-56"
-        />
-      ) : null}
-      <button
-        type="button"
-        onClick={() => {
-          setSearchOpen((current) => !current)
-          if (searchOpen) setSearchQuery("")
-        }}
-        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-muted/50"
-        aria-label="Cari hasil pemasangan"
-        aria-expanded={searchOpen}
-      >
-        <Icon name="search" className="size-5" aria-hidden="true" />
-      </button>
-    </div>
-  )
 
   return (
     <PublicLayout>
@@ -201,25 +146,20 @@ export default function Installations({
               />
             ) : null}
 
-            <div id="inspirasi-pemasangan" className="container-page !px-2.5 md:!px-8 lg:!px-12 scroll-mt-24">
+            <div id="inspirasi-pemasangan" className="container-page !px-2.5 pb-10 md:!px-8 lg:!px-12 scroll-mt-24">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
                 <h2 className="text-lg font-bold tracking-tight text-foreground">
                   Inspirasi Pemasangan
                 </h2>
-                {searchControl}
               </div>
 
-              {filteredGallery.length ? (
-                <InstallationMediaGallery items={filteredGallery} title={modelMeta?.label || heading} />
+              {gallery.length ? (
+                <InstallationMediaGallery items={gallery} title={modelMeta?.label || heading} />
               ) : (
                 <EmptyState
-                  icon="search"
-                  title={needle ? "Tidak ada hasil pencarian" : "Belum ada dokumentasi untuk model ini"}
-                  description={
-                    needle
-                      ? `Tidak ada dokumentasi untuk “${searchQuery.trim()}”. Coba kata kunci lain.`
-                      : "Foto hasil pemasangan akan tampil di sini setelah tersedia."
-                  }
+                  icon="images"
+                  title="Belum ada dokumentasi untuk model ini"
+                  description="Foto hasil pemasangan akan tampil di sini setelah tersedia."
                 />
               )}
             </div>
