@@ -146,7 +146,6 @@ class CatalogExampleSheet implements FromArray, WithTitle, WithEvents
         $rows = [
             ['CONTOH ISI DATA IMPORT KATALOG'],
             ['Copy pola ini ke sheet Data. 1 baris = 1 kombinasi varian jadi. Kolom identitas & definisi varian cukup di baris pertama produk.'],
-            [],
             $headers,
         ];
 
@@ -219,13 +218,13 @@ class CatalogExampleSheet implements FromArray, WithTitle, WithEvents
         $sheet = $event->sheet->getDelegate();
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A2')->getFont()->setSize(10)->getColor()->setArgb('FF666666');
-        $sheet->getStyle('A4:AK4')->applyFromArray([
+        $sheet->getStyle('A3:AK3')->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 9],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
         ]);
-        $sheet->getRowDimension(4)->setRowHeight(30);
-        $sheet->getStyle('A5:AK16')->applyFromArray([
+        $sheet->getRowDimension(3)->setRowHeight(30);
+        $sheet->getStyle('A4:AK15')->applyFromArray([
             'font' => ['size' => 10],
             'alignment' => ['wrapText' => true],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
@@ -243,7 +242,7 @@ class CatalogExampleSheet implements FromArray, WithTitle, WithEvents
         ] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
-        $sheet->freezePane('C5');
+        $sheet->freezePane('C4');
     }
 }
 
