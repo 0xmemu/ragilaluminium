@@ -447,10 +447,8 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     }
                 }
                 $position = 10;
-                $isFirstMedia = true;
                                 foreach ($orderedUrls as $optionKey => $url) {
                     if ($this->writtenMedia[$product->id]['owneropt'][$position] ?? false) {
-                        $isFirstMedia = false;
                         $position++;
                         continue;
                     }
@@ -460,11 +458,10 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         variantId: null,
                         url: $url,
                         position: $position,
-                        isMain: $isFirstMedia,
+                        isMain: false, // foto utama = image_1 (produk umum)
                         showInCatalog: true,
                         isInstallation: false,
                     );
-                    $isFirstMedia = false;
                     $position++;
                     $ownerMediaWritten = true;
                 }

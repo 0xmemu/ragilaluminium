@@ -527,18 +527,108 @@ class ProductController extends Controller
             'homepage_popular' => ['sometimes', 'boolean'],
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'wizard_step' => ['nullable', 'in:identity,variants,media,review'],
+            // ADR-020/021: edit form satu halaman mengirim media & varian juga.
+            'media_asset_ids' => ['nullable', 'array', 'max:20'],
+            'media_asset_ids.*' => ['integer'],
+            'variant_defs' => ['nullable', 'array', 'max:5'],
+            'variant_defs.*.name' => ['required_with:variant_defs', 'string', 'max:100'],
+            'variant_defs.*.options' => ['required_with:variant_defs', 'array', 'min:1', 'max:50'],
+            'variant_defs.*.options.*.value' => ['required_with:variant_defs', 'string', 'max:255'],
+            'variant_defs.*.options.*.media_asset_id' => ['nullable', 'integer'],
+            'combinations' => ['nullable', 'array', 'max:100'],
+            'combinations.*.options' => ['required_with:combinations', 'array'],
+            'combinations.*.price' => ['required_with:combinations', 'numeric', 'min:0'],
+            'combinations.*.stock' => ['nullable', 'string', 'max:50'],
         ], [], [
             'name' => 'Nama produk',
         ]);
         $requestedStatus = $validated['status'];
         $wizardStep = $validated['wizard_step'] ?? null;
         unset($validated['wizard_step']);
-        $validated['status'] = 'archived';
+        // Status mengikuti tombol yang ditekan (Simpan mempertahankan status
+        // sekarang); tidak dipaksa archived.
         $validated['homepage_popular'] = $request->boolean('homepage_popular');
         $validated['homepage_popular_sort'] = (int) ($validated['homepage_popular_sort'] ?? 0);
         $validated['updated_by_user_id'] = $request->user()->id;
         $product->update($validated);
-        if ($requestedStatus === 'active' && $wizardStep === null) {
+
+        // ADR-020: sinkronkan media katalog dari urutan form.
+        if ($request->filled('media_asset_ids')) {
+            $resolver = app(\App\Services\MediaAssetResolver::class);
+            $sentIds = collect($request->input('media_asset_ids', []))->map(fn ($v) => (int) $v)->all();
+            $sentSet = array_fill_keys($sentIds, true);
+            $position = 1;
+            foreach ($sentIds as $index => $assetId) {
+                $asset = \App\Models\MediaAsset::find($assetId);
+                if (! $asset || $asset->status !== 'ready') continue;
+                $media = $product->media->first(fn ($m) => $m->media_asset_id === $assetId && ! $m->is_installation);
+                if ($media) {
+                    $media->update([
+                        'position' => $position,
+                        'is_main_image' => $index === 0,
+                        'show_in_catalog' => true,
+                        'visibility' => 'visible',
+                    ]);
+                } else {
+                    $resolver->attach($product, $asset, [
+                        'position' => $position,
+                        'is_main_image' => $index === 0,
+                        'show_in_catalog' => true,
+                        'is_installation' => false,
+                        'visibility' => 'visible',
+                    ], (int) $request->user()->id);
+                }
+                $position++;
+            }
+            // Media katalog yang tidak dikirim lagi -> arsipkan (bukan hapus).
+            $product->media()
+                ->where('is_installation', false)
+                ->whereNotIn('media_asset_id', $sentIds)
+                ->update(['show_in_catalog' => false, 'visibility' => 'archived']);
+            // Foto utama: pertama di urutan (query langsung, bukan relasi).
+            $main = \App\Models\ProductMedia::where('product_id', $product->id)
+                ->where('is_installation', false)
+                ->where('show_in_catalog', true)
+                ->orderBy('position')
+                ->first();
+            if ($main) {
+                \App\Models\ProductMedia::where('product_id', $product->id)
+                    ->update(['is_main_image' => false]);
+                \App\Models\ProductMedia::where('id', $main->id)
+                    ->update(['is_main_image' => true]);
+            }
+        }
+
+        // ADR-021: definisi varian & kombinasi (harga/stok) dari form edit.
+        if ($request->filled('variant_defs')) {
+            foreach ($request->input('variant_defs', []) as $slot => $def) {
+                $slotName = trim((string) ($def['name'] ?? ''));
+                if ($slotName === '') continue;
+                $slotNo = $slot + 1;
+                if ($slotNo > 5) break;
+                // Nama varian slot ini diperbarui di semua varian yang punya
+                // opsi pada slot tersebut.
+                $product->variants()
+                    ->where('variation_'.$slotNo.'_option', '!=', '')
+                    ->update(['variation_'.$slotNo.'_name' => $slotName]);
+            }
+        }
+        if ($request->filled('combinations')) {
+            $variants = $product->variants()->orderBy('id')->get()->values();
+            foreach ($request->input('combinations', []) as $index => $combo) {
+                $variant = $variants[$index] ?? null;
+                if (! $variant) continue;
+                $variant->price = (float) ($combo['price'] ?? $variant->price);
+                $stockRaw = trim((string) ($combo['stock'] ?? ''));
+                if ($stockRaw !== '') {
+                    $resolved = \App\Services\StockCellParser::resolve($stockRaw !== '' ? $stockRaw : null);
+                    if ($resolved !== null) { $variant->stock = $resolved; }
+                }
+                $variant->save();
+            }
+        }
+
+        if ($requestedStatus === 'active' && $wizardStep === null && $product->status === 'archived') {
             $publication->publish($product->fresh(), (int) $request->user()->id);
         }
 
@@ -546,10 +636,10 @@ class ProductController extends Controller
             return redirect()->route('admin.products.edit', [
                 'product' => $product,
                 'step' => $wizardStep,
-            ])->with('success', 'Identitas produk disimpan.');
+            ])->with('success', 'Perubahan tersimpan.');
         }
 
-        return redirect()->route('admin.products.index')
+        return redirect()->route('admin.products.edit', ['product' => $product, 'step' => 'review'])
             ->with('success', 'Produk berhasil diperbarui.');
     }
     public function duplicate(Request $request, Product $product): RedirectResponse
