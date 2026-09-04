@@ -112,7 +112,7 @@ export function ModelHero({
                 {title}
               </h1>
               {slogan ? (
-                <p className="mt-1.5 max-w-xl truncate text-[11px] leading-snug text-white/90 sm:text-[13px]">
+                <p className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-white/90 sm:text-[13px]">
                   {slogan}
                 </p>
               ) : null}
