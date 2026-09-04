@@ -178,7 +178,7 @@ export default function ProductForm({
     if (target) target.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [editing, wizardStep])
 
-  function submitIdentity(status: "active" | "archived", event: React.FormEvent) {
+  function submitIdentity(status: "active" | "archived", event: React.FormEvent, addAnother = false) {
     event.preventDefault()
     form.setData("status", status)
     form.setData("media_asset_ids", pickedMedia.map((m) => m.assetId))
@@ -190,7 +190,9 @@ export default function ProductForm({
     if (editing) {
       form.put(submitUrl)
     } else {
-      form.post(submitUrl)
+      // ADR-020: produk baru + varian + media dalam SATU submit (tanpa gerbang).
+      form.transform((data) => ({ ...data, variants: variantsForm.data.variants }))
+      form.post(submitUrl, addAnother ? { preserveState: false } : {})
     }
   }
 
@@ -384,6 +386,11 @@ export default function ProductForm({
               </section>
 
               <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-6">
+                {!editing ? (
+                  <Button type="button" variant="secondary" disabled={form.processing} onClick={(event) => submitIdentity("archived", event, true)}>
+                    {form.processing ? "Menyimpan..." : "Simpan & tambah baru"}
+                  </Button>
+                ) : null}
                 <Button type="button" variant="secondary" disabled={form.processing} onClick={(event) => submitIdentity("archived", event)}>
                   {form.processing ? "Menyimpan..." : "Simpan draf"}
                 </Button>
@@ -395,8 +402,7 @@ export default function ProductForm({
               </div>
             </form>
 
-            {product ? (
-              <form onSubmit={submitVariants} className="space-y-6" id="sec-variants">
+            <form onSubmit={submitVariants} className="space-y-6" id="sec-variants">
                 <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
                   <div className="border-b border-border p-5 sm:p-7">
                     <h2 className="text-xl font-semibold">Varian, harga, dan stok</h2>
@@ -465,31 +471,6 @@ export default function ProductForm({
                   </div>
                 </section>
               </form>
-            ) : (
-              <section className="rounded-lg border border-dashed border-border bg-card p-5 text-sm text-muted-foreground sm:p-7">
-                Setelah identitas disimpan, bagian <strong className="font-semibold text-foreground">varian & harga</strong>, <strong className="font-semibold text-foreground">media</strong>, dan review/publish terbuka di halaman ini.
-              </section>
-            )}
-
-            {product ? (
-              <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7" id="sec-media">
-                <h2 className="text-xl font-semibold">Media produk</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Pasang gambar produk, atur gambar utama, dan tandai hasil pemasangan. Media Library bersama akan tersedia di selector ini.</p>
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border border-border bg-surface-muted p-4">
-                    <p className="text-xs text-muted-foreground">Status gambar utama</p>
-                    <p className="mt-2 text-sm font-semibold">{completion.main_image_ready ? "Siap digunakan" : "Belum ada gambar utama siap"}</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface-muted p-4">
-                    <p className="text-xs text-muted-foreground">Varian aktif</p>
-                    <p className="mt-2 text-sm font-semibold tabular-nums">{completion.active_variants ? "Ada" : "Belum ada"}</p>
-                  </div>
-                </div>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {mediaHref ? <Button asChild><Link href={mediaHref}>Kelola media produk</Link></Button> : null}
-                </div>
-              </section>
-            ) : null}
 
             {product ? (
               <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7" id="sec-review">

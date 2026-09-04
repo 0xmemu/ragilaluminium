@@ -167,6 +167,24 @@ class ProductController extends Controller
             // ADR-020: media dipilih/diunggah langsung di form, dilampirkan setelah produk dibuat.
             'media_asset_ids' => ['nullable', 'array', 'max:20'],
             'media_asset_ids.*' => ['integer', Rule::exists('media_assets', 'id')->where('status', 'ready')],
+            // ADR-020: varian & pengiriman bisa dikirim sekaligus pada submit pertama.
+            'variants' => ['nullable', 'array', 'min:1', 'max:50'],
+            'variants.*.variation_1_name' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_1_option' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_2_name' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_2_option' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_3_name' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_3_option' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_4_name' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_4_option' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_5_name' => ['nullable', 'string', 'max:255'],
+            'variants.*.variation_5_option' => ['nullable', 'string', 'max:255'],
+            'variants.*.price' => ['required_with:variants', 'numeric', 'min:0'],
+            'variants.*.stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.width_cm' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.height_cm' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.depth_cm' => ['nullable', 'numeric', 'min:0'],
             'initial_price' => ['nullable', 'required_if:create_initial_variant,true', 'numeric', 'min:0'],
             'randomize_stock' => ['sometimes', 'boolean'],
             'initial_stock' => ['nullable', 'required_if:create_initial_variant,true', 'integer', 'min:0'],
@@ -216,6 +234,40 @@ class ProductController extends Controller
                 ]);
             }
 
+            // ADR-020: varian dari form satu halaman (menggantikan gerbang simpan-dulu).
+            $variantsInput = $request->input('variants', []);
+            if (is_array($variantsInput) && $variantsInput !== []) {
+                foreach ($variantsInput as $row) {
+                    $price = (float) ($row['price'] ?? 0);
+                    if ($price <= 0) {
+                        continue;
+                    }
+                    ProductVariant::create([
+                        'product_id' => $product->id,
+                        'variant_sku' => ShopeeStyleSku::nextVariantSku($product),
+                        'variation_1_name' => $row['variation_1_name'] ?? null,
+                        'variation_1_option' => $row['variation_1_option'] ?? null,
+                        'variation_2_name' => $row['variation_2_name'] ?? null,
+                        'variation_2_option' => $row['variation_2_option'] ?? null,
+                        'variation_3_name' => $row['variation_3_name'] ?? null,
+                        'variation_3_option' => $row['variation_3_option'] ?? null,
+                        'variation_4_name' => $row['variation_4_name'] ?? null,
+                        'variation_4_option' => $row['variation_4_option'] ?? null,
+                        'variation_5_name' => $row['variation_5_name'] ?? null,
+                        'variation_5_option' => $row['variation_5_option'] ?? null,
+                        'price' => $price,
+                        'stock' => max(0, (int) ($row['stock'] ?? 0)),
+                        'weight_kg' => $row['weight_kg'] ?? null,
+                        'width_cm' => $row['width_cm'] ?? null,
+                        'height_cm' => $row['height_cm'] ?? null,
+                        'depth_cm' => $row['depth_cm'] ?? null,
+                        'status' => 'active',
+                        'created_by_user_id' => $request->user()->id,
+                        'updated_by_user_id' => $request->user()->id,
+                    ]);
+                }
+            }
+
             // ADR-020: media dipilih/diunggah dari form, lampirkan sekalian.
             $resolver = app(\App\Services\MediaAssetResolver::class);
             foreach ($request->input('media_asset_ids', []) as $index => $assetId) {
@@ -234,10 +286,10 @@ class ProductController extends Controller
         });
 
         if ($wizard) {
-            return redirect()->route('admin.products.edit', [
-                'product' => $product,
-                'step' => 'variants',
-            ])->with('success', 'Produk disimpan sebagai arsip. Lengkapi checklist sebelum diaktifkan.');
+            // ADR-020: satu halaman penuh; tanpa step variants (media & varian
+            // sudah dikirim bersama). Edit page menampilkan checklist publish.
+            return redirect()->route('admin.products.edit', ['product' => $product])
+                ->with('success', 'Produk draf tersimpan. Lengkapi checklist lalu aktifkan.');
         }
 
         return redirect()->route('admin.products.index')

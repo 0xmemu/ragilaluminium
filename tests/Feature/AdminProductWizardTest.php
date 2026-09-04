@@ -29,10 +29,8 @@ class AdminProductWizardTest extends TestCase
 
         $product = Product::where('name', 'Jendela wizard')->firstOrFail();
 
-        $response->assertRedirect(route('admin.products.edit', [
-            'product' => $product,
-            'step' => 'variants',
-        ]));
+        // ADR-020: satu halaman penuh, redirect tanpa step variants.
+        $response->assertRedirect(route('admin.products.edit', ['product' => $product]));
         $this->assertSame('archived', $product->status);
     }
 
