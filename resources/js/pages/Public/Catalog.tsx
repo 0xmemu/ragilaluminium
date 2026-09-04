@@ -13,10 +13,8 @@ import {
 import { PalingBanyakDipesanSection } from "@/components/public/home-sections"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
-import { FilterSheetContent } from "@/components/public/filter-sidebar"
 import { FlashSaleCarouselSection } from "@/components/public/flash-sale-carousel-section"
 import { Icon } from "@/components/shared/icon"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
@@ -137,24 +135,6 @@ function SearchFallbackEmpty({
   )
 }
 
-function FilterSheetFooter({
-  onReset,
-  onApply,
-}: {
-  onReset: () => void
-  onApply: () => void
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-      <Button variant="secondary" className="min-h-12" onClick={onReset}>
-        Reset
-      </Button>
-      <Button className="min-h-12 font-bold" onClick={onApply}>
-        Terapkan filter
-      </Button>
-    </div>
-  )
-}
 
 function resolveSortValue(sort: string | null | undefined): string {
   return sort && sort !== "" ? sort : "popular"
@@ -301,19 +281,7 @@ export default function Catalog({
   }
 
   const filterSheetContent = (
-    <FilterSheetContent
-      title="Filter"
-      description="Pilih produk yang paling sesuai kebutuhan rumah Anda."
-      footer={
-        <FilterSheetFooter
-          onReset={reset}
-          onApply={() => {
-            setMobileFiltersOpen(false)
-            visit()
-          }}
-        />
-      }
-    >
+    <>
       <CatalogProductListingSidebar
         {...sidebarProps}
         variant="draft"
@@ -322,7 +290,7 @@ export default function Catalog({
           setFilters((current) => ({ ...current, ...next }))
         }
       />
-    </FilterSheetContent>
+    </>
   )
 
   

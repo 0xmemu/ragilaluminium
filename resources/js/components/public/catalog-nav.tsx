@@ -21,7 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetTrigger } from "@/components/ui/sheet"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { SelectOption } from "@/types"
@@ -128,8 +127,8 @@ export function CatalogNav({
       <div className="border-y border-border bg-surface">
         <div className="container-page flex items-center justify-between gap-1 sm:gap-1.5 !px-2.5 md:!px-8 lg:!px-12 py-2">
           {/* Pill 1: Filter - mobile: sheet bottom; desktop: dropdown ringkas */}
-          <Sheet open={sheetOpen} onOpenChange={onSheetOpenChange}>
-            <SheetTrigger asChild>
+          <DropdownMenu open={sheetOpen} onOpenChange={onSheetOpenChange}>
+            <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 className={cn(
@@ -148,9 +147,11 @@ export function CatalogNav({
                   </span>
                 ) : null}
               </button>
-            </SheetTrigger>
-            {filterSheet}
-          </Sheet>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={6} className="w-72 p-3 max-h-[70vh] overflow-y-auto">
+              {filterSheet}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
