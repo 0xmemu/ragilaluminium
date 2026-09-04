@@ -246,6 +246,10 @@ export default function ProductForm({
     }
   }
 
+  // Status produk saat ini: Simpan mempertahankannya (tidak dipaksa arsip).
+  const preserveStatus: "active" | "archived" = (product?.status === "active") ? "active" : "archived"
+  const isActive = product?.status === "active"
+
   function submit(status: "active" | "archived", event: React.FormEvent, addAnother = false) {
     event.preventDefault()
     setSaving(true)
@@ -283,7 +287,18 @@ export default function ProductForm({
       backUrl={routeUrl("admin.products.index")}
       title={editing ? "Edit produk" : "Tambah produk"}
       description={editing ? `Lengkapi ${product?.parent_sku}. Semua tahap di satu halaman.` : "Isi dari atas ke bawah, lalu simpan. Semua tahap di satu halaman."}
-      actions={null}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" form="product-edit-form" variant="secondary" disabled={saving}>
+            {saving ? "Menyimpan..." : (isActive ? "Simpan" : "Simpan draf")}
+          </Button>
+          {publishUrl && !isActive ? (
+            <Button type="button" disabled={publishing} onClick={publish}>
+              {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
+            </Button>
+          ) : null}
+        </div>
+      }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Produk | Admin`} />
 
@@ -291,7 +306,7 @@ export default function ProductForm({
         <FormErrorSummary errors={form.errors} />
         <FormErrorSummary errors={publishForm.errors} />
 
-        <form onSubmit={(event) => submit("archived", event)} className="space-y-6">
+        <form id="product-edit-form" onSubmit={(event) => submit(preserveStatus, event)} className="space-y-6">
           {/* 1. IDENTITAS + TAKSONOMI + DIMENSI J&T */}
           <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -556,22 +571,7 @@ export default function ProductForm({
             )}
           </section>
 
-          {/* 4. SIMPAN / PUBLISH */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
-            <p className="text-xs text-muted-foreground">
-              Produk disimpan sebagai draf. Aktifkan setelah foto, varian + harga, dan data pengiriman lengkap.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {!editing ? (
-                <Button type="button" variant="secondary" disabled={saving} onClick={(event) => submit("archived", event, true)}>
-                  {saving ? "Menyimpan..." : "Simpan & tambah baru"}
-                </Button>
-              ) : null}
-              <Button type="submit" variant="secondary" disabled={saving}>
-                {saving ? "Menyimpan..." : "Simpan draf"}
-              </Button>
-            </div>
-          </div>
+          {/* 4. SIMPAN / PUBLISH: tombol ada di toolbox atas */}
         </form>
 
         {editing ? (
@@ -585,16 +585,11 @@ export default function ProductForm({
               <ReviewRow label="Varian aktif" ready={combos.length === 0 ? true : Boolean((incomingVariants?.length ?? 0) > 0)} />
             </div>
             <div className="mt-8 border-t border-border pt-6">
-              <div className="flex flex-wrap gap-3">
-                <Button type="submit" variant="secondary" disabled={saving}>
-                  {saving ? "Menyimpan..." : "Simpan"}
+              {publishUrl && !isActive ? (
+                <Button type="button" disabled={publishing} onClick={publish}>
+                  {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
                 </Button>
-                {publishUrl ? (
-                  <Button type="button" disabled={publishing} onClick={publish}>
-                    {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
-                  </Button>
-                ) : null}
-              </div>
+              ) : null}
             </div>
           </section>
         ) : null}
