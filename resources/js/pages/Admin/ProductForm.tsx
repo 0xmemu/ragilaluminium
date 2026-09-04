@@ -256,7 +256,7 @@ export default function ProductForm({
                   {options.models.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </Select>
               </Field>
-              <Field id="product-design" label="Sub Model" hint="Pilihan sub model aktif untuk model terpilih. Kosongkan bila tanpa sub model." error={form.errors.design_variant}>
+              <Field id="product-design" label="Sub Model" error={form.errors.design_variant}>
                 <Select value={form.data.design_variant} onChange={(event) => form.setData("design_variant", event.target.value as never)}>
                   <option value="">Tanpa sub model</option>
                   {options.designs
@@ -275,13 +275,13 @@ export default function ProductForm({
                 <Field id="product-weight" label="Berat (kg)" required error={form.errors.weight_kg}>
                   <Input type="number" min="0" step="0.01" value={form.data.weight_kg ?? ""} onChange={(event) => form.setData("weight_kg", event.target.value as never)} />
                 </Field>
-                <Field id="product-width" label="Lebar (cm)" required error={form.errors.width_cm}>
-                  <Input type="number" min="0" step="0.1" value={form.data.width_cm ?? ""} onChange={(event) => form.setData("width_cm", event.target.value as never)} />
-                </Field>
                 <Field id="product-height" label="Tinggi (cm)" required error={form.errors.height_cm}>
                   <Input type="number" min="0" step="0.1" value={form.data.height_cm ?? ""} onChange={(event) => form.setData("height_cm", event.target.value as never)} />
                 </Field>
-                <Field id="product-depth" label="Tebal (cm)" required error={form.errors.depth_cm}>
+                <Field id="product-width" label="Panjang (cm)" required error={form.errors.width_cm}>
+                  <Input type="number" min="0" step="0.1" value={form.data.width_cm ?? ""} onChange={(event) => form.setData("width_cm", event.target.value as never)} />
+                </Field>
+                <Field id="product-depth" label="Lebar (cm)" required error={form.errors.depth_cm}>
                   <Input type="number" min="0" step="0.1" value={form.data.depth_cm ?? ""} onChange={(event) => form.setData("depth_cm", event.target.value as never)} />
                 </Field>
               </div>
