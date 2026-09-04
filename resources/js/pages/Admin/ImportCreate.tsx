@@ -227,6 +227,7 @@ export default function ImportCreate({
                     error={form.errors.file}
                     title="Pilih file katalog"
                     hint="XLS, XLSX, XLSM, atau CSV. Maksimal 50 MB."
+                    maxMb={50}
                   />
                 </td>
               </tr>
