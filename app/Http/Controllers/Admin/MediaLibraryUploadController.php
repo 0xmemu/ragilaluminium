@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\DownloadMediaAsset;
+use App\Jobs\ProcessUploadedMediaAsset;
 use App\Models\MediaAsset;
 use App\Models\MediaFolder;
 use App\Support\MediaNamer;
@@ -68,11 +69,14 @@ class MediaLibraryUploadController extends Controller
             'object_key' => $key,
             'mime_type' => $mime,
             'size_bytes' => $file->getSize(),
-            'status' => 'ready',
+            'status' => 'pending',
             'visibility' => 'visible',
             'folder_id' => $validated['folder_id'] ?? null,
             'created_by_user_id' => $request->user()->id,
         ]);
+
+        // Pipeline WebP: generate derivatives via queue (sama dgn banner/galeri).
+        ProcessUploadedMediaAsset::dispatch($asset->id);
 
         return response()->json([
             'asset' => [
