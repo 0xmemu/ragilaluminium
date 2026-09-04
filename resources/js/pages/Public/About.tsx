@@ -330,31 +330,37 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
             <div className="surface-panel overflow-hidden p-5 sm:p-6">
               <p className="text-sm font-bold tracking-tight text-foreground">Workshop Ragil Aluminium</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
-              <div className="mt-4 overflow-hidden rounded-lg border border-border">
-                <iframe
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(brand.address)}&z=15&output=embed`}
-                  title="Lokasi Workshop Ragil Aluminium"
-                  loading="lazy"
-                  className="h-56 w-full border-0"
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-                {phoneHref ? (
-                  <a href={phoneHref} className="inline-flex items-center gap-1.5 text-sm font-medium text-action hover:underline">
-                    <Icon name="headset" className="size-4" aria-hidden="true" />
-                    Telepon
-                  </a>
+
+              <div className="mt-4 space-y-2 text-sm">
+                {brand.phone ? (
+                  <div className="flex items-center gap-2">
+                    <Icon name="headset" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-muted-foreground">Telepon:</span>
+                    <a href={phoneHref ?? `tel:${brand.phone.replace(/[^\d+]/g, "")}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                      {brand.phone}
+                    </a>
+                  </div>
                 ) : null}
+
                 {brand.email ? (
-                  <a href={`mailto:${brand.email}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-action hover:underline">
-                    <Icon name="message-circle" className="size-4" aria-hidden="true" />
-                    Kirim Email
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <Icon name="envelope" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-muted-foreground">Email:</span>
+                    <a href={`mailto:${brand.email}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                      {brand.email}
+                    </a>
+                  </div>
                 ) : null}
+
+                <div className="flex items-center gap-2">
+                  <Icon name="clock" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-muted-foreground">Jam Buka:</span>
+                  <span className="font-medium text-foreground">
+                    {(brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB").replace(/[–—]/g, "-")}
+                  </span>
+                </div>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                {brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB"}
-              </p>
+
               <div className="mt-4">
                 <Button asChild>
                   <a href={whatsappUrl ?? routeUrl("contact")} target="_blank" rel="noreferrer">
@@ -362,6 +368,16 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
                     {whatsappLabel}
                   </a>
                 </Button>
+              </div>
+
+              {/* Maps di urutan paling akhir card (di bawah tombol chat whatsapp) */}
+              <div className="mt-4 overflow-hidden rounded-lg border border-border">
+                <iframe
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(brand.address)}&z=15&output=embed`}
+                  title="Lokasi Workshop Ragil Aluminium"
+                  loading="lazy"
+                  className="h-56 w-full border-0"
+                />
               </div>
             </div>
           </div>
