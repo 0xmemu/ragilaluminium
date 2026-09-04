@@ -37,9 +37,12 @@ class StockPriceDataSheet implements FromArray, WithTitle, WithEvents
 
     public function array(): array
     {
-        return [[
-            'parent_sku', 'variant_sku', 'price', 'stock',
-        ]];
+        return [
+            ['parent_sku', 'variant_sku', 'price', 'stock'],
+            ['CONTOH: hapus 3 baris contoh ini sebelum import'],
+            ['RA2J8RZXC2JR', '', '11000000', '5'],
+            ['RADTEADUQ7DD', '', '5700000', 'random 8000-9000'],
+        ];
     }
 
     public function title(): string
@@ -163,9 +166,9 @@ class StockPriceGuideSheet implements FromArray, WithTitle, WithEvents
             [],
             ['KOLOM', 'WAJIB/OPTIONAL', 'KETERANGAN'],
             ['parent_sku', 'WAJIB BILA TANPA variant_sku', 'Kode produk utama. Harus sudah ada; tidak dikenal = baris gagal.'],
-            ['variant_sku', 'OPTIONAL', 'Kode varian. Kosongkan untuk menuju varian default produk.'],
+            ['variant_sku', 'OPTIONAL', 'Kode varian spesifik (mis. warna tertentu). KOSONGKAN jika produk hanya punya satu varian, atau jika ingin mengubah varian utama (is_default) produk. Kosong BUKAN berarti dilewati: baris tetap diproses ke varian utama itu.'],
             ['price', 'OPTIONAL', 'Harga satuan baru (Rupiah, angka, tanpa titik ribuan). Sel kosong = harga tidak diubah.'],
-            ['stock', 'OPTIONAL', 'Stok baru (bilangan bulat >= 0). Sel kosong = stok tidak diubah. Bisa juga \"random 8000-9000\" untuk stok acak pada rentang itu (inklusi).'],
+            ['stock', 'OPTIONAL', 'Stok baru (bilangan bulat >= 0). Sel kosong = stok TIDAK diubah. Bisa juga tulis \"random 8000-9000\" = sistem memilih angka acak 8000 sampai 9000 (untuk data demo).'],
             ['CATATAN', '', 'Kolom lain di file diabaikan. SKU tidak dikenal ditandai gagal, tidak membuat produk baru. Salin parent_sku/variant_sku asli dari menu Produk (atau export Produk), jangan ketik pola dari ingatan.'],
         ];
     }
