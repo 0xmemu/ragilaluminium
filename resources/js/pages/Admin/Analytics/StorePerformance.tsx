@@ -19,6 +19,7 @@ interface Kpi {
   value: number
   previous: number
   change_percent: number | null
+  sparkline?: number[]
   format: "currency" | "number" | "percent" | "hours" | "days"
   detail?: string | null
 }
@@ -186,6 +187,35 @@ function formatDuration(value: number, isDays = false): string {
 
 
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
+
+/** Sparkline mini gaya Dashboard: area primary/10 + garis primary, tanpa sumbu. */
+function Sparkline({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1)
+  const min = Math.min(...values, 0)
+  const range = Math.max(max - min, 1)
+  const width = 160
+  const height = 48
+  const points = values
+    .map((value, index) => {
+      const x = values.length <= 1 ? 0 : (index / (values.length - 1)) * width
+      const y = height - ((value - min) / range) * (height - 6) - 3
+      return `${x},${y}`
+    })
+    .join(" ")
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="mt-2 h-12 w-40 text-primary"
+      aria-hidden="true"
+      role="img"
+    >
+      <polygon points={`0,${height} ${points} ${width},${height}`} className="fill-primary/10" stroke="none" />
+      <polyline fill="none" stroke="currentColor" strokeWidth="2" points={points} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 type ProductBreakdown = {
   product_id: number
   parent_sku: string
@@ -349,9 +379,28 @@ export default function StorePerformance({
   const [granularity, setGranularity] = React.useState(filters.granularity)
 
   // P1: akses KPI lintas section utk Ringkasan Utama & Perlu Perhatian.
+
+  // Sparkline per KPI dari chart series (satu sumber: report.charts)
+  const sparklineBy = React.useMemo(() => {
+    const byKey: Record<string, number[]> = {}
+    for (const chart of report.charts ?? []) {
+      byKey[chart.key] = (chart.series ?? []).map((point) => point.value)
+    }
+    return {
+      omzet: byKey["revenue"] ?? [],
+      net_revenue: byKey["revenue"] ?? [],
+      payments_received: byKey["revenue"] ?? [],
+      orders: byKey["units"] ?? [],
+      units: byKey["units"] ?? [],
+      conversion: byKey["conversion_rate"] ?? [],
+    } as Record<string, number[]>
+  }, [report])
+
   const kpiMap = React.useMemo(() => {
-    const map: Record<string, (typeof report)["sections"][number]["kpis"][number]> = {}
-    for (const sec of report.sections) for (const k of sec.kpis) map[k.key] = k
+    const map: Record<string, (typeof report)["sections"][number]["kpis"][number] & { sparkline?: number[] }> = {}
+    for (const sec of report.sections) for (const k of sec.kpis) {
+      map[k.key] = { ...k, sparkline: sparklineBy[k.key] ?? [] }
+    }
     return map
   }, [report])
 
@@ -616,6 +665,12 @@ export default function StorePerformance({
               <p className={cn("mt-1 font-bold tabular-nums tracking-tight", item.primary ? "text-2xl" : "text-xl")}>
                 {item.fmt === "currency" ? formatCurrency(kpi.value) : item.fmt === "percent" ? formatNumber(kpi.value) + "%" : formatNumber(kpi.value)}
               </p>
+              {kpi.sparkline && kpi.sparkline.length > 1 ? (
+                <Sparkline values={kpi.sparkline} />
+              ) : null}
+              {kpi.sparkline && kpi.sparkline.length > 1 ? (
+                <Sparkline values={kpi.sparkline} />
+              ) : null}
               <p
                 className={cn(
                   "mt-1 text-xs font-semibold",
