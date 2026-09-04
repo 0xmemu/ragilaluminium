@@ -93,7 +93,7 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
   return (
     <nav
       className={cn(
-        "w-full border-t border-border pt-5 pb-2 sm:pt-6",
+        "w-full border-t border-border py-2.5",
         className,
       )}
       aria-label="Paginasi"

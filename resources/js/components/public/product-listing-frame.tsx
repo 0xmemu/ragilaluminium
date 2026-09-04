@@ -28,7 +28,7 @@ export function ProductListingFrame({
       <section className="container-page !px-2.5 py-2.5 md:!px-8 lg:!px-12">
         {children}
         {pagination ? (
-          <div className="mt-6 pb-6 sm:mt-8 sm:pb-8">
+          <div className="mt-2.5 pb-2.5">
             {pagination}
           </div>
         ) : null}
