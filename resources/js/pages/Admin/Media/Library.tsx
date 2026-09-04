@@ -743,8 +743,12 @@ export default function MediaLibrary({
                       </div>
                     )}
                     <span
-                      className="absolute bottom-1.5 left-1.5 size-2.5 rounded-full ring-2 ring-surface"
-                      style={{ backgroundColor: asset.status === "ready" ? "#2b734e" : asset.status === "failed" ? "#c20000" : asset.status === "archived" ? "#666666" : "#8d570c" }}
+                      className={`absolute bottom-1.5 left-1.5 size-3 rounded-full ${
+                        asset.status === "ready" ? "bg-success"
+                          : asset.status === "failed" ? "bg-destructive"
+                          : asset.status === "archived" ? "bg-muted-foreground"
+                          : "bg-warning"
+                      }`}
                       title={meta.label}
                     />
                     {asset.status === "ready" ? (
