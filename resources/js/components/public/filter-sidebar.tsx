@@ -65,14 +65,14 @@ export function FilterSheetContent({
         <span className="h-1 w-10 rounded-full bg-border" />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5 pt-3">
-        <SheetTitle className="font-display text-lg font-bold tracking-tight">{title}</SheetTitle>
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2.5">
+        <SheetTitle className="text-sm font-bold tracking-tight">{title}</SheetTitle>
         {description ? (
-          <SheetDescription className="mt-1.5 text-sm text-muted-foreground">
+          <SheetDescription className="mt-1 text-xs text-muted-foreground">
             {description}
           </SheetDescription>
         ) : null}
-        <div className="mt-4">{children}</div>
+        <div className="mt-3 space-y-3">{children}</div>
       </div>
 
       {footer ? (
@@ -127,22 +127,14 @@ export function FilterSidebarSection({
         aria-controls={panelId}
       >
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className="text-sm font-bold capitalize text-foreground">{title}</span>
+          <span className="text-[13px] font-semibold capitalize text-foreground">{title}</span>
           {subtitle ? (
-            <span className="truncate text-sm text-muted-foreground">({subtitle})</span>
+            <span className="truncate text-xs text-muted-foreground">({subtitle})</span>
           ) : null}
         </span>
-        <Icon
-          name="caret-down"
-          className={cn(
-            "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-[260ms] motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
       </button>
       {open ? (
-        <div id={panelId} className="mt-3">
+        <div id={panelId} className="mt-2">
           {children}
         </div>
       ) : null}
