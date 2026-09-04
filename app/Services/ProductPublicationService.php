@@ -36,12 +36,11 @@ final class ProductPublicationService
                     && $activeVariantIds->contains($media->product_variant_id)
             );
         $hasExplanation = trim((string) $product->description) !== '';
-        $hasShippingData = $hasActiveVariants && $activeVariants->every(
-            fn ($variant): bool => (float) $variant->weight_kg > 0
-                && (float) $variant->width_cm > 0
-                && (float) $variant->height_cm > 0
-                && (float) $variant->depth_cm > 0
-        );
+        // ADR-021: berat & dimensi milik produk, bukan varian.
+        $hasShippingData = (float) $product->weight_kg > 0
+            && (float) $product->width_cm > 0
+            && (float) $product->height_cm > 0
+            && (float) $product->depth_cm > 0;
 
         return [
             'active_variants' => $hasActiveVariants,

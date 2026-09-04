@@ -216,7 +216,7 @@ protected function category(?string $category, Request $request, string $mode = 
                 // (belum ada pembelian → produk stok tertinggi tampil di depan).
                 fn ($q) => $q->orderByRaw(Product::popularityScoreSql().' DESC')->orderByDesc('stock_sort')->orderByDesc('id')
             )
-             ->paginate(15)
+             ->paginate((int) config('storefront.catalog_page_size'))
             ->withQueryString();
 
         // P2-2.1: hasil katalog per kombinasi filter di-cache 5 menit;
@@ -385,13 +385,12 @@ protected function category(?string $category, Request $request, string $mode = 
 
             $nearby = Product::visible()
                 ->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
-                ->whereHas('activeVariants', function ($q) use ($dims) {
-                    $q->where(function ($inner) use ($dims) {
-                        foreach ($dims as $dimension) {
-                            $inner->orWhereBetween('height_cm', [$dimension - 15, $dimension + 15])
-                                ->orWhereBetween('width_cm', [$dimension - 15, $dimension + 15]);
-                        }
-                    });
+                // ADR-021: dimensi milik produk.
+                ->where(function ($q) use ($dims) {
+                    foreach ($dims as $dimension) {
+                        $q->orWhereBetween('height_cm', [$dimension - 15, $dimension + 15])
+                            ->orWhereBetween('width_cm', [$dimension - 15, $dimension + 15]);
+                    }
                 })
                 ->with(['mainImage', 'activeVariants', 'attributes'])
                 ->withPopularityScore()
@@ -625,12 +624,10 @@ protected function category(?string $category, Request $request, string $mode = 
                 if (! $product->relationLoaded('activeVariants')) {
                     continue;
                 }
-                foreach ($product->activeVariants as $variant) {
-                    $height = (float) ($variant->height_cm ?? 0);
-                    $width = (float) ($variant->width_cm ?? 0);
-                    if ($height <= 0 || $width <= 0) {
-                        continue;
-                    }
+                // ADR-021: dimensi milik produk.
+                $height = (float) ($product->height_cm ?? 0);
+                $width = (float) ($product->width_cm ?? 0);
+                if ($height > 0 && $width > 0) {
                     $uniqueSizes[round($height, 2).'x'.round($width, 2)] = true;
                 }
             }

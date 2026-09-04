@@ -206,11 +206,30 @@ class CatalogSearch
                         });
                     }
 
+                    // ADR-021: dimensi kini di produk.
+                    $variant->orWhereHas('product', function ($product) use ($dimensionPairs) {
+                        $product->where(function ($productDim) use ($dimensionPairs) {
+                            foreach ($dimensionPairs as [$height, $width]) {
+                                $productDim->orWhere(function ($exact) use ($height, $width) {
+                                    $exact->where('height_cm', $height)->where('width_cm', $width);
+                                });
+                            }
+                        });
+                    });
+
                     // Range dimensi: product_variants.height_cm/width_cm dalam
                     // rentang dengan orientasi dipertahankan (height pertama).
                     if ($dimensionRange !== null) {
                         $variant->orWhere(function ($range) use ($dimensionRange) {
                             $range->whereBetween('height_cm', [$dimensionRange['hMin'], $dimensionRange['hMax']])
+                                ->whereBetween('width_cm', [$dimensionRange['wMin'], $dimensionRange['wMax']]);
+                        });
+                    }
+
+                    // ADR-021: range dimensi juga cocok di level produk.
+                    if ($dimensionRange !== null) {
+                        $variant->orWhereHas('product', function ($product) use ($dimensionRange) {
+                            $product->whereBetween('height_cm', [$dimensionRange['hMin'], $dimensionRange['hMax']])
                                 ->whereBetween('width_cm', [$dimensionRange['wMin'], $dimensionRange['wMax']]);
                         });
                     }
@@ -655,25 +674,24 @@ class CatalogSearch
             return [];
         }
 
-        $rows = ProductVariant::query()
+        // ADR-021: dimensi milik produk; nama produk jadi label ukuran terdekat.
+        $rows = Product::query()
             ->where('status', 'active')
             ->whereNotNull('height_cm')
             ->whereNotNull('width_cm')
-            ->whereHas('product', function ($p) {
-                $p->where('status', 'active');
-            })
-            ->get(['variant_sku', 'height_cm', 'width_cm', 'price', 'product_id']);
+            ->withMin('activeVariants as min_price', 'price')
+            ->get(['id', 'name', 'height_cm', 'width_cm']);
 
         return $rows
-            ->map(function ($v) use ($height, $width) {
-                $h = (float) $v->height_cm;
-                $w = (float) $v->width_cm;
+            ->map(function ($product) use ($height, $width) {
+                $h = (float) $product->height_cm;
+                $w = (float) $product->width_cm;
 
                 return [
-                    'variant_sku' => (string) $v->variant_sku,
+                    'variant_sku' => (string) $product->name,
                     'height_cm' => $h,
                     'width_cm' => $w,
-                    'price' => (float) $v->price,
+                    'price' => (float) ($product->min_price ?? 0),
                     'distance' => abs($h - $height) + abs($w - $width),
                 ];
             })
