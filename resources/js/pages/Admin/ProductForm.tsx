@@ -188,14 +188,21 @@ export default function ProductForm({
   function submit(status: "active" | "archived", event: React.FormEvent, addAnother = false) {
     event.preventDefault()
     setSaving(true)
-    router.post(submitUrl, buildPayload(status), {
+    const payload = buildPayload(status)
+    // ADR-021: create = POST store; edit = PUT update (405 kalau POST).
+    const options = {
       onSuccess: () => {
         if (addAnother) {
           router.visit(routeUrl("admin.products.create"))
         }
       },
       onFinish: () => setSaving(false),
-    })
+    }
+    if (editing) {
+      router.put(submitUrl, payload, options)
+    } else {
+      router.post(submitUrl, payload, options)
+    }
   }
 
   function publish(event: React.FormEvent) {
