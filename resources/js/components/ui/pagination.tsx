@@ -70,14 +70,14 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
     const content = (
       <>
         <span className="sr-only">{label}</span>
-        <Icon name={kind === "previous" ? "arrow-left" : "arrow-right"} className="h-3.5 w-3.5" aria-hidden="true" />
+        <Icon name={kind === "previous" ? "arrow-left" : "arrow-right"} className="size-4" aria-hidden="true" />
       </>
     )
     const classes = cn(
-      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs transition",
+      "inline-flex size-9 shrink-0 items-center justify-center rounded-full border text-xs transition",
       url
-        ? "border-border bg-surface text-foreground hover:border-foreground/30 hover:bg-accent"
-        : "cursor-not-allowed border-border bg-surface text-muted-foreground opacity-40",
+        ? "border-border bg-surface text-foreground hover:border-foreground/30 hover:bg-muted"
+        : "cursor-not-allowed border-border/50 bg-surface text-muted-foreground/40 opacity-50",
     )
     return url ? (
       <Link href={url} preserveScroll className={classes} aria-label={label}>
@@ -91,17 +91,21 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
   }
 
   return (
-    <nav className={cn("mt-5 flex items-center justify-center gap-2 border-t border-border", className)} aria-label="Paginasi">
-      <div className="pag-viewport flex items-center justify-center gap-2">
+    <nav
+      className={cn(
+        "w-full border-t border-border pt-5 pb-2 sm:pt-6",
+        className,
+      )}
+      aria-label="Paginasi"
+    >
+      <div className="mx-auto flex w-full max-w-fit items-center justify-center gap-2">
         {navButton("previous", prevUrl?.url)}
 
-        {/* Tablet & desktop: daftar halaman adaptif dengan ellipsis.
-            Breakpoint konsisten (sm=640px) agar devtools mobile & HP asli
-            menampilkan varian yang sama. */}
-        <div className="hidden items-center justify-center gap-2 sm:flex">
+        {/* Tablet & desktop: daftar halaman adaptif dengan ellipsis. */}
+        <div className="hidden items-center justify-center gap-1.5 sm:flex">
           {pages.map((page, index) =>
             page === "gap" ? (
-              <span key={`gap-${index}`} className="inline-flex h-9 min-w-9 items-center justify-center px-1 text-xs font-medium text-muted-foreground">
+              <span key={`gap-${index}`} className="inline-flex size-9 items-center justify-center text-xs font-medium text-muted-foreground">
                 …
               </span>
             ) : (
@@ -109,10 +113,10 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
                 const active = page === currentPage
                 const href = pagination.links.find((l) => l.label === String(page))?.url
                 const classes = cn(
-                  "inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-2 text-xs tabular-nums transition",
+                  "inline-flex size-9 min-w-9 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition",
                   active
-                    ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
-                    : "border-border bg-surface font-medium text-foreground hover:border-foreground/30 hover:bg-accent",
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-surface text-foreground hover:border-foreground/30 hover:bg-muted",
                 )
                 return href && !active ? (
                   <Link key={page} href={href} preserveScroll className={classes} aria-label={`Halaman ${page}`}>
@@ -128,10 +132,10 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
           )}
         </div>
 
-        {/* Layar sangat sempit (<420px): hanya halaman aktif + total */}
-        <span className="inline-flex h-9 items-center rounded-full border border-border bg-surface px-3 text-xs font-medium tabular-nums text-foreground sm:hidden">
+        {/* Mobile (<640px): indikator halaman aktif + total */}
+        <div className="flex h-9 items-center justify-center rounded-full border border-border bg-surface px-3.5 text-xs font-semibold tabular-nums text-foreground sm:hidden">
           {currentPage} / {lastPage}
-        </span>
+        </div>
 
         {navButton("next", nextUrl?.url)}
       </div>

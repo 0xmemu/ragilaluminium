@@ -27,7 +27,11 @@ export function ProductListingFrame({
       {beforeChildren}
       <section className="container-page !px-2.5 py-2.5 md:!px-8 lg:!px-12">
         {children}
-        {pagination ? <div className="mt-4 pb-5">{pagination}</div> : null}
+        {pagination ? (
+          <div className="mt-6 pb-6 sm:mt-8 sm:pb-8">
+            {pagination}
+          </div>
+        ) : null}
       </section>
     </>
   )
