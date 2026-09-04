@@ -555,7 +555,7 @@ class DashboardController extends Controller
                 ],
                 [
                     'label' => 'Mulai Import',
-                    'description' => 'Upload katalog Shopee atau internal',
+                    'description' => 'Upload katalog internal (XLSX)',
                     'href' => route('admin.imports.create'),
                     'icon' => 'upload',
                 ],
