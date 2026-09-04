@@ -156,8 +156,17 @@ class PromotionController extends Controller
 
     public function impact(Request $request, Promotion $promotion): JsonResponse
     {
+        // Target otoritatif = items tersimpan. FE tidak mengirim targets utk
+        // kampanye existing (requestTargets() mengembalikan [] bila tak ada
+        // input) - mengirim [] eksplisit membuat validate gagal "Minimal satu
+        // target" padahal kampanye valid (bug tombol Aktifkan 2026-09-04).
+        $targets = $this->requestTargets($request);
+        if ($targets === []) {
+            $targets = $promotion->items->toArray();
+        }
+
         try {
-            $this->campaigns->validate($promotion, $this->requestTargets($request), $promotion->id);
+            $this->campaigns->validate($promotion, $targets, $promotion->id);
         } catch (Throwable $e) {
             $errors = method_exists($e, 'errors') ? $e->errors() : ['Kampanye tidak valid.'];
             $errors = is_array($errors) ? array_values($errors) : [$errors];
@@ -169,7 +178,7 @@ class PromotionController extends Controller
 
         return response()->json([
             'ok' => true,
-            ...$this->campaigns->affectedCounts($this->requestTargets($request)),
+            ...$this->campaigns->affectedCounts($targets),
         ]);
     }
 

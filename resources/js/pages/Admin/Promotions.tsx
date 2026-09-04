@@ -67,10 +67,11 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
   async function fetchImpact() {
     setImpact(null)
     try {
+      // Tanpa targets: backend memakai items tersimpan sebagai sumber otoritatif.
       const response = await fetch(row.impact_url, {
         method: "POST",
         headers: { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" },
-        body: JSON.stringify({ targets: [] }),
+        body: JSON.stringify({}),
       })
       const data = (await response.json()) as { ok: boolean; products?: number; variants?: number; errors?: string[] }
       if (!response.ok || !data.ok) {
@@ -86,7 +87,7 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
   return (
     <ConfirmAction
       trigger={
-        <button type="button" className={rowActionTextClass} disabled={busy || Boolean(impact?.error)} onClick={fetchImpact}>
+        <button type="button" className={rowActionTextClass} disabled={busy} onClick={fetchImpact}>
           Aktifkan
         </button>
       }
@@ -102,6 +103,9 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
       variant="primary"
       processing={busy}
       onConfirm={() => {
+        // Kampanye gagal validasi -> jangan lanjut aktivasi (di backend pun
+        // activate() memvalidasi ulang; guard ini hanya mencegah klik percuma).
+        if (impact?.error) return
         setBusy(true)
         router.post(row.activate_url, {}, { preserveScroll: true, onFinish: () => setBusy(false) })
       }}
