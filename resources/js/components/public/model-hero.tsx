@@ -154,7 +154,7 @@ export function ModelHero({
         </div>
 
         {/* Kanan: judul + deskripsi + statistik (desktop) */}
-        <div className="min-w-0 lg:pt-3">
+        <div className="min-w-0 px-2.5 sm:px-4 lg:px-0 lg:pt-3">
           <h1 className="hidden text-xl font-bold leading-tight tracking-tight text-foreground lg:block">
             {title}
           </h1>
@@ -176,7 +176,7 @@ export function ModelHero({
             </p>
           ) : null}
 
-          <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3 lg:mt-6">
             {stats.map((stat) => (
               <div
                 key={stat.label}
