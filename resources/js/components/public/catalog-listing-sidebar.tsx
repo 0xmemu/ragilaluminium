@@ -242,8 +242,6 @@ export function CatalogProductListingSidebar({
 
   return (
     <FilterSidebar className={className}>
-      <AppliedFiltersCard chips={chips} onRemove={removeChip} onClearAll={onClearAll} />
-
       {categoryLinks.length > 0 ? (
         <FilterSidebarSection title="Kategori">
           <CategoryFilterOptions
@@ -283,7 +281,11 @@ export function CatalogProductListingSidebar({
           <Button type="button" variant="secondary" size="sm" className="mt-2 h-8 !min-h-8 w-full rounded-md text-xs" onClick={onApplyPrice}>
             Terapkan Harga
           </Button>
-        ) : null}
+        ) : (
+          <Button type="button" className="mt-3 h-9 w-full rounded-md text-xs font-semibold" onClick={() => onApplyPrice?.()}>
+            Terapkan Filter
+          </Button>
+        )}
       </FilterSidebarSection>
 
     </FilterSidebar>
