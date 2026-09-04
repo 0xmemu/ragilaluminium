@@ -18,10 +18,12 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  * zebra, freeze A2, autofilter), angka POLOS tanpa "Rp" (nilai sel tetap
  * numerik), plus sheet Panduan. Sheet:
  *   1. Ringkasan        - Ringkasan Keuangan + KPI Utama (1 baris per metrik)
- *   2. Produk Terlaris  - 1 baris per produk (parent SKU)
- *   3. Pelanggan Terbaik- 1 baris per pelanggan
- *   4. Biaya Retur      - 1 baris per kasus retur selesai (ongkir ditanggung toko)
- *   5. Panduan          - aturan baca, vocabulary, format angka
+ *   2. Income Detail    - 1 baris per pesanan, kolom metrik (gaya laporan income marketplace)
+ *   3. Item Terjual     - 1 baris per item pesanan (SKU, qty, harga)
+ *   4. Produk Terlaris  - 1 baris per produk (parent SKU)
+ *   5. Pelanggan Terbaik- 1 baris per pelanggan
+ *   6. Biaya Retur      - 1 baris per kasus retur selesai (ongkir ditanggung toko)
+ *   7. Panduan          - aturan baca, vocabulary, format angka
  */
 class StorePerformanceExport implements WithMultipleSheets
 {
@@ -38,6 +40,8 @@ class StorePerformanceExport implements WithMultipleSheets
     {
         return [
             new StorePerformanceSummarySheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceIncomeDetailSheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceSoldItemsSheet($this->payload, $this->sheetSuffix),
             new StorePerformanceTopProductsSheet($this->payload, $this->sheetSuffix),
             new StorePerformanceCustomersSheet($this->payload, $this->sheetSuffix),
             new StorePerformanceReturnCostSheet($this->payload, $this->sheetSuffix),
@@ -163,7 +167,144 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
     }
 }
 
-// ------ 2. PRODUK TERLARIS ------
+// ------ 2. INCOME DETAIL (1 baris = 1 pesanan, kolom metrik di atas) ------
+
+class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
+{
+    protected function configure(): void
+    {
+        $this->sheetTitle = 'Income Detail';
+        $this->columnWidths = [
+            'A' => 16, 'B' => 17, 'C' => 17, 'D' => 12, 'E' => 14,
+            'F' => 15, 'G' => 13, 'H' => 13, 'I' => 13, 'J' => 13,
+            'K' => 13, 'L' => 13, 'M' => 15, 'N' => 13, 'O' => 14,
+            'P' => 15, 'Q' => 15, 'R' => 14,
+        ];
+    }
+
+    protected function buildRows(): array
+    {
+        $guard = static fn ($value) => ExportSafety::cell($value);
+        $rows = [];
+        $r = 1;
+
+        // Rekap singkat di atas (gaya sheet "Laporan" pada contoh income marketplace),
+        // dua kolom: label + nilai. Baris detail mulai setelah blok rekap.
+        $fin = $this->payload['financial'] ?? [];
+        $recap = [
+            ['Periode', ($this->payload['range']['from_date'] ?? '-').' s.d. '.($this->payload['range']['to_date'] ?? '-')],
+            ['Penjualan Gross', (float) ($fin['gross_revenue'] ?? 0)],
+            ['Refund Retur', (float) ($fin['refund_adjustments'] ?? 0)],
+            ['Penjualan Bersih', (float) ($fin['net_revenue'] ?? 0)],
+            ['Pembayaran Diterima', (float) ($fin['payments_received'] ?? 0)],
+            ['COD Dibayar', (float) ($fin['cod_paid'] ?? 0)],
+        ];
+        foreach ($recap as [$label, $value]) {
+            $rows[] = [$label, $value];
+            if (is_float($value) || is_int($value)) {
+                $this->registerNumber($r, 2, '#,##0');
+            }
+            $r++;
+        }
+        $rows[] = []; // pemisah
+        $r++;
+
+        // Header tabel detail (metrik = kolom, data = baris)
+        $rows[] = [
+            'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Dibayar', 'Metode',
+            'Status Pesanan', 'Status Pembayaran',
+            'Subtotal Sebelum Diskon', 'Diskon Produk', 'Voucher',
+            'Ongkir Kotor', 'Subsidi Ongkir', 'Ongkir Dibayar',
+            'Biaya COD', 'Asuransi', 'Total Dibayar Pembeli',
+            'Uang Masuk', 'Sisa Belum Cair', 'Jumlah Item',
+        ];
+        $r++;
+
+        foreach ($this->payload['income_detail'] ?? [] as $row) {
+            $paidAt = $row['paid_at'] ?? null;
+            $out = [
+                $guard($row['order_number'] ?? '-'),
+                $guard($this->formatWib($row['created_at'] ?? null, 'j M Y H:i')),
+                $guard($paidAt ? $this->formatWib($paidAt, 'j M Y H:i') : '-'),
+                $guard($row['payment_method'] ?? '-'),
+                $guard($row['order_status'] ?? '-'),
+                $guard($row['payment_status'] ?? '-'),
+                $guard($row['subtotal_before_discount'] ?? 0),
+                $guard($row['discount'] ?? 0),
+                $guard($row['voucher_discount'] ?? 0),
+                $guard($row['shipping_gross'] ?? 0),
+                $guard($row['shipping_subsidy'] ?? 0),
+                $guard($row['shipping_net'] ?? 0),
+                $guard($row['cod_fee'] ?? 0),
+                $guard($row['insurance'] ?? 0),
+                $guard($row['total_paid_by_customer'] ?? 0),
+                $guard($row['paid_amount'] ?? 0),
+                $guard($row['outstanding'] ?? 0),
+                $guard($row['items_count'] ?? 0),
+            ];
+            $rows[] = $out;
+            for ($c = 7; $c <= 18; $c++) {
+                $this->registerNumber($r, $c, '#,##0');
+            }
+            $this->trackZeroCells($out, $r);
+            $r++;
+        }
+
+        return $rows;
+    }
+}
+
+// ------ 3. ITEM TERJUAL (1 baris = 1 item pesanan) ------
+
+class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
+{
+    protected function configure(): void
+    {
+        $this->sheetTitle = 'Item Terjual';
+        $this->columnWidths = [
+            'A' => 16, 'B' => 17, 'C' => 14, 'D' => 34, 'E' => 18,
+            'F' => 16, 'G' => 12, 'H' => 14, 'I' => 14,
+        ];
+    }
+
+    protected function buildRows(): array
+    {
+        $guard = static fn ($value) => ExportSafety::cell($value);
+        $rows = [];
+        $r = 1;
+
+        $rows[] = [
+            'Nomor Pesanan', 'Tanggal Pesanan', 'Parent SKU', 'Nama Produk',
+            'Variasi', 'Harga Satuan', 'Qty', 'Subtotal Baris', 'Diskon Baris',
+        ];
+        $r++;
+
+        foreach ($this->payload['sold_items'] ?? [] as $row) {
+            $out = [
+                $guard($row['order_number'] ?? '-'),
+                $guard($this->formatWib($row['created_at'] ?? null, 'j M Y H:i')),
+                $guard($row['parent_sku'] ?? '-'),
+                $guard($row['name'] ?? '-'),
+                $guard($row['variation'] ?? '-'),
+                $guard($row['unit_price'] ?? 0),
+                $guard($row['quantity'] ?? 0),
+                $guard($row['line_total'] ?? 0),
+                $guard($row['line_discount'] ?? 0),
+            ];
+            $rows[] = $out;
+            $this->registerNumber($r, 6, '#,##0');
+            $this->registerNumber($r, 7, '#,##0');
+            $this->registerNumber($r, 8, '#,##0');
+            $this->registerNumber($r, 9, '#,##0');
+            $this->trackZeroCells($out, $r);
+            $r++;
+        }
+
+        return $rows;
+    }
+}
+
+// ------ 4. PRODUK TERLARIS ------
 
 class StorePerformanceTopProductsSheet extends StorePerformanceTableSheet
 {
@@ -202,7 +343,7 @@ class StorePerformanceTopProductsSheet extends StorePerformanceTableSheet
     }
 }
 
-// ------ 3. PELANGGAN TERBAIK ------
+// ------ 5. PELANGGAN TERBAIK ------
 
 class StorePerformanceCustomersSheet extends StorePerformanceTableSheet
 {
@@ -301,7 +442,7 @@ class StorePerformanceReturnCostSheet extends StorePerformanceTableSheet
     }
 }
 
-// ------ 5. PANDUAN ------
+// ------ 7. PANDUAN ------
 
 class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\Excel\Concerns\WithEvents
 {

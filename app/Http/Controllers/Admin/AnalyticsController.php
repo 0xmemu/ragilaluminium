@@ -125,6 +125,11 @@ class AnalyticsController extends Controller
             granularity: $exportGranularity,
         );
 
+        // Sheet Income Detail + Item Terjual: data baris per pesanan/item pada rentang
+        // yang SAMA dengan payload performa (range.from/to), sesuai kontrak export.
+        $payload['income_detail'] = \App\Support\IncomeDetailQuery::orders($payload['range']['from_date_iso'], $payload['range']['to_date_iso']);
+        $payload['sold_items'] = \App\Support\IncomeDetailQuery::items($payload['range']['from_date_iso'], $payload['range']['to_date_iso']);
+
         ExportSafety::assertPerformancePayloadWithinLimit($payload);
 
         // Span > 31 hari: pecah per bulan kalender -> satu file, set sheet
