@@ -470,7 +470,7 @@ export default function Catalog({
       beforeChildren={fromTopSold && flashCarouselProducts.length > 0 ? (
         <FlashSaleCarouselSection products={flashCarouselProducts} />
       ) : null}
-      pagination={products.length ? <Pagination pagination={pagination} className="mt-0" /> : null}
+      pagination={products.length ? <Pagination pagination={pagination} /> : null}
     >
       {productGallery}
     </ProductListingFrame>
