@@ -83,11 +83,10 @@ class StockPriceExampleSheet implements FromArray, WithTitle, WithEvents
             ['Isi data harga/stok baru di sheet Data. Contoh di bawah hanya ilustrasi, tidak diproses.'],
             [],
             ['parent_sku', 'variant_sku', 'price', 'stock'],
-            ['RGL-JNG-JKT-1', 'RGL-JNG-JKT-1-H', '11000000', '5'],
-            ['RGL-PNT-SLD-1', 'RGL-PNT-SLD-1-P', '5700000', '4'],
-            ['RGL-PNT-SLD-2', '', '6200000', '8'],
+            ['RA2J8RZXC2JR', '', '11000000', '5'],
+            ['RADTEADUQ7DD', '', '5700000', '4'],
             [],
-            ['^ Contoh format. Hapus baris ini sebelum mengisi data asli.'],
+            ['^ Contoh format (SKU nyata milik sistem). parent_sku WAJIB; variant_sku boleh kosong (menuju varian default). SKU asli tiap produk ada di menu Produk.'],
         ];
     }
 
@@ -167,7 +166,7 @@ class StockPriceGuideSheet implements FromArray, WithTitle, WithEvents
             ['variant_sku', 'OPTIONAL', 'Kode varian. Kosongkan untuk menuju varian default produk.'],
             ['price', 'OPTIONAL', 'Harga satuan baru (Rupiah, angka, tanpa titik ribuan). Sel kosong = harga tidak diubah.'],
             ['stock', 'OPTIONAL', 'Stok baru (bilangan bulat >= 0). Sel kosong = stok tidak diubah. Bisa juga \"random 8000-9000\" untuk stok acak pada rentang itu (inklusi).'],
-            ['CATATAN', '', 'Kolom lain di file diabaikan. SKU tidak dikenal ditandai gagal, tidak membuat produk baru.'],
+            ['CATATAN', '', 'Kolom lain di file diabaikan. SKU tidak dikenal ditandai gagal, tidak membuat produk baru. Salin parent_sku/variant_sku asli dari menu Produk (atau export Produk), jangan ketik pola dari ingatan.'],
         ];
     }
 
