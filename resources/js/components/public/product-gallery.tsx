@@ -138,6 +138,18 @@ export function ProductGallery({
     }
   }, [activeMediaIndex, items.length])
 
+  // Ganti varian = daftar media berganti: kembali ke foto pertama varian terpilih.
+  // Tanpa ini, index lama bertahan dan gambar tidak ikut pindah saat klik varian.
+  const firstMediaIdRef = React.useRef<string | number | null>(items[0]?.id ?? null)
+  React.useEffect(() => {
+    const firstId = items[0]?.id ?? null
+    if (firstMediaIdRef.current !== firstId) {
+      firstMediaIdRef.current = firstId
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveMediaIndex(0)
+    }
+  }, [items])
+
 
   return (
     <div className="group/gallery -mx-2.5 min-w-0 sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
