@@ -95,8 +95,10 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
       <div className="pag-viewport flex items-center justify-center gap-2">
         {navButton("previous", prevUrl?.url)}
 
-        {/* Desktop & tablet: daftar halaman adaptif dengan ellipsis */}
-        <div className="hidden items-center justify-center gap-2 min-[420px]:flex">
+        {/* Tablet & desktop: daftar halaman adaptif dengan ellipsis.
+            Breakpoint konsisten (sm=640px) agar devtools mobile & HP asli
+            menampilkan varian yang sama. */}
+        <div className="hidden items-center justify-center gap-2 sm:flex">
           {pages.map((page, index) =>
             page === "gap" ? (
               <span key={`gap-${index}`} className="inline-flex h-9 min-w-9 items-center justify-center px-1 text-xs font-medium text-muted-foreground">
@@ -127,7 +129,7 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
         </div>
 
         {/* Layar sangat sempit (<420px): hanya halaman aktif + total */}
-        <span className="inline-flex h-9 items-center rounded-full border border-border bg-surface px-3 text-xs font-medium tabular-nums text-foreground min-[420px]:hidden">
+        <span className="inline-flex h-9 items-center rounded-full border border-border bg-surface px-3 text-xs font-medium tabular-nums text-foreground sm:hidden">
           {currentPage} / {lastPage}
         </span>
 
