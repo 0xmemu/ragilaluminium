@@ -91,12 +91,18 @@ function buildCombinations(defs: VariantDef[]): Array<{ options: string[]; label
 
 export default function ProductForm({
   product,
+  variant_defs: incomingVariantDefs,
+  variants: incomingVariants,
   submitUrl,
   publishUrl,
   options,
 }: {
   backUrl?: string | null
   product: ProductRecord | null
+  /** Definisi varian dari controller (hasil reconstruct import). */
+  "variant_defs"?: Array<{ name: string; options: Array<{ value: string; media_asset_id?: number | null; thumb_url?: string | null }> }>
+  /** Daftar varian eksisting (SKU, opsi, harga, stok). */
+  "variants"?: Array<{ id: number; variant_sku: string; variation_1_name: string | null; variation_1_option: string | null; variation_2_name: string | null; variation_2_option: string | null; price: number; stock: number; status: string }>
   submitUrl: string
   publishUrl?: string
   options: {
@@ -141,7 +147,11 @@ export default function ProductForm({
 
   React.useEffect(() => {
     if (!editing) return
-    const raw = (product as unknown as { variant_defs?: Array<{ name?: string; options?: Array<{ value?: string; media_asset_id?: number | null; thumb_url?: string | null }> }> } | null)?.variant_defs
+    // Kontrak props terkini: variant_defs & variants dikirim sebagai props
+    // terpisah dari controller (bukan di dalam product).
+    const raw = (incomingVariantDefs && incomingVariantDefs.length)
+      ? incomingVariantDefs
+      : (product as unknown as { variant_defs?: Array<{ name?: string; options?: Array<{ value?: string; media_asset_id?: number | null; thumb_url?: string | null }> }> } | null)?.variant_defs
     if (raw && raw.length) {
       setVariantDefs(raw.map((def) => ({
         name: def.name ?? "",
@@ -169,6 +179,33 @@ export default function ProductForm({
   const [combinations, setCombinations] = React.useState<Record<string, { price: string; stock: string }>>({})
 
   const combos = buildCombinations(variantDefs)
+
+  // Prefill harga & stok dari varian eksisting (hasil import) berdasarkan
+  // pasangan opsi, sehingga step review menampilkan nilai tersimpan.
+  React.useEffect(() => {
+    if (!editing || !incomingVariants?.length || combos.length === 0) return
+    setCombinations((prev) => {
+      if (Object.keys(prev).length > 0) return prev
+      const next: Record<string, { price: string; stock: string }> = {}
+      const byOptionSet = new Map<string, { price: number; stock: number }>()
+      for (const v of incomingVariants) {
+        const pair = [v.variation_1_option, v.variation_2_option]
+          .map((x) => (x ?? "").trim().toLowerCase())
+          .filter(Boolean)
+          .sort()
+          .join("|")
+        byOptionSet.set(pair, { price: v.price, stock: v.stock })
+      }
+      combos.forEach((combo, index) => {
+        const pair = [...combo.options].map((x) => x.trim().toLowerCase()).sort().join("|")
+        const hit = byOptionSet.get(pair)
+        if (hit) {
+          next[String(index)] = { price: String(hit.price), stock: String(hit.stock) }
+        }
+      })
+      return next
+    })
+  }, [editing, incomingVariants, combos.length])
 
   const combinationKey = (options: string[]) => options.join("|")
   // Ketikan opsi mengubah key teks; simpan nilai harga/stok per INDEX kombinasi agar tidak hilang saat mengetik.
