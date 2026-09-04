@@ -26,145 +26,6 @@ use Inertia\Response;
 
 class ProductMediaController extends Controller
 {
-    public function index(Request $request): Response
-    {
-        $media = ProductMedia::with(['product', 'productVariant', 'mediaAsset'])
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->when($request->filled('visibility'), fn ($q) => $q->where('visibility', $request->visibility))
-            ->latest()
-            ->paginate(24)
-            ->withQueryString();
-
-        $assets = MediaAsset::query()
-            ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
-            ->where('visibility', '!=', 'archived')
-            ->when($request->filled('asset_kind'), fn ($query) => $query->where('kind', $request->query('asset_kind')))
-            ->when($request->filled('asset_status'), fn ($query) => $query->where('status', $request->query('asset_status')))
-            ->when($request->filled('asset_q'), function ($query) use ($request): void {
-                $q = trim((string) $request->query('asset_q'));
-                $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'label', $q)->orWhereRaw('source_url LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
-            })
-            ->latest()
-            ->limit(24)
-            ->get();
-        $products = Product::query()
-            ->where('status', '!=', 'archived')
-            ->when($request->filled('product_q'), function ($query) use ($request): void {
-                $q = trim((string) $request->query('product_q'));
-                $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'name', $q)->orWhereRaw('parent_sku LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
-            })
-            ->orderBy('name')
-            ->limit(100)
-            ->get(['id', 'name', 'parent_sku']);
-
-        return Inertia::render('Admin/Media/Index', [
-            'title' => 'Media',
-            'description' => 'Kelola foto & video produk. Bagian dari menu Produk.',
-            'createHref' => null,
-            'columns' => [
-                ['key' => 'id', 'label' => 'ID'],
-                ['key' => 'product', 'label' => 'Produk', 'hrefKey' => 'product_href'],
-                ['key' => 'variant', 'label' => 'Varian'],
-                ['key' => 'position', 'label' => 'Posisi'],
-                ['key' => 'status', 'label' => 'Status'],
-                ['key' => 'visibility', 'label' => 'Visibilitas'],
-                ['key' => 'is_main', 'label' => 'Utama'],
-            ],
-            'filters' => [
-                'status' => (string) $request->query('status', ''),
-                'visibility' => (string) $request->query('visibility', ''),
-            ],
-            'statusOptions' => [
-                ['value' => '', 'label' => 'Semua status'],
-                ['value' => 'downloaded', 'label' => 'Downloaded'],
-                ['value' => 'processing', 'label' => 'Processing'],
-                ['value' => 'failed', 'label' => 'Failed'],
-            ],
-            'visibilityOptions' => [
-                ['value' => '', 'label' => 'Semua visibilitas'],
-                ['value' => 'visible', 'label' => 'Visible'],
-                ['value' => 'hidden', 'label' => 'Hidden'],
-                ['value' => 'archived', 'label' => 'Archived'],
-            ],
-            'pagination' => InertiaAdmin::pagination($media),
-            'rows' => $media->getCollection()->map(function (ProductMedia $m) {
-                $actions = [];
-                if ($m->product) {
-                    $actions[] = [
-                        'label' => 'Kelola',
-                        'method' => 'get',
-                        'href' => route('admin.products.media.byProduct', $m->product),
-                    ];
-                }
-                $actions[] = [
-                    'label' => 'Unduh ulang',
-                    'method' => 'post',
-                    'url' => route('admin.media.redownload', $m),
-                ];
-                if (! $m->is_main_image && $m->visibility !== 'archived') {
-                    $actions[] = [
-                        'label' => 'Jadikan utama',
-                        'method' => 'post',
-                        'url' => route('admin.media.set-main', $m),
-                    ];
-                }
-                if ($m->status === 'failed') {
-                    $actions[] = [
-                        'label' => 'Hapus',
-                        'method' => 'delete',
-                        'url' => route('admin.media.destroy', $m),
-                        'confirm' => 'Hapus media gagal #'.$m->id.' secara permanen?',
-                    ];
-                } elseif ($m->visibility !== 'archived') {
-                    $actions[] = [
-                        'label' => 'Arsipkan',
-                        'method' => 'post',
-                        'url' => route('admin.media.archive', $m),
-                        'confirm' => 'Arsipkan media #'.$m->id.'?',
-                    ];
-                }
-
-                return [
-                    'id' => $m->id,
-                    'thumb_url' => $m->urlFor('thumb') ?? $m->stored_url,
-                    'media_kind' => $m->mediaAsset?->kind ?? (str_starts_with((string) $m->mime_type, 'video/') ? 'video' : 'image'),
-                    'product' => $m->product?->parent_sku ?? '-',
-                    'product_name' => $m->product?->name ?? '',
-                    'product_href' => $m->product ? route('admin.products.media.byProduct', $m->product) : '',
-                    'manage_href' => $m->product ? route('admin.products.media.byProduct', $m->product) : '',
-                    'variant' => $m->productVariant
-                        ? $this->variantLabel($m->productVariant)
-                        : 'Semua (produk)',
-                    'position' => $m->position,
-                    'status' => $m->status,
-                    'error_reason' => $m->error_reason,
-                    'visibility' => $m->visibility,
-                    'is_main' => $m->is_main_image ? 'ya' : 'tidak',
-                    'actions' => $actions,
-                ];
-            })->all(),
-            'pagination' => InertiaAdmin::pagination($media),
-            'assetLibrary' => $assets->map(fn (MediaAsset $asset) => [
-                'id' => $asset->id,
-                'label' => $asset->label ?: 'Media #'.$asset->id,
-                'kind' => $asset->kind,
-                'status' => $asset->status,
-                'usage_count' => (int) $asset->usage_count,
-                'preview_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
-                'attach_url' => route('admin.media.attach', $asset),
-            ])->values()->all(),
-            'assetFilters' => [
-                'q' => (string) $request->query('asset_q', ''),
-                'kind' => (string) $request->query('asset_kind', ''),
-                'status' => (string) $request->query('asset_status', ''),
-            ],
-            'productSearch' => (string) $request->query('product_q', ''),
-            'productOptions' => $products->map(fn (Product $product) => [
-                'id' => $product->id,
-                'label' => $product->name.' · '.$product->parent_sku,
-            ])->values()->all(),
-        ]);
-    }
 
     public function byProduct(Request $request, Product $product): Response
     {
@@ -306,7 +167,7 @@ class ProductMediaController extends Controller
                 'public_url' => $asset->publicUrlForPath((string) $asset->object_key),
                 'error_reason' => $asset->error_reason,
                 'context' => self::libraryContext($asset->label),
-                'attach_url' => route('admin.media.attach', $asset),
+                'attach_url' => route('admin.media.attach.show', $asset),
                 'created_at' => optional($asset->created_at)?->toIso8601String(),
             ])->values()->all(),
             'folders' => $folderTree,
@@ -319,7 +180,6 @@ class ProductMediaController extends Controller
                 'folder_id' => (string) $request->query('folder_id', ''),
             ],
             'historyHref' => route('admin.media.history'),
-            'indexHref' => route('admin.media.index'),
         ]);
     }
 
@@ -428,6 +288,41 @@ class ProductMediaController extends Controller
         return redirect()
             ->route('admin.products.media.byProduct', $params)
             ->with('success', 'Media ditambahkan.');
+    }
+
+    public function attachPage(Request $request, MediaAsset $asset): Response
+    {
+        $usages = \App\Models\ProductMedia::query()
+            ->where('media_asset_id', $asset->id)
+            ->with('product:id,name,parent_sku,status')
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->filter(fn ($m) => $m->product !== null)
+            ->values();
+
+        return Inertia::render('Admin/Media/Attach', [
+            'asset' => [
+                'id' => $asset->id,
+                'label' => $asset->label ?: 'Media #'.$asset->id,
+                'kind' => $asset->kind,
+                'status' => $asset->status,
+                'thumb_url' => $asset->urlFor('thumb'),
+                'public_url' => $asset->publicUrlForPath((string) $asset->object_key),
+                'created_at' => optional($asset->created_at)?->toIso8601String(),
+            ],
+            'usages' => $usages->map(fn ($m) => [
+                'product_id' => $m->product->id,
+                'product_name' => $m->product->name,
+                'parent_sku' => $m->product->parent_sku,
+                'position' => $m->position,
+                'is_main' => (bool) $m->is_main_image,
+                'is_installation' => (bool) $m->is_installation,
+                'show_in_catalog' => (bool) $m->show_in_catalog,
+                'visibility' => $m->visibility,
+            ])->all(),
+            'libraryHref' => route('admin.media.library'),
+        ]);
     }
 
     public function bulkAttach(Request $request, MediaAsset $asset): RedirectResponse
@@ -608,6 +503,7 @@ class ProductMediaController extends Controller
         $pruneDays = (int) config('media.log_retention_days', 30);
 
         return Inertia::render('Admin/Media/History', [
+            'libraryHref' => route('admin.media.library'),
             'logs' => $logs,
             'pagination' => InertiaAdmin::pagination($paginator),
             'filters' => [
