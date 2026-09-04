@@ -1,4 +1,7 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
+
+import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
+import { Icon } from "@/components/shared/icon"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
@@ -50,6 +53,7 @@ interface ProductFormData {
   product_model: string
   design_variant: string
   status: string
+  media_asset_ids?: number[]
   homepage_popular: boolean
   homepage_popular_sort: number | string
 }
@@ -57,6 +61,7 @@ interface ProductFormData {
 interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"> {
   id: number
   parent_sku: string
+  media?: Array<{ media_asset_id: number; media_asset_label?: string | null; url?: string | null }>
 }
 
 const sections: Array<{ key: Exclude<WizardStep, null>; label: string }> = [
@@ -140,6 +145,21 @@ export default function ProductForm({
   })
   const publishForm = useForm({})
 
+  // ADR-020: media dipilih/diunggah langsung di form (upload atau Media Library),
+  // dikirim bersama submit identitas sebagai media_asset_ids.
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>([])
+
+  React.useEffect(() => {
+    if (!editing || !product?.media) return
+    setPickedMedia(product.media.map((m) => ({
+      assetId: m.media_asset_id,
+      label: m.media_asset_label ?? "",
+      thumbUrl: m.url ?? "",
+      kind: "image" as const,
+    })))
+  }, [editing])
+
   React.useEffect(() => {
     if (!form.isDirty && !variantsForm.isDirty) return
     const handler = (event: BeforeUnloadEvent) => {
@@ -161,6 +181,7 @@ export default function ProductForm({
   function submitIdentity(status: "active" | "archived", event: React.FormEvent) {
     event.preventDefault()
     form.setData("status", status)
+    form.setData("media_asset_ids", pickedMedia.map((m) => m.assetId))
     // Simpan & Aktifkan hanya berarti di EDIT (checklist sudah ada): tanpa
     // wizard_step sehingga backend menjalankan publish (validasi checklist server).
     // Pada produk baru tetap arsip + lanjut ke varian (checklist belum lengkap).
@@ -224,17 +245,79 @@ export default function ProductForm({
         <FormErrorSummary errors={form.errors} />
         <FormErrorSummary errors={variantsForm.errors} />
         <FormErrorSummary errors={publishForm.errors} />
+        <MediaPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          multiple
+          title="Media produk"
+          onPick={(media) => setPickedMedia((prev) => {
+            const seen = new Set(prev.map((m) => m.assetId))
+            return [...prev, ...media.filter((m) => !seen.has(m.assetId))]
+          })}
+        />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="space-y-6">
             <form onSubmit={(event) => submitIdentity("active", event)} className="space-y-6" id="sec-identity">
+              {/* ADR-020: media paling atas; upload langsung atau pilih dari Media Library. */}
+              <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7" id="sec-media">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold">Foto produk</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Unggah langsung atau pilih dari Media Library. Foto pertama jadi gambar utama.</p>
+                  </div>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+                    <Icon name="image" className="size-4" aria-hidden="true" />
+                    {pickedMedia.length ? "Kelola media" : "Tambah media"}
+                  </Button>
+                </div>
+                {pickedMedia.length ? (
+                  <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {pickedMedia.map((media, index) => (
+                      <li key={media.assetId} className="relative">
+                        <span className="relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
+                          {media.thumbUrl ? (
+                            <img src={media.thumbUrl} alt="" className="size-full object-cover" />
+                          ) : (
+                            <span className="flex size-full items-center justify-center text-muted-foreground">
+                              <Icon name="image" className="size-6" aria-hidden="true" />
+                            </span>
+                          )}
+                          {index === 0 ? (
+                            <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">Utama</span>
+                          ) : null}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPickedMedia((prev) => prev.filter((m) => m.assetId !== media.assetId))}
+                          className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
+                          aria-label={`Hapus ${media.label || "media"}`}
+                        >
+                          <Icon name="x" className="size-3" aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="mt-4 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-muted/40 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                  >
+                    <Icon name="image" className="size-8" aria-hidden="true" />
+                    <span className="text-sm font-medium">Unggah atau pilih media</span>
+                    <span className="text-xs">Gambar/video langsung masuk Media Library</span>
+                  </button>
+                )}
+              </section>
+
               <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-semibold">Identitas produk</h2>
                     <p className="mt-1 text-sm text-muted-foreground">Informasi yang dipakai admin dan katalog publik.</p>
                   </div>
-                  {product ? <StatusBadge status={product.status} /> : <StatusBadge status="archived" label="Arsip (baru)" />}
+                  {product ? <StatusBadge status={product.status} /> : <StatusBadge status="archived" label="Draf baru" />}
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -247,7 +330,7 @@ export default function ProductForm({
                   <Field id="product-short-name" label="Nama pendek" hint="Singkatan yang tampil di kartu/listing. Kosongkan bila otomatis dari varian." error={form.errors.short_name}>
                     <Input value={form.data.short_name} onChange={(event) => form.setData("short_name", event.target.value)} />
                   </Field>
-                  <Field id="product-status" label="Status" hint="Produk baru selalu arsip sampai foto, varian + harga, spesifikasi, penjelasan, dan data pengiriman lengkap." error={form.errors.status}>
+                  <Field id="product-status" label="Status" error={form.errors.status}>
                     <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
                       {options.statuses.map((option) => (
                         <option key={option.value} value={option.value}>{option.label === "active" ? "Aktif" : "Diarsipkan"}</option>
@@ -302,7 +385,7 @@ export default function ProductForm({
 
               <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-6">
                 <Button type="button" variant="secondary" disabled={form.processing} onClick={(event) => submitIdentity("archived", event)}>
-                  {form.processing ? "Menyimpan..." : "Simpan & Arsipkan"}
+                  {form.processing ? "Menyimpan..." : "Simpan draf"}
                 </Button>
                 {editing ? (
                   <Button type="button" disabled={form.processing} onClick={(event) => submitIdentity("active", event)}>

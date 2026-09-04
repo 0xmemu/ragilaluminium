@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\ProductPopularityBoostController;
 use App\Http\Controllers\Admin\MediaUploadController;
 use App\Http\Controllers\Admin\MediaFolderController;
 use App\Http\Controllers\Admin\MediaLibraryUploadController;
+use App\Http\Controllers\Admin\MediaPickerController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\SubModelController;
@@ -231,6 +232,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Media
     Route::get('media/library', [ProductMediaController::class, 'library'])->name('media.library');
+    Route::get('media/picker', [MediaPickerController::class, 'index'])->name('media.picker');
     Route::get('media/folders/tree', [MediaFolderController::class, 'tree'])->name('media.folders.tree');
     Route::post('media/folders', [MediaFolderController::class, 'store'])->name('media.folders.store');
     Route::post('media/folders/{folder}/rename', [MediaFolderController::class, 'rename'])->name('media.folders.rename');

@@ -101,7 +101,7 @@ class ProductController extends Controller
             'exportUrl' => route('admin.products.export', $request->query()),
             'importHref' => route('admin.imports.index'),
             'importPerformanceHref' => route('admin.analytics.import-performance'),
-            'mediaHref' => route('admin.media.index'),
+            'mediaHref' => route('admin.media.library'),
         ]);
     }
 
@@ -164,6 +164,9 @@ class ProductController extends Controller
             'homepage_popular' => ['sometimes', 'boolean'],
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'create_initial_variant' => ['sometimes', 'boolean'],
+            // ADR-020: media dipilih/diunggah langsung di form, dilampirkan setelah produk dibuat.
+            'media_asset_ids' => ['nullable', 'array', 'max:20'],
+            'media_asset_ids.*' => ['integer', Rule::exists('media_assets', 'id')->where('status', 'ready')],
             'initial_price' => ['nullable', 'required_if:create_initial_variant,true', 'numeric', 'min:0'],
             'randomize_stock' => ['sometimes', 'boolean'],
             'initial_stock' => ['nullable', 'required_if:create_initial_variant,true', 'integer', 'min:0'],
@@ -211,6 +214,22 @@ class ProductController extends Controller
                     'created_by_user_id' => $request->user()->id,
                     'updated_by_user_id' => $request->user()->id,
                 ]);
+            }
+
+            // ADR-020: media dipilih/diunggah dari form, lampirkan sekalian.
+            $resolver = app(\App\Services\MediaAssetResolver::class);
+            foreach ($request->input('media_asset_ids', []) as $index => $assetId) {
+                $asset = \App\Models\MediaAsset::find((int) $assetId);
+                if (! $asset || $asset->status !== 'ready') {
+                    continue;
+                }
+                $resolver->attach($product, $asset, [
+                    'position' => ((int) $index) + 1,
+                    'is_main_image' => ((int) $index) === 0,
+                    'show_in_catalog' => true,
+                    'is_installation' => false,
+                    'visibility' => 'visible',
+                ], (int) $request->user()->id);
             }
         });
 
@@ -294,6 +313,15 @@ class ProductController extends Controller
                 'status' => $product->status,
                 'homepage_popular' => $product->homepage_popular,
                 'homepage_popular_sort' => $product->homepage_popular_sort,
+                // ADR-020: media katalog dimuat di form utama.
+                'media' => $product->media
+                    ->where('is_installation', false)
+                    ->sortBy('position')
+                    ->map(fn ($m) => [
+                        'media_asset_id' => $m->media_asset_id,
+                        'media_asset_label' => $m->mediaAsset?->label,
+                        'url' => $m->mediaAsset?->urlFor('thumb'),
+                    ])->values()->all(),
             ],
             'submitUrl' => route('admin.products.update', $product),
             'publishUrl' => route('admin.products.publish', $product),
