@@ -268,7 +268,7 @@ class CatalogGuideSheet implements FromArray, WithTitle, WithEvents
             ['variantion_combination', 'WAJIB', 'Kombinasi yang dijual di baris ini, urut sesuai varian: "Putih, Kaca Bening". Pisahkan dengan koma.'],
             ['price_variantion_combination', 'WAJIB', 'Harga kombinasi ini (angka polos, tanpa titik ribuan).'],
             ['stock', 'OPTIONAL', 'Stok kombinasi ini. Kosong = pakai mode stok yang dipilih saat upload (file atau manual).'],
-            ['weight_kg, height_cm, width_cm, depth_cm', 'WAJIB', 'Bobot & dimensi packing (angka > 0).'],
+            ['weight_kg, height_cm, width_cm, depth_cm', 'WAJIB', 'Berat & dimensi packing: height_cm = TINGGI, width_cm = PANJANG, depth_cm = LEBAR (sama dengan form admin Produk; nama kolom mengikuti sistem). Angka > 0.'],
             ['specifications', 'OPTIONAL', 'Spesifikasi produk. Format "Nama: Nilai" dipisah baris, atau JSON [{"name":"Bahan","value":"Aluminium"}].'],
             ['image_1, image_2', 'OPTIONAL', 'Foto katalog umum produk (bukan per varian). Foto utama = image_1.'],
             ['image_variation_1_option_1..4', 'OPTIONAL', 'Foto per pilihan varian pertama: option_1 = Putih, beri foto putih di sini. Foto ini dipakai semua kombinasi yang memakai pilihan itu. Cukup isi sekali di baris pertama produk.'],
