@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Icon } from "@/components/shared/icon"
+import { cn } from "@/lib/utils"
 import { Link } from "@inertiajs/react"
 import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
@@ -39,19 +40,20 @@ export function DesignFilterOptions({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md px-2.5 text-sm transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className={selected ? "font-semibold text-foreground" : "text-foreground"}>{children}</span>
-      {selected ? (
-        <Icon name="check" className="size-4 shrink-0 text-primary" aria-hidden="true" />
-      ) : (
-        <span className="size-4 shrink-0" aria-hidden="true" />
+      className={cn(
+        "inline-flex min-h-8 w-full items-center justify-center gap-1 rounded border px-1.5 text-xs font-normal transition sm:min-h-7",
+        selected
+          ? "border-foreground/50 bg-surface-muted font-medium text-foreground"
+          : "border-border bg-background text-foreground/80 hover:text-foreground",
       )}
+    >
+      <span className="truncate">{children}</span>
+      {selected ? <Icon name="check" className="size-3 shrink-0 text-primary" aria-hidden="true" /> : null}
     </button>
   )
 
   return (
-    <div className="flex flex-col" role="listbox" aria-label={name}>
+    <div className="flex flex-row flex-wrap gap-1.5" role="listbox" aria-label={name}>
       <Item selected={!activeDesign} onClick={() => onSelect(null)}>
         Semua Desain
       </Item>
@@ -84,19 +86,20 @@ export function ModelFilterOptions({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md px-2.5 text-sm transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className={selected ? "font-semibold text-foreground" : "text-foreground"}>{children}</span>
-      {selected ? (
-        <Icon name="check" className="size-4 shrink-0 text-primary" aria-hidden="true" />
-      ) : (
-        <span className="size-4 shrink-0" aria-hidden="true" />
+      className={cn(
+        "inline-flex min-h-8 w-full items-center justify-center gap-1 rounded border px-1.5 text-xs font-normal transition sm:min-h-7",
+        selected
+          ? "border-foreground/50 bg-surface-muted font-medium text-foreground"
+          : "border-border bg-background text-foreground/80 hover:text-foreground",
       )}
+    >
+      <span className="truncate">{children}</span>
+      {selected ? <Icon name="check" className="size-3 shrink-0 text-primary" aria-hidden="true" /> : null}
     </button>
   )
 
   return (
-    <div className="flex flex-col" role="listbox" aria-label={name}>
+    <div className="flex flex-row flex-wrap gap-1.5" role="listbox" aria-label={name}>
       <Item selected={!activeModel} onClick={() => onSelect(null)}>
         Semua Model
       </Item>
