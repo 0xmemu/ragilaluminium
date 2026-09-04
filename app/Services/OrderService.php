@@ -398,9 +398,12 @@ class OrderService
 
         foreach ($this->cart->get() as $item) {
             $variant = ! empty($item['variant_sku'])
-                ? ProductVariant::where('variant_sku', $item['variant_sku'])->first()
+                ? ProductVariant::with('product')->where('variant_sku', $item['variant_sku'])->first()
                 : null;
-            $weight = $variant && $variant->weight_kg ? (float) $variant->weight_kg : $default;
+            // ADR-021: berat primer milik produk (J&T per paket); varian hanya
+            // fallback data lama.
+            $weight = $variant?->product?->weight_kg
+                ?? ($variant && $variant->weight_kg ? (float) $variant->weight_kg : $default);
             $total += $weight * max(1, (int) $item['quantity']);
         }
 

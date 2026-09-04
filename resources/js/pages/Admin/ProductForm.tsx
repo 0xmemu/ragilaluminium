@@ -223,58 +223,7 @@ export default function ProductForm({
         <FormErrorSummary errors={publishForm.errors} />
 
         <form onSubmit={(event) => submit("archived", event)} className="space-y-6">
-          {/* 1. FOTO: paling atas (pola Shopee/Shopify) */}
-          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold">Foto produk</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Unggah langsung atau pilih dari Media Library. Foto pertama jadi gambar utama.</p>
-              </div>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-                {pickedMedia.length ? "Kelola media" : "Tambah media"}
-              </Button>
-            </div>
-            {pickedMedia.length ? (
-              <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {pickedMedia.map((media, index) => (
-                  <li key={media.assetId} className="relative">
-                    <span className="relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
-                      {media.thumbUrl ? (
-                        <img src={media.thumbUrl} alt="" className="size-full object-cover" />
-                      ) : (
-                        <span className="flex size-full items-center justify-center text-muted-foreground">
-                          <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
-                        </span>
-                      )}
-                      {index === 0 ? (
-                        <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">Utama</span>
-                      ) : null}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setPickedMedia((prev) => prev.filter((m) => m.assetId !== media.assetId))}
-                      className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
-                      aria-label={`Hapus ${media.label || "media"}`}
-                    >
-                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setPickerOpen(true)}
-                className="mt-4 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-muted/40 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-              >
-                <svg className="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
-                <span className="text-sm font-medium">Unggah atau pilih media</span>
-                <span className="text-xs">Gambar/video langsung masuk Media Library</span>
-              </button>
-            )}
-          </section>
-
-          {/* 2. IDENTITAS + TAKSONOMI + DIMENSI J&T */}
+          {/* 1. IDENTITAS + TAKSONOMI + DIMENSI J&T */}
           <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -339,7 +288,7 @@ export default function ProductForm({
             </div>
           </section>
 
-          {/* 3. VARIAN: nama bebas + opsi; lalu matriks harga & stok per kombinasi */}
+          {/* 2. VARIAN: nama bebas + opsi; lalu matriks harga & stok per kombinasi */}
           <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -455,6 +404,58 @@ export default function ProductForm({
                 </table>
               </div>
             ) : null}
+          </section>
+
+
+          {/* 3. FOTO: paling atas (pola Shopee/Shopify) */}
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">Foto produk</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Unggah langsung atau pilih dari Media Library. Foto pertama jadi gambar utama katalog.</p>
+              </div>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+                {pickedMedia.length ? "Kelola media" : "Tambah media"}
+              </Button>
+            </div>
+            {pickedMedia.length ? (
+              <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {pickedMedia.map((media, index) => (
+                  <li key={media.assetId} className="relative">
+                    <span className="relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
+                      {media.thumbUrl ? (
+                        <img src={media.thumbUrl} alt="" className="size-full object-cover" />
+                      ) : (
+                        <span className="flex size-full items-center justify-center text-muted-foreground">
+                          <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                        </span>
+                      )}
+                      {index === 0 ? (
+                        <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">Utama</span>
+                      ) : null}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPickedMedia((prev) => prev.filter((m) => m.assetId !== media.assetId))}
+                      className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
+                      aria-label={`Hapus ${media.label || "media"}`}
+                    >
+                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="mt-4 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-muted/40 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              >
+                <svg className="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                <span className="text-sm font-medium">Unggah atau pilih media</span>
+                <span className="text-xs">Gambar/video langsung masuk Media Library</span>
+              </button>
+            )}
           </section>
 
           {/* 4. SIMPAN / PUBLISH */}
