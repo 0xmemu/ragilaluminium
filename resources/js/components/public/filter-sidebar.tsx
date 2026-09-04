@@ -118,7 +118,7 @@ export function FilterSidebarSection({
   const panelId = React.useId()
 
   return (
-    <FilterSidebarCard>
+    <div>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 text-left"
@@ -142,11 +142,11 @@ export function FilterSidebarSection({
         />
       </button>
       {open ? (
-        <div id={panelId} className="mt-4">
+        <div id={panelId} className="mt-3">
           {children}
         </div>
       ) : null}
-    </FilterSidebarCard>
+    </div>
   )
 }
 
