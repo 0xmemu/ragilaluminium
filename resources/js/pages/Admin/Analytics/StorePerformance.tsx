@@ -668,9 +668,6 @@ export default function StorePerformance({
               {kpi.sparkline && kpi.sparkline.length > 1 ? (
                 <Sparkline values={kpi.sparkline} />
               ) : null}
-              {kpi.sparkline && kpi.sparkline.length > 1 ? (
-                <Sparkline values={kpi.sparkline} />
-              ) : null}
               <p
                 className={cn(
                   "mt-1 text-xs font-semibold",
