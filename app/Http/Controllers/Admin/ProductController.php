@@ -152,7 +152,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'workflow' => ['nullable', 'in:wizard'],
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')],
-            'short_name' => ['nullable', 'string', 'max:255'],
+
             'description' => ['nullable', 'string'],
             'product_category' => ['required', Rule::in(array_merge(
                 \App\Support\CategoryUrl::productCategoryCodes(),
@@ -167,24 +167,21 @@ class ProductController extends Controller
             // ADR-020: media dipilih/diunggah langsung di form, dilampirkan setelah produk dibuat.
             'media_asset_ids' => ['nullable', 'array', 'max:20'],
             'media_asset_ids.*' => ['integer', Rule::exists('media_assets', 'id')->where('status', 'ready')],
-            // ADR-020: varian & pengiriman bisa dikirim sekaligus pada submit pertama.
-            'variants' => ['nullable', 'array', 'min:1', 'max:50'],
-            'variants.*.variation_1_name' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_1_option' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_2_name' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_2_option' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_3_name' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_3_option' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_4_name' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_4_option' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_5_name' => ['nullable', 'string', 'max:255'],
-            'variants.*.variation_5_option' => ['nullable', 'string', 'max:255'],
-            'variants.*.price' => ['required_with:variants', 'numeric', 'min:0'],
-            'variants.*.stock' => ['nullable', 'integer', 'min:0'],
-            'variants.*.weight_kg' => ['nullable', 'numeric', 'min:0'],
-            'variants.*.width_cm' => ['nullable', 'numeric', 'min:0'],
-            'variants.*.height_cm' => ['nullable', 'numeric', 'min:0'],
-            'variants.*.depth_cm' => ['nullable', 'numeric', 'min:0'],
+            // ADR-021: dimensi/berat milik produk (kontrak J&T: kg + cm kubikasi).
+            'weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'width_cm' => ['nullable', 'numeric', 'min:0'],
+            'height_cm' => ['nullable', 'numeric', 'min:0'],
+            'depth_cm' => ['nullable', 'numeric', 'min:0'],
+            // ADR-021: definisi varian (nama bebas + daftar opsi).
+            'variant_defs' => ['nullable', 'array', 'max:5'],
+            'variant_defs.*.name' => ['required_with:variant_defs', 'string', 'max:100'],
+            'variant_defs.*.options' => ['required_with:variant_defs', 'array', 'min:1', 'max:50'],
+            'variant_defs.*.options.*' => ['required_with:variant_defs.*.options', 'string', 'max:255'],
+            // ADR-021: kombinasi (produk kartesian) dengan harga & stok per kombinasi.
+            'combinations' => ['nullable', 'array', 'max:100'],
+            'combinations.*.options' => ['required_with:combinations', 'array'],
+            'combinations.*.price' => ['required_with:combinations', 'numeric', 'min:0'],
+            'combinations.*.stock' => ['nullable', 'string', 'max:50'],
             'initial_price' => ['nullable', 'required_if:create_initial_variant,true', 'numeric', 'min:0'],
             'randomize_stock' => ['sometimes', 'boolean'],
             'initial_stock' => ['nullable', 'required_if:create_initial_variant,true', 'integer', 'min:0'],
@@ -205,6 +202,16 @@ class ProductController extends Controller
             $validated['initial_price'],
             $validated['initial_stock'],
         );
+        // ADR-021: dimensi/berat produk; short_name sepenuhnya otomatis.
+        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm'] as $dimensionField) {
+            if (array_key_exists($dimensionField, $validated)) {
+                $validated[$dimensionField] = $validated[$dimensionField] !== null
+                    ? (float) $validated[$dimensionField]
+                    : null;
+            }
+        }
+        $validated['short_name'] = \App\Support\CatalogLabels::titleCaseIndonesia(trim((string) $validated['name']))
+            ?: $validated['name'];
         $validated['homepage_popular'] = $request->boolean('homepage_popular');
         $validated['homepage_popular_sort'] = (int) ($validated['homepage_popular_sort'] ?? 0);
         $validated['created_by_user_id'] = $request->user()->id;
@@ -234,37 +241,35 @@ class ProductController extends Controller
                 ]);
             }
 
-            // ADR-020: varian dari form satu halaman (menggantikan gerbang simpan-dulu).
-            $variantsInput = $request->input('variants', []);
-            if (is_array($variantsInput) && $variantsInput !== []) {
-                foreach ($variantsInput as $row) {
-                    $price = (float) ($row['price'] ?? 0);
+            // ADR-021: varian dari definisi (nama varian + opsi) dan kombinasi
+            // (harga/stok per kombinasi). Struktur kolom DB tetap variation_1..5.
+            $defs = $request->input('variant_defs', []);
+            $combinations = $request->input('combinations', []);
+            if (is_array($defs) && $defs !== [] && is_array($combinations) && $combinations !== []) {
+                $defs = array_values(array_filter($defs, fn ($d) => trim((string) ($d['name'] ?? '')) !== ''));
+                foreach ($combinations as $combination) {
+                    $options = array_values((array) ($combination['options'] ?? []));
+                    if (count($options) !== count($defs)) {
+                        continue;
+                    }
+                    $price = (float) ($combination['price'] ?? 0);
                     if ($price <= 0) {
                         continue;
                     }
-                    ProductVariant::create([
-                        'product_id' => $product->id,
-                        'variant_sku' => ShopeeStyleSku::nextVariantSku($product),
-                        'variation_1_name' => $row['variation_1_name'] ?? null,
-                        'variation_1_option' => $row['variation_1_option'] ?? null,
-                        'variation_2_name' => $row['variation_2_name'] ?? null,
-                        'variation_2_option' => $row['variation_2_option'] ?? null,
-                        'variation_3_name' => $row['variation_3_name'] ?? null,
-                        'variation_3_option' => $row['variation_3_option'] ?? null,
-                        'variation_4_name' => $row['variation_4_name'] ?? null,
-                        'variation_4_option' => $row['variation_4_option'] ?? null,
-                        'variation_5_name' => $row['variation_5_name'] ?? null,
-                        'variation_5_option' => $row['variation_5_option'] ?? null,
-                        'price' => $price,
-                        'stock' => max(0, (int) ($row['stock'] ?? 0)),
-                        'weight_kg' => $row['weight_kg'] ?? null,
-                        'width_cm' => $row['width_cm'] ?? null,
-                        'height_cm' => $row['height_cm'] ?? null,
-                        'depth_cm' => $row['depth_cm'] ?? null,
-                        'status' => 'active',
-                        'created_by_user_id' => $request->user()->id,
-                        'updated_by_user_id' => $request->user()->id,
-                    ]);
+                    $row = ['product_id' => $product->id];
+                    foreach ($defs as $defIndex => $def) {
+                        $slot = $defIndex + 1;
+                        $row['variation_'.$slot.'_name'] = $def['name'];
+                        $row['variation_'.$slot.'_option'] = $options[$defIndex];
+                    }
+                    $stockRaw = trim((string) ($combination['stock'] ?? ''));
+                    $row['variant_sku'] = ShopeeStyleSku::nextVariantSku($product);
+                    $row['price'] = $price;
+                    $row['stock'] = \App\Services\StockCellParser::resolve($stockRaw !== '' ? $stockRaw : null) ?? 0;
+                    $row['status'] = 'active';
+                    $row['created_by_user_id'] = $request->user()->id;
+                    $row['updated_by_user_id'] = $request->user()->id;
+                    ProductVariant::create($row);
                 }
             }
 
@@ -403,7 +408,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
-            'short_name' => ['nullable', 'string', 'max:255'],
+
             'description' => ['nullable', 'string'],
             'product_category' => ['required', Rule::in(array_merge(
                 \App\Support\CategoryUrl::productCategoryCodes(),

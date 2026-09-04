@@ -1,9 +1,7 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
-
-import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
-import { Icon } from "@/components/shared/icon"
 import * as React from "react"
 
+import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
@@ -13,9 +11,8 @@ import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 import type { SelectOption } from "@/types"
-
-type WizardStep = "identity" | "variants" | "media" | "review" | null
 
 interface VariantDraft {
   variation_1_name: string
@@ -54,8 +51,10 @@ interface ProductFormData {
   design_variant: string
   status: string
   media_asset_ids?: number[]
-  homepage_popular: boolean
-  homepage_popular_sort: number | string
+  weight_kg?: string
+  width_cm?: string
+  height_cm?: string
+  depth_cm?: string
 }
 
 interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"> {
@@ -64,59 +63,37 @@ interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"
   media?: Array<{ media_asset_id: number; media_asset_label?: string | null; url?: string | null }>
 }
 
-const sections: Array<{ key: Exclude<WizardStep, null>; label: string }> = [
-  { key: "identity", label: "Identitas" },
-  { key: "variants", label: "Varian & harga" },
-  { key: "media", label: "Media" },
-  { key: "review", label: "Review & publish" },
-]
+type WizardStep = "identity" | "variants" | "media" | "review" | null
 
-function emptyVariant(): VariantDraft {
-  return {
-    variation_1_name: "Ukuran",
-    variation_1_option: "",
-    variation_2_name: "",
-    variation_2_option: "",
-    variation_3_name: "",
-    variation_3_option: "",
-    variation_4_name: "",
-    variation_4_option: "",
-    variation_5_name: "",
-    variation_5_option: "",
-    price: "",
-    promo_price: "",
-    stock: "0",
-    weight_kg: "",
-    width_cm: "",
-    height_cm: "",
-    depth_cm: "",
-    status: "active",
+type VariantDef = { name: string; options: string[] }
+type Combination = { options: string[]; price: string; stock: string }
+
+/** Produk kartesian dari definisi varian: [Warna(Hitam,Putih) x Kaca(Bening,Es)] -> 4 kombinasi. */
+function buildCombinations(defs: VariantDef[]): Array<{ options: string[]; label: string }> {
+  if (!defs.length || defs.some((d) => !d.options.length)) return []
+  let combos: Array<{ options: string[]; label: string }> = [{ options: [], label: "" }]
+  for (const def of defs) {
+    const next: Array<{ options: string[]; label: string }> = []
+    for (const combo of combos) {
+      for (const option of def.options) {
+        next.push({ options: [...combo.options, option], label: (combo.label ? combo.label + " / " : "") + option })
+      }
+    }
+    combos = next
   }
+  return combos
 }
 
 export default function ProductForm({
   product,
   submitUrl,
   publishUrl,
-  variantBulkUrl,
-  mediaHref,
-  attributesHref,
-  wizardStep = "identity",
-  variants = [],
-  completion = { active_variants: false, prices: false, main_image_ready: false, photo_coverage: false, explanation: false, shipping_data: false },
   options,
-  backUrl,
 }: {
   backUrl?: string | null
   product: ProductRecord | null
   submitUrl: string
   publishUrl?: string
-  variantBulkUrl?: string
-  mediaHref?: string
-  attributesHref?: string
-  wizardStep?: WizardStep
-  variants?: VariantRecord[]
-  completion?: { active_variants: boolean; prices: boolean; main_image_ready: boolean; photo_coverage: boolean; explanation: boolean; shipping_data: boolean }
   options: {
     categories: SelectOption[]
     models: SelectOption[]
@@ -127,7 +104,7 @@ export default function ProductForm({
   const editing = Boolean(product)
   const form = useForm<ProductFormData>({
     workflow: "wizard",
-    wizard_step: editing ? wizardStep : "identity",
+    wizard_step: null,
     name: product?.name ?? "",
     short_name: product?.short_name ?? "",
     description: product?.description ?? "",
@@ -135,18 +112,14 @@ export default function ProductForm({
     product_model: product?.product_model ?? options.models[0]?.value ?? "SLIDING",
     design_variant: product?.design_variant ?? options.designs[0]?.value ?? "POLOS",
     status: product?.status ?? "archived",
-    homepage_popular: product?.homepage_popular ?? false,
-    homepage_popular_sort: product?.homepage_popular_sort ?? 0,
+    weight_kg: (product as unknown as Record<string, unknown> & { weight_kg?: string })?.weight_kg as string ?? "",
+    width_cm: (product as unknown as Record<string, unknown> & { width_cm?: string })?.width_cm as string ?? "",
+    height_cm: (product as unknown as Record<string, unknown> & { height_cm?: string })?.height_cm as string ?? "",
+    depth_cm: (product as unknown as Record<string, unknown> & { depth_cm?: string })?.depth_cm as string ?? "",
   })
-  const variantsForm = useForm<{ wizard_step: WizardStep; randomize_stock: boolean; variants: VariantDraft[] }>({
-    wizard_step: "media",
-    randomize_stock: false,
-    variants: [emptyVariant()],
-  })
-  const publishForm = useForm({})
 
-  // ADR-020: media dipilih/diunggah langsung di form (upload atau Media Library),
-  // dikirim bersama submit identitas sebagai media_asset_ids.
+  // ADR-021: media dipilih/diunggah langsung di form (upload atau Media Library),
+  // dikirim bersama submit sebagai media_asset_ids. Foto pertama = gambar utama.
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>([])
 
@@ -160,68 +133,83 @@ export default function ProductForm({
     })))
   }, [editing])
 
+  // ADR-021: definisi varian (nama bebas + opsi) diisi admin;
+  // harga & stok diisi per kombinasi setelah definisi selesai.
+  const [variantDefs, setVariantDefs] = React.useState<VariantDef[]>([])
+  const [combinations, setCombinations] = React.useState<Record<string, { price: string; stock: string }>>({})
+
+  const combos = buildCombinations(variantDefs)
+
+  const combinationKey = (options: string[]) => options.join("|")
+
   React.useEffect(() => {
-    if (!form.isDirty && !variantsForm.isDirty) return
+    // Buang kombinasi yang tidak lagi valid saat definisi berubah.
+    setCombinations((prev) => {
+      const valid = new Set(combos.map((c) => combinationKey(c.options)))
+      const next: typeof prev = {}
+      for (const [key, value] of Object.entries(prev)) {
+        if (valid.has(key)) next[key] = value
+      }
+      return next
+    })
+  }, [variantDefs])
+
+  const [saving, setSaving] = React.useState(false)
+  const [publishing, setPublishing] = React.useState(false)
+  const publishForm = useForm({})
+
+  React.useEffect(() => {
+    if (!form.isDirty) return
     const handler = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ""
     }
     window.addEventListener("beforeunload", handler)
     return () => window.removeEventListener("beforeunload", handler)
-  }, [form.isDirty, variantsForm.isDirty])
+  }, [form.isDirty])
 
-  // Ketika halaman dibuka pada step tertentu (mis. setelah simpan identitas),
-  // gulir otomatis ke section tersebut agar terasa seperti lanjutan alur.
-  React.useEffect(() => {
-    if (!editing || !wizardStep) return
-    const target = document.getElementById(`sec-${wizardStep}`)
-    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" })
-  }, [editing, wizardStep])
-
-  function submitIdentity(status: "active" | "archived", event: React.FormEvent, addAnother = false) {
-    event.preventDefault()
-    form.setData("status", status)
-    form.setData("media_asset_ids", pickedMedia.map((m) => m.assetId))
-    // Simpan & Aktifkan hanya berarti di EDIT (checklist sudah ada): tanpa
-    // wizard_step sehingga backend menjalankan publish (validasi checklist server).
-    // Pada produk baru tetap arsip + lanjut ke varian (checklist belum lengkap).
-    form.setData("wizard_step", status === "active" && editing ? null : "variants")
-
-    if (editing) {
-      form.put(submitUrl)
-    } else {
-      // ADR-020: produk baru + varian + media dalam SATU submit (tanpa gerbang).
-      form.transform((data) => ({ ...data, variants: variantsForm.data.variants }))
-      form.post(submitUrl, addAnother ? { preserveState: false } : {})
+  function buildPayload(status: "active" | "archived") {
+    return {
+      ...form.data,
+      status,
+      media_asset_ids: pickedMedia.map((m) => m.assetId),
+      variant_defs: variantDefs,
+      combinations: combos.map((combo) => {
+        const key = combinationKey(combo.options)
+        return {
+          options: combo.options,
+          price: combinations[key]?.price ?? "",
+          stock: combinations[key]?.stock ?? "",
+        }
+      }),
     }
   }
 
-  function submitVariants(event: React.FormEvent) {
+  function submit(status: "active" | "archived", event: React.FormEvent, addAnother = false) {
     event.preventDefault()
-    if (!variantBulkUrl) return
-    variantsForm.setData("wizard_step", "media")
-    variantsForm.post(variantBulkUrl, { preserveScroll: true })
+    setSaving(true)
+    router.post(submitUrl, buildPayload(status), {
+      onSuccess: () => {
+        if (addAnother) {
+          router.visit(routeUrl("admin.products.create"))
+        }
+      },
+      onFinish: () => setSaving(false),
+    })
   }
 
-  function updateVariant(index: number, key: keyof VariantDraft, value: string) {
-    const next = variantsForm.data.variants.map((variant, variantIndex) =>
-      variantIndex === index ? { ...variant, [key]: value } : variant,
-    )
-    variantsForm.setData("variants", next)
-  }
-
-  function scrollToSection(key: Exclude<WizardStep, null>) {
-    document.getElementById(`sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  function publish(event: React.FormEvent) {
+    event.preventDefault()
+    if (!publishUrl) return
+    setPublishing(true)
+    publishForm.post(publishUrl, { onFinish: () => setPublishing(false) })
   }
 
   return (
     <AdminLayout
-      backUrl={backUrl} title={editing ? "Edit produk" : "Tambah produk"}
-      description={
-        editing
-          ? `Lengkapi ${product?.parent_sku} dari satu alur kerja. Semua bagian tersedia di satu halaman; checklist aktivasi selalu terlihat di kanan.`
-          : "Buat produk baru. Setelah disimpan sebagai arsip, form lengkap (varian, media, review) terbuka di satu halaman."
-      }
+      backUrl={routeUrl("admin.products.index")}
+      title={editing ? "Edit produk" : "Tambah produk"}
+      description={editing ? `Lengkapi ${product?.parent_sku}. Semua tahap di satu halaman.` : "Isi dari atas ke bawah, lalu simpan. Semua tahap di satu halaman."}
       actions={
         <Button asChild variant="secondary">
           <Link href={routeUrl("admin.products.index")}>Keluar</Link>
@@ -231,294 +219,294 @@ export default function ProductForm({
       <Head title={`${editing ? "Edit" : "Tambah"} Produk | Admin`} />
 
       <div className="mx-auto max-w-6xl space-y-6">
-        <nav aria-label="Bagian produk" className="flex flex-wrap gap-2">
-          {sections.map((section) => (
-            <button
-              key={section.key}
-              type="button"
-              onClick={() => scrollToSection(section.key)}
-              className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground sm:text-sm"
-            >
-              {section.label}
-            </button>
-          ))}
-        </nav>
-
         <FormErrorSummary errors={form.errors} />
-        <FormErrorSummary errors={variantsForm.errors} />
         <FormErrorSummary errors={publishForm.errors} />
-        <MediaPicker
-          open={pickerOpen}
-          onClose={() => setPickerOpen(false)}
-          multiple
-          title="Media produk"
-          onPick={(media) => setPickedMedia((prev) => {
-            const seen = new Set(prev.map((m) => m.assetId))
-            return [...prev, ...media.filter((m) => !seen.has(m.assetId))]
-          })}
-        />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="space-y-6">
-            <form onSubmit={(event) => submitIdentity("active", event)} className="space-y-6" id="sec-identity">
-              {/* ADR-020: media paling atas; upload langsung atau pilih dari Media Library. */}
-              <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7" id="sec-media">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold">Foto produk</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Unggah langsung atau pilih dari Media Library. Foto pertama jadi gambar utama.</p>
-                  </div>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-                    <Icon name="image" className="size-4" aria-hidden="true" />
-                    {pickedMedia.length ? "Kelola media" : "Tambah media"}
-                  </Button>
-                </div>
-                {pickedMedia.length ? (
-                  <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                    {pickedMedia.map((media, index) => (
-                      <li key={media.assetId} className="relative">
-                        <span className="relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
-                          {media.thumbUrl ? (
-                            <img src={media.thumbUrl} alt="" className="size-full object-cover" />
-                          ) : (
-                            <span className="flex size-full items-center justify-center text-muted-foreground">
-                              <Icon name="image" className="size-6" aria-hidden="true" />
-                            </span>
-                          )}
-                          {index === 0 ? (
-                            <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">Utama</span>
-                          ) : null}
+        <form onSubmit={(event) => submit("archived", event)} className="space-y-6">
+          {/* 1. FOTO: paling atas (pola Shopee/Shopify) */}
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">Foto produk</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Unggah langsung atau pilih dari Media Library. Foto pertama jadi gambar utama.</p>
+              </div>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+                {pickedMedia.length ? "Kelola media" : "Tambah media"}
+              </Button>
+            </div>
+            {pickedMedia.length ? (
+              <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {pickedMedia.map((media, index) => (
+                  <li key={media.assetId} className="relative">
+                    <span className="relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
+                      {media.thumbUrl ? (
+                        <img src={media.thumbUrl} alt="" className="size-full object-cover" />
+                      ) : (
+                        <span className="flex size-full items-center justify-center text-muted-foreground">
+                          <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
                         </span>
+                      )}
+                      {index === 0 ? (
+                        <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">Utama</span>
+                      ) : null}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPickedMedia((prev) => prev.filter((m) => m.assetId !== media.assetId))}
+                      className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
+                      aria-label={`Hapus ${media.label || "media"}`}
+                    >
+                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="mt-4 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-muted/40 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              >
+                <svg className="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                <span className="text-sm font-medium">Unggah atau pilih media</span>
+                <span className="text-xs">Gambar/video langsung masuk Media Library</span>
+              </button>
+            )}
+          </section>
+
+          {/* 2. IDENTITAS + TAKSONOMI + DIMENSI J&T */}
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">Identitas produk</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Informasi yang dipakai admin dan katalog publik.</p>
+              </div>
+              {product ? <StatusBadge status={product.status} /> : <StatusBadge status="archived" label="Draf baru" />}
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Field id="product-parent-sku" label="Parent SKU">
+                <Input value={product?.parent_sku ?? "(otomatis saat disimpan)"} readOnly disabled className="font-mono" />
+              </Field>
+              <Field id="product-name" label="Nama produk" required error={form.errors.name}>
+                <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value as never)} />
+              </Field>
+              <Field id="product-description" label="Deskripsi" error={form.errors.description} className="sm:col-span-2">
+                <Textarea rows={5} value={form.data.description} onChange={(event) => form.setData("description", event.target.value as never)} />
+              </Field>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <Field id="product-category" label="Kategori" required error={form.errors.product_category}>
+                <Select value={form.data.product_category} onChange={(event) => form.setData("product_category", event.target.value as never)}>
+                  {options.categories.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </Select>
+              </Field>
+              <Field id="product-model" label="Model" required error={form.errors.product_model}>
+                <Select value={form.data.product_model} onChange={(event) => form.setData("product_model", event.target.value as never)}>
+                  {options.models.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </Select>
+              </Field>
+              <Field id="product-design" label="Sub Model" hint="Pilihan sub model aktif untuk model terpilih. Kosongkan bila tanpa sub model." error={form.errors.design_variant}>
+                <Select value={form.data.design_variant} onChange={(event) => form.setData("design_variant", event.target.value as never)}>
+                  <option value="">Tanpa sub model</option>
+                  {options.designs
+                    .filter((option) => option.model === form.data.product_model)
+                    .map((option) => (
+                      <option key={option.model + ":" + option.value} value={option.value}>{option.label}</option>
+                    ))}
+                </Select>
+              </Field>
+            </div>
+
+            <div className="mt-6 border-t border-border pt-4">
+              <p className="text-sm font-semibold text-foreground">Pengiriman (J&amp;T Cargo)</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Berat dan dimensi paket milik produk, bukan per varian. Dipakai untuk ongkir &amp; kubikasi.</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-4">
+                <Field id="product-weight" label="Berat (kg)" required error={form.errors.weight_kg}>
+                  <Input type="number" min="0" step="0.01" value={form.data.weight_kg ?? ""} onChange={(event) => form.setData("weight_kg", event.target.value as never)} />
+                </Field>
+                <Field id="product-width" label="Lebar (cm)" required error={form.errors.width_cm}>
+                  <Input type="number" min="0" step="0.1" value={form.data.width_cm ?? ""} onChange={(event) => form.setData("width_cm", event.target.value as never)} />
+                </Field>
+                <Field id="product-height" label="Tinggi (cm)" required error={form.errors.height_cm}>
+                  <Input type="number" min="0" step="0.1" value={form.data.height_cm ?? ""} onChange={(event) => form.setData("height_cm", event.target.value as never)} />
+                </Field>
+                <Field id="product-depth" label="Tebal (cm)" required error={form.errors.depth_cm}>
+                  <Input type="number" min="0" step="0.1" value={form.data.depth_cm ?? ""} onChange={(event) => form.setData("depth_cm", event.target.value as never)} />
+                </Field>
+              </div>
+            </div>
+          </section>
+
+          {/* 3. VARIAN: nama bebas + opsi; lalu matriks harga & stok per kombinasi */}
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">Varian</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Beri nama varian (mis. Warna, Kaca), lalu isi opsinya. Harga &amp; stok diisi setelah ini, per kombinasi.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {variantDefs.map((def, defIndex) => (
+                <div key={defIndex} className="rounded-lg border border-border bg-surface-muted/40 p-4">
+                  <div className="flex items-center gap-2">
+                    <Field id={`variant-def-name-${defIndex}`} label="Nama varian" className="flex-1">
+                      <Input
+                        value={def.name}
+                        onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, name: event.target.value } : d)))}
+                        placeholder="Mis. Warna"
+                      />
+                    </Field>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => setVariantDefs((prev) => prev.filter((_, i) => i !== defIndex))}
+                    >
+                      Hapus varian
+                    </Button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {def.options.map((option, optionIndex) => (
+                      <span key={optionIndex} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1">
+                        <input
+                          value={option}
+                          onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? event.target.value : o)) } : d)))}
+                          className="w-24 bg-transparent text-xs text-foreground outline-none"
+                          aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
+                        />
                         <button
                           type="button"
-                          onClick={() => setPickedMedia((prev) => prev.filter((m) => m.assetId !== media.assetId))}
-                          className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
-                          aria-label={`Hapus ${media.label || "media"}`}
+                          onClick={() => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.filter((_, oi) => oi !== optionIndex) } : d)))}
+                          className="text-muted-foreground transition hover:text-destructive"
+                          aria-label={`Hapus opsi ${option}`}
                         >
-                          <Icon name="x" className="size-3" aria-hidden="true" />
+                          <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
                         </button>
-                      </li>
+                      </span>
                     ))}
-                  </ul>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="mt-4 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-muted/40 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                  >
-                    <Icon name="image" className="size-8" aria-hidden="true" />
-                    <span className="text-sm font-medium">Unggah atau pilih media</span>
-                    <span className="text-xs">Gambar/video langsung masuk Media Library</span>
-                  </button>
-                )}
-              </section>
-
-              <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold">Identitas produk</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Informasi yang dipakai admin dan katalog publik.</p>
+                    <button
+                      type="button"
+                      onClick={() => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: [...d.options, ""] } : d)))}
+                      className="inline-flex h-7 items-center rounded-md border border-dashed border-border px-2 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                    >
+                      + Tambah opsi
+                    </button>
                   </div>
-                  {product ? <StatusBadge status={product.status} /> : <StatusBadge status="archived" label="Draf baru" />}
                 </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <Field id="product-parent-sku" label="Parent SKU">
-                    <Input value={product?.parent_sku ?? "(otomatis saat disimpan)"} readOnly disabled className="font-mono" />
-                  </Field>
-                  <Field id="product-name" label="Nama produk" required error={form.errors.name} className="sm:col-span-2">
-                    <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} />
-                  </Field>
-                  <Field id="product-short-name" label="Nama pendek" hint="Singkatan yang tampil di kartu/listing. Kosongkan bila otomatis dari varian." error={form.errors.short_name}>
-                    <Input value={form.data.short_name} onChange={(event) => form.setData("short_name", event.target.value)} />
-                  </Field>
-                  <Field id="product-status" label="Status" error={form.errors.status}>
-                    <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)}>
-                      {options.statuses.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label === "active" ? "Aktif" : "Diarsipkan"}</option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field id="product-description" label="Deskripsi" error={form.errors.description} className="sm:col-span-2">
-                    <Textarea rows={5} value={form.data.description} onChange={(event) => form.setData("description", event.target.value)} />
-                  </Field>
-                </div>
-              </section>
-
-              <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
-                <h2 className="text-xl font-semibold">Taksonomi</h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                  <Field id="product-category" label="Kategori" required error={form.errors.product_category}>
-                    <Select value={form.data.product_category} onChange={(event) => form.setData("product_category", event.target.value)}>
-                      {options.categories.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </Select>
-                  </Field>
-                  <Field id="product-model" label="Model" required error={form.errors.product_model}>
-                    <Select value={form.data.product_model} onChange={(event) => form.setData("product_model", event.target.value)}>
-                      {options.models.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </Select>
-                  </Field>
-                  <Field id="product-design" label="Sub Model" hint="Pilihan sub model aktif untuk model terpilih. Kosongkan bila tanpa sub model." error={form.errors.design_variant}>
-                    <Select value={form.data.design_variant} onChange={(event) => form.setData("design_variant", event.target.value)}>
-                      <option value="">Tanpa sub model</option>
-                      {options.designs
-                        .filter((option) => option.model === form.data.product_model)
-                        .map((option) => (
-                          <option key={option.model + ":" + option.value} value={option.value}>{option.label}</option>
-                        ))}
-                    </Select>
-                  </Field>
-                </div>
-              </section>
-
-              <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
-                <h2 className="text-xl font-semibold">Beranda</h2>
-                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md bg-surface-muted p-4">
-                  <input type="checkbox" checked={form.data.homepage_popular} onChange={(event) => form.setData("homepage_popular", event.target.checked)} className="mt-1 h-4 w-4 accent-primary" />
-                  <span>
-                    <span className="block text-sm font-semibold">Tampilkan sebagai paling banyak dipesan</span>
-                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">Gunakan hanya untuk produk yang memang ingin diprioritaskan.</span>
-                  </span>
-                </label>
-                <Field id="product-popular-sort" label="Urutan tampilan" error={form.errors.homepage_popular_sort} className="mt-4 max-w-48">
-                  <Input type="number" min="0" max="9999" value={form.data.homepage_popular_sort} onChange={(event) => form.setData("homepage_popular_sort", event.target.value)} disabled={!form.data.homepage_popular} />
-                </Field>
-              </section>
-
-              <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-6">
-                {!editing ? (
-                  <Button type="button" variant="secondary" disabled={form.processing} onClick={(event) => submitIdentity("archived", event, true)}>
-                    {form.processing ? "Menyimpan..." : "Simpan & tambah baru"}
-                  </Button>
-                ) : null}
-                <Button type="button" variant="secondary" disabled={form.processing} onClick={(event) => submitIdentity("archived", event)}>
-                  {form.processing ? "Menyimpan..." : "Simpan draf"}
+              ))}
+              {variantDefs.length < 5 ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setVariantDefs((prev) => [...prev, { name: "", options: [""] }])}
+                >
+                  Tambah varian
                 </Button>
-                {editing ? (
-                  <Button type="button" disabled={form.processing} onClick={(event) => submitIdentity("active", event)}>
-                    {form.processing ? "Menyimpan..." : "Simpan & Aktifkan"}
-                  </Button>
-                ) : null}
-              </div>
-            </form>
-
-            <form onSubmit={submitVariants} className="space-y-6" id="sec-variants">
-                <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-                  <div className="border-b border-border p-5 sm:p-7">
-                    <h2 className="text-xl font-semibold">Varian, harga, dan stok</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Tambahkan beberapa ukuran sekaligus. SKU dibuat otomatis.</p>
-                  </div>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-muted p-4"><input type="checkbox" checked={variantsForm.data.randomize_stock} onChange={(event) => variantsForm.setData("randomize_stock", event.target.checked)} className="mt-1 h-4 w-4 accent-primary" /><span><span className="block text-sm font-semibold">Acak stok awal per varian</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Saat aktif, sistem menghasilkan stok visual acak 700–5.000. Jika mati, isi stok awal manual.</span></span></label>
-                  {variants.length ? (
-                    <div className="divide-y divide-border">
-                      {variants.map((variant) => (
-                        <div key={variant.id} className="flex flex-wrap items-center justify-between gap-3 p-4 sm:px-7">
-                          <div>
-                            <p className="font-mono text-xs font-semibold">{variant.variant_sku}</p>
-                            <p className="mt-1 text-sm">{[variant.variation_1_option, variant.variation_2_option].filter(Boolean).join(" / ") || "Tanpa label variasi"}</p>
-                          </div>
-                          <div className="flex items-center gap-3 text-sm">
-                            <span>{formatCurrency(Number(variant.price))}</span>
-                            <span className="text-muted-foreground">Stok {variant.stock}</span>
-                            <StatusBadge status={variant.status} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="p-7 text-sm text-muted-foreground">Belum ada varian. Isi baris pertama di bawah.</p>
-                  )}
-                </section>
-
-                <section className="space-y-6">
-                  {variantsForm.data.variants.map((variant, index) => (
-                    <article key={index} className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
-                      <div className="flex items-center justify-between gap-3">
-                        <h2 className="font-semibold">Varian baru {index + 1}</h2>
-                        {variantsForm.data.variants.length > 1 ? (
-                          <Button type="button" variant="ghost" size="sm" onClick={() => variantsForm.setData("variants", variantsForm.data.variants.filter((_, rowIndex) => rowIndex !== index))}>Hapus baris</Button>
-                        ) : null}
-                      </div>
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {([
-                          ["variation_1_name", "Nama opsi 1"],
-                          ["variation_1_option", "Nilai opsi 1"],
-                          ["variation_2_name", "Nama opsi 2"],
-                          ["variation_2_option", "Nilai opsi 2"],
-                          ["variation_3_name", "Nama opsi 3"],
-                          ["variation_3_option", "Nilai opsi 3"],
-                          ["variation_4_name", "Nama opsi 4"],
-                          ["variation_4_option", "Nilai opsi 4"],
-                          ["variation_5_name", "Nama opsi 5"],
-                          ["variation_5_option", "Nilai opsi 5"],
-                          ["price", "Harga"],
-                          ["weight_kg", "Berat (kg)"],
-                          ["width_cm", "Lebar (cm)"],
-                          ["height_cm", "Tinggi (cm)"],
-                          ["depth_cm", "Tebal (cm)"],
-                        ] as Array<[keyof VariantDraft, string]>).map(([key, label]) => (
-                          <Field key={key} id={`wizard-variant-${index}-${key}`} label={label} error={variantsForm.errors[`variants.${index}.${key}`]}>
-                            <Input type={key === "price" || key.includes("_cm") || key === "stock" ? "number" : "text"} min={key === "price" || key === "stock" || key.includes("_cm") ? "0" : undefined} step={key === "price" || key === "stock" ? "1" : "0.01"} value={variant[key]} onFocus={(event) => event.target.select()} onChange={(event) => updateVariant(index, key, event.target.value)} />
-                          </Field>
-                        ))}
-                      </div>
-                        {!variantsForm.data.randomize_stock ? <Field key="manual-stock" id={"wizard-variant-stock-" + index} label="Stok awal manual" error={(variantsForm.errors as Record<string, string | undefined>)["variants." + index + ".stock"]}><Input type="number" min="0" step="1" value={variant.stock ?? ""} onFocus={(event) => event.target.select()} onChange={(event) => updateVariant(index, "stock", event.target.value)} /></Field> : null}
-                    </article>
-                  ))}
-                  <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-6">
-                    <Button type="button" variant="secondary" onClick={() => variantsForm.setData("variants", [...variantsForm.data.variants, emptyVariant()])}>Tambah baris varian</Button>
-                    <Button type="submit" disabled={variantsForm.processing || !variantBulkUrl}>{variantsForm.processing ? "Menyimpan..." : "Simpan varian"}</Button>
-                  </div>
-                </section>
-              </form>
-
-            {product ? (
-              <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7" id="sec-review">
-                <h2 className="text-xl font-semibold">Review sebelum publish</h2>
-                <p className="mt-2 text-sm text-muted-foreground">Periksa blocker berikut. Produk tetap arsip sampai semua checklist siap.</p>
-                <div className="mt-6 space-y-3">
-                  <ReviewRow label="Identitas produk" ready={Boolean(product.name)} />
-                  <ReviewRow label="Minimal satu varian aktif" ready={completion.active_variants} detail={`${completion.active_variants ? "Ada" : "Belum ada"} varian aktif`} />
-                  <ReviewRow label="Gambar utama katalog sudah siap" ready={completion.main_image_ready} />
-                  <ReviewRow label="Foto pada grup varian lengkap" ready={completion.photo_coverage} />
-                  <ReviewRow label="Semua varian memiliki harga manual" ready={completion.prices} />
-                  <ReviewRow label="Penjelasan produk" ready={completion.explanation} />
-                  <ReviewRow label="Data pengiriman tiap varian" ready={completion.shipping_data} />
-                </div>
-                <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-6">
-                  {publishUrl ? <Button type="button" disabled={publishForm.processing} onClick={() => publishForm.post(publishUrl)}>{publishForm.processing ? "Mempublikasikan..." : "Simpan & publikasikan"}</Button> : null}
-                </div>
-              </section>
-            ) : null}
-          </div>
-
-          <aside className="hidden lg:block">
-            <div className="sticky top-24 rounded-lg border border-border bg-card p-5 shadow-sm">
-              <h2 className="text-base font-semibold">Checklist aktivasi</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Produk tetap arsip sampai semua item siap. Isi bagian yang "Perlu dilengkapi".</p>
-              <ul className="mt-4 space-y-3">
-                <ChecklistRow label="Identitas" ready={Boolean(product?.name)} />
-                <ChecklistRow label="Varian aktif" ready={completion.active_variants} />
-                <ChecklistRow label="Harga manual semua varian" ready={completion.prices} />
-                <ChecklistRow label="Gambar utama siap" ready={completion.main_image_ready} />
-                <ChecklistRow label="Foto ditautkan ke varian" ready={completion.photo_coverage} />
-                <ChecklistRow label="Penjelasan produk" ready={completion.explanation} />
-                <ChecklistRow label="Data pengiriman" ready={completion.shipping_data} />
-              </ul>
+              ) : null}
             </div>
-          </aside>
-        </div>
-      </div>
-    </AdminLayout>
-  )
-}
 
-function ChecklistRow({ label, ready }: { label: string; ready: boolean }) {
-  return (
-    <li className="flex items-center justify-between gap-2 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`text-sm font-semibold ${ready ? "text-success" : "text-warning"}`}>{ready ? "Siap" : "Perlu"}</span>
-    </li>
+            {combos.length ? (
+              <div className="mt-6 border-t border-border pt-4">
+                <h3 className="text-sm font-bold text-foreground">Harga &amp; stok per kombinasi</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">Stok bisa diisi angka atau rentang acak, mis. random 8000-9000.</p>
+                <table className="mt-3 w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <th className="py-2 font-semibold">Kombinasi</th>
+                      <th className="py-2 font-semibold">Harga (Rp)</th>
+                      <th className="py-2 font-semibold">Stok</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {combos.map((combo) => {
+                      const key = combinationKey(combo.options)
+                      const value = combinations[key] ?? { price: "", stock: "" }
+                      return (
+                        <tr key={key} className="border-t border-border">
+                          <td className="py-2 pr-3 font-medium text-foreground">{combo.label}</td>
+                          <td className="py-2 pr-3">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={value.price}
+                              onChange={(event) => setCombinations((prev) => ({ ...prev, [key]: { ...value, price: event.target.value } }))}
+                              aria-label={`Harga untuk ${combo.label}`}
+                              className="h-8 w-36"
+                            />
+                          </td>
+                          <td className="py-2">
+                            <Input
+                              type="text"
+                              value={value.stock}
+                              onChange={(event) => setCombinations((prev) => ({ ...prev, [key]: { ...value, stock: event.target.value } }))}
+                              placeholder="angka atau random 8000-9000"
+                              aria-label={`Stok untuk ${combo.label}`}
+                              className="h-8 w-48"
+                            />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </section>
+
+          {/* 4. SIMPAN / PUBLISH */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
+            <p className="text-xs text-muted-foreground">
+              Produk disimpan sebagai draf. Aktifkan setelah foto, varian + harga, dan data pengiriman lengkap.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {!editing ? (
+                <Button type="button" variant="secondary" disabled={saving} onClick={(event) => submit("archived", event, true)}>
+                  {saving ? "Menyimpan..." : "Simpan & tambah baru"}
+                </Button>
+              ) : null}
+              <Button type="submit" variant="secondary" disabled={saving}>
+                {saving ? "Menyimpan..." : "Simpan draf"}
+              </Button>
+            </div>
+          </div>
+        </form>
+
+        {editing ? (
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
+            <h2 className="text-xl font-semibold">Aktifkan produk</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Periksa syarat berikut. Produk tetap draf sampai semua siap.</p>
+            <div className="mt-6 space-y-3">
+              <ReviewRow label="Nama produk" ready={Boolean(product?.name)} />
+              <ReviewRow label="Foto utama terpasang" ready={pickedMedia.length > 0} />
+              <ReviewRow label="Berat & dimensi (pengiriman)" ready={Boolean(form.data.weight_kg && form.data.width_cm && form.data.height_cm && form.data.depth_cm)} />
+              <ReviewRow label="Varian aktif" ready={combos.length === 0 ? true : Boolean(product && (product as unknown as { variants_count?: number }).variants_count)} />
+            </div>
+            <div className="mt-8 border-t border-border pt-6">
+              {publishUrl ? (
+                <Button type="button" disabled={publishing} onClick={publish}>
+                  {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
+                </Button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        multiple
+        title="Media produk"
+        onPick={(media) => setPickedMedia((prev) => {
+          const seen = new Set(prev.map((m) => m.assetId))
+          return [...prev, ...media.filter((m) => !seen.has(m.assetId))]
+        })}
+      />
+    </AdminLayout>
   )
 }
 
