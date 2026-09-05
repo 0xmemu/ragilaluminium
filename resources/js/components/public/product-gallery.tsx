@@ -161,19 +161,16 @@ export function ProductGallery({
     }
   }, [activeMediaIndex, items.length])
 
-  // Pindah foto hanya saat highlightedMediaId BERUBAH (misal user baru mengklik varian).
-  // Jangan kunci activeMediaIndex di dependency agar user tetap bebas swipe / klik thumbnail lain.
+  // Pindah foto saat highlightedMediaId berubah (opsional, sebagai pelengkap).
   const prevHighlightedId = React.useRef<string | number | null | undefined>(undefined)
   React.useEffect(() => {
-    if (highlightedMediaId == null) {
-      prevHighlightedId.current = highlightedMediaId
-      return
-    }
     if (highlightedMediaId !== prevHighlightedId.current) {
       prevHighlightedId.current = highlightedMediaId
-      const idx = items.findIndex((item) => item.id === highlightedMediaId)
-      if (idx !== -1) {
-        setActiveMediaIndex(idx)
+      if (highlightedMediaId != null) {
+        const idx = items.findIndex((item) => item.id === highlightedMediaId)
+        if (idx !== -1) {
+          setActiveMediaIndex(idx)
+        }
       }
     }
   }, [highlightedMediaId, items])
