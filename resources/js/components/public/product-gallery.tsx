@@ -30,7 +30,7 @@ export function ProductGallery({
   // Strip carousel mobile (plan rev 4): 5 thumb terlihat penuh, geser per
   // thumb, main image = thumb yang baru masuk, chip +N dinamis dua arah.
   const VISIBLE_THUMBS = 5
-  const STRIP_GAP = 10
+  const STRIP_GAP = 8
   const STRIP_PAD = 10
   const [thumbW, setThumbW] = React.useState(66)
   const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
@@ -368,7 +368,7 @@ export function ProductGallery({
               data-gallery-strip
               onScroll={onStripScroll}
               style={{ "--thumb-w": `${thumbW}px` } as React.CSSProperties}
-              className="scrollbar-none mt-0 flex w-full max-w-full gap-2.5 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
+              className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
               aria-label="Pilih foto produk"
             >
               {/* Semua foto dirender urut asli; ke-6+ tersembunyi kanan.
