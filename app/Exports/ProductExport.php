@@ -42,6 +42,11 @@ class ProductExport extends RagilStyledExport implements WithMultipleSheets
             new ProductExportSummarySheet($this->query),
             new ProductExportDetailSheet($this->query),
             new ProductExportAttributesSheet($this->query),
+            // Dua sheet paste-ready: kolom & urutan IDENTIK dengan sheet data
+            // template Update Harga & Stok / Update Media (kontrak owner
+            // 09-05: copy dari export, paste ke template, upload).
+            new ProductExportUpdatePriceStockSheet($this->query),
+            new ProductExportUpdateMediaSheet($this->query),
         ];
     }
 }
