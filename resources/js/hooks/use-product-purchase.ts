@@ -99,40 +99,30 @@ export function useProductPurchase({
     return media
   }, [media, selections, variants])
 
-  // Foto yang harus ditonjolkan: foto khusus dari varian yang PALING COCOK
-  // dengan pilihan saat ini. Foto biasanya ter-link per Warna (varian
-  // perwakilan), jadi Hitam + Kaca Riben tetap menonjolkan foto Hitam yang
-  // ter-link di varian Hitam + Kaca Bening. Skor = jumlah axis yang cocok;
-  // di antara varian ber-foto khusus, ambil skor tertinggi. Null = tidak ada
-  // foto khusus yang relevan, galeri tetap di posisi sekarang (tidak lompat).
+  // Desain owner (09-05): foto berganti SAAT sebuah opsi varian diklik, dan
+  // hanya jika opsi itu punya foto khusus. Tidak ada hubungannya dengan
+  // kombinasi pilihan lain - jadi urutan memilih (kaca dulu atau warna dulu)
+  // tidak berpengaruh. Setiap klik opsi di set di sini; galeri membaca
+  // lastPickedOption dan mencari media khusus opsi tersebut (varian mana pun
+  // yang memuat opsi itu, karena foto ter-link per opsi via varian perwakilan).
+  const [lastPickedOption, setLastPickedOption] = React.useState<{
+    axis: string
+    option: string
+  } | null>(null)
+
   const highlightedMediaId = React.useMemo(() => {
-    const filled = Object.entries(selections).filter(
-      ([, v]) => v !== undefined && v !== "",
-    )
-    if (filled.length === 0) return null
-    let bestId: string | number | null = null
-    let bestScore = -1
-    for (const v of variants) {
-      const pairs = new Map(variantPairs(v))
-      let matches = 0
-      for (const [axisName, axisOption] of filled) {
-        const hit =
-          axisName === "Ukuran"
-            ? v.dimension_compact === axisOption || v.dimension_label === axisOption
-            : pairs.get(axisName) === axisOption
-        if (hit) matches++
-      }
-      if (matches === 0) continue
-      if (matches < bestScore) continue
-      const dedicated = media.find(
-        (item) => Number(item.product_variant_id) === v.id,
-      )
-      if (!dedicated) continue
-      bestScore = matches
-      bestId = dedicated.id
-    }
-    return bestId
-  }, [media, selections, variants])
+    if (!lastPickedOption) return null
+    // Foto khusus yang mengandung opsi yang baru diklik (semua axis, opsi sama).
+    const hit = media.find((item) => {
+      const vid = Number(item.product_variant_id)
+      if (!vid) return false
+      const owner = variants.find((v) => v.id === vid)
+      if (!owner) return false
+      const pairs = new Map(variantPairs(owner))
+      return pairs.get(lastPickedOption.axis) === lastPickedOption.option
+    })
+    return hit ? hit.id : null
+  }, [lastPickedOption, media, variants])
 
   const form = useForm({
     parent_sku: product.parent_sku,
@@ -152,6 +142,7 @@ export function useProductPurchase({
 
   function chooseAxis(axisName: string, option: string) {
     setVariantError(false)
+    setLastPickedOption({ axis: axisName, option })
     const nextSelections = { ...selections, [axisName]: option }
     const nextVariant = resolveVariant(variants, nextSelections)
 
