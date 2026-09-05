@@ -50,7 +50,9 @@ class ProductExportDataSheet extends RagilStyledExport implements FromQuery, Wit
         $installation = [];
         $optionImages = [];
         foreach ($product->media->sortBy('position')->values() as $m) {
-            $url = (string) ($m->stored_url ?? $m->source_url ?? '');
+            // URL publik dengan logika yang SAMA dengan storefront
+            // (urlFor menangani asset library, host, dan varian gambar).
+            $url = (string) ($m->urlFor('pdp') ?? $m->mediaAsset?->urlFor('pdp') ?? '');
             if ($url === '') { continue; }
             if ($m->position === 1) { $mainImage = $url; continue; }
             if ($m->position >= 2 && $m->position <= 9) { $secondImage = $secondImage ?? $url; continue; }
