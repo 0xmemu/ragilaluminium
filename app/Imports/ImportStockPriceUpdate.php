@@ -68,6 +68,13 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
                 throw new \RuntimeException('SKU tidak ditemukan: '.$unknown);
             }
 
+            // Kontrak update (owner 09-06): variant_sku harus benar-benar
+            // milik parent_sku. Salah induk = error per baris, bukan diam-diam
+            // mengupdate varian parent lain.
+            if ($variant && $parentSku !== '' && $variant->product?->parent_sku !== $parentSku) {
+                throw new \RuntimeException('variant_sku tidak cocok dengan parent_sku: '.$variantSku);
+            }
+
             if (! $variant && $product) {
                 // Tanpa variant_sku: target varian default bila ada, kalau tidak
                 // produk single (harga/stok di level produk).

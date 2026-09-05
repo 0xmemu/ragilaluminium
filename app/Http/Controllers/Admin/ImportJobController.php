@@ -521,11 +521,22 @@ class ImportJobController extends Controller
             $manualStock
         );
 
+        // Diff nyata per baris (owner 09-06): tampilkan apa yang AKAN berubah
+        // sebelum admin menekan Mulai Import. Tidak ada penulisan data di sini.
+        $changes = \App\Support\UpdatePreviewDiff::compute(
+            $rows,
+            $validated['type'],
+            $manualStock
+        );
+
         return response()->json([
             'contract' => 'preview-only; tidak menulis data',
             'verify_errors' => $result['errors'],
             'skipped_rows' => $result['skipped'],
             'total' => count($rows),
+            'changes' => $changes['changes'],
+            'changed_rows' => $changes['changed_rows'],
+            'unchanged_rows' => $changes['unchanged_rows'],
         ]);
     }
 }

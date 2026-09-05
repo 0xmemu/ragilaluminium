@@ -39,10 +39,11 @@ class ProductExport extends RagilStyledExport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            // SATU sheet saja: salinan persis sheet Data template import
-            // katalog, header & urutan dari dataHeaders() template, id_key
-            // = SKU produk. 1 baris = 1 kombinasi (kontrak owner 09-05).
-            new ProductExportDataSheet($this->query),
+            // Kontrak export-as-update (owner 09-06): 2 sheet, keduanya
+            // SATU BARIS = SATU VARIAN dgn target stabil parent_sku +
+            // variant_sku. A utk harga/stok harian; B utk metadata + media.
+            new ProductExportUpdatePriceStockSheet($this->query),
+            new ProductExportFullUpdateSheet($this->query),
         ];
     }
 }
