@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Exports\Concerns\RagilStyledExport;
+use App\Exports\CatalogTemplateExport;
 use App\Support\ExportSafety;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
@@ -10,137 +11,126 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
 /**
- * Sheet paste-ready: kolom & urutan IDENTIK dengan sheet data template
- * Update Media.
+ * Sheet paste-ready "Update Media": kolom & urutan IDENTIK dengan sheet Data
+ * template import katalog (matriks yang sama dengan sheet Update Harga &
+ * Stok), tapi kolom media diisi dari database sesuai kontrak importer:
  *
- * Kontrak media_update (dibaca ulang dari importer, bukan dikarang):
- *  - parent_sku WAJIB; variant_sku OPTIONAL.
- *  - variant_sku TERISI  = media khusus varian itu.
- *  - variant_sku KOSONG  = media level produk (berlaku utk semua varian).
- *  - Sel kosong = foto yang ada TIDAK diubah (tidak pernah menghapus).
+ *  - image_1, image_2            : media level produk utama & lanjutan.
+ *  - image_variation_N_option_M  : gambar per opsi varian.
+ *  - shared_media_1..2           : media bersama (foto/video).
+ *  - installation_image_1..2     : media hasil pemasangan.
+ *  - variantion_combination      : kombinasi varian (baris varian jadi).
  *
- * Media di sistem ini tersimpan di LEVEL PRODUK (anti-duplikat): 247 record
- * product-level vs 6 varian-level. Karena itu sheet ini menghasilkan:
- *  1. Satu baris LEVEL PRODUK (variant_sku kosong) berisi seluruh media
- *     produk: image_1..9, installation_image_1..9, installation_slots.
- *  2. Satu baris LEVEL VARIAN untuk setiap varian yang benar-benar punya
- *     media varian-level (jarang; warisan form manual).
- *
- * Baris varian yang TIDAK punya media varian-level TIDAK dibuat: kolomnya
- * pasti kosong, tidak berguna bagi admin, dan akan dilewati verifier (M4).
- * Admin yang ingin pasang foto khusus satu varian tinggal mengisi
- * variant_sku di baris baru.
+ * Satu baris = satu kombinasi varian. Kolom identitas/definisi opsi/media
+ * cukup di baris pertama grup (semantik sama dengan file import).
  */
 class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQuery, WithHeadings, WithMapping
 {
     public function __construct(protected Builder $query)
     {
         $this->sheetTitle = 'Update Media';
-        $this->columnWidths = [
-            'A' => 18, 'B' => 20,
-            'C' => 40, 'D' => 40, 'E' => 40, 'F' => 40, 'G' => 40, 'H' => 40, 'I' => 40, 'J' => 40, 'K' => 40,
-            'L' => 40, 'M' => 40, 'N' => 40, 'O' => 40, 'P' => 40, 'Q' => 40, 'R' => 40, 'S' => 40, 'T' => 40,
-            'U' => 18,
-        ];
+        $this->columnWidths = array_merge(
+            ['A' => 14, 'B' => 34, 'C' => 40],
+            array_fill_keys(['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL'], 24)
+        );
     }
 
     public function query(): Builder
     {
         ExportSafety::assertQueryWithinLimit($this->query);
 
-        return $this->query->with(['variants', 'media']);
+        return $this->query->with(['variants', 'media.mediaAsset']);
     }
 
     public function headings(): array
     {
-        // Persis sheet data template Update Media.
-        $headings = ['parent_sku', 'variant_sku'];
-        for ($i = 1; $i <= 9; $i++) { $headings[] = 'image_'.$i; }
-        for ($i = 1; $i <= 9; $i++) { $headings[] = 'installation_image_'.$i; }
-        $headings[] = 'installation_slots';
-
-        return $headings;
+        return CatalogTemplateExport::dataHeaders();
     }
 
     /** @return list<array<int, mixed>> */
     public function map($product): array
     {
+        $headers = CatalogTemplateExport::dataHeaders();
         $rows = [];
 
-        // 1. Baris level produk (variant_sku kosong): seluruh media produk.
-        //    Baris inilah yang dipakai admin untuk mengganti/menambah foto.
-        $productRow = $this->buildMediaRow($product->parent_sku, null, $product->media);
-        if ($productRow !== null) {
-            $rows[] = $productRow;
+        $variants = $product->variants->sortBy('id')->values();
+
+        // Peta media produk per kelas posisi (kontrak importer):
+        // 1..9 katalog umum, 11..19 shared, 50..79 gambar per opsi, 101+ installation.
+        $media = $product->media->sortBy('position')->values();
+        $mainImage = null;
+        $secondImage = null;
+        $shared = [];
+        $installation = [];
+        $optionImages = [];
+        foreach ($media as $m) {
+            $url = (string) ($m->stored_url ?? $m->source_url ?? '');
+            if ($url === '') { continue; }
+            if ($m->position === 1) { $mainImage = $url; continue; }
+            if ($m->position >= 2 && $m->position <= 9) { $secondImage = $secondImage ?? $url; continue; }
+            if ($m->position >= 11 && $m->position <= 19) { $shared[] = $url; continue; }
+            if ($m->position >= 50 && $m->position <= 79) { $optionImages[] = $url; continue; }
+            if ($m->position >= 101) { $installation[] = $url; }
         }
 
-        // 2. Baris varian hanya untuk varian yang punya media varian-level.
-        foreach ($product->variants as $variant) {
-            $variantRow = $this->buildMediaRow($product->parent_sku, $variant->variant_sku, $product->media, $variant->id);
-            if ($variantRow !== null) {
-                $rows[] = $variantRow;
+        foreach ($variants as $index => $variant) {
+            $row = array_fill(0, count($headers), null);
+
+            foreach ($headers as $col => $header) {
+                $row[$col] = match ($header) {
+                    'id_key' => $index === 0 ? $product->parent_sku : null,
+                    'name' => $index === 0 ? $product->name : null,
+                    'product_category' => $index === 0 ? $product->product_category : null,
+                    'product_model' => $index === 0 ? $product->product_model : null,
+                    'design_variant' => $index === 0 ? $product->design_variant : null,
+                    'variation_1_name' => $index === 0 ? $variant->variation_1_name : null,
+                    'variation_1_option_1' => $index === 0 ? $variant->variation_1_option : null,
+                    'variation_2_name' => $index === 0 ? $variant->variation_2_name : null,
+                    'variation_2_option_1' => $index === 0 ? $variant->variation_2_option : null,
+                    'variantion_combination', 'variation_combination' => $this->combination($variant),
+                    'price_variantion_combination' => (float) $variant->price,
+                    'stock' => (int) $variant->stock,
+                    'image_1' => $index === 0 ? $mainImage : null,
+                    'image_2' => $index === 0 ? $secondImage : null,
+                    'shared_media_1' => $index === 0 ? ($shared[0] ?? null) : null,
+                    'shared_media_2' => $index === 0 ? ($shared[1] ?? null) : null,
+                    'image_variation_1_option_1', 'image_variation_1_option_2', 'image_variation_1_option_3', 'image_variation_1_option_4',
+                    'image_variation_2_option_1', 'image_variation_2_option_2', 'image_variation_2_option_3', 'image_variation_2_option_4' => $index === 0 ? $this->optionImageByColumn($header, $optionImages) : null,
+                    'installation_image_1' => $index === 0 ? ($installation[0] ?? null) : null,
+                    'installation_image_2' => $index === 0 ? ($installation[1] ?? null) : null,
+                    default => null,
+                };
             }
+
+            $rows[] = array_map([ExportSafety::class, 'cell'], $row);
         }
 
         return $rows;
     }
 
     /**
-     * Bangun satu baris media. Return null bila tidak ada satu pun URL
-     * (baris kosong tidak dibuat: percuma bagi admin).
-     *
-     * @param  \Illuminate\Support\Collection<int, mixed>  $allMedia
-     * @return list<mixed>|null
+     * Gambar per opsi disimpan berurutan (posisi 50..79) sesuai urutan
+     * penautan importer: per slot varian, opsi urut. Petakan balik ke kolom
+     * image_variation_N_option_M.
      */
-    protected function buildMediaRow(string $parentSku, ?string $variantSku, $allMedia, ?int $variantId = null): ?array
+    protected function optionImageByColumn(string $header, array $optionImages): ?string
     {
-        $media = $allMedia
-            ->filter(fn ($m) => $variantId === null
-                ? $m->product_variant_id === null
-                : $m->product_variant_id === $variantId)
-            ->sortBy('position')
-            ->values();
-
-        if ($media->isEmpty()) {
-            return null;
+        if (preg_match('/image_variation_(\d+)_option_(\d+)/', $header, $m)) {
+            $slot = ((int) $m[1] - 1) * 4 + ((int) $m[2] - 1);
+            return $optionImages[$slot] ?? null;
         }
 
-        $images = [];
-        $installationImages = [];
-        $installationSlots = [];
-        $catalogPos = 0;
-        $installPos = 0;
+        return null;
+    }
 
-        foreach ($media as $m) {
-            $url = (string) ($m->stored_url ?? $m->source_url ?? '');
-            if ($url === '') { continue; }
-            if ($m->is_installation) {
-                $installPos++;
-                if ($installPos <= 9) { $installationImages[$installPos - 1] = $url; }
-                if ($m->show_in_catalog) {
-                    // installation_slots = posisi image_N yang juga installation
-                    $catalogSlot = 0;
-                    foreach ($media as $m2) {
-                        if ($m2->is_installation || ! $m2->show_in_catalog) { continue; }
-                        $catalogSlot++;
-                        if ($m2->id === $m->id) { $installationSlots[] = $catalogSlot; break; }
-                    }
-                }
-            } elseif ($m->show_in_catalog) {
-                $catalogPos++;
-                if ($catalogPos <= 9) { $images[$catalogPos - 1] = $url; }
-            }
+    protected function combination($variant): ?string
+    {
+        $parts = [];
+        foreach ([$variant->variation_1_option, $variant->variation_2_option, $variant->variation_3_option, $variant->variation_4_option, $variant->variation_5_option] as $opt) {
+            $opt = trim((string) $opt);
+            if ($opt !== '') { $parts[] = $opt; }
         }
 
-        if ($images === [] && $installationImages === []) {
-            return null;
-        }
-
-        $row = [$parentSku, $variantSku];
-        for ($i = 0; $i < 9; $i++) { $row[] = $images[$i] ?? null; }
-        for ($i = 0; $i < 9; $i++) { $row[] = $installationImages[$i] ?? null; }
-        $row[] = $installationSlots !== [] ? implode(',', array_unique($installationSlots)) : null;
-
-        return array_map([ExportSafety::class, 'cell'], $row);
+        return $parts !== [] ? implode(', ', $parts) : null;
     }
 }
