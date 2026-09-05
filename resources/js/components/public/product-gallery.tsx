@@ -161,21 +161,22 @@ export function ProductGallery({
     }
   }, [activeMediaIndex, items.length])
 
-  // Desain owner (09-05): klik varian TIDAK mengubah urutan galeri. Varian
-  // dengan foto khusus hanya MENONJOLKAN fotonya: strip digulir ke foto itu
-  // dan foto itu jadi foto aktif. Varian tanpa foto khusus: galeri tetap di
-  // posisi sekarang (tidak melompat).
+  // Pindah foto hanya saat highlightedMediaId BERUBAH (misal user baru mengklik varian).
+  // Jangan kunci activeMediaIndex di dependency agar user tetap bebas swipe / klik thumbnail lain.
+  const prevHighlightedId = React.useRef<string | number | null | undefined>(undefined)
   React.useEffect(() => {
     if (highlightedMediaId == null) {
+      prevHighlightedId.current = highlightedMediaId
       return
     }
-    const idx = items.findIndex((item) => item.id === highlightedMediaId)
-    if (idx === -1 || idx === activeMediaIndex) {
-      return
+    if (highlightedMediaId !== prevHighlightedId.current) {
+      prevHighlightedId.current = highlightedMediaId
+      const idx = items.findIndex((item) => item.id === highlightedMediaId)
+      if (idx !== -1) {
+        setActiveMediaIndex(idx)
+      }
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveMediaIndex(idx)
-  }, [highlightedMediaId, items, activeMediaIndex])
+  }, [highlightedMediaId, items])
 
   // Scroll strip: update index terlihat untuk badge +N tanpa merubah foto utama.
   const onStripScroll = () => {
