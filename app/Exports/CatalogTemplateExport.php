@@ -51,7 +51,7 @@ class CatalogTemplateExport implements WithMultipleSheets
     public static function dataHeaders(): array
     {
         $cols = [
-            'name', 'description', 'product_category', 'product_model', 'design_variant',
+            'id_key', 'name', 'description', 'product_category', 'product_model', 'design_variant',
             'variation_1_name', 'variation_1_option_1', 'variation_1_option_2', 'variation_1_option_3', 'variation_1_option_4',
             'variation_2_name', 'variation_2_option_1', 'variation_2_option_2', 'variation_2_option_3', 'variation_2_option_4',
             'variantion_combination', 'price_variantion_combination', 'stock',
@@ -97,7 +97,7 @@ class CatalogDataSheet implements FromArray, WithTitle, WithEvents
         ]);
         $sheet->getRowDimension(1)->setRowHeight(26);
 
-        foreach (['A' => 34, 'B' => 40, 'C' => 17, 'D' => 13, 'E' => 13,
+        foreach (['A' => 10, 'B' => 34, 'C' => 40, 'D' => 17, 'E' => 13, 'F' => 13,
             'F' => 14, 'G' => 14, 'H' => 14, 'I' => 14, 'J' => 14,
             'K' => 14, 'L' => 14, 'M' => 14, 'N' => 14,
             'O' => 22, 'P' => 18, 'Q' => 9,
@@ -169,6 +169,7 @@ class CatalogExampleSheet implements FromArray, WithTitle, WithEvents
         ];
         foreach ($combos as $i => [$warna, $kaca, $price, $stock]) {
             $row = array_fill(0, count($headers), null);
+            $row[$at('id_key')] = 1;
             if ($i === 0) {
                 $row[$at('name')] = 'Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing Ornamen';
                 $row[$at('description')] = 'Jendela jungkit aluminium ornamen. Gratis packing kayu, kirim seluruh Indonesia.';
@@ -259,7 +260,8 @@ class CatalogGuideSheet implements FromArray, WithTitle, WithEvents
             ['1 baris di sheet Data = 1 kombinasi varian jadi yang dijual (mis. "Putih, Kaca Bening").'],
             [],
             ['KOLOM', 'WAJIB/OPTIONAL', 'KETERANGAN'],
-            ['name', 'WAJIB', 'Nama produk. Baris dengan name sama = varian dari produk yang sama; kolom identitas cukup diisi di baris pertama produk.'],
+            ['id_key', 'WAJIB', 'ID grup produk: penanda baris-baris mana yang satu produk. Semua baris dengan id_key sama = satu produk. Isi di SEMUA baris grup (disarankan). Boleh angka atau teks (1, 2, PROD-A). Hanya penanda sesi import; tidak disimpan, tidak memengaruhi SKU.'],
+            ['name', 'WAJIB', 'Nama produk. Wajib SAMA di semua baris dengan id_key sama; cukup diisi di baris pertama grup.'],
             ['description', 'WAJIB', 'Deskripsi produk (boleh multi-baris).'],
             ['product_category / product_model / design_variant', 'WAJIB', 'Pilih dari dropdown di sheet Data.'],
             ['variation_1_name', 'WAJIB BILA ADA VARIAN', 'Nama varian pertama, mis. "Warna". Tulis di baris pertama produk; baris lanjutan boleh kosong.'],
@@ -276,6 +278,7 @@ class CatalogGuideSheet implements FromArray, WithTitle, WithEvents
             ['shared_media_1, shared_media_2', 'OPTIONAL', 'Media bersama (foto/video tambahan) yang tampil di semua kombinasi.'],
             ['installation_image_1..2', 'OPTIONAL', 'Foto hasil pemasangan. Tambah pemasangan lain = copy kolom, ganti nomor (installation_image_3, dst).'],
             [],
+            ['VERIFIKASI OTOMATIS', '', 'File diverifikasi SEBELUM dieksekusi. Satu saja pelanggaran = tidak ada produk yang diimpor. Pelanggaran: id_key muncul kembali setelah digantikan (baris grup harus berurutan); satu id_key memuat nama berbeda; kombinasi opsi duplikat dalam satu id_key; daftar opsi berbeda antar baris satu id_key; harga kosong/nol pada baris kombinasi.'],
             ['ATURAN PENTING', '', 'Kolom lain diabaikan. Produk dikelompokkan dari kolom name. SKU dibuat otomatis. Sel kosong pada kolom opsional = tidak diubah. Batas 50.000 baris per file.'],
             ['FILE LAMA', '', 'File dengan format lama (variation_1_option, image_1..9, installation_image_1..9, atau sheet Varian) tetap bisa diproses.'],
         ];

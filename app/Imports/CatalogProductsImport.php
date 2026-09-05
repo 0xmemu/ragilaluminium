@@ -20,6 +20,9 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
 {
     protected bool $started = false;
 
+    /** @var list<string>|null hasil verifikasi pre-pass (V1-V6). */
+    protected ?array $verifyErrors = null;
+
     /** @var array{variants: list<array{name: string, options: list<array{option: string, image_url: ?string, installation_image_url: ?string}>}>, errors: list<string>}|null */
     protected ?array $variantSheet = null;
 
@@ -110,6 +113,20 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         if (! $this->started) {
             $job->update(['status' => 'running', 'started_at' => now()]);
             $this->started = true;
+
+            // VERIFIKASI PRE-PASS (all-or-nothing): jika file gagal aturan
+            // V1-V6, hentikan job tanpa membuat produk apa pun.
+            if ($this->filePath !== null) {
+                $all = \Maatwebsite\Excel\Facades\Excel::toArray(
+                    new \App\Imports\InternalCatalogPreviewImport(), $this->filePath
+                )[0] ?? [];
+                $this->verifyErrors = \App\Support\CatalogImportVerifier::verify($all);
+                if ($this->verifyErrors !== []) {
+                    throw new \RuntimeException('File gagal verifikasi: '
+                        .implode(' | ', array_slice($this->verifyErrors, 0, 8))
+                        .(count($this->verifyErrors) > 8 ? ' … dan '.(count($this->verifyErrors) - 8).' lainnya.' : ''));
+                }
+            }
         }
 
         $rowIndex = $row->getIndex();

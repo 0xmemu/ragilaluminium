@@ -371,8 +371,12 @@ class ImportJobController extends Controller
             ];
         }
 
+        // VERIFIKASI PRE-PASS: laporkan pelanggaran tanpa menulis apa pun.
+        $verify = \App\Support\CatalogImportVerifier::verify($rows);
+
         return response()->json([
             'contract' => 'preview-only; tidak menulis data',
+            'verify_errors' => $verify,
             'rows' => $diffs,
             'total' => count($diffs),
         ]);

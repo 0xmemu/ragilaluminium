@@ -1,4 +1,30 @@
-# Template Import Katalog: Skema Owner (Data/Contoh/Panduan)
+# Template Import Katalog: Skema Owner (Data/Contoh/Panduan) + ID KEY & Verifikasi
+
+Update 2026-09-05 (v3): kolom id_key + verifikasi pre-pass all-or-nothing (V1-V6).
+
+## ID KEY (kolom paling kiri)
+
+- id_key = penanda grup produk. Semua baris dengan id_key sama = satu produk.
+- WAJIB di baris pertama grup; disarankan diisi di SEMUA baris grup.
+- Baris pertama grup = baris dengan id_key baru muncul; kolom identitas &
+  definisi opsi cukup di baris itu.
+- id_key bebas angka/teks (1, 2, PROD-A). Tidak disimpan ke DB, tidak
+  memengaruhi SKU.
+
+## Verifikasi otomatis (all-or-nothing, V1-V6)
+
+Dijalankan saat upload (preview + store) dan lagi di job sebelum eksekusi.
+Satu pelanggaran = import dibatalkan, NOL produk dibuat:
+
+- V1: id_key tidak boleh muncul kembali setelah digantikan (grup kontigu).
+- V2: satu id_key = satu name (nama beda dalam grup = gagal).
+- V3: variantion_combination unik dalam satu id_key.
+- V4: daftar opsi varian identik di semua baris satu id_key.
+- V5: price wajib > 0 pada tiap baris kombinasi.
+- V6: id_key adalah kunci grup (fallback name bila kolom tidak ada).
+
+Pelaksana: App\Support\CatalogImportVerifier (store, previewCatalog,
+CatalogProductsImport pre-pass).
 
 Update: 2026-09-05. Menggantikan skema dua sheet (Varian+Kombinasi) sebagai
 format default, sesuai rancangan owner (2026-09-05).
