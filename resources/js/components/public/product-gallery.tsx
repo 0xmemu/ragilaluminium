@@ -54,7 +54,7 @@ export function ProductGallery({
     const measure = () => {
       // Area konten yang terlihat = lebar strip (clip di stripRight) dikurangi
       // padding kiri. Floor menjamin 5 thumb utuh dan sisanya di luar clip.
-      const inner = strip.clientWidth - STRIP_PAD
+      const inner = strip.clientWidth - STRIP_PAD * 2
       const w = Math.floor((inner - (visibleThumbs - 1) * STRIP_GAP) / visibleThumbs)
       setThumbW(Math.max(40, w))
     }
@@ -385,7 +385,7 @@ export function ProductGallery({
               ref={stripRef}
               onScroll={onStripScroll}
               data-gallery-strip
-              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto scroll-smooth pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0 [scroll-padding-left:10px] -mx-2.5 w-[calc(100%+20px)]"
+              className="mt-2 flex w-full gap-2 overflow-x-auto scroll-smooth px-2.5 pb-2 sm:px-8 lg:px-0 [scroll-padding-left:10px]"
               style={{ "--thumb-w": thumbW + "px" } as React.CSSProperties}
               aria-label="Pilih foto produk"
             >
