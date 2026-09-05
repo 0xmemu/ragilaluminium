@@ -92,17 +92,24 @@ export function useProductPurchase({
 
     if (matchingVariantIds.size === 0) return media
 
+    // Desain owner (09-05): galeri TETAP urut stabil (foto level produk +
+    // foto opsi di posisi aslinya), TIDAK diubah-ubah saat varian diganti.
+    // Varian hanya menentukan foto mana yang DITONJOLKAN (lihat
+    // highlightedMediaId di bawah), bukan urutan strip.
+    return media
+  }, [media, selections, variants])
+
+  // Foto yang harus ditonjolkan saat varian terpilih berubah: foto khusus
+  // milik varian itu. Null = tidak ada foto khusus, galeri tetap di posisi
+  // sekarang (tidak melompat).
+  const highlightedMediaId = React.useMemo(() => {
     const dedicated = media.filter((item) => {
       const vid = Number(item.product_variant_id)
-      return vid && matchingVariantIds.has(vid)
+      return vid && selectedVariant != null && vid === Number(selectedVariant.id)
     })
-    const productLevel = media.filter((item) => item.product_variant_id == null)
-    // Varian yang punya foto khusus: foto varian tampil duluan (auto jadi foto
-    // aktif), foto level produk menyusul supaya galeri tidak menyusut jadi
-    // satu foto. Varian tanpa foto khusus: fallback foto level produk.
-    if (dedicated.length) return [...dedicated, ...productLevel]
-    return productLevel
-  }, [media, selections, variants])
+    if (dedicated.length === 0) return null
+    return dedicated[0].id
+  }, [media, selectedVariant])
 
   const form = useForm({
     parent_sku: product.parent_sku,
@@ -253,6 +260,7 @@ export function useProductPurchase({
     variantSectionRef,
     selectedVariant,
     variantMedia,
+    highlightedMediaId,
     form,
     submitIntent,
     chooseAxis,

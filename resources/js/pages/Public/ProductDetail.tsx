@@ -47,7 +47,7 @@ export default function ProductDetail({
   promo = null,
 }: ProductDetailProps) {
   const purchase = useProductPurchase({ product, attributes, variants, media, reviews, promo })
-  const { title, variantMedia, productSchema, averageRating, ratingLabel, ratedReviews } = purchase
+  const { title, variantMedia, highlightedMediaId, productSchema, averageRating, ratingLabel, ratedReviews } = purchase
 
   const shareUrl = React.useMemo(() => {
     if (typeof window === "undefined") {
@@ -145,7 +145,7 @@ export default function ProductDetail({
             <div className="absolute right-2 top-2 z-20 lg:hidden">
               <ShareActionButton title={title} url={shareUrl} />
             </div>
-            <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} />
+            <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} highlightedMediaId={highlightedMediaId} />
           </div>
 
           <div className="min-w-0 lg:sticky lg:top-28">

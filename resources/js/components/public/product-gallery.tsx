@@ -16,11 +16,14 @@ export function ProductGallery({
   items,
   title,
   onActiveMediaChange,
+  highlightedMediaId,
 }: {
   items: ProductMedia[]
   title: string
   /** Lapor media yang sedang dilihat ke parent (dipakai animasi fly saat add-to-cart). */
   onActiveMediaChange?: (media: ProductMedia | null) => void
+  /** Foto varian yang ditonjolkan (urutan galeri TIDAK diubah). */
+  highlightedMediaId?: string | number | null
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
@@ -138,18 +141,41 @@ export function ProductGallery({
     }
   }, [activeMediaIndex, items.length])
 
-  // Ganti varian = daftar media berganti: kembali ke foto pertama varian terpilih.
-  // Tanpa ini, index lama bertahan dan gambar tidak ikut pindah saat klik varian.
-  const firstMediaIdRef = React.useRef<string | number | null>(items[0]?.id ?? null)
+  // Desain owner (09-05): klik varian TIDAK mengubah urutan galeri. Varian
+  // dengan foto khusus hanya MENONJOLKAN fotonya: strip digulir ke foto itu
+  // dan foto itu jadi foto aktif. Varian tanpa foto khusus: galeri tetap di
+  // posisi sekarang (tidak melompat).
   React.useEffect(() => {
-    const firstId = items[0]?.id ?? null
-    if (firstMediaIdRef.current !== firstId) {
-      firstMediaIdRef.current = firstId
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveMediaIndex(0)
+    if (highlightedMediaId == null) {
+      return
     }
-  }, [items])
+    const idx = items.findIndex((item) => item.id === highlightedMediaId)
+    if (idx === -1 || idx === activeMediaIndex) {
+      return
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveMediaIndex(idx)
+    const strip = document.querySelector('[data-gallery-strip]')
+    if (strip) {
+      const btn = strip.querySelectorAll('button')[idx]
+      if (btn && typeof btn.scrollIntoView === 'function') {
+        btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+      }
+    }
+  }, [highlightedMediaId, items, activeMediaIndex])
 
+  // Strip mengikuti foto aktif: saat foto varian ditonjolkan (atau user swipe/
+  // pilih thumb), thumb aktif digulir masuk viewport strip.
+  React.useEffect(() => {
+    const strip = document.querySelector('[data-gallery-strip]')
+    if (!strip) {
+      return
+    }
+    const activeBtn = strip.querySelectorAll('button')[activeMediaIndex]
+    if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+      activeBtn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+    }
+  }, [activeMediaIndex])
 
   return (
     <div className="group/gallery -mx-2.5 min-w-0 sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
