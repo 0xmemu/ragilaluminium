@@ -3,7 +3,6 @@
 namespace App\Exports;
 
 use App\Exports\Concerns\RagilStyledExport;
-use App\Exports\CatalogTemplateExport;
 use App\Support\ExportSafety;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
@@ -11,28 +10,27 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
 /**
- * Sheet paste-ready "Update Media": kolom & urutan IDENTIK dengan sheet Data
- * template import katalog (matriks yang sama dengan sheet Update Harga &
- * Stok), tapi kolom media diisi dari database sesuai kontrak importer:
+ * Sheet "Update (Matriks Import)": strukturnya PERSIS sheet Data template
+ * import katalog. 1 baris = 1 kombinasi varian; identitas produk, definisi
+ * opsi, gambar umum, gambar per opsi, shared media, dan installation cukup
+ * di baris pertama grup (semantik sama dengan file import). Kolom id_key
+ * diisi SKU produk: stabil sebagai rujukan, dan diterima verifier.
  *
- *  - image_1, image_2            : media level produk utama & lanjutan.
- *  - image_variation_N_option_M  : gambar per opsi varian.
- *  - shared_media_1..2           : media bersama (foto/video).
- *  - installation_image_1..2     : media hasil pemasangan.
- *  - variantion_combination      : kombinasi varian (baris varian jadi).
- *
- * Satu baris = satu kombinasi varian. Kolom identitas/definisi opsi/media
- * cukup di baris pertama grup (semantik sama dengan file import).
+ * Semua kolom terisi dari database. Admin edit nilai yang perlu diubah,
+ * lalu paste ke sheet Data template import (harga/stok/media/apa pun) dan
+ * jalankan Periksa file seperti biasa. Satu matriks untuk semuanya.
  */
-class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQuery, WithHeadings, WithMapping
+class ProductExportUpdateMatrixSheet extends RagilStyledExport implements FromQuery, WithHeadings, WithMapping
 {
     public function __construct(protected Builder $query)
     {
-        $this->sheetTitle = 'Update Media';
+        $this->sheetTitle = 'Update (Matriks Import)';
+        // Lebar kolom sampai AL = 38 kolom (identik jumlah kolom template).
         $this->columnWidths = array_merge(
             ['A' => 14, 'B' => 34, 'C' => 40],
-            array_fill_keys(['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL'], 24)
+            array_fill_keys(['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL'], 20)
         );
+        $this->currencyColumns = ['S'];
     }
 
     public function query(): Builder
@@ -44,6 +42,7 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
 
     public function headings(): array
     {
+        // Persis header template import katalog.
         return CatalogTemplateExport::dataHeaders();
     }
 
@@ -54,9 +53,10 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
         $rows = [];
 
         $variants = $product->variants->sortBy('id')->values();
+        $first = $variants->first();
 
-        // Peta media produk per kelas posisi (kontrak importer):
-        // 1..9 katalog umum, 11..19 shared, 50..79 gambar per opsi, 101+ installation.
+        // Media level produk per kelas posisi (kontrak importer):
+        // 1 = utama, 2..9 umum lanjutan, 11..19 shared, 50..79 per opsi, 101+ installation.
         $media = $product->media->sortBy('position')->values();
         $mainImage = null;
         $secondImage = null;
@@ -78,8 +78,11 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
 
             foreach ($headers as $col => $header) {
                 $row[$col] = match ($header) {
+                    // Identitas & media & spesifikasi: baris pertama grup saja
+                    // (semantik file import; baris lanjutan mewarisi).
                     'id_key' => $index === 0 ? $product->parent_sku : null,
                     'name' => $index === 0 ? $product->name : null,
+                    'description' => $index === 0 ? $product->description : null,
                     'product_category' => $index === 0 ? $product->product_category : null,
                     'product_model' => $index === 0 ? $product->product_model : null,
                     'design_variant' => $index === 0 ? $product->design_variant : null,
@@ -87,9 +90,10 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
                     'variation_1_option_1' => $index === 0 ? $variant->variation_1_option : null,
                     'variation_2_name' => $index === 0 ? $variant->variation_2_name : null,
                     'variation_2_option_1' => $index === 0 ? $variant->variation_2_option : null,
-                    'variantion_combination', 'variation_combination' => $this->combination($variant),
-                    'price_variantion_combination' => (float) $variant->price,
-                    'stock' => (int) $variant->stock,
+                    'weight_kg' => $index === 0 ? (float) $product->weight_kg : null,
+                    'height_cm' => $index === 0 ? (float) $product->height_cm : null,
+                    'width_cm' => $index === 0 ? (float) $product->width_cm : null,
+                    'depth_cm' => $index === 0 ? (float) $product->depth_cm : null,
                     'image_1' => $index === 0 ? $mainImage : null,
                     'image_2' => $index === 0 ? $secondImage : null,
                     'shared_media_1' => $index === 0 ? ($shared[0] ?? null) : null,
@@ -98,6 +102,10 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
                     'image_variation_2_option_1', 'image_variation_2_option_2', 'image_variation_2_option_3', 'image_variation_2_option_4' => $index === 0 ? $this->optionImageByColumn($header, $optionImages) : null,
                     'installation_image_1' => $index === 0 ? ($installation[0] ?? null) : null,
                     'installation_image_2' => $index === 0 ? ($installation[1] ?? null) : null,
+                    // Kombinasi + harga + stok: SETIAP baris (inti update).
+                    'variantion_combination', 'variation_combination' => $this->combination($variant),
+                    'price_variantion_combination' => (float) $variant->price,
+                    'stock' => (int) $variant->stock,
                     default => null,
                 };
             }
@@ -105,11 +113,13 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
             $rows[] = array_map([ExportSafety::class, 'cell'], $row);
         }
 
+        unset($first);
+
         return $rows;
     }
 
     /**
-     * Gambar per opsi disimpan berurutan (posisi 50..79) sesuai urutan
+     * Gambar per opsi tersimpan berurutan di posisi 50..79 sesuai urutan
      * penautan importer: per slot varian, opsi urut. Petakan balik ke kolom
      * image_variation_N_option_M.
      */
