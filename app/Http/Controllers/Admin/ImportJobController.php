@@ -210,6 +210,37 @@ class ImportJobController extends Controller
                             ? 'Diarsipkan: '.implode(', ', (array) ($r->raw_data['_activation_reasons'] ?? []))
                             : '-')),
                 ])->values()->all(),
+
+                // Produk yang tersimpan sebagai arsip beserta alasan spesifiknya
+                // (kelengkapan bisnis): nama, SKU, baris, dan daftar kekurangan.
+                'incomplete_products' => (static function () use ($import_job): array {
+                    $byProduct = [];
+                    foreach ($import_job->rows as $r) {
+                        $raw = is_string($r->raw_data) ? json_decode($r->raw_data, true) : (array) $r->raw_data;
+                        $reasons = $raw['_activation_reasons'] ?? null;
+                        if ($reasons === null || $reasons === []) { continue; }
+                        $pid = $r->linked_product_id;
+                        if (! $pid) { continue; }
+                        if (! isset($byProduct[$pid])) {
+                            $p = \App\Models\Product::find($pid);
+                            $byProduct[$pid] = [
+                                'product_id' => $pid,
+                                'name' => $p?->name ?? '(produk terhapus)',
+                                'sku' => $p?->parent_sku ?? '-',
+                                'edit_url' => $p ? route('admin.products.edit', $p) : null,
+                                'rows' => [],
+                                'reasons' => [],
+                            ];
+                        }
+                        $byProduct[$pid]['rows'][] = $r->row_number;
+                        foreach ((array) $reasons as $reason) {
+                            if (! in_array($reason, $byProduct[$pid]['reasons'], true)) {
+                                $byProduct[$pid]['reasons'][] = $reason;
+                            }
+                        }
+                    }
+                    return array_values($byProduct);
+                })(),
             ],
         ]);
     }

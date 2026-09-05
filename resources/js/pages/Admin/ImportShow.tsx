@@ -21,6 +21,14 @@ type ImportJobView = {
   completed_at: string | null
   error_message: string | null
   rows: Array<{ row_number: number; status: string; reason: string }>
+  incomplete_products: Array<{
+    product_id: number
+    name: string
+    sku: string
+    edit_url: string | null
+    rows: number[]
+    reasons: string[]
+  }>
 }
 
 const STATUS_LABEL: Record<ImportJobView["status"], string> = {
@@ -139,9 +147,51 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
               Import selesai: {job.success_rows} baris berhasil diimpor
               {job.failed_rows > 0 ? `, ${job.failed_rows} gagal` : ""}.
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Produk baru masuk sebagai arsip. Terbitkan dari halaman Produk untuk menampilkannya di toko.
-            </p>
+            {job.incomplete_products.length === 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Semua produk lengkap dan langsung aktif.
+              </p>
+            ) : null}
+            {job.incomplete_products.length > 0 ? (
+              <div className="mt-4 rounded-lg border border-warning/40 bg-warning/5 p-4">
+                <p className="text-sm font-semibold text-foreground">
+                  {job.incomplete_products.length} produk perlu dilengkapi (tersimpan sebagai arsip)
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Data di baris ini valid dan sudah masuk, tapi belum cukup untuk tampil di toko. Lengkapi dari form edit, lalu tekan Aktifkan produk.
+                </p>
+                <div className="mt-3 overflow-hidden rounded-lg border border-border">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40 text-left text-muted-foreground">
+                        <th className="px-3 py-2 font-medium">Produk</th>
+                        <th className="px-3 py-2 font-medium">SKU</th>
+                        <th className="px-3 py-2 font-medium">Baris</th>
+                        <th className="px-3 py-2 font-medium">Yang kurang</th>
+                        <th className="px-3 py-2 font-medium"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {job.incomplete_products.map((item) => (
+                        <tr key={item.product_id}>
+                          <td className="max-w-56 px-3 py-2 font-medium text-foreground">{item.name}</td>
+                          <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">{item.sku}</td>
+                          <td className="px-3 py-2 tabular-nums text-muted-foreground">{item.rows.join(", ")}</td>
+                          <td className="px-3 py-2 text-foreground">{item.reasons.join(", ")}</td>
+                          <td className="px-3 py-2 text-right">
+                            {item.edit_url ? (
+                              <Button asChild variant="secondary" size="sm">
+                                <a href={item.edit_url}>Edit</a>
+                              </Button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <Button asChild variant="secondary">
                 <Link href={routeUrl("admin.products.index")}>Lihat Produk</Link>
