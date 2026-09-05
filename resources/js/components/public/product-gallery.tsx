@@ -408,7 +408,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square w-[61px] min-w-[61px] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
+                    "relative aspect-square w-[63px] min-w-[63px] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
