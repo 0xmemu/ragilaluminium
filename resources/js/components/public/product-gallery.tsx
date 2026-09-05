@@ -407,7 +407,7 @@ export function ProductGallery({
               data-gallery-strip
               onScroll={onStripScroll}
               style={{ "--thumb-w": `${thumbW}px` } as React.CSSProperties}
-              className="mt-2 flex w-full max-w-full gap-2.5 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
+              className="scrollbar-none mt-2 flex w-full max-w-full gap-2.5 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
               aria-label="Pilih foto produk"
             >
               {/* Semua foto dirender urut asli; ke-6+ tersembunyi kanan.
