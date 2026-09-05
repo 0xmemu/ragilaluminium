@@ -109,6 +109,7 @@ class ImportJobController extends Controller
             'backUrl' => route('admin.imports.index'),
             'submitUrl' => route('admin.imports.store'),
             'previewUrl' => route('admin.imports.preview-catalog'),
+            'previewUpdateUrl' => route('admin.imports.preview-update'),
             'csrf' => csrf_token(),
             'internalTemplateUrl' => route('admin.imports.internal-template'),
             'stockPriceTemplateUrl' => route('admin.imports.stock-price-template'),
@@ -489,4 +490,42 @@ class ImportJobController extends Controller
         ]);
     }
 
+
+    /**
+     * Preview (Periksa file) utk stock_price_update & media_update:
+     * verifikasi pre-pass (SKU unknown, duplikat, nilai invalid) +
+     * ringkasan baris. All-or-nothing: errors > 0 = import ditolak UI.
+     */
+    public function previewUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'in:stock_price_update,media_update'],
+            'file' => ['required', 'file', 'mimes:xls,xlsx,xlsm,csv', 'max:51200'],
+            'stock_mode' => ['nullable', 'in:file,manual'],
+            'manual_stock' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $rows = \Maatwebsite\Excel\Facades\Excel::toArray(
+            new \App\Imports\InternalCatalogPreviewImport(),
+            $validated['file']
+        )[0] ?? [];
+        $rows = array_slice($rows, 0, 2000);
+
+        $manualStock = ($validated['stock_mode'] ?? 'file') === 'manual'
+            ? (int) ($validated['manual_stock'] ?? 0)
+            : null;
+
+        $result = \App\Support\UpdateImportVerifier::verify(
+            $rows,
+            $validated['type'],
+            $manualStock
+        );
+
+        return response()->json([
+            'contract' => 'preview-only; tidak menulis data',
+            'verify_errors' => $result['errors'],
+            'skipped_rows' => $result['skipped'],
+            'total' => count($rows),
+        ]);
+    }
 }

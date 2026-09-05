@@ -81,6 +81,27 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
                 throw new \RuntimeException('variant_sku tidak cocok dengan parent_sku: '.$variantSku);
             }
 
+            // Kontrak owner (09-05): baris dgn semua kolom gambar kosong =
+            // DILEWATI (bukan gagal, bukan sukses bisu). Tandai dgn marker.
+            $hasAnyImage = false;
+            for ($i = 1; $i <= 9; $i++) {
+                if (trim((string) ($data['image_'.$i] ?? '')) !== ''
+                    || trim((string) ($data['installation_image_'.$i] ?? '')) !== '') {
+                    $hasAnyImage = true;
+                    break;
+                }
+            }
+            if (! $hasAnyImage) {
+                ImportJobRow::create([
+                    'import_job_id' => $this->jobId,
+                    'row_number' => $rowIndex,
+                    'raw_data' => ['parent_sku' => $parentSku, 'variant_sku' => $variantSku, '_skipped' => 'no_media'],
+                    'status' => 'skipped',
+                    'error_reason' => 'Dilewati: tidak ada gambar di baris ini',
+                ]);
+                return;
+            }
+
             $upserter = new ProductMediaStubUpserter($this->jobId);
             $installationSlots = InstallationGallery::parseSlots(
                 isset($data['installation_slots']) ? (string) $data['installation_slots'] : null

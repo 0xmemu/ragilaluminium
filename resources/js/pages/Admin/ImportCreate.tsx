@@ -32,6 +32,7 @@ type PreviewPayload = {
   rows: PreviewRow[]
   total: number
   verify_errors: string[]
+  skipped_rows?: number
 }
 
 const MEDIA_LABEL: Record<MediaClass, string> = {
@@ -49,6 +50,7 @@ const MEDIA_CLASS_STYLES: Record<MediaClass, string> = {
 export default function ImportCreate({
   submitUrl,
   previewUrl,
+  previewUpdateUrl,
   csrf,
   internalTemplateUrl,
   stockPriceTemplateUrl,
@@ -59,6 +61,7 @@ export default function ImportCreate({
   submitUrl: string
   backUrl?: string | null
   previewUrl: string
+  previewUpdateUrl: string
   csrf: string
   internalTemplateUrl: string
   stockPriceTemplateUrl: string
@@ -89,6 +92,18 @@ export default function ImportCreate({
     setPreviewError(null)
   }
 
+  // Ganti jenis import / mode stok = periksa ulang wajib (file sama bisa
+  // lolos di satu konfigurasi, gagal di yang lain).
+  function invalidatePreview() {
+    setPreview(null)
+    setPreviewError(null)
+  }
+
+  const previewEndpoint =
+    form.data.type === "stock_price_update" || form.data.type === "media_update"
+      ? previewUpdateUrl
+      : previewUrl
+
   async function runPreview() {
     if (!form.data.file) return
     setPreviewing(true)
@@ -96,7 +111,14 @@ export default function ImportCreate({
     try {
       const body = new FormData()
       body.append("file", form.data.file)
-      const res = await fetch(previewUrl, {
+      if (form.data.type === "stock_price_update" || form.data.type === "media_update") {
+        body.append("type", form.data.type)
+        body.append("stock_mode", form.data.stock_mode)
+        if (form.data.stock_mode === "manual") {
+          body.append("manual_stock", String(form.data.manual_stock ?? 0))
+        }
+      }
+      const res = await fetch(previewEndpoint, {
         method: "POST",
         body,
         headers: {
@@ -181,7 +203,7 @@ export default function ImportCreate({
                 <td className="px-4 py-2.5">
                   <Select
                     value={form.data.type}
-                    onChange={(event) => form.setData("type", event.target.value)}
+                    onChange={(event) => { form.setData("type", event.target.value); invalidatePreview() }}
                     className="h-8 text-xs"
                   >
                     {types.map((type) => (
@@ -200,7 +222,7 @@ export default function ImportCreate({
                   <div className="flex flex-wrap items-center gap-3">
                     <Select
                       value={form.data.stock_mode}
-                      onChange={(event) => form.setData("stock_mode", event.target.value as "file" | "manual")}
+                      onChange={(event) => { form.setData("stock_mode", event.target.value as "file" | "manual"); invalidatePreview() }}
                       className="h-8 w-56 text-xs"
                     >
                       <option value="file">Gunakan stok dari file</option>
@@ -212,7 +234,7 @@ export default function ImportCreate({
                         min="0"
                         step="1"
                         value={form.data.manual_stock}
-                        onChange={(event) => form.setData("manual_stock", event.target.value)}
+                        onChange={(event) => { form.setData("manual_stock", event.target.value); invalidatePreview() }}
                         className="h-8 w-32 text-xs"
                       />
                     ) : null}
@@ -276,7 +298,7 @@ export default function ImportCreate({
                 <p className="text-sm font-semibold text-success">Semua baris lolos pemeriksaan. Mulai Import sudah aktif.</p>
               </div>
             ) : null}
-            {preview && totals ? (
+            {preview && totals && preview.rows ? (
               <div className="overflow-hidden rounded-lg border border-border">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border bg-muted/40 px-4 py-2.5 text-xs">
                   <span className="font-semibold">{preview.total} baris terbaca</span>

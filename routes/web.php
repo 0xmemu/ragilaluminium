@@ -267,6 +267,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('imports/media-update-template', [ImportJobController::class, 'downloadMediaUpdateTemplate'])->name('imports.media-update-template');
     Route::post('imports/preview', [ImportJobController::class, 'previewInternal'])->name('imports.preview');
     Route::post('imports/preview-catalog', [ImportJobController::class, 'previewCatalog'])->name('imports.preview-catalog');
+    Route::post('imports/preview-update', [ImportJobController::class, 'previewUpdate'])->name('imports.preview-update');
     Route::get('imports', [ImportJobController::class, 'index'])->name('imports.index');
     Route::get('imports/create', [ImportJobController::class, 'create'])->name('imports.create');
     Route::post('imports', [ImportJobController::class, 'store'])->name('imports.store');

@@ -77,11 +77,14 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
             }
 
             $stockRaw = $data['stock'] ?? null;
-            // Aturan: kolom kosong = nilai TIDAK diubah. Mode 'manual' selalu
-            // menetapkan stok dari konfigurasi job (perilaku asli dipertahankan).
-            $stock = $job->stock_mode === 'manual'
-                ? (int) $job->manual_stock
-                : \App\Services\StockCellParser::resolve($stockRaw);
+            // KONTRAK STOK BARU (owner 2026-09-05): nilai di XLSX MENANG.
+            // Mode 'manual' hanya fallback utk baris dengan kolom stock kosong.
+            // (Lama: manual selalu menimpa seluruh stok, bertentangan dgn
+            // semangat 'update'.)
+            $resolvedStock = \App\Services\StockCellParser::resolve($stockRaw);
+            $stock = $resolvedStock !== null
+                ? $resolvedStock
+                : ($job->stock_mode === 'manual' ? (int) $job->manual_stock : null);
 
             if ($variant) {
                 $updates = ['price' => $this->price($data, $variant->price)];
