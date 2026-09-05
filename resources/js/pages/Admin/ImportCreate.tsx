@@ -48,6 +48,7 @@ const MEDIA_CLASS_STYLES: Record<MediaClass, string> = {
 export default function ImportCreate({
   submitUrl,
   previewUrl,
+  csrf,
   internalTemplateUrl,
   stockPriceTemplateUrl,
   mediaUpdateTemplateUrl,
@@ -57,6 +58,7 @@ export default function ImportCreate({
   submitUrl: string
   backUrl?: string | null
   previewUrl: string
+  csrf: string
   internalTemplateUrl: string
   stockPriceTemplateUrl: string
   mediaUpdateTemplateUrl: string
@@ -93,8 +95,17 @@ export default function ImportCreate({
       const res = await fetch(previewUrl, {
         method: "POST",
         body,
-        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-TOKEN": csrf,
+        },
       })
+      if (res.status === 419) {
+        setPreviewError("Sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.")
+        setPreview(null)
+        return
+      }
       if (!res.ok) {
         setPreviewError("Gagal memeriksa file. Pastikan format Excel atau CSV benar.")
         setPreview(null)

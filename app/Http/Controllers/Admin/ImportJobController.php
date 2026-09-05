@@ -109,6 +109,7 @@ class ImportJobController extends Controller
             'backUrl' => route('admin.imports.index'),
             'submitUrl' => route('admin.imports.store'),
             'previewUrl' => route('admin.imports.preview-catalog'),
+            'csrf' => csrf_token(),
             'internalTemplateUrl' => route('admin.imports.internal-template'),
             'stockPriceTemplateUrl' => route('admin.imports.stock-price-template'),
             'mediaUpdateTemplateUrl' => route('admin.imports.media-update-template'),
