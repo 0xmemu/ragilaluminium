@@ -316,7 +316,7 @@ export function ProductGallery({
   }, [activeMediaIndex, items.length, scrollStripToIndex])
 
   return (
-    <div className="group/gallery -mx-2.5 min-w-0 overflow-hidden sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
+    <div className="group/gallery -mx-2.5 min-w-0 overflow-hidden sm:-mx-8 lg:mx-0 lg:overflow-visible" aria-label="Galeri produk">
       {activeMedia ? (
         <>
           <div
@@ -326,7 +326,7 @@ export function ProductGallery({
             onTouchMove={onGalleryTouchMove}
             onTouchEnd={onGalleryTouchEnd}
             onTouchCancel={onGalleryTouchEnd}
-            className="relative mx-auto aspect-square w-full overflow-hidden bg-white lg:w-1/2 lg:max-w-[360px]"
+            className="relative aspect-square w-full overflow-hidden bg-white"
           >
             {/* Horizontal strip: semua gambar sejajar - swipe real-time */}
             <div
@@ -416,14 +416,14 @@ export function ProductGallery({
           </div>
 
           {items.length > 1 ? (
-            <div className="relative w-full lg:max-w-[360px] lg:mx-auto">
+            <div className="relative w-full">
               {/* Tombol Back & Next Strip Galeri di Desktop */}
               <button
                 type="button"
                 onClick={() => scrollStripToIndex(leftVisibleIndex - 1)}
                 disabled={leftVisibleIndex <= 0}
                 aria-label="Geser thumbnail ke kiri"
-                className="absolute -left-9 top-1/2 z-10 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
+                className="absolute left-1 top-1/2 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/90 text-foreground shadow-sm backdrop-blur-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
               >
                 <Icon name="caret-left" className="size-4" weight="bold" aria-hidden="true" />
               </button>
@@ -432,7 +432,7 @@ export function ProductGallery({
                 onClick={() => scrollStripToIndex(leftVisibleIndex + 1)}
                 disabled={leftVisibleIndex >= maxLeftVisibleIndex}
                 aria-label="Geser thumbnail ke kanan"
-                className="absolute -right-9 top-1/2 z-10 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
+                className="absolute right-1 top-1/2 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/90 text-foreground shadow-sm backdrop-blur-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
               >
                 <Icon name="caret-right" className="size-4" weight="bold" aria-hidden="true" />
               </button>
