@@ -159,7 +159,7 @@ export function ProductBuyBox({
           ) : null}
           {axes.map((axis) => (
             <fieldset key={axis.name} className="min-w-0">
-              <div className="flex min-w-0 flex-nowrap items-center gap-x-2 gap-y-1.5 overflow-x-auto">
+              <div className="scrollbar-none flex min-w-0 flex-nowrap items-center gap-x-2 gap-y-1 overflow-x-auto">
                 <legend className="text-xs font-medium text-muted-foreground shrink-0">
                   {axis.name === "Warna"
                     ? "Warna"
@@ -173,11 +173,11 @@ export function ProductBuyBox({
                     key={option}
                     onClick={() => chooseAxis(axis.name, option)}
                     className={cn(
-                      "min-h-8 shrink-0 rounded-full border px-2.5 text-xs font-semibold transition",
+                      "h-7 min-h-7 shrink-0 rounded-[8px] border px-2.5 text-xs font-medium transition inline-flex items-center justify-center",
                       variantError && !selections[axis.name]
                         ? "border-destructive animate-pulse"
                         : selections[axis.name] === option
-                          ? "border-foreground bg-foreground text-white"
+                          ? "border-foreground bg-foreground text-white font-semibold"
                           : "border-border bg-surface text-foreground hover:border-foreground/40",
                     )}
                     aria-pressed={selections[axis.name] === option}

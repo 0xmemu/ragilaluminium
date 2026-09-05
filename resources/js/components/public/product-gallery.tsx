@@ -326,7 +326,7 @@ export function ProductGallery({
             onTouchMove={onGalleryTouchMove}
             onTouchEnd={onGalleryTouchEnd}
             onTouchCancel={onGalleryTouchEnd}
-            className="relative mx-auto aspect-square w-full overflow-hidden bg-white"
+            className="relative mx-auto aspect-square w-1/2 max-w-[200px] overflow-hidden bg-white sm:w-full sm:max-w-none"
           >
             {/* Horizontal strip: semua gambar sejajar - swipe real-time */}
             <div
