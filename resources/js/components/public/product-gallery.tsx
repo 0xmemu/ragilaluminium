@@ -27,6 +27,7 @@ export function ProductGallery({
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
+  const [fullStripOpen, setFullStripOpen] = React.useState(false)
 
   const lightboxItems = React.useMemo(
     () =>
@@ -178,7 +179,7 @@ export function ProductGallery({
   }, [activeMediaIndex])
 
   return (
-    <div className="group/gallery -mx-2.5 min-w-0 sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
+    <div className="group/gallery -mx-2.5 min-w-0 overflow-hidden sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
       {activeMedia ? (
         <>
           <div
@@ -292,10 +293,11 @@ export function ProductGallery({
           {items.length > 1 ? (
             <div
               data-gallery-strip
-              className="mt-2 flex gap-2 overflow-x-auto px-2.5 pb-2 sm:px-8 lg:px-0"
+              className="mt-2 flex w-full gap-2 overflow-x-auto px-2.5 pb-2 sm:px-8 lg:px-0"
               aria-label="Pilih foto produk"
             >
-              {/* K3/K7: strip thumb maks 5; thumb ke-5 menandai total media (5/N) di pojok kanan bawah. */}
+              {/* K3/K7: strip tampil 5 thumb; thumb ke-5 = pintu ke strip
+                  penuh yang SWIPEABLE (semua foto, geser untuk melihat). */}
               {items.slice(0, 5).map((item, index) => {
                 const isLast = index === 4
                 const hiddenCount = items.length - 5
@@ -306,12 +308,12 @@ export function ProductGallery({
                   key={item.id}
                   onClick={() => {
                     setActiveMediaIndex(index)
-                    if (isLast && hiddenCount > 0) setLightboxIndex(index)
+                    if (isLast && hiddenCount > 0) setFullStripOpen(true)
                   }}
-                  aria-label={isLast && hiddenCount > 0 ? `Lihat ${items.length} foto` : `Tampilkan foto ${index + 1}`}
+                  aria-label={isLast && hiddenCount > 0 ? `Lihat semua ${items.length} foto` : `Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square h-auto min-w-0 flex-1 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:h-12 lg:w-12 lg:flex-none",
+                    "relative aspect-square size-12 shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
@@ -343,6 +345,63 @@ export function ProductGallery({
                 </button>
                 )
               })}
+            </div>
+          ) : null}
+
+          {fullStripOpen ? (
+            <div
+              data-gallery-strip-full
+              className="fixed inset-0 z-[90] flex flex-col bg-background/95 p-3 backdrop-blur-sm"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Semua foto produk"
+            >
+              <div className="flex items-center justify-between pb-2">
+                <p className="text-sm font-semibold">Semua foto ({items.length})</p>
+                <button
+                  type="button"
+                  onClick={() => setFullStripOpen(false)}
+                  aria-label="Tutup"
+                  className="inline-flex size-8 items-center justify-center rounded-full bg-muted text-foreground"
+                >
+                  <Icon name="x" className="size-4" weight="bold" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="grid flex-1 grid-cols-3 gap-2 overflow-y-auto pb-2">
+                {items.map((item, index) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => {
+                      setActiveMediaIndex(index)
+                      setFullStripOpen(false)
+                    }}
+                    aria-current={activeMediaIndex === index ? "true" : undefined}
+                    className={cn(
+                      "relative aspect-square overflow-hidden rounded-[3px] border-2 bg-white transition",
+                      activeMediaIndex === index ? "border-primary" : "border-transparent",
+                    )}
+                  >
+                    {item.is_video ? (
+                      <>
+                        <img src={item.thumb ?? item.url ?? ""} alt="" className="size-full bg-white object-contain" loading="lazy" />
+                        <span className="absolute inset-0 z-10 flex items-center justify-center">
+                          <span className="flex size-6 items-center justify-center rounded-full bg-foreground/70 text-background">
+                            <Icon name="play" className="size-3" weight="fill" aria-hidden="true" />
+                          </span>
+                        </span>
+                      </>
+                    ) : (
+                      <ResponsiveImage
+                        src={item.thumb ?? item.url}
+                        alt=""
+                        wrapperClassName="size-full bg-white"
+                        className="object-contain"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
 
