@@ -100,10 +100,17 @@ export function useProductPurchase({
   }, [media, selections, variants])
 
   // Desain owner (09-05, final): "berpindah tergantung klik". Foto berganti
-  // SAAT opsi varian diklik, jika opsi itu punya foto khusus. Sama sederhana
-  // itu - tidak spesifik axis mana pun (Warna, Kaca, atau axis baru), tidak
-  // peduli kombinasi pilihan lain, tidak peduli urutan memilih. Opsi tanpa
-  // foto khusus = galeri tetap di posisi sekarang.
+  // SAAT opsi varian diklik, jika opsi itu punya foto khusus - agnostik axis
+  // (Warna, Kaca, atau axis baru). Target fotonya adalah foto milik varian
+  // yang paling mewakili pilihan saat ini:
+  // 1. Kombinasi pilihan sudah lengkap dan varian itu ada fotonya -> foto
+  //    varian tersebut (Serat Kayu + klik Kaca Bening -> foto Serat Kayu,
+  //    BUKAN foto Putih yang kebetulan juga Bening).
+  // 2. Belum lengkap -> foto varian pertama yang memuat opsi yang baru
+  //    diklik (klik Warna saat Kaca belum dipilih, atau klik Kaca saat Warna
+  //    belum dipilih).
+  // 3. Osi yang diklik tidak punya foto khusus sama sekali -> null, galeri
+  //    tetap di posisi sekarang (tidak melompat).
   const [lastPickedOption, setLastPickedOption] = React.useState<{
     axis: string
     option: string
@@ -111,9 +118,15 @@ export function useProductPurchase({
 
   const highlightedMediaId = React.useMemo(() => {
     if (!lastPickedOption) return null
-    // Cari media khusus milik varian yang memuat opsi yang baru diklik pada
-    // axis yang diklik (foto ter-link per opsi via varian perwakilan, apapun
-    // axis-nya).
+    const mediaOf = (variantId: number) =>
+      media.find((item) => Number(item.product_variant_id) === variantId)
+    // 1. Kombinasi lengkap: foto varian hasil kombinasi pilihan saat ini.
+    const exact = resolveVariant(variants, selections)
+    if (exact) {
+      const m = mediaOf(exact.id)
+      return m ? m.id : null
+    }
+    // 2. Parsial: foto varian pertama yang memuat opsi yang baru diklik.
     const hit = media.find((item) => {
       const vid = Number(item.product_variant_id)
       if (!vid) return false
@@ -123,7 +136,7 @@ export function useProductPurchase({
       return pairs.get(lastPickedOption.axis) === lastPickedOption.option
     })
     return hit ? hit.id : null
-  }, [lastPickedOption, media, variants])
+  }, [lastPickedOption, selections, media, variants])
 
   const form = useForm({
     parent_sku: product.parent_sku,
