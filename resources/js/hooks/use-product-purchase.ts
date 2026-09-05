@@ -99,33 +99,39 @@ export function useProductPurchase({
     return media
   }, [media, selections, variants])
 
-  // Foto yang harus ditonjolkan: foto khusus milik varian yang cocok dengan
-  // pilihan SAAT INI, parsial pun cukup (foto per Warna tetap menonjol walau
-  // axis Kaca belum dipilih). Null = tidak ada foto khusus, galeri tetap di
-  // posisi sekarang (tidak melompat).
+  // Foto yang harus ditonjolkan: foto khusus dari varian yang PALING COCOK
+  // dengan pilihan saat ini. Foto biasanya ter-link per Warna (varian
+  // perwakilan), jadi Hitam + Kaca Riben tetap menonjolkan foto Hitam yang
+  // ter-link di varian Hitam + Kaca Bening. Skor = jumlah axis yang cocok;
+  // di antara varian ber-foto khusus, ambil skor tertinggi. Null = tidak ada
+  // foto khusus yang relevan, galeri tetap di posisi sekarang (tidak lompat).
   const highlightedMediaId = React.useMemo(() => {
     const filled = Object.entries(selections).filter(
       ([, v]) => v !== undefined && v !== "",
     )
     if (filled.length === 0) return null
-    let matched = false
+    let bestId: string | number | null = null
+    let bestScore = -1
     for (const v of variants) {
       const pairs = new Map(variantPairs(v))
-      const ok = filled.every(([axisName, axisOption]) => {
-        if (axisName === "Ukuran") {
-          return v.dimension_compact === axisOption || v.dimension_label === axisOption
-        }
-        return pairs.get(axisName) === axisOption
-      })
-      if (!ok) continue
-      matched = true
+      let matches = 0
+      for (const [axisName, axisOption] of filled) {
+        const hit =
+          axisName === "Ukuran"
+            ? v.dimension_compact === axisOption || v.dimension_label === axisOption
+            : pairs.get(axisName) === axisOption
+        if (hit) matches++
+      }
+      if (matches === 0) continue
+      if (matches < bestScore) continue
       const dedicated = media.find(
         (item) => Number(item.product_variant_id) === v.id,
       )
-      if (dedicated) return dedicated.id
+      if (!dedicated) continue
+      bestScore = matches
+      bestId = dedicated.id
     }
-    // Ada pilihan tapi tidak ada foto khusus yang cocok: null (tidak melompat).
-    return matched ? null : null
+    return bestId
   }, [media, selections, variants])
 
   const form = useForm({
