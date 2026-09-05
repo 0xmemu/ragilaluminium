@@ -21,7 +21,7 @@ class ImportPipelineTest extends TestCase
     {
         Queue::fake([DownloadMediaAsset::class]);
         $rows = collect([
-            ['parent_sku' => 'WIN-IMP-1', 'name' => 'Window', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-IMP-1-V1', 'price' => 1000000, 'stock' => 5, 'image_1' => 'https://example.com/a.jpg'],
+            ['parent_sku' => 'WIN-IMP-1', 'name' => 'Window', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-IMP-1-V1', 'price' => 1000000, 'stock' => 5, 'image_1' => 'https://example.com/a.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings
         {
@@ -56,10 +56,10 @@ class ImportPipelineTest extends TestCase
         $this->assertNotEmpty($row->raw_data['_activation_reasons']);
     }
 
-    public function test_import_manual_stock_overrides_file_stock(): void
+    public function test_import_manual_stock_used_when_file_stock_empty(): void
     {
         $rows = collect([
-            ['parent_sku' => 'WIN-STOCK-1', 'name' => 'Window stock', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-STOCK-1-V1', 'price' => 1000000, 'stock' => 7],
+            ['parent_sku' => 'WIN-STOCK-1', 'name' => 'Window stock', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-STOCK-1-V1', 'price' => 1000000, 'stock' => '', 'image_1' => 'https://example.com/b.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings
         {

@@ -84,11 +84,12 @@ class ImportProgressStatusTest extends TestCase
     // GATE G3: job backfill total_rows untuk job lama (null) saat mulai jalan
     public function test_running_job_backfills_missing_total_rows(): void
     {
+        config(['media.allowed_source_hosts' => ['example.com']]);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $rows = collect([
-            ['name' => 'Pintu Aluminium Backfill 1', 'product_category' => 'DOOR', 'product_model' => 'GESER', 'price' => 100000, 'stock' => 1],
-            ['name' => 'Pintu Aluminium Backfill 2', 'product_category' => 'DOOR', 'product_model' => 'GESER', 'price' => 200000, 'stock' => 2],
+            ['name' => 'Pintu Aluminium Backfill 1', 'product_category' => 'DOOR', 'product_model' => 'GESER', 'price' => 100000, 'stock' => 1, 'image_1' => 'https://example.com/a.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
+            ['name' => 'Pintu Aluminium Backfill 2', 'product_category' => 'DOOR', 'product_model' => 'GESER', 'price' => 200000, 'stock' => 2, 'image_1' => 'https://example.com/b.jpg', 'weight_kg' => 12, 'height_cm' => 110, 'width_cm' => 55, 'depth_cm' => 22],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings
         {

@@ -40,6 +40,10 @@ class InstallationMediaImportTest extends TestCase
                 'image_1' => 'https://example.com/catalog.jpg',
                 'installation_slots' => '1',
                 'installation_image_1' => 'https://example.com/install-extra.jpg',
+                'weight_kg' => 10,
+                'height_cm' => 100,
+                'width_cm' => 50,
+                'depth_cm' => 20,
             ],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings

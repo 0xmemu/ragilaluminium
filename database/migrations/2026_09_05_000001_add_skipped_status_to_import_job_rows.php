@@ -11,11 +11,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE import_job_rows MODIFY COLUMN status ENUM('pending','processed','success','failed','skipped') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE import_job_rows MODIFY COLUMN status ENUM('pending','processed','success','failed','skipped') NOT NULL DEFAULT 'pending'");
+        }
+        // SQLite (test) menyimpan enum sebagai TEXT: tidak perlu ALTER.
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE import_job_rows MODIFY COLUMN status ENUM('pending','processed','success','failed') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE import_job_rows MODIFY COLUMN status ENUM('pending','processed','success','failed') NOT NULL DEFAULT 'pending'");
+        }
     }
 };

@@ -196,14 +196,15 @@ class ImportMediaUpdateTest extends TestCase
         ]);
         $job = $this->job();
 
-        // Baris tanpa kolom gambar sama sekali: tetap sukses, media tidak berubah.
+        // Baris tanpa kolom gambar sama sekali: DILEWATI (kontrak owner 09-05),
+        // media tidak berubah.
         $this->importRows($job, [
             ['parent_sku', 'variant_sku'],
             ['RGL-M4', 'RGL-M4-A'],
         ]);
 
         $this->assertSame(1, ProductMedia::where('product_id', $product->id)->count(), 'media lama tetap ada');
-        $this->assertSame(1, ImportJobRow::where('import_job_id', $job->id)->where('status', 'success')->count());
+        $this->assertSame(1, ImportJobRow::where('import_job_id', $job->id)->where('status', 'skipped')->count());
     }
 
     public function test_template_media_update_xlsx(): void

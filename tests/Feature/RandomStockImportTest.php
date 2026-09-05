@@ -109,6 +109,7 @@ class RandomStockImportTest extends TestCase
 
     public function test_catalog_import_applies_random_stock_range(): void
     {
+        config(['media.allowed_source_hosts' => ['example.com']]);
         $job = ImportJob::create([
             'type' => 'catalog_import',
             'source_file_name' => 'katalog.xlsx',
@@ -132,13 +133,17 @@ class RandomStockImportTest extends TestCase
                     'design_variant' => 'POLOS',
                     'price' => '1000000',
                     'stock' => 'random 30-40',
-                    'status' => 'draft',
+                    'image_1' => 'https://example.com/rnd.jpg',
+                    'weight_kg' => '10',
+                    'height_cm' => '100',
+                    'width_cm' => '50',
+                    'depth_cm' => '20',
                 ]]);
             }
 
             public function headings(): array
             {
-                return ['parent_sku', 'variant_sku', 'name', 'product_category', 'product_model', 'design_variant', 'price', 'stock', 'status'];
+                return ['parent_sku', 'variant_sku', 'name', 'product_category', 'product_model', 'design_variant', 'price', 'stock', 'image_1', 'weight_kg', 'height_cm', 'width_cm', 'depth_cm'];
             }
         };
 
