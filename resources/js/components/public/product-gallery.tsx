@@ -129,11 +129,17 @@ export function ProductGallery({
     const threshold = galleryWidth * 0.2
     // Flick: geser cepat (|v| > 0.5 px/ms) dengan jarak minimal 24px tetap pindah.
     const flick = Math.abs(galleryVelocity.current) > 0.5 && Math.abs(dx) > 24
-    if (Math.abs(dx) > threshold || flick) {
-      moveGallery(galleryDrag < 0 || dx < 0 ? 1 : -1)
+    const isNext = (galleryDrag < 0 || dx < 0)
+    const canMove = isNext ? activeMediaIndex < items.length - 1 : activeMediaIndex > 0
+
+    if (galleryTrackRef.current) {
+      galleryTrackRef.current.style.transition = 'transform 320ms cubic-bezier(0.22,1,0.36,1)'
+    }
+
+    if ((Math.abs(dx) > threshold || flick) && canMove) {
+      moveGallery(isNext ? 1 : -1)
     } else {
-      // Kembali ke posisi aktif (bukan nol) dengan transisi halus.
-      if (galleryTrackRef.current) galleryTrackRef.current.style.transition = ''
+      // Kembali / mental balik (snap back) ke foto aktif dengan transisi halus.
       applyGalleryTransform(0)
     }
     setGalleryDrag(0)
