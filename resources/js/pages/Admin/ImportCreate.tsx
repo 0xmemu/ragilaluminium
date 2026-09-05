@@ -78,6 +78,9 @@ export default function ImportCreate({
   const [preview, setPreview] = useState<PreviewPayload | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  // Flow wajib (kontrak owner 09-05): Mulai Import hanya aktif setelah
+  // Periksa file SUKSES pada file yang sedang dipilih.
+  const checked = preview !== null
 
   function setFile(file: File | null) {
     form.setData("file", file)
@@ -334,9 +337,14 @@ export default function ImportCreate({
           <Button asChild variant="secondary">
             <Link href={routeUrl("admin.imports.index")}>Batal</Link>
           </Button>
-          <Button type="submit" disabled={!form.data.file || form.processing}>
+          <Button type="submit" disabled={!form.data.file || !checked || form.processing}>
             {form.processing ? "Mengunggah..." : "Mulai Import"}
           </Button>
+          {!checked ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Wajib menekan Periksa file dan lolos pemeriksaan dulu sebelum Mulai Import aktif.
+            </p>
+          ) : null}
         </div>
       </form>
     </AdminLayout>

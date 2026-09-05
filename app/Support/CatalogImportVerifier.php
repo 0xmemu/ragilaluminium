@@ -97,11 +97,16 @@ final class CatalogImportVerifier
             $optionSig = null;
             $optionSigRow = null;
             $idLabel = str_starts_with($key, 'id:') ? substr($key, 3) : $key;
+            $groupImage1 = null;
             foreach ($rowIdxs as $i) {
                 $r = $rows[$i];
                 $name = trim((string) ($r['name'] ?? ''));
                 if ($name !== '') {
                     $names[strtolower($name)][] = $i + 2;
+                }
+                $img1 = trim((string) ($r['image_1'] ?? ''));
+                if ($img1 !== '' && $groupImage1 === null) {
+                    $groupImage1 = $img1;
                 }
                 $combo = self::combination($r);
                 if ($combo !== '') {
@@ -134,6 +139,35 @@ final class CatalogImportVerifier
                     $parts[] = '"'.$n.'" (baris '.implode(', ', $rowList).')';
                 }
                 $errors[] = 'id_key "'.$idLabel.'" memuat nama berbeda: '.implode(' dan ', $parts).'. Samakan nama dalam satu id_key.';
+            }
+
+            // V7: foto utama (image_1) wajib utk tiap produk (syarat aktivasi).
+            if ($groupImage1 === null || $groupImage1 === '') {
+                $firstRow = $rowIdxs[0] + 2;
+                $errors[] = 'Produk pada id_key "'.$idLabel.'" (baris '.$firstRow.') tidak punya image_1. Foto utama wajib agar produk bisa aktif.';
+            }
+
+            // V8: berat & dimensi wajib di baris pertama grup (syarat aktivasi,
+            // ongkir J&T). Diambil dari baris yang mengisi name (baris identitas).
+            $dims = null;
+            $dimsRow = null;
+            foreach ($rowIdxs as $i) {
+                $r = $rows[$i];
+                if (trim((string) ($r['name'] ?? '')) === '') { continue; }
+                $w = (float) str_replace(',', '.', (string) ($r['weight_kg'] ?? ''));
+                $h = (float) str_replace(',', '.', (string) ($r['height_cm'] ?? ''));
+                $wd = (float) str_replace(',', '.', (string) ($r['width_cm'] ?? ''));
+                $d = (float) str_replace(',', '.', (string) ($r['depth_cm'] ?? ($r['length'] ?? '')));
+                $dims = [$w, $h, $wd, $d];
+                $dimsRow = $i + 2;
+                break;
+            }
+            if ($dims !== null && (max($dims) === 0.0 || min($dims) <= 0.0)) {
+                $missing = [];
+                foreach (['berat', 'tinggi', 'panjang', 'lebar'] as $idx => $label) {
+                    if ($dims[$idx] <= 0.0) { $missing[] = $label; }
+                }
+                $errors[] = 'Produk pada id_key "'.$idLabel.'" (baris '.$dimsRow.') kurang data pengiriman: '.implode(', ', $missing).'. Wajib angka lebih dari nol.';
             }
         }
 
