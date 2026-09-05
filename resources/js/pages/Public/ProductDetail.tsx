@@ -131,7 +131,7 @@ export default function ProductDetail({
 
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-4 pt-0 lg:pt-10 lg:pb-10">
-        <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,490px)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:gap-12">
+        <div className="grid min-w-0 gap-2 lg:grid-cols-[480px_minmax(0,1fr)] lg:items-start lg:gap-8">
           {/* Kolom Kiri: Galeri Produk + (Desktop) Ulasan Pembeli & Hasil Pemasangan */}
           <div className="relative min-w-0">
             <button
