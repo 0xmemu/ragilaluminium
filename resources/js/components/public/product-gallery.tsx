@@ -101,7 +101,7 @@ export function ProductGallery({
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
   // Strip carousel mobile (plan rev 4): 5 thumb terlihat penuh, geser per
   // thumb, main image = thumb yang baru masuk, chip +N dinamis dua arah.
-  const VISIBLE_THUMBS = 5
+  const VISIBLE_THUMBS = 3
   const STRIP_GAP = 8
   const STRIP_PAD = 10
   const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
@@ -439,7 +439,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square w-[calc((100%-32px)/5)] min-w-[calc((100%-32px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-14 lg:w-14 lg:min-w-14 lg:rounded-md",
+                    "relative aspect-square w-[calc((100%-16px)/3)] min-w-[calc((100%-16px)/3)] shrink-0 snap-start overflow-hidden rounded-none border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-24 lg:w-24 lg:min-w-24 lg:rounded-none",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
