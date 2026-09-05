@@ -244,51 +244,73 @@ export function ProductBuyBox({
           aria-label="Beli produk"
           spacerClassName="hidden"
           hideBelowSection="#produk-terkait"
-          className="!py-2 [&>div]:flex-row [&>div]:gap-2"
+          className="!p-0 !border-t-0 shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)]"
         >
-          <QuantityControl
-            className="h-9 shrink-0 rounded-md border border-border bg-surface px-1"
-            compact
-            value={form.data.quantity}
-            onChange={(quantity) => {
-              if (!selectedVariant) {
-                requestVariant()
-                return
-              }
-              changeQuantity(quantity)
-            }}
-            max={selectedVariant?.stock}
-            disabled={ctaDisabled}
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            className="!rounded-md h-9 min-h-9 min-w-0 flex-1 gap-1 px-2 text-xs font-semibold"
-            disabled={ctaDisabled}
-            onClick={purchase.buyNow}
-          >
-            <Icon name="credit-card" className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">
-              {form.processing && submitIntent === "checkout" ? (
-                "..."
-              ) : (
-                <>
-                  <span className="min-[360px]:hidden">Beli</span>
-                  <span className="hidden min-[360px]:inline">Beli Sekarang</span>
-                </>
-              )}
-            </span>
-          </Button>
-          <Button
-            type="submit"
-            className="!rounded-md h-9 min-h-9 min-w-0 flex-1 gap-1 px-2 text-xs font-semibold"
-            disabled={ctaDisabled}
-          >
-            <Icon name="shopping-cart" className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">
-              {form.processing && submitIntent === "cart" ? "..." : "Keranjang"}
-            </span>
-          </Button>
+          {/* Segmented full-width continuous stripe tanpa pill tombol terpisah */}
+          <div className="flex w-full items-stretch h-[38px] divide-x divide-border overflow-hidden border-t border-border bg-surface">
+            {/* Segment 1: Quantity */}
+            <div className="flex shrink-0 items-center justify-center bg-surface px-1.5 text-foreground">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedVariant) { requestVariant(); return; }
+                  changeQuantity(Math.max(1, form.data.quantity - 1))
+                }}
+                disabled={ctaDisabled || form.data.quantity <= 1}
+                className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-30 focus-visible:outline-none"
+                aria-label="Kurangi jumlah"
+              >
+                <Icon name="minus" className="size-3" />
+              </button>
+              <span className="min-w-[1.25rem] text-center font-mono text-xs font-bold text-foreground">
+                {form.data.quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedVariant) { requestVariant(); return; }
+                  changeQuantity(selectedVariant?.stock ? Math.min(selectedVariant.stock, form.data.quantity + 1) : form.data.quantity + 1)
+                }}
+                disabled={ctaDisabled || (selectedVariant?.stock !== undefined && form.data.quantity >= selectedVariant.stock)}
+                className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-30 focus-visible:outline-none"
+                aria-label="Tambah jumlah"
+              >
+                <Icon name="plus" className="size-3" />
+              </button>
+            </div>
+
+            {/* Segment 2: Beli Sekarang */}
+            <button
+              type="button"
+              disabled={ctaDisabled}
+              onClick={purchase.buyNow}
+              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-surface-muted/90 px-2 text-xs font-semibold text-foreground transition hover:bg-muted active:bg-muted/80 disabled:opacity-40 focus-visible:outline-none"
+            >
+              <Icon name="credit-card" className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="truncate">
+                {form.processing && submitIntent === "checkout" ? (
+                  "..."
+                ) : (
+                  <>
+                    <span className="min-[360px]:hidden">Beli</span>
+                    <span className="hidden min-[360px]:inline">Beli Sekarang</span>
+                  </>
+                )}
+              </span>
+            </button>
+
+            {/* Segment 3: Keranjang */}
+            <button
+              type="submit"
+              disabled={ctaDisabled}
+              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-primary px-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
+            >
+              <Icon name="shopping-cart" className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="truncate">
+                {form.processing && submitIntent === "cart" ? "..." : "Keranjang"}
+              </span>
+            </button>
+          </div>
         </MobileStickyCta>
       </form>
 
