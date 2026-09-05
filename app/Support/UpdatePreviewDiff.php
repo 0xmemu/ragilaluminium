@@ -64,17 +64,63 @@ final class UpdatePreviewDiff
                     $rowChanges[] = 'stok '.((int) $variant->stock).' -> '.((int) $stockResolved);
                 }
             } elseif ($type === 'media_update') {
+                // Bandingkan dgn media existing per posisi: URL identik =
+                // tidak dihitung berubah (media diulang di semua baris grup,
+                // tanpa edit file round-trip harus tetap 0 perubahan).
+                $productMedia = $variant->product?->media
+                    ? $variant->product->media->sortBy('position')
+                    : collect();
+                $byMain = [];
+                $byInst = [];
+                $byShared = [];
+                $byOpt = [];
+                foreach ($productMedia as $m) {
+                    $u = (string) ($m->urlFor('pdp') ?? $m->mediaAsset?->urlFor('pdp') ?? '');
+                    if ($u === '') { continue; }
+                    if ($m->position === 1) { $byMain[1] = $u; continue; }
+                    if ($m->position >= 2 && $m->position <= 9) { $byMain[$m->position] = $u; continue; }
+                    if ($m->position >= 11 && $m->position <= 19) { $byShared[$m->position - 10] = $u; continue; }
+                    if ($m->position >= 50 && $m->position <= 79) { $byOpt[$m->position - 50] = $u; continue; }
+                    if ($m->position >= 101) { $byInst[$m->position - 100] = $u; }
+                }
+                $real = 0;
                 for ($n = 1; $n <= 9; $n++) {
                     $url = trim((string) ($r['image_'.$n] ?? ''));
                     if ($url === '') { continue; }
-                    $rowChanges[] = 'image_'.$n.' akan di-set';
-                    break;
+                    if (($byMain[$n] ?? null) !== $url) {
+                        $rowChanges[] = 'image_'.$n.' diubah';
+                        $real++;
+                    }
                 }
-                for ($n = 1; $n <= 2; $n++) {
+                for ($n = 1; $n <= 9; $n++) {
                     $url = trim((string) ($r['installation_image_'.$n] ?? ''));
                     if ($url === '') { continue; }
-                    $rowChanges[] = 'installation_image_'.$n.' akan di-set';
-                    break;
+                    if (($byInst[$n] ?? null) !== $url) {
+                        $rowChanges[] = 'installation_image_'.$n.' diubah';
+                        $real++;
+                    }
+                }
+                for ($n = 1; $n <= 4; $n++) {
+                    $url = trim((string) ($r['shared_media_'.$n] ?? ''));
+                    if ($url === '') { continue; }
+                    if (($byShared[$n] ?? null) !== $url) {
+                        $rowChanges[] = 'shared_media_'.$n.' diubah';
+                        $real++;
+                    }
+                }
+                foreach ($r as $col => $val) {
+                    if (is_string($col) && preg_match('/^image_variation_(\d+)_option_(\d+)$/', $col, $mm)) {
+                        $url = trim((string) $val);
+                        if ($url === '') { continue; }
+                        $slot = ((int) $mm[1] - 1) * 4 + ((int) $mm[2] - 1);
+                        if (($byOpt[$slot] ?? null) !== $url) {
+                            $rowChanges[] = $col.' diubah';
+                            $real++;
+                        }
+                    }
+                }
+                if ($real === 0 && $rowChanges === []) {
+                    // Semua URL identik dgn existing: benar-benar tidak berubah.
                 }
             }
 

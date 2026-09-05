@@ -49,6 +49,11 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
 
         $rowIndex = $row->getIndex();
         $data = $row->toArray();
+        // Baris catatan/contoh dilewati (konsisten dgn importer katalog & stok).
+        $firstCell = (string) ($data['parent_sku'] ?? array_values($data)[0] ?? '');
+        if (preg_match('/^\s*(CATATAN|CONTOH)\s*:/i', $firstCell)) {
+            return;
+        }
         $job->increment('processed_rows');
 
         try {

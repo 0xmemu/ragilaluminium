@@ -46,6 +46,13 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
 
         $rowIndex = $row->getIndex();
         $data = $row->toArray();
+        // Baris catatan/contoh di sheet Data (mis. "CATATAN: hapus baris ini")
+        // dilewati, konsisten dengan importer katalog. Kalau admin lupa hapus
+        // baris contoh, tidak muncul sebagai baris gagal.
+        $firstCell = (string) ($data['parent_sku'] ?? array_values($data)[0] ?? '');
+        if (preg_match('/^\s*(CATATAN|CONTOH)\s*:/i', $firstCell)) {
+            return;
+        }
         $job->increment('processed_rows');
 
         try {
