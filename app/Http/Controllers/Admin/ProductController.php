@@ -116,6 +116,10 @@ class ProductController extends Controller
             ->withCount('variants as variants_count')
             ->withSum('validOrderItems as sold_count', 'quantity')
             ->withSum('activeVariants as stock_total', 'stock')
+            ->withMin('variants as min_price', 'price')
+            ->withMax('variants as max_price', 'price')
+            ->withCount(['media as media_count' => fn ($b) => $b->where('show_in_catalog', true)])
+            ->withCount(['media as installation_media_count' => fn ($b) => $b->where('is_installation', true)])
             ->when($q !== '', function ($builder) use ($q) {
                 $builder->where(function ($inner) use ($q) {
                     LikeSearch::whereLike($inner, 'name', $q);
