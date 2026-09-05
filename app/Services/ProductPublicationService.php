@@ -30,11 +30,16 @@ final class ProductPublicationService
             fn ($media): bool => $media->is_main_image
         );
         $activeVariantIds = $activeVariants->pluck('id');
+        // Media kini product-level by design (import owner: gambar per opsi
+        // tidak diikat ke satu varian, semua varian berbagi gambar opsinya).
+        // Cakupan foto = ada foto utama siap ATAU ada foto siap yang menempel
+        // varian (form manual lama).
         $hasPhotoCoverage = $activeVariantIds->isNotEmpty()
-            && $readyMedia->contains(
-                fn ($media): bool => $media->product_variant_id !== null
-                    && $activeVariantIds->contains($media->product_variant_id)
-            );
+            && ($readyMedia->contains(fn ($media): bool => $media->is_main_image)
+                || $readyMedia->contains(
+                    fn ($media): bool => $media->product_variant_id !== null
+                        && $activeVariantIds->contains($media->product_variant_id)
+                ));
         $hasExplanation = trim((string) $product->description) !== '';
         // ADR-021: berat & dimensi milik produk, bukan varian.
         $hasShippingData = (float) $product->weight_kg > 0
