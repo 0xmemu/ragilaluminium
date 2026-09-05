@@ -145,7 +145,7 @@ function HeaderSearchForm({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "h-[30px] w-full rounded-full border-0 bg-white/10 py-0.5 pl-8 pr-2.5 text-xs text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-8 md:pl-10 md:pr-4 md:text-sm",
+            "h-[34px] w-full rounded-full border-0 bg-white/10 py-1 pl-8.5 pr-3 text-xs text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-9 md:pl-10 md:pr-4 md:text-sm",
             inputClassName,
           )}
           aria-label="Cari produk"
@@ -321,12 +321,12 @@ export function PublicHeader() {
   return (
     <>
     <header className="sticky top-0 z-header border-b border-white/10 bg-header-bg text-background shadow-[0_2px_16px_rgba(0,0,0,0.22)]">
-      <div className="container-page relative flex h-[42px] md:h-11 items-center gap-1.5 py-0 md:gap-2.5 !px-2.5 md:!px-8 lg:!px-12">
+      <div className="container-page relative flex h-12 md:h-12 items-center gap-2 py-0 md:gap-3 !px-2.5 md:!px-8 lg:!px-12">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
             <button
               type="button"
-              className="relative z-20 -ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-8.5"
+              className="relative z-20 -ml-1 inline-flex size-9 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-9.5"
               aria-label="Buka menu utama"
             >
               <Icon name="menu" className="size-5.5 md:size-6" weight="bold" aria-hidden="true" />
@@ -541,21 +541,21 @@ export function PublicHeader() {
         </Sheet>
 
         {/* Mobile: emblem beside search. Desktop: wordmark (narrows on mid widths). */}
-        <BrandWordmark mark variant="dark" className="relative z-20 md:hidden !size-8 [&_img]:!size-6.5" />
+        <BrandWordmark mark variant="dark" className="relative z-20 md:hidden !size-9 [&_img]:!size-7.5" />
         <BrandWordmark
           compact
           variant="dark"
-          className="relative z-20 hidden min-w-0 shrink md:inline-flex [&_img]:h-6.5 lg:[&_img]:h-7.5 xl:[&_img]:h-8"
+          className="relative z-20 hidden min-w-0 shrink md:inline-flex [&_img]:h-7.5 lg:[&_img]:h-8.5 xl:[&_img]:h-9"
         />
 
         {/* Mobile: flex search. Desktop: centered bar that yields space to side actions. */}
         <HeaderSearchForm className="relative z-20 min-w-0 flex-1 md:hidden" />
         <HeaderSearchForm className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden w-[min(28rem,calc(100%-15rem))] max-w-2xl -translate-x-1/2 -translate-y-1/2 px-3 lg:w-[min(36rem,calc(100%-26rem))] lg:px-4 xl:w-[min(42rem,calc(100%-30rem))] md:block [&>div]:pointer-events-auto" />
 
-        <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-1 md:gap-1.5 lg:gap-2">
+        <div className="relative z-20 ml-auto flex shrink-0 items-center justify-end gap-1 md:gap-1.5 lg:gap-2.5">
           <Link
             href={routeUrl("order.index")}
-            className="relative hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:inline-flex lg:w-auto lg:min-w-8 lg:gap-1.5 lg:px-2.5"
+            className="relative hidden h-9 w-9 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:inline-flex lg:w-auto lg:min-w-9 lg:gap-1.5 lg:px-3"
             aria-label="Pesanan"
             aria-current={isRouteActive(["order.index", "order.status"]) ? "page" : undefined}
           >
@@ -576,7 +576,7 @@ export function PublicHeader() {
             <Link
               href={routeUrl("cart.index")}
               data-cart-target
-              className="relative inline-flex size-8 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-8 lg:h-8 lg:w-auto lg:min-w-8 lg:gap-1.5 lg:px-2.5"
+              className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-9 lg:h-9 lg:w-auto lg:min-w-9 lg:gap-1.5 lg:px-3"
               aria-label={`Keranjang, ${visibleCartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
@@ -584,7 +584,7 @@ export function PublicHeader() {
               <span className={cn("relative inline-flex size-6 shrink-0 items-center justify-center lg:size-6.5", cartBump && "animate-cart-bump")}>
                 <Icon name="shopping-cart" className="size-6 shrink-0 lg:size-6.5" aria-hidden="true" />
                 {visibleCartCount > 0 ? (
-                  <span className="tabular-nums absolute -right-1.5 -top-1.5 flex size-3.5 min-h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sale px-0.5 text-[8px] font-bold leading-none text-white">
+                  <span className="tabular-nums absolute -right-1.5 -top-1.5 flex size-4 min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white">
                     {Math.min(visibleCartCount, 99)}
                   </span>
                 ) : null}
