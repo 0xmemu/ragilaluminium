@@ -99,12 +99,11 @@ export function useProductPurchase({
     return media
   }, [media, selections, variants])
 
-  // Desain owner (09-05): foto berganti SAAT sebuah opsi varian diklik, dan
-  // hanya jika opsi itu punya foto khusus. Tidak ada hubungannya dengan
-  // kombinasi pilihan lain - jadi urutan memilih (kaca dulu atau warna dulu)
-  // tidak berpengaruh. Setiap klik opsi di set di sini; galeri membaca
-  // lastPickedOption dan mencari media khusus opsi tersebut (varian mana pun
-  // yang memuat opsi itu, karena foto ter-link per opsi via varian perwakilan).
+  // Desain owner (09-05, final): "berpindah tergantung klik". Foto berganti
+  // SAAT opsi varian diklik, jika opsi itu punya foto khusus. Sama sederhana
+  // itu - tidak spesifik axis mana pun (Warna, Kaca, atau axis baru), tidak
+  // peduli kombinasi pilihan lain, tidak peduli urutan memilih. Opsi tanpa
+  // foto khusus = galeri tetap di posisi sekarang.
   const [lastPickedOption, setLastPickedOption] = React.useState<{
     axis: string
     option: string
@@ -112,7 +111,9 @@ export function useProductPurchase({
 
   const highlightedMediaId = React.useMemo(() => {
     if (!lastPickedOption) return null
-    // Foto khusus yang mengandung opsi yang baru diklik (semua axis, opsi sama).
+    // Cari media khusus milik varian yang memuat opsi yang baru diklik pada
+    // axis yang diklik (foto ter-link per opsi via varian perwakilan, apapun
+    // axis-nya).
     const hit = media.find((item) => {
       const vid = Number(item.product_variant_id)
       if (!vid) return false
