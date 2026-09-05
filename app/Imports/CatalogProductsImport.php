@@ -254,6 +254,14 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         $job->increment('processed_rows');
 
         try {
+            // Kontrak export-as-update (owner 09-06): kolom id_key di file
+            // export/template adalah SKU produk (parent_sku). Mapping
+            // eksplisit supaya file export langsung ter-update ke produk
+            // existing, bukan masuk auto-mode by name (risiko duplikat).
+            if (trim((string) ($data['parent_sku'] ?? '')) === ''
+                && trim((string) ($data['id_key'] ?? '')) !== '') {
+                $data['parent_sku'] = trim((string) $data['id_key']);
+            }
             $parentSku = trim((string) ($data['parent_sku'] ?? ''));
             $name = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
             // Auto-mode: kolom parent_sku tidak diisi (template create). Sistem
