@@ -44,10 +44,10 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
             'weight_kg', 'height_cm', 'width_cm', 'depth_cm', 'specifications',
             'image_1', 'image_2', 'image_3', 'image_4', 'image_5',
             'image_6', 'image_7', 'image_8', 'image_9',
-            'shared_media_1', 'shared_media_2',
-            'installation_image_1', 'installation_image_2',
             'image_variation_1_option_1', 'image_variation_1_option_2', 'image_variation_1_option_3', 'image_variation_1_option_4',
             'image_variation_2_option_1', 'image_variation_2_option_2', 'image_variation_2_option_3', 'image_variation_2_option_4',
+            'shared_media_1', 'shared_media_2',
+            'installation_image_1', 'installation_image_2',
         ];
     }
 
@@ -99,6 +99,9 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
             // Media parent diulang di SEMUA baris grup (pola sama dgn file
             // import owner): nilai sama per posisi, importer menjamin tetap
             // satu media per posisi (baris pertama menang).
+            // Urutan kolom ikut template import: image_1..9, image_variation_*,
+            // shared_media_*, installation_image_* (sama dgn urutan galeri:
+            // umum > per opsi > shared > installation).
             $row = array_merge($row, [
                 $main[0] ?? null,
                 $main[1] ?? null,
@@ -109,15 +112,17 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
                 $main[6] ?? null,
                 $main[7] ?? null,
                 $main[8] ?? null,
-                $shared[0] ?? null,
-                $shared[1] ?? null,
-                $installation[0] ?? null,
-                $installation[1] ?? null,
             ]);
-            // Media per opsi varian: pola sama dgn template import.
+            // Media per opsi varian.
             foreach ([1, 2, 3, 4, 5, 6, 7, 8] as $opt) {
                 $row[] = $optionImages[$opt - 1] ?? null;
             }
+            // Shared media (foto/video bersama).
+            $row[] = $shared[0] ?? null;
+            $row[] = $shared[1] ?? null;
+            // Installation.
+            $row[] = $installation[0] ?? null;
+            $row[] = $installation[1] ?? null;
 
             $rows[] = array_map([ExportSafety::class, 'cell'], $row);
         }
