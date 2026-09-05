@@ -384,18 +384,18 @@ export function ProductGallery({
                   onClick={() => moveGallery(-1)}
                   disabled={activeMediaIndex === 0}
                   aria-label="Lihat foto sebelumnya"
-                  className="absolute left-2 top-1/2 z-10 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+                  className="absolute left-2.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
                 >
-                  <Icon name="arrow-left" className="size-4.5" weight="bold" aria-hidden="true" />
+                  <Icon name="arrow-left" className="size-5" weight="bold" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => moveGallery(1)}
                   disabled={activeMediaIndex === items.length - 1}
                   aria-label="Lihat foto berikutnya"
-                  className="absolute right-2 top-1/2 z-10 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+                  className="absolute right-2.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
                 >
-                  <Icon name="arrow-right" className="size-4.5" weight="bold" aria-hidden="true" />
+                  <Icon name="arrow-right" className="size-5" weight="bold" aria-hidden="true" />
                 </button>
               </>
             ) : null}
@@ -423,18 +423,18 @@ export function ProductGallery({
                 onClick={() => scrollStripToIndex(leftVisibleIndex - 1)}
                 disabled={leftVisibleIndex <= 0}
                 aria-label="Geser thumbnail ke kiri"
-                className="absolute left-1 top-1/2 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/90 text-foreground shadow-sm backdrop-blur-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
+                className="absolute -left-3.5 top-1/2 z-20 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-md transition hover:bg-muted hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
               >
-                <Icon name="caret-left" className="size-4" weight="bold" aria-hidden="true" />
+                <Icon name="caret-left" className="size-5" weight="bold" aria-hidden="true" />
               </button>
               <button
                 type="button"
                 onClick={() => scrollStripToIndex(leftVisibleIndex + 1)}
                 disabled={leftVisibleIndex >= maxLeftVisibleIndex}
                 aria-label="Geser thumbnail ke kanan"
-                className="absolute right-1 top-1/2 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/90 text-foreground shadow-sm backdrop-blur-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
+                className="absolute -right-3.5 top-1/2 z-20 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-md transition hover:bg-muted hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
               >
-                <Icon name="caret-right" className="size-4" weight="bold" aria-hidden="true" />
+                <Icon name="caret-right" className="size-5" weight="bold" aria-hidden="true" />
               </button>
 
               <div
