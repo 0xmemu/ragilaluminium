@@ -459,26 +459,42 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         $key = \App\Support\VariantSheetParser::optionKey($opt);
                         $url = $ownerImages[$key] ?? null;
                         if ($url !== null) {
-                            $orderedUrls[$key] = $url;
+                            $orderedUrls[$key] = ['url' => $url, 'axis' => $n, 'label' => $opt];
                         }
                     }
                 }
+                // Kontrak ADR-021 + PDP: foto per opsi varian TERLINK ke varian
+                // perwakilan (varian pertama dengan opsi tsb) supaya klik varian
+                // di PDP otomatis pindah ke foto opsi. Upsert idempoten per
+                // (produk, aset, varian), tanpa guard posisi.
                 $position = 50;
-                foreach ($orderedUrls as $optionKey => $url) {
-                    if ($this->writtenMedia[$product->id]['owneropt'][$position] ?? false) {
-                        $position++;
-                        continue;
-                    }
-                    $this->writtenMedia[$product->id]['owneropt'][$position] = true;
+                foreach ($orderedUrls as $optionKey => $entry) {
+                    $repVariant = ProductVariant::where('product_id', $product->id)
+                        ->where('variation_'.$entry['axis'].'_option', $entry['label'])
+                        ->orderBy('id')
+                        ->first();
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
-                        variantId: null,
-                        url: $url,
+                        variantId: $repVariant?->id,
+                        url: $entry['url'],
                         position: $position,
                         isMain: false, // foto utama = image_1 (produk umum)
                         showInCatalog: true,
                         isInstallation: false,
                     );
+                    if ($repVariant !== null) {
+                        // Buang kembaran level produk (fallback lama) utk aset sama
+                        // agar galeri tidak menampilkan foto opsi dua kali.
+                        \Illuminate\Support\Facades\DB::table('product_media')
+                            ->where('product_id', $product->id)
+                            ->whereNull('product_variant_id')
+                            ->where('is_main_image', false)
+                            ->where('is_installation', false)
+                            ->where('show_in_catalog', true)
+                            ->whereBetween('position', [50, 99])
+                            ->where('source_url', $entry['url'])
+                            ->delete();
+                    }
                     $position++;
                     $ownerMediaWritten = true;
                 }
