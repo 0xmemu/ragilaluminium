@@ -31,6 +31,7 @@ type PreviewRow = {
 type PreviewPayload = {
   rows: PreviewRow[]
   total: number
+  verify_errors: string[]
 }
 
 const MEDIA_LABEL: Record<MediaClass, string> = {
@@ -255,6 +256,26 @@ export default function ImportCreate({
               {previewing ? "Memeriksa..." : "Periksa file"}
             </Button>
             {previewError ? <Alert tone="danger">{previewError}</Alert> : null}
+            {preview && totals && preview.verify_errors.length > 0 ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                <p className="text-sm font-semibold text-destructive">
+                  Lolos pemeriksaan: {preview.verify_errors.length} masalah, perbaiki lalu periksa ulang.
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-foreground">
+                  {preview.verify_errors.map((err, i) => (
+                    <li key={i} className="flex gap-1.5">
+                      <span className="text-destructive">•</span>
+                      <span>{err}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {preview && totals && preview.verify_errors.length === 0 ? (
+              <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+                <p className="text-sm font-semibold text-success">Semua baris lolos pemeriksaan. Mulai Import sudah aktif.</p>
+              </div>
+            ) : null}
             {preview && totals ? (
               <div className="overflow-hidden rounded-lg border border-border">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border bg-muted/40 px-4 py-2.5 text-xs">
