@@ -422,6 +422,18 @@ class ProductController extends Controller
                 }
             }
         }
+        // Gambar per opsi: media product-level posisi 10..49 ditaut berurutan
+        // ke opsi (urutan sama dengan importer: per slot varian, opsi urut).
+        // Media varian-level (form manual lama) tetap diutamakan.
+        $perOptionMedia = $product->media
+            ->filter(fn ($m) => $m->product_variant_id === null
+                && ! $m->is_main_image
+                && ! $m->is_installation
+                && $m->position >= 50 && $m->position < 100)
+            ->sortBy('position')
+            ->values();
+        $optMediaIdx = 0;
+
         for ($s = 1; $s <= $slotCount; $s++) {
             $name = '';
             $options = [];
@@ -438,6 +450,12 @@ class ProductController extends Controller
                 }
                 $seen[$key] = true;
                 $media = $product->media->first(fn ($m) => $m->product_variant_id === $v->id);
+                if (! $media && $optMediaIdx < $perOptionMedia->count()) {
+                    $media = $perOptionMedia[$optMediaIdx];
+                }
+                if ($media) {
+                    $optMediaIdx++;
+                }
                 $options[] = [
                     'value' => $option,
                     'media_asset_id' => ($media && $media->mediaAsset) ? $media->mediaAsset->id : null,

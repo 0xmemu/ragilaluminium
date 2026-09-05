@@ -463,8 +463,8 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         }
                     }
                 }
-                $position = 10;
-                                foreach ($orderedUrls as $optionKey => $url) {
+                $position = 50;
+                foreach ($orderedUrls as $optionKey => $url) {
                     if ($this->writtenMedia[$product->id]['owneropt'][$position] ?? false) {
                         $position++;
                         continue;
@@ -495,7 +495,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                             productId: $product->id,
                             variantId: null,
                             url: $shared,
-                            position: 50 + $n,
+                            position: 10 + $n,
                             isMain: false,
                             showInCatalog: true,
                             isInstallation: false,
