@@ -11,19 +11,83 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 
 /**
  * Sheet B "Update Produk Lengkap": SATU BARIS = SATU VARIAN, untuk edit
- * metadata + media varian tertentu. Target = parent_sku + variant_sku.
- * Identitas produk diulang tiap baris (konteks). Media level produk di baris
- * pertama grup; media varian (pola image_variation_* sama dgn template import)
- * di baris varian. Cell kosong = tidak mengubah existing.
+ * metadata + media. Target = parent_sku + variant_sku.
+ *
+ * Kolom ber-Series _N (image_N, shared_media_N, installation_image_N)
+ * digenerate SESUAI PEMAKAIAN: kolom tanpa isi sama sekali di seluruh
+ * dataset tidak dicetak. Minimal _1 selalu ada.
  */
 class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuery, WithHeadings, WithMapping
 {
+    /** Jumlah kolom per series yang benar-benar dipakai (dihitung saat boot). */
+    protected int $maxMain = 1;
+
+    protected int $maxShared = 1;
+
+    protected int $maxInstallation = 1;
+
+    protected int $maxOptionSlots = 1;
+
+    protected bool $seriesResolved = false;
+
     public function __construct(protected Builder $query)
     {
         $this->sheetTitle = 'Update Produk Lengkap';
         $widths = ['A' => 20, 'B' => 30, 'C' => 34, 'D' => 40];
         foreach (['E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL'] as $c) { $widths[$c] = 18; }
         $this->columnWidths = $widths;
+    }
+
+    /**
+     * Hitung pemakaian kolom _N dari DB sekali (per dataset).
+     */
+    protected function resolveSeries(): void
+    {
+        if ($this->seriesResolved) { return; }
+        $this->seriesResolved = true;
+
+        $rows = \Illuminate\Support\Facades\DB::table('product_media')
+            ->selectRaw('position, COUNT(*) c')
+            ->groupBy('position')
+            ->pluck('c', 'position');
+
+        // image_N: posisi 1..9 (umum), minimal image_1.
+        $maxMain = 1;
+        foreach (range(2, 9) as $p) {
+            if (($rows[$p] ?? 0) > 0) { $maxMain = max($maxMain, $p); }
+        }
+        $this->maxMain = $maxMain;
+
+        // shared_media_N: posisi 11..19, minimal shared_media_1.
+        $maxShared = 1;
+        foreach (range(12, 19) as $p) {
+            if (($rows[$p] ?? 0) > 0) { $maxShared = max($maxShared, $p - 10); }
+        }
+        $this->maxShared = $maxShared;
+
+        // installation_image_N: posisi 101..119, minimal installation_image_1.
+        $maxInst = 1;
+        foreach (range(102, 119) as $p) {
+            if (($rows[$p] ?? 0) > 0) { $maxInst = max($maxInst, $p - 100); }
+        }
+        $this->maxInstallation = $maxInst;
+
+        // Slot gambar per opsi: image_variation_1_option_1..4 dst. Hitung
+        // berapa kombinasi (varian, opsi) yang benar-benar punya media.
+        // Pos 50..79: slot = ((varian-1)*4)+(opsi-1), varian 1..5, opsi 1..4.
+        $used = \Illuminate\Support\Facades\DB::table('product_media')
+            ->whereBetween('position', [50, 79])
+            ->whereNotNull('product_id')
+            ->count();
+        $maxSlots = 1;
+        if ($used > 0) {
+            $positions = \Illuminate\Support\Facades\DB::table('product_media')->whereBetween('position', [50, 79])->pluck('position');
+            foreach ($positions as $p) {
+                $slot = $p - 50; // 0..29
+                $maxSlots = max($maxSlots, $slot + 1);
+            }
+        }
+        $this->maxOptionSlots = $maxSlots;
     }
 
     public function query(): Builder
@@ -36,24 +100,31 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
     /** @return list<string> */
     public function headings(): array
     {
-        return [
+        $this->resolveSeries();
+
+        $headings = [
             'parent_sku', 'variant_sku', 'variant_combination',
             'name', 'description', 'product_category', 'product_model', 'design_variant',
             'variation_1_name', 'variation_1_option', 'variation_2_name', 'variation_2_option',
             'price', 'stock',
             'weight_kg', 'height_cm', 'width_cm', 'depth_cm', 'specifications',
-            'image_1', 'image_2', 'image_3', 'image_4', 'image_5',
-            'image_6', 'image_7', 'image_8', 'image_9',
-            'image_variation_1_option_1', 'image_variation_1_option_2', 'image_variation_1_option_3', 'image_variation_1_option_4',
-            'image_variation_2_option_1', 'image_variation_2_option_2', 'image_variation_2_option_3', 'image_variation_2_option_4',
-            'shared_media_1', 'shared_media_2',
-            'installation_image_1', 'installation_image_2',
         ];
+        for ($i = 1; $i <= $this->maxMain; $i++) { $headings[] = 'image_'.$i; }
+        for ($slot = 0; $slot < $this->maxOptionSlots; $slot++) {
+            $var = intdiv($slot, 4) + 1;
+            $opt = ($slot % 4) + 1;
+            $headings[] = 'image_variation_'.$var.'_option_'.$opt;
+        }
+        for ($i = 1; $i <= $this->maxShared; $i++) { $headings[] = 'shared_media_'.$i; }
+        for ($i = 1; $i <= $this->maxInstallation; $i++) { $headings[] = 'installation_image_'.$i; }
+
+        return $headings;
     }
 
     /** @return list<array<int, mixed>> */
     public function map($product): array
     {
+        $this->resolveSeries();
         $rows = [];
 
         $main = [];
@@ -73,8 +144,7 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
         $variants = $product->variants->sortBy('id')->values();
         $first = $variants->first();
 
-        foreach ($variants as $index => $variant) {
-            $firstRow = $index === 0;
+        foreach ($variants as $variant) {
             $row = [
                 $product->parent_sku,
                 $variant->variant_sku,
@@ -96,33 +166,21 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
                 (float) $product->depth_cm,
                 $product->specifications,
             ];
-            // Media parent diulang di SEMUA baris grup (pola sama dgn file
-            // import owner): nilai sama per posisi, importer menjamin tetap
-            // satu media per posisi (baris pertama menang).
-            // Urutan kolom ikut template import: image_1..9, image_variation_*,
-            // shared_media_*, installation_image_* (sama dgn urutan galeri:
-            // umum > per opsi > shared > installation).
-            $row = array_merge($row, [
-                $main[0] ?? null,
-                $main[1] ?? null,
-                $main[2] ?? null,
-                $main[3] ?? null,
-                $main[4] ?? null,
-                $main[5] ?? null,
-                $main[6] ?? null,
-                $main[7] ?? null,
-                $main[8] ?? null,
-            ]);
-            // Media per opsi varian.
-            foreach ([1, 2, 3, 4, 5, 6, 7, 8] as $opt) {
-                $row[] = $optionImages[$opt - 1] ?? null;
+            // Urutan kolom ikut template import: image_1..N, image_variation_*,
+            // shared_media_*, installation_image_*. Jumlah kolom per series
+            // mengikuti pemakaian dataset (minimal _1).
+            for ($i = 1; $i <= $this->maxMain; $i++) {
+                $row[] = $main[$i - 1] ?? null;
             }
-            // Shared media (foto/video bersama).
-            $row[] = $shared[0] ?? null;
-            $row[] = $shared[1] ?? null;
-            // Installation.
-            $row[] = $installation[0] ?? null;
-            $row[] = $installation[1] ?? null;
+            for ($slot = 0; $slot < $this->maxOptionSlots; $slot++) {
+                $row[] = $optionImages[$slot] ?? null;
+            }
+            for ($i = 1; $i <= $this->maxShared; $i++) {
+                $row[] = $shared[$i - 1] ?? null;
+            }
+            for ($i = 1; $i <= $this->maxInstallation; $i++) {
+                $row[] = $installation[$i - 1] ?? null;
+            }
 
             $rows[] = array_map([ExportSafety::class, 'cell'], $row);
         }
