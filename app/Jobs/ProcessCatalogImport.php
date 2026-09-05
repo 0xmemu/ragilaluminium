@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -125,7 +126,15 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                 'media_update' => new ImportMediaUpdate($this->jobId),
                 default => new CatalogProductsImport($this->jobId, $path),
             };
-            Excel::import($importer, $path);
+
+            // 8 SCOPE (design-thinking): eksekusi dalam satu transaction.
+            // Kontrak all-or-nothing owner: error runtime di tengah eksekusi
+            // (bukan hanya error struktur yang tertangkap pre-pass) harus
+            // membatalkan SELURUH batch, bukan menyisakan data parsial.
+            // Commit = sukses; throw = rollback struktural.
+            DB::transaction(function () use ($importer, $path): void {
+                Excel::import($importer, $path);
+            });
         } catch (\Throwable $e) {
             $job->update([
                 'status' => 'failed',
