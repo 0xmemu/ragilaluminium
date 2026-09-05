@@ -207,7 +207,8 @@ export function ProductBuyBox({
         <div className="mt-0 hidden gap-2 lg:flex">
           <ShareActionButton title={title} url={shareUrl} />
           <QuantityControl
-            className="h-10"
+            className="h-9 rounded-md border border-border bg-surface px-1"
+            compact
             value={form.data.quantity}
             onChange={(quantity) => {
               if (!selectedVariant) {
@@ -222,8 +223,7 @@ export function ProductBuyBox({
           <Button
             type="button"
             variant="secondary"
-            size="md"
-            className="h-11 flex-1 text-sm"
+            className="!rounded-md h-9 min-h-9 flex-1 text-xs font-semibold"
             disabled={ctaDisabled}
             onClick={purchase.buyNow}
           >
@@ -232,8 +232,7 @@ export function ProductBuyBox({
           </Button>
           <Button
             type="submit"
-            size="md"
-            className="h-11 flex-1 text-sm"
+            className="!rounded-md h-9 min-h-9 flex-1 text-xs font-semibold"
             disabled={ctaDisabled}
           >
             <Icon name="shopping-cart" className="size-4" aria-hidden="true" />
@@ -245,10 +244,11 @@ export function ProductBuyBox({
           aria-label="Beli produk"
           spacerClassName="hidden"
           hideBelowSection="#produk-terkait"
-          className="[&>div]:flex-row [&>div]:gap-2"
+          className="!py-2 [&>div]:flex-row [&>div]:gap-2"
         >
           <QuantityControl
-            className="h-10"
+            className="h-9 shrink-0 rounded-md border border-border bg-surface px-1"
+            compact
             value={form.data.quantity}
             onChange={(quantity) => {
               if (!selectedVariant) {
@@ -263,12 +263,11 @@ export function ProductBuyBox({
           <Button
             type="button"
             variant="secondary"
-            size="md"
-            className="h-11 min-h-11 min-w-0 flex-1 gap-1 px-1 text-[11px] sm:gap-2 sm:px-5 sm:text-sm"
+            className="!rounded-md h-9 min-h-9 min-w-0 flex-1 gap-1 px-2 text-xs font-semibold"
             disabled={ctaDisabled}
             onClick={purchase.buyNow}
           >
-            <Icon name="credit-card" className="size-4 shrink-0" aria-hidden="true" />
+            <Icon name="credit-card" className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">
               {form.processing && submitIntent === "checkout" ? (
                 "..."
@@ -282,11 +281,10 @@ export function ProductBuyBox({
           </Button>
           <Button
             type="submit"
-            size="md"
-            className="h-11 min-h-11 min-w-0 flex-1 gap-1 px-1 text-[11px] sm:gap-2 sm:px-5 sm:text-sm"
+            className="!rounded-md h-9 min-h-9 min-w-0 flex-1 gap-1 px-2 text-xs font-semibold"
             disabled={ctaDisabled}
           >
-            <Icon name="shopping-cart" className="size-4 shrink-0" aria-hidden="true" />
+            <Icon name="shopping-cart" className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">
               {form.processing && submitIntent === "cart" ? "..." : "Keranjang"}
             </span>
