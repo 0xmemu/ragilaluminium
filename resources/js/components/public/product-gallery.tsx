@@ -32,7 +32,6 @@ export function ProductGallery({
   const VISIBLE_THUMBS = 5
   const STRIP_GAP = 8
   const STRIP_PAD = 10
-  const [thumbW, setThumbW] = React.useState(66)
   const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
   const leftVisibleIndexRef = React.useRef(0)
   leftVisibleIndexRef.current = leftVisibleIndex
@@ -42,19 +41,9 @@ export function ProductGallery({
   const userStripScrollAt = React.useRef(0)
   const stripSnapTimer = React.useRef<number | undefined>(undefined)
 
-  React.useEffect(() => {
-    const strip = stripRef.current
-    if (!strip) return
-    const measure = () => {
-      const inner = strip.clientWidth - STRIP_PAD * 2
-      if (inner <= 0) return
-      const w = Math.floor((inner - (VISIBLE_THUMBS - 1) * STRIP_GAP) / VISIBLE_THUMBS)
-      setThumbW(Math.max(40, w))
-    }
-    measure()
-    window.addEventListener("resize", measure)
-    return () => window.removeEventListener("resize", measure)
-  }, [])
+  // Lebar thumbnail dihitung langsung via CSS calc((100% - 32px) / 5)
+  // 100% di dalam kontainer flex dengan padding px-2.5 adalah inner width.
+  // 5 kartu * w + 4 gap (32px) = persis 100% inner width, thumb ke-6 berada 0px di luar batas view.
   const visibleCount = Math.min(VISIBLE_THUMBS, items.length)
   const maxLeftVisibleIndex = Math.max(0, items.length - visibleCount)
   const leftHidden = leftVisibleIndex
@@ -367,7 +356,6 @@ export function ProductGallery({
               ref={stripRef}
               data-gallery-strip
               onScroll={onStripScroll}
-              style={{ "--thumb-w": `${thumbW}px` } as React.CSSProperties}
               className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
               aria-label="Pilih foto produk"
             >
@@ -387,7 +375,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square w-[var(--thumb-w)] min-w-[var(--thumb-w)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:w-12 lg:min-w-12",
+                    "relative aspect-square w-[calc((100%-32px)/5)] min-w-[calc((100%-32px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:w-12 lg:min-w-12",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
