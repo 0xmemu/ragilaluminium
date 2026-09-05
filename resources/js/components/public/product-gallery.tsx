@@ -30,6 +30,9 @@ export function ProductGallery({
   // Strip carousel mobile (plan rev 4): 5 thumb terlihat penuh, geser per
   // thumb, main image = thumb yang baru masuk, chip +N dinamis dua arah.
   const VISIBLE_THUMBS = 5
+  const STRIP_GAP = 10
+  const STRIP_PAD = 10
+  const [thumbW, setThumbW] = React.useState(66)
   const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
   const leftVisibleIndexRef = React.useRef(0)
   leftVisibleIndexRef.current = leftVisibleIndex
@@ -38,6 +41,20 @@ export function ProductGallery({
   const stripProgrammaticTimer = React.useRef<number | undefined>(undefined)
   const userStripScrollAt = React.useRef(0)
   const stripSnapTimer = React.useRef<number | undefined>(undefined)
+
+  React.useEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    const measure = () => {
+      const inner = strip.clientWidth - STRIP_PAD * 2
+      if (inner <= 0) return
+      const w = Math.floor((inner - (VISIBLE_THUMBS - 1) * STRIP_GAP) / VISIBLE_THUMBS)
+      setThumbW(Math.max(40, w))
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
   const visibleCount = Math.min(VISIBLE_THUMBS, items.length)
   const maxLeftVisibleIndex = Math.max(0, items.length - visibleCount)
   const leftHidden = leftVisibleIndex
@@ -389,6 +406,7 @@ export function ProductGallery({
               ref={stripRef}
               data-gallery-strip
               onScroll={onStripScroll}
+              style={{ "--thumb-w": `${thumbW}px` } as React.CSSProperties}
               className="mt-2 flex w-full max-w-full gap-2.5 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
               aria-label="Pilih foto produk"
             >
@@ -408,7 +426,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square w-[63px] min-w-[63px] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
+                    "relative aspect-square w-[var(--thumb-w)] min-w-[var(--thumb-w)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:w-12 lg:min-w-12",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
@@ -450,7 +468,7 @@ export function ProductGallery({
               <div
                 aria-hidden="true"
                 className="pointer-events-none shrink-0"
-                style={{ width: "calc((100% - 56px) / 5 + 10px)" }}
+                style={{ width: `${thumbW + STRIP_PAD}px` }}
               />
             </div>
           ) : null}

@@ -47,10 +47,23 @@ export function useProductPurchase({
     () => variantAxes(variants),
     [variants],
   )
-  const initialSelections = React.useMemo(
-    () => firstAvailableSelections(variants),
-    [variants],
-  )
+  const initialSelections = React.useMemo(() => {
+    const fromUrl = typeof window !== "undefined"
+      ? new URL(window.location.href).searchParams.get("variant")
+      : null
+    if (fromUrl && variants.length) {
+      const match = variants.find((v) => v.variant_sku === fromUrl)
+      if (match) {
+        const sel: VariantSelections = {}
+        for (const [axisName, option] of variantPairs(match)) {
+          sel[axisName] = option
+        }
+        const axes = variantAxes(variants)
+        if (Object.keys(sel).length === axes.length) return sel
+      }
+    }
+    return firstAvailableSelections(variants)
+  }, [variants])
   const [selections, setSelections] = React.useState<VariantSelections>(initialSelections)
   const [variantError, setVariantError] = React.useState(false)
   const variantSectionRef = React.useRef<HTMLDivElement>(null)
