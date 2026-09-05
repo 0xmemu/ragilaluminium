@@ -370,7 +370,7 @@ export function ProductGallery({
               ref={stripRef}
               onScroll={onStripScroll}
               data-gallery-strip
-              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto scroll-smooth pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0"
+              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto scroll-smooth pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0 [scroll-padding-left:10px]"
               style={{ "--thumb-w": thumbW + "px" } as React.CSSProperties}
               aria-label="Pilih foto produk"
             >
@@ -433,6 +433,9 @@ export function ProductGallery({
                 </button>
                 )
               })}
+              {/* Spacer kanan: saat mentok, thumb terakhir menyentuh tepi
+                  viewport - tidak ada space putih stuck. */}
+              <div aria-hidden="true" className="shrink-0" style={{ width: thumbW + STRIP_PAD }} />
             </div>
           ) : null}
 
