@@ -1,11 +1,12 @@
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { cn } from "@/lib/utils"
 
 /**
  * Tombol bagikan produk (native share / salin tautan + feedback "Tersalin").
  */
-export function ShareActionButton({ title, url }: { title: string; url: string }) {
+export function ShareActionButton({ title, url, className }: { title: string; url: string; className?: string }) {
   const [copied, setCopied] = React.useState(false)
 
   async function handleShare() {
@@ -52,7 +53,7 @@ export function ShareActionButton({ title, url }: { title: string; url: string }
     <button
       type="button"
       onClick={handleShare}
-      className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn("relative inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}
       aria-label={copied ? "Tautan tersalin" : "Bagikan produk"}
       title={copied ? "Tautan tersalin" : "Bagikan produk"}
     >

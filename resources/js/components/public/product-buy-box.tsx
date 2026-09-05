@@ -203,11 +203,15 @@ export function ProductBuyBox({
           </Alert>
         ) : null}
 
-        {/* CTA - desktop / tablet satu baris horizontal: qty + keranjang + beli sekarang */}
-        <div className="mt-0 hidden gap-2 lg:flex">
-          <ShareActionButton title={title} url={shareUrl} />
+        {/* CTA - desktop / tablet satu baris horizontal: share + qty + beli sekarang + keranjang (tinggi dan alignment sejajar rapi) */}
+        <div className="mt-0 hidden items-center gap-2 lg:flex">
+          <ShareActionButton
+            title={title}
+            url={shareUrl}
+            className="!size-10 !rounded-md border border-border !bg-surface !text-foreground !shadow-none hover:!bg-muted"
+          />
           <QuantityControl
-            className="h-9 rounded-md border border-border bg-surface px-1"
+            className="h-10 rounded-md border border-border bg-surface px-1.5"
             compact
             value={form.data.quantity}
             onChange={(quantity) => {
@@ -223,7 +227,7 @@ export function ProductBuyBox({
           <Button
             type="button"
             variant="secondary"
-            className="!rounded-md h-9 min-h-9 flex-1 text-xs font-semibold"
+            className="!rounded-md h-10 min-h-10 flex-1 text-xs font-semibold"
             disabled={ctaDisabled}
             onClick={purchase.buyNow}
           >
@@ -232,7 +236,7 @@ export function ProductBuyBox({
           </Button>
           <Button
             type="submit"
-            className="!rounded-md h-9 min-h-9 flex-1 text-xs font-semibold"
+            className="!rounded-md h-10 min-h-10 flex-1 text-xs font-semibold"
             disabled={ctaDisabled}
           >
             <Icon name="shopping-cart" className="size-4" aria-hidden="true" />
@@ -247,7 +251,7 @@ export function ProductBuyBox({
           className="!p-0 !border-t-0 shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)]"
         >
           {/* Segmented full-width continuous stripe tanpa pill tombol terpisah */}
-          <div className="flex w-full items-stretch h-[38px] divide-x divide-border overflow-hidden border-t border-border bg-surface">
+          <div className="flex w-full items-stretch h-10 divide-x divide-border overflow-hidden border-t border-border bg-surface">
             {/* Segment 1: Quantity */}
             <div className="flex shrink-0 items-center justify-center bg-surface px-1.5 text-foreground">
               <button

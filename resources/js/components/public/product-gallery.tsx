@@ -420,7 +420,7 @@ export function ProductGallery({
               ref={stripRef}
               data-gallery-strip
               onScroll={onStripScroll}
-              className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto px-2.5 py-2 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:px-8 sm:py-2 lg:p-0"
+              className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto px-2.5 py-2 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:px-8 sm:py-2 lg:mt-3 lg:flex-wrap lg:gap-2.5 lg:p-0 lg:overflow-visible"
               aria-label="Pilih foto produk"
             >
               {/* Semua foto dirender urut asli; ke-6+ tersembunyi kanan.
@@ -439,7 +439,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square w-[calc((100%-32px)/5)] min-w-[calc((100%-32px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:w-12 lg:min-w-12",
+                    "relative aspect-square w-[calc((100%-32px)/5)] min-w-[calc((100%-32px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-14 lg:w-14 lg:min-w-14 lg:rounded-md",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
@@ -463,12 +463,12 @@ export function ProductGallery({
                     />
                   )}
                   {showLeftBadge ? (
-                    <span data-gallery-more-left="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white">
+                    <span data-gallery-more-left="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white lg:hidden">
                       +{leftHidden}
                     </span>
                   ) : null}
                   {showRightBadge ? (
-                    <span data-gallery-more-count="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white">
+                    <span data-gallery-more-count="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white lg:hidden">
                       +{rightHidden}
                     </span>
                   ) : null}
