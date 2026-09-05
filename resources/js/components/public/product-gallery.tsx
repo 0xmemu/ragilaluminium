@@ -384,18 +384,18 @@ export function ProductGallery({
                   onClick={() => moveGallery(-1)}
                   disabled={activeMediaIndex === 0}
                   aria-label="Lihat foto sebelumnya"
-                  className="absolute left-2 top-1/2 z-10 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-left-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
+                  className="absolute left-2 top-1/2 z-10 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
                 >
-                  <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
+                  <Icon name="arrow-left" className="size-4.5" weight="bold" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => moveGallery(1)}
                   disabled={activeMediaIndex === items.length - 1}
                   aria-label="Lihat foto berikutnya"
-                  className="absolute right-2 top-1/2 z-10 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground text-white opacity-100 shadow-md transition-[opacity,background-color] hover:bg-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed md:-right-14 md:flex md:size-12 md:opacity-0 md:group-hover/gallery:opacity-100 md:group-focus-within/gallery:opacity-100 md:group-hover/gallery:disabled:opacity-35 md:group-focus-within/gallery:disabled:opacity-35"
+                  className="absolute right-2 top-1/2 z-10 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
                 >
-                  <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
+                  <Icon name="arrow-right" className="size-4.5" weight="bold" aria-hidden="true" />
                 </button>
               </>
             ) : null}
@@ -416,13 +416,34 @@ export function ProductGallery({
           </div>
 
           {items.length > 1 ? (
-            <div
-              ref={stripRef}
-              data-gallery-strip
-              onScroll={onStripScroll}
-              className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto px-2.5 py-2 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:px-8 sm:py-2 lg:mt-3 lg:w-full lg:max-w-[360px] lg:mx-auto lg:p-0"
-              aria-label="Pilih foto produk"
-            >
+            <div className="relative w-full lg:max-w-[360px] lg:mx-auto">
+              {/* Tombol Back & Next Strip Galeri di Desktop */}
+              <button
+                type="button"
+                onClick={() => scrollStripToIndex(leftVisibleIndex - 1)}
+                disabled={leftVisibleIndex <= 0}
+                aria-label="Geser thumbnail ke kiri"
+                className="absolute -left-9 top-1/2 z-10 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
+              >
+                <Icon name="caret-left" className="size-4" weight="bold" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollStripToIndex(leftVisibleIndex + 1)}
+                disabled={leftVisibleIndex >= maxLeftVisibleIndex}
+                aria-label="Geser thumbnail ke kanan"
+                className="absolute -right-9 top-1/2 z-10 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none lg:flex"
+              >
+                <Icon name="caret-right" className="size-4" weight="bold" aria-hidden="true" />
+              </button>
+
+              <div
+                ref={stripRef}
+                data-gallery-strip
+                onScroll={onStripScroll}
+                className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto px-2.5 py-2 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:px-8 sm:py-2 lg:mt-3 lg:p-0"
+                aria-label="Pilih foto produk"
+              >
               {/* Semua foto dirender urut asli; ke-6+ tersembunyi kanan.
                   Chip +N dinamis dua arah (plan 2.3). */}
               {items.map((item, index) => {
@@ -477,6 +498,7 @@ export function ProductGallery({
                 )
               })}
 
+              </div>
             </div>
           ) : null}
 
