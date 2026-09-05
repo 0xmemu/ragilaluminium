@@ -33,7 +33,31 @@ export function ProductGallery({
   const stripScrollProgrammatic = React.useRef(false)
   // 5 thumb terlihat di mobile; desktop aman karena scroll strip tak aktif di lg.
   const visibleThumbs = 5
-  const THUMB_STEP = 56 // 48px thumb + 8px gap; satu langkah geser = satu thumb.
+  const STRIP_GAP = 8
+  const STRIP_PAD = 10
+  // Lebar thumb dihitung dari lebar strip nyata supaya PERSIS 5 terlihat:
+  // (lebarDalam - 4*gap) / 5. Simpan via state -> inline style CSS var.
+  const [thumbW, setThumbW] = React.useState(56)
+  const THUMB_STEP = thumbW + STRIP_GAP
+
+  // Ukur lebar wrapper strip (termasuk negative margin): thumb = (lebar
+  // wrapper - 2*pad - 4*gap) / 5 agar PERSIS 5 terlihat dan thumb ke-6 mulai
+  // tepat di tepi wrapper (tidak bocor ke layar).
+  React.useEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    const wrapper = strip.parentElement
+    if (!wrapper) return
+    const measure = () => {
+      const inner = wrapper.clientWidth - STRIP_PAD * 2
+      const w = Math.ceil((inner - (visibleThumbs - 1) * STRIP_GAP) / visibleThumbs)
+      setThumbW(Math.max(40, w))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const lightboxItems = React.useMemo(
     () =>
@@ -216,7 +240,7 @@ export function ProductGallery({
   }, [activeMediaIndex, items.length])
 
   return (
-    <div className="group/gallery -mx-2.5 min-w-0 sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
+    <div className="group/gallery -mx-2.5 min-w-0 overflow-hidden sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
       {activeMedia ? (
         <>
           <div
@@ -332,7 +356,8 @@ export function ProductGallery({
               ref={stripRef}
               onScroll={onStripScroll}
               data-gallery-strip
-              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto px-2.5 pb-2 sm:px-8 lg:px-0"
+              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0"
+              style={{ "--thumb-w": thumbW + "px" } as React.CSSProperties}
               aria-label="Pilih foto produk"
             >
               {/* Desain owner (09-05): strip carousel geser, tampil 5 thumb
@@ -356,7 +381,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square w-[calc((100%-52px-20px)/5)] min-w-[calc((100%-52px-20px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
+                    "relative aspect-square w-[var(--thumb-w)] min-w-[var(--thumb-w)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
