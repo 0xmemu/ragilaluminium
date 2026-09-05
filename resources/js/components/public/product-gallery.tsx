@@ -326,7 +326,7 @@ export function ProductGallery({
             onTouchMove={onGalleryTouchMove}
             onTouchEnd={onGalleryTouchEnd}
             onTouchCancel={onGalleryTouchEnd}
-            className="relative aspect-square w-full overflow-hidden bg-white"
+            className="relative aspect-square w-full overflow-hidden bg-white lg:w-1/2 lg:max-w-[340px]"
           >
             {/* Horizontal strip: semua gambar sejajar - swipe real-time */}
             <div
@@ -416,7 +416,7 @@ export function ProductGallery({
           </div>
 
           {items.length > 1 ? (
-            <div className="relative w-full">
+            <div className="relative w-full lg:w-1/2 lg:max-w-[340px]">
               {/* Tombol Back & Next Strip Galeri di Desktop */}
               <button
                 type="button"
