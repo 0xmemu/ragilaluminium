@@ -11,10 +11,19 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 
 /**
  * Sheet paste-ready: kolom & urutan IDENTIK dengan sheet data template
- * Update Media. 1 baris = 1 varian aktif; kolom image_N berisi URL media
- * varian itu urut posisi; installation_image_N = media installation varian;
- * installation_slots = slot image_N yang juga installation (kontrak template).
- * Media level produk TIDAK diulang per varian (ada di sheet Detail).
+ * Update Media.
+ *
+ * Kontrak media_update: variant_sku KOSONG = media level produk (berlaku
+ * untuk semua varian), variant_sku TERISI = media khusus varian itu.
+ *
+ * Karena media di sistem ini tersimpan di LEVEL PRODUK (anti-duplikat),
+ * sheet ini menghasilkan:
+ *  - 1 baris per PRODUK (variant_sku kosong) berisi image_1..9 +
+ *    installation_image_1..9 dari media level produk. Ini baris yang
+ *    benar-benar berguna bagi admin.
+ *  - + 1 baris per VARIAN yang benar-benar punya media varian-level
+ *    (jarang; form manual lama). Baris tanpa satu pun URL TIDAK dibuat
+ *    (percuma untuk admin, dan verifier akan melewatkannya).
  */
 class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQuery, WithHeadings, WithMapping
 {
@@ -51,41 +60,82 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
     public function map($product): array
     {
         $rows = [];
+
+        // 1. Baris level produk (variant_sku kosong): media yang dipakai
+        //    semua varian. Inilah baris utama yang admin edit.
+        $productRow = $this->buildMediaRow($product->parent_sku, null, $product->media);
+        if ($productRow !== null) {
+            $rows[] = $productRow;
+        }
+
+        // 2. Baris varian HANYA untuk varian yang punya media varian-level.
         foreach ($product->variants->where('status', 'active') as $variant) {
-            $images = [];
-            $installationImages = [];
-            $installationSlots = [];
-            $catalogPos = 0;
-            $installPos = 0;
-            $variantMedia = $product->media->where('product_variant_id', $variant->id)->sortBy('position')->values();
-            foreach ($variantMedia as $media) {
-                $url = (string) ($media->stored_url ?? $media->source_url ?? '');
-                if ($url === '') { continue; }
-                if ($media->is_installation) {
-                    $installPos++;
-                    if ($installPos <= 9) { $installationImages[$installPos - 1] = $url; }
-                    // Slot image_N yang juga installation (media installation
-                    // yang juga tampil di katalog, hitung posisinya di image_N).
-                    if ($media->show_in_catalog) {
-                        $catalogSlot = 0;
-                        foreach ($variantMedia as $m2) {
-                            if ($m2->is_installation || ! $m2->show_in_catalog) { continue; }
-                            $catalogSlot++;
-                            if ($m2->id === $media->id) { $installationSlots[] = $catalogSlot; break; }
-                        }
-                    }
-                } elseif ($media->show_in_catalog) {
-                    $catalogPos++;
-                    if ($catalogPos <= 9) { $images[$catalogPos - 1] = $url; }
-                }
+            $variantRow = $this->buildMediaRow($product->parent_sku, $variant->variant_sku, $product->media, $variant->id);
+            if ($variantRow !== null) {
+                $rows[] = $variantRow;
             }
-            $row = [$product->parent_sku, $variant->variant_sku];
-            for ($i = 0; $i < 9; $i++) { $row[] = $images[$i] ?? null; }
-            for ($i = 0; $i < 9; $i++) { $row[] = $installationImages[$i] ?? null; }
-            $row[] = $installationSlots !== [] ? implode(',', array_unique($installationSlots)) : null;
-            $rows[] = array_map([ExportSafety::class, 'cell'], $row);
         }
 
         return $rows;
+    }
+
+    /**
+     * Bangun satu baris media. Return null bila tidak ada satu pun URL
+     * (baris kosong tidak dibuat: percuma bagi admin).
+     *
+     * @param  \Illuminate\Support\Collection<int, mixed>  $allMedia
+     * @return list<mixed>|null
+     */
+    protected function buildMediaRow(string $parentSku, ?string $variantSku, $allMedia, ?int $variantId = null): ?array
+    {
+        $media = $allMedia
+            ->filter(fn ($m) => $variantId === null
+                ? $m->product_variant_id === null
+                : $m->product_variant_id === $variantId)
+            ->sortBy('position')
+            ->values();
+
+        if ($media->isEmpty()) {
+            return null;
+        }
+
+        $images = [];
+        $installationImages = [];
+        $installationSlots = [];
+        $catalogPos = 0;
+        $installPos = 0;
+
+        foreach ($media as $m) {
+            $url = (string) ($m->stored_url ?? $m->source_url ?? '');
+            if ($url === '') { continue; }
+            if ($m->is_installation) {
+                $installPos++;
+                if ($installPos <= 9) { $installationImages[$installPos - 1] = $url; }
+                if ($m->show_in_catalog) {
+                    // Slot image_N yang juga installation (kontrak template:
+                    // installation_slots menunjuk posisi image_N).
+                    $catalogSlot = 0;
+                    foreach ($media as $m2) {
+                        if ($m2->is_installation || ! $m2->show_in_catalog) { continue; }
+                        $catalogSlot++;
+                        if ($m2->id === $m->id) { $installationSlots[] = $catalogSlot; break; }
+                    }
+                }
+            } elseif ($m->show_in_catalog) {
+                $catalogPos++;
+                if ($catalogPos <= 9) { $images[$catalogPos - 1] = $url; }
+            }
+        }
+
+        if ($images === [] && $installationImages === []) {
+            return null;
+        }
+
+        $row = [$parentSku, $variantSku];
+        for ($i = 0; $i < 9; $i++) { $row[] = $images[$i] ?? null; }
+        for ($i = 0; $i < 9; $i++) { $row[] = $installationImages[$i] ?? null; }
+        $row[] = $installationSlots !== [] ? implode(',', array_unique($installationSlots)) : null;
+
+        return array_map([ExportSafety::class, 'cell'], $row);
     }
 }
