@@ -131,7 +131,7 @@ function HeaderSearchForm({
       <div className="relative w-full">
         <Icon
           name="search"
-          className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-background/55 md:left-3 md:size-4"
+          className="pointer-events-none absolute left-2.5 top-1/2 size-4.5 -translate-y-1/2 text-background/60 md:left-3.5 md:size-5"
           aria-hidden="true"
         />
         <input
@@ -145,7 +145,7 @@ function HeaderSearchForm({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "h-[30px] w-full rounded-full border-0 bg-white/10 py-0.5 pl-7 pr-2.5 text-xs text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-8 md:pl-9 md:pr-4 md:text-sm",
+            "h-[30px] w-full rounded-full border-0 bg-white/10 py-0.5 pl-8 pr-2.5 text-xs text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-8 md:pl-10 md:pr-4 md:text-sm",
             inputClassName,
           )}
           aria-label="Cari produk"
@@ -329,7 +329,7 @@ export function PublicHeader() {
               className="relative z-20 -ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-8.5"
               aria-label="Buka menu utama"
             >
-              <Icon name="menu" className="size-4.5 md:size-5" weight="bold" aria-hidden="true" />
+              <Icon name="menu" className="size-5.5 md:size-6" weight="bold" aria-hidden="true" />
             </button>
           </SheetTrigger>
           <SheetContent
@@ -559,7 +559,7 @@ export function PublicHeader() {
             aria-label="Pesanan"
             aria-current={isRouteActive(["order.index", "order.status"]) ? "page" : undefined}
           >
-            <Icon name="clipboard-list" className="size-4.5 shrink-0 lg:size-5" aria-hidden="true" />
+            <Icon name="clipboard-list" className="size-5.5 shrink-0 lg:size-6" aria-hidden="true" />
             <span className="hidden text-xs font-semibold lg:inline">Pesanan</span>
           </Link>
           <div
@@ -581,8 +581,8 @@ export function PublicHeader() {
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
             >
-              <span className={cn("relative inline-flex size-5 shrink-0 items-center justify-center lg:size-5.5", cartBump && "animate-cart-bump")}>
-                <Icon name="shopping-cart" className="size-5 shrink-0 lg:size-5.5" aria-hidden="true" />
+              <span className={cn("relative inline-flex size-6 shrink-0 items-center justify-center lg:size-6.5", cartBump && "animate-cart-bump")}>
+                <Icon name="shopping-cart" className="size-6 shrink-0 lg:size-6.5" aria-hidden="true" />
                 {visibleCartCount > 0 ? (
                   <span className="tabular-nums absolute -right-1.5 -top-1.5 flex size-3.5 min-h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sale px-0.5 text-[8px] font-bold leading-none text-white">
                     {Math.min(visibleCartCount, 99)}
