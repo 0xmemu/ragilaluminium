@@ -13,17 +13,23 @@ use Maatwebsite\Excel\Concerns\WithMapping;
  * Sheet paste-ready: kolom & urutan IDENTIK dengan sheet data template
  * Update Media.
  *
- * Kontrak media_update: variant_sku KOSONG = media level produk (berlaku
- * untuk semua varian), variant_sku TERISI = media khusus varian itu.
+ * Kontrak media_update (dibaca ulang dari importer, bukan dikarang):
+ *  - parent_sku WAJIB; variant_sku OPTIONAL.
+ *  - variant_sku TERISI  = media khusus varian itu.
+ *  - variant_sku KOSONG  = media level produk (berlaku utk semua varian).
+ *  - Sel kosong = foto yang ada TIDAK diubah (tidak pernah menghapus).
  *
- * Karena media di sistem ini tersimpan di LEVEL PRODUK (anti-duplikat),
- * sheet ini menghasilkan:
- *  - 1 baris per PRODUK (variant_sku kosong) berisi image_1..9 +
- *    installation_image_1..9 dari media level produk. Ini baris yang
- *    benar-benar berguna bagi admin.
- *  - + 1 baris per VARIAN yang benar-benar punya media varian-level
- *    (jarang; form manual lama). Baris tanpa satu pun URL TIDAK dibuat
- *    (percuma untuk admin, dan verifier akan melewatkannya).
+ * Media di sistem ini tersimpan di LEVEL PRODUK (anti-duplikat): 247 record
+ * product-level vs 6 varian-level. Karena itu sheet ini menghasilkan:
+ *  1. Satu baris LEVEL PRODUK (variant_sku kosong) berisi seluruh media
+ *     produk: image_1..9, installation_image_1..9, installation_slots.
+ *  2. Satu baris LEVEL VARIAN untuk setiap varian yang benar-benar punya
+ *     media varian-level (jarang; warisan form manual).
+ *
+ * Baris varian yang TIDAK punya media varian-level TIDAK dibuat: kolomnya
+ * pasti kosong, tidak berguna bagi admin, dan akan dilewati verifier (M4).
+ * Admin yang ingin pasang foto khusus satu varian tinggal mengisi
+ * variant_sku di baris baru.
  */
 class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQuery, WithHeadings, WithMapping
 {
@@ -61,15 +67,15 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
     {
         $rows = [];
 
-        // 1. Baris level produk (variant_sku kosong): media yang dipakai
-        //    semua varian. Inilah baris utama yang admin edit.
+        // 1. Baris level produk (variant_sku kosong): seluruh media produk.
+        //    Baris inilah yang dipakai admin untuk mengganti/menambah foto.
         $productRow = $this->buildMediaRow($product->parent_sku, null, $product->media);
         if ($productRow !== null) {
             $rows[] = $productRow;
         }
 
-        // 2. Baris varian HANYA untuk varian yang punya media varian-level.
-        foreach ($product->variants->where('status', 'active') as $variant) {
+        // 2. Baris varian hanya untuk varian yang punya media varian-level.
+        foreach ($product->variants as $variant) {
             $variantRow = $this->buildMediaRow($product->parent_sku, $variant->variant_sku, $product->media, $variant->id);
             if ($variantRow !== null) {
                 $rows[] = $variantRow;
@@ -112,8 +118,7 @@ class ProductExportUpdateMediaSheet extends RagilStyledExport implements FromQue
                 $installPos++;
                 if ($installPos <= 9) { $installationImages[$installPos - 1] = $url; }
                 if ($m->show_in_catalog) {
-                    // Slot image_N yang juga installation (kontrak template:
-                    // installation_slots menunjuk posisi image_N).
+                    // installation_slots = posisi image_N yang juga installation
                     $catalogSlot = 0;
                     foreach ($media as $m2) {
                         if ($m2->is_installation || ! $m2->show_in_catalog) { continue; }
