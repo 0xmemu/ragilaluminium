@@ -214,15 +214,19 @@ class ImportMediaUpdateTest extends TestCase
         file_put_contents($path, $raw);
         $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
 
-        $this->assertSame(['Data', 'Contoh', 'Panduan'], $ss->getSheetNames());
+        // Kontrak 09-06: 2 sheet (Data + Panduan; contoh di dalam Data dgn
+        // penanda CATATAN), header adaptif = blok media export (image_variation
+        // sebelum shared_media, kolom _N sesuai pemakaian).
+        $this->assertSame(['Data', 'Panduan'], $ss->getSheetNames());
         $first = $ss->getSheet(0)->toArray()[0];
         $this->assertSame('parent_sku', $first[0]);
         $this->assertSame('variant_sku', $first[1]);
         $this->assertSame('image_1', $first[2]);
-        $this->assertSame('image_9', $first[10]);
-        $this->assertSame('installation_image_1', $first[11]);
-        $this->assertSame('installation_image_9', $first[19]);
-        $this->assertSame('installation_slots', $first[20]);
-        $this->assertCount(21, $first);
+        // Header template harus identik blok media sheet export B.
+        $exp = (new \App\Exports\ProductExportFullUpdateSheet(\App\Models\Product::query()))->headings();
+        $expMedia = array_slice($exp, array_search('image_1', $exp));
+        $tplMedia = array_slice($first, array_search('image_1', $first));
+        $this->assertSame($expMedia, $tplMedia);
+        $this->assertNotContains('installation_slots', $first);
     }
 }
