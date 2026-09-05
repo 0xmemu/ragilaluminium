@@ -39,13 +39,10 @@ class ProductExport extends RagilStyledExport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            new ProductExportSummarySheet($this->query),
-            new ProductExportDetailSheet($this->query),
-            new ProductExportAttributesSheet($this->query),
-            // Satu sheet matriks import: struktur PERSIS sheet Data template
-            // import katalog. Admin edit apa pun di sini, paste ke template,
-            // Periksa file, Mulai Import (kontrak owner 09-05).
-            new ProductExportUpdateMatrixSheet($this->query),
+            // SATU sheet saja: salinan persis sheet Data template import
+            // katalog, header & urutan dari dataHeaders() template, id_key
+            // = SKU produk. 1 baris = 1 kombinasi (kontrak owner 09-05).
+            new ProductExportDataSheet($this->query),
         ];
     }
 }
