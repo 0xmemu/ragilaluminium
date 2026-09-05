@@ -96,28 +96,27 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
                 (float) $product->depth_cm,
                 $product->specifications,
             ];
-            // Media parent hanya di baris pertama grup (sisanya kosong = tidak diubah).
+            // Media parent diulang di SEMUA baris grup (pola sama dgn file
+            // import owner): nilai sama per posisi, importer menjamin tetap
+            // satu media per posisi (baris pertama menang).
             $row = array_merge($row, [
-                $firstRow ? ($main[0] ?? null) : null,
-                $firstRow ? ($main[1] ?? null) : null,
-                $firstRow ? ($main[2] ?? null) : null,
-                $firstRow ? ($main[3] ?? null) : null,
-                $firstRow ? ($main[4] ?? null) : null,
-                $firstRow ? ($main[5] ?? null) : null,
-                $firstRow ? ($main[6] ?? null) : null,
-                $firstRow ? ($main[7] ?? null) : null,
-                $firstRow ? ($main[8] ?? null) : null,
-                $firstRow ? ($shared[0] ?? null) : null,
-                $firstRow ? ($shared[1] ?? null) : null,
-                $firstRow ? ($installation[0] ?? null) : null,
-                $firstRow ? ($installation[1] ?? null) : null,
+                $main[0] ?? null,
+                $main[1] ?? null,
+                $main[2] ?? null,
+                $main[3] ?? null,
+                $main[4] ?? null,
+                $main[5] ?? null,
+                $main[6] ?? null,
+                $main[7] ?? null,
+                $main[8] ?? null,
+                $shared[0] ?? null,
+                $shared[1] ?? null,
+                $installation[0] ?? null,
+                $installation[1] ?? null,
             ]);
             // Media per opsi varian: pola sama dgn template import.
-            foreach ([1, 2, 3, 4] as $opt) {
-                $row[] = $firstRow ? ($optionImages[$opt - 1] ?? null) : null;
-            }
-            foreach ([5, 6, 7, 8] as $opt) {
-                $row[] = $firstRow ? ($optionImages[$opt - 1] ?? null) : null;
+            foreach ([1, 2, 3, 4, 5, 6, 7, 8] as $opt) {
+                $row[] = $optionImages[$opt - 1] ?? null;
             }
 
             $rows[] = array_map([ExportSafety::class, 'cell'], $row);
