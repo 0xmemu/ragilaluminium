@@ -99,17 +99,34 @@ export function useProductPurchase({
     return media
   }, [media, selections, variants])
 
-  // Foto yang harus ditonjolkan saat varian terpilih berubah: foto khusus
-  // milik varian itu. Null = tidak ada foto khusus, galeri tetap di posisi
-  // sekarang (tidak melompat).
+  // Foto yang harus ditonjolkan: foto khusus milik varian yang cocok dengan
+  // pilihan SAAT INI, parsial pun cukup (foto per Warna tetap menonjol walau
+  // axis Kaca belum dipilih). Null = tidak ada foto khusus, galeri tetap di
+  // posisi sekarang (tidak melompat).
   const highlightedMediaId = React.useMemo(() => {
-    const dedicated = media.filter((item) => {
-      const vid = Number(item.product_variant_id)
-      return vid && selectedVariant != null && vid === Number(selectedVariant.id)
-    })
-    if (dedicated.length === 0) return null
-    return dedicated[0].id
-  }, [media, selectedVariant])
+    const filled = Object.entries(selections).filter(
+      ([, v]) => v !== undefined && v !== "",
+    )
+    if (filled.length === 0) return null
+    let matched = false
+    for (const v of variants) {
+      const pairs = new Map(variantPairs(v))
+      const ok = filled.every(([axisName, axisOption]) => {
+        if (axisName === "Ukuran") {
+          return v.dimension_compact === axisOption || v.dimension_label === axisOption
+        }
+        return pairs.get(axisName) === axisOption
+      })
+      if (!ok) continue
+      matched = true
+      const dedicated = media.find(
+        (item) => Number(item.product_variant_id) === v.id,
+      )
+      if (dedicated) return dedicated.id
+    }
+    // Ada pilihan tapi tidak ada foto khusus yang cocok: null (tidak melompat).
+    return matched ? null : null
+  }, [media, selections, variants])
 
   const form = useForm({
     parent_sku: product.parent_sku,
