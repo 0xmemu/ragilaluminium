@@ -607,6 +607,19 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         return null;
     }
 
+    /** Produk id yang baris pertamanya sudah menjalankan fallback template. */
+    protected array $templateApplied = [];
+
+    protected function isFirstRowOfProduct(int $productId): bool
+    {
+        if (isset($this->templateApplied[$productId])) {
+            return false;
+        }
+        $this->templateApplied[$productId] = true;
+
+        return true;
+    }
+
     protected function syncAttributes(Product $product, ?ProductVariant $variant, array $data): void
     {
         $attributes = [];
@@ -638,7 +651,11 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             }
         }
 
+        // Spesifikasi milik PRODUK, bukan per kombinasi varian. Menulisnya per
+        // baris (12 kombinasi) membuat "Bahan: Aluminium" berulang 12x.
+        // Selalu product_variant_id = NULL + dedupe per nama atribut.
         $createdCount = 0;
+        $seenNames = [];
         foreach ($attributes as $attribute) {
             if (! is_array($attribute)) {
                 continue;
@@ -648,10 +665,15 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             if ($name === '' || $value === '') {
                 continue;
             }
+            $key = mb_strtolower($name);
+            if (isset($seenNames[$key])) {
+                continue;
+            }
+            $seenNames[$key] = true;
             ProductAttribute::updateOrCreate(
                 [
                     'product_id' => $product->id,
-                    'product_variant_id' => $variant?->id,
+                    'product_variant_id' => null,
                     'attribute_name' => $name,
                 ],
                 [
@@ -663,8 +685,9 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
         }
 
         // Tidak ada spesifikasi di baris import: isi dari template per sub model
-        // (ADR-019). Tidak menimpa apa pun bila template kosong.
-        if ($createdCount === 0) {
+        // (ADR-019). HANYA di baris pertama grup (kunci atribut produk sudah
+        // ada = skip di applyToProduct, tapi hindari pemanggilan 12x).
+        if ($createdCount === 0 && $variant !== null && $this->isFirstRowOfProduct($product->id)) {
             app(\App\Services\AttributeTemplateService::class)->applyToProduct($product);
         }
     }
