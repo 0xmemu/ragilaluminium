@@ -31,6 +31,7 @@ export function ProductGallery({
   const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
   const stripRef = React.useRef<HTMLDivElement>(null)
   const stripScrollProgrammatic = React.useRef(false)
+  const stripSnapTimer = React.useRef<number | null>(null)
   // 5 thumb terlihat di mobile; desktop aman karena scroll strip tak aktif di lg.
   const visibleThumbs = 5
   const STRIP_GAP = 8
@@ -40,17 +41,17 @@ export function ProductGallery({
   const [thumbW, setThumbW] = React.useState(56)
   const THUMB_STEP = thumbW + STRIP_GAP
 
-  // Ukur lebar wrapper strip (termasuk negative margin): thumb = (lebar
-  // wrapper - 2*pad - 4*gap) / 5 agar PERSIS 5 terlihat dan thumb ke-6 mulai
-  // tepat di tepi wrapper (tidak bocor ke layar).
+  // Ukur lebar wrapper strip: thumb = floor((lebarWrapper - padL - padR -
+  // (n-1)*gap) / n). Floor menjamin 5 thumb PENUH terlihat tanpa terpotong,
+  // dan thumb ke-6 mulai DI LUAR area terlihat (tidak bocor).
   React.useEffect(() => {
     const strip = stripRef.current
     if (!strip) return
     const wrapper = strip.parentElement
     if (!wrapper) return
     const measure = () => {
-      const inner = wrapper.clientWidth - STRIP_PAD * 2
-      const w = Math.ceil((inner - (visibleThumbs - 1) * STRIP_GAP) / visibleThumbs)
+      const inner = wrapper.clientWidth - STRIP_PAD
+      const w = Math.floor((inner - (visibleThumbs - 1) * STRIP_GAP) / visibleThumbs)
       setThumbW(Math.max(40, w))
     }
     measure()
@@ -218,6 +219,19 @@ export function ProductGallery({
       }
       return clamped
     })
+    // Snap ke kelipatan terdekat setelah user berhenti menggeser (150ms),
+    // supaya satu geseran = tepat satu thumb (kontrak owner 09-05).
+    if (stripSnapTimer.current) window.clearTimeout(stripSnapTimer.current)
+    stripSnapTimer.current = window.setTimeout(() => {
+      const el = stripRef.current
+      if (!el) return
+      const target = Math.round(el.scrollLeft / THUMB_STEP) * THUMB_STEP
+      const max = el.scrollWidth - el.clientWidth
+      const snapped = Math.max(0, Math.min(target, max))
+      if (Math.abs(el.scrollLeft - snapped) > 1) {
+        el.scrollTo({ left: snapped, behavior: 'smooth' })
+      }
+    }, 150)
   }
 
   // Strip mengikuti foto aktif (sinkronisasi dua arah): saat main image
@@ -356,7 +370,7 @@ export function ProductGallery({
               ref={stripRef}
               onScroll={onStripScroll}
               data-gallery-strip
-              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0"
+              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto scroll-smooth pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0"
               style={{ "--thumb-w": thumbW + "px" } as React.CSSProperties}
               aria-label="Pilih foto produk"
             >
@@ -365,12 +379,13 @@ export function ProductGallery({
                   satu, main image ikut pindah ke thumb yang baru masuk. Chip
                   kiri/kanan = keterangan foto tersembunyi di arah tersebut. */}
               {items.map((item, index) => {
-                const visibleCount = visibleThumbs
-                const leftHidden = Math.max(0, Math.min(leftVisibleIndex, items.length - visibleCount))
-                const rightHidden = Math.max(0, items.length - (leftVisibleIndex + visibleCount))
+                // Chip +N dinamis (kontrak owner 09-05): kiri = jumlah thumb
+                // yang sudah keluar di kiri, kanan = jumlah yang belum terlihat
+                // di kanan. Keduanya mengikuti posisi strip saat ini.
+                const leftHidden = leftVisibleIndex
+                const rightHidden = items.length - (leftVisibleIndex + visibleThumbs)
                 const showLeftBadge = leftHidden > 0 && index === leftVisibleIndex
-                const showRightBadge = rightHidden > 0 && index === Math.min(leftVisibleIndex + visibleCount - 1, items.length - 1)
-                const showCountBadge = showRightBadge
+                const showRightBadge = rightHidden > 0 && index === leftVisibleIndex + visibleThumbs - 1
                 return (
                 <button
                   type="button"
