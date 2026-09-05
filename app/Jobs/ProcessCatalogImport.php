@@ -98,6 +98,28 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             // Auto-detect Shopee dihapus (owner 2026-08-25): semua file diproses
             // sebagai format internal. File ekspor Shopee lama gagal baris
             // (parent_sku kosong) - BREAKING, lihat laporan task import-katalog.
+
+            // Lapis kedua all-or-nothing (kontrak owner 09-05): jenis update
+            // diverifikasi ulang sebelum eksekusi. UI sudah wajib Periksa file;
+            // ini pengaman bila file berubah / jalur lain.
+            if (in_array($job->type, ['stock_price_update', 'media_update'], true)) {
+                $updateRows = \Maatwebsite\Excel\Facades\Excel::toArray(
+                    new \App\Imports\InternalCatalogPreviewImport(),
+                    $path
+                )[0] ?? [];
+                $manualStock = $job->stock_mode === 'manual' ? (int) $job->manual_stock : null;
+                $result = \App\Support\UpdateImportVerifier::verify(
+                    array_slice($updateRows, 0, 2000),
+                    $job->type,
+                    $manualStock
+                );
+                if ($result['errors'] !== []) {
+                    throw new \RuntimeException('File gagal verifikasi: '
+                        .implode(' | ', array_slice($result['errors'], 0, 8))
+                        .(count($result['errors']) > 8 ? ' … dan '.(count($result['errors']) - 8).' lainnya.' : ''));
+                }
+            }
+
             $importer = match ($job->type) {
                 'stock_price_update' => new ImportStockPriceUpdate($this->jobId),
                 'media_update' => new ImportMediaUpdate($this->jobId),

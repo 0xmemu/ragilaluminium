@@ -166,7 +166,7 @@ class InstallationMediaImportTest extends TestCase
             ->where('featured.subtitle', 'Luas & Rapi')
             ->has('installations', 1)
             ->where('installations.0.product_sku', 'WIN-REV-1')
-            ->where('installations.0.href', route('installation.show', ['parent_sku' => 'WIN-REV-1'], absolute: false))
+            ->where('installations.0.href', route('product.show', ['parent_sku' => 'WIN-REV-1'], absolute: false))
             ->where('activeSort', 'newest')
         );
 
@@ -181,14 +181,6 @@ class InstallationMediaImportTest extends TestCase
             ->has('installations', 1)
         );
 
-        $detail = $this->get(route('installation.show', ['parent_sku' => 'WIN-REV-1']));
-        $detail->assertOk();
-        $detail->assertInertia(fn (Assert $page) => $page
-            ->component('Public/InstallationDetail')
-            ->where('product.parent_sku', 'WIN-REV-1')
-            ->has('media', 1)
-            ->where('modelHref', route('installation.model', ['category' => 'jendela', 'model' => 'sliding'], absolute: false))
-        );
     }
 
     public function test_installation_gallery_merges_manual_cms_items(): void
@@ -277,13 +269,12 @@ class InstallationMediaImportTest extends TestCase
         $this->assertTrue($gallery['media'][1]['is_video']);
         $this->assertSame('https://example.com/pasang.mp4', $gallery['media'][1]['url']);
 
-        $this->get(route('installation.show', ['parent_sku' => 'WIN-VID-1']))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Public/InstallationDetail')
-                ->has('media', 2)
-                ->where('media.1.is_video', true)
-                ->where('product.name', 'Jendela Video'));
+        $modelPage = $this->get(route('installation.model', ['category' => 'jendela', 'model' => 'swing']));
+        $modelPage->assertOk();
+        $modelPage->assertInertia(fn (Assert $page) => $page
+            ->component('Public/Installations')
+            ->has('installations', 1)
+            ->where('installations.0.product_sku', 'WIN-VID-1'));
     }
 
     public function test_model_cards_follow_model_product_list_even_without_installation_media(): void

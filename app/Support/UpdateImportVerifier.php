@@ -37,11 +37,34 @@ final class UpdateImportVerifier
         // Kumpulkan baris data (punya parent_sku ATAU variant_sku) + resolusi SKU
         $targets = [];
         $skusToCheck = [];
+        $mediaSkipRows = [];
+        if ($isMedia) {
+            // M4 pre-scan: baris media tanpa gambar sama sekali = SKIP (bukan
+            // target duplikat, bukan error). Owner 09-05.
+            foreach ($rows as $i => $r) {
+                $parent = trim((string) ($r['parent_sku'] ?? ''));
+                $variant = trim((string) ($r['variant_sku'] ?? ''));
+                if ($parent === '' && $variant === '') { continue; }
+                $hasImage = false;
+                for ($n = 1; $n <= 9; $n++) {
+                    if (trim((string) ($r['image_'.$n] ?? '')) !== ''
+                        || trim((string) ($r['installation_image_'.$n] ?? '')) !== '') {
+                        $hasImage = true; break;
+                    }
+                }
+                if (! $hasImage) { $mediaSkipRows[] = $i; }
+            }
+            $skipped = count($mediaSkipRows);
+        }
+        $skipIdx = array_flip($mediaSkipRows ?? []);
         foreach ($rows as $i => $r) {
             $parent = trim((string) ($r['parent_sku'] ?? ''));
             $variant = trim((string) ($r['variant_sku'] ?? ''));
             if ($parent === '' && $variant === '') {
                 continue; // bukan baris data (kosong/contoh)
+            }
+            if (isset($skipIdx[$i])) {
+                continue; // baris dilewati: tidak dihitung duplikat/target
             }
             $rowNo = $i + 2;
 
@@ -108,15 +131,7 @@ final class UpdateImportVerifier
             }
 
             if ($isMedia) {
-                // M4: semua kolom gambar kosong + SKU dikenal = SKIP
-                $hasImage = false;
-                for ($n = 1; $n <= 9; $n++) {
-                    if (trim((string) ($rows[$rowNo - 2]['image_'.$n] ?? '')) !== '') { $hasImage = true; break; }
-                    if (trim((string) ($rows[$rowNo - 2]['installation_image_'.$n] ?? '')) !== '') { $hasImage = true; break; }
-                }
-                if (! $hasImage) { $skipped++; continue; }
-
-                // M5: URL valid
+                // M5: URL valid (M4 sudah di pre-scan)
                 for ($n = 1; $n <= 9; $n++) {
                     foreach (['image_'.$n, 'installation_image_'.$n] as $col) {
                         $url = trim((string) ($rows[$rowNo - 2][$col] ?? ''));
