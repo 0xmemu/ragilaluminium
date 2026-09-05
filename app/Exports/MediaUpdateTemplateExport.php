@@ -6,16 +6,18 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Concerns\RegistersEventListeners;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 /**
- * Template Update Media (XLSX): 3 sheet Data / Contoh / Panduan.
- * Sheet pertama WAJIB Data (kosong, header by key) karena processor
- * (ImportMediaUpdate, WithHeadingRow) membaca sheet pertama; contoh tidak
- * boleh ikut diproses sebagai data asli.
+ * Template Update Media (kontrak export-as-update 09-06):
+ * header + urutan identik sheet "Update Produk Lengkap" (blok media).
+ * Kolom media berseri mengikuti pemakaian dataset (minimal _1):
+ * image_1..N, image_variation_*, shared_media_1..2, installation_image_1..2.
+ * Sheet Data diisi contoh nyata dari DB.
  */
 class MediaUpdateTemplateExport implements WithMultipleSheets
 {
@@ -23,251 +25,136 @@ class MediaUpdateTemplateExport implements WithMultipleSheets
     {
         return [
             new MediaUpdateDataSheet(),
-            new MediaUpdateExampleSheet(),
             new MediaUpdateGuideSheet(),
         ];
     }
 
-    /**
-     * Header kolom (21): kunci SKU + 9 foto katalog + 9 foto pemasangan + slots.
-     */
+    /** Kolom media sesuai pemakaian dataset (sama dgn export). */
     public static function headers(): array
     {
         $cols = ['parent_sku', 'variant_sku'];
-        foreach (range(1, 9) as $n) {
-            $cols[] = 'image_'.$n;
+        [$main, $optSlots, $shared, $inst] = self::seriesUsage();
+        for ($i = 1; $i <= $main; $i++) { $cols[] = 'image_'.$i; }
+        for ($slot = 0; $slot < $optSlots; $slot++) {
+            $cols[] = 'image_variation_'.(intdiv($slot, 4) + 1).'_option_'.(($slot % 4) + 1);
         }
-        foreach (range(1, 9) as $n) {
-            $cols[] = 'installation_image_'.$n;
-        }
+        for ($i = 1; $i <= $shared; $i++) { $cols[] = 'shared_media_'.$i; }
+        for ($i = 1; $i <= $inst; $i++) { $cols[] = 'installation_image_'.$i; }
 
-        return array_merge($cols, ['installation_slots']);
+        return $cols;
+    }
+
+    /** @return array{0:int,1:int,2:int,3:int} main,optSlots,shared,installation */
+    public static function seriesUsage(): array
+    {
+        $rows = \Illuminate\Support\Facades\DB::table('product_media')
+            ->selectRaw('position, COUNT(*) c')->groupBy('position')->pluck('c', 'position');
+        $main = 1;
+        foreach (range(2, 9) as $p) { if (($rows[$p] ?? 0) > 0) { $main = max($main, $p); } }
+        $optSlots = 1;
+        foreach (range(50, 79) as $p) { if (($rows[$p] ?? 0) > 0) { $optSlots = max($optSlots, $p - 49); } }
+        $shared = 1;
+        foreach (range(12, 19) as $p) { if (($rows[$p] ?? 0) > 0) { $shared = max($shared, $p - 10); } }
+        $inst = 1;
+        foreach (range(102, 119) as $p) { if (($rows[$p] ?? 0) > 0) { $inst = max($inst, $p - 100); } }
+
+        return [$main, $optSlots, $shared, $inst];
     }
 }
 
-// ------ DATA (sheet pertama, dibaca processor) ------
-
 class MediaUpdateDataSheet implements FromArray, WithTitle, WithEvents
 {
-    use \Maatwebsite\Excel\Concerns\RegistersEventListeners;
+    use RegistersEventListeners;
 
     public function array(): array
     {
-        return [MediaUpdateTemplateExport::headers()];
+        $rows = [MediaUpdateTemplateExport::headers()];
+        foreach (self::contohRows() as $r) { $rows[] = $r; }
+
+        return $rows;
     }
 
-    public function title(): string
+    /** Contoh nyata: produk dgn media terbanyak + varian pertamanya. */
+    public static function contohRows(): array
     {
-        return 'Data';
+        $out = [];
+        $p = \App\Models\Product::with(['variants', 'media'])->orderByDesc('id')->first();
+        if (! $p) { return $out; }
+        $v = $p->variants->sortBy('id')->first();
+        if (! $v) { return $out; }
+
+        $main = []; $opt = []; $shared = []; $inst = [];
+        foreach ($p->media->sortBy('position') as $m) {
+            $url = (string) ($m->urlFor('pdp') ?? '');
+            if ($url === '') { continue; }
+            if ($m->position === 1) { $main[0] = $url; continue; }
+            if ($m->position >= 2 && $m->position <= 9) { $main[$m->position - 1] = $url; continue; }
+            if ($m->position >= 11 && $m->position <= 19) { $shared[] = $url; continue; }
+            if ($m->position >= 50 && $m->position <= 79) { $opt[] = $url; continue; }
+            if ($m->position >= 101) { $inst[] = $url; }
+        }
+
+        [$nMain, $nOpt, $nShared, $nInst] = MediaUpdateTemplateExport::seriesUsage();
+        $row = [$p->parent_sku, $v->variant_sku];
+        for ($i = 1; $i <= $nMain; $i++) { $row[] = $main[$i - 1] ?? null; }
+        for ($s = 0; $s < $nOpt; $s++) { $row[] = $opt[$s] ?? null; }
+        for ($i = 1; $i <= $nShared; $i++) { $row[] = $shared[$i - 1] ?? null; }
+        for ($i = 1; $i <= $nInst; $i++) { $row[] = $inst[$i - 1] ?? null; }
+        $out[] = array_merge(
+            ['CATATAN: baris berikut contoh nyata. HAPUS sebelum import.'],
+            array_slice($row, 1)
+        );
+
+        return $out;
     }
+
+    public function title(): string { return 'Data'; }
 
     public function afterSheet(AfterSheet $event): void
     {
         $sheet = $event->sheet->getDelegate();
-        $last = 'U1';
-        $sheet->getStyle('A1:'.$last)->applyFromArray([
+        $headers = MediaUpdateTemplateExport::headers();
+        $last = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $sheet->getStyle('A1:'.$last.'1')->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 10],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(26);
-
-        $sheet->getColumnDimension('A')->setWidth(18);
-        $sheet->getColumnDimension('B')->setWidth(22);
-        foreach (range(3, 20) as $n) {
-            $sheet->getColumnDimensionByColumn($n)->setWidth(46);
+        $sheet->getColumnDimension('A')->setWidth(20);
+        $sheet->getColumnDimension('B')->setWidth(28);
+        foreach (range(3, count($headers)) as $n) {
+            $sheet->getColumnDimensionByColumn($n)->setWidth(42);
         }
-        $sheet->getColumnDimension('U')->setWidth(14);
-
-        $sheet->freezePane('A2');
+        $sheet->freezePane('C2');
     }
 }
 
-// ------ CONTOH ------
-
-class MediaUpdateExampleSheet implements FromArray, WithTitle, WithEvents
+class MediaUpdateGuideSheet implements FromArray, WithTitle
 {
-    use \Maatwebsite\Excel\Concerns\RegistersEventListeners;
-
-    public function array(): array
-    {
-        $h = MediaUpdateTemplateExport::headers();
-
-        return [
-            ['CONTOH UPDATE MEDIA', 'Ragil Aluminium'],
-            ['Isi URL foto di sheet Data. Contoh di bawah hanya ilustrasi, tidak diproses.'],
-            [],
-            $h,
-            [
-                'RGL-JNG-JKT-1', 'RGL-JNG-JKT-1-H',
-                'https://media.example.com/jendela-hitam-1.png',
-                'https://media.example.com/jendela-hitam-2.png',
-                null, null, null, null, null, null, null,
-                'https://media.example.com/jendela-hitam-pasang-1.png',
-                null, null, null, null, null, null, null, null,
-                null,
-            ],
-            [
-                'RGL-JNG-JKT-1', 'RGL-JNG-JKT-1-P',
-                'https://media.example.com/jendela-putih-1.png',
-                'https://media.example.com/jendela-putih-2.png',
-                'https://media.example.com/jendela-putih-3.png',
-                null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null,
-                '2,3',
-            ],
-            [
-                'RGL-PNT-SLD-1', '',
-                'https://media.example.com/pintu-sliding-1.png',
-                'https://media.example.com/pintu-sliding-2.png',
-                null, null, null, null, null, null, null,
-                'https://media.example.com/pintu-sliding-pasang-1.png',
-                null, null, null, null, null, null, null, null,
-                null,
-            ],
-            [],
-            ['^ Contoh format. Hapus baris ini sebelum mengisi data asli.'],
-        ];
-    }
-
-    public function title(): string
-    {
-        return 'Contoh';
-    }
-
-    public function afterSheet(AfterSheet $event): void
-    {
-        $sheet = $event->sheet->getDelegate();
-
-        $sheet->mergeCells('A1:U1');
-        $sheet->getStyle('A1')->applyFromArray([
-            'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
-        ]);
-        $sheet->getRowDimension(1)->setRowHeight(24);
-
-        $sheet->mergeCells('A2:U2');
-        $sheet->getStyle('A2')->applyFromArray([
-            'font' => ['size' => 10, 'color' => ['argb' => 'FF666666']],
-        ]);
-
-        $sheet->getStyle('A4:U4')->applyFromArray([
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
-            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 10],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
-        ]);
-        $sheet->getRowDimension(4)->setRowHeight(26);
-
-        $zebraFills = ['FFFFFFFF', 'FFF7F8F7', 'FFFFFFFF'];
-        for ($i = 0; $i < 3; $i++) {
-            $row = 5 + $i;
-            $sheet->getStyle('A'.$row.':U'.$row)->applyFromArray([
-                'font' => ['size' => 10, 'color' => ['argb' => 'FF333333']],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
-            ]);
-            if ($zebraFills[$i] !== 'FFFFFFFF') {
-                $sheet->getStyle('A'.$row.':U'.$row)->getFill()
-                    ->setFillType(Fill::FILL_SOLID)
-                    ->setStartColor(new \PhpOffice\PhpSpreadsheet\Style\Color($zebraFills[$i]));
-            }
-        }
-
-        $sheet->mergeCells('A9:U9');
-        $sheet->getStyle('A9')->applyFromArray([
-            'font' => ['size' => 9, 'color' => ['argb' => 'FF666666'], 'italic' => true],
-        ]);
-
-        $sheet->getColumnDimension('A')->setWidth(18);
-        $sheet->getColumnDimension('B')->setWidth(22);
-        foreach (range(3, 20) as $n) {
-            $sheet->getColumnDimensionByColumn($n)->setWidth(46);
-        }
-        $sheet->getColumnDimension('U')->setWidth(14);
-
-        $sheet->freezePane('A5');
-    }
-}
-
-// ------ PANDUAN ------
-
-class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
-{
-    use \Maatwebsite\Excel\Concerns\RegistersEventListeners;
-
     public function array(): array
     {
         return [
             ['PANDUAN UPDATE MEDIA', 'Ragil Aluminium'],
-            ['Mode ini HANYA mengubah foto produk/varian (foto katalog + foto hasil pemasangan). Produk/varian baru tidak dibuat.'],
             [],
-            ['KOLOM', 'WAJIB/OPTIONAL', 'KETERANGAN'],
-            ['parent_sku', 'WAJIB', 'Kode produk utama. Harus sudah ada; tidak dikenal = baris gagal.'],
-            ['variant_sku', 'OPTIONAL', 'Kode varian. Kosongkan untuk foto level produk (dipakai semua varian).'],
-            ['image_1 .. image_9', 'OPTIONAL', 'URL foto katalog. image_1 = foto utama. Sel kosong = foto yang ada tidak diubah.'],
-            ['installation_image_1 .. installation_image_9', 'OPTIONAL', 'URL foto hasil pemasangan (tidak tampil di katalog; tampil di halaman Hasil Pemasangan).'],
-            ['installation_slots', 'OPTIONAL', 'Nomor slot image_1..9 yang juga tampil di Hasil Pemasangan. Contoh: "7,8,9" berarti image_7,8,9 juga jadi foto pemasangan.'],
-            ['CATATAN', '', 'Mode ini tidak membuat produk baru, tidak menghapus foto, dan tidak mengubah harga/stok. Menghapus foto: lewat halaman Media produk. URL internal Media Library dipakai langsung; URL eksternal hanya fase test/dev.'],
+            ['KOLOM', 'WAJIB', 'KETERANGAN'],
+            ['parent_sku', 'YA', 'SKU produk (kolom A). Ambil dari Export Produk.'],
+            ['variant_sku', 'YA', 'SKU varian target. Harus benar-benar milik parent_sku.'],
+            ['image_1..N', 'opsional', 'Foto umum produk, image_1 = foto utama. N mengikuti pemakaian; tambah kolom sendiri jika perlu lebih.'],
+            ['image_variation_N_option_M', 'opsional', 'Foto per pilihan varian. Pola sama dengan template import katalog.'],
+            ['shared_media_N', 'opsional', 'Foto/video bersama semua kombinasi.'],
+            ['installation_image_N', 'opsional', 'Foto hasil pemasangan.'],
+            [],
+            ['ATURAN PENTING', '', ''],
+            ['1', '', 'HAPUS baris contoh sebelum import.'],
+            ['2', '', 'Cell media kosong TIDAK menghapus media existing.'],
+            ['3', '', 'URL harus URL publik canonical (media.333labs.tech), bukan nama file atau object key.'],
+            ['4', '', 'parent_sku + variant_sku tidak boleh muncul dua kali di file.'],
+            ['5', '', 'Selalu jalankan Periksa file sebelum Mulai Import.'],
+            ['6', '', 'Hapus media dilakukan lewat Media Library, bukan dengan mengosongkan cell.'],
         ];
     }
 
-    public function title(): string
-    {
-        return 'Panduan';
-    }
-
-    public function afterSheet(AfterSheet $event): void
-    {
-        $sheet = $event->sheet->getDelegate();
-
-        $sheet->mergeCells('A1:C1');
-        $sheet->getStyle('A1')->applyFromArray([
-            'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
-        ]);
-        $sheet->getRowDimension(1)->setRowHeight(24);
-
-        $sheet->mergeCells('A2:C2');
-        $sheet->getStyle('A2')->applyFromArray([
-            'font' => ['size' => 10, 'color' => ['argb' => 'FF666666']],
-        ]);
-
-        $sheet->getStyle('A4:C4')->applyFromArray([
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
-            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 10],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
-        ]);
-        $sheet->getRowDimension(4)->setRowHeight(26);
-
-        $last = $sheet->getHighestRow();
-        $sheet->getStyle('A5:C'.$last)->applyFromArray([
-            'font' => ['size' => 10, 'color' => ['argb' => 'FF333333']],
-            'alignment' => ['wrapText' => true],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
-        ]);
-
-        for ($r = 5; $r <= $last; $r++) {
-            $v = $sheet->getCell('B'.$r)->getValue();
-            if ($v === 'WAJIB') {
-                $sheet->getStyle('B'.$r)->applyFromArray([
-                    'font' => ['bold' => true, 'color' => ['argb' => 'FF2B734E']],
-                ]);
-            } elseif (is_string($v) && strpos($v, 'OPTIONAL') === 0) {
-                $sheet->getStyle('B'.$r)->applyFromArray([
-                    'font' => ['bold' => true, 'color' => ['argb' => 'FF2C6D9B']],
-                ]);
-            }
-        }
-
-        $sheet->getStyle('A'.$last.':C'.$last)->applyFromArray([
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF0F4F8']],
-            'font' => ['italic' => true, 'size' => 10, 'color' => ['argb' => 'FF2C6D9B']],
-        ]);
-
-        $sheet->getColumnDimension('A')->setWidth(26);
-        $sheet->getColumnDimension('B')->setWidth(26);
-        $sheet->getColumnDimension('C')->setWidth(70);
-
-        $sheet->freezePane('A5');
-    }
+    public function title(): string { return 'Panduan'; }
 }
