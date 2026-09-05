@@ -67,17 +67,17 @@ class ProductExportDataSheet extends RagilStyledExport implements FromQuery, Wit
 
             foreach ($headers as $col => $header) {
                 $row[$col] = match (true) {
-                    $header === 'id_key' => $first ? $product->parent_sku : null,
-                    $header === 'name' => $first ? $product->name : null,
-                    $header === 'description' => $first ? $product->description : null,
-                    $header === 'product_category' => $first ? $product->product_category : null,
-                    $header === 'product_model' => $first ? $product->product_model : null,
-                    $header === 'design_variant' => $first ? $product->design_variant : null,
-                    $header === 'specifications' => $first ? ($product->specifications ?? null) : null,
-                    $header === 'weight_kg' => $first ? (float) $product->weight_kg : null,
-                    $header === 'height_cm' => $first ? (float) $product->height_cm : null,
-                    $header === 'width_cm' => $first ? (float) $product->width_cm : null,
-                    $header === 'depth_cm' => $first ? (float) $product->depth_cm : null,
+                    $header === 'id_key' => $product->parent_sku,
+                    $header === 'name' => $product->name,
+                    $header === 'description' => $product->description,
+                    $header === 'product_category' => $product->product_category,
+                    $header === 'product_model' => $product->product_model,
+                    $header === 'design_variant' => $product->design_variant,
+                    $header === 'specifications' => ($product->specifications ?? null),
+                    $header === 'weight_kg' => (float) $product->weight_kg,
+                    $header === 'height_cm' => (float) $product->height_cm,
+                    $header === 'width_cm' => (float) $product->width_cm,
+                    $header === 'depth_cm' => (float) $product->depth_cm,
                     $header === 'image_1' => $first ? $mainImage : null,
                     $header === 'image_2' => $first ? $secondImage : null,
                     $header === 'shared_media_1' => $first ? ($shared[0] ?? null) : null,
@@ -85,8 +85,8 @@ class ProductExportDataSheet extends RagilStyledExport implements FromQuery, Wit
                     $header === 'installation_image_1' => $first ? ($installation[0] ?? null) : null,
                     $header === 'installation_image_2' => $first ? ($installation[1] ?? null) : null,
                     str_starts_with($header, 'image_variation_') => $first ? $this->optionImage($header, $optionImages) : null,
-                    str_starts_with($header, 'variation_') && str_ends_with($header, '_name') => $first ? ($variant->{$header} ?? null) : null,
-                    str_starts_with($header, 'variation_') && str_ends_with($header, '_option_1') => $first ? ($variant->{str_replace('_option_1', '_option', $header)} ?? null) : null,
+                    str_starts_with($header, 'variation_') && str_ends_with($header, '_name') => $this->variationName($header, $variants),
+                    str_starts_with($header, 'variation_') && str_ends_with($header, '_option_1') => $this->variationOption($header, $variants),
                     $header === 'variantion_combination' || $header === 'variation_combination' => $this->combination($variant),
                     $header === 'price_variantion_combination' => (float) $variant->price,
                     $header === 'stock' => (int) $variant->stock,
@@ -108,6 +108,23 @@ class ProductExportDataSheet extends RagilStyledExport implements FromQuery, Wit
         }
 
         return null;
+    }
+
+    protected function variationName(string $header, $variants): ?string
+    {
+        $first = $variants->first();
+        if (! $first) { return null; }
+
+        return $first->{$header} ?? null;
+    }
+
+    protected function variationOption(string $header, $variants): ?string
+    {
+        $first = $variants->first();
+        if (! $first) { return null; }
+        $attr = str_replace('_option_1', '_option', $header);
+
+        return $first->{$attr} ?? null;
     }
 
     protected function combination($variant): ?string
