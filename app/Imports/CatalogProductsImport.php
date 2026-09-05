@@ -369,7 +369,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     $this->writtenMedia[$product->id]['legacy'][$i] = true;
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
-                        variantId: $variant?->id,
+                        variantId: null, // media umum produk: milik semua varian
                         url: (string) $url,
                         position: $i,
                         isMain: $i === 1,
@@ -388,7 +388,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     $this->writtenMedia[$product->id]['install'][$i] = true;
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
-                        variantId: $variant?->id,
+                        variantId: null, // media umum produk: milik semua varian
                         url: (string) $url,
                         position: 100 + $i,
                         isMain: false,
@@ -507,7 +507,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     }
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
-                        variantId: $variant?->id,
+                        variantId: null,
                         url: $url,
                         position: $position,
                         isMain: $isFirstMedia,
@@ -520,7 +520,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     if ($installationUrl !== null) {
                         $this->mediaUpserter()->upsert(
                             productId: $product->id,
-                            variantId: $variant?->id,
+                            variantId: null,
                             url: $installationUrl,
                             position: 100 + $position,
                             isMain: false,
@@ -538,7 +538,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     $this->writtenMedia[$product->id]['installrow'][0] = true;
                     $this->mediaUpserter()->upsert(
                         productId: $product->id,
-                        variantId: $variant?->id,
+                        variantId: null,
                         url: $rowInstallationUrl,
                         position: 199,
                         isMain: false,
