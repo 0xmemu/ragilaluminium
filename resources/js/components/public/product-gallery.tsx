@@ -7,6 +7,78 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
 import type { ProductMedia } from "@/types"
 
+/** Sub-komponen Video Galeri: autoplay saat aktif, pause & resume detik terakhir saat berganti */
+function GalleryVideoItem({
+  item,
+  title,
+  index,
+  isActive,
+  onOpenLightbox,
+}: {
+  item: ProductMedia
+  title: string
+  index: number
+  isActive: boolean
+  onOpenLightbox: () => void
+}) {
+  const videoRef = React.useRef<HTMLVideoElement>(null)
+  const savedTimeRef = React.useRef(0)
+
+  React.useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    if (isActive) {
+      if (savedTimeRef.current > 0 && Math.abs(video.currentTime - savedTimeRef.current) > 0.5) {
+        video.currentTime = savedTimeRef.current
+      }
+      const playPromise = video.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Fallback bila browser blokir audio autoplay
+          video.muted = true
+          video.play().catch(() => {})
+        })
+      }
+    } else {
+      if (!video.paused) {
+        savedTimeRef.current = video.currentTime
+        video.pause()
+      }
+    }
+  }, [isActive])
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      savedTimeRef.current = videoRef.current.currentTime
+    }
+  }
+
+  return (
+    <div className="relative size-full bg-white flex items-center justify-center">
+      <video
+        ref={videoRef}
+        src={item.url ?? undefined}
+        poster={item.thumb ?? undefined}
+        playsInline
+        muted
+        loop
+        onTimeUpdate={handleTimeUpdate}
+        className="size-full bg-white object-contain"
+      />
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          onOpenLightbox()
+        }}
+        className="absolute inset-0 z-10 size-full select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        aria-label={`Perbesar video produk ${index + 1}`}
+      />
+    </div>
+  )
+}
+
 /**
  * Galeri produk: strip horizontal sejajar dengan swipe real-time, thumbnail,
  * panah prev/next, dan lightbox. Semua state galeri (index, drag, lightbox)
@@ -271,27 +343,15 @@ export function ProductGallery({
               {items.map((item, index) => (
                 <div key={item.id} className="flex h-full w-full shrink-0 items-center justify-center bg-white">
                   {item.is_video ? (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
+                    <GalleryVideoItem
+                      item={item}
+                      title={title}
+                      index={index}
+                      isActive={activeMediaIndex === index}
+                      onOpenLightbox={() => {
                         if (!didSwipe.current) setLightboxIndex(index)
                       }}
-                      className="relative size-full select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                      aria-label={`Perbesar video produk ${index + 1}`}
-                    >
-                      <img
-                        src={item.thumb ?? ""}
-                        alt={`${title}, video ${index + 1}`}
-                        loading={index <= activeMediaIndex + 1 ? "eager" : "lazy"}
-                        className="size-full bg-white object-contain"
-                      />
-                      <span className="absolute inset-0 z-10 flex items-center justify-center">
-                        <span className="flex size-14 items-center justify-center rounded-full bg-foreground/70 text-background shadow-lg transition-transform group-hover/gallery:scale-105">
-                          <Icon name="play" className="size-6" weight="fill" aria-hidden="true" />
-                        </span>
-                      </span>
-                    </button>
+                    />
                   ) : (
                     <button
                     type="button"
