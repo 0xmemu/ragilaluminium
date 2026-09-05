@@ -32,6 +32,8 @@ export function ProductGallery({
   const stripRef = React.useRef<HTMLDivElement>(null)
   const stripScrollProgrammatic = React.useRef(false)
   const stripSnapTimer = React.useRef<number | null>(null)
+  const userStripScrollAt = React.useRef(0)
+  const stripProgrammaticTimer = React.useRef<number | undefined>(undefined)
   // 5 thumb terlihat di mobile; desktop aman karena scroll strip tak aktif di lg.
   const visibleThumbs = 5
   const STRIP_GAP = 8
@@ -50,7 +52,9 @@ export function ProductGallery({
     const wrapper = strip.parentElement
     if (!wrapper) return
     const measure = () => {
-      const inner = wrapper.clientWidth - STRIP_PAD
+      // Area konten yang terlihat = lebar strip (clip di stripRight) dikurangi
+      // padding kiri. Floor menjamin 5 thumb utuh dan sisanya di luar clip.
+      const inner = strip.clientWidth - STRIP_PAD
       const w = Math.floor((inner - (visibleThumbs - 1) * STRIP_GAP) / visibleThumbs)
       setThumbW(Math.max(40, w))
     }
@@ -187,13 +191,9 @@ export function ProductGallery({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveMediaIndex(idx)
-    const strip = document.querySelector('[data-gallery-strip]')
-    if (strip) {
-      const btn = strip.querySelectorAll('button')[idx]
-      if (btn && typeof btn.scrollIntoView === 'function') {
-        btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
-      }
-    }
+    // Tidak perlu scrollIntoView di sini: effect sinkronisasi dua arah di
+    // bawah sudah menggulir strip ke thumb aktif. Dua scroll bersamaan yang
+    // dulu menyebabkan main image loncat ke foto terakhir.
   }, [highlightedMediaId, items, activeMediaIndex])
 
   // Geser strip (user swipe): deteksi thumb paling kiri yang terlihat. Jika
@@ -202,22 +202,29 @@ export function ProductGallery({
   const onStripScroll = () => {
     const strip = stripRef.current
     if (!strip) return
+    if (!stripScrollProgrammatic.current) {
+      userStripScrollAt.current = Date.now()
+    }
     const idx = Math.round(strip.scrollLeft / THUMB_STEP)
-    const clamped = Math.max(0, Math.min(idx, items.length - 1))
+    const clamped = Math.max(0, Math.min(idx, items.length - visibleThumbs))
     if (stripScrollProgrammatic.current) {
-      stripScrollProgrammatic.current = false
+      // Programmatic scroll (dari effect sinkronisasi/snap): abaikan sbg input
+      // user; flag dibersihkan oleh timeout setelah animasi selesai.
       setLeftVisibleIndex(clamped)
       return
     }
     setLeftVisibleIndex((prev) => {
-      if (clamped > prev) {
-        // Geser kiri: thumb baru masuk dari kanan -> main image ke thumb itu.
-        setActiveMediaIndex(clamped + visibleThumbs - 1 <= items.length - 1 ? clamped + visibleThumbs - 1 : items.length - 1)
-      } else if (clamped < prev) {
-        // Geser kanan: thumb baru masuk dari kiri -> main image ke thumb itu.
-        setActiveMediaIndex(clamped)
+      // Satu geseran = SATU langkah, apapun jarak scrollnya: delta dibatasi 1.
+      const step = clamped > prev ? 1 : clamped < prev ? -1 : 0
+      if (step === 1) {
+        // Geser kiri: main image ke thumb yang baru masuk dari kanan.
+        const target = Math.min(prev + visibleThumbs, items.length - 1)
+        setActiveMediaIndex(target)
+      } else if (step === -1) {
+        // Geser kanan: main image ke thumb yang baru masuk dari kiri.
+        setActiveMediaIndex(Math.max(prev - 1, 0))
       }
-      return clamped
+      return Math.max(0, Math.min(prev + step, items.length - visibleThumbs))
     })
     // Snap ke kelipatan terdekat setelah user berhenti menggeser (150ms),
     // supaya satu geseran = tepat satu thumb (kontrak owner 09-05).
@@ -240,6 +247,10 @@ export function ProductGallery({
   React.useEffect(() => {
     const strip = stripRef.current
     if (!strip) return
+    // Jangan ganggu strip saat user masih menggesernya (interaksi berlangsung
+    // atau snap timer belum selesai) - ini yang dulu membuat scroll user
+    // selalu di-reset dan main image loncat-loncat.
+    if (Date.now() - userStripScrollAt.current < 400) return
     const btns = strip.querySelectorAll('button')
     const target = btns[activeMediaIndex]
     if (!target) return
@@ -248,13 +259,17 @@ export function ProductGallery({
     const desired = Math.min(offset, Math.max(0, maxScroll))
     if (Math.abs(strip.scrollLeft - desired) > 2) {
       stripScrollProgrammatic.current = true
+      window.clearTimeout(stripProgrammaticTimer.current)
+      stripProgrammaticTimer.current = window.setTimeout(() => {
+        stripScrollProgrammatic.current = false
+      }, 600)
       strip.scrollTo({ left: desired, behavior: 'smooth' })
     }
     setLeftVisibleIndex(Math.round(desired / THUMB_STEP))
   }, [activeMediaIndex, items.length])
 
   return (
-    <div className="group/gallery -mx-2.5 min-w-0 overflow-hidden sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
+    <div className="group/gallery -mx-2.5 min-w-0 overflow-x-clip sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
       {activeMedia ? (
         <>
           <div
@@ -370,7 +385,7 @@ export function ProductGallery({
               ref={stripRef}
               onScroll={onStripScroll}
               data-gallery-strip
-              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto scroll-smooth pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0 [scroll-padding-left:10px]"
+              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto scroll-smooth pr-0 pl-2.5 pb-2 sm:px-8 lg:px-0 [scroll-padding-left:10px] -mx-2.5 w-[calc(100%+20px)]"
               style={{ "--thumb-w": thumbW + "px" } as React.CSSProperties}
               aria-label="Pilih foto produk"
             >
