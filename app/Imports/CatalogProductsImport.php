@@ -34,7 +34,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
 
     /**
      * Media umum produk yang sudah ditulis pada sesi ini:
-     * [productId][kelas media][position] => true. Kelas: legacy (image_1..9),
+     * [productId][kelas media][position] => true. Kelas: legacy (image_1..9, pos 1..9),
      * shared, installrow (installation umum), owneropt (gambar per opsi).
      *
      * @var array<int, array<string, array<int, bool>>>
@@ -498,7 +498,8 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     $position++;
                     $ownerMediaWritten = true;
                 }
-                // shared_media_1..N: media bersama (foto/video), tampil semua kombinasi.
+                // shared_media_1..N: media bersama (foto/video), tampil semua kombinasi,
+                // prioritas SETELAH gambar umum dan gambar per opsi (posisi 80+).
                 for ($n = 1; $n <= 9; $n++) {
                     $shared = $this->cell($data, 'shared_media_'.$n);
                     if ($shared === null) { break; }
@@ -511,7 +512,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                             productId: $product->id,
                             variantId: null,
                             url: $shared,
-                            position: 10 + $n,
+                            position: 80 + $n,
                             isMain: false,
                             showInCatalog: true,
                             isInstallation: false,

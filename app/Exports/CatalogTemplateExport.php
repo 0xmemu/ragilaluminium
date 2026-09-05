@@ -275,7 +275,7 @@ class CatalogGuideSheet implements FromArray, WithTitle, WithEvents
             ['image_1, image_2', 'OPTIONAL', 'Foto katalog umum produk (bukan per varian). Foto utama = image_1.'],
             ['image_variation_1_option_1..4', 'OPTIONAL', 'Foto per pilihan varian pertama: option_1 = Putih, beri foto putih di sini. Foto ini dipakai semua kombinasi yang memakai pilihan itu. Cukup isi sekali di baris pertama produk.'],
             ['image_variation_2_option_1..4', 'OPTIONAL', 'Sama, untuk varian kedua.'],
-            ['shared_media_1, shared_media_2', 'OPTIONAL', 'Media bersama (foto/video tambahan) yang tampil di semua kombinasi.'],
+            ['shared_media_1, shared_media_2', 'OPTIONAL', 'Media bersama (foto/video tambahan) yang tampil di semua kombinasi. Urutan tampil: setelah gambar utama, gambar umum image_2..9, dan gambar per opsi varian.'],
             ['installation_image_1..2', 'OPTIONAL', 'Foto hasil pemasangan. Tambah pemasangan lain = copy kolom, ganti nomor (installation_image_3, dst).'],
             [],
             ['VERIFIKASI OTOMATIS', '', 'File diverifikasi SEBELUM dieksekusi. Satu saja pelanggaran = tidak ada produk yang diimpor. Pelanggaran: id_key muncul kembali setelah digantikan (baris grup harus berurutan); satu id_key memuat nama berbeda; kombinasi opsi duplikat dalam satu id_key; daftar opsi berbeda antar baris satu id_key; harga kosong/nol pada baris kombinasi.'],

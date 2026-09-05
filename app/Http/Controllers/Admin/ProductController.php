@@ -429,7 +429,7 @@ class ProductController extends Controller
             ->filter(fn ($m) => $m->product_variant_id === null
                 && ! $m->is_main_image
                 && ! $m->is_installation
-                && $m->position >= 50 && $m->position < 100)
+                && $m->position >= 50 && $m->position < 80)
             ->sortBy('position')
             ->values();
         $optMediaIdx = 0;
