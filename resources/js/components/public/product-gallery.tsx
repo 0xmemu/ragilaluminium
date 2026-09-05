@@ -420,7 +420,7 @@ export function ProductGallery({
               ref={stripRef}
               data-gallery-strip
               onScroll={onStripScroll}
-              className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
+              className="scrollbar-none mt-0 flex w-full max-w-full gap-2 overflow-x-auto px-2.5 py-2 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:px-8 sm:py-2 lg:p-0"
               aria-label="Pilih foto produk"
             >
               {/* Semua foto dirender urut asli; ke-6+ tersembunyi kanan.

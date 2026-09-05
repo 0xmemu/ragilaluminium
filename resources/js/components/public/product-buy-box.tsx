@@ -75,7 +75,7 @@ export function ProductBuyBox({
   return (
     <>
       {/* Nama produk - baris 1 ukuran, baris 2 model (split otomatis), font body */}
-      <div className="mt-0.5 flex items-start justify-between gap-3">
+      <div className="mt-0 flex items-start justify-between gap-3">
         <h1 style={{ textWrap: "wrap" }} className="min-w-0 flex-1 text-sm lg:text-[21px] font-normal tracking-tight text-foreground">
           <span className="block">
             {titleLine1}
@@ -87,7 +87,7 @@ export function ProductBuyBox({
       {/* Harga utama + sub-harga (coret, diskon, flash) di bawahnya */}
       <div className="mt-2">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <span className="tabular-nums text-2xl font-bold leading-8 text-sale">
+          <span className="tabular-nums text-[20px] font-bold leading-6 text-sale">
             {currentPrice !== null
               ? `${selectedVariant ? '' : '~ '}${formatCurrency(currentPrice)}`
               : "Harga belum tersedia"}

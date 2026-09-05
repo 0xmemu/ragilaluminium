@@ -131,7 +131,7 @@ export default function ProductDetail({
 
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-4 pt-0 lg:pt-10 lg:pb-10">
-        <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
+        <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
           {/* K4/K5 (mobile): back & share overlay di atas thumb galeri; desktop tetap dari layout lama */}
           <div className="relative min-w-0 lg:contents">
             <button
