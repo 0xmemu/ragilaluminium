@@ -27,6 +27,13 @@ export function ProductGallery({
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
+  // Strip carousel: index thumb paling kiri yang terlihat di viewport strip.
+  const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
+  const stripRef = React.useRef<HTMLDivElement>(null)
+  const stripScrollProgrammatic = React.useRef(false)
+  // 5 thumb terlihat di mobile; desktop aman karena scroll strip tak aktif di lg.
+  const visibleThumbs = 5
+  const THUMB_STEP = 56 // 48px thumb + 8px gap; satu langkah geser = satu thumb.
 
   const lightboxItems = React.useMemo(
     () =>
@@ -164,18 +171,49 @@ export function ProductGallery({
     }
   }, [highlightedMediaId, items, activeMediaIndex])
 
-  // Strip mengikuti foto aktif: saat foto varian ditonjolkan (atau user swipe/
-  // pilih thumb), thumb aktif digulir masuk viewport strip.
-  React.useEffect(() => {
-    const strip = document.querySelector('[data-gallery-strip]')
-    if (!strip) {
+  // Geser strip (user swipe): deteksi thumb paling kiri yang terlihat. Jika
+  // berubah karena geseran user (bukan programmatic), main image pindah ke
+  // thumb yang BARU masuk dari arah geser (kontrak owner 09-05).
+  const onStripScroll = () => {
+    const strip = stripRef.current
+    if (!strip) return
+    const idx = Math.round(strip.scrollLeft / THUMB_STEP)
+    const clamped = Math.max(0, Math.min(idx, items.length - 1))
+    if (stripScrollProgrammatic.current) {
+      stripScrollProgrammatic.current = false
+      setLeftVisibleIndex(clamped)
       return
     }
-    const activeBtn = strip.querySelectorAll('button')[activeMediaIndex]
-    if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
-      activeBtn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+    setLeftVisibleIndex((prev) => {
+      if (clamped > prev) {
+        // Geser kiri: thumb baru masuk dari kanan -> main image ke thumb itu.
+        setActiveMediaIndex(clamped + visibleThumbs - 1 <= items.length - 1 ? clamped + visibleThumbs - 1 : items.length - 1)
+      } else if (clamped < prev) {
+        // Geser kanan: thumb baru masuk dari kiri -> main image ke thumb itu.
+        setActiveMediaIndex(clamped)
+      }
+      return clamped
+    })
+  }
+
+  // Strip mengikuti foto aktif (sinkronisasi dua arah): saat main image
+  // di-swipe/ubah varian/thumb di-tap, strip tergulir agar thumb aktif
+  // terlihat - tanpa memicu logika geser (programmatic guard).
+  React.useEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    const btns = strip.querySelectorAll('button')
+    const target = btns[activeMediaIndex]
+    if (!target) return
+    const offset = activeMediaIndex * THUMB_STEP
+    const maxScroll = strip.scrollWidth - strip.clientWidth
+    const desired = Math.min(offset, Math.max(0, maxScroll))
+    if (Math.abs(strip.scrollLeft - desired) > 2) {
+      stripScrollProgrammatic.current = true
+      strip.scrollTo({ left: desired, behavior: 'smooth' })
     }
-  }, [activeMediaIndex])
+    setLeftVisibleIndex(Math.round(desired / THUMB_STEP))
+  }, [activeMediaIndex, items.length])
 
   return (
     <div className="group/gallery -mx-2.5 min-w-0 sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
@@ -291,27 +329,34 @@ export function ProductGallery({
 
           {items.length > 1 ? (
             <div
+              ref={stripRef}
+              onScroll={onStripScroll}
               data-gallery-strip
-              className="mt-2 flex gap-2 overflow-x-auto px-2.5 pb-2 sm:px-8 lg:px-0"
+              className="mt-2 flex w-[calc(100%-0px)] max-w-[calc(100vw-20px)] gap-2 overflow-x-auto px-2.5 pb-2 sm:px-8 lg:px-0"
               aria-label="Pilih foto produk"
             >
-              {/* K3/K7: strip thumb maks 5; thumb ke-5 menandai total media (5/N) di pojok kanan bawah. */}
-              {items.slice(0, 5).map((item, index) => {
-                const isLast = index === 4
-                const hiddenCount = items.length - 5
-                const showCountBadge = isLast && hiddenCount > 0
+              {/* Desain owner (09-05): strip carousel geser, tampil 5 thumb
+                  sekaligus, isi SEMUA foto. Geser = thumb keluar/masuk satu per
+                  satu, main image ikut pindah ke thumb yang baru masuk. Chip
+                  kiri/kanan = keterangan foto tersembunyi di arah tersebut. */}
+              {items.map((item, index) => {
+                const visibleCount = visibleThumbs
+                const leftHidden = Math.max(0, Math.min(leftVisibleIndex, items.length - visibleCount))
+                const rightHidden = Math.max(0, items.length - (leftVisibleIndex + visibleCount))
+                const showLeftBadge = leftHidden > 0 && index === leftVisibleIndex
+                const showRightBadge = rightHidden > 0 && index === Math.min(leftVisibleIndex + visibleCount - 1, items.length - 1)
+                const showCountBadge = showRightBadge
                 return (
                 <button
                   type="button"
                   key={item.id}
                   onClick={() => {
                     setActiveMediaIndex(index)
-                    if (isLast && hiddenCount > 0) setLightboxIndex(index)
                   }}
-                  aria-label={isLast && hiddenCount > 0 ? `Lihat ${items.length} foto` : `Tampilkan foto ${index + 1}`}
+                  aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square h-auto min-w-0 flex-1 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:h-12 lg:w-12 lg:flex-none",
+                    "relative aspect-square w-[calc((100%-52px-20px)/5)] min-w-[calc((100%-52px-20px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
@@ -334,9 +379,14 @@ export function ProductGallery({
                       className="object-contain"
                     />
                   )}
-                  {showCountBadge ? (
+                  {showLeftBadge ? (
+                    <span data-gallery-more-left="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white">
+                      +{leftHidden}
+                    </span>
+                  ) : null}
+                  {showRightBadge ? (
                     <span data-gallery-more-count="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white">
-                      +{hiddenCount}
+                      +{rightHidden}
                     </span>
                   ) : null}
 
