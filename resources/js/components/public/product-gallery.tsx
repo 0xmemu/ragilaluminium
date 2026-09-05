@@ -188,59 +188,21 @@ export function ProductGallery({
     setActiveMediaIndex(idx)
   }, [highlightedMediaId, items, activeMediaIndex])
 
-  // Scroll strip oleh user (plan 6.2): floor saat gesture berjalan; round
-  // hanya untuk snap setelah gesture selesai (plan 3.6). Arah dari perubahan
-  // window, bukan arah jari.
+  // Scroll strip: update index terlihat untuk badge +N tanpa merubah foto utama.
   const onStripScroll = () => {
     const strip = stripRef.current
     if (!strip) return
-    if (stripScrollProgrammatic.current) {
-      // Event dari animasi programmatic: bukan gesture user, jangan sentuh
-      // main image; flag dibersihkan oleh timeout 600ms di scrollStripToIndex.
-      return
-    }
     userStripScrollAt.current = Date.now()
     const firstBtn = strip.querySelector("button")
     if (!firstBtn) return
-    const step = firstBtn.getBoundingClientRect().width + 10
+    const step = firstBtn.getBoundingClientRect().width + STRIP_GAP
     if (step <= 0) return
-    const rawIndex = strip.scrollLeft / step
-    const candidateIndex = Math.max(0, Math.min(
-      Math.floor(rawIndex + 0.01),
-      maxLeftVisibleIndex,
-    ))
-    if (candidateIndex === leftVisibleIndexRef.current) return
-    const previousIndex = leftVisibleIndexRef.current
-    leftVisibleIndexRef.current = candidateIndex
-    setLeftVisibleIndex(candidateIndex)
-    if (candidateIndex > previousIndex) {
-      // Window maju; thumb baru masuk dari kanan (plan 2.2).
-      setActiveMediaIndex(Math.min(candidateIndex + VISIBLE_THUMBS - 1, items.length - 1))
-    } else {
-      // Window mundur; thumb baru masuk dari kiri.
-      setActiveMediaIndex(candidateIndex)
+    const rawIndex = Math.round(strip.scrollLeft / step)
+    const candidateIndex = Math.max(0, Math.min(rawIndex, maxLeftVisibleIndex))
+    if (candidateIndex !== leftVisibleIndexRef.current) {
+      leftVisibleIndexRef.current = candidateIndex
+      setLeftVisibleIndex(candidateIndex)
     }
-    // Snap setelah gesture selesai (plan 6.3).
-    if (stripSnapTimer.current) {
-      window.clearTimeout(stripSnapTimer.current)
-    }
-    stripSnapTimer.current = window.setTimeout(() => {
-      const el = stripRef.current
-      if (!el) return
-      const snappedIndex = Math.max(0, Math.min(
-        Math.round(el.scrollLeft / step),
-        maxLeftVisibleIndex,
-      ))
-      if (snappedIndex !== leftVisibleIndexRef.current) {
-        leftVisibleIndexRef.current = snappedIndex
-        setLeftVisibleIndex(snappedIndex)
-        const snapTarget = snappedIndex > candidateIndex
-          ? Math.min(snappedIndex + VISIBLE_THUMBS - 1, items.length - 1)
-          : snappedIndex
-        setActiveMediaIndex(snapTarget)
-      }
-      scrollStripToIndex(snappedIndex)
-    }, 150)
   }
 
   // Programmatic scroll helper (plan 6.1): flag bertahan 600ms agar sisa event
@@ -250,7 +212,7 @@ export function ProductGallery({
     if (!strip) return
     const firstBtn = strip.querySelector("button")
     if (!firstBtn) return
-    const step = firstBtn.getBoundingClientRect().width + 10
+    const step = firstBtn.getBoundingClientRect().width + STRIP_GAP
     if (step <= 0) return
     const target = Math.max(0, Math.min(targetIndex, maxLeftVisibleIndex))
     stripScrollProgrammatic.current = true
@@ -261,8 +223,7 @@ export function ProductGallery({
     stripProgrammaticTimer.current = window.setTimeout(() => {
       stripScrollProgrammatic.current = false
     }, 600)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length])
+  }, [maxLeftVisibleIndex])
 
   // Sinkronisasi dua arah (plan 7): main image berubah (swipe main / tap
   // thumb / ganti varian) -> bawa window strip agar thumb aktif tampak.
@@ -273,10 +234,10 @@ export function ProductGallery({
     if (!strip) return
     const firstBtn = strip.querySelector("button")
     if (!firstBtn) return
-    const step = firstBtn.getBoundingClientRect().width + 10
+    const step = firstBtn.getBoundingClientRect().width + STRIP_GAP
     if (step <= 0) return
     const targetLeftIndex = Math.max(0, Math.min(
-      activeMediaIndex <= leftVisibleIndex
+      activeMediaIndex < leftVisibleIndex
         ? activeMediaIndex
         : activeMediaIndex >= leftVisibleIndex + VISIBLE_THUMBS
           ? activeMediaIndex - VISIBLE_THUMBS + 1
@@ -463,13 +424,7 @@ export function ProductGallery({
                 </button>
                 )
               })}
-              {/* Spacer kanan (plan 5.3): cegah ruang putih saat mentok kanan.
-                  Bukan thumbnail, bukan snap point, tidak interaktif. */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none shrink-0"
-                style={{ width: `${thumbW + STRIP_PAD}px` }}
-              />
+
             </div>
           ) : null}
 
