@@ -27,7 +27,21 @@ export function ProductGallery({
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = React.useState(0)
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
-
+  // Strip carousel mobile (plan rev 4): 5 thumb terlihat penuh, geser per
+  // thumb, main image = thumb yang baru masuk, chip +N dinamis dua arah.
+  const VISIBLE_THUMBS = 5
+  const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
+  const leftVisibleIndexRef = React.useRef(0)
+  leftVisibleIndexRef.current = leftVisibleIndex
+  const stripRef = React.useRef<HTMLDivElement>(null)
+  const stripScrollProgrammatic = React.useRef(false)
+  const stripProgrammaticTimer = React.useRef<number | undefined>(undefined)
+  const userStripScrollAt = React.useRef(0)
+  const stripSnapTimer = React.useRef<number | undefined>(undefined)
+  const visibleCount = Math.min(VISIBLE_THUMBS, items.length)
+  const maxLeftVisibleIndex = Math.max(0, items.length - visibleCount)
+  const leftHidden = leftVisibleIndex
+  const rightHidden = Math.max(0, items.length - (leftVisibleIndex + VISIBLE_THUMBS))
   const lightboxItems = React.useMemo(
     () =>
       items
@@ -155,27 +169,108 @@ export function ProductGallery({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveMediaIndex(idx)
-    const strip = document.querySelector('[data-gallery-strip]')
-    if (strip) {
-      const btn = strip.querySelectorAll('button')[idx]
-      if (btn && typeof btn.scrollIntoView === 'function') {
-        btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
-      }
-    }
   }, [highlightedMediaId, items, activeMediaIndex])
 
-  // Strip mengikuti foto aktif: saat foto varian ditonjolkan (atau user swipe/
-  // pilih thumb), thumb aktif digulir masuk viewport strip.
-  React.useEffect(() => {
-    const strip = document.querySelector('[data-gallery-strip]')
-    if (!strip) {
+  // Scroll strip oleh user (plan 6.2): floor saat gesture berjalan; round
+  // hanya untuk snap setelah gesture selesai (plan 3.6). Arah dari perubahan
+  // window, bukan arah jari.
+  const onStripScroll = () => {
+    const strip = stripRef.current
+    if (!strip) return
+    if (stripScrollProgrammatic.current) {
+      // Event dari animasi programmatic: bukan gesture user, jangan sentuh
+      // main image; flag dibersihkan oleh timeout 600ms di scrollStripToIndex.
       return
     }
-    const activeBtn = strip.querySelectorAll('button')[activeMediaIndex]
-    if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
-      activeBtn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+    userStripScrollAt.current = Date.now()
+    const firstBtn = strip.querySelector("button")
+    if (!firstBtn) return
+    const step = firstBtn.getBoundingClientRect().width + 8
+    if (step <= 0) return
+    const rawIndex = strip.scrollLeft / step
+    const candidateIndex = Math.max(0, Math.min(
+      Math.floor(rawIndex + 0.01),
+      maxLeftVisibleIndex,
+    ))
+    if (candidateIndex === leftVisibleIndexRef.current) return
+    const previousIndex = leftVisibleIndexRef.current
+    leftVisibleIndexRef.current = candidateIndex
+    setLeftVisibleIndex(candidateIndex)
+    if (candidateIndex > previousIndex) {
+      // Window maju; thumb baru masuk dari kanan (plan 2.2).
+      setActiveMediaIndex(Math.min(candidateIndex + VISIBLE_THUMBS - 1, items.length - 1))
+    } else {
+      // Window mundur; thumb baru masuk dari kiri.
+      setActiveMediaIndex(candidateIndex)
     }
-  }, [activeMediaIndex])
+    // Snap setelah gesture selesai (plan 6.3).
+    if (stripSnapTimer.current) {
+      window.clearTimeout(stripSnapTimer.current)
+    }
+    stripSnapTimer.current = window.setTimeout(() => {
+      const el = stripRef.current
+      if (!el) return
+      const snappedIndex = Math.max(0, Math.min(
+        Math.round(el.scrollLeft / step),
+        maxLeftVisibleIndex,
+      ))
+      if (snappedIndex !== leftVisibleIndexRef.current) {
+        leftVisibleIndexRef.current = snappedIndex
+        setLeftVisibleIndex(snappedIndex)
+        const snapTarget = snappedIndex > candidateIndex
+          ? Math.min(snappedIndex + VISIBLE_THUMBS - 1, items.length - 1)
+          : snappedIndex
+        setActiveMediaIndex(snapTarget)
+      }
+      scrollStripToIndex(snappedIndex)
+    }, 150)
+  }
+
+  // Programmatic scroll helper (plan 6.1): flag bertahan 600ms agar sisa event
+  // scroll animasi tidak dianggap gesture user (akar cascade lama).
+  const scrollStripToIndex = React.useCallback((targetIndex: number) => {
+    const strip = stripRef.current
+    if (!strip) return
+    const firstBtn = strip.querySelector("button")
+    if (!firstBtn) return
+    const step = firstBtn.getBoundingClientRect().width + 8
+    if (step <= 0) return
+    const target = Math.max(0, Math.min(targetIndex, maxLeftVisibleIndex))
+    stripScrollProgrammatic.current = true
+    if (stripProgrammaticTimer.current) {
+      window.clearTimeout(stripProgrammaticTimer.current)
+    }
+    strip.scrollTo({ left: target * step, behavior: "smooth" })
+    stripProgrammaticTimer.current = window.setTimeout(() => {
+      stripScrollProgrammatic.current = false
+    }, 600)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length])
+
+  // Sinkronisasi dua arah (plan 7): main image berubah (swipe main / tap
+  // thumb / ganti varian) -> bawa window strip agar thumb aktif tampak.
+  // Guard 400ms: jangan melawan gesture user yang masih berlangsung (plan 7.4).
+  React.useEffect(() => {
+    if (Date.now() - userStripScrollAt.current < 400) return
+    const strip = stripRef.current
+    if (!strip) return
+    const firstBtn = strip.querySelector("button")
+    if (!firstBtn) return
+    const step = firstBtn.getBoundingClientRect().width + 8
+    if (step <= 0) return
+    const targetLeftIndex = Math.max(0, Math.min(
+      activeMediaIndex <= leftVisibleIndex
+        ? activeMediaIndex
+        : activeMediaIndex >= leftVisibleIndex + VISIBLE_THUMBS
+          ? activeMediaIndex - VISIBLE_THUMBS + 1
+          : leftVisibleIndex,
+      maxLeftVisibleIndex,
+    ))
+    const desired = targetLeftIndex * step
+    if (Math.abs(strip.scrollLeft - desired) < 2) return
+    scrollStripToIndex(targetLeftIndex)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMediaIndex, items.length, scrollStripToIndex])
 
   return (
     <div className="group/gallery -mx-2.5 min-w-0 sm:-mx-8 lg:mx-0" aria-label="Galeri produk">
@@ -291,27 +386,29 @@ export function ProductGallery({
 
           {items.length > 1 ? (
             <div
+              ref={stripRef}
               data-gallery-strip
-              className="mt-2 flex gap-2 overflow-x-auto px-2.5 pb-2 sm:px-8 lg:px-0"
+              onScroll={onStripScroll}
+              className="flex w-full gap-2 overflow-x-auto px-2.5 pb-2 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:px-8 lg:px-0"
               aria-label="Pilih foto produk"
             >
-              {/* K3/K7: strip thumb maks 5; thumb ke-5 menandai total media (5/N) di pojok kanan bawah. */}
-              {items.slice(0, 5).map((item, index) => {
-                const isLast = index === 4
-                const hiddenCount = items.length - 5
-                const showCountBadge = isLast && hiddenCount > 0
+              {/* Semua foto dirender urut asli; ke-6+ tersembunyi kanan.
+                  Chip +N dinamis dua arah (plan 2.3). */}
+              {items.map((item, index) => {
+                const showLeftBadge = leftHidden > 0 && index === leftVisibleIndex
+                const showRightBadge = rightHidden > 0 && index === leftVisibleIndex + VISIBLE_THUMBS - 1
                 return (
                 <button
                   type="button"
+                  data-gallery-thumb
                   key={item.id}
                   onClick={() => {
                     setActiveMediaIndex(index)
-                    if (isLast && hiddenCount > 0) setLightboxIndex(index)
                   }}
-                  aria-label={isLast && hiddenCount > 0 ? `Lihat ${items.length} foto` : `Tampilkan foto ${index + 1}`}
+                  aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square h-auto min-w-0 flex-1 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12 lg:h-12 lg:w-12 lg:flex-none",
+                    "relative aspect-square w-[calc((100%-56px)/5)] min-w-[calc((100%-56px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
@@ -334,15 +431,27 @@ export function ProductGallery({
                       className="object-contain"
                     />
                   )}
-                  {showCountBadge ? (
+                  {showLeftBadge ? (
+                    <span data-gallery-more-left="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white">
+                      +{leftHidden}
+                    </span>
+                  ) : null}
+                  {showRightBadge ? (
                     <span data-gallery-more-count="1" className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/60 text-sm font-bold text-white">
-                      +{hiddenCount}
+                      +{rightHidden}
                     </span>
                   ) : null}
 
                 </button>
                 )
               })}
+              {/* Spacer kanan (plan 5.3): cegah ruang putih saat mentok kanan.
+                  Bukan thumbnail, bukan snap point, tidak interaktif. */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none shrink-0"
+                style={{ width: "calc((100% - 56px) / 5 + 10px)" }}
+              />
             </div>
           ) : null}
 
