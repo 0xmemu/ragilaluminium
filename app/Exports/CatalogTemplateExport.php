@@ -271,7 +271,7 @@ class CatalogGuideSheet implements FromArray, WithTitle, WithEvents
             ['price_variantion_combination', 'WAJIB', 'Harga kombinasi ini (angka polos, tanpa titik ribuan).'],
             ['stock', 'OPTIONAL', 'Stok kombinasi ini. Kosong = pakai mode stok yang dipilih saat upload (file atau manual).'],
             ['weight_kg, height_cm, width_cm, depth_cm', 'WAJIB', 'Berat & dimensi packing: height_cm = TINGGI, width_cm = PANJANG, depth_cm = LEBAR (sama dengan form admin Produk; nama kolom mengikuti sistem). Angka > 0.'],
-            ['specifications', 'OPSIONAL', 'Spesifikasi tambahan milik produk (format: Nama: Nilai, pisahkan titik koma). KOSONGKAN agar sistem mengisi otomatis dari template spesifikasi detail per sub model (dikelola admin di menu Sub Model).'],
+            ['specifications', 'OPSIONAL', 'Spesifikasi produk milik PRODUK (bukan per kombinasi). Format: Nama: Nilai, pisahkan titik koma. Nilai di baris mana pun dalam grup akan tersimpan SEKALI untuk produk, tidak berulang. Kosong = sistem mengisi dari template spesifikasi per sub model. Admin bisa menambah spesifikasi lain kapan pun dari form edit produk.'],
             ['image_1, image_2', 'OPTIONAL', 'Foto katalog umum produk (bukan per varian). Foto utama = image_1.'],
             ['image_variation_1_option_1..4', 'OPTIONAL', 'Foto per pilihan varian pertama: option_1 = Putih, beri foto putih di sini. Foto ini dipakai semua kombinasi yang memakai pilihan itu. Cukup isi sekali di baris pertama produk.'],
             ['image_variation_2_option_1..4', 'OPTIONAL', 'Sama, untuk varian kedua.'],
