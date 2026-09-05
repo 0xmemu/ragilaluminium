@@ -84,6 +84,7 @@ function AccordionSection({
  * Semua nilai turunan (rating, ulasan terfilter) datang sebagai props (§5 R).
  */
 export function ProductInfoSections({
+  mode = "all",
   product,
   attributes,
   installationMedia = [],
@@ -92,6 +93,7 @@ export function ProductInfoSections({
   ratingLabel,
   ratedReviews,
 }: {
+  mode?: "all" | "info" | "reviews-installation"
   product: ProductDetailData
   attributes: ProductAttribute[]
   installationMedia?: Array<{ id: number; url: string; thumb?: string | null; is_video?: boolean }>
@@ -110,9 +112,13 @@ export function ProductInfoSections({
     (a) => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name),
   )
 
+  const showInfo = mode === "all" || mode === "info"
+  const showReviewsAndInstallation = mode === "all" || mode === "reviews-installation"
+
   return (
     <>
       {/* Informasi Produk */}
+      {showInfo ? (
       <div className="mt-4 border-t border-border">
         <AccordionSection title="Informasi produk" defaultOpen={false}>
           <div className="space-y-1.5 text-sm leading-6">
@@ -158,8 +164,10 @@ export function ProductInfoSections({
           </AccordionSection>
         ) : null}
       </div>
+      ) : null}
 
-
+      {showReviewsAndInstallation ? (
+      <>
       {/* Penilaian & Ulasan - disembunyikan bila produk belum punya ulasan */}
       {reviews.length ? (
       <section id="penilaian-ulasan" className="mt-4 scroll-mt-28">
@@ -311,7 +319,10 @@ export function ProductInfoSections({
           />
         </section>
       ) : null}
+      </>
+      ) : null}
 
+      {showReviewsAndInstallation ? (
       <DialogPrimitive.Root open={reviewsOpen} onOpenChange={setReviewsOpen}>
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-black/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
@@ -368,8 +379,9 @@ export function ProductInfoSections({
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
+      ) : null}
 
-      {previewReview ? (
+      {showReviewsAndInstallation && previewReview ? (
         <GalleryLightbox
           items={reviewImages(previewReview).map((src) => ({
             src,

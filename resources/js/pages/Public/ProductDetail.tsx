@@ -132,8 +132,8 @@ export default function ProductDetail({
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-4 pt-0 lg:pt-10 lg:pb-10">
         <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,1fr)] lg:items-start lg:gap-10">
-          {/* K4/K5 (mobile): back & share overlay di atas thumb galeri; desktop tetap dari layout lama */}
-          <div className="relative min-w-0 lg:contents">
+          {/* Kolom Kiri: Galeri Produk + (Desktop) Ulasan Pembeli & Hasil Pemasangan */}
+          <div className="relative min-w-0">
             <button
               type="button"
               onClick={handlePdpBack}
@@ -146,8 +146,23 @@ export default function ProductDetail({
               <ShareActionButton title={title} url={shareUrl} />
             </div>
             <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} highlightedMediaId={highlightedMediaId} />
+
+            {/* Desktop only: Ulasan Pembeli & Hasil Pemasangan di bawah galeri */}
+            <div className="hidden lg:block mt-8 border-t border-border pt-6">
+              <ProductInfoSections
+                mode="reviews-installation"
+                product={product}
+                attributes={attributes}
+                installationMedia={installationMedia}
+                reviews={reviews}
+                averageRating={averageRating}
+                ratingLabel={ratingLabel}
+                ratedReviews={ratedReviews}
+              />
+            </div>
           </div>
 
+          {/* Kolom Kanan: Buy Box + (Mobile: Semua Info / Desktop: Hanya Accordion Informasi & Deskripsi) */}
           <div className="min-w-0 lg:sticky lg:top-28">
             <ProductBuyBox
               product={product}
@@ -155,15 +170,32 @@ export default function ProductDetail({
               activeMedia={activeMedia}
               shareUrl={shareUrl}
             />
-            <ProductInfoSections
-              product={product}
-              attributes={attributes}
-              installationMedia={installationMedia}
-              reviews={reviews}
-              averageRating={averageRating}
-              ratingLabel={ratingLabel}
-              ratedReviews={ratedReviews}
-            />
+            {/* Mobile view: tampilkan semua info section termasuk ulasan */}
+            <div className="lg:hidden">
+              <ProductInfoSections
+                mode="all"
+                product={product}
+                attributes={attributes}
+                installationMedia={installationMedia}
+                reviews={reviews}
+                averageRating={averageRating}
+                ratingLabel={ratingLabel}
+                ratedReviews={ratedReviews}
+              />
+            </div>
+            {/* Desktop view: hanya accordion Informasi Produk & Tentang Produk */}
+            <div className="hidden lg:block">
+              <ProductInfoSections
+                mode="info"
+                product={product}
+                attributes={attributes}
+                installationMedia={installationMedia}
+                reviews={reviews}
+                averageRating={averageRating}
+                ratingLabel={ratingLabel}
+                ratedReviews={ratedReviews}
+              />
+            </div>
           </div>
         </div>
       </section>
