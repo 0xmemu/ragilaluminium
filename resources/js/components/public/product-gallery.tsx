@@ -185,7 +185,7 @@ export function ProductGallery({
     userStripScrollAt.current = Date.now()
     const firstBtn = strip.querySelector("button")
     if (!firstBtn) return
-    const step = firstBtn.getBoundingClientRect().width + 8
+    const step = firstBtn.getBoundingClientRect().width + 10
     if (step <= 0) return
     const rawIndex = strip.scrollLeft / step
     const candidateIndex = Math.max(0, Math.min(
@@ -233,7 +233,7 @@ export function ProductGallery({
     if (!strip) return
     const firstBtn = strip.querySelector("button")
     if (!firstBtn) return
-    const step = firstBtn.getBoundingClientRect().width + 8
+    const step = firstBtn.getBoundingClientRect().width + 10
     if (step <= 0) return
     const target = Math.max(0, Math.min(targetIndex, maxLeftVisibleIndex))
     stripScrollProgrammatic.current = true
@@ -256,7 +256,7 @@ export function ProductGallery({
     if (!strip) return
     const firstBtn = strip.querySelector("button")
     if (!firstBtn) return
-    const step = firstBtn.getBoundingClientRect().width + 8
+    const step = firstBtn.getBoundingClientRect().width + 10
     if (step <= 0) return
     const targetLeftIndex = Math.max(0, Math.min(
       activeMediaIndex <= leftVisibleIndex
@@ -389,7 +389,7 @@ export function ProductGallery({
               ref={stripRef}
               data-gallery-strip
               onScroll={onStripScroll}
-              className="flex w-full gap-2 overflow-x-auto px-2.5 pb-2 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:px-8 lg:px-0"
+              className="flex w-full gap-2.5 overflow-x-auto p-2.5 [scroll-padding-left:10px] [scroll-snap-type:x_mandatory] sm:p-8 lg:p-0"
               aria-label="Pilih foto produk"
             >
               {/* Semua foto dirender urut asli; ke-6+ tersembunyi kanan.
@@ -408,7 +408,7 @@ export function ProductGallery({
                   aria-label={`Tampilkan foto ${index + 1}`}
                   aria-current={activeMediaIndex === index ? "true" : undefined}
                   className={cn(
-                    "relative aspect-square w-[calc((100%-56px)/5)] min-w-[calc((100%-56px)/5)] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
+                    "relative aspect-square w-[63px] min-w-[63px] shrink-0 snap-start overflow-hidden rounded-[3px] border-2 bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:size-12",
                     activeMediaIndex === index
                       ? "border-primary"
                       : "border-transparent hover:border-border",
