@@ -160,7 +160,8 @@ export function ProductInfoSections({
       </div>
 
 
-      {/* Penilaian & Ulasan */}
+      {/* Penilaian & Ulasan - disembunyikan bila produk belum punya ulasan */}
+      {reviews.length ? (
       <section id="penilaian-ulasan" className="mt-4 scroll-mt-28">
         <h2 className="text-base font-bold text-foreground">Ulasan Pembeli</h2>
         {averageRating !== null ? (
@@ -249,6 +250,7 @@ export function ProductInfoSections({
           </div>
         ) : null}
       </section>
+      ) : null}
 
       {/* Hasil pemasangan: 3 kartu 1:1 (radius 3px). Lebih dari 3 -> overlay +N pada kartu ke-3, klik membuka lightbox swipeable. */}
       {installationMedia.length ? (
