@@ -121,10 +121,24 @@ export function useProductPurchase({
     const mediaOf = (variantId: number) =>
       media.find((item) => Number(item.product_variant_id) === variantId)
     // 1. Kombinasi lengkap: foto varian hasil kombinasi pilihan saat ini.
+    //    Kecuali opsi yang BARU diklik punya foto sendiri (kontrak "tergantung
+    //    klik": klik Kaca Bening saat Serat Kayu aktif tetap menonjolkan foto
+    //    Serat Kayu jika kombinasi Serat+Bening tidak punya foto spesifik -
+    //    tapi jika kombinasi lengkap punya foto miliknya, kombinasi menang).
     const exact = resolveVariant(variants, selections)
     if (exact) {
       const m = mediaOf(exact.id)
-      return m ? m.id : null
+      if (m) return m.id
+      // Kombinasi lengkap tapi tanpa foto: turun ke foto opsi yang diklik.
+      const hit = media.find((item) => {
+        const vid = Number(item.product_variant_id)
+        if (!vid) return false
+        const owner = variants.find((v) => v.id === vid)
+        if (!owner) return false
+        const pairs = new Map(variantPairs(owner))
+        return pairs.get(lastPickedOption.axis) === lastPickedOption.option
+      })
+      return hit ? hit.id : null
     }
     // 2. Parsial: foto varian pertama yang memuat opsi yang baru diklik.
     const hit = media.find((item) => {
