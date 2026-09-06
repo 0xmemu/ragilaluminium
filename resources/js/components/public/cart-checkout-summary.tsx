@@ -61,7 +61,7 @@ export function CartCheckoutSummary({
           <span className="tabular-nums text-sm font-bold leading-5">{formatCurrency(subtotal)}</span>
           {hasDiscount ? (
             <span className="tabular-nums text-[10px] font-semibold leading-3 text-sale">
-              Potongan Harga −{formatCurrency(discount)}
+              Hemat {formatCurrency(discount)}
             </span>
           ) : null}
         </div>
@@ -79,9 +79,9 @@ export function CartCheckoutSummary({
         </div>
         {hasDiscount ? (
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-muted-foreground">Total Potongan</dt>
+            <dt className="text-muted-foreground">Hemat</dt>
             <dd className="tabular-nums font-semibold text-sale">
-              −{formatCurrency(discount)}
+              {formatCurrency(discount)}
             </dd>
           </div>
         ) : null}
