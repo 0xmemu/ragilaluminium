@@ -39,12 +39,19 @@ export function CartCheckoutSummary({
       className={
         variant === "panel"
           ? "h-10 min-h-10 min-w-0 px-5 text-sm"
-          : "h-10 min-h-10 min-w-0 shrink-0 px-3 text-xs min-[375px]:px-5 min-[375px]:text-sm"
+          : "h-10 min-h-10 min-w-0 shrink-0 px-2.5 text-[11px] leading-tight min-[375px]:px-4 min-[375px]:text-xs"
       }
       disabled={disabled || processing}
     >
-      {label}
-      <Icon name="arrow-right" className="size-4" aria-hidden="true" />
+      <span className="min-w-0 text-left">
+        <span className="block truncate">{label}</span>
+        {variant === "sticky" && hasDiscount ? (
+          <span className="block truncate text-[10px] font-medium text-primary-foreground/85">
+            Hemat {formatCurrency(discount)}
+          </span>
+        ) : null}
+      </span>
+      <Icon name="arrow-right" className="size-4 shrink-0" aria-hidden="true" />
     </Button>
   )
 
@@ -54,9 +61,14 @@ export function CartCheckoutSummary({
         aria-label="Lanjut checkout"
         spacerClassName="h-[calc(var(--mobile-sticky-cta-height)+0.5rem)]"
       >
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[10px] font-medium leading-3 text-muted-foreground">Subtotal</span>
           <span className="tabular-nums text-sm font-bold leading-5">{formatCurrency(subtotal)}</span>
+          {hasDiscount ? (
+            <span className="tabular-nums text-[10px] font-semibold leading-3 text-sale">
+              Potongan Harga −{formatCurrency(discount)}
+            </span>
+          ) : null}
         </div>
         <form onSubmit={onSubmit}>{submitButton}</form>
       </MobileStickyCta>
