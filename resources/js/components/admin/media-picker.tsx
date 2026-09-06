@@ -293,19 +293,19 @@ export function MediaPicker({
           )}
         </div>
 
-        {multiple ? (
-          <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
-            <p className="text-xs text-muted-foreground">{selected.length} dipilih</p>
-            <button
-              type="button"
-              onClick={confirmSelection}
-              disabled={!selected.length}
-              className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover disabled:opacity-50"
-            >
-              Gunakan yang dipilih
-            </button>
-          </div>
-        ) : null}
+        <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            {selected.length ? `${selected.length} media dipilih` : "Pilih media terlebih dahulu"}
+          </p>
+          <button
+            type="button"
+            onClick={confirmSelection}
+            disabled={!selected.length}
+            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover disabled:opacity-50"
+          >
+            Gunakan media
+          </button>
+        </div>
       </div>
     </div>
   )

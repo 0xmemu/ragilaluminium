@@ -151,7 +151,7 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ProductPublicationService $publication): RedirectResponse
     {
         $validated = $request->validate([
             'workflow' => ['nullable', 'in:wizard'],
@@ -223,9 +223,12 @@ class ProductController extends Controller
         $validated['updated_by_user_id'] = $request->user()->id;
 
         $product = null;
-        DB::transaction(function () use ($validated, $createInitialVariant, $initialVariant, $request, &$product): void {
+        DB::transaction(function () use ($validated, $createInitialVariant, $initialVariant, $request, $publication, &$product): void {
             $product = Product::create([
                 ...$validated,
+                // Produk dibuat sebagai arsip sementara selama seluruh data
+                // disusun; bila tombol Aktifkan dipilih, publication gate dijalankan
+                // dalam transaksi yang sama setelah varian dan media terpasang.
                 'status' => 'archived',
                 'parent_sku' => ShopeeStyleSku::nextParentSku(),
             ]);
@@ -280,7 +283,17 @@ class ProductController extends Controller
                         $row['variation_'.$slot.'_name'] = $def['name'];
                         $row['variation_'.$slot.'_option'] = $options[$defIndex];
                     }
-                    // ADR-021: gambar per opsi -> media varian (is_main utk opsi pertama yg punya gambar).
+                    $stockRaw = trim((string) ($combination['stock'] ?? ''));
+                    $row['variant_sku'] = ShopeeStyleSku::nextVariantSku($product);
+                    $row['price'] = $price;
+                    $row['stock'] = \App\Services\StockCellParser::resolve($stockRaw !== '' ? $stockRaw : null) ?? 0;
+                    $row['status'] = 'active';
+                    $row['created_by_user_id'] = $request->user()->id;
+                    $row['updated_by_user_id'] = $request->user()->id;
+                    $variant = ProductVariant::create($row);
+
+                    // ADR-021: gambar per opsi -> media varian. Varian harus
+                    // sudah dibuat lebih dulu agar product_variant_id valid.
                     $resolverForVariant = app(\App\Services\MediaAssetResolver::class);
                     $optionMediaAttached = 0;
                     foreach ($defs as $defIndex => $def) {
@@ -308,14 +321,6 @@ class ProductController extends Controller
                             $optionMediaAttached++;
                         }
                     }
-                    $stockRaw = trim((string) ($combination['stock'] ?? ''));
-                    $row['variant_sku'] = ShopeeStyleSku::nextVariantSku($product);
-                    $row['price'] = $price;
-                    $row['stock'] = \App\Services\StockCellParser::resolve($stockRaw !== '' ? $stockRaw : null) ?? 0;
-                    $row['status'] = 'active';
-                    $row['created_by_user_id'] = $request->user()->id;
-                    $row['updated_by_user_id'] = $request->user()->id;
-                    ProductVariant::create($row);
                 }
             }
 
@@ -334,13 +339,22 @@ class ProductController extends Controller
                     'visibility' => 'visible',
                 ], (int) $request->user()->id);
             }
+
+            // Tombol "Simpan & aktifkan" pada halaman create langsung menjalankan
+            // gate publikasi. Karena masih di dalam transaksi, produk tidak akan
+            // tersimpan setengah aktif bila checklist belum lengkap.
+            if (($validated['status'] ?? 'archived') === 'active') {
+                $publication->publish($product->fresh(), (int) $request->user()->id);
+            }
         });
 
         if ($wizard) {
-            // ADR-020: satu halaman penuh; tanpa step variants (media & varian
-            // sudah dikirim bersama). Edit page menampilkan checklist publish.
+            // Satu halaman penuh. Tombol "Simpan & aktifkan" sudah menjalankan
+            // publication gate di transaksi create; tombol biasa tetap draf.
             return redirect()->route('admin.products.edit', ['product' => $product])
-                ->with('success', 'Produk draf tersimpan. Lengkapi checklist lalu aktifkan.');
+                ->with('success', $product->status === 'active'
+                    ? 'Produk berhasil dibuat dan diaktifkan.'
+                    : 'Produk draf tersimpan. Lengkapi checklist lalu aktifkan.');
         }
 
         return redirect()->route('admin.products.index')

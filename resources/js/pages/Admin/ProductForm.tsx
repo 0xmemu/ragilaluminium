@@ -253,7 +253,9 @@ export default function ProductForm({
   function submit(status: "active" | "archived", event: React.FormEvent, addAnother = false) {
     event.preventDefault()
     setSaving(true)
-    const payload = buildPayload(status)
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+    const requestedStatus = !editing && submitter?.textContent?.includes("aktifkan") ? "active" : status
+    const payload = buildPayload(requestedStatus)
     // ADR-021: create = POST store; edit = PUT update (405 kalau POST).
     const options = {
       onSuccess: () => {
@@ -292,6 +294,11 @@ export default function ProductForm({
           <Button type="submit" form="product-edit-form" variant="secondary" disabled={saving}>
             {saving ? "Menyimpan..." : (isActive ? "Simpan" : "Simpan draf")}
           </Button>
+          {!editing ? (
+            <Button type="submit" form="product-edit-form" disabled={saving}>
+              {saving ? "Mengaktifkan..." : "Simpan & aktifkan"}
+            </Button>
+          ) : null}
           {publishUrl && !isActive ? (
             <Button type="button" disabled={publishing} onClick={publish}>
               {publishing ? "Mempublikasikan..." : "Aktifkan produk"}
