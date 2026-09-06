@@ -260,7 +260,7 @@ export default function Checkout({
         >
           <div className="mx-auto flex w-full max-w-lg">
             {/* Continuous segmented bar tanpa pill tombol terpisah - konsisten dgn PDP & cart */}
-            <div className="flex w-full items-stretch divide-x divide-border overflow-hidden border-t border-border bg-surface">
+            <div className="flex w-full items-stretch min-h-14 divide-x divide-border overflow-hidden border-t border-border bg-surface">
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3">
                 <span className="text-[10px] font-medium leading-3 text-muted-foreground">
                   Total Pembayaran

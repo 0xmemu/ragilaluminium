@@ -70,7 +70,7 @@
     /* Mobile bottom nav (h-14 chrome) + iOS home indicator */
     --mobile-bottom-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
     /* Sticky commerce CTA strip above bottom nav */
-    --mobile-sticky-cta-height: 4.25rem;
+    --mobile-sticky-cta-height: 5rem;
   }
 
   /* Admin dark: turunan sidebar graphite #131212 (netral), bukan mineral hijau hue 150. */

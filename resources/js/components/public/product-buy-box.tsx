@@ -251,7 +251,7 @@ export function ProductBuyBox({
           className="!p-0 !border-t-0 shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)]"
         >
           {/* Segmented full-width continuous stripe tanpa pill tombol terpisah */}
-          <div className="flex w-full items-stretch h-10 divide-x divide-border overflow-hidden border-t border-border bg-surface">
+          <div className="flex w-full items-stretch h-14 divide-x divide-border overflow-hidden border-t border-border bg-surface">
             {/* Segment 1: Quantity */}
             <div className="flex shrink-0 items-center justify-center bg-surface px-1.5 text-foreground">
               <button
