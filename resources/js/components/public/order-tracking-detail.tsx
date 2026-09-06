@@ -358,53 +358,60 @@ function StatusSummary({ order }: { order: PublicOrder }) {
 
   return (
     <ol
-      className="flex items-start justify-between gap-0.5"
+      className="grid grid-cols-4 w-full"
       aria-label="Progres pesanan"
     >
       {steps.map((step, index) => {
         const Glyph = SUMMARY_ICONS[step.icon] ?? Package
         const active = step.state === "completed" || step.state === "current"
         const isLast = index === steps.length - 1
-        // Kontrak 7: connector hanya tampil utk progres yang relevan:
-        // hijau setelah completed, abu setelah current, invisible setelah upcoming.
-        const connector =
-          step.state === "completed" ? "bg-[#2b734e]" : step.state === "current" ? "bg-border" : "bg-transparent"
+        // Connector line presisi antar titik tengah icon (identik di semua step)
+        const connectorColor =
+          step.state === "completed" ? "bg-[#2b734e]" : "bg-border/60"
         return (
-          <React.Fragment key={step.key}>
-            <li aria-current={step.state === "current" ? "step" : undefined}>
-              <div className="flex flex-col items-center gap-1.5">
-                <span
-                  className={cn(
-                    "flex size-11 items-center justify-center rounded-full transition-colors",
-                    stepClass(step.state),
-                  )}
-                >
-                  {step.state === "completed" ? (
-                    <Check className="size-5" weight="bold" />
-                  ) : (
-                    <Glyph
-                      className="size-5"
-                      weight={step.state === "current" ? "bold" : "regular"}
-                    />
-                  )}
-                </span>
-                <span
-                  className={cn(
-                    "text-[11px] leading-tight text-balance max-w-[72px]",
-                    active ? "font-semibold text-foreground" : "text-muted-foreground",
-                  )}
-                >
-                  {step.label}
-                </span>
-              </div>
-            </li>
+          <li
+            key={step.key}
+            aria-current={step.state === "current" ? "step" : undefined}
+            className="relative flex flex-col items-center text-center min-w-0"
+          >
+            {/* Garis penghubung identik di belakang icon */}
             {!isLast ? (
-              <span
+              <div
                 aria-hidden="true"
-                className={cn("mt-[22px] h-0.5 flex-1 rounded-full", connector)}
+                className={cn(
+                  "absolute left-1/2 right-[-50%] top-[22px] h-[2px] -translate-y-1/2 z-0",
+                  connectorColor,
+                )}
               />
             ) : null}
-          </React.Fragment>
+
+            {/* Lingkaran Icon */}
+            <span
+              className={cn(
+                "relative z-10 flex size-11 shrink-0 items-center justify-center rounded-full transition-colors",
+                stepClass(step.state),
+              )}
+            >
+              {step.state === "completed" ? (
+                <Check className="size-5" weight="bold" />
+              ) : (
+                <Glyph
+                  className="size-5"
+                  weight={step.state === "current" ? "bold" : "regular"}
+                />
+              )}
+            </span>
+
+            {/* Label Status */}
+            <span
+              className={cn(
+                "mt-1.5 px-0.5 text-[11px] leading-tight text-center break-words w-full",
+                active ? "font-semibold text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {step.label}
+            </span>
+          </li>
         )
       })}
     </ol>
