@@ -105,7 +105,7 @@ function CheckoutItemNoteRow({
     }, 500)
   }
 
-  const variantLabel = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
+  const variantLabel = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" / ")
   const unitPrice = Number(item.unit_price ?? item.line_total ?? 0)
   const comparePrice = item.compare_price == null ? null : Number(item.compare_price)
   const lineDiscount = Number(item.line_discount ?? 0)
@@ -142,28 +142,30 @@ function CheckoutItemNoteRow({
           {variantLabel ? (
             <p className="text-xs text-muted-foreground">{variantLabel}</p>
           ) : null}
-          {hasDiscount ? (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1 text-[11px]">
-              <span className="font-semibold text-sale">
-                Diskon{discountPercent ? ` ${discountPercent}%` : ""}
-              </span>
-              {lineDiscount > 0 ? (
-                <span className="tabular-nums text-sale">Hemat {formatCurrency(lineDiscount)}</span>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="flex items-center justify-between gap-2 pt-1">
+          <div className="flex items-end justify-between gap-2 pt-1">
+            <span className="text-xs text-muted-foreground">{item.quantity} unit</span>
             <span className="text-right">
-              {hasDiscount && compareTotal != null ? (
-                <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
-                  {formatCurrency(compareTotal)}
-                </span>
-              ) : null}
+              <span className="flex items-center justify-end gap-1.5">
+                {hasDiscount && compareTotal != null ? (
+                  <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                    {formatCurrency(compareTotal)}
+                  </span>
+                ) : null}
+                {discountPercent ? (
+                  <span className="rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
+                    {discountPercent}%
+                  </span>
+                ) : null}
+              </span>
               <span className="tabular-nums block text-xs font-bold text-primary sm:text-sm">
                 {formatCurrency(item.line_total ?? unitPrice * item.quantity)}
               </span>
+              {lineDiscount > 0 ? (
+                <span className="tabular-nums block text-[11px] text-sale">
+                  Hemat {formatCurrency(lineDiscount)}
+                </span>
+              ) : null}
             </span>
-            <span className="text-xs text-muted-foreground">{item.quantity} unit</span>
           </div>
         </div>
       </div>

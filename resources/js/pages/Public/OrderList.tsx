@@ -135,7 +135,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
                       )}
                       {item.variant_label ? (
                         <span className="mt-0.5 block break-words text-[11px] text-muted-foreground">
-                          {item.variant_label}
+                          {item.variant_label?.replace(/ · /g, " / ")}
                         </span>
                       ) : null}
                       {item.note ? (

@@ -152,7 +152,7 @@ export function CheckoutSummary({
                 ? comparePrice * item.quantity
                 : null
           const discountPercent = item.discount_percent
-          const variantText = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
+          const variantText = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" / ")
 
           return (
             <li key={item.line_id} className="flex justify-between gap-3 py-2.5 text-xs">
@@ -416,9 +416,14 @@ export function CheckoutSummary({
             {formatCurrency(finalTotal)}
           </dd>
         </div>
+        {discount > 0 ? (
+          <p className="mt-1 text-right text-[11px] leading-4 text-sale">
+            Anda menghemat {formatCurrency(discount)} (perhitungan harga asli, sebelum diskon, voucher, subsidi, dan potongan lain)
+          </p>
+        ) : null}
       </dl>
 
-      <TrustAssuranceCard className="mt-4" />
+      <TrustAssuranceCard className="mt-2.5" />
     </aside>
   )
 }
