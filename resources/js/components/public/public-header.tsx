@@ -320,7 +320,7 @@ export function PublicHeader() {
 
   return (
     <>
-    <header className="sticky top-0 z-header border-b border-white/10 bg-header-bg text-background shadow-[0_2px_16px_rgba(0,0,0,0.22)]">
+    <header className="fixed inset-x-0 top-0 z-header border-b border-white/10 bg-header-bg text-background shadow-[0_2px_16px_rgba(0,0,0,0.22)]">
       <div className="container-page relative flex h-12 md:h-12 items-center gap-2 py-0 md:gap-3 !px-2.5 md:!px-8 lg:!px-12">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>

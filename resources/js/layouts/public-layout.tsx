@@ -24,6 +24,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       </a>
       {isHome ? <AnnouncementBar /> : null}
       <PublicHeader />
+      {/* Spacer utk header fixed (48px) + nav desktop bar kedua (44px, md+) */}
+      <div className="h-12 md:h-[92px]" aria-hidden="true" />
       <FlashMessages />
       <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full overflow-x-hidden outline-none">
         {children}
