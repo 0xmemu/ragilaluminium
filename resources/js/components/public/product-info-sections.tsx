@@ -211,16 +211,8 @@ export function ProductInfoSections({
             ) : null}
           </div>
 
-          {/* Tombol Back & Next Carousel (Desktop) + Lihat Semua */}
+          {/* Tombol Back & Next Carousel (Desktop) */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setReviewsOpen(true)}
-              className="hidden lg:inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline mr-2"
-            >
-              <span>Lihat Semua ({reviews.length})</span>
-              <Icon name="arrow-right" className="size-3.5" weight="bold" aria-hidden="true" />
-            </button>
             <button
               type="button"
               onClick={() => scrollReviews(-1)}
