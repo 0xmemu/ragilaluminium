@@ -45,11 +45,6 @@ export function CartCheckoutSummary({
     >
       <span className="min-w-0 text-left">
         <span className="block truncate">{label}</span>
-        {variant === "sticky" && hasDiscount ? (
-          <span className="block truncate text-[10px] font-medium text-primary-foreground/85">
-            Hemat {formatCurrency(discount)}
-          </span>
-        ) : null}
       </span>
       <Icon name="arrow-right" className="size-4 shrink-0" aria-hidden="true" />
     </Button>
