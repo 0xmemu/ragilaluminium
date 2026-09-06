@@ -251,9 +251,9 @@ export function ProductBuyBox({
           className="!p-0 !border-t-0 shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)]"
         >
           {/* Segmented full-width continuous stripe tanpa pill tombol terpisah */}
-          <div className="flex w-full items-stretch h-12 divide-x divide-border overflow-hidden border-t border-border bg-surface">
+          <div className="flex w-full items-stretch h-10 divide-x divide-border overflow-hidden border-t border-border bg-surface">
             {/* Segment 1: Quantity */}
-            <div className="flex shrink-0 items-center justify-center bg-surface px-2 text-foreground">
+            <div className="flex shrink-0 items-center justify-center bg-surface px-1.5 text-foreground">
               <button
                 type="button"
                 onClick={() => {
@@ -261,12 +261,12 @@ export function ProductBuyBox({
                   changeQuantity(Math.max(1, form.data.quantity - 1))
                 }}
                 disabled={ctaDisabled || form.data.quantity <= 1}
-                className="flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-30 focus-visible:outline-none"
+                className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-30 focus-visible:outline-none"
                 aria-label="Kurangi jumlah"
               >
-                <Icon name="minus" className="size-3.5" />
+                <Icon name="minus" className="size-3" />
               </button>
-              <span className="min-w-[1.5rem] text-center font-mono text-sm font-bold text-foreground">
+              <span className="min-w-[1.25rem] text-center font-mono text-xs font-bold text-foreground">
                 {form.data.quantity}
               </span>
               <button
@@ -276,10 +276,10 @@ export function ProductBuyBox({
                   changeQuantity(selectedVariant?.stock ? Math.min(selectedVariant.stock, form.data.quantity + 1) : form.data.quantity + 1)
                 }}
                 disabled={ctaDisabled || (selectedVariant?.stock !== undefined && form.data.quantity >= selectedVariant.stock)}
-                className="flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-30 focus-visible:outline-none"
+                className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-30 focus-visible:outline-none"
                 aria-label="Tambah jumlah"
               >
-                <Icon name="plus" className="size-3.5" />
+                <Icon name="plus" className="size-3" />
               </button>
             </div>
 
@@ -288,9 +288,9 @@ export function ProductBuyBox({
               type="button"
               disabled={ctaDisabled}
               onClick={purchase.buyNow}
-              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-surface-muted/90 px-2 text-sm font-semibold text-foreground transition hover:bg-muted active:bg-muted/80 disabled:opacity-40 focus-visible:outline-none"
+              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-surface-muted/90 px-2 text-xs font-semibold text-foreground transition hover:bg-muted active:bg-muted/80 disabled:opacity-40 focus-visible:outline-none"
             >
-              <Icon name="credit-card" className="size-4 shrink-0" aria-hidden="true" />
+              <Icon name="credit-card" className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {form.processing && submitIntent === "checkout" ? (
                   "..."
@@ -307,9 +307,9 @@ export function ProductBuyBox({
             <button
               type="submit"
               disabled={ctaDisabled}
-              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-primary px-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
+              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-primary px-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
             >
-              <Icon name="shopping-cart" className="size-4 shrink-0" aria-hidden="true" />
+              <Icon name="shopping-cart" className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {form.processing && submitIntent === "cart" ? "..." : "Keranjang"}
               </span>
