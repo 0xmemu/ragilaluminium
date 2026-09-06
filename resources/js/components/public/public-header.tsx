@@ -576,12 +576,12 @@ export function PublicHeader() {
             <Link
               href={routeUrl("cart.index")}
               data-cart-target
-              className="relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-9 lg:h-9 lg:w-auto lg:min-w-9 lg:gap-1.5 lg:px-3"
+              className="relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 -mr-0.5 md:mr-0 md:size-9 lg:h-9 lg:w-auto lg:min-w-9 lg:gap-1.5 lg:px-3"
               aria-label={`Keranjang, ${visibleCartCount ?? 0} barang`}
               aria-expanded={cartPreviewOpen}
               aria-controls="cart-hover-preview"
             >
-              <span className={cn("relative inline-flex size-7 shrink-0 items-center justify-center lg:size-7", cartBump && "animate-cart-bump")}>
+              <span className={cn("relative inline-flex size-7 shrink-0 items-center justify-center translate-y-[1.5px] -translate-x-[2px] md:translate-y-0 md:translate-x-0 lg:size-7", cartBump && "animate-cart-bump")}>
                 <Icon name="shopping-cart" className="size-7 md:size-6 lg:size-6" aria-hidden="true" />
                 {visibleCartCount > 0 ? (
                   <span className="tabular-nums absolute -right-2 -top-1.5 flex size-4 min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white">
