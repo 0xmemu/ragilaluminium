@@ -249,32 +249,37 @@ export default function Checkout({
         </div>
       </section>
 
-      {/* Sticky bar bawah viewport: total + tombol submit form pembayaran */}
+      {/* Sticky bar bawah viewport: total + tombol submit form pembayaran.
+          Gaya diseragamkan dengan MobileStickyCta di halaman lain (bar surface/95,
+          bottom di atas bottom-nav, shadow & backdrop sama). */}
       {details && !c.editingDetails ? (
         <div
           role="region"
           aria-label="Buat pesanan"
-          className="fixed inset-x-0 z-40 border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md sm:px-6 lg:hidden"
-          style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}
+          className="mobile-sticky-cta border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md"
         >
-          <div className="container-page flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="mx-auto flex w-full max-w-lg items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-[10px] font-medium leading-3 text-muted-foreground">
                 Total Pembayaran
-              </p>
-              <p className="truncate tabular-nums text-base font-bold text-primary sm:text-lg">
+              </span>
+              <span className="truncate tabular-nums text-sm font-bold leading-5 text-foreground">
                 {formatCurrency(checkoutTotal)}
-              </p>
+              </span>
             </div>
             <Button
               type="submit"
               form="checkout-payment-form"
-              size="lg"
-              className="h-11 min-h-11 shrink-0 px-5 font-bold"
+              size="md"
+              className="h-10 min-h-10 min-w-0 shrink-0 px-2.5 text-[11px] leading-tight font-semibold min-[375px]:px-4 min-[375px]:text-xs"
               disabled={!details || c.editingDetails || c.paymentForm.processing}
             >
-              {c.paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
-              <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
+              <span className="min-w-0 text-left">
+                <span className="block truncate">
+                  {c.paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
+                </span>
+              </span>
+              <Icon name="arrow-right" className="size-4 shrink-0" aria-hidden="true" />
             </Button>
           </div>
         </div>
