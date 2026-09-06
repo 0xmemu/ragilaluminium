@@ -132,7 +132,7 @@ export default function ProductDetail({
 
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 pb-4 pt-0 lg:pt-5 lg:pb-5">
         <div className="grid min-w-0 gap-2 lg:grid-cols-[480px_minmax(0,1fr)] lg:items-start lg:gap-8">
-          {/* Kolom Kiri: Galeri Produk + (Desktop) Ulasan Pembeli & Hasil Pemasangan */}
+          {/* Kolom Kiri: Galeri Produk */}
           <div className="relative min-w-0">
             <button
               type="button"
@@ -146,31 +146,17 @@ export default function ProductDetail({
               <ShareActionButton title={title} url={shareUrl} />
             </div>
             <ProductGallery items={variantMedia} title={title} onActiveMediaChange={setActiveMedia} highlightedMediaId={highlightedMediaId} />
-
-            {/* Desktop only: Ulasan Pembeli & Hasil Pemasangan di bawah galeri */}
-            <div className="hidden lg:block mt-8 border-t border-border pt-6">
-              <ProductInfoSections
-                mode="reviews-installation"
-                product={product}
-                attributes={attributes}
-                installationMedia={installationMedia}
-                reviews={reviews}
-                averageRating={averageRating}
-                ratingLabel={ratingLabel}
-                ratedReviews={ratedReviews}
-              />
-            </div>
           </div>
 
-          {/* Kolom Kanan: Buy Box + (Mobile: Semua Info / Desktop: Hanya Accordion Informasi & Deskripsi) */}
-          <div className="min-w-0 lg:sticky lg:top-28">
+          {/* Kolom Kanan: Buy Box + (Mobile: Semua Info / Desktop: Accordion Info & Deskripsi) */}
+          <div className="min-w-0 lg:sticky lg:top-14">
             <ProductBuyBox
               product={product}
               purchase={purchase}
               activeMedia={activeMedia}
               shareUrl={shareUrl}
             />
-            {/* Mobile view: tampilkan semua info section termasuk ulasan */}
+            {/* Mobile view: tampilkan semua info section (accordion, ulasan, pemasangan) */}
             <div className="lg:hidden">
               <ProductInfoSections
                 mode="all"
@@ -197,6 +183,20 @@ export default function ProductDetail({
               />
             </div>
           </div>
+        </div>
+
+        {/* Desktop only: Section Full Width Ulasan Pembeli (Carousel) & Hasil Pemasangan (Horizontal) */}
+        <div className="hidden lg:block mt-10 border-t border-border pt-8">
+          <ProductInfoSections
+            mode="reviews-installation"
+            product={product}
+            attributes={attributes}
+            installationMedia={installationMedia}
+            reviews={reviews}
+            averageRating={averageRating}
+            ratingLabel={ratingLabel}
+            ratedReviews={ratedReviews}
+          />
         </div>
       </section>
 

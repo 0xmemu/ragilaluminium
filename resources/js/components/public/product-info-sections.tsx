@@ -108,6 +108,30 @@ export function ProductInfoSections({
   const [installationOpen, setInstallationOpen] = React.useState(false)
   const [installationIndex, setInstallationIndex] = React.useState(0)
 
+  const reviewsScrollRef = React.useRef<HTMLUListElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false)
+  const [canScrollRight, setCanScrollRight] = React.useState(true)
+
+  const checkScroll = React.useCallback(() => {
+    const el = reviewsScrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }, [])
+
+  React.useEffect(() => {
+    checkScroll()
+    window.addEventListener("resize", checkScroll)
+    return () => window.removeEventListener("resize", checkScroll)
+  }, [checkScroll, reviews.length])
+
+  const scrollReviews = (dir: -1 | 1) => {
+    const el = reviewsScrollRef.current
+    if (!el) return
+    const amount = el.clientWidth * 0.75 * dir
+    el.scrollBy({ left: amount, behavior: "smooth" })
+  }
+
   const visibleAttributes = attributes.filter(
     (a) => !/^(promo_|flash_sale|compare_price|harga_asli|harga_sebelum_diskon)/i.test(a.name),
   )
@@ -168,30 +192,68 @@ export function ProductInfoSections({
 
       {showReviewsAndInstallation ? (
       <>
-      {/* Penilaian & Ulasan - disembunyikan bila produk belum punya ulasan */}
+      {/* Penilaian & Ulasan - Carousel horizontal di desktop */}
       {reviews.length ? (
       <section id="penilaian-ulasan" className="mt-4 scroll-mt-28">
-        <h2 className="text-base font-bold text-foreground">Ulasan Pembeli</h2>
-        {averageRating !== null ? (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-[22px] font-normal leading-8 text-foreground">
-              {ratingLabel}/5
-            </span>
-            <StarRow value={averageRating} size="size-4" />
-            <span className="text-xs text-muted-foreground">
-              ({ratedReviews.length} ulasan)
-            </span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-base lg:text-lg font-bold text-foreground">Ulasan Pembeli</h2>
+            {averageRating !== null ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-lg lg:text-xl font-bold leading-none text-foreground">
+                  {ratingLabel}/5
+                </span>
+                <StarRow value={averageRating} size="size-4" />
+                <span className="text-xs text-muted-foreground">
+                  ({ratedReviews.length} ulasan)
+                </span>
+              </div>
+            ) : null}
           </div>
-        ) : null}
+
+          {/* Tombol Back & Next Carousel (Desktop) + Lihat Semua */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setReviewsOpen(true)}
+              className="hidden lg:inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline mr-2"
+            >
+              <span>Lihat Semua ({reviews.length})</span>
+              <Icon name="arrow-right" className="size-3.5" weight="bold" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollReviews(-1)}
+              disabled={!canScrollLeft}
+              aria-label="Geser ulasan ke kiri"
+              className="hidden lg:inline-flex size-8 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none"
+            >
+              <Icon name="caret-left" className="size-4" weight="bold" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollReviews(1)}
+              disabled={!canScrollRight}
+              aria-label="Geser ulasan ke kanan"
+              className="hidden lg:inline-flex size-8 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition hover:bg-muted disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none"
+            >
+              <Icon name="caret-right" className="size-4" weight="bold" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
 
         {reviews.length ? (
-          <ul className="mt-4 flex flex-col gap-3">
-            {reviews.slice(0, 2).map((review) => {
+          <ul
+            ref={reviewsScrollRef}
+            onScroll={checkScroll}
+            className="scrollbar-none mt-4 flex flex-col gap-3 lg:flex-row lg:overflow-x-auto lg:scroll-smooth lg:pb-2"
+          >
+            {reviews.map((review) => {
               const photos = reviewImages(review)
               return (
                 <li
                   key={review.id}
-                  className="flex flex-col rounded-xl border border-border bg-white p-4"
+                  className="flex flex-col rounded-xl border border-border bg-white p-4 shrink-0 lg:w-[320px] lg:max-w-[320px]"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
@@ -208,7 +270,7 @@ export function ProductInfoSections({
                       <StarRow value={review.rating ?? 0} size="size-3" />
                     </div>
                   ) : null}
-                  <p className="mt-1 max-w-full break-words text-xs leading-snug text-foreground">
+                  <p className="mt-1 max-w-full break-words text-xs leading-snug text-foreground line-clamp-3">
                     {review.message}
                   </p>
                   {photos.length ? (
@@ -246,7 +308,7 @@ export function ProductInfoSections({
           </p>
         )}
         {reviews.length ? (
-          <div className="mt-4 border-t border-b border-border">
+          <div className="mt-4 border-t border-b border-border lg:hidden">
             <button
               type="button"
               onClick={() => setReviewsOpen(true)}
@@ -280,8 +342,8 @@ export function ProductInfoSections({
               <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
             </Link>
           </div>
-          <ul className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-3">
-            {installationMedia.slice(0, 3).map((item, index) => (
+          <ul className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+            {installationMedia.slice(0, 6).map((item, index) => (
               <li key={item.id}>
                 <button
                   type="button"
