@@ -15,7 +15,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   const isHome = component === "Public/Home"
 
   return (
-    <div className="public-title-case min-h-screen bg-background text-body">
+    <div className="public-title-case min-h-screen overflow-x-clip bg-background text-body">
       <a
         href="#main-content"
         className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition focus:translate-y-0"
@@ -25,7 +25,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       {isHome ? <AnnouncementBar /> : null}
       <PublicHeader />
       <FlashMessages />
-      <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full outline-none">
+      <main id="main-content" tabIndex={-1} className="min-h-[55dvh] w-full min-w-0 max-w-full overflow-x-hidden outline-none">
         {children}
       </main>
       <FlyingCart />
