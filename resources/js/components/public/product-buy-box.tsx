@@ -138,12 +138,12 @@ export function ProductBuyBox({
       >
         <div ref={variantSectionRef} className="space-y-4">
           {axes.length > 0 || selectedVariant ? (
-            <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="mb-2 flex min-w-0 items-center gap-2">
               {axes.length > 0 ? (
-                <p className="text-xs font-bold text-foreground">Pilih varian</p>
+                <p className="shrink-0 text-xs font-bold text-foreground">Pilih varian</p>
               ) : null}
               {selectedVariant ? (
-                <p className="min-w-0 truncate text-right text-xs font-light text-muted-foreground">
+                <p className="min-w-0 truncate text-left text-xs font-light text-muted-foreground">
                   <span>{selectedVariantLabel}</span>
                   <span className="mx-1">·</span>
                   <span
