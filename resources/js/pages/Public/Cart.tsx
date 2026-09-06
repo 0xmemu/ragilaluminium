@@ -266,18 +266,7 @@ export default function Cart({
                 onSubmit={checkoutSelected}
               />
             </div>
-            {/* Ringkasan flat (mobile saja): di desktop dipakai panel lg:block, jangan render dobel. */}
-            <div className="border-t border-border pt-3 lg:hidden">
-              <CartCheckoutSummary
-                variant="panel"
-                itemCount={selectMode ? selectedIds.size : cartItems.length}
-                subtotal={selectedSubtotal}
-                discount={selectedDiscount}
-                disabled={selectMode && noneSelected}
-                processing={submitForm.processing}
-                onSubmit={checkoutSelected}
-              />
-            </div>
+            {/* Mobile: checkout cukup lewat sticky bar bawah (MobileStickyCta) - tanpa panel inline dobel */}
 
             <CartCheckoutSummary
               variant="sticky"
