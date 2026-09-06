@@ -341,26 +341,28 @@ export function CheckoutSummary({
         ) : effectiveShipping ? (
           <>
             {effectiveShipping.applied && effectiveShipping.subsidy > 0 ? (
-              <>
+              <div className="space-y-1.5 rounded-md bg-surface-muted/60 px-2.5 py-2">
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground min-w-0 break-words">Ongkir asli (tarif kurir)</dt>
-                  <dd className="tabular-nums text-muted-foreground line-through">
+                  <dt className="text-muted-foreground min-w-0 break-words">Tarif J&T</dt>
+                  <dd className="tabular-nums font-semibold text-foreground">
                     {formatCurrency(effectiveShipping.gross)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground min-w-0 break-words">Subsidi ongkir</dt>
+                  <dt className="min-w-0 break-words text-muted-foreground">
+                    Subsidi toko ({Math.round((effectiveShipping.subsidy / effectiveShipping.gross) * 100)}%)
+                  </dt>
                   <dd className="tabular-nums font-semibold text-sale">
                     -{formatCurrency(effectiveShipping.subsidy)}
                   </dd>
                 </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground min-w-0 break-words">Ongkir dibayar</dt>
+                <div className="flex justify-between gap-4 border-t border-border/70 pt-1.5">
+                  <dt className="min-w-0 break-words font-semibold text-foreground">Ongkir dibayar pelanggan</dt>
                   <dd className="tabular-nums font-bold text-foreground">
                     {formatCurrency(effectiveShipping.net)}
                   </dd>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
