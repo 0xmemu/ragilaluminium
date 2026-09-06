@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Link } from "@inertiajs/react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 import { Alert } from "@/components/ui/alert"
@@ -9,7 +10,7 @@ import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrderItem, PublicOrderReview } from "@/types"
 
-type ReviewItem = Pick<PublicOrderItem, "product_id" | "product_name" | "name">
+type ReviewItem = Pick<PublicOrderItem, "product_id" | "product_name" | "name" | "parent_sku">
 
 interface CustomerReviewFormProps {
   orderNumber: string
@@ -51,13 +52,7 @@ function firstError(payload: unknown): string | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
-function mediaToUrls(media: PublicOrderReview["media_items"]): string[] {
-  return (media ?? [])
-    .map((item) => item.url)
-    .filter((url): url is string => Boolean(url))
-}
-
-/** U3: sheet kompak - bottom sheet (mobile) / side panel kanan (desktop). */
+/** U3: sheet kompak — bottom sheet (mobile) / side panel kanan (desktop). */
 function ReviewSheet({
   open,
   onOpenChange,
@@ -116,6 +111,7 @@ export function CustomerReviewForm({
     review?.media_items ?? [],
   )
   const [currentReview, setCurrentReview] = React.useState<PublicOrderReview | null>(review)
+  const [alreadyReviewed, setAlreadyReviewed] = React.useState(false)
   const [sheetOpen, setSheetOpen] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
   const [uploading, setUploading] = React.useState(false)
@@ -132,9 +128,26 @@ export function CustomerReviewForm({
     setMediaItems(next?.media_items ?? [])
   }, [reviews, products, orderNumber])
 
-  const hasOwnReview = Boolean(currentReview?.customer_authored === true)
-  if (!eligible) return null
+  const hasOwnReview = Boolean(currentReview?.customer_authored === true || alreadyReviewed || (reviews.length > 0))
 
+  // URL halaman produk terkait dan section ulasan (#penilaian-ulasan)
+  const targetProduct = React.useMemo(() => {
+    if (productId) {
+      const found = items.find((i) => i.product_id === productId)
+      if (found) return found
+    }
+    if (currentReview?.product_id) {
+      const found = items.find((i) => i.product_id === currentReview.product_id)
+      if (found) return found
+    }
+    return items.find((i) => Boolean(i.parent_sku)) ?? items[0] ?? null
+  }, [items, productId, currentReview])
+
+  const productReviewUrl = targetProduct?.parent_sku
+    ? `${routeUrl("product.show", { parent_sku: targetProduct.parent_sku })}#penilaian-ulasan`
+    : routeUrl("reviews.website")
+
+  if (!eligible) return null
 
   function resetNotice(): void {
     setError(null)
@@ -230,7 +243,11 @@ export function CustomerReviewForm({
         review?: Partial<PublicOrderReview> & { id?: number }
       }
       if (!response.ok) {
-        setError(firstError(payload) ?? payload.message ?? "Ulasan belum dapat disimpan. Coba lagi.")
+        const errMsg = firstError(payload) ?? payload.message ?? "Ulasan belum dapat disimpan. Coba lagi."
+        if (errMsg.includes("sudah memiliki ulasan")) {
+          setAlreadyReviewed(true)
+        }
+        setError(errMsg)
         return
       }
 
@@ -246,7 +263,8 @@ export function CustomerReviewForm({
         verified_purchase: true,
         customer_authored: true,
       })
-      setSuccess(payload.message ?? "Ulasan berhasil disimpan dan menunggu moderasi.")
+      setAlreadyReviewed(true)
+      setSuccess(payload.message ?? "Ulasan berhasil disimpan.")
       setSheetOpen(false)
     } catch {
       setError("Koneksi gagal. Periksa koneksi lalu coba lagi.")
@@ -297,31 +315,24 @@ export function CustomerReviewForm({
             <p className="mt-0.5 text-xs text-muted-foreground">Bagikan pengalaman Anda agar bermanfaat bagi pembeli lain.</p>
           )}
         </div>
-        {hasOwnReview && currentReview ? (
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            className="flex w-full items-center gap-2 rounded-lg border border-success/25 bg-surface p-3 text-left transition hover:border-success/45 sm:w-auto"
-            aria-label="Lihat ulasan yang sudah Anda kirim"
+        {hasOwnReview ? (
+          <Link
+            href={productReviewUrl}
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg border border-success/30 bg-surface px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition hover:border-success/60 hover:bg-white"
           >
-            <span className="flex items-center gap-0.5" aria-label={`Rating ${currentReview.rating} dari 5`}>
+            <span className="flex items-center gap-0.5" aria-label={`Rating ${currentReview?.rating ?? 5} dari 5`}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <Icon
                   key={n}
                   name="star"
-                  weight={n <= (currentReview.rating ?? 0) ? "fill" : "regular"}
-                  className={n <= (currentReview.rating ?? 0) ? "size-4 text-[#f59e0b]" : "size-4 text-muted-foreground"}
+                  weight={n <= (currentReview?.rating ?? 5) ? "fill" : "regular"}
+                  className={n <= (currentReview?.rating ?? 5) ? "size-3.5 text-[#f59e0b]" : "size-3.5 text-muted-foreground"}
                   aria-hidden="true"
                 />
               ))}
             </span>
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              {currentReview.message}
-            </span>
-            <span className="shrink-0 text-[11px] font-semibold text-primary underline-offset-2 hover:underline">
-              Lihat
-            </span>
-          </button>
+            <span className="ml-1 text-primary font-bold">Lihat Ulasan →</span>
+          </Link>
         ) : (
           <Button
             type="button"
@@ -335,15 +346,24 @@ export function CustomerReviewForm({
       </div>
     </section>
   ) : (
-    <Button
-      type="button"
-      variant="secondary"
-      onClick={() => setSheetOpen(true)}
-      className={fullWidth ? "w-full" : "w-full sm:w-auto"}
-    >
-      <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
-      {hasOwnReview ? "Lihat Ulasan" : "Beri Ulasan"}
-    </Button>
+    hasOwnReview ? (
+      <Button asChild variant="secondary" className={fullWidth ? "w-full" : "w-full sm:w-auto"}>
+        <Link href={productReviewUrl}>
+          <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
+          Lihat Ulasan
+        </Link>
+      </Button>
+    ) : (
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => setSheetOpen(true)}
+        className={fullWidth ? "w-full" : "w-full sm:w-auto"}
+      >
+        <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
+        Beri Ulasan
+      </Button>
+    )
   )
 
   return (
@@ -358,10 +378,12 @@ export function CustomerReviewForm({
       >
       <div className="pb-14 lg:pb-4">
         <h3 id="customer-review-heading" className="text-lg font-semibold">
-          Bagikan Pengalaman Anda
+          {hasOwnReview ? "Ulasan Anda" : "Bagikan Pengalaman Anda"}
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Hanya pembelian terverifikasi yang dapat mengirim ulasan.
+          {hasOwnReview
+            ? "Ulasan Anda untuk pesanan ini telah tercatat."
+            : "Hanya pembelian terverifikasi yang dapat mengirim ulasan."}
         </p>
 
         {error ? <Alert tone="danger" className="mt-4">{error}</Alert> : null}
@@ -372,136 +394,182 @@ export function CustomerReviewForm({
           </div>
         ) : null}
 
-        <form onSubmit={(event) => void submit(event)} className="mt-5 space-y-4">
-          {products.length > 1 ? (
-            <label className="block text-sm font-medium" htmlFor={`review-product-${orderNumber}`}>
-              Produk yang diulas
-              <select
-                id={`review-product-${orderNumber}`}
-                value={productId}
-                onChange={(event) => setProductId(event.target.value === "" ? "" : Number(event.target.value))}
-                className="mt-1.5 h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
-                disabled={busy}
-              >
-                <option value="">Pilih produk</option>
-                {products.map((item) => (
-                  <option key={item.product_id} value={item.product_id}>
-                    {item.product_name ?? item.name ?? "Produk"}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          <fieldset>
-            <legend className="text-sm font-medium">Rating</legend>
-            <div className="mt-2 flex items-center gap-1.5" role="radiogroup" aria-label="Rating ulasan">
-              {[1, 2, 3, 4, 5].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={rating === value}
-                  aria-label={`${value} bintang`}
-                  onClick={() => setRating(value)}
-                  className="inline-flex items-center justify-center rounded-full p-2 transition hover:scale-110"
-                  disabled={busy}
-                >
+        {hasOwnReview ? (
+          <div className="mt-5 space-y-5">
+            <div className="rounded-xl border border-border bg-background p-4 space-y-3">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
                   <Icon
+                    key={n}
                     name="star"
-                    weight={rating >= value ? "fill" : "regular"}
-                    className={cn("size-6", rating >= value ? "text-[#f59e0b]" : "text-muted-foreground")}
+                    weight={n <= (rating || currentReview?.rating || 5) ? "fill" : "regular"}
+                    className={n <= (rating || currentReview?.rating || 5) ? "size-5 text-[#f59e0b]" : "size-5 text-muted-foreground"}
                     aria-hidden="true"
                   />
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="block text-sm font-medium" htmlFor={`review-message-${orderNumber}`}>
-            Ceritakan pengalaman Anda
-            <span className="mt-2 flex flex-wrap gap-1.5" aria-hidden="true">
-              {SUGGESTION_CHIPS.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => toggleSuggestion(chip)}
-                  aria-pressed={chipSelected(chip)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11px] transition",
-                    chipSelected(chip)
-                      ? "border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e]"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                  )}
-                >
-                  {chip}
-                </button>
-              ))}
-            </span>
-            <Textarea
-              id={`review-message-${orderNumber}`}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              rows={4}
-              maxLength={5000}
-              className="mt-1.5"
-              disabled={busy}
-              placeholder="Bagaimana kualitas produk dan proses pesanannya?"
-            />
-          </label>
-
-          <div>
-            <span className="block text-sm font-medium">Media pendukung (opsional)</span>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {mediaItems.map((item, index) => (
-                <div
-                  key={`${item.url}-${index}`}
-                  className="relative size-20 overflow-hidden rounded-md border border-border bg-background"
-                >
-                  {item.type === "video" ? (
-                    <video src={item.url} className="size-full object-cover" muted playsInline />
-                  ) : (
-                    <img src={item.url} alt="" className="size-full object-cover" loading="lazy" />
-                  )}
-                  <button
-                    type="button"
-                    aria-label="Hapus media"
-                    onClick={() => setMediaItems((prev) => prev.filter((_, i) => i !== index))}
-                    className="absolute right-0.5 top-0.5 inline-flex size-6 items-center justify-center rounded-full bg-foreground/70 text-white"
-                  >
-                    <Icon name="x" className="size-3.5" aria-hidden="true" />
-                  </button>
+                ))}
+              </div>
+              {message || currentReview?.message ? (
+                <p className="text-sm text-foreground leading-relaxed">
+                  {message || currentReview?.message}
+                </p>
+              ) : null}
+              {mediaItems.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {mediaItems.map((item, index) => (
+                    <div
+                      key={`${item.url}-${index}`}
+                      className="relative size-16 overflow-hidden rounded-md border border-border bg-surface"
+                    >
+                      {item.type === "video" ? (
+                        <video src={item.url} className="size-full object-cover" muted playsInline />
+                      ) : (
+                        <img src={item.url} alt="" className="size-full object-cover" loading="lazy" />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {mediaItems.length < 10 ? (
-                <label className="inline-flex size-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
-                  <Icon name="image" className="size-5" aria-hidden="true" />
-                  <span className="text-[10px]">{uploading ? "Mengunggah..." : "Unggah"}</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,video/mp4"
-                    multiple
-                    className="sr-only"
-                    disabled={uploading || busy}
-                    onChange={(event) => {
-                      if (event.target.files && event.target.files.length > 0) {
-                        void uploadFiles(event.target.files)
-                      }
-                      event.target.value = ""
-                    }}
-                  />
-                </label>
               ) : null}
             </div>
-            <p className="mt-1 text-xs font-normal text-muted-foreground">
-              {mediaItems.length}/10 media. Foto atau video, maksimal 10 MB per file.
-            </p>
-          </div>
 
-          <Button type="submit" disabled={busy || uploading} className="w-full">
-            {busy ? "Menyimpan..." : "Kirim ulasan"}
-          </Button>
-        </form>
+            <Button asChild className="w-full">
+              <Link href={productReviewUrl}>
+                Lihat Ulasan di Halaman Produk
+                <Icon name="arrow-right" className="ml-2 size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={(event) => void submit(event)} className="mt-5 space-y-4">
+            {products.length > 1 ? (
+              <label className="block text-sm font-medium" htmlFor={`review-product-${orderNumber}`}>
+                Produk yang diulas
+                <select
+                  id={`review-product-${orderNumber}`}
+                  value={productId}
+                  onChange={(event) => setProductId(event.target.value === "" ? "" : Number(event.target.value))}
+                  className="mt-1.5 h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  disabled={busy}
+                >
+                  <option value="">Pilih produk</option>
+                  {products.map((item) => (
+                    <option key={item.product_id} value={item.product_id}>
+                      {item.product_name ?? item.name ?? "Produk"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            <fieldset>
+              <legend className="text-sm font-medium">Rating</legend>
+              <div className="mt-2 flex items-center gap-1.5" role="radiogroup" aria-label="Rating ulasan">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={rating === value}
+                    aria-label={`${value} bintang`}
+                    onClick={() => setRating(value)}
+                    className="inline-flex items-center justify-center rounded-full p-2 transition hover:scale-110"
+                    disabled={busy}
+                  >
+                    <Icon
+                      name="star"
+                      weight={rating >= value ? "fill" : "regular"}
+                      className={cn("size-6", rating >= value ? "text-[#f59e0b]" : "text-muted-foreground")}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="block text-sm font-medium" htmlFor={`review-message-${orderNumber}`}>
+              Ceritakan pengalaman Anda
+              <span className="mt-2 flex flex-wrap gap-1.5" aria-hidden="true">
+                {SUGGESTION_CHIPS.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => toggleSuggestion(chip)}
+                    aria-pressed={chipSelected(chip)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[11px] transition",
+                      chipSelected(chip)
+                        ? "border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e]"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </span>
+              <Textarea
+                id={`review-message-${orderNumber}`}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                rows={4}
+                maxLength={5000}
+                className="mt-1.5"
+                disabled={busy}
+                placeholder="Bagaimana kualitas produk dan proses pesanannya?"
+              />
+            </label>
+
+            <div>
+              <span className="block text-sm font-medium">Media pendukung (opsional)</span>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {mediaItems.map((item, index) => (
+                  <div
+                    key={`${item.url}-${index}`}
+                    className="relative size-20 overflow-hidden rounded-md border border-border bg-background"
+                  >
+                    {item.type === "video" ? (
+                      <video src={item.url} className="size-full object-cover" muted playsInline />
+                    ) : (
+                      <img src={item.url} alt="" className="size-full object-cover" loading="lazy" />
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Hapus media"
+                      onClick={() => setMediaItems((prev) => prev.filter((_, i) => i !== index))}
+                      className="absolute right-0.5 top-0.5 inline-flex size-6 items-center justify-center rounded-full bg-foreground/70 text-white"
+                    >
+                      <Icon name="x" className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+                {mediaItems.length < 10 ? (
+                  <label className="inline-flex size-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
+                    <Icon name="image" className="size-5" aria-hidden="true" />
+                    <span className="text-[10px]">{uploading ? "Mengunggah..." : "Unggah"}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,video/mp4"
+                      multiple
+                      className="sr-only"
+                      disabled={uploading || busy}
+                      onChange={(event) => {
+                        if (event.target.files && event.target.files.length > 0) {
+                          void uploadFiles(event.target.files)
+                        }
+                        event.target.value = ""
+                      }}
+                    />
+                  </label>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs font-normal text-muted-foreground">
+                {mediaItems.length}/10 media. Foto atau video, maksimal 10 MB per file.
+              </p>
+            </div>
+
+            <Button type="submit" disabled={busy || uploading} className="w-full">
+              {busy ? "Menyimpan..." : "Kirim ulasan"}
+            </Button>
+          </form>
+        )}
       </div>
       </ReviewSheet>
     </>
