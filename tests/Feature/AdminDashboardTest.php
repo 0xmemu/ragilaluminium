@@ -86,7 +86,7 @@ class AdminDashboardTest extends TestCase
                 ->where('quickActions.1.label', 'Mulai Import')
                 ->where('quickActions.1.href', route('admin.imports.create'))
                 ->where('quickActions.2.label', 'Kelola Media')
-                ->where('quickActions.2.href', route('admin.media.index'))
+                ->where('quickActions.2.href', route('admin.media.library'))
                 ->has('recentOrders')
             );
     }

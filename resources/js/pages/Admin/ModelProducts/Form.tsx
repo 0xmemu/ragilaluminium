@@ -19,7 +19,6 @@ interface ModelRecord {
   description?: string | null
   keywords?: string[]
   menu_href?: string | null
-  type: string
   status: string
   sort_order: number
 }
@@ -56,7 +55,6 @@ function wordCount(value: string): number {
 
 export default function ModelProductForm({
   modelProduct,
-  types,
   statuses,
   categories,
   models,
@@ -65,7 +63,6 @@ export default function ModelProductForm({
   backUrl,
 }: {
   modelProduct: ModelRecord | null
-  types: string[]
   statuses: string[]
   categories: Array<{ value: string; label: string }>
   models: Array<{ value: string; label: string }>
@@ -82,7 +79,6 @@ export default function ModelProductForm({
     description: modelProduct?.description ?? "",
     keywords: modelProduct?.keywords ?? [],
     menu_href: modelProduct?.menu_href ?? "",
-    type: modelProduct?.type ?? types[0] ?? "polos",
     status: modelProduct?.status ?? "draft",
     sort_order: modelProduct?.sort_order ?? 0,
   })
@@ -159,19 +155,6 @@ export default function ModelProductForm({
                   {form.errors.product_model ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.product_model}</p>
                   ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Tipe desain <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Select value={form.data.type} onChange={(event) => form.setData("type", event.target.value)} className="h-8 w-64 text-xs">
-                    {types.map((type) => (
-                      <option key={type} value={type}>{humanize(type)}</option>
-                    ))}
-                  </Select>
-                  {form.errors.type ? <p className="mt-1 text-xs text-destructive">{form.errors.type}</p> : null}
                 </td>
               </tr>
               <tr>

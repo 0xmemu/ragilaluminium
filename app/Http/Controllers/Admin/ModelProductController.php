@@ -51,7 +51,6 @@ class ModelProductController extends Controller
         return Inertia::render('Admin/ModelProducts/Form', [
             'backUrl' => route('admin.model-products.index'),
             'modelProduct' => null,
-            'types' => CmsModelProduct::TYPES,
             'statuses' => CmsModelProduct::STATUSES,
             'categories' => $this->categoryOptions(),
             'models' => $this->modelOptions(),
@@ -95,11 +94,9 @@ class ModelProductController extends Controller
                 'description' => $modelProduct->description,
                 'keywords' => $modelProduct->keywords ?? [],
                 'menu_href' => $modelProduct->menu_href,
-                'type' => $modelProduct->type,
                 'status' => $modelProduct->status,
                 'sort_order' => $modelProduct->sort_order,
             ],
-            'types' => CmsModelProduct::TYPES,
             'statuses' => CmsModelProduct::STATUSES,
             'categories' => $this->categoryOptions(),
             'models' => $this->modelOptions(),
@@ -180,7 +177,6 @@ class ModelProductController extends Controller
             'keywords' => ['nullable', 'array', 'max:6'],
             'keywords.*' => ['nullable', 'string', 'max:64'],
             'menu_href' => ['nullable', 'string', 'max:2048'],
-            'type' => ['required', Rule::in(CmsModelProduct::TYPES)],
             'status' => ['required', Rule::in(CmsModelProduct::STATUSES)],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);

@@ -43,7 +43,7 @@ export default function MediaIndex({ title, description, filters, statusOptions,
   const [busy, setBusy] = useState<number | null>(null)
 
   function applyFilter() {
-    router.get(route("admin.media.index"), { status: status || undefined, visibility: visibility || undefined }, { preserveState: true, preserveScroll: true })
+    router.get(route("admin.media.library"), { status: status || undefined, visibility: visibility || undefined }, { preserveState: true, preserveScroll: true })
   }
 
   return (
@@ -65,7 +65,7 @@ export default function MediaIndex({ title, description, filters, statusOptions,
           </Select>
         </div>
         <Button type="button" variant="secondary" onClick={applyFilter}>Terapkan</Button>
-        <Button type="button" variant="ghost" onClick={() => { setStatus(""); setVisibility(""); router.get(route("admin.media.index"), {}, { preserveState: true }) }}>Reset</Button>
+        <Button type="button" variant="ghost" onClick={() => { setStatus(""); setVisibility(""); router.get(route("admin.media.library"), {}, { preserveState: true }) }}>Reset</Button>
         <div className="ml-auto">
           <Button asChild variant="secondary">
             <Link href={route("admin.media.library")}>Media Library</Link>

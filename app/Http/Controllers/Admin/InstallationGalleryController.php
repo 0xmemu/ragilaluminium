@@ -90,7 +90,7 @@ class InstallationGalleryController extends Controller
                         : null,
                     'edit_href' => $product
                         ? route('admin.products.media.byProduct', $product)
-                        : route('admin.media.index'),
+                        : route('admin.media.library'),
                     'publish_url' => null,
                     'unpublish_url' => null,
                 ];

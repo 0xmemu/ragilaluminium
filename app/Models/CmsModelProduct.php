@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class CmsModelProduct extends Model
 {
-    public const TYPES = ['polos', 'ornamen', 'lainnya'];
-
     public const STATUSES = ['active', 'draft'];
 
     protected $fillable = [
@@ -19,7 +17,6 @@ class CmsModelProduct extends Model
         'description',
         'keywords',
         'menu_href',
-        'type',
         'status',
         'sort_order',
     ];

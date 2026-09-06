@@ -148,9 +148,19 @@ class WorkflowAuditP2Test extends TestCase
             'status' => 'active',
         ]);
 
+        $asset = \App\Models\MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'Media test',
+            'object_key' => 'media-assets/test/card.webp',
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
         ProductMedia::create([
             'product_id' => $product->id,
+            'media_asset_id' => $asset->id,
             'source_url' => 'https://cdn.example.com/a.jpg',
+            'stored_url' => 'media-assets/test/card.webp',
             'status' => 'downloaded',
             'visibility' => 'visible',
             'is_main_image' => false,
@@ -158,12 +168,10 @@ class WorkflowAuditP2Test extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.media.index'))
+            ->get(route('admin.media.library'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Media/Index')
-                ->has('rows', 1)
-                ->has('rows.0.actions')
-                ->where('rows.0.actions.0.label', 'Kelola'));
+                ->component('Admin/Media/Library')
+                ->has('assets', 1));
     }
 }
