@@ -161,7 +161,7 @@ export function CheckoutSummary({
                   {item.name}
                 </p>
                 <p className="tabular-nums mt-0.5 text-[11px] text-muted-foreground">
-                  <span>{item.quantity} item</span>
+                  <span>{item.quantity} pcs</span>
                   {variantText ? <span> · {variantText}</span> : null}
                 </p>
                 {discountPercent ? (

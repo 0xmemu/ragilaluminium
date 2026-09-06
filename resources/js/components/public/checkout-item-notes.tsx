@@ -132,7 +132,7 @@ function CheckoutItemNoteRow({
             <span className="tabular-nums text-xs font-bold text-primary sm:text-sm">
               {formatCurrency(item.unit_price ?? item.line_total ?? 0)}
             </span>
-            <span className="text-xs text-muted-foreground">{item.quantity} pcs</span>
+            <span className="text-xs text-muted-foreground">{item.quantity} unit</span>
           </div>
         </div>
       </div>
@@ -172,7 +172,7 @@ export function CheckoutItemNotes({
       <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border">
         <div className="flex items-center gap-2">
           <h2 className="text-sm sm:text-base font-bold text-foreground">Daftar Pesanan</h2>
-          <span className="text-xs text-muted-foreground">({items.length} item)</span>
+          <span className="text-xs text-muted-foreground">({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</span>
         </div>
       </div>
       <div className="divide-y divide-border/60">
