@@ -288,9 +288,9 @@ export function ProductBuyBox({
               type="button"
               disabled={ctaDisabled}
               onClick={purchase.buyNow}
-              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-surface-muted/90 px-2 text-xs font-semibold text-foreground transition hover:bg-muted active:bg-muted/80 disabled:opacity-40 focus-visible:outline-none"
+              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-surface-muted/90 px-2 text-sm font-semibold text-foreground transition hover:bg-muted active:bg-muted/80 disabled:opacity-40 focus-visible:outline-none"
             >
-              <Icon name="credit-card" className="size-3.5 shrink-0" aria-hidden="true" />
+              <Icon name="credit-card" className="size-4 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {form.processing && submitIntent === "checkout" ? (
                   "..."
@@ -307,9 +307,9 @@ export function ProductBuyBox({
             <button
               type="submit"
               disabled={ctaDisabled}
-              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-primary px-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
+              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-primary px-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
             >
-              <Icon name="shopping-cart" className="size-3.5 shrink-0" aria-hidden="true" />
+              <Icon name="shopping-cart" className="size-4 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {form.processing && submitIntent === "cart" ? "..." : "Keranjang"}
               </span>
