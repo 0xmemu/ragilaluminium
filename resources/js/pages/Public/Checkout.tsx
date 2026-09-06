@@ -124,7 +124,7 @@ export default function Checkout({
             </div>
           </div>
         </section>
-        <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height))] md:!px-8 lg:!px-12 lg:pb-4">
+        <section className="container-page !px-2.5 pt-4 pb-0 md:!px-8 lg:!px-12 lg:pb-4">
           <EmptyState
             icon="shopping-cart"
             title="Keranjang kosong"
@@ -218,7 +218,7 @@ export default function Checkout({
         </div>
       </section>
 
-      <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height))] md:!px-8 lg:!px-12 lg:pb-4">
+      <section className="container-page !px-2.5 pt-4 pb-0 md:!px-8 lg:!px-12 lg:pb-4">
         {pageErrors.checkout ? (
           <Alert tone="danger" title={pageErrors.checkout} className="mb-4" />
         ) : null}
