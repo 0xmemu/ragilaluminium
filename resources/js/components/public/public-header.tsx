@@ -131,7 +131,7 @@ function HeaderSearchForm({
       <div className="relative w-full">
         <Icon
           name="search"
-          className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-background/60 md:left-3 md:size-5"
+          className="pointer-events-none absolute left-2.5 top-1/2 size-5 -translate-y-1/2 text-background/70 md:left-3 md:size-5"
           aria-hidden="true"
         />
         <input
@@ -145,7 +145,7 @@ function HeaderSearchForm({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "h-[34px] w-full rounded-full border-0 bg-white/10 py-1 pl-8 pr-3 text-xs text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-9 md:pl-10 md:pr-4 md:text-sm",
+            "h-[34px] w-full rounded-full border-0 bg-white/10 py-1 pl-9 pr-3 text-xs text-background outline-none ring-0 placeholder:text-background/55 placeholder:transition-opacity focus:bg-white/15 focus:ring-1 focus:ring-white/40 md:h-9 md:pl-10 md:pr-4 md:text-sm",
             inputClassName,
           )}
           aria-label="Cari produk"
@@ -329,7 +329,7 @@ export function PublicHeader() {
               className="relative z-20 -ml-1 inline-flex size-9 shrink-0 items-center justify-center rounded-full text-background transition-colors hover:bg-white/10 active:bg-white/20 md:size-10"
               aria-label="Buka menu utama"
             >
-              <Icon name="menu" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
+              <Icon name="menu" className="size-6 md:size-6" weight="bold" aria-hidden="true" />
             </button>
           </SheetTrigger>
           <SheetContent
@@ -541,7 +541,7 @@ export function PublicHeader() {
         </Sheet>
 
         {/* Mobile: emblem beside search. Desktop: wordmark (narrows on mid widths). */}
-        <BrandWordmark mark variant="dark" className="relative z-20 md:hidden !size-9 [&_img]:!size-7" />
+        <BrandWordmark mark variant="dark" className="relative z-20 md:hidden !size-9 [&_img]:!size-8" />
         <BrandWordmark
           compact
           variant="dark"
@@ -582,7 +582,7 @@ export function PublicHeader() {
               aria-controls="cart-hover-preview"
             >
               <span className={cn("relative inline-flex size-6 shrink-0 items-center justify-center lg:size-7", cartBump && "animate-cart-bump")}>
-                <Icon name="shopping-cart" className="size-5 md:size-6 lg:size-6" aria-hidden="true" />
+                <Icon name="shopping-cart" className="size-6 md:size-6 lg:size-6" aria-hidden="true" />
                 {visibleCartCount > 0 ? (
                   <span className="tabular-nums absolute -right-1.5 -top-1.5 flex size-4 min-h-4 min-w-4 items-center justify-center rounded-full bg-sale px-0.5 text-[9px] font-bold leading-none text-white">
                     {Math.min(visibleCartCount, 99)}
