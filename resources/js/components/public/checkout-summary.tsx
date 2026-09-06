@@ -166,7 +166,12 @@ export function CheckoutSummary({
                 </p>
                 {discountPercent ? (
                   <span className="mt-1 inline-block rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
-                    −{discountPercent}%
+                    Hemat {discountPercent}%
+                  </span>
+                ) : null}
+                {hasLineDiscount ? (
+                  <span className="mt-1 block text-[11px] text-sale">
+                    Hemat {formatCurrency(lineDiscount)}
                   </span>
                 ) : null}
               </div>
