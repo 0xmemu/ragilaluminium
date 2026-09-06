@@ -23,7 +23,8 @@ class AdminProductWizardTest extends TestCase
             'product_category' => 'WINDOW',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
-            'status' => 'active',
+            // Create form tetap menyimpan draf sampai checklist publikasi lengkap.
+            'status' => 'archived',
             'homepage_popular' => false,
         ]);
 
