@@ -256,31 +256,31 @@ export default function Checkout({
         <div
           role="region"
           aria-label="Buat pesanan"
-          className="mobile-sticky-cta border-t border-border bg-surface/95 px-3 py-2.5 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur-md"
+          className="mobile-sticky-cta shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)]"
         >
-          <div className="mx-auto flex w-full max-w-lg items-center gap-2">
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-[10px] font-medium leading-3 text-muted-foreground">
-                Total Pembayaran
-              </span>
-              <span className="truncate tabular-nums text-sm font-bold leading-5 text-foreground">
-                {formatCurrency(checkoutTotal)}
-              </span>
-            </div>
-            <Button
-              type="submit"
-              form="checkout-payment-form"
-              size="md"
-              className="h-10 min-h-10 min-w-0 shrink-0 px-2.5 text-[11px] leading-tight font-semibold min-[375px]:px-4 min-[375px]:text-xs"
-              disabled={!details || c.editingDetails || c.paymentForm.processing}
-            >
-              <span className="min-w-0 text-left">
-                <span className="block truncate">
+          <div className="mx-auto flex w-full max-w-lg">
+            {/* Continuous segmented bar tanpa pill tombol terpisah - konsisten dgn PDP & cart */}
+            <div className="flex w-full items-stretch divide-x divide-border overflow-hidden border-t border-border bg-surface">
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3">
+                <span className="text-[10px] font-medium leading-3 text-muted-foreground">
+                  Total Pembayaran
+                </span>
+                <span className="truncate tabular-nums text-sm font-bold leading-5 text-foreground">
+                  {formatCurrency(checkoutTotal)}
+                </span>
+              </div>
+              <button
+                type="submit"
+                form="checkout-payment-form"
+                disabled={!details || c.editingDetails || c.paymentForm.processing}
+                className="flex w-[45%] shrink-0 items-center justify-center gap-1.5 bg-primary px-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
+              >
+                <span className="truncate">
                   {c.paymentForm.processing ? "Membuat pesanan..." : "Buat pesanan"}
                 </span>
-              </span>
-              <Icon name="arrow-right" className="size-4 shrink-0" aria-hidden="true" />
-            </Button>
+                <Icon name="arrow-right" className="size-4 shrink-0" aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
