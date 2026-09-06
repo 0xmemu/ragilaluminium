@@ -58,26 +58,28 @@ export function CartCheckoutSummary({
         className="!p-0 !border-t-0 shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)]"
       >
         {/* Continuous segmented bar tanpa pill tombol terpisah - konsisten dgn PDP */}
-        <div className="flex w-full items-stretch min-h-14 divide-x divide-border overflow-hidden border-t border-border bg-surface">
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3">
-            <span className="text-[10px] font-medium leading-3 text-muted-foreground">Subtotal</span>
-            <span className="tabular-nums text-sm font-bold leading-5">{formatCurrency(subtotal)}</span>
-            {hasDiscount ? (
-              <span className="tabular-nums text-[10px] font-semibold leading-3 text-sale">
-                Hemat {formatCurrency(discount)}
-              </span>
-            ) : null}
+        <form onSubmit={onSubmit} className="flex w-full">
+          <div className="flex w-full items-stretch min-h-14 divide-x divide-border overflow-hidden border-t border-border bg-surface">
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3">
+              <span className="text-[10px] font-medium leading-3 text-muted-foreground">Subtotal</span>
+              <span className="tabular-nums text-sm font-bold leading-5">{formatCurrency(subtotal)}</span>
+              {hasDiscount ? (
+                <span className="tabular-nums text-[10px] font-semibold leading-3 text-sale">
+                  Hemat {formatCurrency(discount)}
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="submit"
+              disabled={disabled || processing}
+              className="flex w-[45%] shrink-0 items-center justify-center gap-1.5 bg-primary px-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
+              aria-label={label}
+            >
+              <span className="truncate">{label}</span>
+              <Icon name="arrow-right" className="size-4 shrink-0" aria-hidden="true" />
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={disabled || processing}
-            className="flex w-[45%] shrink-0 items-center justify-center gap-1.5 bg-primary px-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover active:bg-primary-hover/90 disabled:opacity-40 focus-visible:outline-none"
-            aria-label={label}
-          >
-            <span className="truncate">{label}</span>
-            <Icon name="arrow-right" className="size-4 shrink-0" aria-hidden="true" />
-          </button>
-        </div>
+        </form>
       </MobileStickyCta>
     )
   }
