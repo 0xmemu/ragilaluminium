@@ -41,7 +41,7 @@ function FlashMessagesInner({
 
   return (
     <div
-      className="fixed inset-x-3 bottom-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+0.75rem)] z-toast mx-auto flex w-auto max-w-lg flex-col space-y-2 lg:container-page lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-20 lg:w-full lg:-translate-x-1/2"
+      className="fixed inset-x-3 top-[calc(3rem+0.75rem)] z-toast mx-auto flex w-auto max-w-lg flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:top-20 lg:w-full lg:-translate-x-1/2"
       aria-live="polite"
       aria-atomic="true"
     >
