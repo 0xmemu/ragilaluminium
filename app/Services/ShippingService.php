@@ -11,6 +11,7 @@ use App\Models\ShippingTrackingEvent;
 use App\Services\Shipping\JntCargoClient;
 use App\Services\Shipping\JntResponse;
 use App\Support\ShippingSubsidySettings;
+use App\Support\JntAddressResolver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +23,7 @@ class ShippingService
         protected JntCargoClient $jnt,
         protected OrderStateMachine $states,
         protected ReturnService $returns,
+        protected JntAddressResolver $jntAddresses,
     ) {}
 
     /**
@@ -69,7 +71,19 @@ class ShippingService
     ): array {
         $weightKg = max($weightKg, 1.0);
 
-        // Area (kecamatan) adalah kunci pencocokan master J&T. Bila form
+        $jntAddress = $this->jntAddresses->resolve(
+            $destinationProvince,
+            $destinationCity,
+            $destinationArea,
+            null,
+        );
+        if ($jntAddress['status'] === 'verified') {
+            $destinationProvince = $jntAddress['province_name'];
+            $destinationCity = $jntAddress['city_name'] ?? $destinationCity;
+            $destinationArea = $jntAddress['area_name'] ?? $destinationArea;
+        }
+
+        // Area J&T berasal dari master lokal yang disinkronkan. Bila form
         // belum mengirimnya tetapi postal_code tersedia, resolusi dari
         // dataset postal (level kecamatan) supaya tarif REAL dihitung,
         // bukan jatuh ke estimasi provisional.
@@ -725,6 +739,14 @@ class ShippingService
     protected function buildCreateOrderPayload(Order $order, float $weightKg): array
     {
         $currency = config('jnt.defaults.price_currency');
+        $snapshot = is_array($order->shipping_package_snapshot ?? null)
+            ? $order->shipping_package_snapshot
+            : [];
+        $snapshotWeight = (float) ($order->shipping_chargeable_weight_kg ?? $snapshot['chargeable_weight_kg'] ?? 0);
+        if ($snapshotWeight > 0) {
+            $weightKg = $snapshotWeight;
+        }
+        $packageCount = max(1, (int) ($snapshot['package_count'] ?? $snapshot['total_quantity'] ?? 1));
 
         $items = $order->items->map(fn ($i) => [
             'itemName' => $i->name,
@@ -738,7 +760,7 @@ class ShippingService
         $receiverPhone = $order->customer_phone;
         $receiverAddress = trim($order->shipping_address_line1.' '.($order->shipping_address_line2 ?? ''));
 
-        return [
+        $payload = [
             'txlogisticId' => $order->order_number,
             'operateType' => 1, // 1=add, 2=modify
             'expressType' => config('jnt.defaults.express_type'),
@@ -750,7 +772,11 @@ class ShippingService
                 : config('jnt.defaults.pay_type'),
             'goodsType' => config('jnt.defaults.goods_type'),
             'weight' => (string) $weightKg,
-            'totalQuantity' => max(1, (int) $order->items->sum('quantity')),
+            'totalQuantity' => $packageCount,
+            'length' => $snapshot['length_cm'] ?? null,
+            'width' => $snapshot['width_cm'] ?? null,
+            'height' => $snapshot['height_cm'] ?? null,
+            'volume' => $snapshot['volume_cm3'] ?? null,
             'remark' => $order->notes,
             'sender' => [
                 'name' => config('jnt.sender.name'),
@@ -778,6 +804,8 @@ class ShippingService
             ],
             'items' => $items,
         ];
+
+        return array_filter($payload, static fn ($value): bool => $value !== null);
     }
 
     protected function logEvent(string $type, $entity, array $payload): void
