@@ -128,9 +128,9 @@ class ImportCatalogIndonesiaTest extends TestCase
         $path2 = tempnam(sys_get_temp_dir(), 'tpl_s').'.xlsx';
         file_put_contents($path2, $raw2);
         $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($path2);
-        $this->assertCount(3, $ss->getSheetNames());
-        $this->assertSame(['Data', 'Contoh', 'Panduan'], $ss->getSheetNames());
+        $this->assertCount(2, $ss->getSheetNames());
+        $this->assertSame(['Data', 'Panduan'], $ss->getSheetNames());
         $first = $ss->getSheet(0)->toArray()[0];
-        $this->assertSame(['parent_sku', 'variant_sku', 'price', 'stock'], $first);
+        $this->assertSame(['parent_sku', 'variant_sku', 'variant_combination', 'price', 'stock'], $first);
     }
 }

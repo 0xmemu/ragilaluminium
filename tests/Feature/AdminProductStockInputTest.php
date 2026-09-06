@@ -26,7 +26,8 @@ class AdminProductStockInputTest extends TestCase
             'product_category' => 'WINDOW',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
-            'status' => 'active',
+            // Create tanpa checklist publish harus tetap menjadi draf arsip.
+            'status' => 'archived',
             'homepage_popular' => false,
             'homepage_popular_sort' => 0,
             'create_initial_variant' => true,
@@ -77,7 +78,8 @@ class AdminProductStockInputTest extends TestCase
             'product_category' => 'WINDOW',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
-            'status' => 'active',
+            // Create tanpa checklist publish harus tetap menjadi draf arsip.
+            'status' => 'archived',
             'homepage_popular' => false,
             'homepage_popular_sort' => 0,
             'create_initial_variant' => false,

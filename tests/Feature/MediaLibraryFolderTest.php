@@ -72,7 +72,7 @@ class MediaLibraryFolderTest extends TestCase
         $asset = MediaAsset::firstOrFail();
         $this->assertSame('ready', $asset->status);
         $this->assertSame($folder->id, $asset->folder_id);
-        $this->assertStringStartsWith('media/library/', $asset->object_key);
+        $this->assertStringStartsWith('media-assets/', $asset->object_key);
         $urlBefore = $asset->publicUrlForPath($asset->object_key);
 
         // pindah folder -> URL tetap

@@ -74,6 +74,46 @@ class CustomerReviewController extends Controller
         ], 201);
     }
 
+    public function uploadMedia(Request $request, string $order_number): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_phone' => ['required', 'string', 'max:40'],
+            'media' => ['required', 'file'],
+        ]);
+
+        $phone = PhoneNumber::normalize((string) $validated['customer_phone']);
+        $order = $this->ownedOrder($order_number, $phone);
+        $this->ensureEligible($order);
+
+        $file = $request->file('media');
+        $mime = strtolower((string) $file->getMimeType());
+        $kind = str_starts_with($mime, 'video/') ? 'video' : 'image';
+        $allowed = $kind === 'video'
+            ? (array) config('media.allowed_video_mime', [])
+            : (array) config('media.allowed_mime', []);
+        if (! in_array($mime, $allowed, true)) {
+            throw ValidationException::withMessages(['media' => "Tipe file tidak diizinkan: {$mime}"]);
+        }
+
+        $maxBytes = $kind === 'video'
+            ? (int) config('media.max_video_bytes', 50 * 1024 * 1024)
+            : (int) config('media.max_bytes', 10 * 1024 * 1024);
+        if ($file->getSize() > $maxBytes) {
+            throw ValidationException::withMessages(['media' => 'Ukuran file melebihi batas yang diizinkan.']);
+        }
+
+        $extension = strtolower($file->getClientOriginalExtension() ?: ($kind === 'video' ? 'mp4' : 'jpg'));
+        $extension = preg_replace('/[^a-z0-9]/', '', $extension) ?: ($kind === 'video' ? 'mp4' : 'jpg');
+        $key = sprintf('reviews/%s/%s.%s', $order->order_number, uniqid('', true), $extension);
+        $disk = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'));
+        $disk->put($key, file_get_contents($file->getRealPath()), ['ContentType' => $mime]);
+
+        return response()->json([
+            'url' => $disk->url($key),
+            'type' => $kind,
+        ], 201);
+    }
+
     public function update(Request $request, string $order_number, CmsTestimonial $testimonial): JsonResponse
     {
         $validated = $this->validated($request, false);

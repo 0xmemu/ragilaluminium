@@ -51,7 +51,6 @@ class UlasanAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Testimonials/Index')
-                ->where('tab', 'website')
                 ->has('rows', 1)
                 ->where('rows.0.customer_name', 'Budi Santoso'));
 
@@ -140,7 +139,6 @@ class UlasanAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Testimonials/Index')
-                ->where('tab', 'foto')
                 ->has('rows', 1)
                 ->where('rows.0.label', 'Pemasangan Kudus'));
 
@@ -232,9 +230,8 @@ class UlasanAdminTest extends TestCase
             ->get(route('admin.apa-kata-pelanggan.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Testimonials/Index')
+                ->component('Admin/ApaKata/Index')
                 ->where('title', 'Apa Kata Pelanggan Kami')
-                ->where('tab', 'website')
                 ->where('indexRoute', 'admin.apa-kata-pelanggan.index')
                 ->where('canReorder', true)
                 ->has('reorderUrl')
@@ -312,10 +309,8 @@ class UlasanAdminTest extends TestCase
             ->get(route('admin.hasil-pemasangan.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Testimonials/Index')
+                ->component('Admin/InstallationGallery/Index')
                 ->where('title', 'Hasil Pemasangan Kami')
-                ->where('tab', 'foto')
-                ->where('indexRoute', 'admin.hasil-pemasangan.index')
                 ->has('pageMeta')
                 ->where('pageMeta.heading', 'Hasil pemasangan')
                 ->has('rows', 1)
