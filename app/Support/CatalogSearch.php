@@ -206,16 +206,20 @@ class CatalogSearch
                         });
                     }
 
-                    // ADR-021: dimensi kini di produk.
-                    $variant->orWhereHas('product', function ($product) use ($dimensionPairs) {
-                        $product->where(function ($productDim) use ($dimensionPairs) {
-                            foreach ($dimensionPairs as [$height, $width]) {
-                                $productDim->orWhere(function ($exact) use ($height, $width) {
-                                    $exact->where('height_cm', $height)->where('width_cm', $width);
-                                });
-                            }
+                    // ADR-021: dimensi kini di produk. Do not add an empty
+                    // whereHas when the query has no dimension pair: an empty
+                    // nested condition broadens every active variant match.
+                    if ($dimensionPairs !== []) {
+                        $variant->orWhereHas('product', function ($product) use ($dimensionPairs) {
+                            $product->where(function ($productDim) use ($dimensionPairs) {
+                                foreach ($dimensionPairs as [$height, $width]) {
+                                    $productDim->orWhere(function ($exact) use ($height, $width) {
+                                        $exact->where('height_cm', $height)->where('width_cm', $width);
+                                    });
+                                }
+                            });
                         });
-                    });
+                    }
 
                     // Range dimensi: product_variants.height_cm/width_cm dalam
                     // rentang dengan orientasi dipertahankan (height pertama).
@@ -674,24 +678,25 @@ class CatalogSearch
             return [];
         }
 
-        // ADR-021: dimensi milik produk; nama produk jadi label ukuran terdekat.
-        $rows = Product::query()
+        // Rekomendasi tetap berbasis varian aktif. Dimensi produk menjadi
+        // fallback untuk data baru yang belum menyimpan dimensi di varian.
+        $rows = ProductVariant::query()
             ->where('status', 'active')
             ->whereNotNull('height_cm')
             ->whereNotNull('width_cm')
-            ->withMin('activeVariants as min_price', 'price')
-            ->get(['id', 'name', 'height_cm', 'width_cm']);
+            ->whereHas('product', fn ($product) => $product->where('status', 'active'))
+            ->get(['id', 'product_id', 'variant_sku', 'height_cm', 'width_cm', 'price']);
 
         return $rows
-            ->map(function ($product) use ($height, $width) {
-                $h = (float) $product->height_cm;
-                $w = (float) $product->width_cm;
+            ->map(function (ProductVariant $variant) use ($height, $width) {
+                $h = (float) $variant->height_cm;
+                $w = (float) $variant->width_cm;
 
                 return [
-                    'variant_sku' => (string) $product->name,
+                    'variant_sku' => (string) $variant->variant_sku,
                     'height_cm' => $h,
                     'width_cm' => $w,
-                    'price' => (float) ($product->min_price ?? 0),
+                    'price' => (float) $variant->price,
                     'distance' => abs($h - $height) + abs($w - $width),
                 ];
             })
