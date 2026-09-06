@@ -161,7 +161,7 @@ export function CheckoutSummary({
                   {item.name}
                 </p>
                 <p className="tabular-nums mt-0.5 text-[11px] text-muted-foreground">
-                  <span>{item.quantity} pcs</span>
+                  <span>{item.quantity} unit</span>
                   {variantText ? <span> · {variantText}</span> : null}
                 </p>
                 {discountPercent ? (
@@ -303,7 +303,7 @@ export function CheckoutSummary({
 
       <dl className="mt-3 space-y-2.5 text-xs">
         <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} pcs)</dt>
+          <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</dt>
           <dd className="tabular-nums font-semibold">{formatCurrency(subtotal)}</dd>
         </div>
         {hasDiscount ? (
