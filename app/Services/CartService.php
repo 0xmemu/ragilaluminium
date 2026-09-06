@@ -227,7 +227,9 @@ class CartService
 
     public function count(): int
     {
-        return collect($this->get())->sum('quantity');
+        // Badge navbar menghitung JENIS produk (jumlah baris), bukan total unit,
+        // sesuai keputusan owner 2026-09-06: 1 kartu produk = 1 walau qty-nya 2.
+        return count($this->get());
     }
 
     public function subtotal(): float

@@ -153,7 +153,7 @@ export default function Cart({
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
             </button>
             <h1 className="text-base font-bold tracking-tight text-foreground">
-              Keranjang{cartItems.length > 0 ? ` (${cartItems.reduce((sum, it) => sum + (typeof it.quantity === "number" ? it.quantity : 1), 0)})` : ""}
+              Keranjang{cartItems.length > 0 ? ` (${cartItems.length})` : ""}
             </h1>
           </div>
         </div>
