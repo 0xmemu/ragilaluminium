@@ -124,7 +124,7 @@ export default function Checkout({
             </div>
           </div>
         </section>
-        <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+0.5rem)] md:!px-8 lg:!px-12 lg:pb-[calc(var(--mobile-sticky-cta-height)+1rem)]">
+        <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height))] md:!px-8 lg:!px-12 lg:pb-4">
           <EmptyState
             icon="shopping-cart"
             title="Keranjang kosong"
@@ -218,7 +218,7 @@ export default function Checkout({
         </div>
       </section>
 
-      <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height)+0.5rem)] md:!px-8 lg:!px-12 lg:pb-[calc(var(--mobile-sticky-cta-height)+1rem)]">
+      <section className="container-page !px-2.5 pt-4 pb-[calc(var(--mobile-bottom-nav-height)+var(--mobile-sticky-cta-height))] md:!px-8 lg:!px-12 lg:pb-4">
         {pageErrors.checkout ? (
           <Alert tone="danger" title={pageErrors.checkout} className="mb-4" />
         ) : null}
@@ -258,7 +258,7 @@ export default function Checkout({
         <div
           role="region"
           aria-label="Buat pesanan"
-          className="mobile-sticky-cta shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)]"
+          className="mobile-sticky-cta shadow-[0_-4px_16px_hsl(var(--foreground)/0.08)] lg:hidden"
         >
           <div className="mx-auto flex w-full max-w-lg">
             {/* Continuous segmented bar tanpa pill tombol terpisah - konsisten dgn PDP & cart */}
