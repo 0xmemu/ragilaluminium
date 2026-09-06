@@ -336,7 +336,7 @@ export function ProductInfoSections({
                     })
                   : routeUrl("installation.index")
               }
-              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-foreground lg:text-primary lg:hover:underline"
             >
               <span>Lihat Semua</span>
               <Icon name="arrow-right" className="size-4" weight="bold" aria-hidden="true" />
