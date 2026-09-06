@@ -110,7 +110,9 @@ export function CheckoutSummary({
   const shippingCost = effectiveShipping ? Number(effectiveShipping.net || 0) : 0
   const codFee = showCodFee ? Number(cod.fee_amount || 0) : 0
   const discount = Number(discountTotal || 0) + (hasVoucher ? Number(voucherDiscount || 0) : 0)
-  const finalTotal = Math.max(0, Number(subtotal || 0) - discount + shippingCost + codFee)
+  // subtotal sudah memakai harga jual aktual setelah promo produk.
+  // discountTotal hanya untuk tampilan, jangan dikurangi lagi.
+  const finalTotal = Math.max(0, Number(subtotal || 0) - (hasVoucher ? Number(voucherDiscount || 0) : 0) + shippingCost + codFee)
 
   // Estimasi tiba = ETA J&T utk rute (carrier_eta); +1 hari hanya di batas lambat.
   // Fallback: pakai rentang dasar dari props eta (konfigurasi) saat J&T belum menghitung.

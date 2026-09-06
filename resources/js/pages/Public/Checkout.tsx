@@ -140,13 +140,15 @@ export default function Checkout({
     )
   }
 
-  // Total pembayaran = subtotal - diskon - voucher + ongkir + COD.
-  // Sama rumusnya dengan CheckoutSummary (sumber tunggal angka).
-  const shippingNet = Number(shipping?.net ?? 0)
-  const codFee = Number(cod?.fee_amount ?? 0)
+  // subtotal sudah berisi harga jual aktual setelah promo produk.
+  // discount_total hanya tampilan potongan, jangan dikurangi lagi.
+  // Pakai quote yang sama dengan CheckoutSummary agar total tunggal.
+  const effectiveShipping = c.shippingQuote ?? (!c.shippingQuoteAttempted ? shipping : null)
+  const shippingNet = Number(effectiveShipping?.net ?? 0)
+  const codFee = c.showCodFee ? Number(cod?.fee_amount ?? 0) : 0
   const checkoutTotal = Math.max(
     0,
-    Number(subtotal || 0) - Number(discount_total || 0) - Number(voucher_discount || 0) + shippingNet + codFee,
+    Number(subtotal || 0) - Number(voucher_discount || 0) + shippingNet + codFee,
   )
 
   const steps = [
