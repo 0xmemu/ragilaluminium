@@ -254,11 +254,16 @@ class StorePerformanceService
             'generated_at' => now()->timezone(config('app.timezone', 'Asia/Jakarta'))->toIso8601String(),
             'financial' => [
                 'gross_revenue' => $current['gross_revenue'],
+                'shipping_raw' => $current['shipping_raw'],
+                'shipping_paid_by_customer' => $current['shipping_paid_by_customer'],
+                'shipping_subsidy' => $current['shipping_subsidy'],
+                'cod_fee' => $current['cod_fee'],
                 'refund_adjustments' => $current['refund_adjustments'],
+                'return_shipping_store' => $current['return_shipping_store'],
                 'net_revenue' => $current['net_revenue'],
                 'buyer_orders' => $current['orders'],
                 'visitors' => $current['visitors'],
-                'definition' => 'Penjualan Gross = total nilai pesanan yang masuk proses pada periode (sebelum potongan apa pun). Penjualan Bersih = gross dikurangi refund retur yang benar-benar selesai. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
+                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, subsidi ongkir, refund retur, dan ongkir retur toko. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
@@ -316,6 +321,12 @@ class StorePerformanceService
         $orders = (clone $base)->count();
         $revenueOrders = $this->paidRevenueScope(clone $base);
         $revenue = (float) (clone $revenueOrders)->sum('total_amount');
+        // Total transaksi pelanggan mencakup ongkir net + biaya COD. Keduanya
+        // diterima toko hanya untuk diteruskan ke J&T, bukan pendapatan toko.
+        $shippingNet = (float) (clone $revenueOrders)->sum('shipping_amount');
+        $shippingSubsidy = (float) (clone $revenueOrders)->sum('shipping_subsidy_amount');
+        $shippingRaw = $shippingNet + $shippingSubsidy;
+        $codFees = (float) (clone $revenueOrders)->sum('cod_fee_amount');
         $revenueOrderIds = (clone $revenueOrders)->pluck('id');
 
         $units = $revenueOrderIds->isEmpty()
@@ -357,7 +368,15 @@ class StorePerformanceService
             )
         );
         $refundAdjustments = (float) $returnCases->sum('refund_amount');
-        $netRevenue = $revenue - $refundAdjustments;
+        $returnShippingStore = (float) OrderReturnCase::query()
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereBetween('completed_at', [$from, $to])
+            ->sum('return_shipping_cost');
+        // Gross adalah seluruh total yang dibayar pelanggan. Ongkir raw dan
+        // COD adalah dana titipan untuk J&T; subsidi, refund, dan ongkir retur
+        // toko adalah pengurang hasil toko.
+        $netRevenue = $revenue - $shippingRaw - $codFees - $refundAdjustments - $returnShippingStore;
 
         $returnCounts = $this->returnCounts($from, $to);
         $paymentCounts = $this->paymentCounts($from, $to);
@@ -373,7 +392,12 @@ class StorePerformanceService
             'orders' => $orders,
             'revenue' => round($revenue, 2),
             'gross_revenue' => round($revenue, 2),
+            'shipping_raw' => round($shippingRaw, 2),
+            'shipping_paid_by_customer' => round($shippingNet, 2),
+            'shipping_subsidy' => round($shippingSubsidy, 2),
+            'cod_fee' => round($codFees, 2),
             'refund_adjustments' => round($refundAdjustments, 2),
+            'return_shipping_store' => round($returnShippingStore, 2),
             'net_revenue' => round($netRevenue, 2),
             'units' => $units,
             'models_sold' => $modelsSold,

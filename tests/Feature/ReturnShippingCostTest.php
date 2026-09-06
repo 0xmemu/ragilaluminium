@@ -213,7 +213,7 @@ class ReturnShippingCostTest extends TestCase
         $this->makeCompletedCase($o, $item, 'customer', 25000);
 
         $report = app(StorePerformanceService::class)->build('today');
-        $section = collect($report['sections'])->firstWhere('key', 'return_costs');
+        $section = collect($report['sections'])->firstWhere('key', 'returns_cancellations');
         $this->assertNotNull($section, 'section Biaya Retur ada');
         $kpis = collect($section['kpis'])->keyBy('key');
         $this->assertSame(40000.0, (float) $kpis['return_shipping_cost_total']['value']);

@@ -1157,7 +1157,7 @@ tidak salah membaca angka.
 
 Definisi teknis tidak berubah (mengikuti ADR-015): gross = SUM(total_amount) pesanan
 berstatus fulfillment (processing..return_*); refund = refund_amount kasus retur selesai;
-net = gross - refund; Pembayaran Diterima = SUM(payments.amount) ber-status completed
+net = gross - raw shipping - COD fee - refund - store return shipping; Pembayaran Diterima = SUM(payments.amount) ber-status completed
 dengan paid_at pada periode (ledger).
 
 ## Decision

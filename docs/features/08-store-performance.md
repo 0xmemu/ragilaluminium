@@ -7,7 +7,7 @@ Status implementasi: P0 selesai di backend/UI; P1 reconciliation dikunci oleh te
 - Gross/Omset berasal dari order yang sudah masuk fulfillment: processing, shipped, delivered, completed, return_in_process, return_completed. pending_payment, cancelled, dan issue tidak dihitung sebagai retur.
 - Pesanan Selesai hanya order_status=completed; delivered tidak dianggap selesai.
 - Unit/model membaca snapshot order_items (product_category, product_model, design_variant, SKU/nama fallback), bukan katalog live. Ini menjaga histori ketika katalog berubah/dihapus.
-- Retur hanya dihitung dari order_return_cases yang completed + completed_at pada periode, dan order_return_items.returned_quantity > 0. Nilai retur memakai unit price snapshot x jumlah benar-benar kembali. Refund adjustment terpisah dari nilai barang; net = gross - refund_adjustments.
+- Retur hanya dihitung dari order_return_cases yang completed + completed_at pada periode, dan order_return_items.returned_quantity > 0. Nilai retur memakai unit price snapshot x jumlah benar-benar kembali. Refund adjustment terpisah dari nilai barang; net = gross - raw shipping - COD fee - refund - store return shipping_adjustments.
 - Waktu konfirmasi memakai event log pending_payment ke processing, bukan payment paid_at. Waktu proses memakai event processing dan waktu pembuatan resi pertama.
 - Visitor memakai event dedupe visitor_hash + visit_date; periode menghitung distinct visitor hash. Legacy performance_metrics hanya fallback untuk data sebelum migration.
 
@@ -38,3 +38,12 @@ Migration forward-only menambah snapshot item, return ledger minimum (order_retu
 - Admin form workflow untuk mengisi order_return_cases/order_return_items tetap bagian fitur Order Lifecycle & Retur; Performa Toko membaca ledger dan menampilkan nol bila ledger belum diisi.
 - Revenue pada issue setelah pembayaran masih memerlukan keputusan akuntansi eksplisit; saat ini issue dikecualikan agar tidak mengakui nilai yang belum punya status fulfillment final.
 - Visitor hash berbasis session; dedupe lintas browser/perangkat belum mungkin tanpa identifier consented.
+
+## Rekonsiliasi finansial
+
+- `shipping_amount` adalah ongkir net yang dibayar pelanggan. Ongkir raw J&T = `shipping_amount + shipping_subsidy_amount`.
+- `total_amount` adalah total yang dibayar pelanggan, termasuk produk, ongkir net, dan biaya COD.
+- Penjualan Gross = `total_amount` pada order valid, termasuk ongkir dan COD sebagai uang yang masuk rekening toko untuk diteruskan ke J&T.
+- Penjualan Bersih = Gross - ongkir raw J&T - biaya COD - refund retur selesai - ongkir retur yang ditanggung toko.
+- Biaya COD dan ongkir raw dikurangkan dari Gross sebagai dana yang diteruskan ke J&T, bukan karena biaya COD ditanggung toko.
+- Pesanan cancelled tidak masuk Gross atau Net. Nilainya hanya tampil sebagai catatan Pesanan Dibatalkan.

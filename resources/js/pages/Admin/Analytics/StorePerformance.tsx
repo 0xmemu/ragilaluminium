@@ -534,8 +534,8 @@ export default function StorePerformance({
                 <TooltipContent side="right" className="max-w-xs leading-relaxed">
                   <p className="font-semibold">Cara membaca metrik</p>
                   <ul className="mt-1 list-disc pl-4">
-                    <li>Penjualan Gross = nilai pesanan yang dibayar/COD lunas (belum dipotong apa pun).</li>
-                    <li>Penjualan Bersih = gross dikurangi refund dari retur yang benar-benar selesai.</li>
+                    <li>Penjualan Gross = total yang dibayar pelanggan, termasuk produk, ongkir, dan biaya COD.</li>
+                    <li>Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, subsidi ongkir, refund retur, dan ongkir retur toko.</li>
                     <li>Pengunjung yang Membeli = rasio pesanan dibanding pengunjung unik; ada angkanya di kategori Kunjungan & Customer.</li>
                     <li>Model / Produk / Unit: jumlah model berbeda, produk (varian/ukuran) berbeda, dan total qty item.</li>
                     <li>Retur & Pembatalan dilipat di bawah; Refund hanya salah satu metrik di sana, bukan ringkasan utama.</li>
@@ -656,7 +656,7 @@ export default function StorePerformance({
       <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
           { key: "omzet", label: "Penjualan Gross", fmt: "currency" as const, primary: true, hint: "Total nilai pesanan yang masuk proses pada periode (sebelum potongan)." },
-          { key: "net_revenue", label: "Penjualan Bersih", fmt: "currency" as const, primary: true, hint: "Gross dikurangi refund retur yang benar-benar selesai." },
+          { key: "net_revenue", label: "Penjualan Bersih", fmt: "currency" as const, primary: true, hint: "Gross dikurangi ongkir raw J&T, biaya COD, subsidi ongkir, refund retur, dan ongkir retur toko." },
           { key: "payments_received", label: "Pembayaran Diterima", fmt: "currency" as const, primary: true, hint: "Uang yang benar-benar masuk (payment selesai dengan paid_at) pada periode." },
           { key: "orders", label: "Pesanan Masuk", fmt: "number" as const, primary: false, hint: undefined },
           { key: "units", label: "Unit Terjual", fmt: "number" as const, primary: false, hint: undefined },

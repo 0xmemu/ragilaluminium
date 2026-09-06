@@ -194,10 +194,13 @@ class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
         $recap = [
             ['Periode', ($this->payload['range']['from_date'] ?? '-').' s.d. '.($this->payload['range']['to_date'] ?? '-')],
             ['Penjualan Gross', (float) ($fin['gross_revenue'] ?? 0)],
+            ['Ongkir Raw J&T', (float) ($fin['shipping_raw'] ?? 0)],
+            ['Biaya COD, diteruskan ke J&T', (float) ($fin['cod_fee'] ?? 0)],
+            ['Subsidi Ongkir, beban toko', (float) ($fin['shipping_subsidy'] ?? 0)],
             ['Refund Retur', (float) ($fin['refund_adjustments'] ?? 0)],
+            ['Ongkir Retur, beban toko', (float) ($fin['return_shipping_store'] ?? 0)],
             ['Penjualan Bersih', (float) ($fin['net_revenue'] ?? 0)],
             ['Pembayaran Diterima', (float) ($fin['payments_received'] ?? 0)],
-            ['COD Dibayar', (float) ($fin['cod_paid'] ?? 0)],
         ];
         foreach ($recap as [$label, $value]) {
             $rows[] = [$label, $value];
@@ -214,9 +217,10 @@ class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
             'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Dibayar', 'Metode',
             'Status Pesanan', 'Status Pembayaran',
             'Subtotal Sebelum Diskon', 'Diskon Produk', 'Voucher',
-            'Ongkir Kotor', 'Subsidi Ongkir', 'Ongkir Dibayar',
-            'Biaya COD', 'Asuransi', 'Total Dibayar Pembeli',
-            'Uang Masuk', 'Sisa Belum Cair', 'Jumlah Item',
+            'Penjualan Gross', 'Ongkir Raw J&T', 'Subsidi Ongkir Toko',
+            'Ongkir Dibayar Pelanggan', 'Biaya COD Pelanggan', 'Refund Retur',
+            'Ongkir Retur Toko', 'Penjualan Bersih', 'Asuransi',
+            'Total Dibayar Pembeli', 'Uang Masuk', 'Sisa Belum Cair', 'Jumlah Item',
         ];
         $r++;
 
@@ -232,10 +236,14 @@ class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
                 $guard($row['subtotal_before_discount'] ?? 0),
                 $guard($row['discount'] ?? 0),
                 $guard($row['voucher_discount'] ?? 0),
-                $guard($row['shipping_gross'] ?? 0),
+                $guard($row['gross_revenue'] ?? 0),
+                $guard($row['shipping_raw'] ?? 0),
                 $guard($row['shipping_subsidy'] ?? 0),
-                $guard($row['shipping_net'] ?? 0),
+                $guard($row['shipping_net_paid_by_customer'] ?? 0),
                 $guard($row['cod_fee'] ?? 0),
+                $guard($row['refund_amount'] ?? 0),
+                $guard($row['return_shipping_store'] ?? 0),
+                $guard($row['net_revenue'] ?? 0),
                 $guard($row['insurance'] ?? 0),
                 $guard($row['total_paid_by_customer'] ?? 0),
                 $guard($row['paid_amount'] ?? 0),
@@ -243,7 +251,7 @@ class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
                 $guard($row['items_count'] ?? 0),
             ];
             $rows[] = $out;
-            for ($c = 7; $c <= 18; $c++) {
+            for ($c = 7; $c <= 22; $c++) {
                 $this->registerNumber($r, $c, '#,##0');
             }
             $this->trackZeroCells($out, $r);
@@ -461,7 +469,7 @@ class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\E
             ['Periode laporan: '.($range['from_date'] ?? '-').' s.d. '.($range['to_date'] ?? '-')],
             [],
             ['ATURAN BARIS', 'Sheet Ringkasan = 1 baris per metrik; Produk Terlaris = 1 baris per produk (SKU induk); Pelanggan Terbaik = 1 baris per pelanggan; Biaya Retur = 1 baris per kasus retur selesai yang ongkirnya ditanggung toko.'],
-            ['VOCABULARY', 'Penjualan Gross = total nilai pesanan periode ini (omzet, dihitung sejak pesanan diproses, termasuk COD). Refund Retur = nilai refund dari retur yang benar-benar selesai. Penjualan Bersih = Penjualan Gross dikurangi Refund Retur. Pembayaran Diterima = pembayaran yang tercatat lunas (COD baru lunas saat paket tiba).'],
+            ['VOCABULARY', 'Penjualan Gross = total yang dibayar pelanggan, termasuk produk, ongkir, dan biaya COD. Ongkir Raw J&T = ongkir net pelanggan + subsidi ongkir toko. Biaya COD dibayar pelanggan dan diteruskan ke J&T. Penjualan Bersih = Gross - Ongkir Raw J&T - Biaya COD - Refund Retur - Ongkir Retur Toko. Order batal tidak masuk Gross/Net dan dicatat terpisah.'],
             ['METRIK PRODUK', 'Tiga level terpisah: Model Produk Terjual (jumlah jenis model unik), Produk Terjual (jumlah varian unik), Jumlah Unit Terjual (total unit). Beda level, jangan disamakan.'],
             ['KOLOM PERUBAHAN', 'Kolom "Perubahan %" membandingkan dengan periode sebelumnya. "Baru pada periode ini" = periode sebelumnya nol. 0.0% = tidak berubah.'],
             ['FORMAT ANGKA', 'Semua kolom uang memakai angka polos tanpa "Rp" (contoh: 3.000.000). Nilai sel tetap numerik, aman dijumlah dan bisa dibaca Excel maupun tools lain.'],

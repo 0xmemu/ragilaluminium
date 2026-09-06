@@ -25,6 +25,7 @@ class IncomeDetailQuery
 
         return Order::query()
             ->with('payments')
+            ->with(['returnCases' => fn ($q) => $q->where('status', 'completed')->whereNotNull('completed_at')->whereBetween('completed_at', [$fromDate.' 00:00:00', $toDate.' 23:59:59'])])
             ->withCount('items')
             ->whereIn('order_status', $statuses)
             ->whereDate('created_at', '>=', $fromDate)
@@ -42,7 +43,14 @@ class IncomeDetailQuery
                     ->sortByDesc('paid_at')
                     ->first()?->paid_at;
 
-                $shippingGross = (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount;
+                $shippingNet = (float) $order->shipping_amount;
+                $shippingSubsidy = (float) $order->shipping_subsidy_amount;
+                $shippingRaw = $shippingNet + $shippingSubsidy;
+                $codFee = (float) $order->cod_fee_amount;
+                $refund = (float) $order->returnCases->sum('refund_amount');
+                $returnShippingStore = (float) $order->returnCases->sum('return_shipping_cost');
+                $gross = $totalPaidByCustomer;
+                $net = $gross - $shippingRaw - $codFee - $refund - $returnShippingStore;
 
                 return [
                     'order_number' => $order->order_number,
@@ -54,10 +62,14 @@ class IncomeDetailQuery
                     'subtotal_before_discount' => (float) $order->subtotal_amount,
                     'discount' => (float) $order->discount_amount,
                     'voucher_discount' => (float) $order->voucher_discount_amount,
-                    'shipping_gross' => $shippingGross,
-                    'shipping_subsidy' => (float) $order->shipping_subsidy_amount,
-                    'shipping_net' => (float) $order->shipping_amount,
-                    'cod_fee' => (float) $order->cod_fee_amount,
+                    'gross_revenue' => $gross,
+                    'shipping_raw' => $shippingRaw,
+                    'shipping_subsidy' => $shippingSubsidy,
+                    'shipping_net_paid_by_customer' => $shippingNet,
+                    'cod_fee' => $codFee,
+                    'refund_amount' => $refund,
+                    'return_shipping_store' => $returnShippingStore,
+                    'net_revenue' => $net,
                     'insurance' => (float) $order->shipping_insurance_amount,
                     'total_paid_by_customer' => $totalPaidByCustomer,
                     'paid_amount' => $paidAmount,
