@@ -25,7 +25,7 @@ export function displayEtaRangeLabel(eta: OrderEta): string {
 
   // Bulan dan tahun sama: "9-13 September 2026". Jika berbeda: tampilkan tanggal lengkap.
   if (startMonth === endMonth && startYear === endYear) {
-    return `${startDay}-${endDay} ${endMonth} ${endYear}`
+    return `${startDay} - ${endDay} ${endMonth} ${endYear}`
   }
 
   return `${startDay} ${startMonth} ${startYear} - ${endDay} ${endMonth} ${endYear}`
