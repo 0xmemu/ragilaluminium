@@ -112,8 +112,8 @@ export default function ProductDetail({
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+      <section className="hidden md:block border-b border-border bg-surface">
+        <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
           <div className="flex items-center gap-3">
                         <Breadcrumbs
             items={[
