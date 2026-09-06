@@ -298,7 +298,7 @@ export function CheckoutSummary({
 
       <dl className="mt-3 space-y-2.5 text-xs">
         <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.length})</dt>
+          <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} pcs)</dt>
           <dd className="tabular-nums font-semibold">{formatCurrency(subtotal)}</dd>
         </div>
         {hasDiscount ? (
