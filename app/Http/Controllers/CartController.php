@@ -66,7 +66,7 @@ class CartController extends Controller
             'intent' => ['nullable', 'string', 'in:cart,checkout'],
         ]);
 
-        $this->cart->add(
+        $line = $this->cart->add(
             $validated['parent_sku'],
             $validated['variant_sku'] ?? null,
             $validated['quantity'],
@@ -77,6 +77,12 @@ class CartController extends Controller
         // checkout supaya user tidak melihat halaman produk/cart dulu.
         // "Tambah ke keranjang" tetap back() untuk animasi fly-to-cart.
         if (($validated['intent'] ?? null) === 'checkout') {
+            // Checkout dari PDP harus menampilkan PERSIS produk yang dibeli
+            // sekarang: override pilihan cart.select lama (bisa berisi produk
+            // lain dari sesi sebelumnya) dengan line yang baru ditambahkan.
+            $buyNowLineId = ($validated['variant_sku'] ?? null) ?: $validated['parent_sku'];
+            $this->cart->selectLines([$buyNowLineId]);
+
             return redirect()->route('checkout.index');
         }
 
