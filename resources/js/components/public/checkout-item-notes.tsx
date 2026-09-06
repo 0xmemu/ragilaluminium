@@ -12,6 +12,10 @@ export interface CheckoutNoteItem {
   quantity: number
   unit_price?: number
   line_total?: number
+  compare_price?: number | null
+  discount_percent?: number | null
+  line_compare_total?: number | null
+  line_discount?: number
   image?: string | null
   variation_1_name?: string | null
   variation_1_option?: string | null
@@ -102,6 +106,16 @@ function CheckoutItemNoteRow({
   }
 
   const variantLabel = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" • ")
+  const unitPrice = Number(item.unit_price ?? item.line_total ?? 0)
+  const comparePrice = item.compare_price == null ? null : Number(item.compare_price)
+  const lineDiscount = Number(item.line_discount ?? 0)
+  const hasDiscount = lineDiscount > 0 || (comparePrice !== null && comparePrice > unitPrice)
+  const discountPercent = item.discount_percent
+  const compareTotal = item.line_compare_total != null
+    ? Number(item.line_compare_total)
+    : comparePrice !== null && item.quantity > 0
+      ? comparePrice * item.quantity
+      : null
 
   return (
     <div className="py-3.5 space-y-2.5">
@@ -128,9 +142,26 @@ function CheckoutItemNoteRow({
           {variantLabel ? (
             <p className="text-xs text-muted-foreground">{variantLabel}</p>
           ) : null}
+          {hasDiscount ? (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1 text-[11px]">
+              <span className="font-semibold text-sale">
+                Diskon{discountPercent ? ` ${discountPercent}%` : ""}
+              </span>
+              {lineDiscount > 0 ? (
+                <span className="tabular-nums text-sale">Hemat {formatCurrency(lineDiscount)}</span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-2 pt-1">
-            <span className="tabular-nums text-xs font-bold text-primary sm:text-sm">
-              {formatCurrency(item.unit_price ?? item.line_total ?? 0)}
+            <span className="text-right">
+              {hasDiscount && compareTotal != null ? (
+                <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
+                  {formatCurrency(compareTotal)}
+                </span>
+              ) : null}
+              <span className="tabular-nums block text-xs font-bold text-primary sm:text-sm">
+                {formatCurrency(item.line_total ?? unitPrice * item.quantity)}
+              </span>
             </span>
             <span className="text-xs text-muted-foreground">{item.quantity} unit</span>
           </div>
