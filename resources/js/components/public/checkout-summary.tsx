@@ -113,7 +113,8 @@ export function CheckoutSummary({
   // Nilai yang ditampilkan sebagai penghematan harus benar-benar selisih
   // antara total sebelum seluruh diskon dan total pembayaran akhir.
   const finalTotal = Math.max(0, Number(subtotal || 0) - (hasVoucher ? Number(voucherDiscount || 0) : 0) + shippingCost + codFee)
-  const totalBeforeDiscount = finalTotal + discount
+  const shippingSubsidy = effectiveShipping ? Number(effectiveShipping.subsidy || 0) : 0
+  const totalBeforeDiscount = finalTotal + discount + shippingSubsidy
   const savedAmount = Math.max(0, totalBeforeDiscount - finalTotal)
 
   // Estimasi tiba = ETA J&T utk rute (carrier_eta); +1 hari hanya di batas lambat.
