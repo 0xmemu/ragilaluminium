@@ -418,7 +418,7 @@ export function CheckoutSummary({
         </div>
         {discount > 0 ? (
           <p className="mt-1 text-right text-[11px] leading-4 text-sale">
-            Anda menghemat {formatCurrency(discount)} (perhitungan harga asli, sebelum diskon, voucher, subsidi, dan potongan lain)
+            Anda menghemat {formatCurrency(discount)}
           </p>
         ) : null}
       </dl>
