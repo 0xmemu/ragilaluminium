@@ -84,7 +84,7 @@ final class ProductPublicationService
         }
 
         if (! $completion['shipping_data']) {
-            $errors['shipping_data'] = 'Lengkapi berat, lebar, tinggi, dan tebal pada setiap varian aktif.';
+            $errors['shipping_data'] = 'Lengkapi data berat dan dimensi (panjang, tinggi, lebar) produk.';
         }
 
         if ($errors !== []) {
