@@ -146,7 +146,7 @@ class JntCargoClient
         $requestId = (string) Str::uuid();
         $startedAt = microtime(true);
 
-        Log::channel('jnt')->info('JNT request', [
+        $this->safeLog('info', 'JNT request', [
             'request_id' => $requestId,
             'env' => $this->environment(),
             'endpoint' => $endpointKey,
@@ -165,7 +165,7 @@ class JntCargoClient
             $elapsedMs = (int) round((microtime(true) - $startedAt) * 1000);
             $body = $response->json() ?? [];
 
-            Log::channel('jnt')->info('JNT response', [
+            $this->safeLog('info', 'JNT response', [
                 'request_id' => $requestId,
                 'endpoint' => $endpointKey,
                 'http_status' => $response->status(),
@@ -184,7 +184,7 @@ class JntCargoClient
         } catch (\Throwable $e) {
             $elapsedMs = (int) round((microtime(true) - $startedAt) * 1000);
 
-            Log::channel('jnt')->error('JNT request failed', [
+            $this->safeLog('error', 'JNT request failed', [
                 'request_id' => $requestId,
                 'endpoint' => $endpointKey,
                 'exception' => $e::class,
@@ -199,6 +199,19 @@ class JntCargoClient
                 requestId: $requestId,
                 elapsedMs: $elapsedMs,
             );
+        }
+    }
+
+    /**
+     * Logging tidak boleh bisa mematikan alur J&T: bila channel gagal
+     * (file log root-owned, disk penuh, dsb.), diamkan dan lanjutkan.
+     */
+    private function safeLog(string $level, string $message, array $context): void
+    {
+        try {
+            Log::channel('jnt')->{$level}($message, $context);
+        } catch (\Throwable) {
+            // Logging failure tidak boleh mengganggu tariff/shipment.
         }
     }
 
