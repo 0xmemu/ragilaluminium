@@ -41,7 +41,8 @@ class CategoryController extends Controller
             'description' => 'Kelola kategori produk yang tampil di katalog dan form produk.',
             'categories' => $categories,
             'createHref' => route('admin.categories.create'),
-            'backUrl' => route('admin.products.index'),
+            // backUrl sengaja tidak dikirim di Index: list sibling ManageProductsTabs
+            'backUrl' => null,
         ]);
     }
 
