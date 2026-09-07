@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\CodSettings;
+use App\Services\Shipping\ShipmentPackageCalculator;
 use App\Support\PhoneNumber;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -159,6 +160,13 @@ class OrderService
                         $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost);
                     }
 
+                    $package = $this->packageForResolvedLines($resolved);
+                    $packageWeight = (float) ($package['chargeable_weight_kg'] ?? 0);
+                    if ($packageWeight <= 0) {
+                        $fallbackWeight = $this->cartWeightForLines($resolved);
+                        $packageWeight = $fallbackWeight > 0 ? $fallbackWeight : (float) config('shipping.default_item_weight_kg', 1.0);
+                        $package['chargeable_weight_kg'] = $packageWeight;
+                    }
                     $total = max(0, $subtotal + $shippingCost - $voucherDiscount + $codFee);
 
                     $customerRecord = $this->customers->upsertFromCheckout([
@@ -200,6 +208,8 @@ class OrderService
                         'shipping_amount' => $shippingCost,
                         'shipping_subsidy_amount' => round($shippingSubsidy, 2),
                         'shipping_insurance_amount' => round($shippingInsurance, 2),
+                        'shipping_chargeable_weight_kg' => $package['chargeable_weight_kg'],
+                        'shipping_package_snapshot' => $package,
                         'discount_amount' => round($discountTotal, 2),
                         'voucher_code' => $voucherCode,
                         'voucher_discount_amount' => round($voucherDiscount, 2),
@@ -390,24 +400,39 @@ class OrderService
         return $this->states->transition($order, $to, $actorUserId, $source, $context);
     }
 
-    /** Hitung total berat cart (kg) untuk estimasi/booking ongkir. */
+    /** Berat tagih provisional cart, termasuk pallet dan volumetrik. */
     public function cartWeightKg(): float
     {
-        $default = (float) config('shipping.default_item_weight_kg', 1.0);
-        $total = 0.0;
+        return $this->cartPackage()['chargeable_weight_kg'];
+    }
 
+    /** @return array<string, float|string> */
+    public function cartPackage(): array
+    {
+        $default = (float) config('shipping.default_item_weight_kg', 1.0);
+        $items = [];
         foreach ($this->cart->get() as $item) {
             $variant = ! empty($item['variant_sku'])
                 ? ProductVariant::with('product')->where('variant_sku', $item['variant_sku'])->first()
                 : null;
-            // ADR-021: berat primer milik produk (J&T per paket); varian hanya
-            // fallback data lama.
-            $weight = $variant?->product?->weight_kg
-                ?? ($variant && $variant->weight_kg ? (float) $variant->weight_kg : $default);
-            $total += $weight * max(1, (int) $item['quantity']);
+            $product = $variant?->product;
+            $weight = $product?->weight_kg ?? ($variant?->weight_kg ?: $default);
+            $items[] = [
+                'weight_kg' => (float) $weight,
+                'height_cm' => (float) ($product?->height_cm ?? $variant?->height_cm ?? 0),
+                'length_cm' => (float) ($product?->width_cm ?? $variant?->width_cm ?? 0),
+                'width_cm' => (float) ($product?->depth_cm ?? $variant?->depth_cm ?? 0),
+                'quantity' => max(1, (int) $item['quantity']),
+                'pallet_allowance_per_side_cm' => $product?->pallet_allowance_per_side_cm,
+                'pallet_weight_kg' => $product?->pallet_weight_kg,
+            ];
         }
-
-        return max($total, $default);
+        $calculator = new ShipmentPackageCalculator(
+            (float) config('shipping.pallet_allowance_per_side_cm', 3),
+            (float) config('shipping.volumetric_divisor', 5000),
+            (float) config('shipping.pallet_weight_kg', 0),
+        );
+        return $calculator->calculate($items);
     }
 
     protected function createWithRetryOnDuplicateNumber(callable $callback, int $attempts = 5): Order
@@ -635,6 +660,17 @@ class OrderService
                 CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
                 $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost);
             }
+            $package = $this->packageForResolvedLines(array_map(static fn (array $line): array => [
+                'product' => $line['product'],
+                'variant' => $line['variant'],
+                'qty' => $line['qty'],
+            ], $lines));
+            $packageWeight = (float) ($package['chargeable_weight_kg'] ?? 0);
+            if ($packageWeight <= 0) {
+                $fallbackWeight = $this->cartWeightForLines($lines);
+                $packageWeight = $fallbackWeight > 0 ? $fallbackWeight : (float) config('shipping.default_item_weight_kg', 1.0);
+                $package['chargeable_weight_kg'] = $packageWeight;
+            }
             $total = max(0, $subtotal + $shippingCost - $voucherDiscount + $codFee);
 
             // Persist baris.
@@ -720,6 +756,8 @@ class OrderService
                 'shipping_amount' => $shippingCost,
                 'shipping_subsidy_amount' => $shippingSubsidy,
                 'shipping_insurance_amount' => $shippingInsurance,
+                'shipping_chargeable_weight_kg' => $package['chargeable_weight_kg'],
+                'shipping_package_snapshot' => $package,
                 'discount_amount' => $discountTotal,
                 'voucher_code' => $voucherCode,
                 'voucher_discount_amount' => $voucherDiscount,
@@ -752,23 +790,44 @@ class OrderService
         });
     }
 
+    /** @param list<array<string, mixed>> $lines */
+    protected function packageForResolvedLines(array $lines): array
+    {
+        $items = array_map(static function (array $line): array {
+            $product = $line['product'];
+            $variant = $line['variant'] ?? null;
+            return [
+                'weight_kg' => (float) ($product->weight_kg ?? $variant?->weight_kg ?? 0),
+                'height_cm' => (float) ($product->height_cm ?? $variant?->height_cm ?? 0),
+                'length_cm' => (float) ($product->width_cm ?? $variant?->width_cm ?? 0),
+                'width_cm' => (float) ($product->depth_cm ?? $variant?->depth_cm ?? 0),
+                'quantity' => max(1, (int) $line['qty']),
+                'pallet_allowance_per_side_cm' => $product->pallet_allowance_per_side_cm,
+                'pallet_weight_kg' => $product->pallet_weight_kg,
+            ];
+        }, $lines);
+
+        return (new ShipmentPackageCalculator(
+            (float) config('shipping.pallet_allowance_per_side_cm', 3),
+            (float) config('shipping.volumetric_divisor', 5000),
+            (float) config('shipping.pallet_weight_kg', 0),
+        ))->calculate($items);
+    }
+
     /**
-     * Berat kiriman pesanan dari baris terpilih (default config per item).
+     * Berat kiriman pesanan dari baris terpilih, memakai calculator yang sama
+     * dengan cart dan order snapshot.
      *
-     * @param  list<array{variant: \App\Models\ProductVariant|null, qty: int}>  $lines
+     * @param list<array{product: \App\Models\Product, variant: \App\Models\ProductVariant|null, qty: int}> $lines
      */
     protected function cartWeightForLines(array $lines): float
     {
-        $default = (float) config('shipping.default_item_weight_kg', 1.0);
-        $total = 0.0;
+        $package = $this->packageForResolvedLines(array_map(static fn (array $line): array => [
+            'product' => $line['product'],
+            'variant' => $line['variant'],
+            'qty' => $line['qty'],
+        ], $lines));
 
-        foreach ($lines as $line) {
-            $weight = $line['variant'] && $line['variant']->weight_kg
-                ? (float) $line['variant']->weight_kg
-                : $default;
-            $total += $weight * max(1, (int) $line['qty']);
-        }
-
-        return max($total, $default);
+        return (float) $package['chargeable_weight_kg'];
     }
 }
