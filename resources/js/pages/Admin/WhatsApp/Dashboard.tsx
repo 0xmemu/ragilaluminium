@@ -127,7 +127,7 @@ export default function WhatsAppDashboard({
       <Head title={`${title} | Admin`} />
 
       {/* Connection / linked status */}
-      <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
+      <section className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Icon name="whatsapp" className="size-8 text-primary" aria-hidden="true" />
@@ -192,9 +192,9 @@ export default function WhatsAppDashboard({
         </div>
       </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid min-w-0 max-w-full gap-6 lg:grid-cols-1 xl:grid-cols-2">
         {/* Template cards */}
-        <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-base font-bold">Template Pesan Otomatis</h3>
             <Button asChild variant="secondary" size="sm"><Link href={templatesUrl}>Kelola</Link></Button>
@@ -216,7 +216,7 @@ export default function WhatsAppDashboard({
         </section>
 
         {/* Recent message logs */}
-        <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-base font-bold">Log Pesan Terbaru</h3>
             <Button asChild variant="secondary" size="sm"><Link href={messagesUrl}>Semua</Link></Button>

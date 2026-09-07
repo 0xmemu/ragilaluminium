@@ -570,7 +570,7 @@ export default function MediaLibrary({
         </button>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex min-w-0 max-w-full gap-4 overflow-hidden">
         {/* Sidebar folder (bisa disembunyikan agar galeri lebih lebar) */}
         {showSidebar ? (
         <aside className="w-64 shrink-0">
@@ -616,7 +616,7 @@ export default function MediaLibrary({
         <div className="min-w-0 flex-1">
           {/* Filters */}
           <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
-            <div className="min-w-52 flex-1">
+            <div className="min-w-0 flex-1">
               <label className="text-xs font-semibold text-muted-foreground">Cari label / URL</label>
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="mis. produk, banner…" />
             </div>
