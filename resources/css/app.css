@@ -813,7 +813,7 @@
     align-items: center;
     gap: 4px;
     min-width: 0;
-    color: hsl(var(--warning));
+    color: hsl(var(--foreground));
     font-size: 10px;
     font-weight: 500;
     line-height: 1;

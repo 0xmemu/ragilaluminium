@@ -326,7 +326,7 @@ export function CustomerReviewForm({
                   key={n}
                   name="star"
                   weight={n <= (currentReview?.rating ?? 5) ? "fill" : "regular"}
-                  className={n <= (currentReview?.rating ?? 5) ? "size-3.5 text-[#f59e0b]" : "size-3.5 text-muted-foreground"}
+                  className={n <= (currentReview?.rating ?? 5) ? "size-3.5 text-warning" : "size-3.5 text-muted-foreground"}
                   aria-hidden="true"
                 />
               ))}
@@ -403,7 +403,7 @@ export function CustomerReviewForm({
                     key={n}
                     name="star"
                     weight={n <= (rating || currentReview?.rating || 5) ? "fill" : "regular"}
-                    className={n <= (rating || currentReview?.rating || 5) ? "size-5 text-[#f59e0b]" : "size-5 text-muted-foreground"}
+                    className={n <= (rating || currentReview?.rating || 5) ? "size-5 text-warning" : "size-5 text-muted-foreground"}
                     aria-hidden="true"
                   />
                 ))}
@@ -477,7 +477,7 @@ export function CustomerReviewForm({
                     <Icon
                       name="star"
                       weight={rating >= value ? "fill" : "regular"}
-                      className={cn("size-6", rating >= value ? "text-[#f59e0b]" : "text-muted-foreground")}
+                      className={cn("size-6", rating >= value ? "text-warning" : "text-muted-foreground")}
                       aria-hidden="true"
                     />
                   </button>
