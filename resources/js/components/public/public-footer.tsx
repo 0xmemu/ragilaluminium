@@ -4,6 +4,7 @@ import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
 import { StorefrontPlatforms } from "@/components/public/storefront-platforms"
 import { routeUrl } from "@/lib/routes"
+import { telephoneHref } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { FooterColumn, FooterLink, SharedPageProps, SocialLink } from "@/types"
 
@@ -67,7 +68,7 @@ function SocialIcon({ social }: { social: SocialLink }) {
 export function PublicFooter({ className }: { className?: string }) {
   const { footer, brand, platforms = [] } = usePage<SharedPageProps>().props
   const socials = footer?.social?.filter((social) => social.href && social.href !== "#") ?? []
-  const phoneHref = brand.phone ? `tel:${brand.phone.replace(/[^\d+]/g, "")}` : null
+  const phoneHref = telephoneHref(brand.phone)
   const emailHref = brand.email ? `mailto:${brand.email}` : null
   const showPlatformStrip = platforms.length > 0
   const showLegacySocial = !showPlatformStrip && socials.length > 0

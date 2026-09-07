@@ -7,6 +7,7 @@ import {
   humanize,
   productName,
   stripHtml,
+  telephoneHref,
 } from "@/lib/format"
 
 describe("format helpers", () => {
@@ -41,5 +42,19 @@ describe("format helpers", () => {
       "Tinggi 100Cm × Panjang 80Cm Jendela Jungkit",
     )
     expect(productName("Tinggi 50 cm x Panjang 80 cm")).toBe("Tinggi 50cm × Panjang 80cm")
+  })
+
+  it("builds a safe telephone href from a formatted phone number", () => {
+    const formattedPhone = ["+62", "(800)", "1234-5678"].join(" ")
+    expect(telephoneHref(formattedPhone)).toBe(["tel:+62", "80012345678"].join(""))
+    expect(telephoneHref("0812 3456 7890")).toBe("tel:081234567890")
+  })
+
+  it("rejects unusable or masked telephone values", () => {
+    expect(telephoneHref(null)).toBeNull()
+    expect(telephoneHref("   ")).toBeNull()
+    expect(telephoneHref("+---()")).toBeNull()
+    expect(telephoneHref("+62 812 **** 7890")).toBeNull()
+    expect(telephoneHref("123456")).toBeNull()
   })
 })

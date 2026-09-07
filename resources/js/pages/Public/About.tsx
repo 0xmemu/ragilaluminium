@@ -1,5 +1,4 @@
 import { Head, usePage } from "@inertiajs/react"
-import type { ComponentProps } from "react"
 
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
@@ -8,6 +7,7 @@ import { ClosingCTASection } from "@/components/public/closing-cta"
 import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
+import { telephoneHref } from "@/lib/format"
 import type { SharedPageProps, SocialLink } from "@/types"
 
 interface PageData {
@@ -183,7 +183,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
   const { brand, consultationWhatsApp, platforms = [] } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
   const whatsappLabel = consultationWhatsApp?.directLabel ?? "Chat WhatsApp"
-  const phoneHref = brand.phone ? `tel:${brand.phone.replace(/[^\d+]/g, "")}` : null
+  const phoneHref = telephoneHref(brand.phone)
   const heading = page.heading?.trim() || "Tentang Kami"
 
   const yearStat = parseStatLabel(brand.years_experience_label ?? "")
@@ -332,11 +332,11 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
 
               <div className="mt-4 space-y-2 text-sm">
-                {brand.phone ? (
+                {phoneHref ? (
                   <div className="flex items-center gap-2">
                     <Icon name="headset" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <span className="text-muted-foreground">Telepon:</span>
-                    <a href={phoneHref ?? `tel:${brand.phone.replace(/[^\d+]/g, "")}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                    <a href={phoneHref} className="font-medium text-foreground hover:text-primary hover:underline">
                       {brand.phone}
                     </a>
                   </div>

@@ -73,6 +73,17 @@ export function productName(name: string, shortName?: string | null): string {
     .trim()
 }
 
+/** Build a tel: link only from a complete, unmasked dialable value. */
+export function telephoneHref(value: string | null | undefined): string | null {
+  const phone = value?.trim() ?? ""
+  if (!phone || !/^[+]?[0-9 ().-]+$/.test(phone)) return null
+
+  const digits = phone.replace(/[^0-9]/g, "")
+  if (digits.length < 7) return null
+
+  return `tel:${phone.startsWith("+") ? "+" : ""}${digits}`
+}
+
 /** Build wa.me link from configured brand phone (no hardcoded number). */
 export function whatsappUrl(phone: string, message?: string): string | null {
   const digits = phone.replace(/\D/g, "")

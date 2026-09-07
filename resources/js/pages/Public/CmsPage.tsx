@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
+import { telephoneHref } from "@/lib/format"
 import type { SharedPageProps } from "@/types"
 
 interface CmsPageData {
@@ -34,10 +35,7 @@ export default function CmsPage({ page }: { page: CmsPageData }) {
   const isLegal = page.slug === "ketentuan-layanan" || isPrivacy
   const heading = page.heading?.trim() || page.title
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
-  const phoneHref = brand.phone ? `tel:${brand.phone.replace(/[^\d+]/g, "")}` : null
-  const whatsappLabel = brand.phone
-    ? `WhatsApp: ${brand.phone}`
-    : (consultationWhatsApp?.directLabel ?? "Chat WhatsApp")
+  const phoneHref = telephoneHref(brand.phone)
 
   return (
     <PublicLayout>
