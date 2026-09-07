@@ -338,7 +338,7 @@ export function useCheckout({
               ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
             },
             body: JSON.stringify({
-              weight_kg: shippingWeightKg,
+              weight_kg: shippingWeightKg > 0 ? shippingWeightKg : 1,
               destination_city: data.city,
               destination_province: data.province,
               destination_area: data.district,

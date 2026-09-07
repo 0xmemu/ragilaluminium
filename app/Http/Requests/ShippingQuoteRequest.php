@@ -11,6 +11,17 @@ class ShippingQuoteRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        // Guard: frontend mengirim shippingWeightKg dari kalkulator paket.
+        // Keranjang tanpa data berat/dimensi valid menghasilkan 0 dan tidak
+        // boleh 422 (quote checkout mati total); quote() melakukan clamp >= 1 kg.
+        $weight = is_numeric($this->input('weight_kg'))
+            ? max(0.01, (float) $this->input('weight_kg'))
+            : 1.0;
+        $this->merge(['weight_kg' => $weight]);
+    }
+
     public function rules(): array
     {
         return [

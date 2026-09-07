@@ -18,9 +18,13 @@ class ShippingQuoteController extends Controller
         // CheckoutController::validateDetails (route web, session tersedia).
         $withInsurance = $request->boolean('insurance');
 
+        // Guard: berat 0 (keranjang tanpa data dimensi/berat valid) tidak
+        // boleh 422 di frontend; quote() melakukan clamp >= 1 kg sendiri.
+        $weightKg = max(0.01, (float) $validated['weight_kg']);
+
         return response()->json([
             'data' => $this->shipping->quote(
-                (float) $validated['weight_kg'],
+                $weightKg,
                 $validated['destination_city'],
                 $validated['destination_province'] ?? null,
                 $validated['postal_code'] ?? null,
