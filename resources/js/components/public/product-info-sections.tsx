@@ -145,7 +145,7 @@ export function ProductInfoSections({
       {showInfo ? (
       <div className="mt-4 border-t border-border">
         <AccordionSection title="Informasi produk" defaultOpen={false}>
-          <div className="space-y-1.5 text-sm leading-6">
+          <div className="space-y-1.5 text-xs leading-5">
             {product.category_label ? (
               <p>
                 <span className="font-bold text-foreground">Kategori</span>
@@ -164,25 +164,18 @@ export function ProductInfoSections({
                 <span className="text-foreground">: {product.design_label}</span>
               </p>
             ) : null}
+            {visibleAttributes.map((attribute, index) => (
+              <p key={`${attribute.name}-${index}`}>
+                <span className="font-bold text-foreground">{attribute.name}</span>
+                <span className="text-foreground">: {attribute.value}</span>
+              </p>
+            ))}
           </div>
-          {visibleAttributes.length ? (
-            <dl className="mt-4 border-t border-border">
-              {visibleAttributes.map((attribute, index) => (
-                <div
-                  key={`${attribute.name}-${index}`}
-                  className="grid min-w-0 grid-cols-1 gap-3 border-b border-border/60 py-3 text-sm sm:grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)] sm:gap-4"
-                >
-                  <dt className="min-w-0 break-words font-bold text-foreground">{attribute.name}</dt>
-                  <dd className="min-w-0 break-words leading-6 text-foreground">{attribute.value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
         </AccordionSection>
 
         {product.description ? (
           <AccordionSection title="Tentang produk" defaultOpen={false}>
-            <p className="whitespace-pre-line text-sm leading-6 text-foreground">
+            <p className="whitespace-pre-line text-xs leading-5 text-foreground">
               {product.description}
             </p>
           </AccordionSection>
