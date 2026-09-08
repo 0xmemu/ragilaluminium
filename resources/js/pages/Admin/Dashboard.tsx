@@ -19,6 +19,7 @@ import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
+const SalesTrendPanel = React.lazy(() => import("@/components/admin/charts/sales-trend-panel"))
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl, withQuery } from "@/lib/routes"
@@ -225,39 +226,7 @@ function formatMetricValue(metric: PerformaMetric): string {
   return formatNumber(metric.value)
 }
 
-function Sparkline({ values }: { values: number[] }) {
-  const max = Math.max(...values, 1)
-  const min = Math.min(...values, 0)
-  const range = Math.max(max - min, 1)
-  const width = 160
-  const height = 48
-  const points = values
-    .map((value, index) => {
-      const x = values.length <= 1 ? 0 : (index / (values.length - 1)) * width
-      const y = height - ((value - min) / range) * (height - 6) - 3
-      return `${x},${y}`
-    })
-    .join(" ")
 
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="h-12 w-40 text-primary"
-      aria-hidden="true"
-      role="img"
-    >
-      <polygon points={`0,${height} ${points} ${width},${height}`} className="fill-primary/10" stroke="none" />
-      <polyline
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        points={points}
-      />
-    </svg>
-  )
-}
 
 function MetricTile({
   label,
@@ -413,20 +382,23 @@ export default function Dashboard({
         <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           {hasOrders ? (
             <Card className="flex h-full flex-col">
-              <div className="flex flex-wrap items-start justify-between gap-4 p-4 pb-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Penjualan (Gross) {performa.period_label}
-                  </p>
-                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
-                    Nilai pesanan yang masuk alur fulfillment · bukan pembayaran diterima atau laba
-                  </p>
-                  <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
-                    {formatCurrency(omzet.revenue)}
-                  </p>
-                  <div className="mt-2">
-                    <DeltaBadge percent={omzet.change_percent} />
+              <div className="flex flex-col lg:flex-row lg:items-stretch justify-between gap-6 p-5">
+                <div className="flex flex-col justify-between min-w-0 flex-1">
+                  <div>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Penjualan (Gross) {performa.period_label}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-medium text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
+                      Nilai pesanan yang masuk alur fulfillment · bukan pembayaran diterima atau laba
+                    </p>
+                    <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
+                      {formatCurrency(omzet.revenue)}
+                    </p>
+                    <div className="mt-2">
+                      <DeltaBadge percent={omzet.change_percent} />
+                    </div>
                   </div>
+
                   {(pendingPaymentOrders?.total ?? 0) > 0 ? (
                     <div className="mt-4 rounded-md border border-info/20 bg-info/5 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
                       <div className="flex items-start gap-2">
@@ -449,7 +421,14 @@ export default function Dashboard({
                     </div>
                   ) : null}
                 </div>
-                <Sparkline values={omzet.sparkline} />
+
+                <React.Suspense fallback={<div className="h-44 w-full sm:w-80 lg:w-96 animate-pulse rounded-xl bg-muted/40" />}>
+                  <SalesTrendPanel
+                    series={performa.trend.series}
+                    total={omzet.revenue}
+                    periodLabel={performa.period_label}
+                  />
+                </React.Suspense>
               </div>
               <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
                 <div className="px-4 py-3">
