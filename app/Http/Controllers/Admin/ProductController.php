@@ -176,6 +176,8 @@ class ProductController extends Controller
             'width_cm' => ['nullable', 'numeric', 'min:0'],
             'height_cm' => ['nullable', 'numeric', 'min:0'],
             'depth_cm' => ['nullable', 'numeric', 'min:0'],
+            'pallet_allowance_per_side_cm' => ['nullable', 'numeric', 'min:0'],
+            'pallet_weight_kg' => ['nullable', 'numeric', 'min:0'],
             // ADR-021: definisi varian (nama bebas + daftar opsi).
             'variant_defs' => ['nullable', 'array', 'max:5'],
             'variant_defs.*.name' => ['required_with:variant_defs', 'string', 'max:100'],
@@ -208,7 +210,7 @@ class ProductController extends Controller
             $validated['initial_stock'],
         );
         // ADR-021: dimensi/berat produk; short_name sepenuhnya otomatis.
-        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm'] as $dimensionField) {
+        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm', 'pallet_allowance_per_side_cm', 'pallet_weight_kg'] as $dimensionField) {
             if (array_key_exists($dimensionField, $validated)) {
                 $validated[$dimensionField] = $validated[$dimensionField] !== null
                     ? (float) $validated[$dimensionField]
@@ -504,9 +506,15 @@ class ProductController extends Controller
                 'height_cm' => $product->height_cm !== null ? self::cleanDimension($product->height_cm) : '',
                 'width_cm' => $product->width_cm !== null ? self::cleanDimension($product->width_cm) : '',
                 'depth_cm' => $product->depth_cm !== null ? self::cleanDimension($product->depth_cm) : '',
-                // ADR-020: media katalog dimuat di form utama.
+                'pallet_allowance_per_side_cm' => $product->pallet_allowance_per_side_cm !== null ? self::cleanDimension($product->pallet_allowance_per_side_cm) : '3',
+                'pallet_weight_kg' => $product->pallet_weight_kg !== null ? self::cleanDimension($product->pallet_weight_kg) : '0',
+                // ADR-020: media katalog umum (posisi 1..9) dimuat di form galeri utama.
+                // Media opsi varian (posisi 50+) dan video (posisi 80+) dipisahkan
+                // agar tidak tercampur ke dalam galeri foto utama.
                 'media' => $product->media
                     ->where('is_installation', false)
+                    ->where('position', '<', 50)
+                    ->whereNull('product_variant_id')
                     ->sortBy('position')
                     ->map(fn ($m) => [
                         'media_asset_id' => $m->media_asset_id,
@@ -560,6 +568,14 @@ class ProductController extends Controller
             'product_model' => ['required', Rule::in(\App\Support\CatalogLabels::modelCodes())],
             'design_variant' => ['nullable', 'string', 'max:100', Rule::exists('sub_models', 'code')->where('product_model', $request->input('product_model'))],
             'status' => ['required', 'in:active,archived'],
+            // Berat dan dimensi adalah data produk yang wajib ikut disimpan
+            // saat form edit atau aktivasi dikirim.
+            'weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'width_cm' => ['nullable', 'numeric', 'min:0'],
+            'height_cm' => ['nullable', 'numeric', 'min:0'],
+            'depth_cm' => ['nullable', 'numeric', 'min:0'],
+            'pallet_allowance_per_side_cm' => ['nullable', 'numeric', 'min:0'],
+            'pallet_weight_kg' => ['nullable', 'numeric', 'min:0'],
             'homepage_popular' => ['sometimes', 'boolean'],
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'wizard_step' => ['nullable', 'in:identity,variants,media,review'],
@@ -578,6 +594,13 @@ class ProductController extends Controller
         ], [], [
             'name' => 'Nama produk',
         ]);
+        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm', 'pallet_allowance_per_side_cm', 'pallet_weight_kg'] as $dimensionField) {
+            if (array_key_exists($dimensionField, $validated)) {
+                $validated[$dimensionField] = $validated[$dimensionField] !== null && $validated[$dimensionField] !== ''
+                    ? (float) $validated[$dimensionField]
+                    : null;
+            }
+        }
         $requestedStatus = $validated['status'];
         $wizardStep = $validated['wizard_step'] ?? null;
         unset($validated['wizard_step']);
@@ -616,9 +639,12 @@ class ProductController extends Controller
                 }
                 $position++;
             }
-            // Media katalog yang tidak dikirim lagi -> arsipkan (bukan hapus).
+            // Media katalog umum (posisi < 50) yang tidak dikirim lagi -> arsipkan.
+            // Foto opsi varian (posisi 50+) dan video (posisi 80+) tidak disentuh di sini.
             $product->media()
                 ->where('is_installation', false)
+                ->where('position', '<', 50)
+                ->whereNull('product_variant_id')
                 ->whereNotIn('media_asset_id', $sentIds)
                 ->update(['show_in_catalog' => false, 'visibility' => 'archived']);
             // Foto utama: pertama di urutan (query langsung, bukan relasi).
@@ -636,31 +662,109 @@ class ProductController extends Controller
         }
 
         // ADR-021: definisi varian & kombinasi (harga/stok) dari form edit.
+        $slotNames = [];
         if ($request->filled('variant_defs')) {
+            $resolverForOption = app(\App\Services\MediaAssetResolver::class);
             foreach ($request->input('variant_defs', []) as $slot => $def) {
                 $slotName = trim((string) ($def['name'] ?? ''));
                 if ($slotName === '') continue;
                 $slotNo = $slot + 1;
                 if ($slotNo > 5) break;
-                // Nama varian slot ini diperbarui di semua varian yang punya
-                // opsi pada slot tersebut.
+                $slotNames[$slotNo] = $slotName;
+
+                // Nama varian slot ini diperbarui di semua varian yang punya opsi pada slot tersebut.
                 $product->variants()
                     ->where('variation_'.$slotNo.'_option', '!=', '')
                     ->update(['variation_'.$slotNo.'_name' => $slotName]);
+
+                // Simpan foto per opsi varian ke varian perwakilan (posisi 50+)
+                foreach ($def['options'] ?? [] as $opt) {
+                    $optVal = trim((string) ($opt['value'] ?? ''));
+                    $assetId = ! empty($opt['media_asset_id']) ? (int) $opt['media_asset_id'] : null;
+                    if ($optVal === '' || ! $assetId) {
+                        continue;
+                    }
+                    $asset = \App\Models\MediaAsset::find($assetId);
+                    if (! $asset || $asset->status !== 'ready') {
+                        continue;
+                    }
+                    $repVariant = $product->variants()
+                        ->where('variation_'.$slotNo.'_option', $optVal)
+                        ->orderBy('id')
+                        ->first();
+                    if ($repVariant) {
+                        $resolverForOption->attach($product, $asset, [
+                            'product_variant_id' => $repVariant->id,
+                            'position' => 50 + ($slotNo - 1) * 10,
+                            'is_main_image' => false,
+                            'show_in_catalog' => true,
+                            'is_installation' => false,
+                            'visibility' => 'visible',
+                        ], (int) $request->user()->id);
+                    }
+                }
             }
         }
+
         if ($request->filled('combinations')) {
-            $variants = $product->variants()->orderBy('id')->get()->values();
-            foreach ($request->input('combinations', []) as $index => $combo) {
-                $variant = $variants[$index] ?? null;
-                if (! $variant) continue;
-                $variant->price = (float) ($combo['price'] ?? $variant->price);
-                $stockRaw = trim((string) ($combo['stock'] ?? ''));
-                if ($stockRaw !== '') {
-                    $resolved = \App\Services\StockCellParser::resolve($stockRaw !== '' ? $stockRaw : null);
-                    if ($resolved !== null) { $variant->stock = $resolved; }
+            $matchedVariantIds = [];
+            foreach ($request->input('combinations', []) as $combo) {
+                $options = array_values(array_map('trim', (array) ($combo['options'] ?? [])));
+                if ($options === []) {
+                    continue;
                 }
-                $variant->save();
+
+                // Pencocokan varian berbasis NAMA OPSI (anti-swap dan tahan reorder)
+                $q = $product->variants();
+                for ($s = 1; $s <= count($options); $s++) {
+                    $q->where('variation_'.$s.'_option', $options[$s - 1]);
+                }
+                $variant = $q->first();
+
+                // Hitung stok
+                $stockRaw = trim((string) ($combo['stock'] ?? ''));
+                $resolvedStock = $stockRaw !== ''
+                    ? \App\Services\StockCellParser::resolve($stockRaw)
+                    : null;
+
+                if ($variant) {
+                    $variant->price = (float) ($combo['price'] ?? $variant->price);
+                    if ($resolvedStock !== null) {
+                        $variant->stock = $resolvedStock;
+                    }
+                    $variant->status = 'active';
+                    $variant->save();
+                    $matchedVariantIds[] = $variant->id;
+                } else {
+                    // Jika varian baru ditambahkan dari form web, buatkan varian baru
+                    $newVariantData = [
+                        'product_id' => $product->id,
+                        'variant_sku' => \App\Support\ShopeeStyleSku::nextVariantSku($product),
+                        'price' => (float) ($combo['price'] ?? 0),
+                        'stock' => $resolvedStock ?? 0,
+                        'weight_kg' => $product->weight_kg,
+                        'height_cm' => $product->height_cm,
+                        'width_cm' => $product->width_cm,
+                        'depth_cm' => $product->depth_cm,
+                        'status' => 'active',
+                        'created_by_user_id' => $request->user()->id,
+                        'updated_by_user_id' => $request->user()->id,
+                    ];
+                    for ($s = 1; $s <= 5; $s++) {
+                        $newVariantData['variation_'.$s.'_name'] = $slotNames[$s] ?? null;
+                        $newVariantData['variation_'.$s.'_option'] = $options[$s - 1] ?? null;
+                    }
+                    $newV = \App\Models\ProductVariant::create($newVariantData);
+                    $matchedVariantIds[] = $newV->id;
+                }
+            }
+
+            // Arsipkan varian lama yang sengaja dihapus dari form kombinasi (tidak dihapus fisik)
+            if ($matchedVariantIds !== []) {
+                $product->variants()
+                    ->whereNotIn('id', $matchedVariantIds)
+                    ->where('status', '!=', 'archived')
+                    ->update(['status' => 'archived']);
             }
         }
 

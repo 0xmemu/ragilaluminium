@@ -111,11 +111,20 @@ class CatalogDataSheet implements FromArray, WithTitle, WithEvents
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
-        // Dropdown kategori/model/desain (nilai singkat, muat formula 250 char).
+        // Dropdown kategori/model/desain pada kolom yang benar (D, E, F):
+        // Kolom C = description (teks bebas, tanpa dropdown)
+        // Kolom D = product_category
+        // Kolom E = product_model (termasuk model daun spesifik)
+        // Kolom F = design_variant (sub model)
         $last = max($sheet->getHighestRow(), 200);
-        $this->listValidation($sheet, 'C', ['JENDELA', 'PINTU', 'BOVEN'], $last);
-        $this->listValidation($sheet, 'D', ['SWING', 'SLIDING', 'JUNGKIT', 'KACA MATI'], $last);
-        $this->listValidation($sheet, 'E', ['POLOS', 'ORNAMEN', 'KOMBINASI'], $last);
+        $this->listValidation($sheet, 'D', ['JENDELA', 'PINTU', 'BOVEN'], $last);
+        $models = [
+            'JUNGKIT_1_DAUN', 'JUNGKIT_2_DAUN', 'JUNGKIT_3_DAUN',
+            'SLIDING_2_DAUN', 'SWING_1_DAUN', 'SWING_2_DAUN', 'SWING_3_DAUN',
+            'KACA_MATI', 'ZIGZAG',
+        ];
+        $this->listValidation($sheet, 'E', $models, $last);
+        $this->listValidation($sheet, 'F', ['POLOS', 'ORNAMEN', 'KOMBINASI'], $last);
         
     }
 
