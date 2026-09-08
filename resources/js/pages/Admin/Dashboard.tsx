@@ -610,39 +610,7 @@ export default function Dashboard({
           </>
         ) : null}
 
-        {/* Row 2.5 - System Health & Integrasi Teknis */}
-        {integrationReadiness && integrationReadiness.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {integrationReadiness.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-soft transition hover:bg-muted/40"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:text-foreground transition">
-                    <Icon name={item.icon} className="size-4" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-foreground">{item.label}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{item.detail}</p>
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                    item.ready
-                      ? "bg-success/15 text-success"
-                      : "bg-warning/15 text-warning"
-                  )}
-                >
-                  <span className={cn("size-1.5 rounded-full", item.ready ? "bg-success" : "bg-warning")} />
-                  {item.status_label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        ) : null}
+
 
 
         {/* Pesanan terbaru - ringkasan dengan tautan detail */}
