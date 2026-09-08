@@ -749,21 +749,34 @@ class StorePerformanceService
             ->limit($limit)
             ->get();
 
-        $bestSellers = collect($bestRows)->map(fn ($row) => [
-            'product_id' => (int) $row->product_id,
-            'parent_sku' => $row->parent_sku,
-            'name' => $row->name,
-            'units' => (int) $row->units,
-            'revenue' => round((float) $row->revenue, 2),
-            'order_count' => (int) $row->order_count,
-        ])->values()->all();
+        // --- batch load produk utk ranking (views/clicks/sellers) ---
+        $engagementIds = $viewRank->keys()->merge($clickRank->keys());
+        $bestProductIds = collect($bestRows)->pluck('product_id')->filter();
+        $bestSkus = collect($bestRows)->pluck('parent_sku')->filter();
 
-        // --- batch load produk utk engagement ranking (views/clicks) ---
-        $engagementIds = $viewRank->keys()->merge($clickRank->keys())->unique()->values()->all();
+        $allProductIds = $engagementIds->merge($bestProductIds)->unique()->values()->all();
 
-        $products = $engagementIds === []
+        $products = $allProductIds === []
             ? collect()
-            : Product::query()->whereIn('id', $engagementIds)->with('mainImage')->get()->keyBy('id');
+            : Product::query()->whereIn('id', $allProductIds)->with('mainImage')->get()->keyBy('id');
+
+        $productsBySku = $bestSkus->isEmpty()
+            ? collect()
+            : Product::query()->whereIn('parent_sku', $bestSkus->all())->with('mainImage')->get()->keyBy('parent_sku');
+
+        $bestSellers = collect($bestRows)->map(function ($row) use ($products, $productsBySku) {
+            $p = $products->get($row->product_id) ?? $productsBySku->get($row->parent_sku);
+
+            return [
+                'product_id' => (int) ($row->product_id ?? $p?->id ?? 0),
+                'parent_sku' => $row->parent_sku,
+                'name' => $row->name,
+                'image' => $p?->mainImage?->urlFor('thumb') ?? $p?->mainImage?->urlFor('card'),
+                'units' => (int) $row->units,
+                'revenue' => round((float) $row->revenue, 2),
+                'order_count' => (int) $row->order_count,
+            ];
+        })->values()->all();
 
         $makeEngagement = function (array $ids, array $agg) use ($products): array {
             $out = [];
@@ -795,8 +808,9 @@ class StorePerformanceService
     }
     public function topProducts(Carbon $from, Carbon $to, int $limit = 50): array
     {
-        return OrderItem::query()
+        $rows = OrderItem::query()
             ->select([
+                'order_items.product_id',
                 'order_items.parent_sku',
                 'order_items.name',
                 DB::raw('SUM(order_items.quantity) as units'),
@@ -806,18 +820,34 @@ class StorePerformanceService
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereRaw($this->paidRevenueStatusSql('orders'))
-            ->groupBy('order_items.parent_sku', 'order_items.name')
+            ->groupBy('order_items.product_id', 'order_items.parent_sku', 'order_items.name')
             ->orderByDesc('revenue')
             ->limit($limit)
-            ->get()
-            ->map(fn ($row) => [
+            ->get();
+
+        $productIds = $rows->pluck('product_id')->filter()->unique()->all();
+        $skus = $rows->pluck('parent_sku')->filter()->unique()->all();
+
+        $productsById = $productIds === []
+            ? collect()
+            : Product::query()->whereIn('id', $productIds)->with('mainImage')->get()->keyBy('id');
+
+        $productsBySku = $skus === []
+            ? collect()
+            : Product::query()->whereIn('parent_sku', $skus)->with('mainImage')->get()->keyBy('parent_sku');
+
+        return $rows->map(function ($row) use ($productsById, $productsBySku) {
+            $p = $productsById->get($row->product_id) ?? $productsBySku->get($row->parent_sku);
+
+            return [
                 'parent_sku' => $row->parent_sku,
                 'name' => $row->name,
+                'image' => $p?->mainImage?->urlFor('thumb') ?? $p?->mainImage?->urlFor('card'),
                 'units' => (int) $row->units,
                 'revenue' => round((float) $row->revenue, 2),
                 'order_count' => (int) $row->order_count,
-            ])
-            ->all();
+            ];
+        })->all();
     }
 
     /**

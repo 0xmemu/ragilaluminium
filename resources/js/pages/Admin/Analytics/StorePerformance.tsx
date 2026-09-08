@@ -87,6 +87,7 @@ interface Report {
   top_products: Array<{
     parent_sku: string
     name: string
+    image?: string | null
     units: number
     revenue: number
     order_count: number
@@ -102,7 +103,7 @@ interface Report {
   product_breakdowns: {
     most_viewed: Array<{ product_id: number; parent_sku: string; name: string; image: string | null; views: number; clicks: number; total: number }>
     most_clicked: Array<{ product_id: number; parent_sku: string; name: string; image: string | null; views: number; clicks: number; total: number }>
-    best_sellers: Array<{ product_id: number; parent_sku: string; name: string; units: number; revenue: number; order_count: number }>
+    best_sellers: Array<{ product_id: number; parent_sku: string; name: string; image?: string | null; units: number; revenue: number; order_count: number }>
   }
 }
 
@@ -325,6 +326,13 @@ function SellersList({ rows }: { rows: ProductBreakdown[] }) {
     <div className="mt-3 divide-y divide-border">
       {rows.map((p) => (
         <article key={p.product_id} className="flex items-center gap-3 py-2">
+          {p.image ? (
+            <img src={p.image} alt={p.name} className="size-9 shrink-0 rounded-md object-cover border border-border" />
+          ) : (
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-bold text-muted-foreground">
+              {p.name.charAt(0)}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-normal text-foreground" title={p.name}>{p.name}</p>
             <div className="flex items-center gap-1">
@@ -1195,6 +1203,7 @@ export default function StorePerformance({
                 <table className="w-full text-xs">
                   <thead className="bg-muted/30 text-left text-xs font-semibold text-muted-foreground">
                     <tr>
+                      <th className="px-4 py-2 w-12 text-center">Foto</th>
                       <th className="px-4 py-2">Nama Produk</th>
                       <th className="px-3 py-2 text-right">Unit</th>
                       <th className="px-3 py-2 text-right">Pesanan</th>
@@ -1204,6 +1213,15 @@ export default function StorePerformance({
                   <tbody className="divide-y divide-border">
                     {report.top_products.slice(0, 6).map((product) => (
                       <tr key={`${product.parent_sku}-${product.name}`} className="hover:bg-muted/20">
+                        <td className="px-4 py-2.5 text-center">
+                          {product.image ? (
+                            <img src={product.image} alt="" className="size-8 mx-auto rounded object-cover border border-border" />
+                          ) : (
+                            <div className="size-8 mx-auto flex items-center justify-center rounded bg-muted text-[11px] font-bold text-muted-foreground">
+                              {product.name.charAt(0)}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 max-w-[200px]">
                           <p className="truncate font-normal text-foreground" title={product.name}>{product.name}</p>
                           <div className="flex items-center gap-1">
@@ -1301,6 +1319,7 @@ export default function StorePerformance({
                 <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs text-left text-xs font-semibold text-muted-foreground border-b border-border">
                   <tr>
                     <th className="px-4 py-2.5 w-12 text-center">No</th>
+                    <th className="px-4 py-2.5 w-14 text-center">Foto</th>
                     <th className="px-4 py-2.5">Produk & SKU</th>
                     <th className="px-4 py-2.5 text-right">Unit Terjual</th>
                     <th className="px-4 py-2.5 text-right">Pesanan</th>
@@ -1317,6 +1336,15 @@ export default function StorePerformance({
                       <tr key={`${product.parent_sku}-${product.name}`} className="hover:bg-muted/20">
                         <td className="px-4 py-2.5 text-center text-muted-foreground tabular-nums font-semibold">
                           {idx + 1}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {product.image ? (
+                            <img src={product.image} alt="" className="size-8 mx-auto rounded object-cover border border-border" />
+                          ) : (
+                            <div className="size-8 mx-auto flex items-center justify-center rounded bg-muted text-[11px] font-bold text-muted-foreground">
+                              {product.name.charAt(0)}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-2.5 max-w-md">
                           <Link
