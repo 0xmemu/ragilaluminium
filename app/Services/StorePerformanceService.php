@@ -296,7 +296,7 @@ class StorePerformanceService
             'charts' => [
                 [
                     'key' => 'revenue',
-                    'title' => 'Tren Omzet',
+                    'title' => 'Tren Penjualan',
                     'total' => $current['revenue'],
                     'total_format' => 'currency',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'revenue'),

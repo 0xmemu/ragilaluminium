@@ -1101,18 +1101,12 @@ export default function StorePerformance({
           <div>
             {(() => {
               const chart = report.charts[chartTab] ?? report.charts[0]
-              const granLabel =
-                report.range.granularity === "hour" ? "Per Jam"
-                : report.range.granularity === "week" ? "Per Minggu"
-                : report.range.granularity === "month" ? "Per Bulan"
-                : report.range.granularity === "year" ? "Per Tahun"
-                : "Per Hari"
               return (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
                     <HoverHint
                       label="Grafik Tren Bisnis"
-                      hint={chart ? `${chart.title} (${granLabel})` : "Aktivitas fluktuasi tren bisnis."}
+                      hint="Grafik fluktuasi kinerja bisnis toko berdasarkan metrik dan skala waktu yang dipilih."
                       className="text-sm font-semibold tracking-tight text-foreground"
                     />
                     <div className="flex gap-1" role="tablist" aria-label="Pilih metrik tren">
@@ -1139,7 +1133,7 @@ export default function StorePerformance({
                   {chart ? (
                     <div className="mt-3">
                       <div className="flex items-baseline justify-between mb-2">
-                        <span className="text-xs text-muted-foreground">Total Periode:</span>
+                        <span className="text-xs text-muted-foreground">Total {chart ? chart.title.replace(/^Tren /, "") : "Periode"}:</span>
                         <span className="text-base font-bold tabular-nums text-foreground">
                           {chart.total_format === "currency"
                             ? formatCurrency(chart.total)
