@@ -43,6 +43,7 @@ interface PrimaryAction {
   next_status: string | null
   kind?: string
   hint?: string | null
+  href?: string
 }
 
 interface OrderCard {
@@ -317,7 +318,7 @@ function OrderCardRow({
             title="Cetak detail konsumen"
           >
             <Icon name="printer" className="size-3.5" aria-hidden="true" />
-            <span className="hidden xl:inline">Print</span>
+            <span className="hidden xl:inline">Cetak</span>
           </button>
           <Link
             href={order.href}
@@ -500,16 +501,22 @@ function OrderCardRow({
             </Button>
           ) : null}
 
-          {order.secondary_action?.next_status ? (
-            <Button
-              variant="secondary"
-              size="xs"
-              className="w-full xl:w-auto"
-              disabled={busy}
-              onClick={() => applyStatus(order.secondary_action!.next_status!)}
-            >
-              {busy ? "Memproses..." : order.secondary_action.label}
-            </Button>
+          {order.secondary_action ? (
+            order.secondary_action.href ? (
+              <Button asChild variant="secondary" size="xs" className="w-full xl:w-auto">
+                <Link href={order.secondary_action.href}>{order.secondary_action.label}</Link>
+              </Button>
+            ) : order.secondary_action.next_status ? (
+              <Button
+                variant="secondary"
+                size="xs"
+                className="w-full xl:w-auto"
+                disabled={busy}
+                onClick={() => applyStatus(order.secondary_action!.next_status!)}
+              >
+                {busy ? "Memproses..." : order.secondary_action.label}
+              </Button>
+            ) : null
           ) : null}
 
           {order.whatsapp_url ? (
@@ -524,7 +531,7 @@ function OrderCardRow({
             <Link href={order.href}>Detail</Link>
           </Button>
 
-          {order.order_status !== "cancelled" && order.order_status !== "completed" ? (
+          {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
             <ConfirmAction
               trigger={
                 <button
@@ -1105,9 +1112,9 @@ export default function OrdersIndex({
               {resiOrder ? (
                 <>
                 <section className="rounded-lg border border-border bg-surface-muted/60 p-3">
-                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                     <Icon name="user" className="size-3.5" aria-hidden="true" />
-                    Verifikasi pelanggan & alamat
+                    Verifikasi Pelanggan & Alamat
                   </p>
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
                     <dt className="text-muted-foreground">Nama</dt>
