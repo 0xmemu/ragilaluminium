@@ -865,44 +865,51 @@ export default function StorePerformance({
             </p>
 
             <div className="mt-3 space-y-3">
-              {/* Box 1: Pembayaran Diterima */}
+              {/* Box 1: Pembayaran Diterima (Total Kas Masuk) */}
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">Sudah Masuk Rekening (Cair)</span>
+                  <span className="text-xs font-semibold text-foreground">Total Pembayaran Diterima (Cair)</span>
                   <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">Lunas</span>
                 </div>
                 <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
                   {formatCurrency(report.financial.payments_received ?? 0)}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Pembayaran transfer lunas dan COD yang sudah diselesaikan pada periode ini.
+                  Total dana riil dari transaksi transfer lunas dan COD selesai pada periode ini.
                 </p>
               </div>
 
-              {/* Box 2: Piutang COD Kurir */}
-              <div className="rounded-md border border-border bg-card p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">Piutang Tertahan di Kurir COD</span>
-                  <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning">Menunggu Serah Terima</span>
+              {/* Rincian Komposisi Kas Masuk */}
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                <div className="rounded-md border border-border bg-card p-2.5">
+                  <p className="text-[11px] text-muted-foreground">Transfer Bank Lunas</p>
+                  <p className="mt-0.5 font-bold tabular-nums text-foreground">
+                    {formatCurrency(Math.max(0, (report.financial.payments_received ?? 0) - (report.financial.cod_paid ?? 0)))}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Lunas di muka</p>
                 </div>
-                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
-                  {formatCurrency(report.financial.cod_pending_amount ?? 0)}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {report.financial.cod_pending_count ?? 0} pesanan COD aktif dalam pengiriman/proses yang dananya belum ditransfer J&T.
-                </p>
-              </div>
 
-              {/* Box 3: Baris Ringkas Tambahan */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-md border border-border bg-card p-2.5">
                   <p className="text-[11px] text-muted-foreground">COD Cair Periode Ini</p>
-                  <p className="mt-0.5 font-bold tabular-nums text-foreground">{formatCurrency(report.financial.cod_paid ?? 0)}</p>
+                  <p className="mt-0.5 font-bold tabular-nums text-foreground">
+                    {formatCurrency(report.financial.cod_paid ?? 0)}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Lunas saat barang tiba</p>
                 </div>
-                <div className="rounded-md border border-border bg-card p-2.5">
-                  <p className="text-[11px] text-muted-foreground">Transfer Menunggu Bukti</p>
-                  <p className="mt-0.5 font-bold tabular-nums text-foreground">{formatNumber(report.financial.payment_pending_count ?? 0)} pesanan</p>
+              </div>
+
+              {/* Box 2: Transfer Menunggu Bukti / Verifikasi */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">Transfer Menunggu Verifikasi</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Pending</span>
                 </div>
+                <p className="mt-1 text-base font-bold tabular-nums text-foreground">
+                  {formatNumber(report.financial.payment_pending_count ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Pesanan metode transfer yang belum selesai dibayar atau menunggu verifikasi admin.
+                </p>
               </div>
             </div>
           </div>

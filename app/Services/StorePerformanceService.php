@@ -16,7 +16,7 @@ use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Pembukuan toko & penjualan — sumber kebenaran: orders + order_items (+ page views).
+ * Pembukuan toko & penjualan - sumber kebenaran: orders + order_items (+ page views).
  */
 class StorePerformanceService
 {
@@ -215,7 +215,6 @@ class StorePerformanceService
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
             $this->kpi('cod_paid', 'COD Dibayar', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Nominal payment COD yang selesai pada periode.'),
             $this->kpi('payment_pending_count', 'Pembayaran Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum cair pada order aktif. COD memang lunas saat paket tiba sehingga tidak dihitung di sini.'),
-            $this->kpi('cod_pending_amount', 'Piutang COD Kurir', $current['cod_pending_amount'], $previous['cod_pending_amount'] ?? 0, 'currency', 'Nominal pesanan COD aktif yang masih dalam proses atau perjalanan pengiriman (menunggu serah terima kurir J&T).'),
         ];
 
         $cancellationsKpis = [
@@ -257,7 +256,7 @@ class StorePerformanceService
                     .(
                         $range['previous_from']->toDateString() === $range['previous_to']->toDateString()
                             ? ''
-                            : ' – '.$range['previous_to']->translatedFormat('j M Y')
+                            : ' - '.$range['previous_to']->translatedFormat('j M Y')
                     ),
                 'compare_from_date' => $range['previous_from']->translatedFormat('d M Y'),
                 'compare_to_date' => $range['previous_to']->translatedFormat('d M Y'),
@@ -689,7 +688,7 @@ class StorePerformanceService
         ];
     }
     /**
-     * Breakdown performa produk (Task 3) — ADDITIVE, tanpa mengubah top_products.
+     * Breakdown performa produk (Task 3) - ADDITIVE, tanpa mengubah top_products.
      *
      * - most_viewed : ranking performance_metrics product_views (metric_date in period).
      * - most_clicked: ranking product_clicks.
