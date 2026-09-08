@@ -328,11 +328,18 @@ class ImportJobController extends Controller
         ]);
         $file = $request->file('file');
 
-        $rows = \Maatwebsite\Excel\Facades\Excel::toArray(
+        $allRows = \Maatwebsite\Excel\Facades\Excel::toArray(
             new \App\Imports\InternalCatalogPreviewImport(),
             $file
         )[0] ?? [];
-        $rows = array_slice($rows, 0, 1000);
+        $totalRawRows = count($allRows);
+        $totalRawProducts = collect($allRows)->map(function ($r) {
+            $name = trim((string) ($r['name'] ?? ''));
+            $idKey = trim((string) ($r['id_key'] ?? ''));
+            $parentSku = trim((string) ($r['parent_sku'] ?? ''));
+            return $idKey !== '' ? 'id_key:'.$idKey : ($name !== '' ? 'name:'.$name : ($parentSku !== '' ? 'sku:'.$parentSku : null));
+        })->filter()->unique()->count();
+        $rows = array_slice($allRows, 0, 1000);
 
         // Skema baru: gabungkan gambar per opsi dari sheet Varian (jika ada).
         $variantImages = [];
@@ -426,19 +433,12 @@ class ImportJobController extends Controller
         // VERIFIKASI PRE-PASS: laporkan pelanggaran tanpa menulis apa pun.
         $verify = \App\Support\CatalogImportVerifier::verify($rows);
 
-        $productCount = collect($rows)->map(function ($r) {
-            $name = trim((string) ($r['name'] ?? ''));
-            $idKey = trim((string) ($r['id_key'] ?? ''));
-            $parentSku = trim((string) ($r['parent_sku'] ?? ''));
-            return $idKey !== '' ? 'id_key:'.$idKey : ($name !== '' ? 'name:'.$name : ($parentSku !== '' ? 'sku:'.$parentSku : null));
-        })->filter()->unique()->count();
-
         return response()->json([
             'contract' => 'preview-only; tidak menulis data',
             'verify_errors' => $verify,
             'rows' => $diffs,
-            'total' => count($diffs),
-            'total_products' => $productCount,
+            'total' => $totalRawRows,
+            'total_products' => $totalRawProducts,
         ]);
     }
 
