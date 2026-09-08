@@ -22,15 +22,32 @@ class AnalyticsController extends Controller
     public function storePerformance(Request $request): Response
     {
         $period = (string) $request->input('period', 'today');
-        $granularity = $request->input('granularity');
-        $from = $request->input('from');
-        $to = $request->input('to');
+        $from = is_string($request->input('from')) ? $request->input('from') : null;
+        $to = is_string($request->input('to')) ? $request->input('to') : null;
+        $rawGranularity = $request->input('granularity');
+
+        // Resolve range to check valid allowed granularities for this period/span
+        $range = $this->performance->resolveRange(
+            period: $period,
+            from: $from,
+            to: $to,
+        );
+        $allowedOptions = $this->allowedGranularity(['range' => [
+            'from_date_iso' => $range['from']->toDateString(),
+            'to_date_iso' => $range['to']->toDateString(),
+        ]], from: $from, to: $to);
+        $allowedValues = array_column($allowedOptions, 'value');
+
+        // If requested granularity is not allowed for this range, fallback to null (auto)
+        $granularity = is_string($rawGranularity) && in_array($rawGranularity, $allowedValues, true)
+            ? $rawGranularity
+            : null;
 
         $payload = $this->performance->build(
             period: $period,
-            from: is_string($from) ? $from : null,
-            to: is_string($to) ? $to : null,
-            granularity: is_string($granularity) ? $granularity : null,
+            from: $from,
+            to: $to,
+            granularity: $granularity,
         );
 
         $payload = $this->injectConversionDetail($payload);
@@ -116,7 +133,18 @@ class AnalyticsController extends Controller
         // fallback ke filter layar bila tidak diisi.
         $exportFrom = is_string($request->input('export_from')) && $request->input('export_from') !== '' ? $request->input('export_from') : $from;
         $exportTo = is_string($request->input('export_to')) && $request->input('export_to') !== '' ? $request->input('export_to') : $to;
-        $exportGranularity = is_string($request->input('export_granularity')) && $request->input('export_granularity') !== '' ? $request->input('export_granularity') : $granularity;
+        $rawExportGranularity = is_string($request->input('export_granularity')) && $request->input('export_granularity') !== '' ? $request->input('export_granularity') : $granularity;
+
+        $exportRange = $this->performance->resolveRange(period: $period, from: $exportFrom, to: $exportTo);
+        $exportAllowed = $this->allowedGranularity(['range' => [
+            'from_date_iso' => $exportRange['from']->toDateString(),
+            'to_date_iso' => $exportRange['to']->toDateString(),
+        ]], from: $exportFrom, to: $exportTo);
+        $exportAllowedValues = array_column($exportAllowed, 'value');
+
+        $exportGranularity = is_string($rawExportGranularity) && in_array($rawExportGranularity, $exportAllowedValues, true)
+            ? $rawExportGranularity
+            : null;
 
         $payload = $this->performance->build(
             period: $period,

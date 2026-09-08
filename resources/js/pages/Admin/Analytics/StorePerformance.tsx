@@ -429,13 +429,35 @@ export default function StorePerformance({
     }
   }
 
-  function apply(next?: Partial<{ period: string; from: string; to: string; granularity: string }>) {
-    const payload = {
-      period: next?.period ?? period,
-      from: next?.from ?? from,
-      to: next?.to ?? to,
-      granularity: next?.granularity ?? granularity,
+  const [prevFilters, setPrevFilters] = React.useState(filters)
+  if (prevFilters.period !== filters.period || prevFilters.granularity !== filters.granularity || prevFilters.from !== filters.from || prevFilters.to !== filters.to) {
+    setPrevFilters(filters)
+    setPeriod(filters.period)
+    setGranularity(filters.granularity)
+    setFrom(filters.from)
+    setTo(filters.to)
+  }
+
+  function apply(next?: Partial<{ period: string; from: string; to: string; granularity?: string }>) {
+    const nextPeriod = next?.period ?? period
+    const isPeriodChanged = next?.period !== undefined && next.period !== period
+
+    const payload: Record<string, string> = {
+      period: nextPeriod,
     }
+
+    const nextFrom = next?.from ?? from
+    const nextTo = next?.to ?? to
+    if (nextFrom) payload.from = nextFrom
+    if (nextTo) payload.to = nextTo
+
+    // Jika ganti periode, jangan bawa granularitas lama agar backend memilihkan granularitas kanonik
+    if (next?.granularity !== undefined) {
+      payload.granularity = next.granularity
+    } else if (!isPeriodChanged && granularity) {
+      payload.granularity = granularity
+    }
+
     router.get(routeUrl("admin.analytics.store-performance"), payload, {
       preserveState: true,
       preserveScroll: true,
@@ -649,7 +671,7 @@ export default function StorePerformance({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-xs">
-                    Pendapatan riil hak toko setelah dikurangi ongkir J&T, biaya COD kurir, subsidi toko, dan kasus retur selesai.
+                    Pendapatan bersih setelah dikurangi ongkir, biaya kurir COD, subsidi, dan retur.
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -658,7 +680,7 @@ export default function StorePerformance({
               {formatCurrency(report.financial.net_revenue)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Hak bersih toko setelah seluruh potongan
+              Total setelah potongan operasional
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -688,7 +710,7 @@ export default function StorePerformance({
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs text-xs">
-                      Total transaksi pesanan masuk proses fulfillment dan kuantitas unit fisik produk yang terjual.
+                      Total pesanan fulfillment dan kuantitas unit terjual.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -698,7 +720,7 @@ export default function StorePerformance({
               {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {formatNumber(kpiMap["units"]?.value ?? 0)} unit fisik produk terjual
+              {formatNumber(kpiMap["units"]?.value ?? 0)} unit terjual
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -727,7 +749,7 @@ export default function StorePerformance({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-xs">
-                    Rata-rata nilai belanja bruto pembeli per transaksi pesanan yang masuk proses.
+                    Rata-rata nilai belanja per pesanan.
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -736,7 +758,7 @@ export default function StorePerformance({
               {formatCurrency(kpiMap["aov"]?.value ?? 0)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Harga rata-rata: {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}/unit
+              Rata-rata per transaksi belanja
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -766,7 +788,7 @@ export default function StorePerformance({
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs text-xs">
-                      Persentase pengunjung unik yang melakukan pembelian pesanan pada periode terpilih.
+                      Rasio pengunjung yang menyelesaikan pesanan.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -776,7 +798,7 @@ export default function StorePerformance({
               {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
             </p>
             <p className="mt-1 text-xs text-muted-foreground truncate" title={kpiMap["conversion"]?.detail ?? undefined}>
-              {kpiMap["conversion"]?.detail || `${formatNumber(kpiMap["orders"]?.value ?? 0)} dari ${formatNumber(kpiMap["visitors"]?.value ?? 0)} pengunjung`}
+              {formatNumber(kpiMap["orders"]?.value ?? 0)} pembeli dari {formatNumber(kpiMap["visitors"]?.value ?? 0)} pengunjung
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -812,8 +834,8 @@ export default function StorePerformance({
         <div className="grid gap-0 lg:grid-cols-[1.25fr_1fr]">
           {/* Kolom Kiri: Laporan Laba/Rugi Penjualan */}
           <div className="p-5 border-b lg:border-b-0 lg:border-r border-border">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              1. Dari Nilai Transaksi ke Penjualan Bersih
+            <p className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+              Penjualan Bersih
             </p>
 
             <div className="mt-3 space-y-2 text-xs">
@@ -823,14 +845,14 @@ export default function StorePerformance({
               </div>
 
               {[
-                { label: "↳ Titipan Ongkir J&T Cargo", val: report.financial.shipping_raw ?? 0 },
-                { label: "↳ Titipan Biaya Layanan COD J&T", val: report.financial.cod_fee ?? 0 },
-                { label: "↳ Subsidi Ongkir Ditanggung Toko", val: report.financial.shipping_subsidy ?? 0 },
-                { label: "↳ Refund Kasus Retur Selesai", val: report.financial.refund_adjustments ?? 0 },
-                { label: "↳ Ongkir Retur Ditanggung Toko", val: report.financial.return_shipping_store ?? 0 },
+                { label: "Titipan Ongkir J&T Cargo", val: report.financial.shipping_raw ?? 0 },
+                { label: "Titipan Biaya Layanan COD J&T", val: report.financial.cod_fee ?? 0 },
+                { label: "Subsidi Ongkir Toko", val: report.financial.shipping_subsidy ?? 0 },
+                { label: "Refund Kasus Retur", val: report.financial.refund_adjustments ?? 0 },
+                { label: "Ongkir Retur Toko", val: report.financial.return_shipping_store ?? 0 },
               ].map((row, idx) => (
-                <div key={idx} className="flex items-center justify-between py-1 text-muted-foreground">
-                  <span className="pl-3">{row.label}</span>
+                <div key={idx} className="flex items-center justify-between py-1.5 text-muted-foreground">
+                  <span className="pl-2">{row.label}</span>
                   <span className={cn("tabular-nums", row.val > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
                     {row.val > 0 ? `− ${formatCurrency(row.val)}` : formatCurrency(0)}
                   </span>
@@ -838,7 +860,7 @@ export default function StorePerformance({
               ))}
 
               <div className="mt-3 flex items-center justify-between rounded-md bg-muted/40 p-2.5 border border-border">
-                <span className="text-xs font-bold text-foreground">= Hak Bersih Toko (Penjualan Bersih)</span>
+                <span className="text-xs font-bold text-foreground">= Penjualan Bersih</span>
                 <span className="text-sm font-bold tabular-nums text-primary">{formatCurrency(report.financial.net_revenue)}</span>
               </div>
             </div>
@@ -846,8 +868,8 @@ export default function StorePerformance({
 
           {/* Kolom Kanan: Status Kas & Likuiditas */}
           <div className="p-5 bg-surface-muted/20">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              2. Status Penerimaan & Likuiditas Kas
+            <p className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+              Arus Kas & Likuiditas
             </p>
 
             <div className="mt-3 space-y-3">
@@ -921,7 +943,7 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["open_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Pesanan aktif yang belum diselesaikan.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Pesanan aktif menunggu diproses.</p>
           </Link>
 
           <Link
@@ -935,7 +957,7 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["dispatched_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Sedang dibawa armada J&T Cargo.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Sedang dalam pengiriman kurir.</p>
           </Link>
 
           <Link
@@ -949,7 +971,7 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["completed_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Diterima pembeli & transaksi tuntas.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Pesanan telah diterima pembeli.</p>
           </Link>
 
           <div className="rounded-lg border border-border bg-surface p-4">
@@ -957,7 +979,7 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Kecepatan admin merespons order masuk.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Kecepatan respon order masuk.</p>
           </div>
         </div>
 
@@ -1211,12 +1233,7 @@ export default function StorePerformance({
             </div>
           </div>
 
-          <div className="mt-4 rounded-md border border-border bg-muted/20 p-3.5 text-xs text-muted-foreground">
-            <p className="font-semibold text-foreground">Karakteristik Pelanggan:</p>
-            <p className="mt-0.5 leading-relaxed">
-              Sebagian besar produk aluminium adalah pembelian durasi panjang (properti/renovasi). Tingkat repeat order wajar berkisar di bawah 10%, fokus utama adalah akuisisi customer baru dan konversi kunjungan ke keranjang.
-            </p>
-          </div>
+
         </div>
       </section>
 
