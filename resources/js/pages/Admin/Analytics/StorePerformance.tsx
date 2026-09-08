@@ -140,6 +140,27 @@ function ChangeBadge({ percent }: { percent: number }) {
   )
 }
 
+function MetricHint({ text }: { text: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={100}>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="text-muted-foreground/60 hover:text-foreground transition inline-flex items-center"
+            aria-label="Informasi metrik"
+          >
+            <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs">
+          {text}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
 function CopySkuButton({ sku }: { sku: string }) {
   const [copied, setCopied] = React.useState(false)
 
@@ -659,25 +680,12 @@ export default function StorePerformance({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Penjualan Bersih</span>
-              <TooltipProvider>
-                <Tooltip delayDuration={100}>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan penjualan bersih">
-                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-xs">
-                    Pendapatan bersih setelah dikurangi ongkir, biaya kurir COD, subsidi, dan retur.
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <MetricHint text="Pendapatan bersih setelah dikurangi ongkir, biaya kurir COD, subsidi, dan retur." />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatCurrency(report.financial.net_revenue)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Total setelah potongan operasional
-            </p>
+            
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
             <span className="text-xs text-muted-foreground">vs periode lalu</span>
@@ -697,18 +705,7 @@ export default function StorePerformance({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Pesanan Masuk</span>
-              <TooltipProvider>
-                <Tooltip delayDuration={100}>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan pesanan masuk">
-                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-xs">
-                    Total pesanan fulfillment dan kuantitas unit terjual.
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <MetricHint text="Total pesanan fulfillment dan kuantitas unit terjual." />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
@@ -735,24 +732,10 @@ export default function StorePerformance({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Rata-rata Nilai Pesanan</span>
-              <TooltipProvider>
-                <Tooltip delayDuration={100}>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan rata-rata nilai pesanan">
-                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-xs">
-                    Rata-rata nilai belanja per pesanan.
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <MetricHint text="Rata-rata nilai belanja per pesanan." />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatCurrency(kpiMap["aov"]?.value ?? 0)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Rata-rata per transaksi belanja
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -773,18 +756,7 @@ export default function StorePerformance({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Konversi Pembeli</span>
-              <TooltipProvider>
-                <Tooltip delayDuration={100}>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan konversi pembeli">
-                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-xs">
-                    Rasio pengunjung yang menyelesaikan pesanan.
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <MetricHint text="Rasio pengunjung yang menyelesaikan pesanan." />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
@@ -811,11 +783,9 @@ export default function StorePerformance({
       <section className="mb-6 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <header className="border-b border-border bg-muted/30 px-5 py-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
+            <div className="flex items-center gap-1.5">
               <h3 className="text-sm font-bold text-foreground">Rekonsiliasi Keuangan & Arus Kas</h3>
-              <p className="text-xs text-muted-foreground">
-                Penjabaran transparan dari total uang transaksi pembeli hingga menjadi pendapatan bersih dan status pencairannya.
-              </p>
+              <MetricHint text="Penjabaran transparan dari total nilai transaksi pembeli hingga pendapatan bersih dan status pencairan kas." />
             </div>
             <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               Metode: Akrual Transaksi Fulfillment
@@ -860,55 +830,62 @@ export default function StorePerformance({
 
           {/* Kolom Kanan: Status Kas & Likuiditas */}
           <div className="p-5 bg-surface-muted/20">
-            <p className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
-              Arus Kas & Likuiditas
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+                Arus Kas & Likuiditas
+              </p>
+              <MetricHint text="Realisasi dana yang sudah masuk ke rekening toko serta status pembayaran pesanan aktif." />
+            </div>
 
             <div className="mt-3 space-y-3">
               {/* Box 1: Pembayaran Diterima (Total Kas Masuk) */}
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">Total Pembayaran Diterima (Cair)</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-foreground">Total Pembayaran Diterima</span>
+                    <MetricHint text="Total dana riil dari transaksi transfer lunas dan COD yang selesai pada periode ini." />
+                  </div>
                   <span className="rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">Lunas</span>
                 </div>
                 <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
                   {formatCurrency(report.financial.payments_received ?? 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Total dana riil dari transaksi transfer lunas dan COD selesai pada periode ini.
                 </p>
               </div>
 
               {/* Rincian Komposisi Kas Masuk */}
               <div className="grid grid-cols-2 gap-2.5 text-xs">
                 <div className="rounded-md border border-border bg-card p-2.5">
-                  <p className="text-xs text-muted-foreground">Transfer Bank Lunas</p>
-                  <p className="mt-0.5 font-bold tabular-nums text-foreground">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Transfer Bank</span>
+                    <MetricHint text="Pembayaran lunas di muka langsung ke rekening toko." />
+                  </div>
+                  <p className="mt-1 font-bold tabular-nums text-foreground">
                     {formatCurrency(Math.max(0, (report.financial.payments_received ?? 0) - (report.financial.cod_paid ?? 0)))}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Lunas di muka</p>
                 </div>
 
                 <div className="rounded-md border border-border bg-card p-2.5">
-                  <p className="text-xs text-muted-foreground">COD Cair Periode Ini</p>
-                  <p className="mt-0.5 font-bold tabular-nums text-foreground">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">COD Selesai</span>
+                    <MetricHint text="Pembayaran tunai yang diserahterimakan saat paket tiba di pembeli." />
+                  </div>
+                  <p className="mt-1 font-bold tabular-nums text-foreground">
                     {formatCurrency(report.financial.cod_paid ?? 0)}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Lunas saat barang tiba</p>
                 </div>
               </div>
 
               {/* Box 2: Transfer Menunggu Bukti / Verifikasi */}
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">Transfer Menunggu Verifikasi</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-foreground">Transfer Menunggu Verifikasi</span>
+                    <MetricHint text="Pesanan metode transfer yang belum selesai dibayar atau menunggu verifikasi admin." />
+                  </div>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Pending</span>
                 </div>
                 <p className="mt-1 text-base font-bold tabular-nums text-foreground">
                   {formatNumber(report.financial.payment_pending_count ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Pesanan metode transfer yang belum selesai dibayar atau menunggu verifikasi admin.
                 </p>
               </div>
             </div>
@@ -942,7 +919,6 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["open_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Pesanan aktif menunggu diproses.</p>
           </Link>
 
           <Link
@@ -956,7 +932,6 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["dispatched_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Sedang dalam pengiriman kurir.</p>
           </Link>
 
           <Link
@@ -970,15 +945,19 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["completed_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Pesanan telah diterima pembeli.</p>
           </Link>
 
           <div className="rounded-lg border border-border bg-surface p-4">
-            <span className="text-xs font-semibold text-muted-foreground">SLA Waktu Konfirmasi</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-muted-foreground">SLA Konfirmasi</span>
+                <MetricHint text="Rata-rata waktu respon sejak pesanan masuk hingga dikonfirmasi admin." />
+              </div>
+              <Icon name="clock" className="size-4 text-muted-foreground" aria-hidden="true" />
+            </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Kecepatan respon pesanan masuk.</p>
           </div>
         </div>
 
@@ -1175,7 +1154,6 @@ export default function StorePerformance({
                   {report.payment_mix.map((row) => {
                     const gross = report.financial.gross_revenue
                     const pct = gross > 0 ? Math.round((row.revenue / gross) * 1000) / 10 : 0
-                    const isCod = row.method.toLowerCase().includes("cod")
                     return (
                       <div key={row.method} className="rounded-lg border border-border bg-surface p-3">
                         <div className="flex items-center justify-between">
@@ -1186,7 +1164,7 @@ export default function StorePerformance({
                         </div>
                         <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatCurrency(row.revenue)}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                          {formatNumber(row.count)} pesanan {isCod ? "(Lunas saat barang tiba)" : "(Transfer lunas di muka)"}
+                          {formatNumber(row.count)} pesanan
                         </p>
                       </div>
                     )
