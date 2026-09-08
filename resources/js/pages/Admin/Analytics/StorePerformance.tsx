@@ -290,7 +290,7 @@ function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
           </div>
           <div className="text-right text-xs tabular-nums">
             <p className="font-semibold text-foreground">{formatNumber(p.views ?? 0)} dilihat</p>
-            <p className="text-[10px] text-muted-foreground">{formatNumber(p.clicks ?? 0)} klik</p>
+            <p className="text-[11px] text-muted-foreground">{formatNumber(p.clicks ?? 0)} klik</p>
           </div>
         </article>
       ))}
@@ -313,7 +313,7 @@ function SellersList({ rows }: { rows: ProductBreakdown[] }) {
           </div>
           <div className="text-right text-xs tabular-nums">
             <p className="font-semibold text-foreground">{formatNumber(p.units ?? 0)} unit</p>
-            <p className="text-[10px] text-muted-foreground">{formatCurrency(p.revenue ?? 0)}</p>
+            <p className="text-[11px] text-muted-foreground">{formatCurrency(p.revenue ?? 0)}</p>
           </div>
         </article>
       ))}
@@ -530,7 +530,7 @@ export default function StorePerformance({
                   </div>
                 ) : null}
                 <p className="mt-3 text-xs font-bold text-foreground">Granularitas data</p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
                   Rentang &gt; 1 bulan otomatis dipecah: satu file, sheet per bulan.
                 </p>
                 <select
@@ -570,7 +570,7 @@ export default function StorePerformance({
               <span className="text-sm font-semibold tracking-tight text-foreground">{report.range.label}</span>
               <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
             </div>
-            <p className="mt-0.5 text-[11px] text-muted-foreground truncate" aria-live="polite">
+            <p className="mt-0.5 text-xs text-muted-foreground truncate" aria-live="polite">
               {refreshing ? "Memperbarui data..." : `Pembanding: vs ${report.range.compare_label} (${report.range.compare_from_date} - {report.range.compare_to_date}${report.range.is_running ? " · jam setara" : ""})`}
             </p>
           </div>
@@ -680,7 +680,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">vs periode lalu</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["net_revenue"]?.change_percent ?? 0) > 0 && "text-success",
@@ -718,7 +718,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">vs periode lalu</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["orders"]?.change_percent ?? 0) > 0 && "text-success",
@@ -756,7 +756,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">vs periode lalu</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["aov"]?.change_percent ?? 0) > 0 && "text-success",
@@ -794,7 +794,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">vs periode lalu</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["conversion"]?.change_percent ?? 0) > 0 && "text-success",
@@ -817,7 +817,7 @@ export default function StorePerformance({
                 Penjabaran transparan dari total uang transaksi pembeli hingga menjadi pendapatan bersih dan status pencairannya.
               </p>
             </div>
-            <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               Metode: Akrual Transaksi Fulfillment
             </span>
           </div>
@@ -869,12 +869,12 @@ export default function StorePerformance({
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-foreground">Total Pembayaran Diterima (Cair)</span>
-                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">Lunas</span>
+                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">Lunas</span>
                 </div>
                 <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
                   {formatCurrency(report.financial.payments_received ?? 0)}
                 </p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Total dana riil dari transaksi transfer lunas dan COD selesai pada periode ini.
                 </p>
               </div>
@@ -882,19 +882,19 @@ export default function StorePerformance({
               {/* Rincian Komposisi Kas Masuk */}
               <div className="grid grid-cols-2 gap-2.5 text-xs">
                 <div className="rounded-md border border-border bg-card p-2.5">
-                  <p className="text-[11px] text-muted-foreground">Transfer Bank Lunas</p>
+                  <p className="text-xs text-muted-foreground">Transfer Bank Lunas</p>
                   <p className="mt-0.5 font-bold tabular-nums text-foreground">
                     {formatCurrency(Math.max(0, (report.financial.payments_received ?? 0) - (report.financial.cod_paid ?? 0)))}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">Lunas di muka</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Lunas di muka</p>
                 </div>
 
                 <div className="rounded-md border border-border bg-card p-2.5">
-                  <p className="text-[11px] text-muted-foreground">COD Cair Periode Ini</p>
+                  <p className="text-xs text-muted-foreground">COD Cair Periode Ini</p>
                   <p className="mt-0.5 font-bold tabular-nums text-foreground">
                     {formatCurrency(report.financial.cod_paid ?? 0)}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">Lunas saat barang tiba</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Lunas saat barang tiba</p>
                 </div>
               </div>
 
@@ -902,12 +902,12 @@ export default function StorePerformance({
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-foreground">Transfer Menunggu Verifikasi</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Pending</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Pending</span>
                 </div>
                 <p className="mt-1 text-base font-bold tabular-nums text-foreground">
                   {formatNumber(report.financial.payment_pending_count ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
                 </p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Pesanan metode transfer yang belum selesai dibayar atau menunggu verifikasi admin.
                 </p>
               </div>
@@ -1143,24 +1143,24 @@ export default function StorePerformance({
             {/* Sub-section A: Kunjungan & Retensi Pelanggan */}
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-[11px] font-medium text-muted-foreground">Pengunjung Unik</p>
+                <p className="text-xs font-medium text-muted-foreground">Pengunjung Unik</p>
                 <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
-                <span className="text-[10px] text-muted-foreground">IP/sesi unik</span>
+                <span className="text-[11px] text-muted-foreground">IP/sesi unik</span>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-[11px] font-medium text-muted-foreground">Pelanggan Baru</p>
+                <p className="text-xs font-medium text-muted-foreground">Pelanggan Baru</p>
                 <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
-                <span className="text-[10px] text-muted-foreground">Pesanan perdana</span>
+                <span className="text-[11px] text-muted-foreground">Pesanan perdana</span>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-[11px] font-medium text-muted-foreground">Pesanan ulang</p>
+                <p className="text-xs font-medium text-muted-foreground">Pesanan ulang</p>
                 <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
-                <span className="text-[10px] text-muted-foreground">Pelanggan repeat</span>
+                <span className="text-[11px] text-muted-foreground">Pelanggan repeat</span>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-[11px] font-medium text-muted-foreground">Rasio Repeat</p>
+                <p className="text-xs font-medium text-muted-foreground">Rasio Repeat</p>
                 <p className="mt-1 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
-                <span className="text-[10px] text-muted-foreground">Retensi pembeli</span>
+                <span className="text-[11px] text-muted-foreground">Retensi pembeli</span>
               </div>
             </div>
 
@@ -1169,7 +1169,7 @@ export default function StorePerformance({
               <div className="mt-4 border-t border-border pt-3">
                 <div className="flex items-center justify-between mb-2.5">
                   <p className="text-xs font-semibold text-foreground">Metode Pembayaran</p>
-                  <span className="text-[11px] text-muted-foreground">Porsi dari Penjualan Gross</span>
+                  <span className="text-xs text-muted-foreground">Porsi dari Penjualan Gross</span>
                 </div>
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {report.payment_mix.map((row) => {
@@ -1180,12 +1180,12 @@ export default function StorePerformance({
                       <div key={row.method} className="rounded-lg border border-border bg-surface p-3">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-xs uppercase text-foreground">{row.method}</span>
-                          <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                             {pct}% dari Gross
                           </span>
                         </div>
                         <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatCurrency(row.revenue)}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+                        <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                           {formatNumber(row.count)} pesanan {isCod ? "(Lunas saat barang tiba)" : "(Transfer lunas di muka)"}
                         </p>
                       </div>
@@ -1208,14 +1208,14 @@ export default function StorePerformance({
                 <h3 className="text-sm font-semibold tracking-tight text-foreground">Produk Terlaris</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">Peringkat produk berdasarkan nilai omzet pesanan fulfillment.</p>
               </div>
-              <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+              <span className="rounded bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
                 6 teratas
               </span>
             </header>
             {report.top_products.length ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead className="bg-muted/30 text-left text-[11px] font-semibold text-muted-foreground">
+                  <thead className="bg-muted/30 text-left text-xs font-semibold text-muted-foreground">
                     <tr>
                       <th className="px-4 py-2">Nama Produk</th>
                       <th className="px-3 py-2 text-right">Unit</th>
@@ -1290,14 +1290,14 @@ export default function StorePerformance({
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground">Total Omzet Produk</p>
+                  <p className="text-[11px] text-muted-foreground">Total Omzet Produk</p>
                   <p className="text-sm font-bold tabular-nums text-foreground">
                     {formatCurrency(report.top_products.reduce((acc, p) => acc + p.revenue, 0))}
                   </p>
                 </div>
                 <div className="h-6 w-px bg-border" />
                 <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground">Total Unit</p>
+                  <p className="text-[11px] text-muted-foreground">Total Unit</p>
                   <p className="text-sm font-bold tabular-nums text-foreground">
                     {formatNumber(report.top_products.reduce((acc, p) => acc + p.units, 0))} unit
                   </p>
@@ -1320,7 +1320,7 @@ export default function StorePerformance({
           <div className="flex-1 overflow-y-auto p-0">
             {filteredTopProductsModal.length > 0 ? (
               <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs text-left text-[11px] font-semibold text-muted-foreground border-b border-border">
+                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs text-left text-xs font-semibold text-muted-foreground border-b border-border">
                   <tr>
                     <th className="px-4 py-2.5 w-12 text-center">No</th>
                     <th className="px-4 py-2.5">Produk & SKU</th>
@@ -1371,7 +1371,7 @@ export default function StorePerformance({
                           <div className="flex items-center justify-center gap-2">
                             <Link
                               href={`${routeUrl("admin.products.index")}?search=${encodeURIComponent(product.parent_sku)}`}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                               title="Kelola produk di panel admin"
                             >
                               Kelola
@@ -1466,7 +1466,7 @@ export default function StorePerformance({
           <div className="flex-1 overflow-y-auto p-0">
             {interactionModalData.length > 0 ? (
               <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs text-left text-[11px] font-semibold text-muted-foreground border-b border-border">
+                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs text-left text-xs font-semibold text-muted-foreground border-b border-border">
                   <tr>
                     <th className="px-4 py-2.5 w-12 text-center">No</th>
                     <th className="px-4 py-2.5 w-14 text-center">Foto</th>
@@ -1501,7 +1501,7 @@ export default function StorePerformance({
                           {product.image ? (
                             <img src={product.image} alt="" className="size-8 mx-auto rounded object-cover border border-border" />
                           ) : (
-                            <div className="size-8 mx-auto flex items-center justify-center rounded bg-muted text-[10px] font-bold text-muted-foreground">
+                            <div className="size-8 mx-auto flex items-center justify-center rounded bg-muted text-[11px] font-bold text-muted-foreground">
                               {product.name.charAt(0)}
                             </div>
                           )}
@@ -1547,7 +1547,7 @@ export default function StorePerformance({
                           <div className="flex items-center justify-center gap-2">
                             <Link
                               href={`${routeUrl("admin.products.index")}?search=${encodeURIComponent(product.parent_sku)}`}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                               title="Kelola produk di panel admin"
                             >
                               Kelola

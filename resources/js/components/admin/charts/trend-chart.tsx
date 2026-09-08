@@ -105,7 +105,7 @@ export default function TrendChart<T extends { label: string; value: number }>({
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               />
               <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
               <Tooltip
@@ -143,7 +143,7 @@ export default function TrendChart<T extends { label: string; value: number }>({
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               />
               <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
               <Tooltip
