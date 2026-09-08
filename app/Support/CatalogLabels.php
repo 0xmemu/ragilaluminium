@@ -8,7 +8,20 @@ namespace App\Support;
  */
 class CatalogLabels
 {
-    public const MODEL_ORDER = ['JUNGKIT', 'SLIDING', 'SWING', 'KACA_MATI', 'ZIGZAG'];
+    public const MODEL_ORDER = [
+        'JUNGKIT_1_DAUN',
+        'JUNGKIT_2_DAUN',
+        'JUNGKIT_3_DAUN',
+        'SLIDING_2_DAUN',
+        'SWING_1_DAUN',
+        'SWING_2_DAUN',
+        'SWING_3_DAUN',
+        'KACA_MATI',
+        'ZIGZAG',
+        'JUNGKIT',
+        'SLIDING',
+        'SWING',
+    ];
 
     public const DESIGN_ORDER = ['POLOS', 'ORNAMEN', 'KOMBINASI', 'SERIES_A', 'SERIES_B', 'SERIES_C'];
 
@@ -17,6 +30,15 @@ class CatalogLabels
         'FIXED' => 'KACA_MATI',
         'KACA-MATI' => 'KACA_MATI',
         'KACAMATI' => 'KACA_MATI',
+        'JUNGKIT_1D' => 'JUNGKIT_1_DAUN',
+        'JUNGKIT_2D' => 'JUNGKIT_2_DAUN',
+        'JUNGKIT_3D' => 'JUNGKIT_3_DAUN',
+        'SLIDING_2D' => 'SLIDING_2_DAUN',
+        'SWING_1D' => 'SWING_1_DAUN',
+        'SWING_2D' => 'SWING_2_DAUN',
+        'SWING_3D' => 'SWING_3_DAUN',
+        'KACA_MATI_1D' => 'KACA_MATI',
+        'ZIGZAG_1D' => 'ZIGZAG',
     ];
 
     /** @var array<string, string> */
@@ -39,11 +61,18 @@ class CatalogLabels
 
     /** @var array<string, string> */
     private const MODEL = [
+        'JUNGKIT_1_DAUN' => 'Jungkit Satu Daun',
+        'JUNGKIT_2_DAUN' => 'Jungkit Dua Daun',
+        'JUNGKIT_3_DAUN' => 'Jungkit Tiga Daun',
+        'SLIDING_2_DAUN' => 'Sliding Dua Daun',
+        'SWING_1_DAUN' => 'Swing Satu Daun',
+        'SWING_2_DAUN' => 'Swing Dua Daun',
+        'SWING_3_DAUN' => 'Swing Tiga Daun',
+        'KACA_MATI' => 'Kaca Mati',
+        'ZIGZAG' => 'Zigzag',
         'JUNGKIT' => 'Jungkit',
         'SLIDING' => 'Sliding',
         'SWING' => 'Swing',
-        'KACA_MATI' => 'Kaca Mati',
-        'ZIGZAG' => 'Zigzag',
     ];
 
     /** @var array<string, string> */

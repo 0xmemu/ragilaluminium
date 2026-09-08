@@ -8,7 +8,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SubModel extends Model
 {
-    public const MODELS = ['JUNGKIT', 'SLIDING', 'SWING', 'KACA_MATI', 'ZIGZAG'];
+    public const MODELS = [
+        'JUNGKIT_1_DAUN',
+        'JUNGKIT_2_DAUN',
+        'JUNGKIT_3_DAUN',
+        'SLIDING_2_DAUN',
+        'SWING_1_DAUN',
+        'SWING_2_DAUN',
+        'SWING_3_DAUN',
+        'KACA_MATI',
+        'ZIGZAG',
+        'JUNGKIT',
+        'SLIDING',
+        'SWING',
+    ];
 
     protected $fillable = [
         'product_model',
