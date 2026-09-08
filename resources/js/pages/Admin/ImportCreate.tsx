@@ -29,10 +29,14 @@ type PreviewRow = {
 }
 
 type PreviewPayload = {
-  rows: PreviewRow[]
+  rows?: PreviewRow[]
   total: number
+  total_products?: number
   verify_errors: string[]
   skipped_rows?: number
+  changes?: string[]
+  changed_rows?: number
+  unchanged_rows?: number
 }
 
 const MEDIA_LABEL: Record<MediaClass, string> = {
@@ -151,12 +155,12 @@ export default function ImportCreate({
     form.post(submitUrl, { forceFormData: true })
   }
 
-  const totals = preview
+  const totals = preview?.rows
     ? preview.rows.reduce(
         (acc, row) => ({
-          internal: acc.internal + row.media_stats.internal,
-          external: acc.external + row.media_stats.external,
-          invalid: acc.invalid + row.media_stats.invalid,
+          internal: acc.internal + (row.media_stats?.internal ?? 0),
+          external: acc.external + (row.media_stats?.external ?? 0),
+          invalid: acc.invalid + (row.media_stats?.invalid ?? 0),
         }),
         { internal: 0, external: 0, invalid: 0 },
       )
@@ -168,7 +172,7 @@ export default function ImportCreate({
       title="Import Produk"
       description="Tiga mode: Import Katalog (buat/perbarui produk lengkap), Update Harga & Stok (ubah price/stock saja), dan Update Media (ganti atau tambah foto via URL)."
       actions={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {form.data.type === "stock_price_update" ? (
             <Button asChild variant="secondary">
               <a href={stockPriceTemplateUrl} download>Unduh Template Excel</a>
@@ -185,12 +189,25 @@ export default function ImportCreate({
           <Button asChild variant="secondary">
             <Link href={routeUrl("admin.imports.index")}>Riwayat import</Link>
           </Button>
+          <div className="mx-1 h-6 w-px bg-border" />
+          <Button
+            type="button"
+            variant="secondary"
+            form="import-form"
+            disabled={!form.data.file || previewing}
+            onClick={() => void runPreview()}
+          >
+            {previewing ? "Memeriksa..." : "Periksa file"}
+          </Button>
+          <Button type="submit" form="import-form" disabled={!form.data.file || !checked || form.processing}>
+            {form.processing ? "Mengunggah..." : "Mulai Import"}
+          </Button>
         </div>
       }
     >
       <Head title="Import Produk | Admin" />
 
-      <form onSubmit={submit} className="w-full space-y-5">
+      <form id="import-form" onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         <div className="overflow-hidden rounded-lg border border-border">
@@ -272,13 +289,10 @@ export default function ImportCreate({
           </table>
         </div>
 
-        {(form.data.type === "catalog_import" || form.data.type === "media_update") && form.data.file ? (
+        {form.data.file ? (
           <div className="space-y-3">
-            <Button type="button" variant="secondary" disabled={previewing} onClick={() => void runPreview()}>
-              {previewing ? "Memeriksa..." : "Periksa file"}
-            </Button>
             {previewError ? <Alert tone="danger">{previewError}</Alert> : null}
-            {preview && totals && preview.verify_errors.length > 0 ? (
+            {preview && preview.verify_errors.length > 0 ? (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
                 <p className="text-sm font-semibold text-destructive">
                   Lolos pemeriksaan: {preview.verify_errors.length} masalah, perbaiki lalu periksa ulang.
@@ -293,15 +307,32 @@ export default function ImportCreate({
                 </ul>
               </div>
             ) : null}
-            {preview && totals && preview.verify_errors.length === 0 ? (
+            {preview && preview.verify_errors.length === 0 ? (
               <div className="rounded-lg border border-success/30 bg-success/5 p-3">
                 <p className="text-sm font-semibold text-success">Semua baris lolos pemeriksaan. Mulai Import sudah aktif.</p>
+                {preview.changes && preview.changes.length > 0 ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {preview.changed_rows ?? 0} baris akan diubah, {preview.unchanged_rows ?? 0} tidak berubah
+                    {preview.skipped_rows ? `, ${preview.skipped_rows} dilewati` : ""}.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {preview && preview.changes && preview.changes.length > 0 ? (
+              <div className="max-h-60 overflow-y-auto rounded-lg border border-border bg-muted/20 p-3 text-xs space-y-1">
+                <p className="font-semibold text-foreground">Perubahan yang akan diterapkan:</p>
+                {preview.changes.slice(0, 50).map((c, i) => (
+                  <p key={i} className="text-muted-foreground">• {c}</p>
+                ))}
+                {preview.changes.length > 50 ? (
+                  <p className="text-muted-foreground italic">dan {preview.changes.length - 50} perubahan lainnya...</p>
+                ) : null}
               </div>
             ) : null}
             {preview && totals && preview.rows ? (
               <div className="overflow-hidden rounded-lg border border-border">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border bg-muted/40 px-4 py-2.5 text-xs">
-                  <span className="font-semibold">{preview.total} baris terbaca</span>
+                  <span className="font-semibold">{preview.total_products ? `${preview.total_products} produk (${preview.total} baris varian) terbaca` : `${preview.total} baris terbaca`}</span>
                   <span className="text-success">{totals.internal} gambar internal siap</span>
                   <span className="text-info">{totals.external} gambar eksternal (diunduh saat import)</span>
                   {totals.invalid > 0 ? (
@@ -376,15 +407,9 @@ export default function ImportCreate({
           </Alert>
         )}
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary">
-            <Link href={routeUrl("admin.imports.index")}>Batal</Link>
-          </Button>
-          <Button type="submit" disabled={!form.data.file || !checked || form.processing}>
-            {form.processing ? "Mengunggah..." : "Mulai Import"}
-          </Button>
+        <div className="flex justify-end">
           {!checked ? (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Wajib menekan Periksa file dan lolos pemeriksaan dulu sebelum Mulai Import aktif.
             </p>
           ) : null}

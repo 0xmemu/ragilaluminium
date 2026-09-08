@@ -94,6 +94,14 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                 )[0] ?? [];
                 $counted = count(array_filter($previewRows, fn ($r) => ! empty(trim((string) ($r['name'] ?? ''))) || ! empty(trim((string) ($r['parent_sku'] ?? '')))));
                 $job->update(['total_rows' => $counted]);
+
+                $distinctProducts = collect($previewRows)->map(function ($r) {
+                    $name = trim((string) ($r['name'] ?? ''));
+                    $idKey = trim((string) ($r['id_key'] ?? ''));
+                    $parentSku = trim((string) ($r['parent_sku'] ?? ''));
+                    return $idKey !== '' ? 'id_key:'.$idKey : ($name !== '' ? 'name:'.$name : ($parentSku !== '' ? 'sku:'.$parentSku : null));
+                })->filter()->unique()->count();
+                \Illuminate\Support\Facades\Cache::put("import_total_products_{$job->id}", $distinctProducts, 86400);
             }
 
             // Auto-detect Shopee dihapus (owner 2026-08-25): semua file diproses

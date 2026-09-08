@@ -86,6 +86,13 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
      */
     protected int $processedCount = 0;
 
+    /**
+     * Set ID produk yang telah diproses untuk pelaporan progres jumlah produk real-time.
+     *
+     * @var array<int, bool>
+     */
+    protected array $processedProductIds = [];
+
     public function __construct(
         public int $jobId,
         protected ?string $filePath = null,
@@ -423,6 +430,10 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             }
 
             $this->syncAttributes($product, $variant, $data);
+            if (! isset($this->processedProductIds[$product->id])) {
+                $this->processedProductIds[$product->id] = true;
+                \Illuminate\Support\Facades\Cache::put("import_processed_products_{$this->jobId}", count($this->processedProductIds), 600);
+            }
 
             $installationSlots = InstallationGallery::parseSlots(
                 isset($data['installation_slots']) ? (string) $data['installation_slots'] : null

@@ -17,6 +17,9 @@ type ImportJobView = {
   processed_rows: number
   success_rows: number
   failed_rows: number
+  total_products?: number
+  processed_products?: number
+  success_products?: number
   started_at: string | null
   completed_at: string | null
   error_message: string | null
@@ -102,7 +105,11 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
             </div>
             {active ? (
               <span className="text-xs tabular-nums text-muted-foreground">
-                {total > 0 ? `${processed} dari ${total} baris` : "menyiapkan..."}
+                {total > 0 ? (
+                  job.total_products
+                    ? `${job.processed_products ?? 0} dari ${job.total_products} produk (${processed} dari ${total} baris)`
+                    : `${processed} dari ${total} baris`
+                ) : "menyiapkan..."}
               </span>
             ) : null}
           </div>
@@ -110,7 +117,11 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
           <div className="mt-4">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium">
-                {total > 0 ? `Diproses ${processed} dari ${total} baris` : "Menunggu data baris"}
+                {total > 0 ? (
+                  job.total_products
+                    ? `Diproses ${job.processed_products ?? 0} dari ${job.total_products} produk (${processed} dari ${total} baris)`
+                    : `Diproses ${processed} dari ${total} baris`
+                ) : "Menunggu data baris"}
               </span>
               <span className="tabular-nums font-semibold">{percent}%</span>
             </div>
@@ -121,9 +132,13 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
               />
             </div>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs">
-              <span className="text-success">{job.success_rows} berhasil</span>
-              <span className={job.failed_rows > 0 ? "text-destructive" : "text-muted-foreground"}>
-                {job.failed_rows} gagal
+              <span className="text-success font-semibold">
+                {job.total_products
+                  ? `${job.success_products ?? job.total_products} produk (${job.success_rows} baris kombinasi) berhasil`
+                  : `${job.success_rows} baris berhasil`}
+              </span>
+              <span className={job.failed_rows > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>
+                {job.failed_rows} baris gagal
               </span>
               <span className="text-muted-foreground">Sumber stok: {job.stock_source}</span>
               {job.started_at ? <span className="text-muted-foreground">Mulai: {job.started_at}</span> : null}

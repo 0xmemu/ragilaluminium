@@ -187,6 +187,17 @@ class ImportJobController extends Controller
     {
         $import_job->load(['rows' => fn ($q) => $q->latest()->limit(50)]);
 
+        $totalProducts = (int) (\Illuminate\Support\Facades\Cache::get("import_total_products_{$import_job->id}")
+            ?? $import_job->rows()->whereNotNull('linked_product_id')->distinct('linked_product_id')->count('linked_product_id'));
+
+        $processedProducts = $import_job->status === 'completed'
+            ? $totalProducts
+            : (int) (\Illuminate\Support\Facades\Cache::get("import_processed_products_{$import_job->id}") ?? 0);
+
+        $successProducts = $import_job->status === 'completed'
+            ? ($totalProducts ?: $import_job->rows()->whereNotNull('linked_product_id')->distinct('linked_product_id')->count('linked_product_id'))
+            : (int) (\Illuminate\Support\Facades\Cache::get("import_processed_products_{$import_job->id}") ?? 0);
+
         return Inertia::render('Admin/ImportShow', [
             'importJob' => [
                 'id' => $import_job->id,
@@ -196,6 +207,9 @@ class ImportJobController extends Controller
                 'stock_source' => $import_job->stock_mode === 'manual'
                     ? 'Manual ('.$import_job->manual_stock.')'
                     : 'Dari file',
+                'total_products' => $totalProducts,
+                'processed_products' => $processedProducts,
+                'success_products' => $successProducts,
                 'total_rows' => (int) $import_job->total_rows,
                 'processed_rows' => (static function () use ($import_job): int {
                     $cached = \Illuminate\Support\Facades\Cache::get("import_progress_{$import_job->id}");
@@ -412,11 +426,19 @@ class ImportJobController extends Controller
         // VERIFIKASI PRE-PASS: laporkan pelanggaran tanpa menulis apa pun.
         $verify = \App\Support\CatalogImportVerifier::verify($rows);
 
+        $productCount = collect($rows)->map(function ($r) {
+            $name = trim((string) ($r['name'] ?? ''));
+            $idKey = trim((string) ($r['id_key'] ?? ''));
+            $parentSku = trim((string) ($r['parent_sku'] ?? ''));
+            return $idKey !== '' ? 'id_key:'.$idKey : ($name !== '' ? 'name:'.$name : ($parentSku !== '' ? 'sku:'.$parentSku : null));
+        })->filter()->unique()->count();
+
         return response()->json([
             'contract' => 'preview-only; tidak menulis data',
             'verify_errors' => $verify,
             'rows' => $diffs,
             'total' => count($diffs),
+            'total_products' => $productCount,
         ]);
     }
 
