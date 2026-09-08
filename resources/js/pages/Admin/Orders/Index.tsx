@@ -152,6 +152,38 @@ function formatRelativeAge(iso: string | null | undefined): string {
   return remHours > 0 ? `${days} hari ${remHours} jam` : `${days} hari`
 }
 
+function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center justify-center rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      title={copied ? "Tersalin!" : `${label} ${text}`}
+      aria-label={copied ? "Tersalin!" : `${label} ${text}`}
+    >
+      <Icon
+        name={copied ? "check" : "copy"}
+        className={cn("size-3", copied ? "text-success" : "text-muted-foreground")}
+        aria-hidden="true"
+      />
+    </button>
+  )
+}
+
 function variationLabel(item: OrderItemPreview): string {
   return [
     item.variation_1_option
@@ -321,14 +353,17 @@ function OrderCardRow({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-1.5">
-                    <p className="line-clamp-2 flex-1 text-[13px] font-medium leading-5 text-foreground">
+                    <p className="line-clamp-2 flex-1 text-[13px] font-normal leading-5 text-foreground">
                       {item.name}
                     </p>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <p className="line-clamp-1 text-xs text-muted-foreground">
+                  <div className="mt-0.5 flex items-center gap-1">
+                    <span className="line-clamp-1 text-xs text-muted-foreground">
                       {variationLabel(item) || item.variant_sku || "-"}
-                    </p>
+                    </span>
+                    {item.variant_sku ? (
+                      <CopyButton text={item.variant_sku} label="Salin SKU" />
+                    ) : null}
                   </div>
                   <p
                     className={cn(
@@ -385,17 +420,25 @@ function OrderCardRow({
 
         {/* Pembayaran */}
         <div className="min-w-0 pt-3 xl:pt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Pembayaran
           </p>
-          <p className="text-[13px] font-medium text-foreground">
+          <p className="text-xs font-medium text-foreground">
             {order.payment_method_label ||
               (order.payment_method ? humanize(order.payment_method) : "Metode -")}
-            {order.payment_method === "transfer" || (order.payment_method_label || "").toLowerCase().includes("transfer") ? (
-              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                ({order.payment_status === "paid" ? "Lunas" : "Belum dibayar"})
-              </span>
-            ) : null}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {order.flow === "cod" || (order.payment_method || "").toLowerCase() === "cod" ? (
+              order.order_status === "completed" || order.payment_status === "paid" ? (
+                <span className="font-medium text-success">Lunas saat tiba</span>
+              ) : (
+                <span>Bayar saat tiba</span>
+              )
+            ) : order.payment_status === "paid" ? (
+              <span className="font-medium text-success">Lunas</span>
+            ) : (
+              <span>Belum lunas</span>
+            )}
           </p>
         </div>
 
@@ -421,11 +464,14 @@ function OrderCardRow({
             {order.shipping_track?.carrier_name || "Pengiriman"}
           </p>
           {order.shipping_track?.waybill_number ? (
-            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-              {order.shipping_track.waybill_number}
-            </p>
+            <div className="mt-0.5 flex items-center gap-1">
+              <span className="font-mono text-xs text-foreground font-medium">
+                {order.shipping_track.waybill_number}
+              </span>
+              <CopyButton text={order.shipping_track.waybill_number} label="Salin resi" />
+            </div>
           ) : (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Belum ada resi</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Belum ada resi</p>
           )}
           <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground/80">
             {order.shipping_track?.latest_message ||
@@ -499,10 +545,10 @@ function OrderCardRow({
           ) : null}
 
           {order.admin_notes?.trim() ? (
-            <p className="mt-2 w-full max-w-[16rem] xl:ml-auto xl:text-right">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Catatan admin</span>
-              <span className="mt-0.5 block break-words text-[11px] leading-4 text-foreground">{order.admin_notes}</span>
-            </p>
+            <div className="mt-2 w-full max-w-[16rem] xl:ml-auto xl:text-right">
+              <span className="text-xs font-medium text-muted-foreground">Catatan admin:</span>
+              <span className="mt-0.5 block break-words text-xs text-foreground">{order.admin_notes}</span>
+            </div>
           ) : null}
         </div>
       </div>
@@ -531,6 +577,7 @@ export default function OrdersIndex({
   exportUrl,
 }: OrdersIndexProps) {
   const [exportOpen, setExportOpen] = React.useState(false)
+  const [refreshing, setRefreshing] = React.useState(false)
   const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
   const [exportFrom, setExportFrom] = React.useState("")
   const [exportTo, setExportTo] = React.useState("")
@@ -552,7 +599,7 @@ export default function OrdersIndex({
   // Live-event-ready: adapter tidak aktif (broadcast runtime belum ada).
   // Saat aktif nanti, event utk order pada hasil/filter saat ini memicu notice.
   const [liveNotice, setLiveNotice] = React.useState<string | null>(null)
-  const { state: liveState } = useAdminLiveOrders({
+  const { state: _liveState } = useAdminLiveOrders({
     onOrderUpdated: (event) => {
       // Jangan sisipkan row palsu; cukup tandai data baru tersedia.
       setLiveNotice(`Ada pembaruan pesanan ${event.order_number}. Perbarui daftar.`)
@@ -699,11 +746,67 @@ export default function OrdersIndex({
   }
 
   return (
-    <AdminLayout title={title} description={description}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setRefreshing(true)
+              router.reload({
+                only: ["orders", "summary", "tabs"],
+                onFinish: () => setRefreshing(false),
+              })
+            }}
+            disabled={refreshing}
+          >
+            <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+            {refreshing ? "Memuat..." : "Refresh data"}
+          </Button>
+
+          <div className="relative">
+            <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
+              <Icon name="download" className="size-3.5" aria-hidden="true" />
+              Unduh Laporan
+            </Button>
+            {exportOpen ? (
+              <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-lg">
+                <p className="text-xs font-bold text-foreground">Rentang waktu export</p>
+                <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                  <input type="radio" name="orders_export_range" checked={exportRange === "screen"} onChange={() => setExportRange("screen")} />
+                  Ikuti filter di layar
+                </label>
+                <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                  <input type="radio" name="orders_export_range" checked={exportRange === "custom"} onChange={() => setExportRange("custom")} />
+                  Kustom
+                </label>
+                {exportRange === "custom" ? (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="h-8 w-32 text-xs" aria-label="Dari tanggal" />
+                    <span className="text-xs text-muted-foreground">s/d</span>
+                    <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="h-8 w-32 text-xs" aria-label="Sampai tanggal" />
+                  </div>
+                ) : null}
+                <a
+                  href={buildExportUrl()}
+                  onClick={() => setExportOpen(false)}
+                  className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  Unduh XLSX
+                </a>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      }
+    >
       <Head title={`${title} | Admin`} />
 
-      {/* Tabs status — segmented control ala AI app */}
-      <div className="scrollbar-none overflow-x-auto">
+      {/* Tabs status - segmented control ala AI app */}
+      <div className="mb-4 scrollbar-none overflow-x-auto">
         <div
           className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1"
           role="tablist"
@@ -719,17 +822,17 @@ export default function OrdersIndex({
                 aria-selected={active}
                 onClick={() => visit({ order_status: tab.key, older_than: undefined })}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition duration-100",
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition",
                   active
-                    ? "bg-surface text-foreground shadow-soft"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "bg-foreground text-background shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                 )}
               >
                 {tab.label}
                 <span
                   className={cn(
-                    "tabular-nums rounded-full px-1.5 py-px text-[10px] font-semibold",
-                    active ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground",
+                    "tabular-nums rounded-full px-1.5 py-px text-[11px] font-semibold",
+                    active ? "bg-background/20 text-background" : "bg-muted text-muted-foreground",
                   )}
                 >
                   {formatNumber(tab.count)}
@@ -740,51 +843,13 @@ export default function OrdersIndex({
         </div>
       </div>
 
-
-      {/* Export popup: rentang waktu (model Unduh Laporan Performa Toko).
-          Posisi di header area, bukan di slot actions toolbar. */}
-      <div className="mb-3 flex items-center justify-end">
-        <div className="relative">
-          <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
-            <Icon name="download" className="size-3.5" aria-hidden="true" />
-            Export
-          </Button>
-          {exportOpen ? (
-            <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-lg">
-              <p className="text-xs font-bold">Rentang waktu export</p>
-              <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs">
-                <input type="radio" name="orders_export_range" checked={exportRange === "screen"} onChange={() => setExportRange("screen")} />
-                Ikuti filter di layar
-              </label>
-              <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs">
-                <input type="radio" name="orders_export_range" checked={exportRange === "custom"} onChange={() => setExportRange("custom")} />
-                Kustom
-              </label>
-              {exportRange === "custom" ? (
-                <div className="mt-2 flex items-center gap-1.5">
-                  <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="h-8 w-32 text-xs" aria-label="Dari tanggal" />
-                  <span className="text-xs text-muted-foreground">s/d</span>
-                  <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="h-8 w-32 text-xs" aria-label="Sampai tanggal" />
-                </div>
-              ) : null}
-              <a
-                href={buildExportUrl()}
-                className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-              >
-                Unduh XLSX
-              </a>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
       {/* Baris kontrol seragam: search | sort/filter | summary | actions */}
       <ListToolbar
         search={{
           value: q,
           onChange: setQ,
           onSubmit: submitSearch,
-          placeholder: "Cari nomor order, nama penerima, no. HP, provinsi, kota…",
+          placeholder: "Cari nomor order, nama penerima, no. HP, provinsi, kota...",
         }}
         sort={
           <Select
@@ -876,7 +941,7 @@ export default function OrdersIndex({
               className="w-36"
               aria-label="Dari tanggal"
             />
-            <span className="text-xs text-muted-foreground">—</span>
+            <span className="text-xs text-muted-foreground">-</span>
             <Input
               type="date"
               value={rangeTo}
@@ -916,34 +981,47 @@ export default function OrdersIndex({
           </div>
         ) : null}
 
-        {activeFilters.length || summary.count ? (
-          <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Filter aktif
-            </span>
-            {activeFilters.map((filter) => (
-              <span
-                key={filter.label}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground"
-              >
-                {filter.label}
-                <button
-                  type="button"
-                  onClick={filter.clear}
-                  className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-                  aria-label={`Hapus filter ${filter.label}`}
-                >
-                  <Icon name="x" className="size-3" aria-hidden="true" />
-                </button>
+        {/* Baris Ringkasan Hasil & Filter Aktif */}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+          {activeFilters.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+              <span className="font-medium text-muted-foreground">
+                Filter Aktif:
               </span>
-            ))}
-            <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground">
-              <span className="tabular-nums font-semibold">{formatNumber(summary.count)}</span> pesanan
-              <span className="text-muted-foreground">|</span>
-              Nilai <span className="tabular-nums font-semibold">{formatCurrency(summary.total_value)}</span>
-            </span>
+              {activeFilters.map((filter) => (
+                <span
+                  key={filter.label}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-foreground"
+                >
+                  {filter.label}
+                  <button
+                    type="button"
+                    onClick={filter.clear}
+                    className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                    aria-label={`Hapus filter ${filter.label}`}
+                  >
+                    <Icon name="x" className="size-3" aria-hidden="true" />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="ml-1 text-xs font-medium text-primary hover:underline"
+              >
+                Reset Semua
+              </button>
+            </div>
+          ) : (
+            <div />
+          )}
+
+          <div className="inline-flex items-center gap-2 rounded-md border border-border/80 bg-surface px-3 py-1 text-xs text-muted-foreground">
+            <span>Ditemukan: <strong className="tabular-nums text-foreground">{formatNumber(summary.count)}</strong> pesanan</span>
+            <span>·</span>
+            <span>Total Nilai: <strong className="tabular-nums text-foreground">{formatCurrency(summary.total_value)}</strong></span>
           </div>
-        ) : null}
+        </div>
 
         {orders.length ? (
           <>
@@ -981,7 +1059,7 @@ export default function OrdersIndex({
           Menampilkan{" "}
           <span className="tabular-nums font-semibold text-foreground">
             {(pagination.current_page - 1) * (pagination.per_page ?? 10) + 1}
-            {" – "}
+            {" - "}
             {Math.min(pagination.current_page * (pagination.per_page ?? 10), pagination.total)}
           </span>{" "}
           dari{" "}
