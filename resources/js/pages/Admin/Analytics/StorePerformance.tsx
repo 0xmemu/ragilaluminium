@@ -170,6 +170,38 @@ function ChangeBadge({ percent }: { percent: number }) {
   )
 }
 
+function CopySkuButton({ sku }: { sku: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      await navigator.clipboard.writeText(sku)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center justify-center rounded p-0.5 text-muted-foreground transition hover:text-foreground hover:bg-muted"
+      title={copied ? "Tersalin!" : "Salin SKU " + sku}
+      aria-label={"Salin SKU " + sku}
+    >
+      <Icon
+        name={copied ? "check" : "copy"}
+        className={cn("size-3", copied ? "text-success" : "text-muted-foreground")}
+        aria-hidden="true"
+      />
+    </button>
+  )
+}
+
 type ProductBreakdown = {
   product_id: number
   parent_sku: string
@@ -281,7 +313,10 @@ function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-normal text-foreground" title={p.name}>{p.name}</p>
-            <p className="truncate font-mono text-[10px] text-muted-foreground">{p.parent_sku}</p>
+            <div className="flex items-center gap-1">
+              <span className="truncate font-mono text-xs text-muted-foreground">{p.parent_sku}</span>
+              <CopySkuButton sku={p.parent_sku} />
+            </div>
           </div>
           <div className="text-right text-xs tabular-nums">
             <p className="font-semibold text-foreground">{formatNumber(p.views ?? 0)} dilihat</p>
@@ -301,7 +336,10 @@ function SellersList({ rows }: { rows: ProductBreakdown[] }) {
         <article key={p.product_id} className="flex items-center gap-3 py-2">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-normal text-foreground" title={p.name}>{p.name}</p>
-            <p className="truncate font-mono text-[10px] text-muted-foreground">{p.parent_sku}</p>
+            <div className="flex items-center gap-1">
+              <span className="truncate font-mono text-xs text-muted-foreground">{p.parent_sku}</span>
+              <CopySkuButton sku={p.parent_sku} />
+            </div>
           </div>
           <div className="text-right text-xs tabular-nums">
             <p className="font-semibold text-foreground">{formatNumber(p.units ?? 0)} unit</p>
@@ -1119,7 +1157,10 @@ export default function StorePerformance({
                       <tr key={`${product.parent_sku}-${product.name}`} className="hover:bg-muted/20">
                         <td className="px-4 py-2.5 max-w-[200px]">
                           <p className="truncate font-normal text-foreground" title={product.name}>{product.name}</p>
-                          <p className="font-mono text-[10px] text-muted-foreground">{product.parent_sku}</p>
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
+                            <CopySkuButton sku={product.parent_sku} />
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 text-right font-medium tabular-nums text-foreground">{formatNumber(product.units)}</td>
                         <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">{formatNumber(product.order_count)}</td>
@@ -1308,7 +1349,10 @@ export default function StorePerformance({
                           >
                             {product.name}
                           </Link>
-                          <p className="font-mono text-[10px] text-muted-foreground">{product.parent_sku}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
+                            <CopySkuButton sku={product.parent_sku} />
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-right font-medium tabular-nums text-foreground">
                           {formatNumber(product.units)}
@@ -1471,7 +1515,10 @@ export default function StorePerformance({
                           >
                             {product.name}
                           </Link>
-                          <p className="font-mono text-[10px] text-muted-foreground">{product.parent_sku}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
+                            <CopySkuButton sku={product.parent_sku} />
+                          </div>
                         </td>
                         {modalInteractionTab === "sellers" ? (
                           <>
