@@ -161,6 +161,7 @@ class DashboardController extends Controller
                 'href' => route('admin.orders.index', [
                     'order_status' => 'awaiting_confirmation',
                     'payment_status' => 'pending',
+                    'is_cod' => 0,
                 ]),
             ],
             [
@@ -171,7 +172,10 @@ class DashboardController extends Controller
                     ->where('payment_status', 'pending')
                     ->where('cod_flag', true)
                     ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'awaiting_confirmation']),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'awaiting_confirmation',
+                    'is_cod' => 1,
+                ]),
             ],
             // WhatsApp belum terhubung = notifikasi pesanan tidak terkirim:
             // harus segera ditangani, layak masuk daftar perhatian (bukan panel pasif).
@@ -212,7 +216,7 @@ class DashboardController extends Controller
         $pendingMediaAssets = MediaAsset::whereIn('status', ['pending', 'downloading'])->count();
         $failedImports = ImportJob::where('status', 'failed')->count();
         $failedMessages = WhatsAppMessage::where('status', 'failed')->count();
-        $runningImports = ImportJob::running()->count();
+        $runningImports = ImportJob::where('status', 'running')->count();
 
         $importStatusCounts = ImportJob::query()
             ->select('status', DB::raw('count(*) as total'))
@@ -308,7 +312,7 @@ class DashboardController extends Controller
                 'key' => 'failed_wa',
                 'label' => 'Pesan WhatsApp Gagal',
                 'count' => $failedMessages,
-                'href' => route('admin.whatsapp.messages.index'),
+                'href' => route('admin.whatsapp.messages.index', ['status' => 'failed']),
             ];
         }
         if ($runningImports > 0) {
@@ -316,7 +320,39 @@ class DashboardController extends Controller
                 'key' => 'running_imports',
                 'label' => 'Import Sedang Berjalan',
                 'count' => $runningImports,
-                'href' => route('admin.imports.index'),
+                'href' => route('admin.imports.index', ['status' => 'running']),
+            ];
+        }
+
+        // Action Center: Order yang siap dikemas & butuh nomor resi pengiriman
+        $needWaybillCount = Order::query()
+            ->where('order_status', 'processing')
+            ->where('shipping_status', 'pending_pickup')
+            ->count();
+        if ($needWaybillCount > 0) {
+            $attention[] = [
+                'key' => 'need_waybill',
+                'label' => 'Pesanan Perlu Resi Pengiriman',
+                'count' => $needWaybillCount,
+                'severity' => 'medium',
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'processing',
+                    'shipping_status' => 'pending_pickup',
+                ]),
+            ];
+        }
+
+        // Action Center: Kasus retur yang masih aktif/terbuka
+        $openReturnsCount = \App\Models\OrderReturnCase::query()
+            ->whereIn('status', ['requested', 'approved', 'item_shipped', 'item_received'])
+            ->count();
+        if ($openReturnsCount > 0) {
+            $attention[] = [
+                'key' => 'open_returns',
+                'label' => 'Kasus Retur Aktif',
+                'count' => $openReturnsCount,
+                'severity' => 'medium',
+                'href' => route('admin.orders.index', ['order_status' => 'return_in_process']),
             ];
         }
 
@@ -356,7 +392,7 @@ class DashboardController extends Controller
             ->map(fn (array $metric): array => collect($metric)->except('detail')->all())
             ->values()
             ->all();
-        $performaRevenueChart = collect($performance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
+        $performaVisitorChart = collect($performance['charts'] ?? [])->firstWhere('key', 'visitors') ?? [];
 
         // Source-truth promo = kampanye (Advertisement-007). Atribut legacy tetap fallback.
         $campaignPromoIds = array_merge(
@@ -519,6 +555,8 @@ class DashboardController extends Controller
                 'active_order_count' => (int) $activeOrdersQuery->count(),
                 'received_today_amount' => (float) $paymentsReceivedTodayQuery->sum('amount'),
                 'received_today_count' => (int) $paymentsReceivedTodayQuery->count(),
+                'received_period_amount' => (float) (collect(collect($performance['sections'] ?? [])->firstWhere('key', 'payments')['kpis'] ?? [])->firstWhere('key', 'payments_received')['value'] ?? $paymentsReceivedTodayQuery->sum('amount')),
+                'received_period_label' => 'Pembayaran Diterima (' . ($performaPeriod === 'today' ? 'Hari ini' : ($performance['range']['label'] ?? 'Periode ini')) . ')',
             ],
             'performa' => [
                 'period' => $performaPeriod,
@@ -532,10 +570,10 @@ class DashboardController extends Controller
                 ],
                 'metrics' => $performaMetrics,
                 'trend' => [
-                    'total' => (float) ($performaRevenueChart['total'] ?? 0),
-                    'total_format' => $performaRevenueChart['total_format'] ?? 'currency',
+                    'total' => (int) ($performaVisitorChart['total'] ?? 0),
+                    'total_format' => 'number',
                     'granularity' => $performance['range']['granularity'] ?? 'day',
-                    'series' => $performaRevenueChart['series'] ?? [],
+                    'series' => $performaVisitorChart['series'] ?? [],
                 ],
                 'detail_href' => route('admin.analytics.store-performance', ['period' => $performaPeriod]),
             ],

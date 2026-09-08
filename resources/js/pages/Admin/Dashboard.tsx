@@ -67,6 +67,8 @@ interface FinancialData {
   active_order_count: number
   received_today_amount: number
   received_today_count: number
+  received_period_amount?: number
+  received_period_label?: string
 }
 
 interface StatusOrderItem {
@@ -456,8 +458,8 @@ export default function Dashboard({
                 </div>
                 <div className="px-4 py-3">
                   <MetricTile
-                    label="Pembayaran Diterima Hari Ini"
-                    value={formatCurrency(financial.received_today_amount)}
+                    label={financial.received_period_label || "Pembayaran Diterima"}
+                    value={formatCurrency(financial.received_period_amount ?? financial.received_today_amount)}
                     delta={`${formatNumber(financial.received_today_count)} pembayaran`}
                   />
                 </div>
@@ -547,17 +549,20 @@ export default function Dashboard({
             </div>
             <div className="mt-4 border-t border-border pt-3">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">Tren Penjualan</p>
+                <p className="text-xs font-medium text-muted-foreground">Tren Pengunjung</p>
                 <div className="text-right">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p>
                   <p className="text-lg font-bold tabular-nums tracking-tight text-foreground">
-                    {formatCurrency(performa.trend.total)}
+                    {formatNumber(performa.trend.total)}
                   </p>
                 </div>
               </div>
               {performa.trend.series.length ? (
                 <React.Suspense fallback={<div className="mt-2 h-32 w-full animate-pulse rounded-md bg-muted" aria-label="Memuat grafik" />}>
-                  <TrendChart series={performa.trend.series.map((point) => ({ label: point.label, value: point.value }))} />
+                  <TrendChart
+                    series={performa.trend.series.map((point) => ({ label: point.label, value: point.value }))}
+                    format="number"
+                  />
                 </React.Suspense>
               ) : (
                 <p className="mt-4 text-sm text-muted-foreground">Data belum cukup untuk menampilkan tren.</p>
@@ -573,15 +578,6 @@ export default function Dashboard({
           title="Status order"
           icon="clipboard-list"
           description="Ringkasan antrean pesanan berdasarkan tahap operasional."
-          action={
-            <Link
-              href={routeUrl("admin.orders.index")}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
-            >
-              Semua pesanan
-              <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
-            </Link>
-          }
         >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {statusOrder.map((item) => (

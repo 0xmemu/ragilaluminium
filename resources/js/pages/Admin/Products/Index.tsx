@@ -121,14 +121,7 @@ function ProductRowActions({
             Lihat di toko
           </a>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={(event) => {
-            event.preventDefault()
-            router.post(product.duplicate_url, {}, { preserveScroll: true })
-          }}
-        >
-          Salin
-        </DropdownMenuItem>
+
         {archived && product.destroy_url ? (
           <ConfirmAction
             trigger={

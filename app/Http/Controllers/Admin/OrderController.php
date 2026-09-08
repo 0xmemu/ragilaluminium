@@ -77,6 +77,10 @@ class OrderController extends Controller
             $datePreset = '';
         }
 
+        $isCod = $request->has('is_cod')
+            ? $request->boolean('is_cod')
+            : ($request->input('payment_method') === 'cod' ? true : ($request->input('payment_method') === 'transfer' ? false : null));
+
         $base = Order::query();
 
         $tabCounts = Order::query()
@@ -111,6 +115,10 @@ class OrderController extends Controller
             )
             ->when($paymentStatus !== '', fn ($q) => $q->where('payment_status', $paymentStatus))
             ->when($shippingStatus !== '', fn ($q) => $q->where('shipping_status', $shippingStatus))
+            ->when($isCod !== null, fn ($q) => $q->where(fn ($sub) => $isCod
+                ? $sub->where('cod_flag', true)->orWhere('payment_method', 'cod')
+                : $sub->where('cod_flag', false)->where('payment_method', '!=', 'cod')
+            ))
             ->when(
                 $olderThan !== '',
                 fn ($q) => $q->where('updated_at', '<', now()->subHours(self::OLDER_THAN_HOURS[$olderThan]))
@@ -206,6 +214,10 @@ class OrderController extends Controller
             $datePreset = '';
         }
 
+        $isCod = $request->has('is_cod')
+            ? $request->boolean('is_cod')
+            : ($request->input('payment_method') === 'cod' ? true : ($request->input('payment_method') === 'transfer' ? false : null));
+
         $query = Order::query()
             ->withCount('items')
             ->withSum('items as units_count', 'quantity')
@@ -228,6 +240,10 @@ class OrderController extends Controller
             )
             ->when($paymentStatus !== '', fn ($q) => $q->where('payment_status', $paymentStatus))
             ->when($shippingStatus !== '', fn ($q) => $q->where('shipping_status', $shippingStatus))
+            ->when($isCod !== null, fn ($q) => $q->where(fn ($sub) => $isCod
+                ? $sub->where('cod_flag', true)->orWhere('payment_method', 'cod')
+                : $sub->where('cod_flag', false)->where('payment_method', '!=', 'cod')
+            ))
             ->when(
                 $olderThan !== '',
                 fn ($q) => $q->where('updated_at', '<', now()->subHours(self::OLDER_THAN_HOURS[$olderThan]))
