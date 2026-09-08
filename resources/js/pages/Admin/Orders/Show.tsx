@@ -1264,22 +1264,29 @@ export default function OrderShow({
                     <Icon name="user" className="size-3.5 text-muted-foreground" aria-hidden="true" />
                     Detail Penerima & Alamat
                   </span>
-                  {order.whatsapp_url ? (
-                    <a
-                      href={order.whatsapp_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-info hover:underline"
-                    >
-                      <Icon name="whatsapp" className="size-3 text-info" aria-hidden="true" />
-                      Chat WhatsApp
-                    </a>
-                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
                   <span className="text-muted-foreground">Penerima:</span>
-                  <span className="font-medium text-foreground">{order.customer_name} ({order.customer_phone || "-"})</span>
+                  <span className="font-medium text-foreground">
+                    {order.customer_name}
+                    {order.customer_phone ? (
+                      order.whatsapp_url ? (
+                        <a
+                          href={order.whatsapp_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-1.5 inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-success"
+                          title="Buka WhatsApp penerima"
+                        >
+                          <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
+                          <span className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">{order.customer_phone}</span>
+                        </a>
+                      ) : (
+                        <span className="ml-1 font-mono">({order.customer_phone})</span>
+                      )
+                    ) : " (-)"}
+                  </span>
                   <span className="text-muted-foreground align-top">Alamat:</span>
                   <span className="font-medium leading-5 text-foreground">{fullAddress(order) || "-"}</span>
                 </div>

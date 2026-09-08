@@ -295,22 +295,27 @@ function OrderCardRow({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="truncate font-medium text-foreground">{order.customer_name}</span>
-          {order.whatsapp_url ? (
-            <a
-              href={order.whatsapp_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-              aria-label={`WhatsApp ${order.customer_name}`}
-            >
-              <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
-            </a>
-          ) : null}
           <span className="hidden sm:inline">
-            {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
+            · {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
           {order.customer_phone ? (
-            <span className="hidden md:inline">· {order.customer_phone}</span>
+            order.whatsapp_url ? (
+              <a
+                href={order.whatsapp_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground transition hover:text-success"
+                title={`Chat WhatsApp ${order.customer_name}`}
+              >
+                <span>·</span>
+                <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
+                <span className="tabular-nums underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">
+                  {order.customer_phone}
+                </span>
+              </a>
+            ) : (
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">· {order.customer_phone}</span>
+            )
           ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -561,13 +566,7 @@ function OrderCardRow({
             ) : null
           ) : null}
 
-          {order.whatsapp_url ? (
-            <Button asChild variant="secondary" size="xs" className="w-full xl:w-auto">
-              <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-                Chat WA
-              </a>
-            </Button>
-          ) : null}
+
 
           <Button asChild variant="ghost" size="xs" className="w-full xl:w-auto">
             <Link href={order.href}>Detail</Link>
@@ -1221,22 +1220,29 @@ export default function OrdersIndex({
                       <Icon name="user" className="size-3.5 text-muted-foreground" aria-hidden="true" />
                       Detail Penerima & Alamat
                     </span>
-                    {resiOrder.whatsapp_url ? (
-                      <a
-                        href={resiOrder.whatsapp_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-info hover:underline"
-                      >
-                        <Icon name="whatsapp" className="size-3.5 text-info" aria-hidden="true" />
-                        Chat WhatsApp
-                      </a>
-                    ) : null}
                   </div>
 
                   <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
                     <span className="text-muted-foreground">Penerima:</span>
-                    <span className="font-medium text-foreground">{resiOrder.customer_name} ({resiOrder.customer_phone || "-"})</span>
+                    <span className="font-medium text-foreground">
+                      {resiOrder.customer_name}
+                      {resiOrder.customer_phone ? (
+                        resiOrder.whatsapp_url ? (
+                          <a
+                            href={resiOrder.whatsapp_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-1.5 inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-success"
+                            title="Buka WhatsApp penerima"
+                          >
+                            <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
+                            <span className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">{resiOrder.customer_phone}</span>
+                          </a>
+                        ) : (
+                          <span className="ml-1 font-mono">({resiOrder.customer_phone})</span>
+                        )
+                      ) : " (-)"}
+                    </span>
                     <span className="text-muted-foreground align-top">Alamat:</span>
                     <span className="font-medium leading-5 text-foreground">{resiAddress(resiOrder) || "-"}</span>
                   </div>
