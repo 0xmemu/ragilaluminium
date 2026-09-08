@@ -386,13 +386,16 @@ export default function Dashboard({
               <div className="p-5 pb-2">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Penjualan (Gross) {performa.period_label}
+                    <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                      Penjualan (Gross)
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {performa.period_label}
                     </p>
-                    <p className="mt-0.5 text-[11px] font-medium text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
+                    <p className="mt-1 text-[11px] text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
                       Nilai pesanan yang masuk alur fulfillment · bukan pembayaran diterima atau laba
                     </p>
-                    <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                    <div className="mt-3 flex flex-wrap items-baseline gap-3">
                       <span className="tabular-nums text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                         {formatCurrency(omzet.revenue)}
                       </span>
@@ -508,7 +511,7 @@ export default function Dashboard({
             </Card>
           )}
 
-          <Card className="flex h-full flex-col p-4">
+          <Card className="flex h-full flex-col p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <h2 className="text-sm font-semibold tracking-tight text-foreground">
