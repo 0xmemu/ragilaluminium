@@ -426,8 +426,8 @@ export default function StorePerformance({
     }
     return {
       omzet: byKey["revenue"] ?? [],
-      net_revenue: byKey["revenue"] ?? [],
-      payments_received: byKey["revenue"] ?? [],
+      net_revenue: byKey["net_revenue"] ?? byKey["revenue"] ?? [],
+      payments_received: byKey["net_revenue"] ?? byKey["revenue"] ?? [],
       orders: byKey["units"] ?? [],
       units: byKey["units"] ?? [],
       conversion: byKey["conversion_rate"] ?? [],
