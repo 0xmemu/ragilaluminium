@@ -41,14 +41,18 @@ interface SeriesPoint {
   bucket: string
   label: string
   value: number
+  previous_value?: number
+  previous_label?: string | null
 }
 
 interface ChartBlock {
   key: string
   title: string
   total: number
+  previous_total?: number
   total_format: "currency" | "number"
   series: SeriesPoint[]
+  previous_series?: SeriesPoint[]
 }
 
 interface Report {
@@ -443,6 +447,7 @@ export default function StorePerformance({
   }, [report, sparklineBy])
 
   const [chartTab, setChartTab] = React.useState(0)
+  const [chartModel, setChartModel] = React.useState<"line" | "bar">("line")
 
   function buildExportUrl(): string {
     try {
@@ -1132,27 +1137,87 @@ export default function StorePerformance({
 
                   {chart ? (
                     <div className="mt-3">
-                      <div className="flex items-baseline justify-between mb-2">
-                        <span className="text-xs text-muted-foreground">Total {chart ? chart.title.replace(/^Tren /, "") : "Periode"}:</span>
-                        <span className="text-base font-bold tabular-nums text-foreground">
-                          {chart.total_format === "currency"
-                            ? formatCurrency(chart.total)
-                            : chart.key === "conversion_rate"
-                              ? formatNumber(chart.total) + "%"
-                              : formatNumber(chart.total)}
-                        </span>
+                      {/* Baris Sejajar: Total Metrik di Kiri, Legend & Toggle Model Chart di Kanan */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5 mb-2">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs text-muted-foreground">Total {chart.title.replace(/^Tren /, "")}:</span>
+                          <span className="text-base font-bold tabular-nums text-foreground">
+                            {chart.total_format === "currency"
+                              ? formatCurrency(chart.total)
+                              : chart.key === "conversion_rate"
+                                ? formatNumber(chart.total) + "%"
+                                : formatNumber(chart.total)}
+                          </span>
+                          {chart.previous_total !== undefined ? (
+                            <span className="text-xs text-muted-foreground">
+                              (vs {chart.total_format === "currency"
+                                ? formatCurrency(chart.previous_total)
+                                : chart.key === "conversion_rate"
+                                  ? formatNumber(chart.previous_total) + "%"
+                                  : formatNumber(chart.previous_total)})
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {/* Legend Indikator Garis */}
+                          <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="size-2 rounded-full inline-block" style={{ backgroundColor: "hsl(var(--sale))" }} />
+                              Periode Ini
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="h-0.5 w-3 border-t-2 border-dashed border-muted-foreground/60 inline-block" />
+                              Periode Lalu
+                            </span>
+                          </div>
+
+                          {/* Toggle Model Chart (Line / Bar) */}
+                          <div className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5">
+                            {([
+                              { key: "line", label: "Line Chart" },
+                              { key: "bar", label: "Bar Chart" },
+                            ] as const).map(({ key, label }) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setChartModel(key)}
+                                className={cn(
+                                  "rounded px-2.5 py-1 text-xs font-medium transition",
+                                  chartModel === key
+                                    ? "bg-foreground text-background shadow-xs font-semibold"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                                )}
+                                title={label}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      {chart.series.length ? (
-                        <React.Suspense fallback={<div className="h-[175px] w-full animate-pulse rounded-md bg-muted/40" />}>
-                          <TrendChart
-                            series={chart.series}
+
+                      {(() => {
+                        const prev = chart.previous_series ?? []
+                        const combinedSeries = chart.series.map((item, idx) => ({
+                          ...item,
+                          previous_value: prev[idx]?.value,
+                          previous_label: prev[idx]?.label,
+                        }))
+                        return combinedSeries.length ? (
+                          <React.Suspense fallback={<div className="h-[175px] w-full animate-pulse rounded-md bg-muted/40" />}>
+                            <TrendChart
+                              series={combinedSeries}
                             format={chart.key === "conversion_rate" ? "percent" : chart.total_format === "currency" ? "currency" : "number"}
+                            chartType={chartModel}
+                            showChartTypeToggle={false}
                             height={175}
-                          />
-                        </React.Suspense>
-                      ) : (
-                        <p className="py-12 text-center text-xs text-muted-foreground">Data belum cukup untuk menampilkan tren periode ini.</p>
-                      )}
+                            />
+                          </React.Suspense>
+                        ) : (
+                          <p className="py-12 text-center text-xs text-muted-foreground">Data belum cukup untuk menampilkan tren periode ini.</p>
+                        )
+                      })()}
                     </div>
                   ) : null}
                 </>

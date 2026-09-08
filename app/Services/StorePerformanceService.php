@@ -298,36 +298,46 @@ class StorePerformanceService
                     'key' => 'net_revenue',
                     'title' => 'Tren Penjualan Bersih',
                     'total' => $current['net_revenue'],
+                    'previous_total' => $previous['net_revenue'] ?? 0.0,
                     'total_format' => 'currency',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'net_revenue'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'net_revenue'),
                 ],
                 [
                     'key' => 'revenue',
                     'title' => 'Tren Penjualan Gross',
                     'total' => $current['gross_revenue'],
+                    'previous_total' => $previous['gross_revenue'] ?? 0.0,
                     'total_format' => 'currency',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'revenue'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'revenue'),
                 ],
                 [
                     'key' => 'visitors',
                     'title' => 'Tren Pengunjung',
                     'total' => $current['visitors'],
+                    'previous_total' => $previous['visitors'] ?? 0.0,
                     'total_format' => 'number',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'visitors'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'visitors'),
                 ],
                 [
                     'key' => 'conversion_rate',
                     'title' => 'Tren Konversi',
                     'total' => $current['conversion_rate'],
+                    'previous_total' => $previous['conversion_rate'] ?? 0.0,
                     'total_format' => 'number',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'conversion_rate'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'conversion_rate'),
                 ],
                 [
                     'key' => 'units',
                     'title' => 'Tren Unit Terjual',
                     'total' => $current['units'],
+                    'previous_total' => $previous['units'] ?? 0.0,
                     'total_format' => 'number',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'units'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'units'),
                 ],
             ],
             'top_products' => $this->topProducts($range['from'], $range['to']),
@@ -555,6 +565,26 @@ class StorePerformanceService
             'cod_pending_count' => $codPendingCount,
         ];
     }
+    public function seriesWithComparison(Carbon $from, Carbon $to, Carbon $prevFrom, Carbon $prevTo, string $granularity, string $metric): array
+    {
+        $current = $this->series($from, $to, $granularity, $metric);
+        $previous = $this->series($prevFrom, $prevTo, $granularity, $metric);
+
+        $prevCount = count($previous);
+
+        return collect($current)->map(function (array $item, int $idx) use ($previous, $prevCount) {
+            $prevItem = $idx < $prevCount ? $previous[$idx] : null;
+
+            return [
+                'bucket' => $item['bucket'],
+                'label' => $item['label'],
+                'value' => $item['value'],
+                'previous_value' => $prevItem['value'] ?? 0.0,
+                'previous_label' => $prevItem['label'] ?? null,
+            ];
+        })->values()->all();
+    }
+
     public function series(Carbon $from, Carbon $to, string $granularity, string $metric): array
     {
         if ($metric === 'visitors') {
