@@ -1,7 +1,5 @@
 import * as React from "react"
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -22,7 +20,7 @@ interface TrendChartProps<T extends { label: string; value: number }> {
   className?: string
   height?: number
   showChartTypeToggle?: boolean
-  defaultType?: "area" | "bar" | "line"
+  defaultType?: "line" | "bar"
 }
 
 function getCleanTicks<T extends { label: string }>(series: T[]): string[] {
@@ -47,10 +45,9 @@ export default function TrendChart<T extends { label: string; value: number }>({
   className,
   height = 160,
   showChartTypeToggle = true,
-  defaultType = "area",
+  defaultType = "line",
 }: TrendChartProps<T>) {
-  const [chartType, setChartType] = React.useState<"area" | "bar" | "line">(defaultType)
-  const gradientId = React.useId().replace(/:/g, "")
+  const [chartType, setChartType] = React.useState<"line" | "bar">(defaultType)
   const xAxisTicks = React.useMemo(() => getCleanTicks(series), [series])
 
   if (!series || series.length === 0) {
@@ -72,20 +69,23 @@ export default function TrendChart<T extends { label: string; value: number }>({
       {showChartTypeToggle ? (
         <div className="flex items-center justify-end">
           <div className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5">
-            {(["area", "bar", "line"] as const).map((type) => (
+            {([
+              { key: "line", label: "Line Chart" },
+              { key: "bar", label: "Bar Chart" },
+            ] as const).map(({ key, label }) => (
               <button
-                key={type}
+                key={key}
                 type="button"
-                onClick={() => setChartType(type)}
+                onClick={() => setChartType(key)}
                 className={cn(
-                  "rounded px-2 py-0.5 text-[11px] font-medium transition",
-                  chartType === type
+                  "rounded px-2.5 py-1 text-xs font-medium transition",
+                  chartType === key
                     ? "bg-foreground text-background shadow-xs font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 )}
-                title={`Tampilan ${type === "area" ? "Area" : type === "bar" ? "Batang" : "Garis"}`}
+                title={label}
               >
-                {type === "area" ? "Area" : type === "bar" ? "Batang" : "Garis"}
+                {label}
               </button>
             ))}
           </div>
@@ -132,7 +132,7 @@ export default function TrendChart<T extends { label: string; value: number }>({
                 animationDuration={500}
               />
             </BarChart>
-          ) : chartType === "line" ? (
+          ) : (
             <LineChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.6)" />
               <XAxis
@@ -176,57 +176,6 @@ export default function TrendChart<T extends { label: string; value: number }>({
                 animationDuration={600}
               />
             </LineChart>
-          ) : (
-            <AreaChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-              <defs>
-                <linearGradient id={`trend-grad-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.6)" />
-              <XAxis
-                dataKey="label"
-                ticks={xAxisTicks}
-                interval="preserveStartEnd"
-                minTickGap={20}
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-              />
-              <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload || !payload.length) return null
-                  const item = payload[0].payload as T
-                  return (
-                    <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur-md">
-                      <p className="font-medium text-muted-foreground">{item.label}</p>
-                      <p className="tabular-nums mt-0.5 text-sm font-bold text-foreground">
-                        {formatVal(Number(item.value))}
-                      </p>
-                    </div>
-                  )
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2.5}
-                fill={`url(#trend-grad-${gradientId})`}
-                dot={false}
-                activeDot={{
-                  r: 5,
-                  stroke: "hsl(var(--background))",
-                  strokeWidth: 2,
-                  fill: "hsl(var(--primary))",
-                }}
-                isAnimationActive={true}
-                animationDuration={600}
-              />
-            </AreaChart>
           )}
         </ResponsiveContainer>
       </div>
