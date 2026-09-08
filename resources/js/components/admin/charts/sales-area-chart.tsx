@@ -15,8 +15,29 @@ interface SalesAreaChartProps {
   series: Array<{ label: string; value: number }>
 }
 
+function getCleanTicks<T extends { label: string }>(series: T[]): string[] {
+  const n = series.length
+  if (n <= 8) {
+    return series.map((s) => s.label)
+  }
+  const step = n <= 14 ? 2 : n <= 31 ? 5 : n <= 90 ? 15 : Math.floor(n / 6)
+  const indices: number[] = []
+  for (let i = 0; i < n - 1; i += step) {
+    indices.push(i)
+  }
+  if (!indices.includes(n - 1)) {
+    if (indices.length > 1 && (n - 1) - indices[indices.length - 1] < Math.floor(step / 2)) {
+      indices[indices.length - 1] = n - 1
+    } else {
+      indices.push(n - 1)
+    }
+  }
+  return indices.map((idx) => series[idx].label)
+}
+
 export default function SalesAreaChart({ series = [] }: SalesAreaChartProps) {
   const gradientId = React.useId().replace(/:/g, "")
+  const xAxisTicks = React.useMemo(() => getCleanTicks(series), [series])
 
   if (!series || series.length === 0) {
     return (
@@ -43,6 +64,8 @@ export default function SalesAreaChart({ series = [] }: SalesAreaChartProps) {
           />
           <XAxis
             dataKey="label"
+            ticks={xAxisTicks}
+            interval={0}
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -55,7 +78,7 @@ export default function SalesAreaChart({ series = [] }: SalesAreaChartProps) {
               const item = payload[0].payload as { label: string; value: number }
               return (
                 <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur-md">
-                  <p className="text-[10px] font-medium text-muted-foreground">{item.label}</p>
+                  <p className="font-medium text-muted-foreground">{item.label}</p>
                   <p className="tabular-nums mt-0.5 text-sm font-bold text-foreground">
                     {formatCurrency(Number(item.value))}
                   </p>

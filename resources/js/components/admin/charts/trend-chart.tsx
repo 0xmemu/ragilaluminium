@@ -22,6 +22,26 @@ interface TrendChartProps<T extends { label: string; value: number }> {
   allowToggle?: boolean
 }
 
+function getCleanTicks<T extends { label: string }>(series: T[]): string[] {
+  const n = series.length
+  if (n <= 8) {
+    return series.map((s) => s.label)
+  }
+  const step = n <= 14 ? 2 : n <= 31 ? 5 : n <= 90 ? 15 : Math.floor(n / 6)
+  const indices: number[] = []
+  for (let i = 0; i < n - 1; i += step) {
+    indices.push(i)
+  }
+  if (!indices.includes(n - 1)) {
+    if (indices.length > 1 && (n - 1) - indices[indices.length - 1] < Math.floor(step / 2)) {
+      indices[indices.length - 1] = n - 1
+    } else {
+      indices.push(n - 1)
+    }
+  }
+  return indices.map((idx) => series[idx].label)
+}
+
 export default function TrendChart<T extends { label: string; value: number }>({
   series,
   format = "currency",
@@ -31,6 +51,7 @@ export default function TrendChart<T extends { label: string; value: number }>({
 }: TrendChartProps<T>) {
   const [chartType, setChartType] = React.useState<"area" | "bar">("area")
   const gradientId = React.useId().replace(/:/g, "")
+  const xAxisTicks = React.useMemo(() => getCleanTicks(series), [series])
 
   if (!series || series.length === 0) {
     return (
@@ -96,6 +117,8 @@ export default function TrendChart<T extends { label: string; value: number }>({
               />
               <XAxis
                 dataKey="label"
+                ticks={xAxisTicks}
+                interval={0}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={6}
@@ -145,6 +168,8 @@ export default function TrendChart<T extends { label: string; value: number }>({
               />
               <XAxis
                 dataKey="label"
+                ticks={xAxisTicks}
+                interval={0}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={6}
