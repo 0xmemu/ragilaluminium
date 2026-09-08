@@ -371,14 +371,16 @@ function OrderCardRow({
                           <CopyButton text={item.variant_sku} label="Salin SKU" />
                         ) : null}
                       </div>
-                      <p
-                        className={cn(
-                          "mt-0.5 text-xs",
-                          item.note ? "text-foreground" : "text-muted-foreground/70",
-                        )}
-                      >
-                        Catatan: {item.note || "-"}
-                      </p>
+                      {item.note?.trim() ? (
+                        <div className="mt-1 inline-flex items-center gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+                          <Icon name="message-square" className="size-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                          <span>Catatan pelanggan: <strong className="font-semibold text-foreground">{item.note}</strong></span>
+                        </div>
+                      ) : (
+                        <p className="mt-0.5 text-xs text-muted-foreground/60">
+                          Catatan: -
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -407,6 +409,16 @@ function OrderCardRow({
                   ? `+${hiddenCount} produk lainnya`
                   : "Tampilkan semua produk"}
             </button>
+          ) : null}
+
+          {order.notes?.trim() ? (
+            <div className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+              <Icon name="message-square" className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <span className="font-semibold">Catatan pelanggan: </span>
+                <span className="font-medium text-foreground">{order.notes}</span>
+              </div>
+            </div>
           ) : null}
         </div>
 
@@ -501,7 +513,7 @@ function OrderCardRow({
               <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                 <span className="inline-flex items-center gap-1">
                   <Icon name="clipboard-text" className="size-3" aria-hidden="true" />
-                  Internal
+                  Catatan admin
                 </span>
                 <button
                   type="button"
