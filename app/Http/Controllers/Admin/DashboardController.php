@@ -394,49 +394,7 @@ class DashboardController extends Controller
             ->all();
         $performaVisitorChart = collect($performance['charts'] ?? [])->firstWhere('key', 'visitors') ?? [];
 
-        // Source-truth promo = kampanye (Advertisement-007). Atribut legacy tetap fallback.
-        $campaignPromoIds = array_merge(
-            app(\App\Services\CampaignService::class)->flashProductIds(),
-            app(\App\Services\CampaignService::class)->promoProductIds(),
-        );
-        $campaignPromoIds = array_values(array_unique($campaignPromoIds));
-
-        $promoProducts = Product::visible()
-            ->with(['activeVariants', 'attributes'])
-            ->where(function ($query) use ($campaignPromoIds) {
-                if ($campaignPromoIds !== []) {
-                    $query->whereIn('id', $campaignPromoIds);
-                }
-                $query->orWhereHas('attributes', function ($attr) {
-                    $attr->whereIn('attribute_name', [
-                        'promo_compare_price',
-                        'compare_price',
-                        'harga_asli',
-                        'harga_sebelum_diskon',
-                        'promo_flash_sale',
-                        'flash_sale',
-                    ]);
-                });
-            })
-            ->orderByDesc('homepage_popular')
-            ->orderBy('homepage_popular_sort')
-            ->orderBy('id')
-            ->get()
-            ->map(function (Product $product) {
-                $promo = ProductPromotionMetadata::forProduct($product, applyGlobalEventDiscount: false);
-
-                return [
-                    'id' => $product->id,
-                    'parent_sku' => $product->parent_sku,
-                    'name' => $product->name,
-                    'discount_percent' => $promo['discount_percent'],
-                    'flash_sale' => $promo['flash_sale'],
-                    'homepage_popular' => (bool) $product->homepage_popular,
-                    'href' => route('admin.products.show', $product),
-                ];
-            })
-            ->filter(fn (array $row) => $row['discount_percent'] !== null || $row['flash_sale'])
-            ->values();
+        // Promo calculations are handled in Campaign/Promotion module, not on dashboard.
 
         $recentOrders = Order::query()
             ->with(['shippingRecords' => fn ($q) => $q->latest('id')])
@@ -606,8 +564,8 @@ class DashboardController extends Controller
                 ],
             ],
             'recentOrders' => $recentOrders,
-            'promoProducts' => $promoProducts->take(6)->all(),
-            'promoTotal' => $promoProducts->count(),
+            'promoProducts' => [],
+            'promoTotal' => 0,
             'topEngagedProducts' => $this->productEngagement->topProducts($performaPeriod, 8),
         ]);
     }

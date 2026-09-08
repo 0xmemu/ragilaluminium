@@ -649,6 +649,15 @@ export default function Dashboard({
                           >
                             {order.order_number}
                           </Link>
+                          {order.waybill_number ? (
+                            <a
+                              href={order.shipping_href}
+                              className="mt-0.5 block font-mono text-[11px] text-primary hover:underline"
+                              title="Lacak resi pengiriman"
+                            >
+                              Resi: {order.waybill_number}
+                            </a>
+                          ) : null}
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {formatDateTime(order.created_at)}
                           </p>
@@ -710,6 +719,15 @@ export default function Dashboard({
                         >
                           {order.order_number}
                         </Link>
+                        {order.waybill_number ? (
+                          <a
+                            href={order.shipping_href}
+                            className="mt-0.5 block font-mono text-[11px] text-primary hover:underline"
+                            title="Lacak resi pengiriman"
+                          >
+                            Resi: {order.waybill_number}
+                          </a>
+                        ) : null}
                         <p className="mt-1 text-sm font-medium">{order.customer_name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
