@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, Link } from "@inertiajs/react"
 import { useEffect, useRef, useState } from "react"
 
 import { Alert } from "@/components/admin/ui/alert"
@@ -71,7 +71,7 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
           if (props) setJob(props)
         },
       })
-    }, 2500)
+    }, 1000)
     return () => {
       if (timer.current) clearInterval(timer.current)
     }

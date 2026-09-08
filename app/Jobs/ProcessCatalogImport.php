@@ -132,10 +132,12 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             // (bukan hanya error struktur yang tertangkap pre-pass) harus
             // membatalkan SELURUH batch, bukan menyisakan data parsial.
             // Commit = sukses; throw = rollback struktural.
+            \Illuminate\Support\Facades\Cache::put("import_progress_{$this->jobId}", 0, 600);
             DB::transaction(function () use ($importer, $path): void {
                 Excel::import($importer, $path);
             });
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Cache::forget("import_progress_{$this->jobId}");
             $job->update([
                 'status' => 'failed',
                 'global_error_message' => $e->getMessage(),
@@ -146,6 +148,7 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             throw $e;
         }
 
+        \Illuminate\Support\Facades\Cache::forget("import_progress_{$this->jobId}");
         $job->refresh();
         if (in_array($job->status, ['pending', 'running'])) {
             $job->update(['status' => 'completed', 'completed_at' => now()]);

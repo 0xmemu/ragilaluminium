@@ -73,6 +73,19 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
      */
     protected array $lastIdentity = [];
 
+    /**
+     * Cache parent_sku per grup produk (by id_key / name) pada template create
+     * agar seluruh baris kombinasi produk yang sama mengikat parent_sku yang seragam.
+     *
+     * @var array<string, string>
+     */
+    protected array $groupParentSkus = [];
+
+    /**
+     * Jumlah baris yang telah diproses untuk pelaporan progress real-time.
+     */
+    protected int $processedCount = 0;
+
     public function __construct(
         public int $jobId,
         protected ?string $filePath = null,
@@ -252,30 +265,49 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
 
         $this->loadVariantSheet();
         $job->increment('processed_rows');
+        $this->processedCount++;
+        if ($this->processedCount % 5 === 0 || $this->processedCount === 1) {
+            \Illuminate\Support\Facades\Cache::put("import_progress_{$this->jobId}", $this->processedCount, 600);
+        }
 
         try {
             // Kontrak export-as-update (owner 09-06): kolom id_key di file
             // export/template adalah SKU produk (parent_sku). Mapping
             // eksplisit supaya file export langsung ter-update ke produk
             // existing, bukan masuk auto-mode by name (risiko duplikat).
-            if (trim((string) ($data['parent_sku'] ?? '')) === ''
-                && trim((string) ($data['id_key'] ?? '')) !== '') {
-                $data['parent_sku'] = trim((string) $data['id_key']);
+            $rawParentSku = trim((string) ($data['parent_sku'] ?? ''));
+            $rawIdKey = trim((string) ($data['id_key'] ?? ''));
+
+            // id_key hanya diperlakukan sebagai parent_sku jika:
+            // 1. parent_sku kosong, DAN
+            // 2. id_key bukan sekadar integer urut (1, 2, 3.. adalah kunci grup template create baru),
+            //    ATAU id_key memang sudah terdaftar di database sebagai parent_sku produk existing.
+            if ($rawParentSku === '' && $rawIdKey !== '') {
+                if (! ctype_digit($rawIdKey) || Product::where('parent_sku', $rawIdKey)->exists()) {
+                    $data['parent_sku'] = $rawIdKey;
+                }
             }
             $parentSku = trim((string) ($data['parent_sku'] ?? ''));
             $name = trim((string) ($data['name'] ?? $data['product_name'] ?? ''));
-            // Auto-mode: kolom parent_sku tidak diisi (template create). Sistem
-            // mengelompokkan varian berdasarkan NAMA produk (grouping by name),
+
+            // Auto-mode: kolom parent_sku tidak diisi (template create) atau produk baru.
+            // Sistem mengelompokkan varian berdasarkan id_key (bila ada) atau NAMA produk,
             // dan membuat parent_sku baru (RA + token acak, kontrak SKU Fase 4).
             $autoMode = $parentSku === '';
             if ($autoMode) {
-                $existingByName = $name !== ''
-                    ? Product::where('name', $name)->first()
-                    : null;
-                if ($existingByName) {
-                    $parentSku = (string) $existingByName->parent_sku;
+                $groupKey = $rawIdKey !== '' ? 'id_key:'.$rawIdKey : 'name:'.$name;
+                if (isset($this->groupParentSkus[$groupKey])) {
+                    $parentSku = $this->groupParentSkus[$groupKey];
                 } else {
-                    $parentSku = $this->generateParentSku();
+                    $existingByName = $name !== ''
+                        ? Product::where('name', $name)->first()
+                        : null;
+                    if ($existingByName) {
+                        $parentSku = (string) $existingByName->parent_sku;
+                    } else {
+                        $parentSku = $this->generateParentSku();
+                    }
+                    $this->groupParentSkus[$groupKey] = $parentSku;
                 }
             }
             if ($parentSku === '') {
@@ -317,7 +349,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             );
 
             $variantSku = trim((string) ($data['variant_sku'] ?? ''));
-            if ($autoMode && $variantSku === '') {
+            if ($variantSku === '') {
                 $hasVariation = false;
                 // Skema baru: kolom option_1..N di sheet Kombinasi.
                 for ($i = 1; $i <= 20; $i++) {
@@ -339,9 +371,25 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                     $hasVariation = true;
                 }
                 if ($hasVariation) {
-                    // Kontrak SKU: varian = RA + token acak mandiri (bukan
-                    // parent-nomor urut).
-                    $variantSku = \App\Support\ShopeeStyleSku::nextVariantSku($product);
+                    // Cari apakah kombinasi varian ini sudah ada untuk produk ini
+                    $v1Option = $this->variantOption($data, 1);
+                    $v2Option = $this->variantOption($data, 2);
+                    $existingVariant = null;
+                    if ($v1Option !== null) {
+                        $q = ProductVariant::where('product_id', $product->id)
+                            ->where('variation_1_option', $v1Option);
+                        if ($v2Option !== null) {
+                            $q->where('variation_2_option', $v2Option);
+                        }
+                        $existingVariant = $q->first();
+                    }
+
+                    if ($existingVariant) {
+                        $variantSku = $existingVariant->variant_sku;
+                    } else {
+                        // Kontrak SKU: varian = RA + token acak mandiri (bukan parent-nomor urut).
+                        $variantSku = \App\Support\ShopeeStyleSku::nextVariantSku($product);
+                    }
                 }
             }
             $variant = null;

@@ -197,7 +197,12 @@ class ImportJobController extends Controller
                     ? 'Manual ('.$import_job->manual_stock.')'
                     : 'Dari file',
                 'total_rows' => (int) $import_job->total_rows,
-                'processed_rows' => (int) $import_job->processed_rows,
+                'processed_rows' => (static function () use ($import_job): int {
+                    $cached = \Illuminate\Support\Facades\Cache::get("import_progress_{$import_job->id}");
+                    return ($import_job->status === 'completed' || $cached === null)
+                        ? (int) $import_job->processed_rows
+                        : (int) $cached;
+                })(),
                 'success_rows' => (int) $import_job->success_rows,
                 'failed_rows' => (int) $import_job->failed_rows,
                 'started_at' => optional($import_job->started_at)?->toDateTimeString(),
