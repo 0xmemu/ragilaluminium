@@ -1059,9 +1059,9 @@ export default function StorePerformance({
         ) : null}
       </section>
 
-      {/* LAYER 4: TREN UTAMA & KATALOG PRODUK TERLARIS (DUA KOLOM BERIMBANG) */}
+      {/* LAYER 4: TREN BISNIS & KUNJUNGAN / METODE BAYAR (2 KOLOM BERIMBANG) */}
       <div className="mb-6 grid gap-6 xl:grid-cols-2">
-        {/* Kolom Kiri: Tren Utama Interaktif */}
+        {/* Kolom Kiri: Tren Bisnis Interaktif */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
             {(() => {
@@ -1133,7 +1133,75 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {/* Kolom Kanan: Produk Terlaris - TAMPIL 6 PRODUK */}
+        {/* Kolom Kanan: Kunjungan, Retensi & Bauran Pembayaran (DIGABUNG) */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div>
+            <div className="border-b border-border pb-3">
+              <h3 className="text-sm font-semibold tracking-tight text-foreground">Kunjungan & Bauran Pembayaran</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">Loyalitas pengunjung serta preferensi pembayaran pesanan.</p>
+            </div>
+
+            {/* Sub-section A: Kunjungan & Retensi Pelanggan */}
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
+                <p className="text-[11px] font-medium text-muted-foreground">Pengunjung Unik</p>
+                <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
+                <span className="text-[10px] text-muted-foreground">IP/sesi unik</span>
+              </div>
+              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
+                <p className="text-[11px] font-medium text-muted-foreground">Pelanggan Baru</p>
+                <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
+                <span className="text-[10px] text-muted-foreground">Order perdana</span>
+              </div>
+              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
+                <p className="text-[11px] font-medium text-muted-foreground">Order Ulang</p>
+                <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
+                <span className="text-[10px] text-muted-foreground">Pelanggan repeat</span>
+              </div>
+              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
+                <p className="text-[11px] font-medium text-muted-foreground">Rasio Repeat</p>
+                <p className="mt-1 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
+                <span className="text-[10px] text-muted-foreground">Retensi pembeli</span>
+              </div>
+            </div>
+
+            {/* Sub-section B: Bauran Metode Pembayaran */}
+            {report.payment_mix.length ? (
+              <div className="mt-4 border-t border-border pt-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-xs font-semibold text-foreground">Metode Pembayaran</p>
+                  <span className="text-[11px] text-muted-foreground">Porsi dari Penjualan Gross</span>
+                </div>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {report.payment_mix.map((row) => {
+                    const gross = report.financial.gross_revenue
+                    const pct = gross > 0 ? Math.round((row.revenue / gross) * 1000) / 10 : 0
+                    const isCod = row.method.toLowerCase().includes("cod")
+                    return (
+                      <div key={row.method} className="rounded-lg border border-border bg-surface p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs uppercase text-foreground">{row.method}</span>
+                          <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                            {pct}% dari Gross
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatCurrency(row.revenue)}</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+                          {formatNumber(row.count)} pesanan {isCod ? "(Lunas saat barang tiba)" : "(Transfer lunas di muka)"}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* LAYER 5: ANALISIS KATALOG PRODUK (PRODUK TERLARIS & INTERAKSI DI PALING BAWAH) */}
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        {/* Kolom Kiri: Produk Terlaris - TAMPIL 6 PRODUK */}
         <div className="flex flex-col justify-between overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div>
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-5 pb-3">
@@ -1198,84 +1266,13 @@ export default function StorePerformance({
             </div>
           ) : null}
         </div>
-      </div>
 
-      {/* LAYER 5: KUNJUNGAN PELANGGAN & INTERAKSI KATALOG */}
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
-        {/* Kolom Kiri: Kunjungan & Retensi Pelanggan */}
-        <section className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
-          <div>
-            <div className="border-b border-border pb-3">
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Kunjungan & Retensi Pelanggan</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">Rasio loyalitas pelanggan dan perbandingan pembeli baru vs order ulang.</p>
-            </div>
-
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-md border border-border bg-surface p-3 text-center">
-              <p className="text-[11px] font-medium text-muted-foreground">Pengunjung Unik</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
-              <span className="text-[10px] text-muted-foreground">IP/sesi unik</span>
-            </div>
-            <div className="rounded-md border border-border bg-surface p-3 text-center">
-              <p className="text-[11px] font-medium text-muted-foreground">Customer Baru</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
-              <span className="text-[10px] text-muted-foreground">Order perdana</span>
-            </div>
-            <div className="rounded-md border border-border bg-surface p-3 text-center">
-              <p className="text-[11px] font-medium text-muted-foreground">Customer Repeat</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
-              <span className="text-[10px] text-muted-foreground">Order berulang</span>
-            </div>
-            <div className="rounded-md border border-border bg-surface p-3 text-center">
-              <p className="text-[11px] font-medium text-muted-foreground">Rasio Repeat</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
-              <span className="text-[10px] text-muted-foreground">Retensi pembeli</span>
-            </div>
-          </div>
-
-
-        </div>
-      </section>
-
-        {/* Kolom Kanan: Interaksi Produk (Views & Clicks) - TAMPIL 6 PRODUK */}
+        {/* Kolom Kanan: Produk Berdasarkan Interaksi - TAMPIL 6 PRODUK */}
         <ProductBreakdownGrid
           breakdowns={report.product_breakdowns}
           onViewAll={() => setShowInteractionModal(true)}
         />
       </div>
-
-      {/* LAYER 6: BAURAN METODE BAYAR */}
-      {report.payment_mix.length ? (
-        <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
-          <div className="border-b border-border pb-3">
-            <h3 className="text-sm font-semibold tracking-tight text-foreground">Bauran Metode Pembayaran</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Distribusi preferensi pembayaran dari pesanan fulfillment pada periode terpilih (% terhadap Gross).
-            </p>
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            {report.payment_mix.map((row) => {
-              const gross = report.financial.gross_revenue
-              const pct = gross > 0 ? Math.round((row.revenue / gross) * 1000) / 10 : 0
-              const isCod = row.method.toLowerCase().includes("cod")
-              return (
-                <div key={row.method} className="rounded-lg border border-border bg-surface p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs uppercase text-foreground">{row.method}</span>
-                    <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {pct}% dari Gross
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{formatCurrency(row.revenue)}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                    {formatNumber(row.count)} pesanan {isCod ? "(Lunas saat barang tiba)" : "(Transfer lunas di muka)"}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      ) : null}
 
       {/* ========================================================================= */}
       {/* POPUP MODAL 1: RINCIAN PENJUALAN SELURUH PRODUK (TOP SELLERS FULL LIST)  */}
