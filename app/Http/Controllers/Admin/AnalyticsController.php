@@ -248,11 +248,31 @@ class AnalyticsController extends Controller
         }
 
         $options = match (true) {
-            $spanDays <= 2 => [['value' => 'hour', 'label' => 'Per Jam'], ['value' => 'day', 'label' => 'Per Hari']],
-            $spanDays <= 7 => [['value' => 'day', 'label' => 'Per Hari'], ['value' => 'week', 'label' => 'Per Minggu']],
-            $spanDays <= 31 => [['value' => 'day', 'label' => 'Per Hari'], ['value' => 'week', 'label' => 'Per Minggu'], ['value' => 'month', 'label' => 'Per Bulan']],
-            $spanDays <= 366 => [['value' => 'week', 'label' => 'Per Minggu'], ['value' => 'month', 'label' => 'Per Bulan'], ['value' => 'year', 'label' => 'Per Tahun']],
-            default => [['value' => 'month', 'label' => 'Per Bulan'], ['value' => 'year', 'label' => 'Per Tahun']],
+            // Rentang 1-2 hari (Hari ini / Kemarin): murni Per Jam (24-48 titik)
+            $spanDays <= 2 => [
+                ['value' => 'hour', 'label' => 'Per Jam'],
+            ],
+            // Rentang 3-10 hari (7 Hari): murni Per Hari (3-10 titik)
+            $spanDays <= 10 => [
+                ['value' => 'day', 'label' => 'Per Hari'],
+            ],
+            // Rentang 11-45 hari (Bulan ini / 30 Hari): Per Hari (harian) atau Per Minggu (ringkasan mingguan)
+            // Menghindari "Per Bulan" karena pada rentang 1 bulan hanya menghasilkan 1 titik tunggal
+            $spanDays <= 45 => [
+                ['value' => 'day', 'label' => 'Per Hari'],
+                ['value' => 'week', 'label' => 'Per Minggu'],
+            ],
+            // Rentang 46-366 hari (Tahun ini / s.d. 1 tahun): Per Bulan (12 bulan kalender) atau Per Minggu (52 titik)
+            // Menghindari "Per Tahun" karena pada rentang tahun berjalan hanya menghasilkan 1 titik tunggal (2026) yang absurd
+            $spanDays <= 366 => [
+                ['value' => 'month', 'label' => 'Per Bulan'],
+                ['value' => 'week', 'label' => 'Per Minggu'],
+            ],
+            // Rentang > 366 hari (Semua Waktu / Multi-Tahun > 1 tahun): Per Bulan atau Per Tahun (antar tahun kalender)
+            default => [
+                ['value' => 'month', 'label' => 'Per Bulan'],
+                ['value' => 'year', 'label' => 'Per Tahun'],
+            ],
         };
 
         return $options;
