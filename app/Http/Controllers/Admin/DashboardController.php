@@ -428,7 +428,7 @@ class DashboardController extends Controller
                     'payment_status' => $order->payment_status,
                     'shipping_status' => $order->shipping_status,
                     'waybill_number' => $shipping?->waybill_number,
-                    'shipping_track' => OrderTrackingPresenter::forOrder($order, $shipping, withTimeline: false),
+
                     'total_amount' => (float) $order->total_amount,
                     'payment_method' => $order->payment_method,
                     'product_count' => (int) $order->items_count,

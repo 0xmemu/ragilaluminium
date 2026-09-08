@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { OptionMenu } from "@/components/admin/option-menu"
 import { SectionCard } from "@/components/admin/section-card"
+import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { DeltaBadge } from "@/components/admin/ui/delta-badge"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -19,6 +20,7 @@ import AdminLayout from "@/layouts/admin-layout"
 
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
 import { formatCurrency, formatNumber } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { routeUrl, withQuery } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -156,6 +158,16 @@ interface ImportMediaSummary {
   }
 }
 
+interface IntegrationItem {
+  key: string
+  label: string
+  icon: string
+  ready: boolean
+  status_label: string
+  detail: string
+  href: string
+}
+
 interface DashboardProps {
   greetingName: string
   todayLabel: string
@@ -169,6 +181,7 @@ interface DashboardProps {
   quickActions: QuickAction[]
   recentOrders: RecentOrderRow[]
   productCount: number
+  integrationReadiness?: IntegrationItem[]
 }
 
 function greetingPrefix(date = new Date()): string {
@@ -296,6 +309,7 @@ export default function Dashboard({
   quickActions = [],
   recentOrders = [],
   productCount = 0,
+  integrationReadiness = [],
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
   const [refreshing, setRefreshing] = React.useState(false)
@@ -328,40 +342,31 @@ export default function Dashboard({
   }
 
   return (
-    <AdminLayout>
+    <AdminLayout
+      title={`${greetingPrefix()}, ${name}`}
+      description={`${todayLabel} · Data diperbarui: ${formatDateTime(generatedAt)} WIB`}
+      actions={
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={refreshDashboard}
+          disabled={refreshing}
+          className="gap-2 font-medium"
+        >
+          <Icon name="refresh" className={cn("size-3.5", refreshing && "animate-spin")} aria-hidden="true" />
+          {refreshing ? "Memperbarui..." : "Refresh data"}
+        </Button>
+      }
+    >
       <Head title="Dashboard | Admin" />
-      <h1 className="sr-only">Dashboard</h1>
 
-      <div className="space-y-4 pt-4">
-        {/* Header - sapaan */}
-        <div>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-[26px] font-semibold leading-8 tracking-tight text-foreground">
-                {greetingPrefix()},{" "}
-                <span className="font-normal text-muted-foreground">{name}</span>
-              </p>
-              <p className="mt-1 text-[13px] text-muted-foreground">{todayLabel}</p>
-              <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-                {refreshing ? "Memperbarui data dashboard..." : `Data diperbarui: ${formatDateTime(generatedAt)} WIB`}
-              </p>
-              {refreshError ? (
-                <p className="mt-1 text-xs font-medium text-destructive" role="status">
-                  Data belum diperbarui. Coba refresh lagi.
-                </p>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              onClick={refreshDashboard}
-              disabled={refreshing}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border px-3 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-wait disabled:opacity-60"
-            >
-              <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
-              {refreshing ? "Memuat..." : "Refresh data"}
-            </button>
+      <div className="space-y-5">
+        {refreshError ? (
+          <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-2.5 text-xs font-medium text-destructive" role="status">
+            Data belum berhasil diperbarui. Silakan tekan tombol Refresh data sekali lagi.
           </div>
-        </div>
+        ) : null}
 
         {/* Antrean kerja utama - order selalu didahulukan dari alert pendukung */}
         <section className="grid gap-4">
@@ -622,6 +627,40 @@ export default function Dashboard({
           </div>
         </SectionCard>
           </>
+        ) : null}
+
+        {/* Row 2.5 - System Health & Integrasi Teknis */}
+        {integrationReadiness && integrationReadiness.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {integrationReadiness.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-soft transition hover:bg-muted/40"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:text-foreground transition">
+                    <Icon name={item.icon} className="size-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-foreground">{item.label}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{item.detail}</p>
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                    item.ready
+                      ? "bg-success/15 text-success"
+                      : "bg-warning/15 text-warning"
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full", item.ready ? "bg-success" : "bg-warning")} />
+                  {item.status_label}
+                </span>
+              </Link>
+            ))}
+          </div>
         ) : null}
 
 
