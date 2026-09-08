@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\StorePerformanceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -204,45 +205,53 @@ class StorePerformanceContractTest extends TestCase
 
     public function test_change_percent_rules_match_dashboard_delta_badge(): void
     {
-        $service = app(StorePerformanceService::class);
+        Carbon::setTestNow(Carbon::create(2026, 9, 8, 14, 0, 0));
+        try {
+            $service = app(StorePerformanceService::class);
 
-        // Tidak ada data kemarin & hari ini → 0.0 (bukan null), supaya DeltaBadge tidak kosong.
-        $empty = $service->build('today');
-        $traffic = collect($empty['sections'])->firstWhere('key', 'traffic')['kpis'];
-        $visitors = collect($traffic)->firstWhere('key', 'visitors');
+            // Tidak ada data kemarin & hari ini → 0.0 (bukan null), supaya DeltaBadge tidak kosong.
+            $empty = $service->build('today');
+            $traffic = collect($empty['sections'])->firstWhere('key', 'traffic')['kpis'];
+            $visitors = collect($traffic)->firstWhere('key', 'visitors');
 
-        $this->assertSame(0.0, $visitors['change_percent']);
+            $this->assertSame(0.0, $visitors['change_percent']);
 
-        // Kemarin ada revenue 1jt, hari ini 2jt → +100.0.
-        $yesterday = now()->subDay()->startOfDay();
-        $yesterdayOrder = Order::create([
-            'order_number' => 'RA-CONTRACT-YEST',
-            'customer_name' => 'Kemarin',
-            'customer_phone' => '081200000002',
-            'shipping_address_line1' => 'Jl Kontrak No 2',
-            'shipping_city' => 'Semarang',
-            'shipping_province' => 'Jawa Tengah',
-            'shipping_postal_code' => '50254',
-            'shipping_country' => 'Indonesia',
-            'order_status' => 'processing',
-            'payment_status' => 'paid',
-            'shipping_status' => 'pending_pickup',
-            'subtotal_amount' => 1_000_000,
-            'shipping_amount' => 0,
-            'discount_amount' => 0,
-            'total_amount' => 1_000_000,
-            'payment_method' => 'transfer',
-            'cod_flag' => false,
-        ]);
-        // created_at bukan fillable → set langsung agar order jatuh ke kemarin.
-        $yesterdayOrder->created_at = $yesterday->copy()->addHour();
-        $yesterdayOrder->save();
-        $this->createFulfilledOrder('RA-CONTRACT-0003', 2_000_000);
+            // Kemarin ada revenue 1jt, hari ini 2jt → +100.0.
+            $yesterday = now()->subDay()->startOfDay();
+            $yesterdayOrder = Order::create([
+                'order_number' => 'RA-CONTRACT-YEST',
+                'customer_name' => 'Kemarin',
+                'customer_phone' => '081200000002',
+                'shipping_address_line1' => 'Jl Kontrak No 2',
+                'shipping_city' => 'Semarang',
+                'shipping_province' => 'Jawa Tengah',
+                'shipping_postal_code' => '50254',
+                'shipping_country' => 'Indonesia',
+                'order_status' => 'processing',
+                'payment_status' => 'paid',
+                'shipping_status' => 'pending_pickup',
+                'subtotal_amount' => 1_000_000,
+                'shipping_amount' => 0,
+                'discount_amount' => 0,
+                'total_amount' => 1_000_000,
+                'payment_method' => 'transfer',
+                'cod_flag' => false,
+            ]);
+            // Raw DB update agar created_at tidak dioverwrite oleh model timestamps
+            $pastTime = $yesterday->copy()->addHour();
+            DB::table('orders')->where('id', $yesterdayOrder->id)->update([
+                'created_at' => $pastTime,
+                'updated_at' => $pastTime,
+            ]);
+            $this->createFulfilledOrder('RA-CONTRACT-0003', 2_000_000);
 
-        $report = $service->build('today');
-        $sales = collect($report['sections'])->firstWhere('key', 'sales')['kpis'];
-        $omzet = collect($sales)->firstWhere('key', 'omzet');
+            $report = $service->build('today');
+            $sales = collect($report['sections'])->firstWhere('key', 'sales')['kpis'];
+            $omzet = collect($sales)->firstWhere('key', 'omzet');
 
-        $this->assertEqualsWithDelta(100.0, $omzet['change_percent'], 0.01);
+            $this->assertEqualsWithDelta(100.0, $omzet['change_percent'], 0.01);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 }
