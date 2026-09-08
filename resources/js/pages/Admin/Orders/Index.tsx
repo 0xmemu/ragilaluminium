@@ -200,9 +200,9 @@ function variationLabel(item: OrderItemPreview): string {
     .join(", ")
 }
 
-/** Grid 6 kolom desktop: produk & subtotal | status pesanan | pembayaran | pengiriman | update | aksi */
+/** Grid 7 kolom desktop berimbang: produk & subtotal | status | pembayaran | pengiriman | update | catatan admin | aksi */
 const orderRowGridClass =
-  "xl:grid xl:grid-cols-[minmax(0,3.35fr)_minmax(7.5rem,0.95fr)_minmax(8rem,1fr)_minmax(8.5rem,1.1fr)_minmax(7.5rem,0.95fr)_minmax(6.5rem,0.85fr)] xl:items-start xl:gap-x-5"
+  "xl:grid xl:grid-cols-[minmax(0,2.65fr)_minmax(7.5rem,0.75fr)_minmax(8rem,0.85fr)_minmax(8.5rem,1fr)_minmax(7.5rem,0.8fr)_minmax(8.5rem,1fr)_minmax(6.5rem,0.75fr)] xl:items-start xl:gap-x-4"
 
 function OrderListColumnHeader() {
   return (
@@ -221,6 +221,7 @@ function OrderListColumnHeader() {
       <span>Pembayaran</span>
       <span>Pengiriman</span>
       <span>Update terakhir</span>
+      <span>Catatan admin</span>
       <span className="text-right">Aksi</span>
     </div>
   )
@@ -230,9 +231,11 @@ function OrderCardRow({
   order,
   queryState,
   onInputResi,
+  onEditNotes,
 }: {
   order: OrderCard
   onInputResi?: (order: OrderCard) => void
+  onEditNotes?: (order: OrderCard) => void
   queryState: {
     order_status: string
     q: string
@@ -488,7 +491,44 @@ function OrderCardRow({
           </p>
         </div>
 
-        {/* Kolom 6: Aksi */}
+        {/* Kolom 6: Catatan Admin (Tepat di sebelah kiri tombol aksi) */}
+        <div className="min-w-0 pt-3 xl:pt-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+            Catatan admin
+          </p>
+          {order.admin_notes?.trim() ? (
+            <div className="group/note rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-foreground">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <span className="inline-flex items-center gap-1">
+                  <Icon name="clipboard-text" className="size-3" aria-hidden="true" />
+                  Internal
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onEditNotes?.(order)}
+                  className="font-medium text-primary hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
+              <p className="mt-1 line-clamp-4 break-words text-xs leading-relaxed text-foreground">
+                {order.admin_notes}
+              </p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onEditNotes?.(order)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-surface/60 px-2.5 py-2 text-xs text-muted-foreground transition hover:border-primary/60 hover:bg-muted hover:text-foreground"
+              title="Tambah catatan internal admin"
+            >
+              <Icon name="plus" className="size-3 text-muted-foreground" aria-hidden="true" />
+              <span>Tambah catatan</span>
+            </button>
+          )}
+        </div>
+
+        {/* Kolom 7: Aksi */}
         <div className="flex min-w-0 flex-col items-stretch gap-1.5 pt-3 xl:items-end xl:pt-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Aksi
@@ -549,25 +589,6 @@ function OrderCardRow({
 
         </div>
       </div>
-
-      {/* Catatan Internal Admin (Callout jelas jika ada pada pesanan tertentu) */}
-      {order.admin_notes?.trim() ? (
-        <div className="flex items-center justify-between gap-3 border-t border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs">
-          <div className="flex items-start gap-2 min-w-0 flex-1 text-amber-700 dark:text-amber-300">
-            <Icon name="clipboard-text" className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            <div className="min-w-0 flex-1">
-              <span className="font-semibold">Catatan Internal: </span>
-              <span className="text-foreground font-medium">{order.admin_notes}</span>
-            </div>
-          </div>
-          <Link
-            href={`${order.href}#admin-notes`}
-            className="shrink-0 text-xs font-medium text-primary hover:underline"
-          >
-            Ubah
-          </Link>
-        </div>
-      ) : null}
 
       {/* Baris Bawah Kartu: Rincian Unit & Total Dibayar Pembeli di Kanan Bawah */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-surface/40 px-4 py-2.5 text-xs">
@@ -737,6 +758,34 @@ export default function OrdersIndex({
   const [resiForm, setResiForm] = React.useState({ waybill_number: "", mark_shipped: true })
   const [resiBusy, setResiBusy] = React.useState(false)
   const [resiError, setResiError] = React.useState<string | null>(null)
+
+  // Popup catatan internal admin langsung dari daftar
+  const [notesModalOrder, setNotesModalOrder] = React.useState<OrderCard | null>(null)
+  const [notesText, setNotesText] = React.useState("")
+  const [notesBusy, setNotesBusy] = React.useState(false)
+
+  function openNotesModal(order: OrderCard) {
+    setNotesModalOrder(order)
+    setNotesText(order.admin_notes ?? "")
+  }
+
+  function submitAdminNotes(e: React.FormEvent) {
+    e.preventDefault()
+    if (!notesModalOrder) return
+    setNotesBusy(true)
+    router.put(
+      routeUrl("admin.orders.admin-notes.update", { order: notesModalOrder.id }),
+      { admin_notes: notesText.trim() || null },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setNotesModalOrder(null)
+          setNotesText("")
+        },
+        onFinish: () => setNotesBusy(false),
+      },
+    )
+  }
 
   function submitResi(event: React.FormEvent) {
     event.preventDefault()
@@ -1058,7 +1107,13 @@ export default function OrdersIndex({
               <div className="space-y-3 xl:min-w-[60rem]">
                 <OrderListColumnHeader />
                 {orders.map((order) => (
-                  <OrderCardRow key={order.id} order={order} queryState={queryState} onInputResi={setResiOrder} />
+                  <OrderCardRow
+                    key={order.id}
+                    order={order}
+                    queryState={queryState}
+                    onInputResi={setResiOrder}
+                    onEditNotes={openNotesModal}
+                  />
                 ))}
               </div>
             </div>
@@ -1212,6 +1267,103 @@ export default function OrdersIndex({
                 </>
               ) : null}
             </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+
+      {/* Dialog Catatan Internal Admin: tambah & ubah catatan langsung dari daftar */}
+      <DialogPrimitive.Root open={Boolean(notesModalOrder)} onOpenChange={(open) => { if (!open) setNotesModalOrder(null) }}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,32rem)] w-[min(calc(100%-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Catatan internal admin</DialogPrimitive.Title>
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Catatan Internal Admin</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {notesModalOrder?.order_number} · {notesModalOrder?.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotesModalOrder(null)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup catatan"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <form onSubmit={submitAdminNotes} className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="modal-admin-notes-textarea" className="text-xs font-semibold text-foreground">
+                  Catatan khusus internal (tidak terlihat oleh pembeli)
+                </label>
+                <textarea
+                  id="modal-admin-notes-textarea"
+                  rows={4}
+                  value={notesText}
+                  onChange={(e) => setNotesText(e.target.value)}
+                  placeholder="Tulis catatan internal untuk pesanan ini (mis. permintaan jadwal kirim khusus, DP transfer manual, verifikasi spesifikasi)..."
+                  className="w-full rounded-md border border-border bg-surface p-3 text-xs leading-5 text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  maxLength={5000}
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+                {notesModalOrder?.admin_notes?.trim() ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10"
+                    disabled={notesBusy}
+                    onClick={() => {
+                      setNotesText("")
+                      if (!notesModalOrder) return
+                      setNotesBusy(true)
+                      router.put(
+                        routeUrl("admin.orders.admin-notes.update", { order: notesModalOrder.id }),
+                        { admin_notes: null },
+                        {
+                          preserveScroll: true,
+                          onSuccess: () => setNotesModalOrder(null),
+                          onFinish: () => setNotesBusy(false),
+                        },
+                      )
+                    }}
+                  >
+                    Hapus Catatan
+                  </Button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setNotesModalOrder(null)}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={notesBusy}
+                  >
+                    {notesBusy ? "Menyimpan..." : "Simpan Catatan"}
+                  </Button>
+                </div>
+              </div>
+            </form>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
