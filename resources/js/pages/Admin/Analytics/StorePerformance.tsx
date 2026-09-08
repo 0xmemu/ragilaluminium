@@ -108,12 +108,7 @@ interface Report {
 
 
 
-function formatGeneratedAt(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return "-"
-  const t = d.toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-  return t.replace(".", ":") + " WIB"
-}
+
 
 function formatDuration(value: number, isDays = false): string {
   if (!Number.isFinite(value) || value <= 0) return "0 menit"
@@ -568,22 +563,15 @@ export default function StorePerformance({
       {/* FILTER PERIODE & BANNER KONTROL */}
       <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* Sisi Kiri: Ringkasan Rentang & Update */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface border border-border text-muted-foreground">
-              <Icon name="calendar" className="size-4" aria-hidden="true" />
+          {/* Sisi Kiri: Ringkasan Rentang Periode */}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold tracking-tight text-foreground">{report.range.label}</span>
+              <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold tracking-tight text-foreground">{report.range.label}</span>
-                <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground truncate" aria-live="polite">
-                {refreshing ? "Memperbarui data..." : `Diperbarui: ${formatGeneratedAt(report.generated_at)}`}
-                {" · "}
-                <span>vs {report.range.compare_label} ({report.range.compare_from_date} - {report.range.compare_to_date}{report.range.is_running ? " · jam setara" : ""})</span>
-              </p>
-            </div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground truncate" aria-live="polite">
+              {refreshing ? "Memperbarui data..." : `Pembanding: vs ${report.range.compare_label} (${report.range.compare_from_date} - {report.range.compare_to_date}${report.range.is_running ? " · jam setara" : ""})`}
+            </p>
           </div>
 
           {/* Sisi Kanan: Segmented Control Periode & Dropdown Granularitas */}
@@ -668,12 +656,12 @@ export default function StorePerformance({
         {/* KARTU 1: Penjualan Bersih */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Penjualan Bersih</span>
               <TooltipProvider>
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan penjualan bersih">
+                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan penjualan bersih">
                       <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
@@ -706,22 +694,20 @@ export default function StorePerformance({
         {/* KARTU 2: Pesanan Masuk */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-muted-foreground">Pesanan Masuk</span>
-                <TooltipProvider>
-                  <Tooltip delayDuration={100}>
-                    <TooltipTrigger asChild>
-                      <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan pesanan masuk">
-                        <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs text-xs">
-                      Total pesanan fulfillment dan kuantitas unit terjual.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">Pesanan Masuk</span>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan pesanan masuk">
+                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    Total pesanan fulfillment dan kuantitas unit terjual.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
@@ -746,12 +732,12 @@ export default function StorePerformance({
         {/* KARTU 3: Rata-rata Nilai Pesanan */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Rata-rata Nilai Pesanan</span>
               <TooltipProvider>
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan rata-rata nilai pesanan">
+                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan rata-rata nilai pesanan">
                       <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
@@ -784,22 +770,20 @@ export default function StorePerformance({
         {/* KARTU 4: Tingkat Konversi Toko */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-muted-foreground">Konversi Pembeli</span>
-                <TooltipProvider>
-                  <Tooltip delayDuration={100}>
-                    <TooltipTrigger asChild>
-                      <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan konversi pembeli">
-                        <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs text-xs">
-                      Rasio pengunjung yang menyelesaikan pesanan.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">Konversi Pembeli</span>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground inline-flex items-center" aria-label="Penjelasan konversi pembeli">
+                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    Rasio pengunjung yang menyelesaikan pesanan.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
