@@ -547,14 +547,27 @@ function OrderCardRow({
             />
           ) : null}
 
-          {order.admin_notes?.trim() ? (
-            <div className="mt-2 w-full max-w-[16rem] xl:ml-auto xl:text-right">
-              <span className="text-xs font-medium text-muted-foreground">Catatan admin:</span>
-              <span className="mt-0.5 block break-words text-xs text-foreground">{order.admin_notes}</span>
-            </div>
-          ) : null}
         </div>
       </div>
+
+      {/* Catatan Internal Admin (Callout jelas jika ada pada pesanan tertentu) */}
+      {order.admin_notes?.trim() ? (
+        <div className="flex items-center justify-between gap-3 border-t border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs">
+          <div className="flex items-start gap-2 min-w-0 flex-1 text-amber-700 dark:text-amber-300">
+            <Icon name="clipboard-text" className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <span className="font-semibold">Catatan Internal: </span>
+              <span className="text-foreground font-medium">{order.admin_notes}</span>
+            </div>
+          </div>
+          <Link
+            href={`${order.href}#admin-notes`}
+            className="shrink-0 text-xs font-medium text-primary hover:underline"
+          >
+            Ubah
+          </Link>
+        </div>
+      ) : null}
 
       {/* Baris Bawah Kartu: Rincian Unit & Total Dibayar Pembeli di Kanan Bawah */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-surface/40 px-4 py-2.5 text-xs">
