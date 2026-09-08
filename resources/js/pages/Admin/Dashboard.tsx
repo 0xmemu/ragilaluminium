@@ -19,7 +19,7 @@ import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
-const SalesTrendPanel = React.lazy(() => import("@/components/admin/charts/sales-trend-panel"))
+const SalesAreaChart = React.lazy(() => import("@/components/admin/charts/sales-area-chart"))
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl, withQuery } from "@/lib/routes"
@@ -382,36 +382,36 @@ export default function Dashboard({
         <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           {hasOrders ? (
             <Card className="flex h-full flex-col">
-              <div className="flex flex-col lg:flex-row lg:items-stretch justify-between gap-6 p-5">
-                <div className="flex flex-col justify-between min-w-0 flex-1">
-                  <div>
+              {/* Header Penjualan Gross */}
+              <div className="p-5 pb-2">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                       Penjualan (Gross) {performa.period_label}
                     </p>
                     <p className="mt-0.5 text-[11px] font-medium text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
                       Nilai pesanan yang masuk alur fulfillment · bukan pembayaran diterima atau laba
                     </p>
-                    <p className="tabular-nums mt-2 text-4xl font-bold tracking-tight text-foreground">
-                      {formatCurrency(omzet.revenue)}
-                    </p>
-                    <div className="mt-2">
+                    <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                      <span className="tabular-nums text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                        {formatCurrency(omzet.revenue)}
+                      </span>
                       <DeltaBadge percent={omzet.change_percent} />
                     </div>
                   </div>
 
                   {(pendingPaymentOrders?.total ?? 0) > 0 ? (
-                    <div className="mt-4 rounded-md border border-info/20 bg-info/5 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+                    <div className="max-w-md rounded-md border border-info/20 bg-info/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
                       <div className="flex items-start gap-2">
                         <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
                         <div className="min-w-0">
                           <p className="font-semibold text-foreground">Belum masuk omzet</p>
                           <p>
-                            Order Perlu Konfirmasi, batal, atau bermasalah belum dihitung. Omzet hanya
-                            memakai order yang sudah masuk proses fulfillment.
+                            Order Perlu Konfirmasi, batal, atau bermasalah belum dihitung.
                           </p>
                           <Link
                             href={pendingPaymentOrdersHref}
-                            className="mt-1 inline-flex items-center gap-1 font-semibold text-info underline underline-offset-2 hover:no-underline"
+                            className="mt-0.5 inline-flex items-center gap-1 font-semibold text-info underline underline-offset-2 hover:no-underline"
                           >
                             Lihat {formatNumber(pendingPaymentOrders?.total ?? 0)} order Perlu Konfirmasi
                             <Icon name="arrow-right" className="size-3" aria-hidden="true" />
@@ -421,13 +421,12 @@ export default function Dashboard({
                     </div>
                   ) : null}
                 </div>
+              </div>
 
-                <React.Suspense fallback={<div className="h-44 w-full sm:w-80 lg:w-96 animate-pulse rounded-xl bg-muted/40" />}>
-                  <SalesTrendPanel
-                    series={performa.trend.series}
-                    total={omzet.revenue}
-                    periodLabel={performa.period_label}
-                  />
+              {/* Area Grafik Penjualan Full-Width Mengisi Ruang Tengah */}
+              <div className="flex-1 px-5 py-2 min-h-[160px] sm:min-h-[190px]">
+                <React.Suspense fallback={<div className="h-full min-h-[160px] w-full animate-pulse rounded-lg bg-muted/40" />}>
+                  <SalesAreaChart series={performa.trend.series} />
                 </React.Suspense>
               </div>
               <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
