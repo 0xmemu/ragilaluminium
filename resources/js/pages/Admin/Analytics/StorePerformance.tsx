@@ -571,7 +571,7 @@ export default function StorePerformance({
               <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground truncate" aria-live="polite">
-              {refreshing ? "Memperbarui data..." : `Pembanding: vs ${report.range.compare_label} (${report.range.compare_from_date} - {report.range.compare_to_date}${report.range.is_running ? " · jam setara" : ""})`}
+              {refreshing ? "Memperbarui data..." : `Pembanding: ${report.range.compare_label.replace(/^vs\s+/, "")}${report.range.is_running ? " (jam setara)" : ""}`}
             </p>
           </div>
 
