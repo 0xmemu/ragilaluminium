@@ -566,28 +566,29 @@ export default function StorePerformance({
       <Head title={`${title} | Admin`} />
 
       {/* FILTER PERIODE & BANNER KONTROL */}
-      <section className="mb-6 rounded-lg border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Periode Analisis:</span>
-              <span className="text-base font-bold text-foreground">{report.range.label}</span>
-              <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
+      <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Sisi Kiri: Ringkasan Rentang & Update */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface border border-border text-muted-foreground">
+              <Icon name="calendar" className="size-4" aria-hidden="true" />
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
-              {refreshing ? "Memperbarui data..." : `Data diperbarui: ${formatGeneratedAt(report.generated_at)}`}
-              {" · "}
-              <span>{report.range.compare_label} ({report.range.compare_from_date} - {report.range.compare_to_date}{report.range.is_running ? " · jam setara" : " · penuh"})</span>
-            </p>
-            {refreshError ? (
-              <p className="mt-1 text-xs font-medium text-destructive" role="status">
-                Gagal memuat pembaruan data. Coba refresh lagi.
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold tracking-tight text-foreground">{report.range.label}</span>
+                <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate" aria-live="polite">
+                {refreshing ? "Memperbarui data..." : `Diperbarui: ${formatGeneratedAt(report.generated_at)}`}
+                {" · "}
+                <span>vs {report.range.compare_label} ({report.range.compare_from_date} - {report.range.compare_to_date}{report.range.is_running ? " · jam setara" : ""})</span>
               </p>
-            ) : null}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1">
+          {/* Sisi Kanan: Segmented Control Periode & Dropdown Granularitas */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-border bg-surface p-1">
               {periodOptions
                 .filter((option) => option.value !== "custom")
                 .map((option) => (
@@ -599,9 +600,9 @@ export default function StorePerformance({
                       apply({ period: option.value })
                     }}
                     className={cn(
-                      "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                      "rounded-md px-2.5 py-1 text-xs font-medium transition",
                       period === option.value
-                        ? "bg-foreground text-background shadow-xs"
+                        ? "bg-foreground text-background shadow-xs font-semibold"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                     )}
                   >
@@ -612,9 +613,9 @@ export default function StorePerformance({
                 type="button"
                 onClick={() => setPeriod("custom")}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition",
                   period === "custom"
-                    ? "bg-foreground text-background shadow-xs"
+                    ? "bg-foreground text-background shadow-xs font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                 )}
               >
@@ -622,8 +623,8 @@ export default function StorePerformance({
               </button>
             </div>
 
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-muted-foreground">Granularitas:</span>
+            <div className="flex items-center gap-1.5 pl-1">
+              <span className="text-xs text-muted-foreground">Grafik:</span>
               <Select
                 value={granularity}
                 onChange={(event) => {
@@ -631,7 +632,7 @@ export default function StorePerformance({
                   setGranularity(value)
                   apply({ granularity: value })
                 }}
-                className="h-8 text-xs font-medium"
+                className="h-8 text-xs font-medium w-28 bg-surface"
               >
                 {granularityOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -643,13 +644,19 @@ export default function StorePerformance({
           </div>
         </div>
 
+        {refreshError ? (
+          <p className="mt-2 text-xs font-medium text-destructive" role="status">
+            Gagal memuat pembaruan data. Coba refresh lagi.
+          </p>
+        ) : null}
+
         {period === "custom" ? (
-          <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-            <span className="text-xs font-medium text-muted-foreground">Rentang Kustom:</span>
-            <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="h-8 w-36 text-xs" />
-            <span className="text-xs text-muted-foreground">sampai</span>
-            <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="h-8 w-36 text-xs" />
-            <Button size="sm" type="button" onClick={() => apply({ period: "custom", from, to })}>
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <span className="text-xs font-medium text-muted-foreground">Rentang tanggal:</span>
+            <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="h-8 w-36 text-xs bg-surface" />
+            <span className="text-xs text-muted-foreground">s/d</span>
+            <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="h-8 w-36 text-xs bg-surface" />
+            <Button size="sm" type="button" onClick={() => apply({ period: "custom", from, to })} className="h-8 text-xs">
               Terapkan
             </Button>
           </div>
