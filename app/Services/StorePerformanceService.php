@@ -40,6 +40,21 @@ class StorePerformanceService
      */
     public const RETURN_STATUSES = [];
 
+    protected function safeParseDate(?string $value, Carbon $fallback, bool $startOfDay = true): Carbon
+    {
+        if (! $value) {
+            return $fallback;
+        }
+
+        try {
+            $parsed = Carbon::parse($value);
+
+            return $startOfDay ? $parsed->startOfDay() : $parsed->endOfDay();
+        } catch (\Throwable) {
+            return $fallback;
+        }
+    }
+
     /**
      * @return array{from: Carbon, to: Carbon, previous_from: Carbon, previous_to: Carbon, label: string, granularity: string, period: string}
      */
@@ -84,8 +99,8 @@ class StorePerformanceService
                 'Semua waktu',
             ],
             'custom' => [
-                $from ? Carbon::parse($from)->startOfDay() : $now->copy()->subDays(6)->startOfDay(),
-                $to ? Carbon::parse($to)->endOfDay() : $now->copy()->endOfDay(),
+                $this->safeParseDate($from, $now->copy()->subDays(6)->startOfDay(), true),
+                $this->safeParseDate($to, $now->copy()->endOfDay(), false),
                 'Rentang kustom',
             ],
             default => [
@@ -200,6 +215,7 @@ class StorePerformanceService
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
             $this->kpi('cod_paid', 'COD Dibayar', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Nominal payment COD yang selesai pada periode.'),
             $this->kpi('payment_pending_count', 'Pembayaran Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum cair pada order aktif. COD memang lunas saat paket tiba sehingga tidak dihitung di sini.'),
+            $this->kpi('cod_pending_amount', 'Piutang COD Kurir', $current['cod_pending_amount'], $previous['cod_pending_amount'] ?? 0, 'currency', 'Nominal pesanan COD aktif yang masih dalam proses atau perjalanan pengiriman (menunggu serah terima kurir J&T).'),
         ];
 
         $cancellationsKpis = [
@@ -263,6 +279,11 @@ class StorePerformanceService
                 'net_revenue' => $current['net_revenue'],
                 'buyer_orders' => $current['orders'],
                 'visitors' => $current['visitors'],
+                'payments_received' => $current['payments_received'],
+                'cod_paid' => $current['cod_paid'],
+                'cod_pending_amount' => $current['cod_pending_amount'],
+                'cod_pending_count' => $current['cod_pending_count'],
+                'payment_pending_count' => $current['payment_pending_count'],
                 'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, subsidi ongkir, refund retur, dan ongkir retur toko. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'sections' => [
@@ -434,6 +455,8 @@ class StorePerformanceService
             'payments_received' => round($paymentCounts['received'], 2),
             'cod_paid' => round($paymentCounts['cod'], 2),
             'payment_pending_count' => $paymentCounts['pending_count'],
+            'cod_pending_amount' => round($paymentCounts['cod_pending_amount'] ?? 0, 2),
+            'cod_pending_count' => (int) ($paymentCounts['cod_pending_count'] ?? 0),
             'cancelled_orders' => $cancellationCounts['total'],
             'cancelled_value' => $cancellationCounts['value'],
             'cancelled_by_customer' => $cancellationCounts['customer'],
@@ -510,10 +533,20 @@ class StorePerformanceService
             ->whereHas('order', fn ($q) => $q->whereIn('order_status', self::OPEN_STATUSES))
             ->count();
 
+        $codPendingQuery = Payment::query()
+            ->where('status', 'pending')
+            ->where('payment_method', 'cod')
+            ->whereHas('order', fn ($q) => $q->whereIn('order_status', self::REVENUE_STATUSES));
+
+        $codPendingAmount = (float) (clone $codPendingQuery)->sum('amount');
+        $codPendingCount = (int) (clone $codPendingQuery)->count();
+
         return [
             'received' => $received,
             'cod' => $cod,
             'pending_count' => $pendingCount,
+            'cod_pending_amount' => $codPendingAmount,
+            'cod_pending_count' => $codPendingCount,
         ];
     }
     public function series(Carbon $from, Carbon $to, string $granularity, string $metric): array
@@ -670,7 +703,7 @@ class StorePerformanceService
      *   best_sellers: list<array>
      * }
      */
-    public function productPerformanceBreakdowns(Carbon $from, Carbon $to, int $limit = 8): array
+    public function productPerformanceBreakdowns(Carbon $from, Carbon $to, int $limit = 50): array
     {
         $dateFrom = $from->toDateString();
         $dateTo = $to->toDateString();
@@ -761,7 +794,7 @@ class StorePerformanceService
             'best_sellers' => $bestSellers,
         ];
     }
-    public function topProducts(Carbon $from, Carbon $to, int $limit = 20): array
+    public function topProducts(Carbon $from, Carbon $to, int $limit = 50): array
     {
         return OrderItem::query()
             ->select([
