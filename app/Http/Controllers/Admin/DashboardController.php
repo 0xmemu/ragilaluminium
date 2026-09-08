@@ -547,6 +547,7 @@ class DashboardController extends Controller
                 'orders_delta' => $ordersDelta,
                 'units_delta' => $unitsDelta,
                 'sparkline' => $revenueSparkline,
+                'series' => $revenueChart['series'] ?? [],
             ],
             'financial' => [
                 'awaiting_confirmation_amount' => (float) $pendingPaymentQuery->sum('total_amount'),

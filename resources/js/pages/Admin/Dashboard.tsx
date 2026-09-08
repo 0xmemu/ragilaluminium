@@ -33,6 +33,7 @@ interface OmzetData {
   orders_delta: number
   units_delta: number
   sparkline: number[]
+  series?: Array<{ label: string; value: number }>
 }
 
 interface PerformaMetric {
@@ -431,7 +432,7 @@ export default function Dashboard({
               {/* Area Grafik Penjualan Full-Width Mengisi Ruang Tengah */}
               <div className="flex-1 px-5 py-2 min-h-[160px] sm:min-h-[190px]">
                 <React.Suspense fallback={<div className="h-full min-h-[160px] w-full animate-pulse rounded-lg bg-muted/40" />}>
-                  <SalesAreaChart series={performa.trend.series} />
+                  <SalesAreaChart series={omzet.series ?? []} />
                 </React.Suspense>
               </div>
               <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
