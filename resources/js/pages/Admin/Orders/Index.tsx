@@ -1077,24 +1077,22 @@ export default function OrdersIndex({
 
       <Pagination pagination={pagination} />
 
-      {/* Popup input resi dari daftar: verifikasi pelanggan + alamat, admin yang konfirmasi */}
+      {/* Dialog input resi desktop: kartu terpadu, adaptif tema, zero text-contrast bug */}
       <DialogPrimitive.Root open={Boolean(resiOrder)} onOpenChange={(open) => { if (!open) setResiOrder(null) }}>
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <DialogPrimitive.Content
             className={cn(
-              "fixed inset-x-0 bottom-0 z-[80] flex max-h-[88dvh] w-full flex-col gap-0 overflow-hidden rounded-t-2xl bg-white shadow-[0_-8px_40px_rgba(10,0,0,0.2)]",
-              "data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-[100%] data-[state=open]:duration-400 data-[state=open]:ease-[cubic-bezier(0.16,1,0.3,1)]",
-              "data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom-[100%] data-[state=closed]:duration-250 data-[state=closed]:ease-[cubic-bezier(0.32,0,0.67,0)]",
-              "sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(32rem,100%)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95",
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,38rem)] w-[min(calc(100%-2rem),32rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
             )}
             aria-describedby={undefined}
           >
             <DialogPrimitive.Title className="sr-only">Input nomor resi</DialogPrimitive.Title>
-            <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-border sm:hidden" />
-            <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-3">
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-foreground">Input resi</h3>
+                <h3 className="text-sm font-semibold text-foreground">Input Resi Pengiriman</h3>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   Pesanan {resiOrder?.order_number} · {resiOrder?.customer_name}
                 </p>
@@ -1102,78 +1100,90 @@ export default function OrdersIndex({
               <button
                 type="button"
                 onClick={() => setResiOrder(null)}
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 aria-label="Tutup popup resi"
               >
                 <Icon name="x" className="size-4" aria-hidden="true" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {resiOrder ? (
                 <>
-                <section className="rounded-lg border border-border bg-surface-muted/60 p-3">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                    <Icon name="user" className="size-3.5" aria-hidden="true" />
-                    Verifikasi Pelanggan & Alamat
-                  </p>
-                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
-                    <dt className="text-muted-foreground">Nama</dt>
-                    <dd className="min-w-0 break-words font-medium text-foreground">{resiOrder.customer_name}</dd>
-                    <dt className="text-muted-foreground">Telepon</dt>
-                    <dd className="min-w-0 break-words font-medium text-foreground">{resiOrder.customer_phone || "-"}</dd>
-                    <dt className="text-muted-foreground align-top">Alamat</dt>
-                    <dd className="min-w-0 break-words font-medium leading-5 text-foreground">{resiAddress(resiOrder) || "-"}</dd>
-                  </dl>
-                  {resiOrder.whatsapp_url ? (
-                    <a
-                      href={resiOrder.whatsapp_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-info underline underline-offset-2 hover:no-underline"
-                    >
-                      <Icon name="whatsapp" className="size-3.5" aria-hidden="true" />
-                      Konfirmasi via WhatsApp
-                    </a>
-                  ) : null}
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    Pastikan nama, telepon, dan alamat sudah benar sebelum menyimpan resi. Sistem tidak memvalidasi kebenaran data; admin yang menentukan.
-                  </p>
+                <section className="rounded-lg border border-border bg-surface/80 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+                      <Icon name="user" className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                      Detail Penerima & Alamat
+                    </span>
+                    {resiOrder.whatsapp_url ? (
+                      <a
+                        href={resiOrder.whatsapp_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-info hover:underline"
+                      >
+                        <Icon name="whatsapp" className="size-3.5 text-info" aria-hidden="true" />
+                        Chat WhatsApp
+                      </a>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                    <span className="text-muted-foreground">Penerima:</span>
+                    <span className="font-medium text-foreground">{resiOrder.customer_name} ({resiOrder.customer_phone || "-"})</span>
+                    <span className="text-muted-foreground align-top">Alamat:</span>
+                    <span className="font-medium leading-5 text-foreground">{resiAddress(resiOrder) || "-"}</span>
+                  </div>
                 </section>
 
-                <form onSubmit={submitResi} className="mt-4 space-y-3">
+                <form onSubmit={submitResi} className="space-y-4">
                   {resiError ? (
                     <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{resiError}</p>
                   ) : null}
-                  <p className="text-[11px] leading-4 text-muted-foreground">
-                    Resi dibuat di J&T di luar website. Simpan nomor resi yang sudah diterbitkan kurir di sini.
-                  </p>
-                  <label className="grid gap-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Nomor resi *</span>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="index-modal-waybill" className="text-xs font-semibold text-foreground">
+                      Nomor Resi J&T Cargo *
+                    </label>
                     <input
+                      id="index-modal-waybill"
                       type="text"
                       required
                       value={resiForm.waybill_number}
                       onChange={(event) => setResiForm((prev) => ({ ...prev, waybill_number: event.target.value }))}
-                      placeholder="Mis. JT1234567890"
-                      className="h-9 rounded-md border border-border bg-surface px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      placeholder="Masukkan nomor resi ekspedisi (mis. JT1234567890)"
+                      className="h-9 w-full rounded-md border border-border bg-surface px-3 text-xs text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-foreground">
+                  </div>
+
+                  <label className="flex items-center gap-2.5 text-xs text-foreground cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={resiForm.mark_shipped}
                       onChange={(event) => setResiForm((prev) => ({ ...prev, mark_shipped: event.target.checked }))}
-                      className="size-4 rounded border-border"
+                      className="size-4 rounded border-border text-primary focus:ring-primary"
                     />
-                    Tandai pesanan sebagai dikirim setelah resi tersimpan
+                    <span>Tandai pesanan langsung sebagai dikirim (shipped)</span>
                   </label>
-                  <button
-                    type="submit"
-                    disabled={resiBusy}
-                    className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover disabled:opacity-50"
-                  >
-                    {resiBusy ? "Menyimpan..." : "Simpan resi"}
-                  </button>
+
+                  <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setResiOrder(null)}
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={resiBusy}
+                    >
+                      {resiBusy ? "Menyimpan..." : "Simpan Resi"}
+                    </Button>
+                  </div>
                 </form>
                 </>
               ) : null}
