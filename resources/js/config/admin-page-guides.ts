@@ -180,6 +180,20 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Tandai dibaca setelah ditindak; tandai semua bila sudah selesai.",
     ],
   },
+  "admin.analytics.store-performance": {
+    title: "Performa Toko",
+    summary: "Laporan analitik keuangan, arus kas, operasional, dan interaksi katalog produk.",
+    steps: [
+      "Pilih rentang waktu di baris filter untuk menganalisis periode tertentu.",
+      "Pantau Rekonsiliasi Keuangan untuk melihat hak bersih toko dan piutang COD kurir.",
+      "Gunakan tab metrik grafik dan tabel produk terlaris untuk memantau performa penjualan.",
+      "Unduh laporan lengkap berformat Excel (XLSX) melalui tombol Unduh Laporan di kanan atas.",
+    ],
+    notes: [
+      "Omzet dihitung berdasarkan pesanan fulfillment yang masuk proses.",
+      "Piutang COD kurir mencatat dana pesanan dalam pengiriman yang belum dicairkan J&T.",
+    ],
+  },
   "admin.users.index": {
     title: "Manajemen Admin",
     summary: "Kelola akun admin yang boleh mengakses panel.",

@@ -1,4 +1,4 @@
-import { Head, router } from "@inertiajs/react"
+import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
@@ -6,12 +6,17 @@ import { Button } from "@/components/admin/ui/button"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/admin/ui/dialog"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/admin/ui/tooltip"
-
 
 interface Kpi {
   key: string
@@ -24,38 +29,7 @@ interface Kpi {
   detail?: string | null
 }
 
-// KPI yg SEMAKIN NAIK justru BURUK (retur, antrean, waktu) -> warna delta dibalik.
-const GOOD_WHEN_DOWN = new Set([
-  "open_orders",
-  "returns",
-  "return_value",
-  "avg_confirm_hours",
-  "avg_process_days",
-  // Task 1-2: KPI backlog/cost/pending yang naik = buruk.
-  "returns_created",
-  "returns_open",
-  "returns_completed",
-  "refund_given",
-  "return_rate_created",
-  "return_rate_completed",
-  "payment_pending_count",
-  "cancelled_orders",
-  "cancelled_by_customer",
-  "cancelled_by_store",
-  "cancellation_rate",
-]);
-
-// true = kenaikan perlu tampil merah, penurunan hijau
-function invertColorFor(key: string, changePercent: number | null): boolean {
-  if (changePercent === null || changePercent === 0) return false
-  return GOOD_WHEN_DOWN.has(key)
-}
-
-// KPI-005/009: minus unicode & panah konsisten.
 const MINUS = "−"
-// KPI-014a: metrik yang arahnya netral/kontekstual (bukan lebih-besar/lebih-kecil baik).
-const NEUTRAL_DIRECTION = new Set(["avg_unit_price"])
-
 
 interface Section {
   key: string
@@ -92,10 +66,20 @@ interface Report {
   generated_at: string
   financial: {
     gross_revenue: number
+    shipping_raw?: number
+    shipping_paid_by_customer?: number
+    shipping_subsidy?: number
+    cod_fee?: number
     refund_adjustments: number
+    return_shipping_store?: number
     net_revenue: number
     buyer_orders?: number
     visitors?: number
+    payments_received?: number
+    cod_paid?: number
+    cod_pending_amount?: number
+    cod_pending_count?: number
+    payment_pending_count?: number
     definition: string
   }
   sections: Section[]
@@ -122,46 +106,8 @@ interface Report {
   }
 }
 
-function formatKpiValue(kpi: Kpi): string {
-  // Bedakan "Rp 0" (memang nol, data ada) vs "Belum ada data" (null).
-  if (kpi.value === null || Number.isNaN(kpi.value)) return "Belum ada data"
-  switch (kpi.format) {
-    case "currency":
-      return formatCurrency(kpi.value)
-    case "percent":
-      return `${formatNumber(kpi.value)}%`
-    case "hours":
-      return formatDuration(kpi.value, false)
-    case "days":
-      return formatDuration(kpi.value, true)
-    default:
-      return formatNumber(kpi.value)
-  }
-}
 
-function formatPrevious(kpi: Kpi): string {
-  switch (kpi.format) {
-    case "currency":
-      return formatCurrency(kpi.previous)
-    case "percent":
-      return `${formatNumber(kpi.previous)}%`
-    case "hours":
-      return formatDuration(kpi.previous, false)
-    case "days":
-      return formatDuration(kpi.previous, true)
-    default:
-      return formatNumber(kpi.previous)
-  }
-}
-// P2-3: privacy - nomor WA customer ditampilkan sebagian (6285••••1617).
-function maskPhone(phone: string): string {
-  if (!phone) return "-"
-  const visible = phone.slice(-4)
-  const head = phone.slice(0, 4)
-  return `${head}${"•".repeat(Math.max(phone.length - 8, 2))}${visible}`
-}
 
-// P0-2: freshness "Data diperbarui ..." - format ISO ke "2 Sep 2026, 22:01 WIB".
 function formatGeneratedAt(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return "-"
@@ -169,10 +115,9 @@ function formatGeneratedAt(iso: string): string {
   return t.replace(".", ":") + " WIB"
 }
 
-// KPI-005: durasi -> "X jam Y menit". days=true ditampilkan "X hari Y jam".
 function formatDuration(value: number, isDays = false): string {
   if (!Number.isFinite(value) || value <= 0) return "0 menit"
-  const base = isDays ? value * 24 : value // konversi hari->jam
+  const base = isDays ? value * 24 : value
   const totalMinutes = Math.round(base * 60)
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
@@ -185,16 +130,14 @@ function formatDuration(value: number, isDays = false): string {
   return minutes === 0 ? jam : jam + " " + menit
 }
 
-
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
 
-/** Sparkline mini gaya Dashboard: area primary/10 + garis primary, tanpa sumbu. */
 function Sparkline({ values }: { values: number[] }) {
   const max = Math.max(...values, 1)
   const min = Math.min(...values, 0)
   const range = Math.max(max - min, 1)
   const width = 160
-  const height = 48
+  const height = 40
   const points = values
     .map((value, index) => {
       const x = values.length <= 1 ? 0 : (index / (values.length - 1)) * width
@@ -206,7 +149,7 @@ function Sparkline({ values }: { values: number[] }) {
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="mt-2 h-12 w-40 text-primary"
+      className="mt-1 h-10 w-full text-primary"
       aria-hidden="true"
       role="img"
     >
@@ -220,7 +163,7 @@ function ChangeBadge({ percent }: { percent: number }) {
   const up = percent > 0
   return (
     <span className="inline-flex items-center gap-1">
-      <Icon name={up ? "trend-up" : "trend-down"} className="size-3.5" aria-hidden="true" />
+      <Icon name={up ? "trend-up" : "trend-down"} className="size-3" aria-hidden="true" />
       {up ? "+" : MINUS}
       {formatNumber(Math.abs(percent))}%
     </span>
@@ -246,13 +189,13 @@ type ProductBreakdownGridProps = {
     most_clicked: ProductBreakdown[]
     best_sellers: ProductBreakdown[]
   }
+  onViewAll: () => void
 }
 
-function ProductBreakdownGrid({ breakdowns }: ProductBreakdownGridProps) {
-  const [tab, setTab] = React.useState<"top_sales" | "viewed" | "clicked" | "sellers">("top_sales")
+function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridProps) {
+  const [tab, setTab] = React.useState<"viewed" | "clicked" | "sellers">("viewed")
 
   const tabs = [
-    { key: "top_sales" as const, label: "Produk Terpopuler" },
     { key: "viewed" as const, label: "Paling Dilihat" },
     { key: "clicked" as const, label: "Paling Diklik" },
     { key: "sellers" as const, label: "Terlaris" },
@@ -263,51 +206,61 @@ function ProductBreakdownGrid({ breakdowns }: ProductBreakdownGridProps) {
       ? breakdowns.most_viewed
       : tab === "clicked"
         ? breakdowns.most_clicked
-        : tab === "sellers"
-          ? breakdowns.best_sellers
-          : []
+        : breakdowns.best_sellers
 
-  const empty =
-    tab === "viewed" || tab === "clicked" || tab === "sellers"
-      ? data.length === 0
-      : true // top_sales diwakili table top_products existing; kosongkan bukan error
+  // Batasi persis 6 produk di kartu ringkas
+  const previewRows = data.slice(0, 6)
 
   return (
-    <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base font-bold">Produk Berdasarkan Interaksi</h3>
-        <div className="flex flex-wrap gap-1">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-semibold",
-                tab === t.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/70",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+    <section className="flex flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Produk Berdasarkan Interaksi</h3>
+            <p className="text-xs text-muted-foreground">Peminat katalog vs produk yang dikonversi menjadi penjualan.</p>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                  tab === t.key
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {tab === "viewed" || tab === "clicked" ? (
+          <EngagementList rows={previewRows} />
+        ) : (
+          <SellersList rows={previewRows} />
+        )}
+        {data.length === 0 ? (
+          <EmptyState className="min-h-24 border-0 bg-transparent" title="Belum ada data" description="Belum ada interaksi produk pada periode ini." />
+        ) : null}
       </div>
 
-      {tab === "viewed" || tab === "clicked" ? (
-        <EngagementList rows={data} />
-      ) : tab === "sellers" ? (
-        <SellersList rows={data} />
-      ) : (
-        <p className="mt-4 text-xs text-muted-foreground">
-          Produk Terpopuler (views + clicks) ditampilkan pada tabel "Penjualan produk" di atas, yaitu produk dengan
-          omzet & unit tertinggi dari pesanan fulfillment. Untuk ranking murni berdasarkan views/clicks, gunakan tab
-          Paling Dilihat / Paling Diklik.
-        </p>
-      )}
-      {empty && tab !== "top_sales" ? (
-        <EmptyState className="min-h-24 border-0 bg-transparent" title="Belum ada data" description="Belum ada data interaksi produk pada periode ini." />
+      {data.length > 0 ? (
+        <div className="mt-4 border-t border-border pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onViewAll}
+            className="w-full text-xs font-semibold"
+          >
+            Lihat semua {data.length} produk ({tabs.find((t) => t.key === tab)?.label})
+            <Icon name="arrow-right" className="ml-1.5 size-3.5" aria-hidden="true" />
+          </Button>
+        </div>
       ) : null}
     </section>
   )
@@ -316,23 +269,23 @@ function ProductBreakdownGrid({ breakdowns }: ProductBreakdownGridProps) {
 function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
   if (!rows.length) return null
   return (
-    <div className="mt-4 divide-y divide-border">
+    <div className="mt-3 divide-y divide-border">
       {rows.map((p) => (
-        <article key={p.product_id} className="flex items-center gap-3 py-3">
+        <article key={p.product_id} className="flex items-center gap-3 py-2">
           {p.image ? (
-            <img src={p.image} alt={p.name} className="h-10 w-10 rounded-md object-cover" />
+            <img src={p.image} alt={p.name} className="size-9 shrink-0 rounded-md object-cover border border-border" />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-xs font-bold text-muted-foreground">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-bold text-muted-foreground">
               {p.name.charAt(0)}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{p.name}</p>
-            <p className="truncate font-mono text-[11px] text-muted-foreground">{p.parent_sku}</p>
+            <p className="truncate text-xs font-normal text-foreground" title={p.name}>{p.name}</p>
+            <p className="truncate font-mono text-[10px] text-muted-foreground">{p.parent_sku}</p>
           </div>
-          <div className="text-right text-sm tabular-nums">
-            <p className="font-semibold">{formatNumber(p.views ?? 0)} dilihat</p>
-            <p className="text-xs text-muted-foreground">{formatNumber(p.clicks ?? 0)} klik</p>
+          <div className="text-right text-xs tabular-nums">
+            <p className="font-semibold text-foreground">{formatNumber(p.views ?? 0)} dilihat</p>
+            <p className="text-[10px] text-muted-foreground">{formatNumber(p.clicks ?? 0)} klik</p>
           </div>
         </article>
       ))}
@@ -343,16 +296,16 @@ function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
 function SellersList({ rows }: { rows: ProductBreakdown[] }) {
   if (!rows.length) return null
   return (
-    <div className="mt-4 divide-y divide-border">
+    <div className="mt-3 divide-y divide-border">
       {rows.map((p) => (
-        <article key={p.product_id} className="flex items-center gap-3 py-3">
+        <article key={p.product_id} className="flex items-center gap-3 py-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{p.name}</p>
-            <p className="truncate font-mono text-[11px] text-muted-foreground">{p.parent_sku}</p>
+            <p className="truncate text-xs font-normal text-foreground" title={p.name}>{p.name}</p>
+            <p className="truncate font-mono text-[10px] text-muted-foreground">{p.parent_sku}</p>
           </div>
-          <div className="text-right text-sm tabular-nums">
-            <p className="font-semibold">{formatNumber(p.units ?? 0)} unit</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(p.revenue ?? 0)}</p>
+          <div className="text-right text-xs tabular-nums">
+            <p className="font-semibold text-foreground">{formatNumber(p.units ?? 0)} unit</p>
+            <p className="text-[10px] text-muted-foreground">{formatCurrency(p.revenue ?? 0)}</p>
           </div>
         </article>
       ))}
@@ -389,9 +342,34 @@ export default function StorePerformance({
   const [to, setTo] = React.useState(filters.to)
   const [granularity, setGranularity] = React.useState(filters.granularity)
 
-  // P1: akses KPI lintas section utk Ringkasan Utama & Perlu Perhatian.
+  // Ref dan penutup klik luar untuk popover export
+  const exportRef = React.useRef<HTMLDivElement>(null)
 
-  // Sparkline per KPI dari chart series (satu sumber: report.charts)
+  React.useEffect(() => {
+    if (!exportOpen) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
+        setExportOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExportOpen(false)
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [exportOpen])
+
+  // State Modal Popover Lebar
+  const [showTopProductsModal, setShowTopProductsModal] = React.useState(false)
+  const [showInteractionModal, setShowInteractionModal] = React.useState(false)
+  const [searchQueryTop, setSearchQueryTop] = React.useState("")
+  const [searchQueryInteraction, setSearchQueryInteraction] = React.useState("")
+  const [modalInteractionTab, setModalInteractionTab] = React.useState<"viewed" | "clicked" | "sellers">("viewed")
+
   const sparklineBy = React.useMemo(() => {
     const byKey: Record<string, number[]> = {}
     for (const chart of report.charts ?? []) {
@@ -413,16 +391,23 @@ export default function StorePerformance({
       map[k.key] = { ...k, sparkline: sparklineBy[k.key] ?? [] }
     }
     return map
-  }, [report])
+  }, [report, sparklineBy])
 
   const [chartTab, setChartTab] = React.useState(0)
 
   function buildExportUrl(): string {
     try {
       const url = new URL(exportUrl, window.location.origin)
-      if (exportRange === "custom" && exportFrom && exportTo) {
-        url.searchParams.set("export_from", exportFrom)
-        url.searchParams.set("export_to", exportTo)
+      if (exportRange === "screen") {
+        url.searchParams.set("period", period)
+        if (period === "custom") {
+          if (from) url.searchParams.set("from", from)
+          if (to) url.searchParams.set("to", to)
+        }
+      } else if (exportRange === "custom") {
+        url.searchParams.set("period", "custom")
+        if (exportFrom) url.searchParams.set("export_from", exportFrom)
+        if (exportTo) url.searchParams.set("export_to", exportTo)
       }
       url.searchParams.set("export_granularity", exportGranularity)
       return url.toString()
@@ -444,14 +429,39 @@ export default function StorePerformance({
     })
   }
 
+  const returnsSection = report.sections.find((s) => s.key === "returns_cancellations")
+
+  // Filter list untuk modal Top Products
+  const filteredTopProductsModal = React.useMemo(() => {
+    const q = searchQueryTop.trim().toLowerCase()
+    if (!q) return report.top_products
+    return report.top_products.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.parent_sku.toLowerCase().includes(q),
+    )
+  }, [report.top_products, searchQueryTop])
+
+  // Filter list untuk modal Interaksi
+  const interactionModalData = React.useMemo(() => {
+    const list =
+      modalInteractionTab === "viewed"
+        ? report.product_breakdowns.most_viewed
+        : modalInteractionTab === "clicked"
+          ? report.product_breakdowns.most_clicked
+          : report.product_breakdowns.best_sellers
+    const q = searchQueryInteraction.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((p) => p.name.toLowerCase().includes(q) || p.parent_sku.toLowerCase().includes(q))
+  }, [report.product_breakdowns, modalInteractionTab, searchQueryInteraction])
+
   return (
     <AdminLayout
       title={title}
       description={description}
       actions={
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => {
               setRefreshing(true)
               setRefreshError(false)
@@ -462,24 +472,23 @@ export default function StorePerformance({
               })
             }}
             disabled={refreshing}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border px-3 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-wait disabled:opacity-60"
           >
             <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
             {refreshing ? "Memuat..." : "Refresh data"}
-          </button>
-          <div className="relative">
+          </Button>
+          <div className="relative" ref={exportRef}>
             <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
               <Icon name="download" className="size-4" aria-hidden="true" />
               Unduh Laporan
             </Button>
             {exportOpen ? (
               <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-lg">
-                <p className="text-xs font-bold">Rentang waktu export</p>
-                <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs">
+                <p className="text-xs font-bold text-foreground">Rentang waktu export</p>
+                <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-foreground">
                   <input type="radio" name="export_range" checked={exportRange === "screen"} onChange={() => setExportRange("screen")} />
                   Ikuti periode di layar
                 </label>
-                <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs">
+                <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs text-foreground">
                   <input type="radio" name="export_range" checked={exportRange === "custom"} onChange={() => setExportRange("custom")} />
                   Kustom
                 </label>
@@ -490,23 +499,25 @@ export default function StorePerformance({
                     <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="h-8 w-32 text-xs" aria-label="Sampai tanggal" />
                   </div>
                 ) : null}
-                <p className="mt-3 text-xs font-bold">Granularitas data</p>
+                <p className="mt-3 text-xs font-bold text-foreground">Granularitas data</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">
                   Rentang &gt; 1 bulan otomatis dipecah: satu file, sheet per bulan.
                 </p>
                 <select
                   value={exportGranularity}
                   onChange={(e) => setExportGranularity(e.target.value)}
-                  className="mt-1 h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                  className="mt-1 h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground"
                   aria-label="Granularitas export"
                 >
-                  <option value="hour">Per Jam</option>
-                  <option value="day">Per Hari</option>
-                  <option value="week">Per Minggu</option>
-                  <option value="month">Per Bulan</option>
+                  {granularityOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
                 <a
                   href={buildExportUrl()}
+                  onClick={() => setExportOpen(false)}
                   className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                 >
                   Unduh XLSX
@@ -519,83 +530,65 @@ export default function StorePerformance({
     >
       <Head title={`${title} | Admin`} />
 
+      {/* FILTER PERIODE & BANNER KONTROL */}
       <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Tinjauan bisnis</p>
-            <TooltipProvider>
-              <Tooltip delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex items-center text-muted-foreground hover:text-foreground" aria-label="Panduan metrik">
-                    <Icon name="circle-help" className="size-4" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs leading-relaxed">
-                  <p className="font-semibold">Cara membaca metrik</p>
-                  <ul className="mt-1 list-disc pl-4">
-                    <li>Penjualan Gross = total yang dibayar pelanggan, termasuk produk, ongkir, dan biaya COD.</li>
-                    <li>Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, subsidi ongkir, refund retur, dan ongkir retur toko.</li>
-                    <li>Pengunjung yang Membeli = rasio pesanan dibanding pengunjung unik; ada angkanya di kategori Kunjungan & Customer.</li>
-                    <li>Model / Produk / Unit: jumlah model berbeda, produk (varian/ukuran) berbeda, dan total qty item.</li>
-                    <li>Retur & Pembatalan dilipat di bawah; Refund hanya salah satu metrik di sana, bukan ringkasan utama.</li>
-                  </ul>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-            <h2 className="mt-1 text-xl font-bold">{report.range.label}</h2>
-            <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
-              {refreshing
-                ? "Memperbarui data..."
-                : `Data diperbarui: ${formatGeneratedAt(report.generated_at)}`}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {report.range.from_date} – {report.range.to_date} · {report.range.compare_label}
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Periode Analisis:</span>
+              <span className="text-base font-bold text-foreground">{report.range.label}</span>
+              <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
+              {refreshing ? "Memperbarui data..." : `Data diperbarui: ${formatGeneratedAt(report.generated_at)}`}
+              {" · "}
+              <span>{report.range.compare_label} ({report.range.compare_from_date} - {report.range.compare_to_date}{report.range.is_running ? " · jam setara" : " · penuh"})</span>
             </p>
             {refreshError ? (
               <p className="mt-1 text-xs font-medium text-destructive" role="status">
-                Data belum diperbarui. Coba refresh lagi.
+                Gagal memuat pembaruan data. Coba refresh lagi.
               </p>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-              Periode
-              <Select
-                value={period}
-                onChange={(event) => {
-                  const value = event.target.value
-                  setPeriod(value)
-                  if (value !== "custom") {
-                    apply({ period: value })
-                  }
-                }}
-              >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1">
+              {periodOptions
+                .filter((option) => option.value !== "custom")
+                .map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      setPeriod(option.value)
+                      apply({ period: option.value })
+                    }}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                      period === option.value
+                        ? "bg-foreground text-background shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                    )}
+                  >
                     {option.label}
-                  </option>
+                  </button>
                 ))}
-              </Select>
-            </label>
-            {period === "custom" ? (
-              <>
-                <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-                  Dari
-                  <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-                  Sampai
-                  <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-                </label>
-                <Button type="button" onClick={() => apply({ period: "custom", from, to })}>
-                  Terapkan
-                </Button>
-              </>
-            ) : null}
-            <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-              Granularitas tren
+              <button
+                type="button"
+                onClick={() => setPeriod("custom")}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                  period === "custom"
+                    ? "bg-foreground text-background shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                )}
+              >
+                Kustom
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-muted-foreground">Granularitas:</span>
               <Select
                 value={granularity}
                 onChange={(event) => {
@@ -603,6 +596,7 @@ export default function StorePerformance({
                   setGranularity(value)
                   apply({ granularity: value })
                 }}
+                className="h-8 text-xs font-medium"
               >
                 {granularityOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -610,428 +604,942 @@ export default function StorePerformance({
                   </option>
                 ))}
               </Select>
-            </label>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {periodOptions
-            .filter((option) => option.value !== "custom")
-            .map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  setPeriod(option.value)
-                  apply({ period: option.value })
-                }}
-                className={cn(
-                  "rounded-md border px-3 py-1.5 text-sm font-semibold transition",
-                  period === option.value
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-surface text-foreground hover:border-primary",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
-          <Icon name="arrow-right" className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <p className="text-[13px] font-medium text-foreground">
-            Perbandingan dengan: {report.range.compare_label}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            ({report.range.compare_from_date} – {report.range.compare_to_date}
-            {report.range.is_running ? " · periode berjalan, dibandingkan sampai jam yang sama" : " · periode penuh"})
-          </p>
-        </div>
-
+        {period === "custom" ? (
+          <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+            <span className="text-xs font-medium text-muted-foreground">Rentang Kustom:</span>
+            <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="h-8 w-36 text-xs" />
+            <span className="text-xs text-muted-foreground">sampai</span>
+            <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="h-8 w-36 text-xs" />
+            <Button size="sm" type="button" onClick={() => apply({ period: "custom", from, to })}>
+              Terapkan
+            </Button>
+          </div>
+        ) : null}
       </section>
 
+      {/* LAYER 1: HEADLINE METRICS (4 KARTU EKSEKUTIF BERPRIORITAS TINGGI) */}
+      <section aria-label="Ringkasan utama" className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* KARTU 1: Penjualan Bersih */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground">Penjualan Bersih</p>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan penjualan bersih">
+                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    Pendapatan riil hak toko setelah dikurangi ongkir J&T, biaya COD kurir, subsidi toko, dan kasus retur selesai.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatCurrency(report.financial.net_revenue)}
+            </p>
+            {kpiMap["net_revenue"]?.sparkline && kpiMap["net_revenue"].sparkline.length > 1 ? (
+              <Sparkline values={kpiMap["net_revenue"].sparkline} />
+            ) : null}
+          </div>
+          <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["net_revenue"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["net_revenue"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["net_revenue"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              {kpiMap["net_revenue"]?.change_percent === null ? "Baru" : (kpiMap["net_revenue"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["net_revenue"].change_percent} />}
+            </span>
+          </div>
+        </div>
 
-      {/* P1-2: Ringkasan Utama - 6 KPI penentu keputusan (termasuk Pengunjung yang Membeli)
-          dengan delta % vs periode pembanding. */}
-      <section aria-label="Ringkasan utama" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {[
-          { key: "omzet", label: "Penjualan Gross", fmt: "currency" as const, primary: true, hint: "Total nilai pesanan yang masuk proses pada periode (sebelum potongan)." },
-          { key: "net_revenue", label: "Penjualan Bersih", fmt: "currency" as const, primary: true, hint: "Gross dikurangi ongkir raw J&T, biaya COD, subsidi ongkir, refund retur, dan ongkir retur toko." },
-          { key: "payments_received", label: "Pembayaran Diterima", fmt: "currency" as const, primary: true, hint: "Uang yang benar-benar masuk (payment selesai dengan paid_at) pada periode." },
-          { key: "orders", label: "Pesanan Masuk", fmt: "number" as const, primary: false, hint: undefined },
-          { key: "units", label: "Unit Terjual", fmt: "number" as const, primary: false, hint: undefined },
-          { key: "conversion", label: "Pengunjung yang Membeli", fmt: "percent" as const, primary: false, hint: "Pesanan dibanding pengunjung unik." },
-        ].map((item) => {
-          const kpi = kpiMap[item.key]
-          if (!kpi) return null
-          return (
-            <div
-              key={item.key}
-              className={cn(
-                "rounded-lg border bg-card p-4",
-                item.primary ? "border-border shadow-sm" : "border-border/60 bg-surface",
-              )}
-            >
-              <p className="text-xs font-medium text-muted-foreground" title={(item.hint ?? kpi.detail) || undefined}>{item.label}</p>
-              <p className={cn("mt-1 font-bold tabular-nums tracking-tight", item.primary ? "text-2xl" : "text-xl")}>
-                {item.fmt === "currency" ? formatCurrency(kpi.value) : item.fmt === "percent" ? formatNumber(kpi.value) + "%" : formatNumber(kpi.value)}
-              </p>
-              {kpi.sparkline && kpi.sparkline.length > 1 ? (
-                <Sparkline values={kpi.sparkline} />
-              ) : null}
-              <p
-                className={cn(
-                  "mt-1 text-xs font-semibold",
-                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success",
-                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
-                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
-                  !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success",
-                  (kpi.change_percent ?? 0) === 0 && "text-muted-foreground",
-                )}
-              >
-                {kpi.change_percent === null
-                  ? "Baru pada periode ini"
-                  : (kpi.change_percent ?? 0) === 0
-                    ? "Tidak berubah"
-                    : <ChangeBadge percent={kpi.change_percent} />}
+        {/* KARTU 2: Pesanan Masuk */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-muted-foreground">Pesanan Masuk</p>
+                <TooltipProvider>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan pesanan masuk">
+                        <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-xs">
+                      Total transaksi pesanan masuk proses fulfillment dan kuantitas unit fisik produk yang terjual.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                {formatNumber(kpiMap["units"]?.value ?? 0)} unit
+              </span>
+            </div>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
+            </p>
+            {kpiMap["orders"]?.sparkline && kpiMap["orders"].sparkline.length > 1 ? (
+              <Sparkline values={kpiMap["orders"].sparkline} />
+            ) : null}
+          </div>
+          <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["orders"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["orders"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["orders"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              {kpiMap["orders"]?.change_percent === null ? "Baru" : (kpiMap["orders"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["orders"].change_percent} />}
+            </span>
+          </div>
+        </div>
+
+        {/* KARTU 3: Rata-rata Nilai Pesanan (AOV) */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground">Rata-rata Order (AOV)</p>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan AOV">
+                      <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    Rata-rata nilai belanja bruto pembeli per transaksi pesanan yang masuk proses.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatCurrency(kpiMap["aov"]?.value ?? 0)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Harga rata-rata unit: <span className="font-semibold text-foreground tabular-nums">{formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}</span>
+            </p>
+          </div>
+          <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["aov"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["aov"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["aov"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              {kpiMap["aov"]?.change_percent === null ? "Baru" : (kpiMap["aov"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["aov"].change_percent} />}
+            </span>
+          </div>
+        </div>
+
+        {/* KARTU 4: Tingkat Konversi Toko */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-muted-foreground">Konversi Pembeli</p>
+                <TooltipProvider>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan konversi pembeli">
+                        <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-xs">
+                      Persentase pengunjung unik yang melakukan pembelian pesanan pada periode terpilih.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                {formatNumber(kpiMap["visitors"]?.value ?? 0)} pengunjung
+              </span>
+            </div>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground truncate" title={kpiMap["conversion"]?.detail ?? undefined}>
+              {kpiMap["conversion"]?.detail || `${formatNumber(kpiMap["orders"]?.value ?? 0)} dari ${formatNumber(kpiMap["visitors"]?.value ?? 0)} pengunjung`}
+            </p>
+          </div>
+          <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+            <span className="text-[11px] text-muted-foreground">vs periode lalu</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["conversion"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["conversion"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["conversion"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              {kpiMap["conversion"]?.change_percent === null ? "Baru" : (kpiMap["conversion"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["conversion"].change_percent} />}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* LAYER 2: REKONSILIASI KEUANGAN & LIKUIDITAS KAS (TABLE-FIRST ACCOUNTING) */}
+      <section className="mb-6 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <header className="border-b border-border bg-muted/30 px-5 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Rekonsiliasi Keuangan & Arus Kas</h3>
+              <p className="text-xs text-muted-foreground">
+                Penjabaran transparan dari total uang transaksi pembeli hingga menjadi pendapatan bersih dan status pencairannya.
               </p>
             </div>
-          )
-        })}
-      </section>
+            <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              Metode: Akrual Transaksi Fulfillment
+            </span>
+          </div>
+        </header>
 
+        <div className="grid gap-0 lg:grid-cols-[1.25fr_1fr]">
+          {/* Kolom Kiri: Laporan Laba/Rugi Penjualan */}
+          <div className="p-5 border-b lg:border-b-0 lg:border-r border-border">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              1. Dari Nilai Transaksi ke Penjualan Bersih
+            </p>
 
-      <div className="space-y-6">
-        {report.sections.map((section) => (
-          <section key={section.key} className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-            <header className="border-b border-border px-4 py-3">
-              <h3 className="text-base font-bold">{section.title}</h3>
-            </header>
-            {section.key === "returns_cancellations" ? (
-              /* P1-3/P2-1: detail retur & pembatalan disembunyikan (progressive disclosure),
-                 dibagi 3 subgrup agar 14 KPI tidak jadi satu grid rata. */
-              <details className="group">
-                <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground">
-                  <span className="inline-flex items-center gap-2">
-                    <Icon name="chevron-right" className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
-                    Tampilkan detail retur & pembatalan ({section.kpis.length} metrik)
+            <div className="mt-3 space-y-2 text-xs">
+              <div className="flex items-center justify-between py-1.5 border-b border-border/60">
+                <span className="font-semibold text-foreground">Total Transaksi Pembeli (Penjualan Gross)</span>
+                <span className="font-bold tabular-nums text-foreground">{formatCurrency(report.financial.gross_revenue)}</span>
+              </div>
+
+              {[
+                { label: "↳ Titipan Ongkir J&T Cargo (Raw)", val: report.financial.shipping_raw ?? 0 },
+                { label: "↳ Titipan Biaya Layanan COD J&T", val: report.financial.cod_fee ?? 0 },
+                { label: "↳ Subsidi Ongkir Ditanggung Toko", val: report.financial.shipping_subsidy ?? 0 },
+                { label: "↳ Refund Kasus Retur Selesai", val: report.financial.refund_adjustments ?? 0 },
+                { label: "↳ Ongkir Retur Ditanggung Toko", val: report.financial.return_shipping_store ?? 0 },
+              ].map((row, idx) => (
+                <div key={idx} className="flex items-center justify-between py-1 text-muted-foreground">
+                  <span className="pl-3">{row.label}</span>
+                  <span className={cn("tabular-nums", row.val > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
+                    {row.val > 0 ? `− ${formatCurrency(row.val)}` : formatCurrency(0)}
                   </span>
-                </summary>
-                {[
-                  { title: "Retur", keys: ["returns", "returns_created", "returns_open", "returns_completed", "return_rate_created", "return_rate_completed", "return_value"] },
-                  { title: "Pembatalan", keys: ["cancelled_orders", "cancelled_by_customer", "cancelled_by_store", "cancellation_rate"] },
-                  { title: "Biaya", keys: ["refund_given", "return_shipping_cost_total", "return_shipping_cost_cases"] },
-                ].map((group) => {
-                  const kpis = group.keys
-                    .map((key) => section.kpis.find((k) => k.key === key))
-                    .filter((k): k is (typeof section.kpis)[number] => Boolean(k))
-                  if (!kpis.length) return null
-                  return (
-                    <div key={group.title} className="border-t border-border px-4 py-3">
-                      <p className="text-[11px] font-bold tracking-wider text-muted-foreground">{group.title}</p>
-                      <ul className="mt-1 divide-y divide-border">
-                        {kpis.map((kpi) => (
-                          <li
-                            key={kpi.key}
-                            className="flex items-center justify-between gap-3 py-2"
-                            title={[kpi.detail, `${report.range.compare_label}: ${formatPrevious(kpi)}`].filter(Boolean).join(" · ")}
-                          >
-                            <span className="min-w-0 text-xs font-semibold text-muted-foreground">{kpi.label}</span>
-                            <span className="flex shrink-0 items-center gap-2">
-                              <span
-                                className="text-sm font-bold tabular-nums whitespace-nowrap"
-                              >
-                                {formatKpiValue(kpi)}
-                              </span>
-                              <span className={cn("w-16 text-right text-[11px] font-semibold", kpi.change_percent === null && "text-[10px] font-normal text-muted-foreground/70", (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive", (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success", (kpi.change_percent ?? 0) === 0 && "text-muted-foreground")}>
-                                {kpi.change_percent === null ? "Baru" : (kpi.change_percent ?? 0) === 0 ? "-" : <ChangeBadge percent={kpi.change_percent} />}
-                              </span>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )
-                })}
-              </details>
-            ) : (
-            <div className="grid gap-0 grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
-              {section.kpis.map((kpi, index) => (
-                <article
-                  key={kpi.key}
-                  className={cn(
-                    "px-4 py-4",
-                    index > 0 && "border-t border-border sm:border-t-0 sm:border-l",
-                  )}
-                >
-                  <p className="text-xs font-medium text-muted-foreground" title={kpi.detail ?? undefined}>{kpi.label}</p>
-                  <p
-                    className="mt-2 text-lg font-bold tabular-nums tracking-tight xl:text-xl whitespace-nowrap truncate"
-                    title={[kpi.detail, `${report.range.compare_label}: ${formatPrevious(kpi)}`].filter(Boolean).join(" · ")}
-                  >
-                    {formatKpiValue(kpi)}
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-2 text-xs font-semibold",
-                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-success",
-                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) > 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
-                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && !invertColorFor(kpi.key, kpi.change_percent) && "text-destructive",
-                      !NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) < 0 && invertColorFor(kpi.key, kpi.change_percent) && "text-success",
-                      (kpi.change_percent ?? 0) === 0 && "text-muted-foreground",
-                      NEUTRAL_DIRECTION.has(kpi.key) && (kpi.change_percent ?? 0) !== 0 && "text-muted-foreground",
-                    )}
-                  >
-                    {kpi.change_percent === null
-                      ? "Baru pada periode ini"
-                      : (kpi.change_percent ?? 0) === 0
-                        ? "Tidak berubah"
-                        : <ChangeBadge percent={kpi.change_percent} />}
-                  </p>
-                </article>
+                </div>
               ))}
-            </div>
-            )}
-          </section>
-        ))}
-      </div>
 
-      <div className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
-        {/* P1-4: satu grafik bertab (Penjualan/Pengunjung/Unit) menggantikan tiga grafik kecil. */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-bold">Tren utama</h3>
-          <div className="flex gap-1" role="tablist" aria-label="Pilih metrik tren">
-            {report.charts.map((chart, idx) => (
-              <button
-                key={chart.key}
-                type="button"
-                role="tab"
-                aria-selected={chartTab === idx}
-                onClick={() => setChartTab(idx)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-semibold transition",
-                  chartTab === idx
-                    ? "border-foreground bg-foreground text-background"
-                    : "border border-border bg-surface text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {chart.title.replace(/^Tren /, "")}
-              </button>
-            ))}
+              <div className="mt-3 flex items-center justify-between rounded-md bg-muted/40 p-2.5 border border-border">
+                <span className="text-xs font-bold text-foreground">= Hak Bersih Toko (Penjualan Bersih)</span>
+                <span className="text-sm font-bold tabular-nums text-primary">{formatCurrency(report.financial.net_revenue)}</span>
+              </div>
+            </div>
           </div>
-        </div>
-        {(() => {
-          const chart = report.charts[chartTab] ?? report.charts[0]
-          if (!chart) return null
-          const granLabel =
-            report.range.granularity === "hour" ? "Per Jam"
-            : report.range.granularity === "week" ? "Per Minggu"
-            : report.range.granularity === "month" ? "Per Bulan"
-            : report.range.granularity === "year" ? "Per Tahun"
-            : "Per Hari"
-          return (
-            <div className="mt-3">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-xs text-muted-foreground">
-                  {chart.title} · {granLabel}
+
+          {/* Kolom Kanan: Status Kas & Likuiditas */}
+          <div className="p-5 bg-surface-muted/20">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              2. Status Penerimaan & Likuiditas Kas
+            </p>
+
+            <div className="mt-3 space-y-3">
+              {/* Box 1: Pembayaran Diterima */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">Sudah Masuk Rekening (Cair)</span>
+                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">Lunas</span>
+                </div>
+                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
+                  {formatCurrency(report.financial.payments_received ?? 0)}
                 </p>
-                <div className="text-right">
-                  <p className="text-[11px] text-muted-foreground">Total</p>
-                  <p className="text-sm font-bold tabular-nums">
-                    {chart.total_format === "currency" ? formatCurrency(chart.total) : chart.key === "conversion_rate" ? formatNumber(chart.total) + "%" : formatNumber(chart.total)}
-                  </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Pembayaran transfer lunas dan COD yang sudah diselesaikan pada periode ini.
+                </p>
+              </div>
+
+              {/* Box 2: Piutang COD Kurir */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">Piutang Tertahan di Kurir COD</span>
+                  <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning">Menunggu Serah Terima</span>
+                </div>
+                <p className="mt-1 text-lg font-bold tabular-nums text-warning-foreground">
+                  {formatCurrency(report.financial.cod_pending_amount ?? 0)}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {report.financial.cod_pending_count ?? 0} pesanan COD aktif dalam pengiriman/proses yang dananya belum ditransfer J&T.
+                </p>
+              </div>
+
+              {/* Box 3: Baris Ringkas Tambahan */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-md border border-border bg-card p-2.5">
+                  <p className="text-[11px] text-muted-foreground">COD Cair Periode Ini</p>
+                  <p className="mt-0.5 font-bold tabular-nums text-foreground">{formatCurrency(report.financial.cod_paid ?? 0)}</p>
+                </div>
+                <div className="rounded-md border border-border bg-card p-2.5">
+                  <p className="text-[11px] text-muted-foreground">Transfer Menunggu Bukti</p>
+                  <p className="mt-0.5 font-bold tabular-nums text-foreground">{formatNumber(report.financial.payment_pending_count ?? 0)} pesanan</p>
                 </div>
               </div>
-              {chart.series.length ? (
-                <React.Suspense fallback={<div className="mt-2 h-32 w-full animate-pulse rounded-md bg-muted" aria-label="Memuat grafik" />}>
-                  <TrendChart series={chart.series} />
-                </React.Suspense>
-              ) : (
-                <p className="mt-6 text-sm text-muted-foreground">Data belum cukup untuk menampilkan tren periode ini.</p>
-              )}
-              {chart.key === "visitors" && chart.series.length ? (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Total = pengunjung unik sepanjang periode; grafik = kehadiran unik per{" "}
-                  {report.range.granularity === "hour" ? "jam" : report.range.granularity === "week" ? "minggu" : report.range.granularity === "month" ? "bulan" : "hari"}.
-                  Jumlah bar dapat melebihi total unik karena pengunjung yang kembali dihitung di tiap periode.
-                </p>
-              ) : null}
             </div>
-          )
-        })()}
-      </div>
+          </div>
+        </div>
+      </section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-base font-bold">Penjualan produk</h3>
-            <p className="text-xs text-muted-foreground">Omzet & unit dari pesanan fulfillment (processing–completed).</p>
-          </header>
-          {report.top_products.length ? (
-            <>
-              <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+      {/* LAYER 3: KESEHATAN OPERASIONAL & PIPELINE FULFILLMENT */}
+      <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Kesehatan Operasional & Logistik Toko</h3>
+            <p className="text-xs text-muted-foreground">Pantau antrean fulfillment pesanan agar tidak terjadi bottleneck pengiriman.</p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href={routeUrl("admin.orders.index")}>
+              Ke Daftar Pesanan <Icon name="arrow-right" className="ml-1 size-3.5" aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href={`${routeUrl("admin.orders.index")}?order_status=processing`}
+            className="group rounded-md border border-border bg-surface p-3 transition hover:border-primary"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground group-hover:text-primary">Perlu Diproses</span>
+              <Icon name="package" className="size-4 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
+            </div>
+            <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground">
+              {formatNumber(kpiMap["open_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Pesanan aktif yang belum diselesaikan.</p>
+          </Link>
+
+          <Link
+            href={`${routeUrl("admin.orders.index")}?order_status=shipped`}
+            className="group rounded-md border border-border bg-surface p-3 transition hover:border-primary"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground group-hover:text-primary">Dalam Pengiriman</span>
+              <Icon name="truck" className="size-4 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
+            </div>
+            <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground">
+              {formatNumber(kpiMap["dispatched_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Sedang dibawa armada J&T Cargo.</p>
+          </Link>
+
+          <Link
+            href={`${routeUrl("admin.orders.index")}?order_status=completed`}
+            className="group rounded-md border border-border bg-surface p-3 transition hover:border-primary"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground group-hover:text-primary">Pesanan Selesai</span>
+              <Icon name="check-circle" className="size-4 text-success" aria-hidden="true" />
+            </div>
+            <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground">
+              {formatNumber(kpiMap["completed_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Diterima pembeli & transaksi tuntas.</p>
+          </Link>
+
+          <div className="rounded-md border border-border bg-surface p-3">
+            <span className="text-xs font-semibold text-muted-foreground">SLA Waktu Konfirmasi</span>
+            <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground">
+              {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Kecepatan admin merespons order masuk.</p>
+          </div>
+        </div>
+
+        {/* Sub-panel Progressive Disclosure Retur & Pembatalan */}
+        {returnsSection ? (
+          <details className="group mt-4 rounded-md border border-border bg-muted/20">
+            <summary className="cursor-pointer select-none px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground">
+              <span className="inline-flex items-center gap-2">
+                <Icon name="caret-down" className="size-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
+                Rincian Kasus Retur & Pembatalan ({returnsSection.kpis.length} indikator)
+              </span>
+            </summary>
+            <div className="border-t border-border px-4 py-3 grid gap-4 sm:grid-cols-3 text-xs">
+              <div>
+                <p className="font-bold text-foreground">Retur Barang</p>
+                <ul className="mt-2 space-y-1.5 text-muted-foreground">
+                  <li className="flex justify-between">
+                    <span>Kasus Diajukan:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_created"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Kasus Masih Terbuka:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_open"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Retur Selesai:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_completed"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Rasio Retur:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["return_rate_completed"]?.value ?? 0)}%</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-bold text-foreground">Pembatalan Pesanan</p>
+                <ul className="mt-2 space-y-1.5 text-muted-foreground">
+                  <li className="flex justify-between">
+                    <span>Total Dibatalkan:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_orders"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Dibatalkan Pembeli:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_by_customer"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Dibatalkan Toko:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_by_store"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Rasio Pembatalan:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancellation_rate"]?.value ?? 0)}%</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-bold text-foreground">Dampak Beban Biaya</p>
+                <ul className="mt-2 space-y-1.5 text-muted-foreground">
+                  <li className="flex justify-between">
+                    <span>Refund Dana:</span>
+                    <span className="font-semibold text-destructive tabular-nums">{formatCurrency(kpiMap["refund_given"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Ongkir Retur (Toko):</span>
+                    <span className="font-semibold text-destructive tabular-nums">{formatCurrency(kpiMap["return_shipping_cost_total"]?.value ?? 0)}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Kasus Ongkir Toko:</span>
+                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["return_shipping_cost_cases"]?.value ?? 0)} kasus</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </details>
+        ) : null}
+      </section>
+
+      {/* LAYER 4: TREN UTAMA & KATALOG PRODUK TERLARIS (DUA KOLOM BERIMBANG) */}
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        {/* Kolom Kiri: Tren Utama Interaktif */}
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+            <h3 className="text-sm font-bold text-foreground">Grafik Tren Bisnis</h3>
+            <div className="flex gap-1" role="tablist" aria-label="Pilih metrik tren">
+              {report.charts.map((chart, idx) => (
+                <button
+                  key={chart.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={chartTab === idx}
+                  onClick={() => setChartTab(idx)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                    chartTab === idx
+                      ? "bg-foreground text-background"
+                      : "bg-surface text-muted-foreground hover:text-foreground border border-border",
+                  )}
+                >
+                  {chart.title.replace(/^Tren /, "")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {(() => {
+            const chart = report.charts[chartTab] ?? report.charts[0]
+            if (!chart) return null
+            const granLabel =
+              report.range.granularity === "hour" ? "Per Jam"
+              : report.range.granularity === "week" ? "Per Minggu"
+              : report.range.granularity === "month" ? "Per Bulan"
+              : report.range.granularity === "year" ? "Per Tahun"
+              : "Per Hari"
+            return (
+              <div className="mt-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {chart.title} · {granLabel}
+                  </p>
+                  <div className="text-right">
+                    <p className="text-[10px] text-muted-foreground">Total Periode</p>
+                    <p className="text-sm font-bold tabular-nums text-foreground">
+                      {chart.total_format === "currency" ? formatCurrency(chart.total) : chart.key === "conversion_rate" ? formatNumber(chart.total) + "%" : formatNumber(chart.total)}
+                    </p>
+                  </div>
+                </div>
+                {chart.series.length ? (
+                  <React.Suspense fallback={<div className="mt-2 h-36 w-full animate-pulse rounded-md bg-muted" aria-label="Memuat grafik" />}>
+                    <TrendChart series={chart.series} />
+                  </React.Suspense>
+                ) : (
+                  <p className="mt-8 text-center text-xs text-muted-foreground">Data belum cukup untuk menampilkan tren periode ini.</p>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+
+        {/* Kolom Kanan: Produk Terlaris (Kontribusi Omzet) - TAMPIL 6 PRODUK */}
+        <div className="flex flex-col justify-between overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div>
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Produk Terlaris (Kontribusi Omzet)</h3>
+                <p className="text-xs text-muted-foreground">Peringkat produk berdasarkan nilai penjualan fulfillment.</p>
+              </div>
+              <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+                Menampilkan 6 teratas
+              </span>
+            </header>
+            {report.top_products.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/30 text-left text-[11px] font-semibold text-muted-foreground">
                     <tr>
-                      <th className="px-4 py-2 font-semibold">Produk</th>
-                      <th className="px-4 py-2 font-semibold">Unit</th>
-                      <th className="px-4 py-2 font-semibold">Order</th>
-                      <th className="px-4 py-2 font-semibold">Omzet</th>
+                      <th className="px-4 py-2">Nama Produk</th>
+                      <th className="px-3 py-2 text-right">Unit</th>
+                      <th className="px-3 py-2 text-right">Order</th>
+                      <th className="px-4 py-2 text-right">Omzet</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {report.top_products.map((product) => (
-                      <tr key={`${product.parent_sku}-${product.name}`} className="border-t border-border">
-                        <td className="px-4 py-3">
-                          <p className="font-semibold">{product.name}</p>
-                          <p className="font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
+                  <tbody className="divide-y divide-border">
+                    {report.top_products.slice(0, 6).map((product) => (
+                      <tr key={`${product.parent_sku}-${product.name}`} className="hover:bg-muted/20">
+                        <td className="px-4 py-2.5 max-w-[200px]">
+                          <p className="truncate font-normal text-foreground" title={product.name}>{product.name}</p>
+                          <p className="font-mono text-[10px] text-muted-foreground">{product.parent_sku}</p>
                         </td>
-                        <td className="px-4 py-3 tabular-nums">{formatNumber(product.units)}</td>
-                        <td className="px-4 py-3 tabular-nums">{formatNumber(product.order_count)}</td>
-                        <td className="px-4 py-3 tabular-nums font-semibold">{formatCurrency(product.revenue)}</td>
+                        <td className="px-3 py-2.5 text-right font-medium tabular-nums text-foreground">{formatNumber(product.units)}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">{formatNumber(product.order_count)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold tabular-nums text-foreground">{formatCurrency(product.revenue)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            ) : (
+              <EmptyState
+                className="min-h-40 border-0 bg-transparent"
+                title="Belum ada penjualan produk"
+                description="Omzet produk muncul setelah ada pesanan fulfillment pada periode ini."
+              />
+            )}
+          </div>
 
-              <div className="divide-y divide-border md:hidden">
-                {report.top_products.map((product) => (
-                  <article key={`${product.parent_sku}-${product.name}`} className="p-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">Produk</p>
-                      <p className="mt-1 font-semibold">{product.name}</p>
-                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
-                    </div>
-                    <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
-                      <div>
-                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Unit</dt>
-                        <dd className="mt-1 text-sm tabular-nums">{formatNumber(product.units)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Order</dt>
-                        <dd className="mt-1 text-sm tabular-nums">{formatNumber(product.order_count)}</dd>
-                      </div>
-                      <div className="col-span-2">
-                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Omzet</dt>
-                        <dd className="mt-1 text-sm tabular-nums font-semibold">{formatCurrency(product.revenue)}</dd>
-                      </div>
-                    </dl>
-                  </article>
-                ))}
-              </div>
-            </>
-          ) : (
-            <EmptyState
-              className="min-h-40 border-0 bg-transparent"
-              title="Belum ada penjualan produk"
-              description="Omzet produk muncul setelah ada pesanan fulfillment."
-            />
-          )}
-        </section>
-
-        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-          <header className="border-b border-border px-4 py-3">
-            <h3 className="text-base font-bold">Customer</h3>
-            <p className="text-xs text-muted-foreground">Agregat per nomor WhatsApp pada periode terpilih.</p>
-          </header>
-          {report.customers.length ? (
-            <>
-              <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-2 font-semibold">Customer</th>
-                      <th className="px-4 py-2 font-semibold">Order</th>
-                      <th className="px-4 py-2 font-semibold">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.customers.map((customer) => (
-                      <tr key={customer.customer_phone} className="border-t border-border">
-                        <td className="px-4 py-3">
-                          <p className="font-semibold">{customer.customer_name}</p>
-                          <p className="font-mono text-[11px] text-muted-foreground">{maskPhone(customer.customer_phone)}</p>
-                          {customer.last_order_at ? (
-                            <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-3 tabular-nums">{formatNumber(customer.order_count)}</td>
-                        <td className="px-4 py-3 tabular-nums font-semibold">{formatCurrency(customer.total_spent)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="divide-y divide-border md:hidden">
-                {report.customers.map((customer) => (
-                  <article key={customer.customer_phone} className="p-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">Customer</p>
-                      <p className="mt-1 font-semibold">{customer.customer_name}</p>
-                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{maskPhone(customer.customer_phone)}</p>
-                      {customer.last_order_at ? (
-                        <p className="text-[11px] text-muted-foreground">Terakhir {formatDate(customer.last_order_at)}</p>
-                      ) : null}
-                    </div>
-                    <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
-                      <div>
-                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Order</dt>
-                        <dd className="mt-1 text-sm tabular-nums">{formatNumber(customer.order_count)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Total</dt>
-                        <dd className="mt-1 text-sm tabular-nums font-semibold">{formatCurrency(customer.total_spent)}</dd>
-                      </div>
-                    </dl>
-                  </article>
-                ))}
-              </div>
-            </>
-          ) : (
-            <EmptyState
-              className="min-h-40 border-0 bg-transparent"
-              title="Belum ada customer"
-              description="Data muncul setelah ada pesanan pada periode ini."
-            />
-          )}
-        </section>
+          {report.top_products.length > 0 ? (
+            <div className="border-t border-border p-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTopProductsModal(true)}
+                className="w-full text-xs font-semibold"
+              >
+                Lihat semua {report.top_products.length} produk terlaris
+                <Icon name="arrow-right" className="ml-1.5 size-3.5" aria-hidden="true" />
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <ProductBreakdownGrid breakdowns={report.product_breakdowns} />
+      {/* LAYER 5: KUNJUNGAN PELANGGAN & INTERAKSI KATALOG */}
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        {/* Kolom Kiri: Kunjungan & Retensi Pelanggan */}
+        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div className="border-b border-border pb-3">
+            <h3 className="text-sm font-bold text-foreground">Kunjungan & Retensi Pelanggan</h3>
+            <p className="text-xs text-muted-foreground">Rasio loyalitas pelanggan dan perbandingan pembeli baru vs order ulang.</p>
+          </div>
 
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-md border border-border bg-surface p-3 text-center">
+              <p className="text-[11px] font-medium text-muted-foreground">Pengunjung Unik</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
+              <span className="text-[10px] text-muted-foreground">IP/sesi unik</span>
+            </div>
+            <div className="rounded-md border border-border bg-surface p-3 text-center">
+              <p className="text-[11px] font-medium text-muted-foreground">Customer Baru</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
+              <span className="text-[10px] text-muted-foreground">Order perdana</span>
+            </div>
+            <div className="rounded-md border border-border bg-surface p-3 text-center">
+              <p className="text-[11px] font-medium text-muted-foreground">Customer Repeat</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
+              <span className="text-[10px] text-muted-foreground">Order berulang</span>
+            </div>
+            <div className="rounded-md border border-border bg-surface p-3 text-center">
+              <p className="text-[11px] font-medium text-muted-foreground">Rasio Repeat</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
+              <span className="text-[10px] text-muted-foreground">Retensi pembeli</span>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">Insight Pelanggan:</p>
+            <p className="mt-0.5">
+              Sebagian besar produk aluminium adalah pembelian durasi panjang (properti/renovasi). Tingkat repeat order wajar berkisar di bawah 10%, fokus utama adalah akuisisi customer baru dan konversi kunjungan ke keranjang.
+            </p>
+          </div>
+        </section>
+
+        {/* Kolom Kanan: Interaksi Produk (Views & Clicks) - TAMPIL 6 PRODUK */}
+        <ProductBreakdownGrid
+          breakdowns={report.product_breakdowns}
+          onViewAll={() => setShowInteractionModal(true)}
+        />
+      </div>
+
+      {/* LAYER 6: BAURAN METODE BAYAR */}
       {report.payment_mix.length ? (
-        <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <h3 className="text-base font-bold">Bauran metode bayar</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Berdasarkan metode pembayaran pada pesanan fulfillment dalam periode terpilih; persentase dari Penjualan Gross.
+        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-foreground">Bauran Metode Pembayaran</h3>
+          <p className="text-xs text-muted-foreground">
+            Distribusi preferensi pembayaran dari pesanan fulfillment pada periode terpilih (% terhadap Gross).
           </p>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {report.payment_mix.map((row) => {
               const gross = report.financial.gross_revenue
               const pct = gross > 0 ? Math.round((row.revenue / gross) * 1000) / 10 : 0
+              const isCod = row.method.toLowerCase().includes("cod")
               return (
-                <li key={row.method} className="rounded-md border border-border px-3 py-2 text-sm">
-                  <p className="font-semibold uppercase">{row.method}</p>
-                  <p className="tabular-nums text-muted-foreground">
-                    {formatNumber(row.count)} order · {pct}% dari Penjualan Gross
+                <div key={row.method} className="rounded-md border border-border bg-surface p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs uppercase text-foreground">{row.method}</span>
+                    <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {pct}% dari Gross
+                    </span>
+                  </div>
+                  <p className="mt-2 text-base font-bold tabular-nums text-foreground">{formatCurrency(row.revenue)}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {formatNumber(row.count)} pesanan {isCod ? "(Lunas saat barang tiba)" : "(Transfer lunas di muka)"}
                   </p>
-                  <p className="tabular-nums font-semibold">{formatCurrency(row.revenue)}</p>
-                </li>
+                </div>
               )
             })}
-          </ul>
+          </div>
         </section>
       ) : null}
 
-      <p className="mt-6 text-xs leading-5 text-muted-foreground">
-        Keterangan perbandingan: metrik dibandingkan secara otomatis dengan periode sebelumnya
-        ({report.range.compare_label}: {report.range.compare_from_date} – {report.range.compare_to_date}).
-        {report.range.is_running
-          ? " Karena periode berjalan masih berlangsung, data pembanding dipotong sampai jam yang sama agar adil."
-          : " Periode pembanding dihitung penuh."}
-      </p>
+      {/* ========================================================================= */}
+      {/* POPUP MODAL 1: RINCIAN PENJUALAN SELURUH PRODUK (TOP SELLERS FULL LIST)  */}
+      {/* ========================================================================= */}
+      <Dialog open={showTopProductsModal} onOpenChange={setShowTopProductsModal}>
+        <DialogContent className="!w-[min(96vw,68rem)] !max-w-5xl flex max-h-[88vh] flex-col gap-0 p-0 overflow-hidden">
+          <div className="border-b border-border p-5 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Rincian Penjualan Produk Terlaris
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Peringkat produk berdasarkan nilai omzet dan unit fisik dari pesanan fulfillment periode {report.range.label}.
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-[10px] text-muted-foreground">Total Omzet Produk</p>
+                  <p className="text-sm font-bold tabular-nums text-foreground">
+                    {formatCurrency(report.top_products.reduce((acc, p) => acc + p.revenue, 0))}
+                  </p>
+                </div>
+                <div className="h-6 w-px bg-border" />
+                <div className="text-right">
+                  <p className="text-[10px] text-muted-foreground">Total Unit</p>
+                  <p className="text-sm font-bold tabular-nums text-foreground">
+                    {formatNumber(report.top_products.reduce((acc, p) => acc + p.units, 0))} unit
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Input Pencarian Cepat di dalam Modal */}
+            <div className="mt-3">
+              <Input
+                type="search"
+                placeholder="Cari nama produk atau SKU..."
+                value={searchQueryTop}
+                onChange={(e) => setSearchQueryTop(e.target.value)}
+                className="h-8 text-xs max-w-md"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-0">
+            {filteredTopProductsModal.length > 0 ? (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs text-left text-[11px] font-semibold text-muted-foreground border-b border-border">
+                  <tr>
+                    <th className="px-4 py-2.5 w-12 text-center">No</th>
+                    <th className="px-4 py-2.5">Produk & SKU</th>
+                    <th className="px-4 py-2.5 text-right">Unit Terjual</th>
+                    <th className="px-4 py-2.5 text-right">Pesanan</th>
+                    <th className="px-4 py-2.5 text-right">Omzet Produk</th>
+                    <th className="px-4 py-2.5 text-right">Porsi Omzet</th>
+                    <th className="px-4 py-2.5 text-center w-24">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredTopProductsModal.map((product, idx) => {
+                    const gross = report.financial.gross_revenue
+                    const pct = gross > 0 ? ((product.revenue / gross) * 100).toFixed(1) : "0.0"
+                    return (
+                      <tr key={`${product.parent_sku}-${product.name}`} className="hover:bg-muted/20">
+                        <td className="px-4 py-2.5 text-center text-muted-foreground tabular-nums font-semibold">
+                          {idx + 1}
+                        </td>
+                        <td className="px-4 py-2.5 max-w-md">
+                          <Link
+                            href={`${routeUrl("admin.products.index")}?search=${encodeURIComponent(product.parent_sku)}`}
+                            className="font-normal text-foreground hover:text-primary hover:underline leading-snug block"
+                            title={`Kelola ${product.name} di admin`}
+                          >
+                            {product.name}
+                          </Link>
+                          <p className="font-mono text-[10px] text-muted-foreground">{product.parent_sku}</p>
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium tabular-nums text-foreground">
+                          {formatNumber(product.units)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
+                          {formatNumber(product.order_count)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-bold tabular-nums text-foreground">
+                          {formatCurrency(product.revenue)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums">
+                          <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-foreground">
+                            {pct}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Link
+                              href={`${routeUrl("admin.products.index")}?search=${encodeURIComponent(product.parent_sku)}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                              title="Kelola produk di panel admin"
+                            >
+                              Kelola
+                            </Link>
+                            <span className="text-muted-foreground/40">·</span>
+                            <a
+                              href={`/product/${product.parent_sku}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                              title="Buka tampilan etalase toko"
+                            >
+                              <Icon name="arrow-up-right" className="size-3" aria-hidden="true" />
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                Tidak ada produk yang cocok dengan pencarian "{searchQueryTop}".
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border bg-muted/20 px-5 py-3 text-xs">
+            <span className="text-muted-foreground">
+              Menampilkan {filteredTopProductsModal.length} dari {report.top_products.length} produk
+            </span>
+            <Button size="sm" variant="secondary" onClick={() => setShowTopProductsModal(false)}>
+              Tutup
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* POPUP MODAL 2: RINCIAN INTERAKSI PRODUK (VIEWS / CLICKS / SELLERS FULL)   */}
+      {/* ========================================================================= */}
+      <Dialog open={showInteractionModal} onOpenChange={setShowInteractionModal}>
+        <DialogContent className="!w-[min(96vw,68rem)] !max-w-5xl flex max-h-[88vh] flex-col gap-0 p-0 overflow-hidden">
+          <div className="border-b border-border p-5 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Rincian Interaksi & Minat Produk
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Data aktivitas pengunjung (tampilan halaman & klik) dibanding produk yang paling banyak terjual.
+                </DialogDescription>
+              </div>
+
+              {/* Tab Selector di dalam Modal */}
+              <div className="flex gap-1">
+                {([
+                  ["viewed", "Paling Dilihat (Views)"],
+                  ["clicked", "Paling Diklik (Clicks)"],
+                  ["sellers", "Terlaris (Best Sellers)"],
+                ] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setModalInteractionTab(key)}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                      modalInteractionTab === key
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Input Pencarian Cepat di dalam Modal */}
+            <div className="mt-3">
+              <Input
+                type="search"
+                placeholder="Cari nama produk atau SKU..."
+                value={searchQueryInteraction}
+                onChange={(e) => setSearchQueryInteraction(e.target.value)}
+                className="h-8 text-xs max-w-md"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-0">
+            {interactionModalData.length > 0 ? (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs text-left text-[11px] font-semibold text-muted-foreground border-b border-border">
+                  <tr>
+                    <th className="px-4 py-2.5 w-12 text-center">No</th>
+                    <th className="px-4 py-2.5 w-14 text-center">Foto</th>
+                    <th className="px-4 py-2.5">Produk & SKU</th>
+                    {modalInteractionTab === "sellers" ? (
+                      <>
+                        <th className="px-4 py-2.5 text-right">Unit Terjual</th>
+                        <th className="px-4 py-2.5 text-right">Total Nilai Penjualan</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-4 py-2.5 text-right">Tampilan (Views)</th>
+                        <th className="px-4 py-2.5 text-right">Klik (Clicks)</th>
+                        <th className="px-4 py-2.5 text-right">Rasio Klik / Lihat</th>
+                      </>
+                    )}
+                    <th className="px-4 py-2.5 text-center w-24">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {interactionModalData.map((item, idx) => {
+                    const product = item as ProductBreakdown
+                    const views = product.views ?? 0
+                    const clicks = product.clicks ?? 0
+                    const ctr = views > 0 ? ((clicks / views) * 100).toFixed(1) + "%" : "-"
+                    return (
+                      <tr key={`${product.parent_sku}-${product.product_id}`} className="hover:bg-muted/20">
+                        <td className="px-4 py-2.5 text-center text-muted-foreground tabular-nums font-semibold">
+                          {idx + 1}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {product.image ? (
+                            <img src={product.image} alt="" className="size-8 mx-auto rounded object-cover border border-border" />
+                          ) : (
+                            <div className="size-8 mx-auto flex items-center justify-center rounded bg-muted text-[10px] font-bold text-muted-foreground">
+                              {product.name.charAt(0)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 max-w-md">
+                          <Link
+                            href={`${routeUrl("admin.products.index")}?search=${encodeURIComponent(product.parent_sku)}`}
+                            className="font-normal text-foreground hover:text-primary hover:underline leading-snug block"
+                            title={`Kelola ${product.name} di admin`}
+                          >
+                            {product.name}
+                          </Link>
+                          <p className="font-mono text-[10px] text-muted-foreground">{product.parent_sku}</p>
+                        </td>
+                        {modalInteractionTab === "sellers" ? (
+                          <>
+                            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-foreground">
+                              {formatNumber(product.units ?? 0)} unit
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-primary">
+                              {formatCurrency(product.revenue ?? 0)}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-foreground">
+                              {formatNumber(views)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-medium tabular-nums text-muted-foreground">
+                              {formatNumber(clicks)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right tabular-nums">
+                              <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-foreground">
+                                {ctr}
+                              </span>
+                            </td>
+                          </>
+                        )}
+                        <td className="px-4 py-2.5 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Link
+                              href={`${routeUrl("admin.products.index")}?search=${encodeURIComponent(product.parent_sku)}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                              title="Kelola produk di panel admin"
+                            >
+                              Kelola
+                            </Link>
+                            <span className="text-muted-foreground/40">·</span>
+                            <a
+                              href={`/product/${product.parent_sku}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                              title="Buka tampilan etalase toko"
+                            >
+                              <Icon name="arrow-up-right" className="size-3" aria-hidden="true" />
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                Tidak ada data yang cocok dengan pencarian "{searchQueryInteraction}".
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border bg-muted/20 px-5 py-3 text-xs">
+            <span className="text-muted-foreground">
+              Menampilkan {interactionModalData.length} data produk
+            </span>
+            <Button size="sm" variant="secondary" onClick={() => setShowInteractionModal(false)}>
+              Tutup
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }
