@@ -509,24 +509,16 @@ function OrderCardRow({
             Catatan admin
           </p>
           {order.admin_notes?.trim() ? (
-            <div className="group/note rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-foreground">
-              <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                <span className="inline-flex items-center gap-1">
-                  <Icon name="clipboard-text" className="size-3" aria-hidden="true" />
-                  Catatan admin
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onEditNotes?.(order)}
-                  className="font-medium text-primary hover:underline"
-                >
-                  Edit
-                </button>
-              </div>
-              <p className="mt-1 line-clamp-4 break-words text-xs leading-relaxed text-foreground">
-                {order.admin_notes}
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={() => onEditNotes?.(order)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/25 dark:border-amber-500/40 dark:text-amber-300"
+              title="Klik untuk melihat catatan lengkap dan edit catatan"
+            >
+              <span className="size-2 rounded-full bg-amber-500 ring-2 ring-amber-400/40" />
+              <Icon name="clipboard-text" className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <span>Catatan admin</span>
+            </button>
           ) : (
             <button
               type="button"
@@ -771,28 +763,50 @@ export default function OrdersIndex({
   const [resiBusy, setResiBusy] = React.useState(false)
   const [resiError, setResiError] = React.useState<string | null>(null)
 
-  // Popup catatan internal admin langsung dari daftar
+  // Popup catatan internal admin langsung dari daftar: lihat lengkap & edit
   const [notesModalOrder, setNotesModalOrder] = React.useState<OrderCard | null>(null)
+  const [notesMode, setNotesMode] = React.useState<"view" | "edit">("view")
   const [notesText, setNotesText] = React.useState("")
   const [notesBusy, setNotesBusy] = React.useState(false)
 
   function openNotesModal(order: OrderCard) {
     setNotesModalOrder(order)
     setNotesText(order.admin_notes ?? "")
+    setNotesMode(order.admin_notes?.trim() ? "view" : "edit")
   }
 
   function submitAdminNotes(e: React.FormEvent) {
     e.preventDefault()
     if (!notesModalOrder) return
     setNotesBusy(true)
+    const nextNote = notesText.trim() || null
     router.put(
       routeUrl("admin.orders.admin-notes.update", { order: notesModalOrder.id }),
-      { admin_notes: notesText.trim() || null },
+      { admin_notes: nextNote },
       {
         preserveScroll: true,
         onSuccess: () => {
           setNotesModalOrder(null)
           setNotesText("")
+          setNotesMode("view")
+        },
+        onFinish: () => setNotesBusy(false),
+      },
+    )
+  }
+
+  function deleteAdminNotes() {
+    if (!notesModalOrder) return
+    setNotesBusy(true)
+    router.put(
+      routeUrl("admin.orders.admin-notes.update", { order: notesModalOrder.id }),
+      { admin_notes: null },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setNotesModalOrder(null)
+          setNotesText("")
+          setNotesMode("view")
         },
         onFinish: () => setNotesBusy(false),
       },
@@ -1283,13 +1297,13 @@ export default function OrdersIndex({
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
 
-      {/* Dialog Catatan Internal Admin: tambah & ubah catatan langsung dari daftar */}
+      {/* Dialog Catatan Internal Admin: lihat catatan lengkap & kelola langsung di popup */}
       <DialogPrimitive.Root open={Boolean(notesModalOrder)} onOpenChange={(open) => { if (!open) setNotesModalOrder(null) }}>
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <DialogPrimitive.Content
             className={cn(
-              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,32rem)] w-[min(calc(100%-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,34rem)] w-[min(calc(100%-2rem),30rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
               "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
             )}
             aria-describedby={undefined}
@@ -1313,69 +1327,97 @@ export default function OrdersIndex({
               </button>
             </div>
 
-            <form onSubmit={submitAdminNotes} className="p-5 space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="modal-admin-notes-textarea" className="text-xs font-semibold text-foreground">
-                  Catatan khusus internal (tidak terlihat oleh pembeli)
-                </label>
-                <textarea
-                  id="modal-admin-notes-textarea"
-                  rows={4}
-                  value={notesText}
-                  onChange={(e) => setNotesText(e.target.value)}
-                  placeholder="Tulis catatan internal untuk pesanan ini (mis. permintaan jadwal kirim khusus, DP transfer manual, verifikasi spesifikasi)..."
-                  className="w-full rounded-md border border-border bg-surface p-3 text-xs leading-5 text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-                  maxLength={5000}
-                  autoFocus
-                />
-              </div>
+            {notesMode === "view" ? (
+              <div className="p-5 space-y-4">
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    <Icon name="clipboard-text" className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                    <span>Isi Catatan Lengkap:</span>
+                  </div>
+                  <p className="mt-2.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground">
+                    {notesModalOrder?.admin_notes}
+                  </p>
+                </div>
 
-              <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
-                {notesModalOrder?.admin_notes?.trim() ? (
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:bg-destructive/10"
                     disabled={notesBusy}
-                    onClick={() => {
-                      setNotesText("")
-                      if (!notesModalOrder) return
-                      setNotesBusy(true)
-                      router.put(
-                        routeUrl("admin.orders.admin-notes.update", { order: notesModalOrder.id }),
-                        { admin_notes: null },
-                        {
-                          preserveScroll: true,
-                          onSuccess: () => setNotesModalOrder(null),
-                          onFinish: () => setNotesBusy(false),
-                        },
-                      )
-                    }}
+                    onClick={deleteAdminNotes}
                   >
                     Hapus Catatan
                   </Button>
-                ) : <div />}
 
-                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setNotesModalOrder(null)}
+                    >
+                      Tutup
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setNotesMode("edit")}
+                    >
+                      <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+                      Edit Catatan
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={submitAdminNotes} className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="modal-admin-notes-textarea" className="text-xs font-semibold text-foreground">
+                    {notesModalOrder?.admin_notes?.trim() ? "Edit Catatan Internal" : "Tulis Catatan Internal"}
+                  </label>
+                  <textarea
+                    id="modal-admin-notes-textarea"
+                    rows={5}
+                    value={notesText}
+                    onChange={(e) => setNotesText(e.target.value)}
+                    placeholder="Tulis catatan internal untuk pesanan ini (mis. permintaan jadwal kirim khusus, DP transfer manual, catatan spesifikasi khusus)..."
+                    className="w-full resize-none rounded-md border border-border bg-surface p-3 text-xs leading-5 text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    maxLength={5000}
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Catatan khusus internal tim admin dan gudang, tidak ditampilkan ke pembeli.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => setNotesModalOrder(null)}
+                    onClick={() => {
+                      if (notesModalOrder?.admin_notes?.trim()) {
+                        setNotesText(notesModalOrder.admin_notes)
+                        setNotesMode("view")
+                      } else {
+                        setNotesModalOrder(null)
+                      }
+                    }}
                   >
                     Batal
                   </Button>
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={notesBusy}
+                    disabled={notesBusy || !notesText.trim()}
                   >
                     {notesBusy ? "Menyimpan..." : "Simpan Catatan"}
                   </Button>
                 </div>
-              </div>
-            </form>
+              </form>
+            )}
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
