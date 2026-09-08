@@ -236,8 +236,8 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
   const previewRows = data.slice(0, 6)
 
   return (
-    <section className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
-      <div>
+    <section className="flex flex-col justify-between overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className="p-5 pb-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           <div>
             <h3 className="text-sm font-semibold tracking-tight text-foreground">Produk Berdasarkan Interaksi</h3>
@@ -268,12 +268,12 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
           <SellersList rows={previewRows} />
         )}
         {data.length === 0 ? (
-          <EmptyState className="min-h-24 border-0 bg-transparent" title="Belum ada data" description="Belum ada interaksi produk pada periode ini." />
+          <EmptyState className="min-h-24 border-0 bg-transparent py-8" title="Belum ada data" description="Belum ada interaksi produk pada periode ini." />
         ) : null}
       </div>
 
       {data.length > 0 ? (
-        <div className="mt-4 border-t border-border pt-3">
+        <div className="border-t border-border p-3">
           <Button
             type="button"
             variant="outline"
@@ -693,7 +693,9 @@ export default function StorePerformance({
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatCurrency(report.financial.net_revenue)}
             </p>
-            
+            <p className="mt-1 text-xs text-muted-foreground">
+              Gross: {formatCurrency(report.financial.gross_revenue)}
+            </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
             <span className="text-xs text-muted-foreground">vs periode lalu</span>
@@ -744,6 +746,9 @@ export default function StorePerformance({
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatCurrency(kpiMap["aov"]?.value ?? 0)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)} per unit
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -1203,7 +1208,7 @@ export default function StorePerformance({
                 <p className="mt-0.5 text-xs text-muted-foreground">Peringkat produk berdasarkan nilai omzet pesanan fulfillment.</p>
               </div>
               <span className="rounded bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
-                6 teratas
+                {Math.min(6, report.top_products.length)} teratas
               </span>
             </header>
             {report.top_products.length ? (
