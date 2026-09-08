@@ -867,7 +867,7 @@ export default function StorePerformance({
               ))}
 
               <div className="mt-3 flex items-center justify-between rounded-md bg-muted/40 p-2.5 border border-border">
-                <span className="text-xs font-bold text-foreground">= Penjualan Bersih</span>
+                <span className="text-xs font-bold text-foreground">Penjualan Bersih</span>
                 <span className="text-sm font-bold tabular-nums text-primary">{formatCurrency(report.financial.net_revenue)}</span>
               </div>
             </div>
