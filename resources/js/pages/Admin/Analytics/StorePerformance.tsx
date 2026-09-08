@@ -971,7 +971,7 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Kecepatan respon order masuk.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Kecepatan respon pesanan masuk.</p>
           </div>
         </div>
 
@@ -1143,10 +1143,10 @@ export default function StorePerformance({
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <p className="text-[11px] font-medium text-muted-foreground">Pelanggan Baru</p>
                 <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
-                <span className="text-[10px] text-muted-foreground">Order perdana</span>
+                <span className="text-[10px] text-muted-foreground">Pesanan perdana</span>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-[11px] font-medium text-muted-foreground">Order Ulang</p>
+                <p className="text-[11px] font-medium text-muted-foreground">Pesanan ulang</p>
                 <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
                 <span className="text-[10px] text-muted-foreground">Pelanggan repeat</span>
               </div>

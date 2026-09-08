@@ -125,7 +125,7 @@ export default function TrendChart<T extends { label: string; value: number }>({
               />
               <Bar
                 dataKey="value"
-                fill="hsl(var(--primary))"
+                fill="hsl(var(--sale))"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={36}
                 isAnimationActive={true}
@@ -163,7 +163,7 @@ export default function TrendChart<T extends { label: string; value: number }>({
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="hsl(var(--primary))"
+                stroke="hsl(var(--sale))"
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{
