@@ -199,7 +199,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Keep this literal path before the resource {product} route below.
     Route::get('kelola/produk/popularity-boosts', [ProductPopularityBoostController::class, 'index'])->name('products.popularity-boosts.index');
     Route::post('kelola/produk/popularity-boosts', [ProductPopularityBoostController::class, 'store'])->name('products.popularity-boosts.store');
-    Route::resource('kelola/produk', AdminProductController::class)->except(['destroy'])->names('products')->parameters(['produk' => 'product']);
+    Route::resource('kelola/produk', AdminProductController::class)->names('products')->parameters(['produk' => 'product']);
     Route::get('kelola/kategori', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('kelola/kategori/create', [CategoryController::class, 'create'])->name('categories.create');
     Route::post('kelola/kategori', [CategoryController::class, 'store'])->name('categories.store');
@@ -256,6 +256,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('media/{media}/restore', [ProductMediaController::class, 'restore'])->name('media.restore');
     Route::post('media/{media}/redownload', [ProductMediaController::class, 'redownload'])->name('media.redownload');
     Route::delete('media/{media}', [ProductMediaController::class, 'destroy'])->name('media.destroy');
+    Route::delete('media/assets/{asset}', [ProductMediaController::class, 'destroyAsset'])->name('media.assets.destroy');
     Route::get('media/{asset}/attach', [ProductMediaController::class, 'attachPage'])->name('media.attach.show');
     Route::post('media/{asset}/attach', [ProductMediaController::class, 'bulkAttach'])->name('media.attach');
     Route::post('media/bulk-action', [ProductMediaController::class, 'bulkAction'])->name('media.bulk-action');

@@ -3,6 +3,8 @@ import { Head, Link } from "@inertiajs/react"
 
 import AdminLayout from "@/layouts/admin-layout"
 import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { router } from "@inertiajs/react"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { routeUrl } from "@/lib/routes"
 
@@ -42,10 +44,12 @@ export default function MediaAttach({
   asset,
   usages,
   libraryHref,
+  destroyUrl,
 }: {
   asset: AttachAsset
   usages: Usage[]
   libraryHref: string
+  destroyUrl?: string
 }) {
   const [copied, setCopied] = React.useState(false)
   const meta = statusMeta(asset.status)
@@ -74,13 +78,26 @@ export default function MediaAttach({
               <span className="text-xs text-muted-foreground">#{asset.id}</span>
             </div>
             <p className="break-all font-mono text-xs text-muted-foreground">{asset.public_url}</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={copyUrl}>
                 {copied ? "Tersalin" : "Salin URL"}
               </Button>
               <Button asChild size="sm" variant="ghost">
                 <a href={asset.public_url} target="_blank" rel="noreferrer">Buka asli</a>
               </Button>
+              {usages.length === 0 && destroyUrl ? (
+                <ConfirmAction
+                  trigger={
+                    <Button type="button" size="sm" variant="destructive">
+                      Hapus berkas
+                    </Button>
+                  }
+                  title="Hapus berkas media?"
+                  description={`Aset "${asset.label}" tidak digunakan di produk mana pun dan akan dihapus permanen dari penyimpanan.`}
+                  confirmLabel="Hapus Permanen"
+                  onConfirm={() => router.delete(destroyUrl)}
+                />
+              ) : null}
             </div>
           </div>
         </div>

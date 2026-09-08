@@ -322,6 +322,7 @@ class ProductMediaController extends Controller
                 'visibility' => $m->visibility,
             ])->all(),
             'libraryHref' => route('admin.media.library'),
+            'destroyUrl' => route('media.assets.destroy', $asset),
         ]);
     }
 
@@ -411,6 +412,25 @@ class ProductMediaController extends Controller
         }
 
         return redirect()->back()->with('success', "{$deleted} aset dihapus, {$archived} diarsipkan, {$restored} dipulihkan.");
+    }
+
+    /**
+     * Hapus permanen aset tunggal dari Media Library (hanya jika tidak digunakan di mana pun).
+     */
+    public function destroyAsset(MediaAsset $asset): RedirectResponse
+    {
+        $usedElsewhere = ProductMedia::where('media_asset_id', $asset->id)->exists()
+            || \App\Models\CmsBanner::where('media_asset_id', $asset->id)->exists()
+            || \App\Models\CmsGalleryItem::where('media_asset_id', $asset->id)->exists();
+
+        if ($usedElsewhere) {
+            return redirect()->back()->with('error', 'Aset media tidak dapat dihapus karena masih digunakan oleh produk atau konten website. Lepaskan tautan terlebih dahulu.');
+        }
+
+        $this->deleteAssetFiles($asset);
+        $asset->delete();
+
+        return redirect()->route('admin.media.library')->with('success', 'Aset media berhasil dihapus permanen.');
     }
 
     /**

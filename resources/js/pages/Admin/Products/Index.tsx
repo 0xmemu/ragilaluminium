@@ -57,6 +57,7 @@ interface ProductCard {
   archive_url: string
   unarchive_url: string
   duplicate_url: string
+  destroy_url?: string
   public_href: string
 }
 
@@ -128,6 +129,26 @@ function ProductRowActions({
         >
           Salin
         </DropdownMenuItem>
+        {archived && product.destroy_url ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+              >
+                Hapus Permanen
+              </button>
+            }
+            title="Hapus permanen produk?"
+            description={`Produk "${product.name}" yang belum pernah memiliki pesanan akan dihapus permanen dari database. Aksi ini tidak dapat dibatalkan.`}
+            confirmLabel="Hapus Permanen"
+            onConfirm={() => {
+              router.delete(product.destroy_url!, {
+                preserveScroll: true,
+              })
+            }}
+          />
+        ) : null}
       </RowActionsMenu>
       {archived ? (
         <Button size="xs" disabled={busy} onClick={onUnarchive}>
@@ -192,7 +213,7 @@ function ProductListRow({
           <div className="min-w-0">
             <Link
               href={product.href}
-              className="line-clamp-2 text-[13px] font-medium leading-5 hover:text-primary"
+              className="line-clamp-2 text-[13px] font-normal leading-5 text-foreground hover:text-primary"
             >
               {product.name}
             </Link>
@@ -292,13 +313,34 @@ export default function ProductsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="secondary">
+            <a href={exportUrl}>Ekspor Produk ke Excel</a>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={importHref}>Import</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={importPerformanceHref}>Performa Import</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={mediaHref}>Media</Link>
+          </Button>
+          <Button asChild>
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Tambah produk
+            </Link>
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
       <ManageProductsTabs active="products" />
 
-      {/* Pencarian, filter kategori/model/status, dan aksi katalog */}
+      {/* Pencarian dan filter kategori/model/status */}
       <ListToolbar
         search={{
           value: q,
@@ -313,28 +355,6 @@ export default function ProductsIndex({
             </span>{" "}
             produk
           </span>
-        }
-        actions={
-          <>
-            <Button asChild variant="secondary">
-              <a href={exportUrl}>Ekspor Produk ke Excel</a>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href={importHref}>Import</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href={importPerformanceHref}>Performa Import</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href={mediaHref}>Media</Link>
-            </Button>
-            <Button asChild>
-              <Link href={createHref}>
-                <Icon name="plus" className="size-4" aria-hidden="true" />
-                Tambah produk
-              </Link>
-            </Button>
-          </>
         }
         className="mb-4"
       >

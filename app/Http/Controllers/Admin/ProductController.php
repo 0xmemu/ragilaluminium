@@ -888,6 +888,37 @@ class ProductController extends Controller
             ->with('success', 'Produk dipulihkan.');
     }
 
+    /**
+     * Hapus permanen produk (hanya untuk produk yang belum pernah memiliki transaksi/pesanan).
+     */
+    public function destroy(Product $product): RedirectResponse
+    {
+        // Guard rail 1: Cek apakah ada riwayat pesanan yang merujuk ke produk atau variannya
+        $variantIds = $product->variants()->pluck('id')->all();
+        $hasOrders = \App\Models\OrderItem::where('product_id', $product->id)
+            ->when($variantIds !== [], fn ($q) => $q->orWhereIn('product_variant_id', $variantIds))
+            ->exists();
+
+        if ($hasOrders) {
+            return redirect()->back()->with('error', 'Produk tidak dapat dihapus permanen karena memiliki riwayat transaksi pesanan. Silakan gunakan opsi Arsipkan.');
+        }
+
+        // Guard rail 2: Hanya boleh hapus jika statusnya archived (mencegah penghapusan produk aktif secara keliru)
+        if ($product->status === 'active') {
+            return redirect()->back()->with('error', 'Arsipkan produk terlebih dahulu sebelum menghapus permanen.');
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($product): void {
+            $product->media()->delete();
+            $product->attributes()->delete();
+            $product->variants()->delete();
+            $product->delete();
+        });
+
+        return redirect()->route('admin.products.index')
+            ->with('success', 'Produk berhasil dihapus permanen.');
+    }
+
     /** @return array<string, mixed> */
     private function productCard(Product $product): array
     {
@@ -921,6 +952,7 @@ class ProductController extends Controller
             'archive_url' => route('admin.products.archive', $product),
             'unarchive_url' => route('admin.products.unarchive', $product),
             'duplicate_url' => route('admin.products.duplicate', $product),
+            'destroy_url' => route('admin.products.destroy', $product),
             'public_href' => route('product.show', $product->parent_sku),
         ];
     }
