@@ -117,6 +117,11 @@ final class MediaAssetResolver
             return null;
         }
 
+        // Cek DB dulu: jika sudah tercatat sebagai MediaAsset ready, valid & hemat S3 API call.
+        if (MediaAsset::where('object_key', $path)->where('status', 'ready')->exists()) {
+            return $path;
+        }
+
         // Pastikan file benar-benar ada di disk sebelum dianggap internal;
         // URL internal yang menunjuk file yang tidak ada = tidak valid.
         if (! \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->exists($path)) {

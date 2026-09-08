@@ -330,6 +330,7 @@ class ImportJobController extends Controller
         $resolver = app(\App\Services\MediaAssetResolver::class);
         $diffs = [];
         $lastSeenName = '';
+        $mediaUrlCache = [];
         foreach ($rows as $index => $row) {
             $rowName = trim((string) ($row['name'] ?? ''));
             $hasOptions = trim((string) ($row['option_1'] ?? '')) !== '';
@@ -367,6 +368,13 @@ class ImportJobController extends Controller
             $mediaStats = ['internal' => 0, 'external' => 0, 'invalid' => 0];
             $mediaDetail = [];
             foreach ($imageUrls as $u) {
+                if (isset($mediaUrlCache[$u])) {
+                    $cls = $mediaUrlCache[$u];
+                    $mediaStats[$cls]++;
+                    $mediaDetail[] = ['url' => $u, 'class' => $cls];
+                    continue;
+                }
+
                 $objKey = null;
                 try {
                     $objKey = $resolver->internalObjectKeyPublic($u);
@@ -374,22 +382,14 @@ class ImportJobController extends Controller
                     $objKey = null;
                 }
                 if ($objKey !== null) {
-                    $onDisk = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->exists($objKey);
-                    $cls = $onDisk ? 'internal' : 'invalid';
-                    if ($onDisk) {
-                        $mediaStats['internal']++;
-                    } else {
-                        $mediaStats['invalid']++;
-                    }
+                    $cls = 'internal';
+                    $mediaStats['internal']++;
                 } else {
                     $valid = filter_var($u, FILTER_VALIDATE_URL) && (bool) parse_url($u, PHP_URL_HOST);
                     $cls = $valid ? 'external' : 'invalid';
-                    if ($valid) {
-                        $mediaStats['external']++;
-                    } else {
-                        $mediaStats['invalid']++;
-                    }
+                    $mediaStats[$cls]++;
                 }
+                $mediaUrlCache[$u] = $cls;
                 $mediaDetail[] = ['url' => $u, 'class' => $cls];
             }
 
