@@ -566,6 +566,7 @@ export default function StorePerformance({
           {/* Sisi Kiri: Ringkasan Rentang Periode */}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Periode Analisis:</span>
               <span className="text-sm font-semibold tracking-tight text-foreground">{report.range.label}</span>
               <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
             </div>
