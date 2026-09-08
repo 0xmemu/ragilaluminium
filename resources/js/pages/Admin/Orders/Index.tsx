@@ -805,41 +805,49 @@ export default function OrdersIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      {/* Tabs status - segmented control ala AI app */}
-      <div className="mb-4 scrollbar-none overflow-x-auto">
-        <div
-          className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1"
-          role="tablist"
-          aria-label="Filter status pesanan"
-        >
-          {tabs.map((tab) => {
-            const active = tab.key === activeStatus
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => visit({ order_status: tab.key, older_than: undefined })}
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition",
-                  active
-                    ? "bg-foreground text-background shadow-xs font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                )}
-              >
-                {tab.label}
-                <span
+      {/* Tabs status pesanan + Ringkasan Pesanan & Nilai sejajar di kanan */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="scrollbar-none overflow-x-auto">
+          <div
+            className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1"
+            role="tablist"
+            aria-label="Filter status pesanan"
+          >
+            {tabs.map((tab) => {
+              const active = tab.key === activeStatus
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => visit({ order_status: tab.key, older_than: undefined })}
                   className={cn(
-                    "tabular-nums rounded-full px-1.5 py-px text-[11px] font-semibold",
-                    active ? "bg-background/20 text-background" : "bg-muted text-muted-foreground",
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition",
+                    active
+                      ? "bg-foreground text-background shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                   )}
                 >
-                  {formatNumber(tab.count)}
-                </span>
-              </button>
-            )
-          })}
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "tabular-nums rounded-full px-1.5 py-px text-[11px] font-semibold",
+                      active ? "bg-background/20 text-background" : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {formatNumber(tab.count)}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
+          <span>Ditemukan: <strong className="tabular-nums font-semibold text-foreground">{formatNumber(summary.count)}</strong> pesanan</span>
+          <span className="text-muted-foreground/60">·</span>
+          <span>Total Nilai: <strong className="tabular-nums font-semibold text-foreground">{formatCurrency(summary.total_value)}</strong></span>
         </div>
       </div>
 
@@ -981,47 +989,37 @@ export default function OrdersIndex({
           </div>
         ) : null}
 
-        {/* Baris Ringkasan Hasil & Filter Aktif */}
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-          {activeFilters.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
-              <span className="font-medium text-muted-foreground">
-                Filter Aktif:
-              </span>
-              {activeFilters.map((filter) => (
-                <span
-                  key={filter.label}
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-foreground"
-                >
-                  {filter.label}
-                  <button
-                    type="button"
-                    onClick={filter.clear}
-                    className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-                    aria-label={`Hapus filter ${filter.label}`}
-                  >
-                    <Icon name="x" className="size-3" aria-hidden="true" />
-                  </button>
-                </span>
-              ))}
-              <button
-                type="button"
-                onClick={resetAllFilters}
-                className="ml-1 text-xs font-medium text-primary hover:underline"
+        {/* Baris Filter Aktif (hanya tampil jika ada filter aktif) */}
+        {activeFilters.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs" aria-label="Filter aktif">
+            <span className="font-medium text-muted-foreground">
+              Filter Aktif:
+            </span>
+            {activeFilters.map((filter) => (
+              <span
+                key={filter.label}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-foreground"
               >
-                Reset Semua
-              </button>
-            </div>
-          ) : (
-            <div />
-          )}
-
-          <div className="inline-flex items-center gap-2 rounded-md border border-border/80 bg-surface px-3 py-1 text-xs text-muted-foreground">
-            <span>Ditemukan: <strong className="tabular-nums text-foreground">{formatNumber(summary.count)}</strong> pesanan</span>
-            <span>·</span>
-            <span>Total Nilai: <strong className="tabular-nums text-foreground">{formatCurrency(summary.total_value)}</strong></span>
+                {filter.label}
+                <button
+                  type="button"
+                  onClick={filter.clear}
+                  className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                  aria-label={`Hapus filter ${filter.label}`}
+                >
+                  <Icon name="x" className="size-3" aria-hidden="true" />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="ml-1 text-xs font-medium text-primary hover:underline"
+            >
+              Reset Semua
+            </button>
           </div>
-        </div>
+        ) : null}
 
         {orders.length ? (
           <>
