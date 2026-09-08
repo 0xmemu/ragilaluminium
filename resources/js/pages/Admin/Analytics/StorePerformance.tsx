@@ -708,11 +708,11 @@ export default function StorePerformance({
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm">
           <div>
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-muted-foreground">Rata-rata Order (AOV)</p>
+              <p className="text-xs font-semibold text-muted-foreground">Rata-rata Nilai Pesanan</p>
               <TooltipProvider>
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan AOV">
+                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Penjelasan rata-rata nilai pesanan">
                       <Icon name="circle-help" className="size-3.5" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
@@ -816,7 +816,7 @@ export default function StorePerformance({
               </div>
 
               {[
-                { label: "↳ Titipan Ongkir J&T Cargo (Raw)", val: report.financial.shipping_raw ?? 0 },
+                { label: "↳ Titipan Ongkir J&T Cargo", val: report.financial.shipping_raw ?? 0 },
                 { label: "↳ Titipan Biaya Layanan COD J&T", val: report.financial.cod_fee ?? 0 },
                 { label: "↳ Subsidi Ongkir Ditanggung Toko", val: report.financial.shipping_subsidy ?? 0 },
                 { label: "↳ Refund Kasus Retur Selesai", val: report.financial.refund_adjustments ?? 0 },
@@ -1110,7 +1110,7 @@ export default function StorePerformance({
                     <tr>
                       <th className="px-4 py-2">Nama Produk</th>
                       <th className="px-3 py-2 text-right">Unit</th>
-                      <th className="px-3 py-2 text-right">Order</th>
+                      <th className="px-3 py-2 text-right">Pesanan</th>
                       <th className="px-4 py-2 text-right">Omzet</th>
                     </tr>
                   </thead>
@@ -1387,9 +1387,9 @@ export default function StorePerformance({
               {/* Tab Selector di dalam Modal */}
               <div className="flex gap-1">
                 {([
-                  ["viewed", "Paling Dilihat (Views)"],
-                  ["clicked", "Paling Diklik (Clicks)"],
-                  ["sellers", "Terlaris (Best Sellers)"],
+                  ["viewed", "Paling Dilihat"],
+                  ["clicked", "Paling Diklik"],
+                  ["sellers", "Terlaris"],
                 ] as const).map(([key, label]) => (
                   <button
                     key={key}
@@ -1435,8 +1435,8 @@ export default function StorePerformance({
                       </>
                     ) : (
                       <>
-                        <th className="px-4 py-2.5 text-right">Tampilan (Views)</th>
-                        <th className="px-4 py-2.5 text-right">Klik (Clicks)</th>
+                        <th className="px-4 py-2.5 text-right">Dilihat</th>
+                        <th className="px-4 py-2.5 text-right">Diklik</th>
                         <th className="px-4 py-2.5 text-right">Rasio Klik / Lihat</th>
                       </>
                     )}
