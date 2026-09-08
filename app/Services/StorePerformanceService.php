@@ -172,7 +172,7 @@ class StorePerformanceService
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
 
         $salesKpis = [
-            $this->kpi('omzet', 'Omset', $current['revenue'], $previous['revenue'], 'currency'),
+            $this->kpi('omzet', 'Omzet', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
             $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
             $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number'),
@@ -296,7 +296,7 @@ class StorePerformanceService
             'charts' => [
                 [
                     'key' => 'revenue',
-                    'title' => 'Tren Omset',
+                    'title' => 'Tren Omzet',
                     'total' => $current['revenue'],
                     'total_format' => 'currency',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'revenue'),
@@ -310,7 +310,7 @@ class StorePerformanceService
                 ],
                 [
                     'key' => 'conversion_rate',
-                    'title' => 'Tren Pengunjung yang Membeli',
+                    'title' => 'Tren Konversi',
                     'total' => $current['conversion_rate'],
                     'total_format' => 'number',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'conversion_rate'),

@@ -250,10 +250,10 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
                 type="button"
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition",
                   tab === t.key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/70",
+                    ? "bg-foreground text-background shadow-xs font-semibold"
+                    : "bg-surface text-muted-foreground hover:text-foreground border border-border",
                 )}
               >
                 {t.label}
@@ -1130,24 +1130,32 @@ export default function StorePerformance({
             {/* Sub-section A: Kunjungan & Retensi Pelanggan */}
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-xs font-medium text-muted-foreground">Pengunjung Unik</p>
-                <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
-                <span className="text-[11px] text-muted-foreground">IP/sesi unik</span>
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">Pengunjung Unik</span>
+                  <MetricHint text="Jumlah pengunjung fisik unik (berdasarkan IP dan sesi) yang mengakses toko." />
+                </div>
+                <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-xs font-medium text-muted-foreground">Pelanggan Baru</p>
-                <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
-                <span className="text-[11px] text-muted-foreground">Pesanan perdana</span>
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">Pelanggan Baru</span>
+                  <MetricHint text="Jumlah pelanggan yang baru pertama kali melakukan pemesanan pada toko." />
+                </div>
+                <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-xs font-medium text-muted-foreground">Pesanan ulang</p>
-                <p className="mt-1 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
-                <span className="text-[11px] text-muted-foreground">Pelanggan repeat</span>
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">Pesanan Ulang</span>
+                  <MetricHint text="Jumlah pelanggan yang melakukan pemesanan lebih dari satu kali." />
+                </div>
+                <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <p className="text-xs font-medium text-muted-foreground">Rasio Repeat</p>
-                <p className="mt-1 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
-                <span className="text-[11px] text-muted-foreground">Retensi pembeli</span>
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">Rasio Repeat</span>
+                  <MetricHint text="Persentase pesanan dari pelanggan setia dibanding total pembeli." />
+                </div>
+                <p className="mt-1.5 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
               </div>
             </div>
 
@@ -1445,10 +1453,10 @@ export default function StorePerformance({
                     type="button"
                     onClick={() => setModalInteractionTab(key)}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                      "rounded-md px-3 py-1.5 text-xs font-medium transition",
                       modalInteractionTab === key
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/70",
+                        ? "bg-foreground text-background shadow-xs font-semibold"
+                        : "bg-surface text-muted-foreground hover:text-foreground border border-border",
                     )}
                   >
                     {label}
