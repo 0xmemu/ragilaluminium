@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { router } from "@inertiajs/react"
@@ -85,8 +86,26 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
       title={`Import #${job.id}`}
       description={job.file}
       actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          {job.failed_rows > 0 ? (
+            <Button asChild variant="secondary" size="sm">
+              <a href={routeUrl("admin.imports.correction-file", { import_job: job.id })} className="inline-flex items-center gap-1.5">
+                <Icon name="download" className="size-3.5" aria-hidden="true" />
+                <span>Unduh Berkas Koreksi</span>
+              </a>
+            </Button>
+          ) : null}
+          <Button asChild variant="secondary" size="sm">
             <Link href={routeUrl("admin.imports.index")}>Riwayat import</Link>
           </Button>
         </div>

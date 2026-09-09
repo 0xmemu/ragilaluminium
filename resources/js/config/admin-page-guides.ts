@@ -98,6 +98,33 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Batas baris per file import adalah 50.000 baris.",
     ],
   },
+  "admin.imports.create": {
+    title: "Mulai Import",
+    summary: "Form unggah berkas Excel untuk import katalog baru atau pembaruan massal.",
+    steps: [
+      "Pilih jenis import: Import Katalog, Update Harga & Stok, atau Update Media.",
+      "Unduh template Excel resmi melalui tombol di kanan atas.",
+      "Unggah berkas Excel yang sudah diisi lalu tekan Periksa file untuk validasi awal.",
+      "Setelah verifikasi lolos, tombol Mulai Import akan aktif untuk memulai proses.",
+    ],
+    notes: [
+      "Tombol Mulai Import hanya aktif jika berkas berhasil diverifikasi via Periksa file.",
+      "Format berkas harus sesuai template resmi tanpa mengubah urutan kolom.",
+    ],
+  },
+  "admin.imports.show": {
+    title: "Detail Import",
+    summary: "Pemantauan langsung proses import produk, varian, dan media.",
+    steps: [
+      "Perhatikan bilah kemajuan (progress bar) yang diperbarui secara langsung.",
+      "Tinjau jumlah produk dan baris kombinasi yang berhasil diimpor.",
+      "Jika ada produk yang tersimpan sebagai arsip, lengkapi data melalui tautan yang tersedia.",
+    ],
+    notes: [
+      "Halaman menyegarkan data progres otomatis selama proses import berlangsung.",
+      "Seluruh transaksi import dibungkus proteksi database untuk mencegah data rusak.",
+    ],
+  },
   "admin.shipping.index": {
     title: "Pengiriman",
     summary: "Pantau status pengiriman semua pesanan yang sudah memiliki resi.",
