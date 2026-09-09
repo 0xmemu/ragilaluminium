@@ -371,7 +371,7 @@ class WhatsAppService
 
     protected function toBaileysChatId(string $phone): string
     {
-        return $phone.'@c.us';
+        return $phone.'@s.whatsapp.net';
     }
 
     protected function normalizeBaileysPhone(?string $chatId): ?string
