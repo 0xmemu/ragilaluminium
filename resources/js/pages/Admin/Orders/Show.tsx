@@ -1551,29 +1551,7 @@ export default function OrderShow({
         return <ReturnCasePanel order={order} cases={cases} eligibility={elig} />
       })()}
 
-      {/* Banner Catatan Admin jika ada */}
-      {order.admin_notes?.trim() ? (
-        <div className="mt-4 flex items-start justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
-          <div className="flex items-start gap-2">
-            <Icon name="clipboard-text" className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-            <div>
-              <span className="font-semibold text-amber-800 dark:text-amber-300">Catatan admin: </span>
-              <span className="text-foreground whitespace-pre-wrap">{order.admin_notes}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setNotesMode("edit")
-              setNotesText(order.admin_notes ?? "")
-              setNotesModalOpen(true)
-            }}
-            className="shrink-0 font-medium text-amber-700 hover:underline dark:text-amber-300"
-          >
-            Ubah
-          </button>
-        </div>
-      ) : null}
+
 
       {/* Konten utama membentang penuh tanpa aside sempit */}
       <div className="mt-4 space-y-4">
