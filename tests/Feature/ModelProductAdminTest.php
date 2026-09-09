@@ -57,6 +57,36 @@ class ModelProductAdminTest extends TestCase
                 ->where('rows.0.archived_count', 1)
                 ->where('rows.0.sub_model_count', 2));
 
+        // Kontrak owner 2026-09-10: wadah kosong (0 produk aktif) tidak tampil
+        // di storefront. Model dengan produk tetap tampil.
+        CmsModelProduct::create([
+            'name' => 'Jendela Aluminium Kaca Mati',
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
+            'status' => 'active',
+            'sort_order' => 9,
+        ]);
+
+        $pairOf = fn (array $card) => strtoupper((string) $card['category']).'|'.strtoupper((string) $card['model']);
+
+        $cards = app(\App\Services\ModelProductService::class)->storefrontCards();
+        $this->assertContains('JENDELA|SLIDING', array_map($pairOf, $cards));
+        $this->assertNotContains('JENDELA|KACA_MATI', array_map($pairOf, $cards));
+
+        // Begitu wadah terisi produk aktif, kartu otomatis tampil.
+        Product::create([
+            'parent_sku' => 'WIN-MOD-3',
+            'name' => 'Jendela Kaca Mati 1',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $cardsAfter = app(\App\Services\ModelProductService::class)->storefrontCards();
+        $this->assertContains('JENDELA|KACA_MATI', array_map($pairOf, $cardsAfter));
+
         $item = CmsModelProduct::query()->first();
         $this->actingAs($admin)
             ->put(route('admin.model-products.reorder'), [

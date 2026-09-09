@@ -203,7 +203,9 @@ class ModelProductService
             $count = $design === null
                 ? (int) ($stats[$key]['active_count'] ?? 0)
                 : (int) (clone $productQuery)->count();
-            if ($design && $count === 0) {
+            // Kontrak owner 2026-09-10: Model Produk adalah wadah produk. Wadah
+            // tanpa isi (0 produk aktif) tidak masuk akal ditampilkan — skip.
+            if ($count === 0) {
                 continue;
             }
             $designs = $stats[$key]['designs'] ?? [];
@@ -326,6 +328,11 @@ class ModelProductService
             }
 
             $key = $this->pairKey($row->product_category, $row->product_model);
+            // Kontrak owner 2026-09-10: wadah kosong (0 produk aktif) tidak
+            // ditampilkan di menu kategori juga.
+            if ((int) ($stats[$key]['active_count'] ?? 0) === 0) {
+                continue;
+            }
             $designCodes = $stats[$key]['design_codes'] ?? [];
 
             $categorySlug = CategoryUrl::categoryToSlug((string) $row->product_category);
