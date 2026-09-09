@@ -18,7 +18,7 @@ class OrderStateMachine
         'delivered' => ['completed', 'issue', 'return_in_process'],
         'issue' => ['processing', 'shipped', 'delivered'],
         'return_in_process' => ['completed', 'issue', 'return_completed'],
-        // Retur Selesai: terminal — pesanan ditutup sebagai retur (tab "Retur Selesai").
+        // Retur Selesai: terminal , pesanan ditutup sebagai retur (tab "Retur Selesai").
         'return_completed' => [],
         'completed' => ['return_in_process'],
         'cancelled' => [],
@@ -31,7 +31,7 @@ class OrderStateMachine
 
     /** @var array<string, list<string>> */
     private const SHIPPING_TRANSITIONS = [
-        // Pipeline tracking J&T — status internal sesuai docs open.jtcargo.co.id
+        // Pipeline tracking J&T , status internal sesuai docs open.jtcargo.co.id
         // (orderStatus 100-105 + scanType 1/3/4/5/10/11/12/13 + scanTypeCode 100/101)
         'tracking_pending' => ['picked_up', 'in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
         'picked_up' => ['in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
