@@ -197,25 +197,38 @@ export function ShippingTrackPanel({
       ) : null}
 
       {timeline && timeline.length > 0 && !embedded ? (
-        <ol className="space-y-3 border-t border-border pt-3">
-          {timeline.map((entry, index) => (
-            <li key={`${entry.at ?? "t"}-${index}`} className="relative pl-5">
-              <span
-                aria-hidden="true"
+        <div className="border-t border-border pt-3.5 space-y-2">
+          <p className="text-xs font-semibold text-foreground">Riwayat Pelacakan J&T</p>
+          <ol className="relative space-y-3.5 pt-1">
+            {timeline.map((entry, index) => (
+              <li
+                key={`${entry.at ?? "t"}-${index}`}
                 className={cn(
-                  "absolute left-0 top-1.5 size-2 rounded-full",
-                  index === 0 ? "bg-primary" : "bg-border",
+                  "relative pl-6 text-xs",
+                  index !== timeline.length - 1 && "before:absolute before:left-[5px] before:top-2.5 before:bottom-[-14px] before:w-0.5 before:bg-border",
                 )}
-              />
-              <p className="text-xs font-semibold text-foreground">{entry.message}</p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground/80">
-                {[entry.location, entry.at ? formatDateTime(entry.at) : null]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </li>
-          ))}
-        </ol>
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute top-1.5 rounded-full transition",
+                    index === 0
+                      ? "left-0 size-3 bg-primary ring-4 ring-primary/20"
+                      : "left-[1px] size-2.5 bg-muted-foreground/40",
+                  )}
+                />
+                <p className={cn("text-xs leading-snug", index === 0 ? "font-semibold text-foreground" : "font-normal text-foreground/90")}>
+                  {entry.message}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {[entry.location, entry.at ? formatDateTime(entry.at) : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
       ) : null}
 
       <p className="text-[11px] leading-5 text-muted-foreground">

@@ -1515,6 +1515,17 @@ export default function OrderShow({
                 onCancel={() => setEditing(false)}
               />
             ) : null}
+
+            {order.notes?.trim() ? (
+              <div className="border-t border-border bg-amber-500/10 px-5 py-3 text-xs">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
+                  <Icon name="message-square" className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                  <span>Catatan Khusus dari Pembeli:</span>
+                </div>
+                <p className="mt-1 whitespace-pre-wrap leading-relaxed text-foreground">{order.notes}</p>
+              </div>
+            ) : null}
+
             <dl id="biaya-ongkir" className="scroll-mt-20 space-y-2 border-t border-border bg-muted/40 px-5 py-4 text-[13px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total produk</dt>
@@ -1575,16 +1586,18 @@ export default function OrderShow({
                 </div>
               ) : null}
               <div className="flex justify-between gap-3 border-t border-border pt-2.5 text-sm">
-                <dt className="font-semibold">{isCod ? "Total tagihan COD" : "Total tagihan"}</dt>
+                <dt className="font-semibold">{isCod ? "Total tagihan (COD)" : "Total tagihan"}</dt>
                 <dd className="tabular-nums font-semibold">{formatCurrency(order.total_amount)}</dd>
               </div>
             </dl>
           </SectionCard>
 
+        </div>
+
+        <aside className="space-y-4">
           <SectionCard title="Status pengiriman">
             <section ref={lacakRef} id="lacak-pesanan">
               <ShippingTrackPanel
-                embedded
                 track={
                   tracking ?? {
                     shipping_status: order.shipping_status,
@@ -1609,90 +1622,96 @@ export default function OrderShow({
             </section>
           </SectionCard>
 
-        </div>
-
-        <aside className="space-y-3">
-          <div className="rounded-lg border border-border bg-card">
-
-            {/* Catatan pembeli */}
-            <div className="border-b border-border px-4 py-3">
-              <p className="text-xs font-medium text-muted-foreground">Catatan pembeli</p>
-              <p className="mt-1 whitespace-pre-wrap text-[13px] leading-5 text-foreground">
-                {order.notes?.trim() || "Tidak ada catatan dari pembeli."}
-              </p>
+          {/* Catatan Internal Admin */}
+          <div className="rounded-lg border border-border bg-card p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+                <Icon name="clipboard-text" className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                Catatan Internal Admin
+              </span>
+              {order.admin_notes?.trim() && !editingNotes ? (
+                <button
+                  type="button"
+                  onClick={() => setEditingNotes(true)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Edit
+                </button>
+              ) : null}
             </div>
 
-            {/* Catatan internal */}
-            <div className="border-b border-border px-4 py-3 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Catatan internal</p>
-              {order.admin_notes?.trim() && !editingNotes ? (
-                <div className="space-y-2">
-                  <p className="whitespace-pre-wrap text-[13px] leading-5 text-foreground">
-                    {order.admin_notes}
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setEditingNotes(true)}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Textarea
-                    rows={3}
-                    value={adminNotes}
-                    onChange={(event) => setAdminNotes(event.target.value)}
-                    placeholder="Tulis catatan internal untuk pesanan ini…"
-                    maxLength={5000}
-                  />
+            {order.admin_notes?.trim() && !editingNotes ? (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+                <p className="whitespace-pre-wrap leading-relaxed text-foreground">
+                  {order.admin_notes}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Textarea
+                  rows={3}
+                  value={adminNotes}
+                  onChange={(event) => setAdminNotes(event.target.value)}
+                  placeholder="Tulis catatan internal (hanya untuk tim admin & gudang)..."
+                  maxLength={5000}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  {order.admin_notes?.trim() ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 text-xs"
+                      disabled={adminNotesBusy}
+                      onClick={() => {
+                        setAdminNotes("")
+                        saveAdminNotes("")
+                        setEditingNotes(false)
+                      }}
+                    >
+                      Hapus
+                    </Button>
+                  ) : <div />}
                   <div className="flex items-center gap-2">
+                    {order.admin_notes?.trim() ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          setEditingNotes(false)
+                          setAdminNotes(order.admin_notes ?? "")
+                        }}
+                      >
+                        Batal
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
                       size="sm"
-                      disabled={adminNotesBusy}
-                      onClick={() => { saveAdminNotes(adminNotes); setEditingNotes(false); }}
+                      className="text-xs"
+                      disabled={adminNotesBusy || (!adminNotes.trim() && !order.admin_notes)}
+                      onClick={() => {
+                        saveAdminNotes(adminNotes)
+                        setEditingNotes(false)
+                      }}
                     >
-                      {adminNotesBusy ? "Menyimpan..." : (order.admin_notes?.trim() ? "Simpan" : "Tambah")}
+                      {adminNotesBusy ? "Menyimpan..." : (order.admin_notes?.trim() ? "Simpan" : "Simpan Catatan")}
                     </Button>
-                    {order.admin_notes?.trim() ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={adminNotesBusy}
-                          onClick={() => { setAdminNotes(""); saveAdminNotes(""); setEditingNotes(false); }}
-                        >
-                          Hapus
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => { setEditingNotes(false); setAdminNotes(order.admin_notes ?? ""); }}
-                        >
-                          Batal
-                        </Button>
-                      </>
-                    ) : null}
                   </div>
                 </div>
-              )}
-            </div>
-
-            {isCod && order.order_status === "delivered" ? (
-              <div className="border-b border-border px-4 py-3">
-                <p className="rounded border border-warning/25 bg-warning/10 px-3 py-2 text-[11px] leading-4 text-warning-foreground">
-                  Paket diterima - pastikan COD sudah dikonfirmasi.
-                </p>
               </div>
-            ) : null}
-
-
+            )}
           </div>
+
+          {isCod && order.order_status === "delivered" ? (
+            <div className="rounded-lg border border-warning/25 bg-warning/10 p-3">
+              <p className="text-xs leading-5 text-warning-foreground">
+                Paket diterima. Pastikan pembayaran COD sudah disetorkan oleh kurir.
+              </p>
+            </div>
+          ) : null}
         </aside>
       </div>
       {printing ? (
