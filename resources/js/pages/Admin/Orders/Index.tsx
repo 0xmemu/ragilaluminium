@@ -217,11 +217,11 @@ function OrderListColumnHeader() {
         <span>Produk</span>
         <span>Subtotal</span>
       </div>
-      <span>Status pesanan</span>
-      <span>Pembayaran</span>
-      <span>Pengiriman</span>
-      <span>Update terakhir</span>
-      <span>Catatan admin</span>
+      <span className="text-center">Status pesanan</span>
+      <span className="text-center">Pembayaran</span>
+      <span className="text-center">Pengiriman</span>
+      <span className="text-center">Update terakhir</span>
+      <span className="text-center">Catatan admin</span>
       <span className="text-right">Aksi</span>
     </div>
   )
@@ -405,16 +405,16 @@ function OrderCardRow({
           ) : null}
         </div>
 
-        {/* Kolom 2: Status Pesanan */}
-        <div className="min-w-0 pt-3 xl:pt-0">
+        {/* Kolom 2: Status Pesanan (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Status pesanan
           </p>
           <StatusBadge status={order.order_status} />
         </div>
 
-        {/* Kolom 3: Pembayaran */}
-        <div className="min-w-0 pt-3 xl:pt-0">
+        {/* Kolom 3: Pembayaran (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Pembayaran
           </p>
@@ -437,8 +437,8 @@ function OrderCardRow({
           </p>
         </div>
 
-        {/* Kolom 4: Pengiriman */}
-        <div className="min-w-0 pt-3 xl:pt-0">
+        {/* Kolom 4: Pengiriman (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Pengiriman
           </p>
@@ -446,7 +446,7 @@ function OrderCardRow({
             {order.shipping_track?.carrier_name || "Pengiriman"}
           </p>
           {order.shipping_track?.waybill_number ? (
-            <div className="mt-0.5 flex items-center gap-1">
+            <div className="mt-0.5 flex items-center justify-center gap-1">
               <span className="font-mono text-xs text-foreground font-medium">
                 {order.shipping_track.waybill_number}
               </span>
@@ -456,7 +456,7 @@ function OrderCardRow({
             <p className="mt-0.5 text-xs text-muted-foreground">Belum ada resi</p>
           )}
           {order.shipping_track?.latest_message ? (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground max-w-[14rem]">
               {order.shipping_track.latest_message}
             </p>
           ) : null}
@@ -465,7 +465,7 @@ function OrderCardRow({
               href={order.shipping_track.tracking_url}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              className="mt-1 inline-flex items-center justify-center gap-1 text-xs text-primary hover:underline"
             >
               Lacak
               <Icon name="external-link" className="size-3" aria-hidden="true" />
@@ -473,8 +473,8 @@ function OrderCardRow({
           ) : null}
         </div>
 
-        {/* Kolom 5: Usia Pesanan / Update Terakhir */}
-        <div className="min-w-0 pt-3 xl:pt-0">
+        {/* Kolom 5: Usia Pesanan / Update Terakhir (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Update terakhir
           </p>
@@ -486,8 +486,8 @@ function OrderCardRow({
           </p>
         </div>
 
-        {/* Kolom 6: Catatan Admin (Tepat di sebelah kiri tombol aksi) */}
-        <div className="min-w-0 pt-3 xl:pt-0">
+        {/* Kolom 6: Catatan Admin (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Catatan admin
           </p>
@@ -495,7 +495,7 @@ function OrderCardRow({
             <button
               type="button"
               onClick={() => onEditNotes?.(order)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/25 dark:border-amber-500/40 dark:text-amber-300"
+              className="flex w-full max-w-[140px] items-center justify-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/25 dark:border-amber-500/40 dark:text-amber-300"
               title="Klik untuk melihat catatan lengkap dan edit catatan"
             >
               <Icon name="clipboard-text" className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
@@ -505,7 +505,7 @@ function OrderCardRow({
             <button
               type="button"
               onClick={() => onEditNotes?.(order)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-surface/60 px-2.5 py-2 text-xs text-muted-foreground transition hover:border-primary/60 hover:bg-muted hover:text-foreground"
+              className="flex w-full max-w-[140px] items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-surface/60 px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-primary/60 hover:bg-muted hover:text-foreground"
               title="Tambah catatan internal admin"
             >
               <Icon name="plus" className="size-3 text-muted-foreground" aria-hidden="true" />
