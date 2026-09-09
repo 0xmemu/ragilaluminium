@@ -75,7 +75,7 @@ class VoucherController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateVoucher($request);
-        $userId = (int) $request->user()->id;
+        $userId = $request->user() ? (int) $request->user()->id : null;
 
         $voucher = StoreVoucher::create([
             ...$validated,
@@ -127,7 +127,7 @@ class VoucherController extends Controller
         $voucher->update([
             ...$validated,
             'code' => Str::upper($validated['code']),
-            'updated_by_user_id' => (int) $request->user()->id,
+            'updated_by_user_id' => $request->user() ? (int) $request->user()->id : null,
         ]);
 
         \App\Services\ActivityLogService::record(
@@ -135,7 +135,7 @@ class VoucherController extends Controller
             'voucher',
             $voucher->id,
             ['code' => $voucher->code],
-            (int) $request->user()->id,
+            $request->user() ? (int) $request->user()->id : null,
         );
 
         if ($request->boolean('publish_now')) {
@@ -155,7 +155,7 @@ class VoucherController extends Controller
             'voucher',
             $voucher->id,
             ['code' => $voucher->code],
-            (int) auth()->id(),
+            auth()->id() ? (int) auth()->id() : null,
         );
 
         return redirect()->back()->with('success', 'Voucher diaktifkan.');
@@ -170,7 +170,7 @@ class VoucherController extends Controller
             'voucher',
             $voucher->id,
             ['code' => $voucher->code],
-            (int) auth()->id(),
+            auth()->id() ? (int) auth()->id() : null,
         );
 
         return redirect()->back()->with('success', 'Voucher dinonaktifkan.');
@@ -207,7 +207,7 @@ class VoucherController extends Controller
             'voucher',
             $copy->id,
             ['code' => $copy->code, 'from' => $voucher->id],
-            (int) $request->user()->id,
+            $request->user() ? (int) $request->user()->id : null,
         );
 
         return redirect()->back()->with('success', 'Voucher diduplikasi sebagai '.$code.'.');
@@ -225,7 +225,7 @@ class VoucherController extends Controller
             'voucher',
             $voucher->id,
             ['code' => $voucher->code],
-            (int) auth()->id(),
+            auth()->id() ? (int) auth()->id() : null,
         );
 
         return redirect()->back()->with('success', 'Voucher diakhiri dan dinonaktifkan.');

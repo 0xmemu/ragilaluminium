@@ -5,6 +5,7 @@ import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -73,6 +74,56 @@ function TargetChip({ label }: { label: string }) {
     <span className="inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
       {label}
     </span>
+  )
+}
+
+function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+        return
+      }
+    } catch {
+      // fallback to execCommand below
+    }
+    try {
+      const textarea = document.createElement("textarea")
+      textarea.value = text
+      textarea.style.position = "fixed"
+      textarea.style.opacity = "0"
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textarea)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      aria-label={label}
+      title={copied ? "Tersalin!" : label}
+    >
+      {copied ? (
+        <Icon name="check" className="size-3 text-success" aria-hidden="true" />
+      ) : (
+        <Icon name="copy" className="size-3" aria-hidden="true" />
+      )}
+    </button>
   )
 }
 
@@ -234,11 +285,12 @@ export default function VouchersIndex({
       <Head title={`${title} | Admin`} />
       <ManagePromotionsTabs active="vouchers" />
 
-      <section className="mb-4 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
-        Voucher aktif dapat dipakai bersamaan jika masing-masing mengizinkan stacking.
-        Aktif sekarang: <span className="font-semibold tabular-nums text-foreground">{summary.active_count}</span> /{" "}
-        {summary.total_count} total.
-      </section>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Voucher aktif dapat dipakai bersamaan jika masing-masing mengizinkan stacking.</span>
+        <span>
+          Aktif: <span className="font-semibold tabular-nums text-foreground">{summary.active_count}</span> dari {summary.total_count} total
+        </span>
+      </div>
 
       <ListToolbar
         search={{
@@ -275,16 +327,14 @@ export default function VouchersIndex({
         }
         className="mb-4"
       >
-        <div className="w-40">
-          <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="voucher-status">
-            Status
-          </label>
+        <div className="w-36">
           <Select
             id="voucher-status"
             value={activeStatus}
             onChange={(event) => visit({ status: event.target.value })}
+            className="h-9"
           >
-            <option value="all">Semua</option>
+            <option value="all">Semua status</option>
             <option value="active">Aktif</option>
             <option value="inactive">Nonaktif</option>
           </Select>
@@ -309,8 +359,11 @@ export default function VouchersIndex({
                 <StatusBadge status={voucher.published ? "active" : "inactive"} />
                 <span className="text-sm font-bold tabular-nums text-primary">{discountLabel(voucher)}</span>
               </div>
-              <h3 className="mt-2 text-sm font-semibold">{voucher.name}</h3>
-              <p className="mt-1 font-mono text-xs text-muted-foreground">{voucher.code}</p>
+              <div className="mt-2 flex items-center gap-1.5 font-semibold text-foreground">
+                <h3 className="text-sm">{voucher.name}</h3>
+                <span className="font-mono text-xs font-normal text-muted-foreground">({voucher.code})</span>
+                <CopyButton text={voucher.code} label="Salin kode voucher" />
+              </div>
               <p className="mt-1.5">
                 <TargetChip label={voucher.target_label} />
               </p>
@@ -328,47 +381,52 @@ export default function VouchersIndex({
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
-              <tr>
-                <th className="px-3 py-3 font-semibold">Nama Voucher</th>
-                <th className="px-3 py-3 font-semibold">Waktu</th>
-                <th className="px-3 py-3 font-semibold">Diskon</th>
-                <th className="px-3 py-3 font-semibold">Status</th>
-                <th className="px-3 py-3 font-semibold">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vouchers.map((voucher) => (
-                <tr key={voucher.id} className="border-b border-border last:border-0">
-                  <td className="px-3 py-3">
-                    <p className="font-semibold">{voucher.name}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground">{voucher.code}</p>
-                    <p className="mt-1">
-                      <TargetChip label={voucher.target_label} />
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Min {formatCurrency(voucher.min_purchase)}
-                    </p>
-                    {voucher.reason ? <VoucherUnusableReason reason={voucher.reason} /> : null}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-muted-foreground">
-                    <div>{formatDateTime(voucher.starts_at)}</div>
-                    <div>s/d {formatDateTime(voucher.ends_at)}</div>
-                  </td>
-                  <td className="px-3 py-3 font-semibold tabular-nums">{discountLabel(voucher)}</td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={voucher.published ? "active" : "inactive"} />
-                  </td>
-                  <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
-                    <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
-                  </td>
+        <Card className="overflow-hidden border border-border bg-card shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Nama & Kode Voucher</th>
+                  <th className="px-4 py-3 text-center font-semibold">Waktu Berlaku</th>
+                  <th className="px-4 py-3 text-center font-semibold">Diskon</th>
+                  <th className="px-4 py-3 text-center font-semibold">Status</th>
+                  <th className="px-4 py-3 text-right font-semibold">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {vouchers.map((voucher) => (
+                  <tr key={voucher.id} className="border-b border-border last:border-0 hover:bg-card-hover">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                        <span>{voucher.name}</span>
+                        <span className="font-mono text-xs font-normal text-muted-foreground">({voucher.code})</span>
+                        <CopyButton text={voucher.code} label="Salin kode voucher" />
+                      </div>
+                      <p className="mt-1">
+                        <TargetChip label={voucher.target_label} />
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Min {formatCurrency(voucher.min_purchase)}
+                      </p>
+                      {voucher.reason ? <VoucherUnusableReason reason={voucher.reason} /> : null}
+                    </td>
+                    <td className="px-4 py-3 text-center text-xs text-muted-foreground">
+                      <div>{formatDateTime(voucher.starts_at)}</div>
+                      <div>s/d {formatDateTime(voucher.ends_at)}</div>
+                    </td>
+                    <td className="px-4 py-3 text-center font-semibold tabular-nums text-primary">{discountLabel(voucher)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <StatusBadge status={voucher.published ? "active" : "inactive"} />
+                    </td>
+                    <td className="w-[1%] whitespace-nowrap px-4 py-3 text-right align-middle">
+                      <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       <Pagination pagination={pagination} />

@@ -253,9 +253,13 @@ class VoucherService
         }
         if ($voucher->target_type === StoreVoucher::TARGET_MODEL) {
             $lineModel = $line['product_model'] ?? null;
+            if ($lineModel === null) {
+                return false;
+            }
+            $target = Str::upper((string) $voucher->target_model);
+            $actual = Str::upper((string) $lineModel);
 
-            return $lineModel !== null
-                && Str::upper((string) $lineModel) === Str::upper((string) $voucher->target_model);
+            return $actual === $target || str_starts_with($actual, $target.'_');
         }
         if ($voucher->target_type === StoreVoucher::TARGET_PRODUCT) {
             return isset($line['product_id'])
