@@ -396,32 +396,23 @@ class WhatsAppService
     }
 
     /**
-     * Tombol / balasan konfirmasi COD → pending → processing + WA "pesanan diproses".
+     * Penanganan pesan masuk WhatsApp dari pelanggan.
+     * Mode fully manual (2026-09-09): auto-processing COD dinonaktifkan atas instruksi owner.
+     * Pesan tetap ditautkan ke pesanan (order_id) untuk histori obrolan admin.
+     * Kode auto-processing asli diarsipkan di: docs/archive/whatsapp-customer-cod-auto-confirm.md
      *
      * @param  array<string, mixed>  $msg
      */
     protected function handleInboundCustomerAction(WhatsAppMessage $message, array $msg, ?string $phone): void
     {
-        if (! $this->isOrderConfirmation($msg, $message->content_text)) {
-            return;
-        }
-
         $order = $this->resolveOrderForInbound($phone, $msg);
         if (! $order) {
-            Log::info('WhatsApp confirm: no pending order for phone', ['phone' => $phone]);
-
             return;
         }
 
         $message->update(['order_id' => $order->id]);
 
-        $started = $this->orders->beginProcessing($order, null, 'whatsapp_customer');
-        if (! $started) {
-            Log::info('WhatsApp confirm: order not started', [
-                'order_id' => $order->id,
-                'status' => $order->fresh()?->order_status,
-            ]);
-        }
+        // Auto-processing dinonaktifkan: pemrosesan pesanan dilakukan 100% manual oleh admin.
     }
 
     /**

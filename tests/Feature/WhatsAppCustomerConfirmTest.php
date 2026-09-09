@@ -44,7 +44,7 @@ class WhatsAppCustomerConfirmTest extends TestCase
             ]);
     }
 
-    public function test_button_reply_processes_cod_order(): void
+    public function test_customer_reply_does_not_auto_process_cod_order(): void
     {
         Queue::fake();
 
@@ -82,9 +82,11 @@ class WhatsAppCustomerConfirmTest extends TestCase
             ->assertOk();
 
         $order->refresh();
-        $this->assertSame('processing', $order->order_status);
+        // Mode fully manual: status pesanan tetap awaiting_confirmation (tidak auto processing)
+        $this->assertSame('awaiting_confirmation', $order->order_status);
         $this->assertSame('pending', $order->payment_status);
 
+        // Pesan masuk tetap terhubung ke order_id untuk rekaman riwayat admin
         $inbound = WhatsAppMessage::query()->where('provider_message_id', 'wamid.button-confirm-1')->first();
         $this->assertNotNull($inbound);
         $this->assertSame($order->id, $inbound->order_id);
