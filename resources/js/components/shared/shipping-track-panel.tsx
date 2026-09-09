@@ -27,7 +27,7 @@ export interface ShippingTrackTimelineEntry {
 type ShippingTrackPanelProps = {
   track: ShippingTrackData
   timeline?: ShippingTrackTimelineEntry[]
-  /** Embedded: sembunyikan judul "Status pengiriman" — dipakai di dalam card tracking. */
+  /** Embedded: sembunyikan judul "Status pengiriman", dipakai di dalam card tracking. */
   embedded?: boolean
   jntEnabled?: boolean
   compact?: boolean
