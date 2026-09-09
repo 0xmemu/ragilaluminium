@@ -37,69 +37,103 @@ class ImportJobController extends Controller
 
     public function index(Request $request): Response
     {
-        $jobs = ImportJob::with('triggeredBy')
-            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
+        $status = trim((string) $request->input('status', 'all'));
+        $type = trim((string) $request->input('type', 'all'));
+        $q = trim((string) $request->input('q', ''));
 
-        return Inertia::render('Admin/ResourceIndex', [
+        // Ringkasan Eksekutif Batch Import
+        $allJobs = ImportJob::query()->get(['status', 'success_rows', 'failed_rows', 'type']);
+
+        $totalJobs = $allJobs->count();
+        $totalCompleted = $allJobs->where('status', 'completed')->count();
+        $totalFailed = $allJobs->where('status', 'failed')->count();
+        $totalRunning = $allJobs->whereIn('status', ['running', 'pending'])->count();
+        $totalSuccessRows = (int) $allJobs->sum('success_rows');
+        $totalFailedRows = (int) $allJobs->sum('failed_rows');
+
+        $summary = [
+            'total_jobs' => $totalJobs,
+            'total_completed' => $totalCompleted,
+            'total_failed' => $totalFailed,
+            'total_running' => $totalRunning,
+            'total_success_rows' => $totalSuccessRows,
+            'total_failed_rows' => $totalFailedRows,
+        ];
+
+        // Tabs status import
+        $tabs = [
+            ['key' => 'all', 'label' => 'Semua', 'count' => $totalJobs],
+            ['key' => 'completed', 'label' => 'Selesai', 'count' => $totalCompleted],
+            ['key' => 'running', 'label' => 'Diproses', 'count' => $totalRunning],
+            ['key' => 'failed', 'label' => 'Gagal', 'count' => $totalFailed],
+        ];
+
+        // Query tabel batch import
+        $query = ImportJob::with('triggeredBy')
+            ->when($status !== '' && $status !== 'all', function ($sub) use ($status) {
+                if ($status === 'running') {
+                    $sub->whereIn('status', ['running', 'pending']);
+                } else {
+                    $sub->where('status', $status);
+                }
+            })
+            ->when($type !== '' && $type !== 'all', fn ($sub) => $sub->where('type', $type))
+            ->when($q !== '', function ($sub) use ($q) {
+                $sub->where(function ($nested) use ($q) {
+                    $cleanId = ltrim($q, '#');
+                    if (is_numeric($cleanId)) {
+                        $nested->where('id', (int) $cleanId);
+                    }
+                    $nested->orWhere('source_file_name', 'like', "%{$q}%")
+                        ->orWhereHas('triggeredBy', fn ($userSub) => $userSub->where('name', 'like', "%{$q}%"));
+                });
+            })
+            ->latest('id');
+
+        $paginated = $query->paginate(15)->withQueryString();
+
+        $mappedData = $paginated->getCollection()->map(function (ImportJob $j): array {
+            return [
+                'id' => $j->id,
+                'type' => $j->type,
+                'type_label' => self::typeLabel($j->type),
+                'source_file_name' => $j->source_file_name,
+                'status' => $j->status,
+                'total_rows' => (int) ($j->total_rows ?? 0),
+                'processed_rows' => (int) ($j->processed_rows ?? 0),
+                'success_rows' => (int) ($j->success_rows ?? 0),
+                'failed_rows' => (int) ($j->failed_rows ?? 0),
+                'triggered_by' => $j->triggeredBy?->name ?? 'System',
+                'started_at' => optional($j->started_at)?->toIso8601String(),
+                'completed_at' => optional($j->completed_at)?->toIso8601String(),
+                'created_at' => optional($j->created_at)?->toIso8601String() ?? now()->toIso8601String(),
+                'href' => route('admin.imports.show', $j),
+                'failed_rows_href' => ((int) ($j->failed_rows ?? 0) > 0) ? route('admin.imports.failed-rows', $j) : null,
+                'retry_url' => in_array($j->status, ['failed', 'completed', 'pending'], true) ? route('admin.imports.retry', $j) : null,
+            ];
+        });
+
+        return Inertia::render('Admin/Imports/Index', [
             'title' => 'Import',
-            'description' => 'Import katalog & update harga/stok. Bagian dari menu Produk.',
+            'description' => 'Riwayat proses import katalog, pembaruan harga & stok masal, serta penambahan media produk.',
+            'summary' => $summary,
+            'tabs' => $tabs,
+            'activeStatus' => $status,
+            'activeType' => $type,
+            'searchQuery' => $q,
             'createHref' => route('admin.imports.create'),
-            'toolbarLinks' => [
-                [
-                    'label' => 'Performa Import',
-                    'href' => route('admin.analytics.import-performance'),
-                ],
+            'importPerformanceHref' => route('admin.analytics.import-performance'),
+            'toolbarLinks' => [['label' => 'Performa Import', 'href' => route('admin.analytics.import-performance')]],
+            'jobs' => [
+                'data' => $mappedData->all(),
+                'links' => $paginated->linkCollection()->toArray(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
             ],
-            'columns' => [
-                ['key' => 'id', 'label' => 'ID', 'hrefKey' => 'href'],
-                ['key' => 'type', 'label' => 'Tipe'],
-                ['key' => 'source_file_name', 'label' => 'File'],
-                ['key' => 'status', 'label' => 'Status'],
-                ['key' => 'rows_summary', 'label' => 'Baris'],
-                ['key' => 'triggered_by', 'label' => 'Oleh'],
-            ],
-            'rows' => $jobs->getCollection()->map(function (ImportJob $j) {
-                $actions = [
-                    [
-                        'label' => 'Detail',
-                        'method' => 'get',
-                        'href' => route('admin.imports.show', $j),
-                    ],
-                ];
-                if ((int) ($j->failed_rows ?? 0) > 0) {
-                    $actions[] = [
-                        'label' => 'Baris gagal',
-                        'method' => 'get',
-                        'href' => route('admin.imports.failed-rows', $j),
-                    ];
-                }
-                if (in_array($j->status, ['failed', 'completed', 'pending'], true)) {
-                    $actions[] = [
-                        'label' => 'Jalankan ulang',
-                        'method' => 'post',
-                        'url' => route('admin.imports.retry', $j),
-                        'confirm' => 'Jalankan ulang import #'.$j->id.'?',
-                    ];
-                }
-
-                return [
-                    'id' => $j->id,
-                    'type' => self::typeLabel($j->type),
-                    'source_file_name' => $j->source_file_name,
-                    'status' => $j->status,
-                    'rows_summary' => (($j->total_rows ?? 0) > 0
-                        ? min($j->processed_rows ?? 0, $j->total_rows).' / '.$j->total_rows.' · '
-                        : '').($j->success_rows ?? 0).' ok · '.($j->failed_rows ?? 0).' gagal',
-                    'triggered_by' => $j->triggeredBy?->name ?? '-',
-                    'href' => route('admin.imports.show', $j),
-                    'actions' => $actions,
-                ];
-            })->all(),
-            'pagination' => InertiaAdmin::pagination($jobs),
         ]);
     }
 

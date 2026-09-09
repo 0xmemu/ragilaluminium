@@ -59,7 +59,7 @@ class Fase13AdminIATest extends TestCase
             ->get(route('admin.imports.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/ResourceIndex')
+                ->component('Admin/Imports/Index')
                 ->where('toolbarLinks.0.label', 'Performa Import'));
     }
 }
