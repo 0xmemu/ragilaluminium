@@ -88,7 +88,7 @@ class BannerController extends Controller
             'published' => $validated['published'],
         ]);
 
-        return redirect()->route('admin.banners.index')->with('success', 'Promo toko dibuat.');
+        \App\Support\HomepagePromotions::flushCache();
     }
 
     public function edit(CmsBanner $banner): Response
@@ -117,7 +117,7 @@ class BannerController extends Controller
             'published' => $validated['published'],
         ]);
 
-        return redirect()->route('admin.banners.index')->with('success', 'Promo toko diperbarui.');
+        \App\Support\HomepagePromotions::flushCache();
     }
 
     public function destroy(CmsBanner $banner): RedirectResponse
@@ -135,7 +135,7 @@ class BannerController extends Controller
                 $this->deleteAssetFiles($asset);
                 $asset->delete();
             } else {
-                // Asset dipakai entitas lain (produk/galeri/banner lain) — arsipkan saja.
+                // Asset dipakai entitas lain (produk/galeri/banner lain) - arsipkan saja.
                 $asset->update(['status' => 'archived']);
             }
         } else {
@@ -150,7 +150,7 @@ class BannerController extends Controller
             }
         }
 
-        return redirect()->route('admin.banners.index')->with('success', 'Promo toko dihapus.');
+        \App\Support\HomepagePromotions::flushCache();
     }
 
     private function deleteAssetFiles(MediaAsset $asset): void
@@ -176,14 +176,14 @@ class BannerController extends Controller
     {
         $banner->update(['published' => false]);
 
-        return redirect()->route('admin.banners.index')->with('success', 'Promo dinonaktifkan.');
+        \App\Support\HomepagePromotions::flushCache();
     }
 
     public function publish(CmsBanner $banner): RedirectResponse
     {
         $banner->update(['published' => true]);
 
-        return redirect()->route('admin.banners.index')->with('success', 'Promo diaktifkan.');
+        \App\Support\HomepagePromotions::flushCache();
     }
 
     public function updateAutoPromotions(Request $request): RedirectResponse
@@ -197,6 +197,8 @@ class BannerController extends Controller
             'enabled' => $validated['enabled'],
             'max_slides' => $validated['max_slides'] ?? HomepagePromotionSettings::DEFAULTS['max_slides'],
         ], $request->user()?->id);
+
+        \App\Support\HomepagePromotions::flushCache();
 
         return redirect()->route('admin.banners.index')->with('success', 'Pengaturan banner otomatis disimpan.');
     }

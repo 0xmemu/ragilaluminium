@@ -49,6 +49,15 @@ class HomepagePromotions
         return Cache::remember('home.promo_slides', 300, fn () => self::buildSlides());
     }
 
+    /**
+     * Buang cache slide beranda agar perubahan banner admin langsung terlihat
+     * tanpa menunggu TTL 5 menit habis.
+     */
+    public static function flushCache(): void
+    {
+        Cache::forget('home.promo_slides');
+    }
+
     protected static function buildSlides(): array
     {
         // 10 slot banner: banner manual dari admin (cms_banners) tampil lebih
