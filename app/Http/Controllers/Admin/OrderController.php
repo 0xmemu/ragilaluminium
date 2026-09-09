@@ -1225,13 +1225,6 @@ class OrderController extends Controller
                 'href' => route('admin.orders.show', $order).'#return-case',
             ],
             // Sampai → Selesaikan Pesanan (primary) + Proses Retur (sekunder).
-            'completed' => [
-                'label' => 'Catat Retur',
-                'next_status' => null,
-                'kind' => 'start_return',
-                'hint' => 'Buka form retur admin dan lengkapi alasan serta item yang dikembalikan.',
-                'href' => route('admin.orders.show', $order).'#return-case',
-            ],
             'delivered' => [
                 'label' => 'Catat Retur',
                 'next_status' => null,

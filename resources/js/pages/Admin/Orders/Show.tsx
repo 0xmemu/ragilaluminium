@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { cn } from "@/lib/utils"
 
 import { SectionCard } from "@/components/admin/section-card"
+import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { Checkbox } from "@/components/admin/ui/checkbox"
@@ -905,7 +906,7 @@ export default function OrderShow({
   updateStatusUrl,
   adminNotesUrl,
   shippingActions,
-  workflowLinks,
+  workflowLinks: _workflowLinks,
   editPolicy,
   editUrl,
   returnCases = [],
@@ -926,7 +927,6 @@ export default function OrderShow({
     returnEligibility?: ReturnEligibility | null
   }) {
   const isCod = order.flow === "cod" || order.cod_flag
-  const lacakRef = React.useRef<HTMLElement | null>(null)
   const statusForm = useForm({ order_status: order.order_status })
   const [statusBusy, setStatusBusy] = React.useState(false)
 
@@ -938,6 +938,7 @@ export default function OrderShow({
   // Popup input resi: form + ringkasan verifikasi alamat/pelanggan.
   // Sistem tidak menilai benar/salah; admin yang memastikan lalu menyimpan.
   const [resiOpen, setResiOpen] = React.useState(false)
+  const [trackingOpen, setTrackingOpen] = React.useState(false)
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [showAllEvents, setShowAllEvents] = React.useState(false)
@@ -1039,8 +1040,8 @@ export default function OrderShow({
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
 
-      {/* Ringkasan order - 4 sel dengan hairline divider */}
-      <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
+      {/* Ringkasan order - 3 sel utama proporsional tanpa ringkasan produk redundant */}
+      <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-3">
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
           <div className="mt-1.5 flex items-center gap-1.5">
@@ -1059,10 +1060,11 @@ export default function OrderShow({
             <StatusBadge status={order.order_status} />
           </div>
         </div>
+
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Pembayaran</p>
-          <p className="mt-1.5 text-sm font-semibold">{order.payment_method_label}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">{order.payment_method_label}</span>
             <span className="inline-flex min-h-6 items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
               {order.payment_label || statusMeta(order.payment_status).label}
             </span>
@@ -1088,9 +1090,10 @@ export default function OrderShow({
             </div>
           ) : null}
         </div>
+
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Penerima</p>
-          <p className="mt-1.5 text-sm font-semibold">{order.customer_name}</p>
+          <p className="mt-1.5 text-sm font-semibold text-foreground">{order.customer_name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
           <p className="mt-1.5 text-[13px] leading-5 text-foreground">
             {fullAddress(order) || "-"}
@@ -1113,12 +1116,6 @@ export default function OrderShow({
               Cetak
             </button>
           </div>
-        </div>
-        <div className="bg-card p-5">
-          <p className="text-xs font-medium text-muted-foreground">Ringkasan</p>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            {formatNumber(order.product_count)} produk · {formatNumber(order.unit_count)} unit
-          </p>
         </div>
       </Card>
 
@@ -1166,9 +1163,13 @@ export default function OrderShow({
             ) : null}
           </div>
         ) : null}
+
         {secondaryAction?.href ? (
-          <Button asChild variant="secondary" className="shrink-0"><a href={secondaryAction.href}>{secondaryAction.label}</a></Button>
+          <Button asChild variant="secondary" className="shrink-0">
+            <a href={secondaryAction.href}>{secondaryAction.label}</a>
+          </Button>
         ) : null}
+
         {secondaryAction?.next_status ? (
           <Button
             variant="secondary"
@@ -1179,50 +1180,43 @@ export default function OrderShow({
             {statusBusy ? "Memproses..." : secondaryAction.label}
           </Button>
         ) : null}
+
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setTrackingOpen(true)}
+          className="shrink-0 inline-flex items-center gap-1.5"
+        >
+          <Icon name="truck" className="size-4" aria-hidden="true" />
+          <span>Lacak Pesanan</span>
+        </Button>
+
         {order.whatsapp_url ? (
           <Button asChild variant="ghost">
             <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-              <Icon name="whatsapp" className="size-4" aria-hidden="true" />
+              <Icon name="whatsapp" className="size-4 text-success" aria-hidden="true" />
               Chat WA
             </a>
           </Button>
         ) : null}
-        <Button type="button" variant="ghost" onClick={() => copyText(fullAddress(order))}>
-          <Icon name="copy" className="size-3.5" aria-hidden="true" />
-          Salin alamat
-        </Button>
-        {workflowLinks.length > 0 ? (
-          <div className="relative">
-            <select
-              onChange={(e) => {
-                if (e.target.value) window.location.href = e.target.value;
-              }}
-              value=""
-              className="appearance-none rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent cursor-pointer"
-              aria-label="Menu lainnya"
-            >
-              <option value="" disabled>Lainnya</option>
-              {workflowLinks.map((link) => (
-                <option key={link.href} value={link.href}>{link.label}</option>
-              ))}
-            </select>
-          </div>
-        ) : null}
-        {order.order_status !== "cancelled" && can("orders.cancel", capabilities) ? (
-          <ConfirmAction
-            trigger={
-              <Button variant="ghost" className="text-destructive hover:text-destructive">
-                Batalkan pesanan
-              </Button>
-            }
-            title="Batalkan pesanan?"
-            description="Status akan berubah menjadi dibatalkan dan tercatat di log."
-            confirmLabel="Batalkan"
-            processing={statusBusy}
-            reasonLabel="Alasan (opsional)"
-            reasonPlaceholder="Misalnya: pelanggan meminta pembatalan"
-            onConfirm={(reason) => updateStatus("cancelled", reason)}
-          />
+
+        {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
+          can("orders.cancel", capabilities) ? (
+            <ConfirmAction
+              trigger={
+                <Button variant="ghost" className="text-destructive hover:text-destructive">
+                  Batalkan pesanan
+                </Button>
+              }
+              title="Batalkan pesanan?"
+              description="Status akan berubah menjadi dibatalkan dan tercatat di log."
+              confirmLabel="Batalkan"
+              processing={statusBusy}
+              reasonLabel="Alasan (opsional)"
+              reasonPlaceholder="Misalnya: pelanggan meminta pembatalan"
+              onConfirm={(reason) => updateStatus("cancelled", reason)}
+            />
+          ) : null
         ) : null}
       </Card>
 
@@ -1591,50 +1585,53 @@ export default function OrderShow({
         </div>
 
         <aside className="space-y-4">
-          <SectionCard
-            title="Status pengiriman"
-            action={
-              latestShipping?.waybill_number ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  disabled={refreshBusy || !shippingActions.jntEnabled}
-                  onClick={refreshShipping}
-                  title={shippingActions.jntEnabled ? "Refresh status dari J&T" : "J&T belum aktif, refresh nonaktif"}
-                >
-                  <Icon name="refresh" className={refreshBusy ? "size-3 animate-spin" : "size-3"} aria-hidden="true" />
-                  {refreshBusy ? "Memuat..." : "Refresh J&T"}
-                </Button>
-              ) : null
-            }
-          >
-            <section ref={lacakRef} id="lacak-pesanan">
-              <ShippingTrackPanel
-                embedded
-                track={
-                  tracking ?? {
-                    shipping_status: order.shipping_status,
-                    carrier_name: latestShipping?.carrier_name,
-                    waybill_number: latestShipping?.waybill_number,
-                    record_status: latestShipping?.status,
-                    status_raw: latestShipping?.status_raw,
-                    last_status_at: latestShipping?.last_status_at,
-                    tracking_url: latestShipping?.tracking_url,
-                    order_status: order.order_status,
-                    payment_status: order.payment_status,
-                    payment_method: order.payment_method,
-                    total_amount: order.total_amount,
-                  }
-                }
-                timeline={tracking?.timeline}
-                jntEnabled={shippingActions.jntEnabled}
-                refreshBusy={refreshBusy}
-                onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
-                onCopyWaybill={copyText}
-              />
-            </section>
-          </SectionCard>
+          {/* Ringkasan Pengiriman Ringkas & Tombol Lacak Pesanan */}
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+                <Icon name="truck" className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                Pengiriman
+              </span>
+              <StatusBadge status={order.shipping_status || "pending_pickup"} />
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kurir:</span>
+                <span className="font-semibold text-foreground">
+                  {latestShipping?.carrier_name || (latestShipping?.waybill_number ? "J&T Cargo" : "Belum ditetapkan")}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">No. Resi:</span>
+                {latestShipping?.waybill_number ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="font-mono font-medium text-foreground">{latestShipping.waybill_number}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyText(latestShipping.waybill_number || "")}
+                      className="text-[11px] font-medium text-primary hover:underline"
+                    >
+                      Salin
+                    </button>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Belum ada resi</span>
+                )}
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full text-xs inline-flex items-center justify-center gap-1.5"
+              onClick={() => setTrackingOpen(true)}
+            >
+              <Icon name="arrow-up-right" className="size-3.5" aria-hidden="true" />
+              <span>Lacak Pesanan Lengkap</span>
+            </Button>
+          </div>
 
           {/* Catatan Internal Admin */}
           <div className="rounded-lg border border-border bg-card p-4 space-y-2.5">
@@ -1748,6 +1745,44 @@ export default function OrderShow({
           }}
         />
       ) : null}
+      {/* Sheet Samping Khusus: Status Pengiriman & Lacak Pesanan J&T */}
+      <Sheet open={trackingOpen} onOpenChange={setTrackingOpen}>
+        <SheetContent side="right" className="w-[min(90vw,28rem)] sm:max-w-md p-0">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Status Pengiriman & Lacak Pesanan</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Pesanan {order.order_number} · {order.customer_name}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <ShippingTrackPanel
+              track={
+                tracking ?? {
+                  shipping_status: order.shipping_status,
+                  carrier_name: latestShipping?.carrier_name,
+                  waybill_number: latestShipping?.waybill_number,
+                  record_status: latestShipping?.status,
+                  status_raw: latestShipping?.status_raw,
+                  last_status_at: latestShipping?.last_status_at,
+                  tracking_url: latestShipping?.tracking_url,
+                  order_status: order.order_status,
+                  payment_status: order.payment_status,
+                  payment_method: order.payment_method,
+                  total_amount: order.total_amount,
+                }
+              }
+              timeline={tracking?.timeline}
+              jntEnabled={shippingActions.jntEnabled}
+              refreshBusy={refreshBusy}
+              onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
+              onCopyWaybill={copyText}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </AdminLayout>
   )
 }
