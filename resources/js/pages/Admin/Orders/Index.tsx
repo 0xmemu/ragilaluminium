@@ -901,8 +901,8 @@ export default function OrdersIndex({
       <Head title={`${title} | Admin`} />
 
       {/* Tabs status pesanan + Ringkasan Pesanan & Nilai sejajar di kanan */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="scrollbar-none overflow-x-auto">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto">
           <div
             className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1"
             role="tablist"
@@ -940,7 +940,7 @@ export default function OrdersIndex({
         </div>
 
         <div className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
-          <span>Ditemukan: <strong className="tabular-nums font-semibold text-foreground">{formatNumber(summary.count)}</strong> pesanan</span>
+          <span><strong className="tabular-nums font-semibold text-foreground">{formatNumber(summary.count)}</strong> pesanan</span>
           <span className="text-muted-foreground/60">·</span>
           <span>Total Nilai: <strong className="tabular-nums font-semibold text-foreground">{formatCurrency(summary.total_value)}</strong></span>
         </div>
