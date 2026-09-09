@@ -25,6 +25,7 @@ export interface ImportItem {
   processed_rows: number
   success_rows: number
   failed_rows: number
+  product_count: number
   triggered_by: string
   started_at: string | null
   completed_at: string | null
@@ -187,7 +188,7 @@ export default function ImportsIndex({
             {formatNumber(summary.total_success_rows)}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            Total kombinasi varian produk yang masuk etalase
+            Akumulasi baris kombinasi varian seluruh batch
           </p>
         </Card>
 
@@ -288,7 +289,7 @@ export default function ImportsIndex({
                   <th className="px-4 py-3 text-left">ID & Tipe</th>
                   <th className="px-4 py-3 text-left">File Sumber</th>
                   <th className="px-3 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-center">Realisasi Baris</th>
+                  <th className="px-4 py-3 text-center">Hasil Import</th>
                   <th className="px-3 py-3 text-center">Waktu Eksekusi</th>
                   <th className="px-3 py-3 text-center">Pelaksana</th>
                   <th className="px-4 py-3 text-right">Aksi</th>
@@ -334,10 +335,15 @@ export default function ImportsIndex({
                       </div>
                     </td>
 
-                    {/* Kolom 4: Realisasi Baris (Rata Tengah) */}
+                    {/* Kolom 4: Realisasi Produk & Baris (Rata Tengah) */}
                     <td className="px-4 py-3 text-center align-middle">
                       <div className="space-y-0.5">
-                        <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+                        {item.product_count > 0 ? (
+                          <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+                            {formatNumber(item.product_count)} produk
+                          </span>
+                        ) : null}
+                        <span className="block font-mono text-[11px] tabular-nums text-muted-foreground">
                           {formatNumber(item.processed_rows)} / {formatNumber(item.total_rows)} baris
                         </span>
                         <div className="flex items-center justify-center gap-2 text-[11px]">

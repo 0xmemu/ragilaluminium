@@ -92,7 +92,15 @@ class ImportJobController extends Controller
 
         $paginated = $query->paginate(15)->withQueryString();
 
-        $mappedData = $paginated->getCollection()->map(function (ImportJob $j): array {
+        $productCounts = \Illuminate\Support\Facades\DB::table('import_job_rows')
+            ->select('import_job_id')
+            ->selectRaw('COUNT(DISTINCT linked_product_id) as products')
+            ->whereIn('import_job_id', $paginated->getCollection()->pluck('id'))
+            ->whereNotNull('linked_product_id')
+            ->groupBy('import_job_id')
+            ->pluck('products', 'import_job_id');
+
+        $mappedData = $paginated->getCollection()->map(function (ImportJob $j) use ($productCounts): array {
             return [
                 'id' => $j->id,
                 'type' => $j->type,
@@ -103,6 +111,7 @@ class ImportJobController extends Controller
                 'processed_rows' => (int) ($j->processed_rows ?? 0),
                 'success_rows' => (int) ($j->success_rows ?? 0),
                 'failed_rows' => (int) ($j->failed_rows ?? 0),
+                'product_count' => (int) ($productCounts[$j->id] ?? 0),
                 'triggered_by' => $j->triggeredBy?->name ?? 'System',
                 'started_at' => optional($j->started_at)?->toIso8601String(),
                 'completed_at' => optional($j->completed_at)?->toIso8601String(),
