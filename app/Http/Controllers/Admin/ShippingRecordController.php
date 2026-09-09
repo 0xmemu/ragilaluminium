@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\EventLog;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
-use App\Support\InertiaAdmin;
 use App\Support\JntReadiness;
-use App\Support\LikeSearch;
+use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,46 +17,115 @@ class ShippingRecordController extends Controller
 {
     public function index(Request $request): Response
     {
-        $records = ShippingRecord::with('order')
-            ->when($request->filled('q'), fn ($q) => LikeSearch::whereLike($q, 'waybill_number', (string) $request->q))
-            ->when($request->filled('carrier_name'), fn ($q) => $q->where('carrier_name', $request->carrier_name))
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
+        $status = trim((string) $request->input('status', 'all'));
+        $carrier = trim((string) $request->input('carrier_name', 'all'));
+        $q = trim((string) $request->input('q', ''));
 
-        return Inertia::render('Admin/ResourceIndex', [
-            'title' => 'Pengiriman',
-            'createHref' => null,
-            'columns' => [
-                ['key' => 'waybill_number', 'label' => 'Resi', 'hrefKey' => 'href'],
-                ['key' => 'order_number', 'label' => 'Pesanan', 'hrefKey' => 'order_href'],
-                ['key' => 'carrier_name', 'label' => 'Kurir'],
-                ['key' => 'status', 'label' => 'Status'],
-                ['key' => 'last_status_at', 'label' => 'Update'],
-            ],
-            'rows' => $records->getCollection()->map(fn (ShippingRecord $r) => [
+        // Agregasi Ringkasan Eksekutif Pengiriman
+        $allRecords = ShippingRecord::query()->get(['status', 'carrier_name']);
+
+        $totalDelivered = $allRecords->where('status', 'delivered')->count();
+        $totalInTransit = $allRecords->whereIn('status', ['in_transit', 'out_for_delivery', 'picked_up'])->count();
+        $totalPendingPickup = $allRecords->whereIn('status', ['pending_pickup', 'tracking_pending', 'in_process'])->count();
+        $totalIssue = $allRecords->whereIn('status', ['exception', 'returned'])->count();
+        $totalCount = $allRecords->count();
+
+        $summary = [
+            'total_delivered' => $totalDelivered,
+            'total_in_transit' => $totalInTransit,
+            'total_pending_pickup' => $totalPendingPickup,
+            'total_issue' => $totalIssue,
+            'total_records' => $totalCount,
+        ];
+
+        // Tabs status pengiriman
+        $tabs = [
+            ['key' => 'all', 'label' => 'Semua', 'count' => $totalCount],
+            ['key' => 'in_transit', 'label' => 'Dalam Perjalanan', 'count' => $totalInTransit],
+            ['key' => 'pending_pickup', 'label' => 'Menunggu Jemput', 'count' => $totalPendingPickup],
+            ['key' => 'delivered', 'label' => 'Sampai', 'count' => $totalDelivered],
+            ['key' => 'issue', 'label' => 'Kendala', 'count' => $totalIssue],
+        ];
+
+        // Query tabel pengiriman
+        $query = ShippingRecord::query()
+            ->with(['order' => fn ($subQuery) => $subQuery->select([
+                'id', 'order_number', 'order_status', 'customer_name', 'customer_phone', 'shipping_city',
+            ])])
+            ->when($status !== '' && $status !== 'all', function ($sub) use ($status) {
+                if ($status === 'in_transit') {
+                    $sub->whereIn('status', ['in_transit', 'out_for_delivery', 'picked_up']);
+                } elseif ($status === 'pending_pickup') {
+                    $sub->whereIn('status', ['pending_pickup', 'tracking_pending', 'in_process']);
+                } elseif ($status === 'issue') {
+                    $sub->whereIn('status', ['exception', 'returned']);
+                } else {
+                    $sub->where('status', $status);
+                }
+            })
+            ->when($carrier !== '' && $carrier !== 'all', fn ($sub) => $sub->where('carrier_name', $carrier))
+            ->when($q !== '', function ($sub) use ($q) {
+                $sub->where(function ($nested) use ($q) {
+                    $nested->where('waybill_number', 'like', "%{$q}%")
+                        ->orWhereHas('order', function ($orderSub) use ($q) {
+                            $orderSub->where('order_number', 'like', "%{$q}%")
+                                ->orWhere('customer_name', 'like', "%{$q}%")
+                                ->orWhere('shipping_city', 'like', "%{$q}%");
+                        });
+                });
+            })
+            ->latest('id');
+
+        $paginated = $query->paginate(15)->withQueryString();
+
+        $mappedData = $paginated->getCollection()->map(function (ShippingRecord $r): array {
+            $order = $r->order;
+            $phone = $order?->customer_phone ?? '';
+            $waUrl = null;
+            if ($phone !== '') {
+                $cleanPhone = PhoneNumber::normalize($phone) ?? preg_replace('/\D/', '', $phone);
+                $waUrl = "https://wa.me/{$cleanPhone}";
+            }
+
+            return [
+                'id' => $r->id,
                 'waybill_number' => $r->waybill_number ?? '-',
-                'order_number' => $r->order?->order_number ?? '-',
-                'order_href' => $r->order_id ? route('admin.orders.show', $r->order_id) : '',
-                'carrier_name' => $r->carrier_name,
+                'carrier_name' => $r->carrier_name ?: 'J&T Cargo',
+                'service_name' => $r->service_name,
                 'status' => $r->status,
-                'last_status_at' => optional($r->last_status_at)?->toDateTimeString() ?? '-',
+                'status_raw' => $r->status_raw,
+                'last_status_at' => optional($r->last_status_at)?->toIso8601String(),
+                'order_id' => $r->order_id,
+                'order_number' => $order?->order_number ?? '-',
+                'order_status' => $order?->order_status ?? null,
+                'customer_name' => $order?->customer_name ?? '-',
+                'customer_phone' => $phone,
+                'customer_city' => $order?->shipping_city ?? '',
+                'whatsapp_url' => $waUrl,
                 'href' => route('admin.shipping.show', $r),
-                'actions' => [
-                    [
-                        'label' => 'Detail',
-                        'method' => 'get',
-                        'href' => route('admin.shipping.show', $r),
-                    ],
-                    [
-                        'label' => 'Segarkan',
-                        'method' => 'post',
-                        'url' => route('admin.shipping.refresh', $r),
-                    ],
-                ],
-            ])->all(),
-            'pagination' => InertiaAdmin::pagination($records),
+                'order_href' => $r->order_id ? route('admin.orders.show', $r->order_id) : '#',
+                'refresh_url' => route('admin.shipping.refresh', $r),
+            ];
+        });
+
+        return Inertia::render('Admin/Shipping/Index', [
+            'title' => 'Pengiriman',
+            'description' => 'Monitoring paket ekspedisi J&T Cargo, pelacakan resi, dan serah terima pengiriman pelanggan.',
+            'summary' => $summary,
+            'tabs' => $tabs,
+            'activeStatus' => $status,
+            'activeCarrier' => $carrier,
+            'searchQuery' => $q,
+            'records' => [
+                'data' => $mappedData->all(),
+                'links' => $paginated->linkCollection()->toArray(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ],
         ]);
     }
 
@@ -136,12 +204,6 @@ class ShippingRecordController extends Controller
         return redirect()->back()->with($flashKey, $message);
     }
 
-    /**
-     * ShippingService returns void; classify the persisted result rather than
-     * claiming success when the provider returned no new event.
-     *
-     * @return array{0: 'success'|'status'|'error', 1: string}
-     */
     private function refreshFeedback(ShippingService $shipping, ShippingRecord $record): array
     {
         if (! JntReadiness::report()['client_ready']) {
