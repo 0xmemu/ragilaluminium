@@ -81,6 +81,10 @@ class PromotionController extends Controller
             'ends_at' => $validated['ends_at'],
             'discount_percent' => $validated['discount_percent'],
             'sync_banner' => $validated['sync_banner'],
+            'sync_banner_image_url' => $validated['sync_banner_image_url'] ?? null,
+            'sync_banner_media_asset_id' => $validated['sync_banner_media_asset_id'] ?? null,
+            'sync_banner_link_url' => $validated['sync_banner_link_url'] ?? null,
+            'sync_bar_promo' => $validated['sync_bar_promo'] ?? false,
             'created_by_user_id' => $request->user()->id,
             'updated_by_user_id' => $request->user()->id,
         ]);
@@ -89,6 +93,7 @@ class PromotionController extends Controller
         $campaign->save();
         $this->saveItems($campaign, $validated['targets'], $request->user()->id);
 
+        \App\Support\CampaignBannerSync::flush();
         \App\Services\ActivityLogService::record('product.promotion.created', 'promotion', $campaign->id, [
             'name' => $campaign->name,
             'type' => $campaign->type,
@@ -115,6 +120,10 @@ class PromotionController extends Controller
                 'ends_at' => optional($promotion->ends_at)?->format('Y-m-d\TH:i'),
                 'discount_percent' => $promotion->discount_percent,
                 'sync_banner' => (bool) $promotion->sync_banner,
+                'sync_banner_image_url' => $promotion->sync_banner_image_url,
+                'sync_banner_media_asset_id' => $promotion->sync_banner_media_asset_id,
+                'sync_banner_link_url' => $promotion->sync_banner_link_url,
+                'sync_bar_promo' => (bool) $promotion->sync_bar_promo,
                 'targets' => $promotion->items->map(fn (PromotionItem $item) => [
                     'target_type' => $item->target_type,
                     'target_id' => $item->target_type === PromotionItem::TARGET_PRODUCT ? (int) $item->target_id : (string) $item->target_id,
@@ -138,6 +147,10 @@ class PromotionController extends Controller
             'ends_at' => $validated['ends_at'],
             'discount_percent' => $validated['discount_percent'],
             'sync_banner' => $validated['sync_banner'],
+            'sync_banner_image_url' => $validated['sync_banner_image_url'] ?? null,
+            'sync_banner_media_asset_id' => $validated['sync_banner_media_asset_id'] ?? null,
+            'sync_banner_link_url' => $validated['sync_banner_link_url'] ?? null,
+            'sync_bar_promo' => $validated['sync_bar_promo'] ?? false,
             'updated_by_user_id' => $request->user()->id,
         ]);
 
@@ -145,6 +158,7 @@ class PromotionController extends Controller
         $promotion->save();
         $this->saveItems($promotion, $validated['targets'], $request->user()->id);
 
+        \App\Support\CampaignBannerSync::flush();
         \App\Services\ActivityLogService::record('product.promotion.updated', 'promotion', $promotion->id, [
             'name' => $promotion->name,
         ], (int) $request->user()->id);
@@ -166,7 +180,7 @@ class PromotionController extends Controller
         }
 
         try {
-            $this->campaigns->validate($promotion, $targets, $promotion->id);
+            $this->campaigns->validate($promotion, $targets, $promotion->id, isActivating: true);
         } catch (Throwable $e) {
             $errors = method_exists($e, 'errors') ? $e->errors() : ['Kampanye tidak valid.'];
             $errors = is_array($errors) ? array_values($errors) : [$errors];
@@ -185,7 +199,7 @@ class PromotionController extends Controller
     public function activate(Request $request, Promotion $promotion): RedirectResponse
     {
         $this->campaigns->autoEndExpired();
-        $this->campaigns->validate($promotion, $promotion->items->toArray(), $promotion->id);
+        $this->campaigns->validate($promotion, $promotion->items->toArray(), $promotion->id, isActivating: true);
 
         if ($promotion->starts_at !== null && $promotion->starts_at->isFuture()) {
             $promotion->update([
@@ -196,12 +210,15 @@ class PromotionController extends Controller
             $this->campaigns->activate($promotion, (int) $request->user()->id);
         }
 
+        \App\Support\CampaignBannerSync::flush();
+
         return back()->with('success', 'Kampanye "'.$promotion->name.'" aktif.');
     }
 
     public function end(Request $request, Promotion $promotion): RedirectResponse
     {
         $this->campaigns->endEarly($promotion, (int) $request->user()->id);
+        \App\Support\CampaignBannerSync::flush();
 
         return back()->with('success', 'Kampanye "'.$promotion->name.'" diakhiri.');
     }
@@ -266,6 +283,19 @@ class PromotionController extends Controller
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'sync_banner' => ['sometimes', 'boolean'],
+            'sync_banner_image_url' => ['nullable', 'string', 'max:2048'],
+            'sync_banner_media_asset_id' => ['nullable', 'integer'],
+            'sync_banner_link_url' => [
+                'nullable',
+                'string',
+                'max:2048',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value && ! str_starts_with((string) $value, '/') && ! filter_var($value, FILTER_VALIDATE_URL)) {
+                        $fail('Link banner harus berupa URL penuh atau path internal seperti /flash-sale.');
+                    }
+                },
+            ],
+            'sync_bar_promo' => ['sometimes', 'boolean'],
             'targets' => ['required', 'array', 'min:1'],
             'targets.*.target_type' => ['required', 'in:product,sub_model,model'],
             'targets.*.target_id' => ['required', 'string', 'max:100'],
@@ -329,7 +359,13 @@ class PromotionController extends Controller
                     ->orWhereRaw('parent_sku LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\'])
             ))
             ->when($category !== '', fn ($qry) => $qry->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
-            ->when($model !== '', fn ($qry) => $qry->where('product_model', 'LIKE', $model))
+            ->when($model !== '', function ($qry) use ($model) {
+                $modelPattern = str_replace(' ', '_', $model);
+                $qry->where(function ($inner) use ($modelPattern) {
+                    $inner->where('product_model', $modelPattern)
+                        ->orWhere('product_model', 'LIKE', $modelPattern.'_%');
+                });
+            })
             ->withMin('activeVariants as min_price', 'price')
             ->orderBy('name')
             ->paginate($perPage)

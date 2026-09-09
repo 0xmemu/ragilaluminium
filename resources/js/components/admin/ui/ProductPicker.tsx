@@ -148,7 +148,7 @@ export function ProductPicker({
             <option value="JUNGKIT">Jungkit</option>
             <option value="SLIDING">Sliding</option>
             <option value="SWING">Swing</option>
-            <option value="KACA MATI">Kaca Mati</option>
+            <option value="KACA_MATI">Kaca Mati</option>
             <option value="ZIGZAG">Zigzag</option>
           </Select>
         </Field>

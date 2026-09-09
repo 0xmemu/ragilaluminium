@@ -200,6 +200,7 @@ final class CampaignService
         Promotion $campaign,
         array $targets,
         ?int $exceptPromotionId = null,
+        bool $isActivating = false,
     ): void {
         $errors = [];
 
@@ -231,8 +232,11 @@ final class CampaignService
             $errors['targets'] = 'Minimal satu target produk/model/sub model.';
         }
 
-        // Hanya 1 Flash Sale aktif.
-        if ($campaign->isFlashSale()) {
+        $mustCheckActiveConflicts = $isActivating
+            || in_array($campaign->status, [Promotion::STATUS_SCHEDULED, Promotion::STATUS_ACTIVE], true);
+
+        // Hanya 1 Flash Sale aktif (ditegakkan saat aktivasi atau kampanye live).
+        if ($campaign->isFlashSale() && $mustCheckActiveConflicts) {
             $flashConflict = Promotion::query()
                 ->where('id', '!=', $exceptPromotionId)
                 ->where('type', Promotion::TYPE_FLASH_SALE)
@@ -249,8 +253,8 @@ final class CampaignService
 
         $productIds = $this->resolveProductIds($included);
 
-        // 1 produk = 1 promo aktif (Promo Toko).
-        if ($campaign->type === Promotion::TYPE_STORE) {
+        // 1 produk = 1 promo aktif (Promo Toko) saat aktif.
+        if ($campaign->type === Promotion::TYPE_STORE && $mustCheckActiveConflicts) {
             $covered = $this->liveProductCoverage($productIds, Promotion::TYPE_STORE, $exceptPromotionId);
             if ($covered->isNotEmpty()) {
                 $first = $covered->first();
@@ -260,8 +264,8 @@ final class CampaignService
             }
         }
 
-        // Flash Sale wajib > Diskon Produk (Promo Toko aktif).
-        if ($campaign->isFlashSale() && $productIds->isNotEmpty()) {
+        // Flash Sale wajib > Diskon Produk (Promo Toko aktif) saat aktif.
+        if ($campaign->isFlashSale() && $productIds->isNotEmpty() && $mustCheckActiveConflicts) {
             $promoCovered = $this->liveProductCoverage($productIds, Promotion::TYPE_STORE);
             if ($promoCovered->isNotEmpty()) {
                 $first = $promoCovered->first();
@@ -394,15 +398,29 @@ final class CampaignService
 
         if ($modelTargets->isNotEmpty()) {
             $productIds = $productIds->concat(
-                Product::whereIn('product_model', $modelTargets->all())->pluck('id')
+                Product::query()
+                    ->where(function ($q) use ($modelTargets) {
+                        foreach ($modelTargets as $m) {
+                            $q->orWhere('product_model', $m)
+                              ->orWhere('product_model', 'LIKE', $m . '_%');
+                        }
+                    })
+                    ->pluck('id')
             );
         }
 
         foreach ($subModelTargets as $subTarget) {
             $t = $this->parseSubModelTarget($subTarget);
-            $query = Product::query()->where('design_variant', $t['code']);
+            $query = Product::query()->where(function ($q) use ($t) {
+                $q->where('design_variant', $t['code'])
+                  ->orWhere('design_variant', strtolower($t['code']))
+                  ->orWhere('design_variant', strtoupper($t['code']));
+            });
             if ($t['model'] !== null) {
-                $query->where('product_model', $t['model']);
+                $query->where(function ($q) use ($t) {
+                    $q->where('product_model', $t['model'])
+                      ->orWhere('product_model', 'LIKE', $t['model'] . '_%');
+                });
             }
             $productIds = $productIds->concat($query->pluck('id'));
         }
@@ -455,11 +473,27 @@ final class CampaignService
                         ? collect([(int) $item->target_id])
                         : collect(),
                     PromotionItem::TARGET_MODEL => Product::whereIn('id', $productIds)
-                        ->where('product_model', (string) $item->target_id)
+                        ->where(function ($q) use ($item) {
+                            $q->where('product_model', (string) $item->target_id)
+                              ->orWhere('product_model', 'LIKE', (string) $item->target_id . '_%');
+                        })
                         ->pluck('id'),
-                    PromotionItem::TARGET_SUB_MODEL => Product::whereIn('id', $productIds)
-                        ->where('design_variant', (string) $item->target_id)
-                        ->pluck('id'),
+                    PromotionItem::TARGET_SUB_MODEL => (function () use ($item, $productIds) {
+                        $t = $this->parseSubModelTarget((string) $item->target_id);
+                        $query = Product::whereIn('id', $productIds)
+                            ->where(function ($q) use ($t) {
+                                $q->where('design_variant', $t['code'])
+                                  ->orWhere('design_variant', strtolower($t['code']))
+                                  ->orWhere('design_variant', strtoupper($t['code']));
+                            });
+                        if ($t['model'] !== null) {
+                            $query->where(function ($q) use ($t) {
+                                $q->where('product_model', $t['model'])
+                                  ->orWhere('product_model', 'LIKE', $t['model'] . '_%');
+                            });
+                        }
+                        return $query->pluck('id');
+                    })(),
                     default => collect(),
                 };
 
@@ -485,11 +519,16 @@ final class CampaignService
     {
         $t = $this->parseSubModelTarget((string) $item->target_id);
 
-        if ($t['code'] !== $product->design_variant) {
+        if (strcasecmp($t['code'], (string) $product->design_variant) !== 0) {
             return false;
         }
 
-        return $t['model'] === null || $product->product_model === $t['model'];
+        if ($t['model'] === null) {
+            return true;
+        }
+
+        return $product->product_model === $t['model']
+            || str_starts_with($product->product_model, $t['model'] . '_');
     }
 
     /**
@@ -517,7 +556,8 @@ final class CampaignService
             $isMatch = match ($item->target_type) {
                 PromotionItem::TARGET_PRODUCT => (int) $item->target_id === (int) $product->id
                     || ($variant !== null && (int) $item->target_id === (int) $variant->id),
-                PromotionItem::TARGET_MODEL => (string) $item->target_id === $product->product_model,
+                PromotionItem::TARGET_MODEL => (string) $item->target_id === $product->product_model
+                    || str_starts_with($product->product_model, (string) $item->target_id . '_'),
                 PromotionItem::TARGET_SUB_MODEL => $this->subModelItemMatches($item, $product),
                 default => false,
             };
