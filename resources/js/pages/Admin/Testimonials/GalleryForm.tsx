@@ -106,13 +106,23 @@ export default function GalleryForm({
       title={editing ? "Edit ulasan foto" : "Tambah ulasan foto"}
       description="Foto hasil pemasangan untuk beranda dan halaman /reviews#hasil-pemasangan."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexUrl}>Batal</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="testimonial-gallery-form" disabled={uploading || form.processing}>
+            {uploading
+              ? `Mengunggah ${uploadProgress ?? 0}%...`
+              : form.processing
+                ? "Menyimpan..."
+                : "Simpan ulasan foto"}
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={indexUrl}>Batal</Link>
+          </Button>
+        </div>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Ulasan Foto | Admin`} />
       <form
+        id="testimonial-gallery-form"
         onSubmit={async (event) => {
           event.preventDefault()
           if (form.data.upload) {
@@ -145,7 +155,7 @@ export default function GalleryForm({
                 <Input
                   value={form.data.label}
                   onChange={(event) => form.setData("label", event.target.value)}
-                  placeholder="Contoh: Pemasangan Bpk. Ahmad – Perumahan Kudus Indah"
+                  placeholder="Contoh: Pemasangan Bpk. Ahmad - Perumahan Kudus Indah"
                 />
               </Field>
               <Field id="gallery-upload" label="Upload gambar" error={form.errors.upload}>
@@ -206,16 +216,6 @@ export default function GalleryForm({
             </div>
           </div>
         </section>
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
-          <Button type="submit" disabled={uploading || form.processing}>
-            {uploading
-              ? `Mengunggah ${uploadProgress ?? 0}%...`
-              : form.processing
-                ? "Menyimpan..."
-                : "Simpan foto"}
-          </Button>
-        </div>
       </form>
     </AdminLayout>
   )

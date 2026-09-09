@@ -43,13 +43,19 @@ export default function ServiceHighlightsForm({
       title="Edit Sorotan Layanan"
       description="Konten keunggulan layanan di beranda publik."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexUrl}>Kembali</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="highlights-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan"}
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={indexUrl}>Kembali</Link>
+          </Button>
+        </div>
       }
     >
       <Head title="Edit Sorotan Layanan | Admin" />
       <form
+        id="highlights-form"
         className="mx-auto max-w-3xl space-y-6"
         onSubmit={(event) => {
           event.preventDefault()
@@ -118,12 +124,6 @@ export default function ServiceHighlightsForm({
           </Button>
         </section>
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
-        </div>
       </form>
     </AdminLayout>
   )

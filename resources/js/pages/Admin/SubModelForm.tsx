@@ -82,9 +82,23 @@ export default function SubModelForm({
   }
 
   return (
-    <AdminLayout backUrl={backUrl} title={title} description={editing ? `Sub model ${subModel?.code ?? ""}` : "Sub model baru untuk model produk."}>
+    <AdminLayout
+      backUrl={backUrl}
+      title={title}
+      description={editing ? `Sub model ${subModel?.code ?? ""}` : "Sub model baru untuk model produk."}
+      actions={
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={indexUrl}>Batal</Link>
+          </Button>
+          <Button type="submit" form="sub-model-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : editing ? "Simpan perubahan" : "Tambah sub model"}
+          </Button>
+        </div>
+      }
+    >
       <Head title={title} />
-      <form onSubmit={submit} className="w-full space-y-5">
+      <form id="sub-model-form" onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per field */}
@@ -253,7 +267,7 @@ export default function SubModelForm({
             <div className="border-b border-border p-5">
               <h2 className="text-base font-semibold">Template default model</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Dipakai bila sub model tidak punya template sendiri — berlaku untuk semua produk model ini tanpa sub model tertentu. Berguna untuk nilai bersama seperti Material.
+                Dipakai bila sub model tidak punya template sendiri - berlaku untuk semua produk model ini tanpa sub model tertentu. Berguna untuk nilai bersama seperti Material.
               </p>
             </div>
             <div className="p-5">
@@ -306,14 +320,7 @@ export default function SubModelForm({
           </>
         ) : null}
 
-        <div className="flex flex-wrap justify-between gap-3">
-          <Button asChild variant="secondary">
-            <Link href={indexUrl}>Batal</Link>
-          </Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : editing ? "Simpan perubahan" : "Tambah sub model"}
-          </Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )

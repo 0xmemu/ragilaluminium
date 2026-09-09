@@ -71,8 +71,13 @@ class OrderPrivacyTest extends \Tests\TestCase
             ->where('order.order_number', 'RA-PRIV-1')
             // Raw provider metadata bukan informasi customer: tidak boleh bocor.
             ->missing('order.shipping.status_raw')
-            // Data sah customer tetap tersedia setelah verifikasi server-side.
-            ->where('order.customer_phone', '628123456789')
+            ->missing('order.customer_phone')
+            ->missing('order.shipping_address')
+            ->missing('order.vm.recipient.phoneFull')
+            ->missing('order.vm.recipient.addressLine1')
+            ->where('order.vm.recipient.city', 'Jakarta')
+            ->where('order.vm.recipient.province', 'DKI')
+            // Data lokasi ringkas tetap tersedia untuk customer.
             ->where('order.shipping.waybill_number', 'JNT-PRIV-1')
             ->where('order.shipping.carrier_name', 'J&T Cargo'));
     }
@@ -176,7 +181,7 @@ class OrderPrivacyTest extends \Tests\TestCase
     {
         $this->makeOrder();
 
-        $this->getJson('/api/orders/RA-PRIV-1/status')->assertStatus(422);
+        $this->getJson('/api/orders/RA-PRIV-1/status')->assertStatus(404);
 
         $this->getJson('/api/orders/RA-PRIV-1/status?customer_phone=08123456789')
             ->assertOk()

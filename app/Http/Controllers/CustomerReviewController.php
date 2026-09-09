@@ -18,13 +18,12 @@ class CustomerReviewController extends Controller
 {
     /**
      * Customer reviews are guest-owned: the order number and checkout phone
-     * together are the ownership proof. No customer account is required.
+     * together are the legacy ownership proof; verified browser sessions are accepted too. No customer account is required.
      */
     public function store(Request $request, string $order_number): JsonResponse
     {
         $validated = $this->validated($request);
-        $phone = PhoneNumber::normalize((string) $validated['customer_phone']);
-        $order = $this->ownedOrder($order_number, $phone);
+        $order = $this->ownedOrder($order_number, $request, $validated['customer_phone'] ?? null);
         $this->ensureEligible($order);
         $productId = $this->productId($order, $validated['product_id'] ?? null);
 
@@ -77,12 +76,12 @@ class CustomerReviewController extends Controller
     public function uploadMedia(Request $request, string $order_number): JsonResponse
     {
         $validated = $request->validate([
-            'customer_phone' => ['required', 'string', 'max:40'],
+            'customer_phone' => ['nullable', 'string', 'max:40'],
+            'session' => ['nullable', 'boolean'],
             'media' => ['required', 'file'],
         ]);
 
-        $phone = PhoneNumber::normalize((string) $validated['customer_phone']);
-        $order = $this->ownedOrder($order_number, $phone);
+        $order = $this->ownedOrder($order_number, $request, $validated['customer_phone'] ?? null);
         $this->ensureEligible($order);
 
         $file = $request->file('media');
@@ -117,8 +116,7 @@ class CustomerReviewController extends Controller
     public function update(Request $request, string $order_number, CmsTestimonial $testimonial): JsonResponse
     {
         $validated = $this->validated($request, false);
-        $phone = PhoneNumber::normalize((string) $validated['customer_phone']);
-        $order = $this->ownedOrder($order_number, $phone);
+        $order = $this->ownedOrder($order_number, $request, $validated['customer_phone'] ?? null);
         $this->ensureEligible($order);
 
         if ((int) $testimonial->order_id !== (int) $order->id || ! $testimonial->isCustomerAuthored()) {
@@ -166,7 +164,8 @@ class CustomerReviewController extends Controller
     private function validated(Request $request, bool $withProduct = true): array
     {
         $rules = [
-            'customer_phone' => ['required', 'string', 'max:40'],
+            'customer_phone' => ['nullable', 'string', 'max:40'],
+            'session' => ['nullable', 'boolean'],
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'message' => ['required', 'string', 'min:3', 'max:5000'],
             'media_items' => ['nullable', 'array', 'max:10'],
@@ -182,11 +181,16 @@ class CustomerReviewController extends Controller
         return $request->validate($rules);
     }
 
-    private function ownedOrder(string $orderNumber, ?string $phone): Order
+    private function ownedOrder(string $orderNumber, Request $request, ?string $phone = null): Order
     {
+        $confirmed = $request->session()->get('confirmed_orders', []);
+        $sessionOwnsOrder = is_array($confirmed) && in_array($orderNumber, $confirmed, true);
         $order = Order::query()->where('order_number', $orderNumber)->first();
 
-        if (! $order || ! $phone || ! hash_equals((string) PhoneNumber::normalize($order->customer_phone), $phone)) {
+        if (! $order) {
+            abort(404, 'Pesanan tidak ditemukan.');
+        }
+        if (! $sessionOwnsOrder && (! $phone || ! hash_equals((string) PhoneNumber::normalize($order->customer_phone), PhoneNumber::normalize($phone)))) {
             abort(404, 'Pesanan tidak ditemukan.');
         }
 

@@ -59,6 +59,7 @@ return [
         'order_get' => env('JNT_EP_ORDER_GET', '/webopenplatformapi/api/order/getOrders'),
         'order_cancel' => env('JNT_EP_ORDER_CANCEL', '/webopenplatformapi/api/order/cancelOrder'),
         'tariff' => env('JNT_EP_TARIFF', '/webopenplatformapi/api/agingCost/get'),
+        'dimensional_tariff' => env('JNT_EP_DIMENSIONAL_TARIFF', '/webopenplatformapi/api/spmComCost/getComCost'),
         'track' => env('JNT_EP_TRACK', '/webopenplatformapi/api/logistics/trace'),
         'track_subscribe' => env('JNT_EP_TRACK_SUBSCRIBE', '/webopenplatformapi/api/trace/subscribe'),
         'dispatch_code' => env('JNT_EP_DISPATCH_CODE', '/webopenplatformapi/api/order/getDispatchCode'),

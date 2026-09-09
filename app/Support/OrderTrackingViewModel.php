@@ -461,16 +461,8 @@ class OrderTrackingViewModel
         return [
             'customerName' => (string) $this->order->customer_name,
             'phoneMasked' => $masked,
-            // Pemilik pesanan berhak lihat data lengkap (kontrak privacy owner).
-            'phoneFull' => $phone,
-            'addressLine1' => (string) $this->order->shipping_address_line1,
-            'addressLine2' => (string) $this->order->shipping_address_line2,
-            'village' => (string) $this->order->shipping_village,
-            'district' => (string) $this->order->shipping_district,
             'city' => (string) $this->order->shipping_city,
             'province' => (string) $this->order->shipping_province,
-            'postalCode' => (string) $this->order->shipping_postal_code,
-            'address' => $address,
             'method' => $this->shipping?->carrier_name ?: ($this->shipping ? 'J&T Cargo' : 'Ekspedisi'),
         ];
     }

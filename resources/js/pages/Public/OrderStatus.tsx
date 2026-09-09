@@ -20,6 +20,7 @@ const MAX_STORED_ORDER_REFS = 5
 
 type StoredOrderRef = {
   order_number: string
+  /** Legacy browser records may still contain the lookup phone for one migration read. */
   customer_phone?: string
 }
 
@@ -45,7 +46,7 @@ function writeStoredOrderRefs(refs: StoredOrderRef[]): void {
   try {
     window.localStorage.setItem(
       ORDER_STATUS_STORAGE_KEY,
-      JSON.stringify(refs.slice(0, MAX_STORED_ORDER_REFS)),
+      JSON.stringify(refs.slice(0, MAX_STORED_ORDER_REFS).map(({ order_number }) => ({ order_number }))),
     )
   } catch {
     // Browser storage may be disabled (private mode or policy); session tracking still works.
@@ -177,7 +178,6 @@ export default function OrderStatus({
         if (disposed) return
         if (loaded.length > 0) await sleep(350)
         try {
-          if (!ref.customer_phone) continue
           const row = await fetchStoredOrder(ref, controller.signal, ref.customer_phone)
           if (row) loaded.push(row)
         } catch {
@@ -202,7 +202,7 @@ export default function OrderStatus({
   React.useEffect(() => {
     for (const row of serverOrders) {
       if (row.order_number) {
-        mergeStoredRef({ order_number: row.order_number, customer_phone: row.customer_phone ?? undefined })
+        mergeStoredRef({ order_number: row.order_number })
       }
     }
   }, [serverOrders])
@@ -258,9 +258,7 @@ export default function OrderStatus({
           routeUrl("order.status.api", { order_number: activeOrder.order_number }),
           window.location.origin,
         )
-        if (activeOrder.customer_phone) {
-          url.searchParams.set("customer_phone", activeOrder.customer_phone)
-        }
+        url.searchParams.set("session", "1")
         const response = await fetch(url, {
           cache: "no-store",
           headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -316,7 +314,7 @@ export default function OrderStatus({
 
   const shownOrder = liveOrder ?? activeOrder
 
-  function cancelOrder() {
+  function _cancelOrder() {
     if (!activeOrder) return
     const confirmed = window.confirm(
       `Batalkan Pesanan ${activeOrder.order_number}?\nStok produk akan dikembalikan ke katalog.`,
@@ -324,7 +322,7 @@ export default function OrderStatus({
     if (!confirmed) return
     cancelForm.setData({
       order_number: activeOrder.order_number,
-      customer_phone: activeOrder.customer_phone ?? "",
+      customer_phone: "",
     })
     cancelForm.post(routeUrl("order.cancel", { order_number: activeOrder.order_number }), {
       preserveScroll: true,

@@ -76,11 +76,18 @@ export default function UsersIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <Button asChild>
+          <Link href={createHref}>
+            <Icon name="plus" className="size-4" aria-hidden="true" />
+            Tambah admin
+          </Link>
+        </Button>
+      }
     >
       <Head title={`${title} | Admin`} />
 
-      {/* Baris kontrol seragam: search | filter/sort | actions */}
+      {/* Baris kontrol seragam: search | filter/sort */}
       <ListToolbar
         search={{
           value: q,
@@ -88,14 +95,6 @@ export default function UsersIndex({
           onSubmit: () => apply({ q }),
           placeholder: "Cari nama, username, atau email",
         }}
-        actions={
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah admin
-            </Link>
-          </Button>
-        }
         sort={
           <Select
             value={sort}

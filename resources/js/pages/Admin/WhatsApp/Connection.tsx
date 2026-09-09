@@ -57,7 +57,7 @@ export default function WhatsAppConnection({
   const [liveStatus, setLiveStatus] = useState<string>("unknown")
   const [refreshing, setRefreshing] = useState<boolean>(false)
 
-  // Manual refresh eksplisit — TANPA polling/setInterval (Design Contract D).
+  // Manual refresh eksplisit - TANPA polling/setInterval (Design Contract D).
   function refreshStatus() {
     setRefreshing(true)
     fetch(statusUrl, { headers: { Accept: "application/json" } })

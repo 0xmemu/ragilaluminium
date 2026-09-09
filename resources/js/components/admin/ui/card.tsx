@@ -3,7 +3,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Admin card — surface putih, hairline border, radius 12px, shadow nyaris tak terlihat.
+ * Admin card - surface putih, hairline border, radius 12px, shadow nyaris tak terlihat.
  * Pola komposisi ala shadcn: Card > CardHeader > CardTitle/CardDescription + CardContent.
  */
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(

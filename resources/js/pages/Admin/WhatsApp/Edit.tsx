@@ -79,7 +79,14 @@ export default function WhatsAppEdit({
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={template.status === "active" ? "active" : "inactive"} />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={template.status === "active" ? "active" : "inactive"} />
+          <Button type="submit" form="wa-template-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
@@ -92,7 +99,7 @@ export default function WhatsAppEdit({
         </Button>
       </div>
 
-      <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
+      <form id="wa-template-form" onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
         <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <FormErrorSummary errors={form.errors} />
 
@@ -133,9 +140,6 @@ export default function WhatsAppEdit({
           </Field>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan perubahan"}
-            </Button>
             <Button
               type="button"
               variant={template.status === "active" ? "destructive" : "secondary"}
@@ -154,7 +158,7 @@ export default function WhatsAppEdit({
         <aside className="rounded-lg border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
           <h2 className="text-base font-bold">Urutan variabel Meta</h2>
           <p className="mt-2 text-pretty text-sm text-muted-foreground">
-            Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend — jangan ganti jadi nama seperti {"{{order_number}}"}.
+            Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend - jangan ganti jadi nama seperti {"{{order_number}}"}.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {variables.map((variable) => (

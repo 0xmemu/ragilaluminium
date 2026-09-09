@@ -37,9 +37,9 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
 }
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—"
+  if (!iso) return "-"
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "—"
+  if (Number.isNaN(date.getTime())) return "-"
   return (
     date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) +
     " · " +
@@ -297,7 +297,7 @@ export default function MediaHistory({
                           {formatDate(row.created_at)}
                         </td>
                         <td className="max-w-[16rem] px-3 py-3">
-                          <p className="truncate font-medium text-foreground">{row.entity_label ?? "—"}</p>
+                          <p className="truncate font-medium text-foreground">{row.entity_label ?? "-"}</p>
                           <p className="text-[11px] text-muted-foreground">
                             {row.loggable_type.includes("ProductMedia") ? "Media produk" : "Aset"} #{row.loggable_id}
                           </p>
@@ -306,7 +306,7 @@ export default function MediaHistory({
                           <StatusBadge status={meta.tone} label={meta.label} />
                         </td>
                         <td className="max-w-[24rem] px-3 py-3 text-[13px] text-muted-foreground">
-                          {row.message ?? "—"}
+                          {row.message ?? "-"}
                         </td>
                         <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
                           <div className="flex items-center justify-end gap-1.5">
@@ -359,7 +359,7 @@ export default function MediaHistory({
                 return (
                   <div key={row.id} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-foreground">{row.entity_label ?? "—"}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{row.entity_label ?? "-"}</p>
                       <StatusBadge status={meta.tone} label={meta.label} />
                     </div>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">{formatDate(row.created_at)}</p>

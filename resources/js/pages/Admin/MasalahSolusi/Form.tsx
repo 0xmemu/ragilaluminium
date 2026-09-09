@@ -191,20 +191,23 @@ export default function MasalahSolusiForm({
 
   return (
     <AdminLayout
-      backUrl={backUrl} title={editing ? "Edit Masalah & Solusi" : "Tambah Masalah & Solusi"}
+      backUrl={backUrl}
+      title={editing ? "Edit Masalah & Solusi" : "Tambah Masalah & Solusi"}
       description="Unggah foto/video dokumentasi masalah dan tulis rekomendasi solusi untuk halaman publik."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexUrl}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={indexUrl}>Batal</Link>
+          </Button>
+          <Button type="submit" form="masalah-solusi-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan"}
+          </Button>
+        </div>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Masalah & Solusi | Admin`} />
 
-      <form className="mx-auto max-w-5xl space-y-6" onSubmit={onSubmit}>
+      <form id="masalah-solusi-form" className="mx-auto max-w-5xl space-y-6" onSubmit={onSubmit}>
         <FormErrorSummary errors={form.errors} />
 
         <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
@@ -498,14 +501,7 @@ export default function MasalahSolusiForm({
           </div>
         </section>
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary">
-            <Link href={indexUrl}>Batal</Link>
-          </Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )

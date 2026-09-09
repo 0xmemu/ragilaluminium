@@ -63,8 +63,18 @@ class OrderController extends Controller
                 'payment_method' => $paymentMethod,
                 'shipping_status' => $order->shipping_status,
                 'total_amount' => (float) $order->total_amount,
+                'billing' => [
+                    'subtotal' => (float) $order->subtotal_amount,
+                    'discount' => (float) $order->discount_amount,
+                    'voucher_discount' => (float) $order->voucher_discount_amount,
+                    'shipping_gross' => (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount,
+                    'shipping_subsidy' => (float) $order->shipping_subsidy_amount,
+                    'shipping_net' => (float) $order->shipping_amount,
+                    'cod_fee' => (float) ($order->cod_fee_amount ?? 0),
+                    'insurance' => (float) ($order->shipping_insurance_amount ?? 0),
+                    'total' => (float) $order->total_amount,
+                ],
                 'customer_name' => $order->customer_name,
-                'customer_phone' => $order->customer_phone,
                 'created_at' => $order->created_at?->toIso8601String(),
                 'items' => $order->items->map(fn ($i) => [
                     'product_name' => $i->product_name,
@@ -99,7 +109,7 @@ class OrderController extends Controller
         $order = $this->findGuestOrder([
             'order_number' => $order_number,
             'customer_phone' => $validated['customer_phone'] ?? null,
-        ]);
+        ], $request);
 
         if (! $order) {
             return back()->withErrors([
@@ -168,7 +178,7 @@ class OrderController extends Controller
     {
         $validated = $request->validated();
 
-        $order = $this->findGuestOrder($validated);
+        $order = $this->findGuestOrder($validated, $request);
 
         if ($order) {
             $this->rememberConfirmedOrder($request, $order->order_number);
@@ -196,7 +206,7 @@ class OrderController extends Controller
         $order = $this->findGuestOrder([
             'order_number' => $order_number,
             'customer_phone' => $validated['customer_phone'] ?? null,
-        ]);
+        ], $request);
 
         if (! $order) {
             return response()->json(['message' => 'Order not found'], 404);
@@ -259,14 +269,19 @@ class OrderController extends Controller
         return $payloads;
     }
 
-    private function findGuestOrder(array $validated): ?Order
+    private function findGuestOrder(array $validated, ?Request $request = null): ?Order
     {
-        $query = Order::where('order_number', $validated['order_number']);
+        $orderNumber = (string) $validated['order_number'];
+        $confirmed = $request?->hasSession() ? $request->session()->get('confirmed_orders', []) : [];
+        $hasSessionOwnership = is_array($confirmed) && in_array($orderNumber, $confirmed, true);
+        $query = Order::where('order_number', $orderNumber);
 
-        if (! empty($validated['customer_phone'])) {
+        if (! $hasSessionOwnership) {
+            if (empty($validated['customer_phone'])) {
+                return null;
+            }
             $query->where('customer_phone', PhoneNumber::normalize($validated['customer_phone']));
         }
-
 
         return $query->with('items', 'shippingRecords')->first();
     }
@@ -366,15 +381,6 @@ class OrderController extends Controller
                 'total' => (float) $order->total_amount,
             ],
             'customer_name' => $order->customer_name,
-            'customer_phone' => $order->customer_phone,
-            'shipping_address' => trim(implode(', ', array_filter([
-                $order->shipping_address_line1,
-                $order->shipping_address_line2 ?? null,
-                $order->shipping_village,
-                $order->shipping_district,
-                $order->shipping_city,
-                $order->shipping_province,
-            ]))),
                 'created_at' => $order->created_at?->toIso8601String(),
             'eta' => OrderEta::forOrder($order),
             'items' => $order->items->map(function ($i) {

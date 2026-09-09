@@ -248,7 +248,7 @@ export function CheckoutSummary({
                     ) : null}
                   </span>
                   <span className="tabular-nums shrink-0 font-semibold text-foreground">
-                    −{formatCurrency(entry.discount)}
+                    Hemat {formatCurrency(entry.discount)}
                   </span>
                 </p>
               ))
@@ -311,17 +311,17 @@ export function CheckoutSummary({
         </div>
         {hasDiscount ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Potongan harga</dt>
+            <dt className="text-muted-foreground min-w-0 break-words">Hemat</dt>
             <dd className="tabular-nums font-semibold text-sale">
-              −{formatCurrency(discountTotal)}
+              {formatCurrency(discountTotal)}
             </dd>
           </div>
         ) : null}
         {hasVoucher ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Voucher Diskon</dt>
+            <dt className="text-muted-foreground min-w-0 break-words">Hemat Voucher</dt>
             <dd className="tabular-nums font-bold text-sale">
-              −{formatCurrency(voucherDiscount)}
+              {formatCurrency(voucherDiscount)}
             </dd>
           </div>
         ) : null}
@@ -358,10 +358,10 @@ export function CheckoutSummary({
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="min-w-0 break-words text-muted-foreground">
-                    Subsidi toko ({Math.round((effectiveShipping.subsidy / effectiveShipping.gross) * 100)}%)
+                    Hemat Subsidi Ongkir ({Math.round((effectiveShipping.subsidy / effectiveShipping.gross) * 100)}%)
                   </dt>
                   <dd className="tabular-nums font-semibold text-sale">
-                    -{formatCurrency(effectiveShipping.subsidy)}
+                    {formatCurrency(effectiveShipping.subsidy)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4 border-t border-border/70 pt-1.5">

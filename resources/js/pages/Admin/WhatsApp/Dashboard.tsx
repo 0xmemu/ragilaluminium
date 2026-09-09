@@ -73,7 +73,7 @@ export default function WhatsAppDashboard({
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null)
 
-  // Manual refresh eksplisit — TANPA polling/setInterval (Design Contract D).
+  // Manual refresh eksplisit - TANPA polling/setInterval (Design Contract D).
   function refreshStatus() {
     setRefreshing(true)
     setRefreshError(null)
@@ -137,7 +137,7 @@ export default function WhatsAppDashboard({
               </h2>
               <p className="text-sm text-muted-foreground">
                 {connected
-                  ? `Nomor: ${connectedPhone || "—"} · Gateway Baileys aktif`
+                  ? `Nomor: ${connectedPhone || "-"} · Gateway Baileys aktif`
                   : unreachable
                     ? statusText
                     : hasSession
@@ -228,7 +228,7 @@ export default function WhatsAppDashboard({
               {recentMessages.map((m) => (
                 <div key={m.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="truncate text-sm">{m.content || "—"}</p>
+                    <p className="truncate text-sm">{m.content || "-"}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {m.phone_number} · {m.order_number} · {m.created_at}
                     </p>

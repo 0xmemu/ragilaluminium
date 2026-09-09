@@ -113,13 +113,19 @@ export default function TestimonialForm({
           : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
       }
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexUrl}>Batal</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="testimonial-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : reviewMode ? "Simpan ulasan terverifikasi" : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={indexUrl}>Batal</Link>
+          </Button>
+        </div>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} ${isMarketplaceIntent ? "Screenshot" : "Ulasan"} | Admin`} />
       <form
+        id="testimonial-form"
         onSubmit={(event) => {
           event.preventDefault()
           form.transform((data) => ({
@@ -299,12 +305,6 @@ export default function TestimonialForm({
             </label>
           </div>
         </section>
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : reviewMode ? "Simpan ulasan terverifikasi" : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
-          </Button>
-        </div>
       </form>
     </AdminLayout>
   )

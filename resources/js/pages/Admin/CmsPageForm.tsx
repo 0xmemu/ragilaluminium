@@ -51,14 +51,20 @@ export default function CmsPageForm({
       title={editing ? "Edit halaman CMS" : "Tambah halaman CMS"}
       description={editing ? page?.slug : "Konten publik disimpan sebagai HTML terstruktur."}
       actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.pages.index")}>Batal</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="cms-page-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan halaman"}
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={routeUrl("admin.pages.index")}>Batal</Link>
+          </Button>
+        </div>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Halaman CMS | Admin`} />
 
       <form
+        id="cms-page-form"
         onSubmit={(event) => {
           event.preventDefault()
           if (editing) form.put(submitUrl)
@@ -109,14 +115,6 @@ export default function CmsPageForm({
               />
               Terbitkan halaman
             </label>
-          </div>
-          <div className="mt-6 flex justify-end gap-2 border-t border-border pt-5">
-            <Button asChild variant="secondary">
-              <Link href={routeUrl("admin.pages.index")}>Batal</Link>
-            </Button>
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan halaman"}
-            </Button>
           </div>
         </section>
 

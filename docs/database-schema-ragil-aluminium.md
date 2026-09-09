@@ -925,6 +925,18 @@ Versioned import metadata for postal references. The active dataset is selected 
 
 UQ: `source + version`; IDX: active status/retrieval time.
 
+### 14.3 `jnt_address_masters`
+
+Cached J&T Cargo address hierarchy synchronized from `order/getAddress`.
+
+- `id` (INTEGER), PK
+- `province_name`, `city_name`, `area_name`, `town_name`
+- normalized keys: `province_key`, `city_key`, `area_key`, `town_key`
+- `synced_at`, timestamps
+
+UQ: province/city/area/town normalized hierarchy. Indexes support city/town and city/area resolution.
+Import command: `php artisan jnt:sync-address-master` (read-only provider call, idempotent upsert; `--dry-run` validates count without writing).
+
 ### 14.2 `postal_code_mappings`
 
 Village/kelurahan postal mappings imported into a dataset version.
@@ -973,3 +985,6 @@ are append-only; update/delete attempts are rejected at the model layer.
 WhatsApp automation is independent of the web-admin session: server-side credentials,
 queued jobs, retries, webhooks, reconnect handling, and delivery audit continue
 without a logged-in admin and are not reset by login rotation or logout.
+
+
+> Shipping package contract: checkout and order creation use `ShipmentPackageCalculator` with divisor 5000. Orders snapshot `shipping_chargeable_weight_kg` and `shipping_package_snapshot`; `agingCost/get` receives the snapshot chargeable weight because direct dimensional quote remains permission-gated.

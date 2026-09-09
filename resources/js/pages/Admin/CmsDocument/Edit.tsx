@@ -56,6 +56,9 @@ export default function CmsDocumentEdit({
       description={description}
       actions={
         <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="cms-document-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : saveLabel}
+          </Button>
           <Button asChild variant="secondary">
             <a href={previewUrl} target="_blank" rel="noreferrer">
               Lihat halaman publik
@@ -69,6 +72,7 @@ export default function CmsDocumentEdit({
     >
       <Head title={`${title} | Admin`} />
       <form
+        id="cms-document-form"
         className="space-y-6"
         onSubmit={(event) => {
           event.preventDefault()
@@ -122,14 +126,6 @@ export default function CmsDocumentEdit({
         </section>
 
         <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:mx-0 sm:rounded-lg sm:border sm:px-5">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button asChild variant="secondary">
-              <Link href={hubUrl}>Kembali ke Hub</Link>
-            </Button>
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : saveLabel}
-            </Button>
-          </div>
         </div>
       </form>
     </AdminLayout>

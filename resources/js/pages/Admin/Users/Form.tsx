@@ -42,6 +42,7 @@ export default function UserForm({
 
   return (
     <AdminLayout
+      backUrl={routeUrl("admin.users.index")}
       title={editing ? "Edit akun admin" : "Tambah akun admin"}
       description={
         editing
@@ -51,14 +52,15 @@ export default function UserForm({
           : "Buat username dan password untuk akun admin baru."
       }
       actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.users.index")}>Kembali</Link>
+        <Button type="submit" form="user-form" disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan akun"}
         </Button>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Admin | Admin`} />
 
       <form
+        id="user-form"
         onSubmit={(event) => {
           event.preventDefault()
           if (editing) form.put(submitUrl)
@@ -217,14 +219,7 @@ export default function UserForm({
           </table>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary">
-            <Link href={routeUrl("admin.users.index")}>Batal</Link>
-          </Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan akun"}
-          </Button>
-        </div>
+        
       </form>
 
       {editing && user && !isSelf ? (

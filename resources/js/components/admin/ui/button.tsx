@@ -5,7 +5,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Admin button — bahasa desain "Paper": rounded-lg, hairline, teal accent.
+ * Admin button - bahasa desain "Paper": rounded-lg, hairline, teal accent.
  * API drop-in dengan components/ui/button (variant & size names sama).
  */
 const buttonVariants = cva(

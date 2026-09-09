@@ -226,7 +226,50 @@ export default function FaqIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" form="faq-meta-form" disabled={metaForm.processing}>
+            {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
+          </Button>
+          <Button asChild variant="secondary">
+            <a href={previewUrl} target="_blank" rel="noreferrer">
+              Lihat halaman publik
+            </a>
+          </Button>
+          <Button type="button" variant="secondary" onClick={toggleMeta}>
+            {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
+          </Button>
+          {!isArchivedTab ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!rows.length}
+                onClick={() => setReorderMode((value) => !value)}
+              >
+                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
+              </Button>
+              {reorderMode ? (
+                <Button
+                  type="button"
+                  disabled={reorderForm.processing}
+                  onClick={() => {
+                    reorderForm.setData("status", status)
+                    reorderForm.put(reorderUrl)
+                  }}
+                >
+                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+                </Button>
+              ) : (
+                <Button type="button" onClick={openCreatePanel}>
+                  <Icon name="plus" className="size-4" aria-hidden="true" />
+                  Tambah FAQ
+                </Button>
+              )}
+            </>
+          ) : null}
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
@@ -267,9 +310,10 @@ export default function FaqIndex({
         <section className="mt-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Judul hero dan status terbit — jarang diubah. Tutup panel ini setelah selesai.
+            Judul hero dan status terbit - jarang diubah. Tutup panel ini setelah selesai.
           </p>
           <form
+  id="faq-meta-form"
             className="mt-4 grid gap-4 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault()
@@ -302,9 +346,6 @@ export default function FaqIndex({
               />
             </Field>
             <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <Button type="submit" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
-              </Button>
               <Button type="button" variant="secondary" onClick={() => setShowMeta(false)}>
                 Tutup
               </Button>
@@ -390,47 +431,7 @@ export default function FaqIndex({
           onSubmit: () => apply({ q }),
           placeholder: "Cari pertanyaan atau jawaban",
         }}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="secondary">
-              <a href={previewUrl} target="_blank" rel="noreferrer">
-                Lihat halaman publik
-              </a>
-            </Button>
-            <Button type="button" variant="secondary" onClick={toggleMeta}>
-              {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
-            </Button>
-            {!isArchivedTab ? (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!rows.length}
-                  onClick={() => setReorderMode((value) => !value)}
-                >
-                  {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-                </Button>
-                {reorderMode ? (
-                  <Button
-                    type="button"
-                    disabled={reorderForm.processing}
-                    onClick={() => {
-                      reorderForm.setData("status", status)
-                      reorderForm.put(reorderUrl)
-                    }}
-                  >
-                    {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                  </Button>
-                ) : (
-                  <Button type="button" onClick={openCreatePanel}>
-                    <Icon name="plus" className="size-4" aria-hidden="true" />
-                    Tambah
-                  </Button>
-                )}
-              </>
-            ) : null}
-          </div>
-        }
+
         className="mt-4"
       >
         <Select

@@ -294,7 +294,30 @@ export default function InstallationGalleryIndex({
   }
 
   return (
-    <AdminLayout title={title} description={description} actions={undefined}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" form="igp-meta-form" disabled={metaForm.processing}>
+            {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
+          </Button>
+          {previewUrl ? (
+            <Button asChild variant="secondary">
+              <a href={previewUrl} target="_blank" rel="noreferrer">
+                Lihat halaman publik
+              </a>
+            </Button>
+          ) : null}
+          <Button asChild>
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              {createLabel}
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       <Head title={`${title} | Admin`} />
 
       {pageMeta && metaUrl ? (
@@ -308,6 +331,7 @@ export default function InstallationGalleryIndex({
           </summary>
           <div className="border-t border-border p-5 sm:p-6">
           <form
+  id="igp-meta-form"
             className="grid gap-4 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault()
@@ -336,11 +360,7 @@ export default function InstallationGalleryIndex({
                 onChange={(event) => metaForm.setData("subtitle", event.target.value)}
               />
             </Field>
-            <div className="sm:col-span-2">
-              <Button type="submit" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-              </Button>
-            </div>
+
           </form>
           </div>
         </details>
@@ -353,23 +373,7 @@ export default function InstallationGalleryIndex({
           onSubmit: () => apply({ q }),
           placeholder: "Cari label atau URL foto",
         }}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {previewUrl ? (
-              <Button asChild variant="secondary">
-                <a href={previewUrl} target="_blank" rel="noreferrer">
-                  Lihat halaman publik
-                </a>
-              </Button>
-            ) : null}
-            <Button asChild>
-              <Link href={createHref}>
-                <Icon name="plus" className="size-4" aria-hidden="true" />
-                {createLabel}
-              </Link>
-            </Button>
-          </div>
-        }
+
         className="mb-4"
       >
         <Select

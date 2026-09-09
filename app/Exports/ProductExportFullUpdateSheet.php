@@ -33,9 +33,20 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
     public function __construct(protected Builder $query)
     {
         $this->sheetTitle = 'Update Produk Lengkap';
+    }
+
+    public function columnWidths(): array
+    {
+        $this->resolveSeries();
+        $headings = $this->headings();
         $widths = ['A' => 20, 'B' => 30, 'C' => 34, 'D' => 40];
-        foreach (['E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL'] as $c) { $widths[$c] = 18; }
-        $this->columnWidths = $widths;
+        $count = count($headings);
+        for ($i = 5; $i <= $count; $i++) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+            $widths[$colLetter] = 18;
+        }
+
+        return $widths;
     }
 
     /**

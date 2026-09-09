@@ -2,13 +2,26 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\SecurityHeaders;
 use App\Providers\AppServiceProvider;
+use Illuminate\Http\Request;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\TestCase;
 
 class ProductionSecurityGateTest extends TestCase
 {
+    public function test_report_only_csp_allows_only_google_maps_frame_origin(): void
+    {
+        $request = Request::create('/about', 'GET');
+        $response = (new SecurityHeaders())->handle($request, fn () => response('ok'));
+        $policy = (string) $response->headers->get('Content-Security-Policy-Report-Only');
+
+        $this->assertStringContainsString("frame-src https://maps.google.com", $policy);
+        $this->assertStringNotContainsString("frame-src 'none'", $policy);
+        $this->assertStringNotContainsString("frame-src https:;", $policy);
+    }
+
     /**
      * @param  array<string, mixed>  $override
      */

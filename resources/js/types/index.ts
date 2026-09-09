@@ -472,15 +472,8 @@ export interface OrderTrackingViewModel {
   recipient: {
     customerName: string
     phoneMasked: string
-    phoneFull: string
-    addressLine1: string
-    addressLine2: string
-    village: string
-    district: string
     city: string
     province: string
-    postalCode: string
-    address: string
     method: string
   }
   carrier?: {
@@ -601,7 +594,6 @@ export interface PublicOrder {
     total: number
   }
   customer_name: string
-  customer_phone?: string | null
   shipping_address?: string | null
   eta?: OrderEta | null
   items: PublicOrderItem[]

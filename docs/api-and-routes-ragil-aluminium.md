@@ -341,6 +341,7 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 - `POST /api/shipping/quote` -> `ShippingQuoteController@store` [throttled]
   - input: `weight_kg`, `destination_city`, optional province/area/postal/village/district identifiers
   - output state: `ready` (live J&T, final), `fallback` (local formula while J&T is not ready), or `manual_review` (provider unavailable; provisional estimate only)
+- J&T address hierarchy is cached locally in `jnt_address_masters` by `jnt:sync-address-master`, sourced from `order/getAddress`. J&T uses `areaName` as the tariff area and may represent the selected local area as `townName`; checkout resolution maps the internal address to the verified J&T parent area before calling `agingCost/get`.
 - Postal validation uses the active versioned dataset only after its quality gates pass. The dataset supplies a server-side auto-fill suggestion; the customer postal-code field is readonly. Submitted checkout data is rechecked against the selected village/district when a mapping exists. If mapping is missing or unverified, postal_code remains blank and the customer must reconfirm the full address or retry the region lookup; manual review is reserved for shipping quote/provider failure. No map provider supplies postal_code. If no dataset is active, validation reports unavailable and does not invalidate legacy checkout snapshots.
 
 ### Customer review contract
@@ -353,3 +354,6 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 ### ETA presentation contract
 
 `OrderEta::deliveryRange()` is the raw internal/provider range and never includes the display buffer. `OrderEta::forOrder()` is the sole customer-facing presentation boundary: it adds the configured display buffer once and exposes `base_min_days`, `base_max_days`, and `display_buffer_days` metadata so consumers must not add it again. WhatsApp uses the same presentation result.
+
+
+> Shipping package contract: checkout and order creation use `ShipmentPackageCalculator` with divisor 5000. Orders snapshot `shipping_chargeable_weight_kg` and `shipping_package_snapshot`; `agingCost/get` receives the snapshot chargeable weight because direct dimensional quote remains permission-gated.

@@ -50,6 +50,23 @@ class HomeController extends Controller
 
         try {
             $promoSlides = HomepagePromotions::slides();
+
+            // Kampanye dengan sync_banner aktif tampil sebagai slide pertama
+            // (banner kampanye) hanya selama kampanye live.
+            $campaignBanner = \App\Support\CampaignBannerSync::activeBanner();
+            if ($campaignBanner !== null) {
+                array_unshift($promoSlides, [
+                    'id' => -9001,
+                    'source' => 'campaign',
+                    'layout' => 'promo_card',
+                    'eyebrow' => 'Kampanye',
+                    'headline' => $campaignBanner['title'],
+                    'accent' => null,
+                    'image' => $campaignBanner['image_url'],
+                    'image_alt' => $campaignBanner['title'],
+                    'href' => $campaignBanner['link_url'],
+                ]);
+            }
         } catch (\Throwable) {
             // Promo CMS must not make the storefront unavailable.
         }

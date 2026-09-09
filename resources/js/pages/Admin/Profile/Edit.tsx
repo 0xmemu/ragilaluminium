@@ -34,17 +34,23 @@ export default function ProfileEdit({
     <AdminLayout
       title="Profil Saya"
       description="Perbarui nama, username, email penerima, dan password akun yang sedang login."
+      actions={
+        <Button type="submit" form="profile-form" disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan profil"}
+        </Button>
+      }
     >
       <Head title="Profil Saya | Admin" />
 
       <form
+        id="profile-form"
         onSubmit={(event) => {
           event.preventDefault()
           form.put(submitUrl, {
             onSuccess: () => form.reset("current_password", "password", "password_confirmation"),
           })
         }}
-        className="mx-auto max-w-2xl space-y-6"
+        className="mx-auto max-w-4xl space-y-6"
       >
         <FormErrorSummary errors={form.errors} />
 
@@ -140,11 +146,7 @@ export default function ProfileEdit({
           </div>
         </section>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan profil"}
-          </Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )

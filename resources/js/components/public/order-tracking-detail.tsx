@@ -9,7 +9,6 @@ import {
   Package,
   ShieldCheck,
   Truck,
-  Warning,
 } from "@phosphor-icons/react"
 
 import { Icon } from "@/components/shared/icon"
@@ -246,10 +245,10 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
           if (!b) return null
           const rows: Array<{ label: string; value: number; tone?: "sub" | "sale" }> = [
             { label: "Subtotal Produk", value: b.subtotal },
-            { label: "Potongan harga", value: -b.discount, tone: "sale" },
-            { label: "Voucher", value: -b.voucher_discount, tone: "sale" },
+            { label: "Hemat", value: b.discount, tone: "sale" },
+            { label: "Hemat Voucher", value: b.voucher_discount, tone: "sale" },
             { label: "Ongkir asli (tarif kurir)", value: b.shipping_gross },
-            { label: "Subsidi ongkir", value: -b.shipping_subsidy, tone: "sale" },
+            { label: "Hemat Subsidi Ongkir", value: b.shipping_subsidy, tone: "sale" },
             { label: "Ongkir dibayar", value: b.shipping_net },
             { label: "Biaya COD", value: b.cod_fee },
             { label: "Asuransi", value: b.insurance },
@@ -260,7 +259,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
                 <div key={row.label} className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">{row.label}</dt>
                   <dd className={cn("tabular-nums font-semibold", row.tone === "sale" ? "text-sale" : "text-foreground")}>
-                    {row.value < 0 ? `−${formatCurrency(Math.abs(row.value))}` : formatCurrency(row.value)}
+                    {formatCurrency(row.value)}
                   </dd>
                 </div>
               ))}
@@ -301,16 +300,10 @@ function DetailPengiriman({ order }: { order: PublicOrder }) {
           {recipient.customerName}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {recipient.phoneFull}
+          {recipient.phoneMasked}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {recipient.addressLine1 ? <>{recipient.addressLine1}<br /></> : null}
-          {recipient.addressLine2 ? <>{recipient.addressLine2}<br /></> : null}
-          {[recipient.village, recipient.district].filter(Boolean).join(", ") ? (
-            <>{[recipient.village, recipient.district].filter(Boolean).join(", ")}<br /></>
-          ) : null}
           {[recipient.city, recipient.province].filter(Boolean).join(", ")}
-          {recipient.postalCode ? ` ${recipient.postalCode}` : ""}
         </p>
       </div>
     </div>
@@ -605,7 +598,6 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
       {/* Banner delivered/completed: "sudah sampai" + CTA ulasan (paling atas) */}
       <CustomerReviewForm
         orderNumber={order.order_number}
-        customerPhone={order.customer_phone ?? ""}
         orderStatus={order.order_status}
         items={order.items}
         reviews={order.reviews}

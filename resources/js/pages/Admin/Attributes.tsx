@@ -77,9 +77,14 @@ export default function Attributes({
       title={`Atribut ${product.parent_sku}`}
       description={product.name}
       actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.products.show", { product: product.id })}>Kembali ke produk</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="attribute-create-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Tambah"}
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={routeUrl("admin.products.show", { product: product.id })}>Kembali ke produk</Link>
+          </Button>
+        </div>
       }
     >
       <Head title={`Atribut ${product.parent_sku} | Admin`} />
@@ -104,7 +109,7 @@ export default function Attributes({
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <h2 className="text-xl font-semibold">Tambah atribut</h2>
-        <form onSubmit={submit} className="mt-4 grid gap-4 md:grid-cols-[1fr_1.3fr_10rem_auto] md:items-end">
+        <form id="attribute-create-form" onSubmit={submit} className="mt-4 grid gap-4 md:grid-cols-[1fr_1.3fr_10rem_auto] md:items-end">
           <FormErrorSummary errors={form.errors} className="md:col-span-4" />
           <Field id="new-attribute-name" label="Nama" required error={form.errors.attribute_name}>
             <Input value={form.data.attribute_name} onChange={(event) => form.setData("attribute_name", event.target.value)} />
@@ -118,9 +123,6 @@ export default function Attributes({
               <option value="shopee">Shopee</option>
             </Select>
           </Field>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Tambah"}
-          </Button>
         </form>
       </section>
     </AdminLayout>

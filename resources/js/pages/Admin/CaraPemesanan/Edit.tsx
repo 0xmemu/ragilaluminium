@@ -100,17 +100,21 @@ export default function CaraPemesananEdit({
       title={title}
       description={description}
       actions={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary">
             <a href={previewUrl} target="_blank" rel="noreferrer">
               Lihat halaman publik
             </a>
+          </Button>
+          <Button type="submit" form="cara-pemesanan-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
       <form
+        id="cara-pemesanan-form"
         className="mx-auto max-w-4xl space-y-6"
         onSubmit={(event) => {
           event.preventDefault()
@@ -301,21 +305,12 @@ export default function CaraPemesananEdit({
             {bodyPreview ? (
               <article className="cms-content mt-3 text-sm" dangerouslySetInnerHTML={{ __html: bodyPreview }} />
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Kosong — tidak ada catatan tambahan.</p>
+              <p className="mt-3 text-sm text-muted-foreground">Kosong - tidak ada catatan tambahan.</p>
             )}
           </aside>
         </section>
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary">
-            <Link href={previewUrl} target="_blank">
-              Pratinjau
-            </Link>
-          </Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )

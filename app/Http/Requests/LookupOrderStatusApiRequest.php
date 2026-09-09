@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Rules moved 1:1 from OrderController@statusApi — no behavior change.
+ * Direct API callers may provide the phone; browser polling uses the verified session.
  */
 class LookupOrderStatusApiRequest extends FormRequest
 {
@@ -20,7 +20,7 @@ class LookupOrderStatusApiRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_phone' => ['required', 'string'],
+            'customer_phone' => ['nullable', 'string'],
         ];
     }
 }

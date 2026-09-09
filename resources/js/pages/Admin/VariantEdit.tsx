@@ -91,9 +91,12 @@ export default function VariantEdit({
   return (
     <AdminLayout
       title="Edit varian"
-      description={`${variant.variant_sku} — atur opsi, harga, dan foto khusus kombinasi ini.`}
+      description={`${variant.variant_sku} - atur opsi, harga, dan foto khusus kombinasi ini.`}
       actions={
         <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="variant-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan varian"}
+          </Button>
           <Button asChild variant="secondary">
             <Link href={mediaManageUrl}>
               <Icon name="image" className="h-4 w-4" aria-hidden="true" />
@@ -107,7 +110,7 @@ export default function VariantEdit({
       }
     >
       <Head title={`Edit ${variant.variant_sku} | Admin`} />
-      <form onSubmit={submit} className="mx-auto max-w-3xl space-y-6">
+      <form id="variant-form" onSubmit={submit} className="mx-auto max-w-3xl space-y-6">
         <FormErrorSummary errors={form.errors} />
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Identitas dan opsi</h2>
@@ -170,10 +173,7 @@ export default function VariantEdit({
         </section>
         <div className="flex justify-end gap-2">
           <Button asChild variant="secondary"><Link href={backUrl}>Batal</Link></Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan varian"}
-          </Button>
-        </div>
+</div>
       </form>
 
       <section className="mx-auto mt-8 max-w-3xl space-y-4">

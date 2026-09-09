@@ -41,16 +41,18 @@ export default function CategoryForm({ title, description, category, submitUrl, 
   }
 
   return (
-    <AdminLayout title={title} description={description} backUrl={backUrl}>
-      <Head title={`${title} | Admin`} />
-      <div className="mb-4">
-        <Button asChild variant="secondary">
-          <Link href={route("admin.categories.index")}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />Kembali
-          </Link>
+    <AdminLayout
+      title={title}
+      description={description}
+      backUrl={backUrl}
+      actions={
+        <Button type="submit" form="category-form" disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan"}
         </Button>
-      </div>
-      <form onSubmit={submit} className="max-w-2xl space-y-4 rounded-lg border border-border bg-card p-5 shadow-soft">
+      }
+    >
+      <Head title={`${title} | Admin`} />
+      <form id="category-form" onSubmit={submit} className="max-w-4xl space-y-4 rounded-lg border border-border bg-card p-5 shadow-soft">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="cat-code" label="Kode" required error={form.errors.code} hint="Contoh: JENDELA, PINTU, BOVEN">
             <Input value={form.data.code} onChange={(e) => form.setData("code", e.target.value.toUpperCase())} />
@@ -75,10 +77,7 @@ export default function CategoryForm({ title, description, category, submitUrl, 
           <input type="checkbox" checked={form.data.is_active} onChange={(e) => form.setData("is_active", e.target.checked)} className="h-4 w-4 accent-primary" />
           Kategori aktif
         </label>
-        <div className="flex gap-2">
-          <Button type="submit" disabled={form.processing}>{form.processing ? "Menyimpan..." : "Simpan"}</Button>
-          <Button asChild variant="ghost"><Link href={route("admin.categories.index")}>Batal</Link></Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )

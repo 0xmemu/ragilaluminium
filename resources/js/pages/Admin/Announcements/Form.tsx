@@ -60,20 +60,23 @@ export default function AnnouncementForm({
 
   return (
     <AdminLayout
+      backUrl={indexHref}
       title={isEdit ? "Edit Bar Promo" : "Tambah Bar Promo"}
       description="Teks promo pada bar merah di atas header storefront (homepage)."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexHref}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={indexHref}>Batal</Link>
+          </Button>
+          <Button type="submit" form="announcement-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah bar promo"}
+          </Button>
+        </div>
       }
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Bar Promo | Admin`} />
 
-      <form onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
+      <form id="announcement-form" onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
         <FormErrorSummary errors={form.errors} />
 
         <section className="overflow-hidden rounded-xl border border-border bg-card">
@@ -138,14 +141,7 @@ export default function AnnouncementForm({
           </div>
         </section>
 
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah bar promo"}
-          </Button>
-          <Button asChild type="button" variant="secondary">
-            <Link href={indexHref}>Batal</Link>
-          </Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )

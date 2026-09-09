@@ -202,7 +202,52 @@ export default function ApaKataIndex({
   const displayRows = reorderMode || canReorder ? orderedRows : rows
 
   return (
-    <AdminLayout title={title} description={description} actions={undefined}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" form="apk-meta-form" disabled={metaForm.processing}>
+            {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
+          </Button>
+          {previewUrl ? (
+            <Button asChild variant="secondary">
+              <a href={previewUrl} target="_blank" rel="noreferrer">
+                Lihat halaman publik
+              </a>
+            </Button>
+          ) : null}
+          {canReorder && reorderUrl ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setReorderMode((value) => !value)
+                }}
+              >
+                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
+              </Button>
+              {reorderMode ? (
+                <Button
+                  type="button"
+                  disabled={reorderForm.processing}
+                  onClick={() => reorderForm.put(reorderUrl)}
+                >
+                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+                </Button>
+              ) : null}
+            </>
+          ) : null}
+          <Button asChild>
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              {createLabel}
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       <Head title={`${title} | Admin`} />
 
       {pageMeta && metaUrl ? (
@@ -216,6 +261,7 @@ export default function ApaKataIndex({
           </summary>
           <div className="border-t border-border p-5 sm:p-6">
           <form
+  id="apk-meta-form"
             className="grid gap-4 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault()
@@ -244,11 +290,7 @@ export default function ApaKataIndex({
                 onChange={(event) => metaForm.setData("subtitle", event.target.value)}
               />
             </Field>
-            <div className="sm:col-span-2">
-              <Button type="submit" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-              </Button>
-            </div>
+
           </form>
           </div>
         </details>
@@ -261,45 +303,7 @@ export default function ApaKataIndex({
           onSubmit: () => apply({ q }),
           placeholder: "Cari nama atau sumber Shopee/WhatsApp",
         }}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {previewUrl ? (
-              <Button asChild variant="secondary">
-                <a href={previewUrl} target="_blank" rel="noreferrer">
-                  Lihat halaman publik
-                </a>
-              </Button>
-            ) : null}
-            {canReorder && reorderUrl ? (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setReorderMode((value) => !value)
-                  }}
-                >
-                  {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-                </Button>
-                {reorderMode ? (
-                  <Button
-                    type="button"
-                    disabled={reorderForm.processing}
-                    onClick={() => reorderForm.put(reorderUrl)}
-                  >
-                    {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                  </Button>
-                ) : null}
-              </>
-            ) : null}
-            <Button asChild>
-              <Link href={createHref}>
-                <Icon name="plus" className="size-4" aria-hidden="true" />
-                {createLabel}
-              </Link>
-            </Button>
-          </div>
-        }
+
         className="mb-4"
       >
         <Select

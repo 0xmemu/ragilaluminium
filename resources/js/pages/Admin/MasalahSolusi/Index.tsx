@@ -106,13 +106,40 @@ export default function MasalahSolusiIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" form="ms-meta-form" disabled={metaForm.processing}>
+            {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
+          </Button>
+          <Button asChild variant="secondary">
+            <a href={previewUrl} target="_blank" rel="noreferrer">
+              Lihat halaman publik
+            </a>
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
+            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
+          </Button>
+          {reorderMode ? (
+            <Button type="button" disabled={reorderForm.processing} onClick={() => reorderForm.put(reorderUrl)}>
+              {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href={createHref}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                Tambah pasangan
+              </Link>
+            </Button>
+          )}
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
         <form
+  id="ms-meta-form"
           className="mt-4 grid gap-4 sm:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault()
@@ -142,9 +169,6 @@ export default function MasalahSolusiIndex({
             />
           </Field>
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={metaForm.processing}>
-              {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-            </Button>
           </div>
         </form>
       </section>
@@ -162,30 +186,7 @@ export default function MasalahSolusiIndex({
           onSubmit: () => apply({ q }),
           placeholder: "Cari masalah atau solusi",
         }}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="secondary">
-              <a href={previewUrl} target="_blank" rel="noreferrer">
-                Lihat halaman publik
-              </a>
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
-              {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
-            </Button>
-            {reorderMode ? (
-              <Button type="button" disabled={reorderForm.processing} onClick={() => reorderForm.put(reorderUrl)}>
-                {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-              </Button>
-            ) : (
-              <Button asChild>
-                <Link href={createHref}>
-                  <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah pasangan
-                </Link>
-              </Button>
-            )}
-          </div>
-        }
+
         className="mb-4"
       />
 

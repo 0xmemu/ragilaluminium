@@ -107,13 +107,13 @@ export default function BannerForm({
           if (xhr.status >= 200 && xhr.status < 300) resolve()
           else reject(new Error(`Upload ke penyimpanan gagal (${xhr.status})`))
         }
-        xhr.onerror = () => reject(new Error("Upload gagal — periksa koneksi internet."))
+        xhr.onerror = () => reject(new Error("Upload gagal - periksa koneksi internet."))
         xhr.send(file)
       })
       setUploadProgress(100)
       form.setData("object_key", presigned.object_key)
     } catch (error) {
-      setDirectError(error instanceof Error ? error.message : "Upload gagal — coba lagi.")
+      setDirectError(error instanceof Error ? error.message : "Upload gagal - coba lagi.")
       throw error
     } finally {
       setUploading(false)
@@ -145,20 +145,29 @@ export default function BannerForm({
 
   return (
     <AdminLayout
-      backUrl={backUrl} title={isEdit ? "Edit Promo Toko" : "Tambah Promo Toko"}
+      backUrl={backUrl}
+      title={isEdit ? "Edit Promo Toko" : "Tambah Promo Toko"}
       description="Slide manual beranda (cms_banners): judul, gambar, link, urutan, status published."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexHref}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={indexHref}>Batal</Link>
+          </Button>
+          <Button type="submit" form="banner-form" disabled={uploading || form.processing}>
+            {uploading
+              ? `Mengunggah ${uploadProgress ?? 0}%...`
+              : form.processing
+                ? "Menyimpan..."
+                : isEdit
+                  ? "Simpan perubahan"
+                  : "Tambah promo"}
+          </Button>
+        </div>
       }
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Banner Promo | Admin`} />
 
-      <form onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
+      <form id="banner-form" onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
         <FormErrorSummary errors={form.errors} />
 
         <section className="overflow-hidden rounded-lg border border-border bg-card">
@@ -235,20 +244,7 @@ export default function BannerForm({
           </div>
         </section>
 
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={uploading || form.processing}>
-            {uploading
-              ? `Mengunggah ${uploadProgress ?? 0}%...`
-              : form.processing
-                ? "Menyimpan..."
-                : isEdit
-                  ? "Simpan perubahan"
-                  : "Tambah promo"}
-          </Button>
-          <Button asChild type="button" variant="secondary">
-            <Link href={indexHref}>Batal</Link>
-          </Button>
-        </div>
+        
         {uploading ? (
           <div role="status" aria-live="polite">
             <div className="flex items-center justify-between text-xs text-muted-foreground">

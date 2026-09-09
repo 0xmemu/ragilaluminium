@@ -147,6 +147,7 @@ class CheckoutController extends Controller
                 'max_order_amount' => $cod['max_order_amount'],
             ],
             'shipping' => $shippingPreview,
+            'shippingWeightKg' => max(1.0, $this->orders->cartWeightKg()),
             'insurance' => (bool) $request->session()->get('checkout_insurance', false),
             'eta' => OrderEta::forOrder(),
             'defaultPayment' => $defaultPayment,

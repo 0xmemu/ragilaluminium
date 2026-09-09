@@ -96,17 +96,23 @@ export default function VoucherForm({
 
   return (
     <AdminLayout
-      backUrl={backUrl} title={isEdit ? "Edit Voucher Toko" : "Tambah Voucher Toko"}
+      backUrl={backUrl}
+      title={isEdit ? "Edit Voucher Toko" : "Tambah Voucher Toko"}
       description="Nama internal + kode checkout. Aktifkan untuk dipakai pelanggan."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexHref}>Kembali ke daftar</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={indexHref}>Batal</Link>
+          </Button>
+          <Button type="submit" form="voucher-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah voucher"}
+          </Button>
+        </div>
       }
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Voucher | Admin`} />
 
-      <form onSubmit={submit} className="w-full space-y-5">
+      <form id="voucher-form" onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         <div className="overflow-hidden rounded-lg border border-border">
@@ -329,14 +335,7 @@ export default function VoucherForm({
           </table>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah voucher"}
-          </Button>
-          <Button asChild type="button" variant="secondary">
-            <Link href={indexHref}>Batal</Link>
-          </Button>
-        </div>
+
       </form>
     </AdminLayout>
   )

@@ -60,7 +60,7 @@ export function AdminBreadcrumbs({
 /**
  * Bangun breadcrumb dari nav sitemap admin.
  *
- * @param nav admin nav dari props (nav.admin) — bentuk:
+ * @param nav admin nav dari props (nav.admin) - bentuk:
  *   { [groupId]: { title?: string, items: Array<{ label, route?, active?, children? }> } }
  * @param routeName nama route aktif, mis. "admin.orders.show"
  * @param tail label akhir opsional (mis. "Detail Pesanan", "Edit Produk")

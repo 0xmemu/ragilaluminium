@@ -34,9 +34,9 @@ interface LogRow {
 }
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—"
+  if (!iso) return "-"
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "—"
+  if (Number.isNaN(date.getTime())) return "-"
   return date.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "short",
@@ -208,7 +208,7 @@ export default function ActivityLogsIndex({
                               <Link href={row.href}>Detail</Link>
                             </Button>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">-</span>
                           )}
                         </RowActions>
                       </td>

@@ -14,7 +14,6 @@ type ReviewItem = Pick<PublicOrderItem, "product_id" | "product_name" | "name" |
 
 interface CustomerReviewFormProps {
   orderNumber: string
-  customerPhone: string
   orderStatus: string
   items: ReviewItem[]
   reviews?: PublicOrderReview[]
@@ -87,7 +86,6 @@ function ReviewSheet({
 
 export function CustomerReviewForm({
   orderNumber,
-  customerPhone,
   orderStatus,
   items,
   reviews = [],
@@ -170,7 +168,7 @@ export function CustomerReviewForm({
       const uploaded: NonNullable<PublicOrderReview["media_items"]> = []
       for (const file of selected) {
         const body = new FormData()
-        body.append("customer_phone", customerPhone)
+        body.append("session", "1")
         body.append("media", file)
         const response = await fetch(`/order/${encodeURIComponent(orderNumber)}/review/media`, {
           method: "POST",
@@ -231,7 +229,7 @@ export function CustomerReviewForm({
           ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
         },
         body: JSON.stringify({
-          customer_phone: customerPhone,
+          session: true,
           ...(productId === "" ? {} : { product_id: productId }),
           rating,
           message: message.trim(),

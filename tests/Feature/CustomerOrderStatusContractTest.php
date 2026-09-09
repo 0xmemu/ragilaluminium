@@ -186,7 +186,7 @@ class CustomerOrderStatusContractTest extends TestCase
             'order_status' => 'awaiting_confirmation',
         ]));
 
-        $this->assertSame('confirmed', $v['primaryStatus']['key']);
+        $this->assertSame('awaiting_confirmation', $v['primaryStatus']['key']);
         $this->assertSame('Pesanan menunggu konfirmasi', $v['primaryStatus']['headline']);
         $this->assertSame('Kami sedang memverifikasi pesanan Anda.', $v['primaryStatus']['message']);
         $this->assertSame('Menunggu konfirmasi', $v['summary']['steps'][0]['label']);

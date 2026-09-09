@@ -51,6 +51,18 @@ class JntCargoClient
         return $this->call('dispatch_code', $this->withOrderCredentials($bizContent));
     }
 
+    /**
+     * Quote biaya berdasarkan dimensi package (spmComCost/getComCost).
+     * Endpoint ini memerlukan permission khusus pada customer account.
+     *
+     * @param array{sender:array, receiver:array, length:int|float, width:int|float, height:int|float, weight:int|float, totalQuantity?:int} $bizContent
+     */
+    public function dimensionalTariff(array $bizContent): JntResponse
+    {
+        return $this->call('dimensional_tariff', $this->withOrderCredentials($bizContent));
+    }
+
+
     /** Validasi provinsi/kota/area (getAddress). */
     public function address(array $bizContent): JntResponse
     {

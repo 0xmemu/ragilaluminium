@@ -40,7 +40,19 @@ class ActiveAnnouncements
         // atau periode berakhir berarti bar tidak menampilkan apa pun (tidak
         // kembali ke sumber lama) - "nonaktifkan semua" benar-benar menyembunyikan bar.
         if (Announcement::query()->exists()) {
-            return self::fromAdminAnnouncements();
+            $adminItems = self::fromAdminAnnouncements();
+
+            // Bar promo kampanye (sync_bar_promo) tetap paling atas.
+            try {
+                $campaignBar = CampaignBannerSync::activeBarPromo();
+                if ($campaignBar !== null) {
+                    array_unshift($adminItems, $campaignBar);
+                }
+            } catch (\Throwable) {
+                // Kolom sync mungkin belum ada di sebagian environment.
+            }
+
+            return self::uniqueByText(array_values($adminItems));
         }
 
         $now = Carbon::now();
@@ -80,6 +92,16 @@ class ActiveAnnouncements
         // Satu pengumuman Flash Sale berbasis periode kampanye (bukan produk).
         foreach (self::fromFlashSalePeriod() as $item) {
             array_unshift($out, $item);
+        }
+
+        // Bar promo kampanye (sync_bar_promo): paling atas, hanya saat live.
+        try {
+            $campaignBar = CampaignBannerSync::activeBarPromo();
+            if ($campaignBar !== null) {
+                array_unshift($out, $campaignBar);
+            }
+        } catch (\Throwable) {
+            // Sync banner table column may not exist in some environments.
         }
 
         return self::uniqueByText(array_values($out));

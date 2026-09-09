@@ -89,13 +89,19 @@ export default function ModelProductForm({
       title={editing ? "Edit model produk" : "Tambah model produk"}
       description="Tautkan ke kategori/model katalog agar statistik dan link storefront akurat."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexUrl}>Batal</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={indexUrl}>Batal</Link>
+          </Button>
+          <Button type="submit" form="model-product-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan model"}
+          </Button>
+        </div>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Model Produk | Admin`} />
       <form
+        id="model-product-form"
         className="w-full space-y-5"
         onSubmit={(event) => {
           event.preventDefault()
@@ -317,12 +323,7 @@ export default function ModelProductForm({
           </table>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan model"}
-          </Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )

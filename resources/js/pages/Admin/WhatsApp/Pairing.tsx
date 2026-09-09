@@ -41,7 +41,7 @@ export default function Pairing({
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [qrError, setQrError] = useState<boolean>(false)
 
-  // Manual refresh eksplisit — TANPA polling/setInterval (Design Contract D).
+  // Manual refresh eksplisit - TANPA polling/setInterval (Design Contract D).
   function refreshStatus() {
     setRefreshing(true)
     fetch(statusUrl, { headers: { Accept: "application/json" } })
@@ -143,9 +143,9 @@ export default function Pairing({
 
       {connected && (
         <Alert tone="success">
-          <p className="font-bold">Sesi aktif — terhubung</p>
+          <p className="font-bold">Sesi aktif - terhubung</p>
           <p className="text-sm">
-            Nomor terhubung: <b>{connectedPhone || "—"}</b>
+            Nomor terhubung: <b>{connectedPhone || "-"}</b>
             {sessionName ? ` (${sessionName})` : ""}. Pesan automasi terkirim lewat provider <b>{provider?.toUpperCase()}</b>.
           </p>
         </Alert>
@@ -153,9 +153,9 @@ export default function Pairing({
 
       {reconnectingSession && (
         <Alert tone="warning">
-          <p className="font-bold">Sesi terdeteksi — mencoba menghubungkan kembali</p>
+          <p className="font-bold">Sesi terdeteksi - mencoba menghubungkan kembali</p>
           <p className="text-sm">
-            Nomor: <b>{connectedPhone || "—"}</b>. Gateway sedang mencoba memulihkan koneksi{" "}
+            Nomor: <b>{connectedPhone || "-"}</b>. Gateway sedang mencoba memulihkan koneksi{" "}
             <b>{statusText}</b>. QR tidak perlu di-scan ulang.
           </p>
         </Alert>
@@ -178,7 +178,7 @@ export default function Pairing({
                 <Icon name="check" className="mx-auto mb-2 size-8 text-success" aria-hidden="true" />
                 Perangkat sudah tertaut.
                 <br />
-                Nomor: <b>{connectedPhone || "—"}</b>
+                Nomor: <b>{connectedPhone || "-"}</b>
               </div>
             ) : unreachable ? (
               <div className="py-10 text-center text-sm text-destructive">

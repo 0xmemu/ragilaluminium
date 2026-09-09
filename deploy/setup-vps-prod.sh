@@ -6,7 +6,21 @@
 
 set -euo pipefail
 
-echo ">>> [1/7] Memperbarui paket sistem Ubuntu 24.04 LTS..."
+echo ">>> [1/8] Menyiapkan Swap Memory 2GB (Jaring Pengaman OOM)..."
+if [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  sysctl vm.swappiness=10
+  echo 'vm.swappiness=10' >> /etc/sysctl.conf
+  echo "Swap 2GB berhasil diaktifkan."
+else
+  echo "Swap sudah ada, lewati."
+fi
+
+echo ">>> [2/8] Memperbarui paket sistem Ubuntu 24.04 LTS..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get upgrade -y
@@ -24,7 +38,7 @@ apt-get install -y \
   lsb-release \
   htop
 
-echo ">>> [2/7] Memasang Nginx & Redis..."
+echo ">>> [3/8] Memasang Nginx & Redis..."
 apt-get install -y nginx redis-server
 systemctl enable nginx redis-server
 systemctl start nginx redis-server

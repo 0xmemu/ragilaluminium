@@ -462,7 +462,7 @@ export default function ProductMediaPage({
     runSearch({ q: qOverride })
   }
 
-  // Pencarian label live (debounce) — tanpa harus klik tombol Cari.
+  // Pencarian label live (debounce) - tanpa harus klik tombol Cari.
   const skipFirstLibrarySearch = React.useRef(true)
   React.useEffect(() => {
     if (skipFirstLibrarySearch.current) {
@@ -520,7 +520,7 @@ export default function ProductMediaPage({
           if (xhr.status >= 200 && xhr.status < 300) resolve()
           else reject(new Error(`Upload ke penyimpanan gagal (${xhr.status})`))
         }
-        xhr.onerror = () => reject(new Error("Upload gagal — periksa koneksi internet."))
+        xhr.onerror = () => reject(new Error("Upload gagal - periksa koneksi internet."))
         xhr.send(file)
       })
       setUploadProgress(100)
@@ -556,7 +556,7 @@ export default function ProductMediaPage({
         },
       )
     } catch (error) {
-      setDirectError(error instanceof Error ? error.message : "Upload gagal — coba lagi.")
+      setDirectError(error instanceof Error ? error.message : "Upload gagal - coba lagi.")
     } finally {
       setUploading(false)
       setUploadProgress(null)

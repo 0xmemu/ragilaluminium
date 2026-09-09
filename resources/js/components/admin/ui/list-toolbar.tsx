@@ -81,12 +81,14 @@ export function ListToolbar({
         </div>
 
         {summary || actions ? (
-          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
             {summary ? (
               <div className="whitespace-nowrap text-xs text-muted-foreground">{summary}</div>
             ) : null}
             {actions ? (
-              <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+              <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2 lg:w-auto lg:justify-end">
+                {actions}
+              </div>
             ) : null}
           </div>
         ) : null}

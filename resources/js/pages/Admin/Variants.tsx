@@ -65,6 +65,9 @@ export default function Variants({
       description={product.name}
       actions={
         <div className="flex flex-wrap gap-2">
+          <Button type="submit" form="variant-create-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Tambah varian"}
+          </Button>
           {product.media_href ? (
             <Button asChild variant="secondary">
               <Link href={product.media_href}>
@@ -149,7 +152,7 @@ export default function Variants({
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             SKU varian dibuat otomatis (mengikuti prefix parent: WEB… atau SP…). Harga, stok, dan status wajib diisi.
           </p>
-          <form onSubmit={submit} className="mt-4 space-y-4">
+          <form id="variant-create-form" onSubmit={submit} className="mt-4 space-y-4">
             <FormErrorSummary errors={form.errors} />
             <div className="grid sm:grid-cols-2 gap-3">
               <Field id="variant-name-1" label="Nama opsi 1" error={form.errors.variation_1_name}>
@@ -194,9 +197,6 @@ export default function Variants({
             <Field id="variant-status" label="Status" required error={form.errors.status}>
               <StatusSelect statuses={VARIANT_STATUSES} value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} />
             </Field>
-            <Button type="submit" className="w-full" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Tambah varian"}
-            </Button>
           </form>
         </section>
       </div>

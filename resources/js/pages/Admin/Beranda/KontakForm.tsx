@@ -24,9 +24,17 @@ export default function KontakForm({ title, fields }: { title: string; fields: R
   }
 
   return (
-    <AdminLayout title={title} description="Informasi kontak & masalah solusi yang tampil di halaman publik.">
+    <AdminLayout
+      title={title}
+      description="Informasi kontak & masalah solusi yang tampil di halaman publik."
+      actions={
+        <Button type="submit" form="kontak-form" disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan perubahan"}
+        </Button>
+      }
+    >
       <Head title={title} />
-      <form onSubmit={submit} className="mx-auto max-w-2xl space-y-6">
+      <form id="kontak-form" onSubmit={submit} className="mx-auto max-w-4xl space-y-6">
         {Object.keys(form.errors).length > 0 ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
             <p className="text-sm font-medium text-destructive">Perbaiki kesalahan berikut:</p>
@@ -62,11 +70,7 @@ export default function KontakForm({ title, fields }: { title: string; fields: R
           </Field>
         </section>
 
-        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-border bg-card px-4 py-3">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
-          </Button>
-        </div>
+        
       </form>
     </AdminLayout>
   )
