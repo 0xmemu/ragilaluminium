@@ -1,4 +1,14 @@
-export type StatusTone = "neutral" | "info" | "warning" | "success" | "danger"
+export type StatusTone =
+  | "neutral"
+  | "info"
+  | "warning"
+  | "success"
+  | "danger"
+  // Nada lembut untuk label status sekunder (bukan status event utama pesanan).
+  | "info-soft"
+  | "success-soft"
+  | "warning-soft"
+  | "neutral-soft"
 
 export interface StatusMeta {
   label: string
@@ -7,21 +17,21 @@ export interface StatusMeta {
 
 const STATUS_MAP: Record<string, StatusMeta> = {
   active: { label: "Aktif", tone: "success" },
-  inactive: { label: "Nonaktif", tone: "neutral" },
+  inactive: { label: "Nonaktif", tone: "neutral-soft" },
   aktif: { label: "Aktif", tone: "success" },
-  tidak_aktif: { label: "Tidak aktif", tone: "neutral" },
-  baru: { label: "Baru", tone: "info" },
-  archived: { label: "Diarsipkan", tone: "neutral" },
-  draft: { label: "Draft", tone: "neutral" },
+  tidak_aktif: { label: "Tidak aktif", tone: "neutral-soft" },
+  baru: { label: "Baru", tone: "info-soft" },
+  archived: { label: "Diarsipkan", tone: "neutral-soft" },
+  draft: { label: "Draft", tone: "neutral-soft" },
   awaiting_confirmation: { label: "Menunggu Konfirmasi", tone: "warning" },
   confirmed: { label: "Menunggu Konfirmasi", tone: "warning" },
-  running: { label: "Sedang diproses", tone: "info" },
+  running: { label: "Sedang diproses", tone: "info-soft" },
   completed: { label: "Selesai", tone: "success" },
   failed: { label: "Gagal", tone: "danger" },
   downloaded: { label: "Tersimpan", tone: "success" },
-  downloading: { label: "Mengunduh", tone: "info" },
+  downloading: { label: "Mengunduh", tone: "info-soft" },
   visible: { label: "Tampil", tone: "success" },
-  hidden: { label: "Disembunyikan", tone: "neutral" },
+  hidden: { label: "Disembunyikan", tone: "neutral-soft" },
 
   processing: { label: "Diproses", tone: "info" },
   ready_to_ship: { label: "Siap Dikirim", tone: "info" },
@@ -32,28 +42,32 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   payment_pending: { label: "Menunggu Konfirmasi", tone: "warning" },
   payment_verification: { label: "Pembayaran Diverifikasi", tone: "info" },
   issue: { label: "Perlu perhatian", tone: "warning" },
-  return_in_process: { label: "Retur diproses", tone: "warning" },
-  return_completed: { label: "Retur selesai", tone: "neutral" },
+  return_in_process: { label: "Retur diproses", tone: "warning-soft" },
+  return_completed: { label: "Retur selesai", tone: "neutral-soft" },
   cancelled: { label: "Dibatalkan", tone: "danger" },
   paid: { label: "Lunas", tone: "success" },
-  refunded: { label: "Dikembalikan", tone: "neutral" },
-  tracking_pending: { label: "Menunggu resi", tone: "neutral" },
+  refunded: { label: "Dikembalikan", tone: "neutral-soft" },
+  tracking_pending: { label: "Menunggu resi", tone: "neutral-soft" },
   pending: { label: "Menunggu pembayaran", tone: "warning" },
   pending_payment: { label: "Menunggu Konfirmasi", tone: "warning" },
+  // Status kampanye/promo & import sekunder (nada lembut).
+  scheduled: { label: "Terjadwal", tone: "info-soft" },
+  ended: { label: "Diakhiri", tone: "neutral-soft" },
+  finished: { label: "Selesai", tone: "success-soft" },
   picked_up: { label: "Paket dijemput kurir", tone: "info" },
   in_transit: { label: "Dalam perjalanan", tone: "info" },
   out_for_delivery: { label: "Sedang diantar", tone: "info" },
   delivery_failed: { label: "Kendala pengiriman", tone: "danger" },
   exception: { label: "Kendala pengiriman", tone: "danger" },
-  unknown: { label: "Status belum terbaca", tone: "neutral" },
+  unknown: { label: "Status belum terbaca", tone: "neutral-soft" },
   pending_pickup: { label: "Menunggu penjemputan", tone: "warning" },
   in_process: { label: "Disiapkan", tone: "info" },
-  returned: { label: "Dikembalikan", tone: "warning" },
-  sent: { label: "Terkirim", tone: "info" },
+  returned: { label: "Dikembalikan", tone: "warning-soft" },
+  sent: { label: "Terkirim", tone: "info-soft" },
   read: { label: "Dibaca", tone: "success" },
   received: { label: "Diterima", tone: "success" },
   outbound: { label: "Keluar", tone: "info" },
-  inbound: { label: "Masuk", tone: "neutral" },
+  inbound: { label: "Masuk", tone: "neutral-soft" },
   order_created: { label: "Pesanan Dibuat", tone: "info" },
   order_confirmed: { label: "Pesanan Dikonfirmasi", tone: "info" },
   payment_verified: { label: "Pembayaran Dikonfirmasi", tone: "success" },
