@@ -317,7 +317,7 @@ function OrderCardRow({
           </button>
           <Link
             href={order.href}
-            className="group/order inline-flex shrink-0 items-center gap-1.5 font-mono text-sm font-bold tracking-tight text-foreground transition hover:text-primary"
+            className="group/order inline-flex shrink-0 items-center gap-1.5 font-mono text-[15px] font-bold tracking-tight text-foreground transition hover:text-primary"
           >
             <span>{order.order_number}</span>
             <Icon

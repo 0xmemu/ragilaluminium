@@ -1044,7 +1044,7 @@ export default function OrderShow({
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
           <div className="mt-1.5 flex items-center gap-1.5">
-            <p className="font-mono text-lg font-bold tracking-tight text-foreground">{order.order_number}</p>
+            <p className="font-mono text-xl font-bold tracking-tight text-foreground">{order.order_number}</p>
             <button
               type="button"
               onClick={() => copyText(order.order_number)}
