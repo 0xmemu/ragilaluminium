@@ -1493,8 +1493,8 @@ export default function OrderShow({
                       {variationLabel(item) || item.variant_sku || "-"}
                     </p>
                     {item.note ? (
-                      <p className="mt-1.5 rounded-md bg-accent/60 px-2 py-1 text-xs leading-5 text-accent-foreground">
-                        <span className="font-semibold">Catatan pembeli:</span> {item.note}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Catatan: <span className="font-medium text-foreground">{item.note}</span>
                       </p>
                     ) : null}
                     <p className="mt-1.5 text-xs text-muted-foreground">
@@ -1517,12 +1517,8 @@ export default function OrderShow({
             ) : null}
 
             {order.notes?.trim() ? (
-              <div className="border-t border-border bg-amber-500/10 px-5 py-3 text-xs">
-                <div className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
-                  <Icon name="message-square" className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                  <span>Catatan Khusus dari Pembeli:</span>
-                </div>
-                <p className="mt-1 whitespace-pre-wrap leading-relaxed text-foreground">{order.notes}</p>
+              <div className="border-t border-border px-5 py-2.5 text-xs text-muted-foreground">
+                Catatan: <span className="font-medium text-foreground">{order.notes}</span>
               </div>
             ) : null}
 
