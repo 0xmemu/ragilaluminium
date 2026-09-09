@@ -73,7 +73,27 @@ export default function PopularityBoosts({
   }
 
   return (
-    <AdminLayout title={title} description={description}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          <Button type="submit" form="boost-create-form" size="sm" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Aktifkan"}
+          </Button>
+        </div>
+      }
+    >
       <Head title={title + " | Admin"} />
 
       <div className="space-y-4">
@@ -91,7 +111,7 @@ export default function PopularityBoosts({
             </div>
           </div>
 
-          <form onSubmit={submit} className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto] lg:items-end">
+          <form id="boost-create-form" onSubmit={submit} className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto] lg:items-end">
             <Field id="source_product_id" label="Produk sumber (A)" hint="Penjualan valid saat aksi dijalankan menjadi seed." error={form.errors.source_product_id} required>
               <Select value={form.data.source_product_id} onChange={(event) => form.setData("source_product_id", event.target.value)} required>
                 <option value="">Pilih produk sumber</option>
@@ -107,7 +127,6 @@ export default function PopularityBoosts({
             <Field id="notification_threshold" label="Ambang notifikasi" hint="Opsional, unit penjualan sumber." error={form.errors.notification_threshold}>
               <Input type="number" min="1" value={form.data.notification_threshold} onChange={(event) => form.setData("notification_threshold", event.target.value)} placeholder="Contoh: 100" />
             </Field>
-            <Button type="submit" disabled={form.processing}>{form.processing ? "Menyimpan..." : "Aktifkan"}</Button>
           </form>
           <FormErrorSummary errors={form.errors} className="mt-4" />
         </Card>
