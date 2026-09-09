@@ -144,6 +144,13 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             DB::transaction(function () use ($importer, $path): void {
                 Excel::import($importer, $path);
             });
+
+            // Import katalog memperkenalkan pasangan kategori + model baru.
+            // Sinkronkan CMS Model Produk setelah transaksi katalog committed,
+            // supaya kartu/menu publik langsung mengenali pasangan tersebut
+            // tanpa langkah manual admin dan tanpa membaca data yang belum commit.
+            app(\App\Services\ModelProductService::class)
+                ->syncFromCatalog($job->triggered_by_user_id ? (int) $job->triggered_by_user_id : null);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Cache::forget("import_progress_{$this->jobId}");
             $job->update([

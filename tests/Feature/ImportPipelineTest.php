@@ -48,6 +48,11 @@ class ImportPipelineTest extends TestCase
         $this->assertEquals('completed', $job->status);
         $this->assertEquals(1, $job->success_rows);
         $this->assertDatabaseHas('products', ['parent_sku' => 'WIN-IMP-1', 'status' => 'archived']);
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+            'status' => 'active',
+        ]);
         $this->assertDatabaseHas('product_variants', ['variant_sku' => 'WIN-IMP-1-V1']);
         $this->assertDatabaseHas('product_media', ['source_url' => 'https://example.com/a.jpg']);
         Queue::assertPushed(DownloadMediaAsset::class);
