@@ -94,6 +94,14 @@ class ConsultationWhatsApp
      */
     public static function businessPhone(): ?string
     {
+        // Nomor yang dideklarasikan admin di Profil & Kontak Toko adalah sumber
+        // utama nomor konsultasi: perubahan nomor langsung berlaku di seluruh
+        // storefront (display phone, tombol Chat WhatsApp, dan direct URL).
+        $custom = \App\Support\StoreContactSettings::customPhone();
+        if ($custom !== null) {
+            return $custom;
+        }
+
         $sessionPhone = self::activeSessionPhone();
         if ($sessionPhone !== null) {
             return $sessionPhone;

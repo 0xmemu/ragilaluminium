@@ -70,6 +70,9 @@ export default function StorefrontPlatformsEdit({
   const marketplace = platforms.filter((p) => p.channel === "marketplace")
   const social = platforms.filter((p) => p.channel === "social")
 
+  const isKontakTab = tab === "kontak"
+  const isProcessing = isKontakTab ? kontakForm.processing : platformForm.processing
+
   function submitPlatforms(event: React.FormEvent) {
     event.preventDefault()
     platformForm.put(submitUrl)
@@ -79,6 +82,16 @@ export default function StorefrontPlatformsEdit({
     event.preventDefault()
     if (kontakSubmitUrl) {
       kontakForm.put(kontakSubmitUrl)
+    }
+  }
+
+  function handleSave() {
+    if (isKontakTab) {
+      if (kontakSubmitUrl) {
+        kontakForm.put(kontakSubmitUrl)
+      }
+    } else {
+      platformForm.put(submitUrl)
     }
   }
 
@@ -135,9 +148,6 @@ export default function StorefrontPlatformsEdit({
     )
   }
 
-  const isKontakTab = tab === "kontak"
-  const isProcessing = isKontakTab ? kontakForm.processing : platformForm.processing
-
   return (
     <AdminLayout
       title={title}
@@ -163,12 +173,14 @@ export default function StorefrontPlatformsEdit({
             </Button>
           ) : null}
           <Button
-            type="submit"
-            form={isKontakTab ? "kontak-form" : "platforms-form"}
+            type="button"
             size="sm"
             disabled={isProcessing}
+            onClick={handleSave}
+            className="inline-flex items-center gap-1.5"
           >
-            {isProcessing ? "Menyimpan..." : "Simpan perubahan"}
+            <Icon name="check" className="size-3.5" aria-hidden="true" />
+            <span>{isProcessing ? "Menyimpan..." : "Simpan perubahan"}</span>
           </Button>
         </div>
       }

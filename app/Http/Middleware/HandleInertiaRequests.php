@@ -67,50 +67,57 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->hasSession() ? $request->session()->get('status') : null,
             ],
             'cartCount' => $cartCount,
-            'brand' => [
-                'name' => config('sitemap.brand.name', config('app.name')),
-                'short_name' => config('sitemap.brand.short_name', 'Ragil Aluminium'),
-                'tagline' => config('sitemap.brand.tagline', ''),
-                'email' => config('sitemap.brand.email', ''),
-                'phone' => \App\Support\ConsultationWhatsApp::displayPhone(),
-                'address' => config('sitemap.brand.address', ''),
-                'hours' => config('sitemap.brand.hours', 'Senin – Sabtu, 08.00 – 17.00 WIB'),
-                'maps_url' => (static function (): ?string {
-                    $explicit = trim((string) config('sitemap.brand.maps_url', ''));
-                    if ($explicit !== '') {
-                        return $explicit;
-                    }
-                    $query = trim((string) config('sitemap.brand.maps_query', ''));
-                    if ($query === '') {
-                        $query = trim((string) config('sitemap.brand.address', ''));
-                    }
-                    if ($query === '') {
-                        return null;
-                    }
+            'brand' => (static function () {
+                $contact = \App\Support\StoreContactSettings::get();
+                $address = $contact['address'];
 
-                    return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($query);
-                })(),
-                'maps_embed_url' => (static function (): ?string {
-                    $query = trim((string) config('sitemap.brand.maps_query', ''));
-                    if ($query === '') {
-                        $query = trim((string) config('sitemap.brand.address', ''));
-                    }
-                    if ($query === '') {
-                        return null;
-                    }
+                return [
+                    'name' => config('sitemap.brand.name', config('app.name')),
+                    'short_name' => config('sitemap.brand.short_name', 'Ragil Aluminium'),
+                    'tagline' => config('sitemap.brand.tagline', ''),
+                    'email' => $contact['email'],
+                    'phone' => $contact['phone'],
+                    'address' => $address,
+                    'hours' => $contact['hours'],
+                    'maps_url' => (static function () use ($address): ?string {
+                        $explicit = trim((string) config('sitemap.brand.maps_url', ''));
+                        if ($explicit !== '') {
+                            return $explicit;
+                        }
+                        $query = trim((string) config('sitemap.brand.maps_query', ''));
+                        if ($query === '') {
+                            $query = trim($address);
+                        }
+                        if ($query === '') {
+                            return null;
+                        }
 
-                    return 'https://maps.google.com/maps?q='.rawurlencode($query).'&z=16&output=embed';
-                })(),
-                'units_installed_label' => config(
-                    'sitemap.brand.units_installed_label',
-                    '1.000.000+ Unit Terpasang di Seluruh Indonesia'
-                ),
-                'years_experience_label' => config(
-                    'sitemap.brand.years_experience_label',
-                    '15+ Tahun Pengalaman'
-                ),
-            ],
+                        return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($query);
+                    })(),
+                    'maps_embed_url' => (static function () use ($address): ?string {
+                        $query = trim((string) config('sitemap.brand.maps_query', ''));
+                        if ($query === '') {
+                            $query = trim($address);
+                        }
+                        if ($query === '') {
+                            return null;
+                        }
+
+                        return 'https://maps.google.com/maps?q='.rawurlencode($query).'&z=16&output=embed';
+                    })(),
+                    'units_installed_label' => config(
+                        'sitemap.brand.units_installed_label',
+                        '1.000.000+ Unit Terpasang di Seluruh Indonesia'
+                    ),
+                    'years_experience_label' => config(
+                        'sitemap.brand.years_experience_label',
+                        '15+ Tahun Pengalaman'
+                    ),
+                ];
+            })(),
             'announcements' => \App\Support\ActiveAnnouncements::items(),
+            'campaignBanner' => fn () => \App\Support\CampaignBannerSync::activeBanner(),
+            'campaignBarPromo' => fn () => \App\Support\CampaignBannerSync::activeBarPromo(),
             'announcementSlide' => \App\Support\AnnouncementSlideSettings::sharedProps(),
             'flashSalePeriod' => fn () => \App\Support\FlashSalePeriodSettings::publicState(),
             'footer' => config('sitemap.footer', []),
