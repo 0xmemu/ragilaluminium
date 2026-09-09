@@ -102,6 +102,27 @@ export default function WhatsAppMessagesPage({
   const quickRepliesScrollRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
+  const [isDraggingQuickReplies, setIsDraggingQuickReplies] = React.useState(false)
+  const dragStartXRef = React.useRef(0)
+  const dragScrollLeftRef = React.useRef(0)
+  const hasDraggedRef = React.useRef(false)
+
+  // Ubah putaran roda mouse (wheel) menjadi geser horizontal pada bar balas cepat
+  React.useEffect(() => {
+    const el = quickRepliesScrollRef.current
+    if (!el) return
+
+    const handleWheel = (e: WheelEvent): void => {
+      if (e.deltaY !== 0) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaY * 1.2
+      }
+    }
+
+    el.addEventListener("wheel", handleWheel, { passive: false })
+    return () => el.removeEventListener("wheel", handleWheel)
+  }, [])
+
   // Otomatis scroll ke pesan terbawah dengan opsi smooth
   const scrollToBottom = React.useCallback((behavior: ScrollBehavior = "smooth") => {
     if (chatContainerRef.current) {
@@ -210,6 +231,34 @@ export default function WhatsAppMessagesPage({
     }
   }
 
+  function handleQuickMouseDown(e: React.MouseEvent<HTMLDivElement>): void {
+    if (!quickRepliesScrollRef.current) return
+    setIsDraggingQuickReplies(true)
+    hasDraggedRef.current = false
+    dragStartXRef.current = e.pageX - quickRepliesScrollRef.current.offsetLeft
+    dragScrollLeftRef.current = quickRepliesScrollRef.current.scrollLeft
+  }
+
+  function handleQuickMouseMove(e: React.MouseEvent<HTMLDivElement>): void {
+    if (!isDraggingQuickReplies || !quickRepliesScrollRef.current) return
+    e.preventDefault()
+    const x = e.pageX - quickRepliesScrollRef.current.offsetLeft
+    const walk = (x - dragStartXRef.current) * 1.5
+    if (Math.abs(walk) > 4) {
+      hasDraggedRef.current = true
+    }
+    quickRepliesScrollRef.current.scrollLeft = dragScrollLeftRef.current - walk
+  }
+
+  function handleQuickMouseUpOrLeave(): void {
+    setIsDraggingQuickReplies(false)
+  }
+
+  function handleChipSelect(tpl: string): void {
+    if (hasDraggedRef.current) return
+    handleQuickReplyClick(tpl)
+  }
+
   // Auto-resize textarea mengikuti panjang teks
   function handleTextareaInput(e: React.ChangeEvent<HTMLTextAreaElement>): void {
     setReplyText(e.target.value)
@@ -221,9 +270,12 @@ export default function WhatsAppMessagesPage({
   const quickTemplates = [
     "Halo kak, pesanan sedang kami siapkan ya.",
     "Pesanan sudah kami kirim, resi bisa dicek di detail pesanan.",
-    "Bisa tolong konfirmasi alamat lengkapnya kak?",
-    "Foto hasil pemasangan sudah tersedia, mau kami kirimkan?",
-    "Stok ready siap kirim, mau kami proses hari ini?",
+    "Bisa tolong konfirmasi alamat pengiriman lengkapnya kak?",
+    "Apakah spesifikasi kaca (Bening/Riben/Es) sudah sesuai pesanan kak?",
+    "Barang sudah dipacking kayu rapi dan siap dijemput kurir J&T Cargo.",
+    "Foto hasil pemasangan sudah tersedia, mau kami kirimkan kak?",
+    "Stok ready siap kirim, mau kami proses hari ini kak?",
+    "Mohon menunggu sebentar, tim workshop sedang memeriksa ukuran kusen.",
   ]
 
   return (
@@ -677,20 +729,27 @@ export default function WhatsAppMessagesPage({
           ) : null}
 
           {/* Baris Balas Cepat Geser (Horizontal Quick Replies Scroll) */}
-          <div className="border-t border-border/80 bg-card px-3 pt-2.5">
+          <div className="border-t border-border/80 bg-card px-3 pt-2.5 select-none">
             <div
               ref={quickRepliesScrollRef}
-              className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none"
+              onMouseDown={handleQuickMouseDown}
+              onMouseMove={handleQuickMouseMove}
+              onMouseUp={handleQuickMouseUpOrLeave}
+              onMouseLeave={handleQuickMouseUpOrLeave}
+              className={`flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none cursor-grab ${
+                isDraggingQuickReplies ? "cursor-grabbing" : ""
+              }`}
             >
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
-                Balas cepat:
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+                <Icon name="chat" className="size-3 text-primary" />
+                <span>Balas cepat:</span>
               </span>
               {quickTemplates.map((tpl, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => handleQuickReplyClick(tpl)}
-                  className="shrink-0 rounded-full border border-border bg-surface px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary hover:text-foreground hover:bg-primary/5 active:scale-95"
+                  onClick={() => handleChipSelect(tpl)}
+                  className="shrink-0 rounded-full border border-border bg-surface px-3 py-1 text-[11px] text-muted-foreground transition-all hover:border-primary hover:text-foreground hover:bg-primary/5 active:scale-95"
                 >
                   {tpl}
                 </button>
