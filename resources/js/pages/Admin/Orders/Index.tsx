@@ -299,23 +299,9 @@ function OrderCardRow({
             · {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
           {order.customer_phone ? (
-            order.whatsapp_url ? (
-              <a
-                href={order.whatsapp_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground transition hover:text-success"
-                title={`Chat WhatsApp ${order.customer_name}`}
-              >
-                <span>·</span>
-                <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
-                <span className="tabular-nums underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">
-                  {order.customer_phone}
-                </span>
-              </a>
-            ) : (
-              <span className="font-mono text-xs tabular-nums text-muted-foreground">· {order.customer_phone}</span>
-            )
+            <span className="hidden md:inline font-mono text-xs tabular-nums text-muted-foreground">
+              · {order.customer_phone}
+            </span>
           ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -568,9 +554,13 @@ function OrderCardRow({
 
 
 
-          <Button asChild variant="ghost" size="xs" className="w-full xl:w-auto">
-            <Link href={order.href}>Detail</Link>
-          </Button>
+          {order.whatsapp_url ? (
+            <Button asChild variant="secondary" size="xs" className="w-full xl:w-auto">
+              <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
+                Chat WA
+              </a>
+            </Button>
+          ) : null}
 
           {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
             <ConfirmAction
