@@ -73,9 +73,13 @@ class ModelProductService
     }
 
     /**
-     * Create missing CMS rows from distinct visible catalog models.
+     * Create missing CMS rows from distinct visible catalog models, and
+     * auto-archive CMS rows whose container is empty (kontrak owner
+     * 2026-09-10: model produk tanpa isi tidak masuk akal, arsipkan otomatis).
+     *
+     * @return array{created: int, archived: int}
      */
-    public function syncFromCatalog(?int $adminId = null): int
+    public function syncFromCatalog(?int $adminId = null): array|int
     {
         $pairs = Product::query()
             ->select('product_category', 'product_model')
@@ -122,18 +126,54 @@ class ModelProductService
             $existing[] = $key;
         }
 
-        if ($created > 0) {
+        // Auto-arsip wadah kosong: pasangan CMS yang tidak lagi punya produk
+        // APA PUN (aktif maupun arsip) di katalog dimatikan. Kalau punya produk
+        // arsip saja tetap dipertahankan supaya riwayat/arsip bisa dipulihkan.
+        $activePairs = $pairs
+            ->map(fn ($pair) => $this->pairKey($pair->product_category, $pair->product_model))
+            ->filter()
+            ->all();
+
+        $archived = 0;
+        $firstArchivedId = 0;
+        CmsModelProduct::query()
+            ->where('status', 'active')
+            ->whereNotNull('product_category')
+            ->whereNotNull('product_model')
+            ->get()
+            ->each(function (CmsModelProduct $row) use ($activePairs, &$archived, &$firstArchivedId) {
+                $key = $this->pairKey($row->product_category, $row->product_model);
+                if ($key === '' || in_array($key, $activePairs, true)) {
+                    return;
+                }
+                $row->update(['status' => 'draft']);
+                $archived++;
+                $firstArchivedId = $firstArchivedId ?: (int) $row->id;
+            });
+
+        if ($created > 0 || $archived > 0) {
             CatalogTaxonomy::forgetCache();
+        }
+        if ($created > 0) {
             ActivityLogService::record(
                 'cms.model_products_synced',
                 'cms_model_product',
                 $firstCreatedId,
-                ['created' => $created],
+                ['created' => $created, 'archived' => $archived],
+                $adminId,
+            );
+        }
+        if ($archived > 0) {
+            ActivityLogService::record(
+                'cms.model_products_auto_archived',
+                'cms_model_product',
+                $firstArchivedId,
+                ['archived' => $archived],
                 $adminId,
             );
         }
 
-        return $created;
+        return ['created' => $created, 'archived' => $archived];
     }
 
     /**

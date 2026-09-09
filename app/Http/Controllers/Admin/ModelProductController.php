@@ -140,12 +140,22 @@ class ModelProductController extends Controller
 
     public function sync(Request $request): RedirectResponse
     {
-        $created = $this->models->syncFromCatalog($request->user()?->id);
+        $result = $this->models->syncFromCatalog($request->user()?->id);
+        $created = (int) ($result['created'] ?? 0);
+        $archived = (int) ($result['archived'] ?? 0);
+
+        $parts = [];
+        if ($created > 0) {
+            $parts[] = "{$created} model ditambahkan";
+        }
+        if ($archived > 0) {
+            $parts[] = "{$archived} model kosong diarsipkan";
+        }
 
         return redirect()
             ->route('admin.model-products.index')
-            ->with('success', $created > 0
-                ? "Sinkronisasi selesai: {$created} model ditambahkan."
+            ->with('success', $parts !== []
+                ? 'Sinkronisasi selesai: '.implode(', ', $parts).'.'
                 : 'Semua model katalog sudah ada di daftar.');
     }
 

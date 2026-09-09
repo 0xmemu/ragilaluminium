@@ -73,7 +73,29 @@ class ModelProductAdminTest extends TestCase
         $this->assertContains('JENDELA|SLIDING', array_map($pairOf, $cards));
         $this->assertNotContains('JENDELA|KACA_MATI', array_map($pairOf, $cards));
 
-        // Begitu wadah terisi produk aktif, kartu otomatis tampil.
+        // Auto-arsip: sinkronisasi mematikan pasangan CMS yang katalognya sudah
+        // tidak punya produk sama sekali (aktif maupun arsip).
+        $result = app(\App\Services\ModelProductService::class)->syncFromCatalog($admin->id);
+        $this->assertSame(0, $result['created']);
+        $this->assertSame(1, $result['archived']);
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
+            'status' => 'draft',
+        ]);
+        // Pasangan yang masih punya produk arsip tidak diarsipkan.
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'status' => 'active',
+        ]);
+
+        // Setelah diarsip otomatis, baris harus diaktifkan admin (satu klik)
+        // untuk tampil lagi, agar model yang disembunyikan admin sengaja
+        // tidak bangkit sendiri. Setelah diaktifkan + wadah terisi, tampil.
+        $cardsStillHidden = app(\App\Services\ModelProductService::class)->storefrontCards();
+        $this->assertNotContains('JENDELA|KACA_MATI', array_map($pairOf, $cardsStillHidden));
+
         Product::create([
             'parent_sku' => 'WIN-MOD-3',
             'name' => 'Jendela Kaca Mati 1',
@@ -83,6 +105,11 @@ class ModelProductAdminTest extends TestCase
             'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
+
+        CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'KACA_MATI')
+            ->update(['status' => 'active']);
 
         $cardsAfter = app(\App\Services\ModelProductService::class)->storefrontCards();
         $this->assertContains('JENDELA|KACA_MATI', array_map($pairOf, $cardsAfter));
