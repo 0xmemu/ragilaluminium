@@ -115,4 +115,55 @@ class PromotionFlowFixTest extends TestCase
         $this->assertNull(ProductAttribute::where('product_variant_id', $variant->id)
             ->where('attribute_name', 'promo_compare_price')->first());
     }
+
+    public function test_activate_draft_with_future_date_schedules_it(): void
+    {
+        $admin = $this->admin();
+        $product = $this->product();
+        $campaign = Promotion::create([
+            'name' => 'Flash Future',
+            'type' => Promotion::TYPE_FLASH_SALE,
+            'status' => Promotion::STATUS_DRAFT,
+            'discount_percent' => 20,
+            'starts_at' => now()->addDays(2),
+            'ends_at' => now()->addDays(5),
+        ]);
+        $campaign->items()->create([
+            'target_type' => 'product',
+            'target_id' => (string) $product->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.promotions.activate', $campaign))
+            ->assertRedirect();
+
+        $fresh = $campaign->fresh();
+        $this->assertSame(Promotion::STATUS_SCHEDULED, $fresh->status);
+    }
+
+    public function test_activate_scheduled_campaign_advances_start_time_and_activates_now(): void
+    {
+        $admin = $this->admin();
+        $product = $this->product();
+        $campaign = Promotion::create([
+            'name' => 'Flash Scheduled to Active',
+            'type' => Promotion::TYPE_FLASH_SALE,
+            'status' => Promotion::STATUS_SCHEDULED,
+            'discount_percent' => 25,
+            'starts_at' => now()->addDays(2),
+            'ends_at' => now()->addDays(5),
+        ]);
+        $campaign->items()->create([
+            'target_type' => 'product',
+            'target_id' => (string) $product->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.promotions.activate', $campaign), ['start_now' => true])
+            ->assertRedirect();
+
+        $fresh = $campaign->fresh();
+        $this->assertSame(Promotion::STATUS_ACTIVE, $fresh->status);
+        $this->assertTrue($fresh->starts_at->isPast() || $fresh->starts_at->isCurrentSecond());
+    }
 }

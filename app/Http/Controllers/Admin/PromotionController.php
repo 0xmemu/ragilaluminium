@@ -201,18 +201,28 @@ class PromotionController extends Controller
         $this->campaigns->autoEndExpired();
         $this->campaigns->validate($promotion, $promotion->items->toArray(), $promotion->id, isActivating: true);
 
-        if ($promotion->starts_at !== null && $promotion->starts_at->isFuture()) {
+        if ($promotion->status === Promotion::STATUS_SCHEDULED || $request->boolean('start_now')) {
+            $promotion->update([
+                'starts_at' => now(),
+            ]);
+            $this->campaigns->activate($promotion, (int) $request->user()->id);
+            $message = 'Kampanye "'.$promotion->name.'" aktif sekarang.';
+        } elseif ($promotion->starts_at !== null && $promotion->starts_at->isFuture()) {
             $promotion->update([
                 'status' => Promotion::STATUS_SCHEDULED,
                 'updated_by_user_id' => $request->user()->id,
             ]);
+            $this->campaigns->flushCache();
+            $formattedStart = $promotion->starts_at->timezone(config('app.timezone'))->translatedFormat('d M Y, H.i').' WIB';
+            $message = 'Kampanye "'.$promotion->name.'" dijadwalkan dan akan aktif otomatis pada '.$formattedStart.'.';
         } else {
             $this->campaigns->activate($promotion, (int) $request->user()->id);
+            $message = 'Kampanye "'.$promotion->name.'" aktif.';
         }
 
         \App\Support\CampaignBannerSync::flush();
 
-        return back()->with('success', 'Kampanye "'.$promotion->name.'" aktif.');
+        return back()->with('success', $message);
     }
 
     public function end(Request $request, Promotion $promotion): RedirectResponse

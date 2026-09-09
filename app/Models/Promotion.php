@@ -33,6 +33,10 @@ class Promotion extends Model
         'ends_at',
         'discount_percent',
         'sync_banner',
+        'sync_banner_image_url',
+        'sync_banner_media_asset_id',
+        'sync_banner_link_url',
+        'sync_bar_promo',
         'created_by_user_id',
         'updated_by_user_id',
     ];
@@ -42,11 +46,17 @@ class Promotion extends Model
         'ends_at' => 'datetime',
         'discount_percent' => 'integer',
         'sync_banner' => 'boolean',
+        'sync_bar_promo' => 'boolean',
     ];
 
     public function items(): HasMany
     {
         return $this->hasMany(PromotionItem::class);
+    }
+
+    public function mediaAsset(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class, 'sync_banner_media_asset_id');
     }
 
     public function isFlashSale(): bool

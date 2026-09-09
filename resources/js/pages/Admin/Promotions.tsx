@@ -65,9 +65,21 @@ function canEnd(status: string): boolean {
   return status === "draft" || status === "scheduled" || status === "active"
 }
 
+function formatSchedule(iso?: string | null): string {
+  if (!iso) return "segera"
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return "segera"
+  return d.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
+}
+
 function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boolean; setBusy: (v: boolean) => void }) {
   const [impact, setImpact] = React.useState<{ products?: number; variants?: number; error?: string } | null>(null)
   const { csrf } = usePage<SharedPageProps>().props
+  const isScheduled = row.status === "scheduled"
+  const isFuture = Boolean(row.starts_at && new Date(row.starts_at) > new Date())
+
+  const actionLabel = isScheduled ? "Mulai Sekarang" : isFuture ? "Jadwalkan" : "Aktifkan"
+  const modalTitle = isScheduled ? "Mulai kampanye sekarang?" : isFuture ? "Jadwalkan kampanye?" : "Aktifkan kampanye?"
 
   async function fetchImpact() {
     setImpact(null)
@@ -95,22 +107,29 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
     }
   }
 
+  function resolveDescription(): string {
+    if (impact?.error) return impact.error
+    if (!impact) return "Memuat dampak..."
+    const counts = `${formatNumber(impact.products ?? 0)} produk / ${formatNumber(impact.variants ?? 0)} varian aktif akan terdampak diskon ${row.discount_percent}%.`
+    if (isScheduled) {
+      return `Kampanye ini dijadwalkan mulai ${formatSchedule(row.starts_at)}. Memulai sekarang akan memajukan waktu mulai ke saat ini sehingga langsung aktif di etalase toko untuk ${counts}`
+    }
+    if (isFuture) {
+      return `Kampanye ini memiliki jadwal mulai ${formatSchedule(row.starts_at)}. Mengonfirmasi akan menyimpannya sebagai Terjadwal dan aktif otomatis pada jadwal tersebut.`
+    }
+    return counts
+  }
+
   return (
     <ConfirmAction
       trigger={
         <button type="button" className={rowActionTextClass} disabled={busy} onClick={fetchImpact}>
-          Aktifkan
+          {actionLabel}
         </button>
       }
-      title="Aktifkan kampanye?"
-      description={
-        impact?.error
-          ? impact.error
-          : impact
-            ? `${formatNumber(impact.products ?? 0)} produk / ${formatNumber(impact.variants ?? 0)} varian aktif akan terdampak diskon ${row.discount_percent}%.`
-            : "Memuat dampak…"
-      }
-      confirmLabel="Aktifkan"
+      title={modalTitle}
+      description={resolveDescription()}
+      confirmLabel={actionLabel}
       variant="primary"
       processing={busy}
       onConfirm={() => {
@@ -118,7 +137,7 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
         // activate() memvalidasi ulang; guard ini hanya mencegah klik percuma).
         if (impact?.error) return
         setBusy(true)
-        router.post(row.activate_url, {}, { preserveScroll: true, onFinish: () => setBusy(false) })
+        router.post(row.activate_url, { start_now: isScheduled }, { preserveScroll: true, onFinish: () => setBusy(false) })
       }}
     />
   )
