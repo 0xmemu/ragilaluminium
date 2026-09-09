@@ -1443,7 +1443,7 @@ export default function OrderShow({
       })()}
 
       {/* Konten utama + aside */}
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
         <div className="space-y-4">
           <SectionCard
             title="Isi pesanan"
@@ -1595,9 +1595,27 @@ export default function OrderShow({
         </div>
 
         <aside className="space-y-4">
-          <SectionCard title="Status pengiriman">
+          <SectionCard
+            title="Status pengiriman"
+            action={
+              latestShipping?.waybill_number ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  disabled={refreshBusy || !shippingActions.jntEnabled}
+                  onClick={refreshShipping}
+                  title={shippingActions.jntEnabled ? "Refresh status dari J&T" : "J&T belum aktif, refresh nonaktif"}
+                >
+                  <Icon name="refresh" className={refreshBusy ? "size-3 animate-spin" : "size-3"} aria-hidden="true" />
+                  {refreshBusy ? "Memuat..." : "Refresh J&T"}
+                </Button>
+              ) : null
+            }
+          >
             <section ref={lacakRef} id="lacak-pesanan">
               <ShippingTrackPanel
+                embedded
                 track={
                   tracking ?? {
                     shipping_status: order.shipping_status,

@@ -196,7 +196,7 @@ export function ShippingTrackPanel({
         </a>
       ) : null}
 
-      {timeline && timeline.length > 0 && !embedded ? (
+      {timeline && timeline.length > 0 ? (
         <div className="border-t border-border pt-3.5 space-y-2">
           <p className="text-xs font-semibold text-foreground">Riwayat Pelacakan J&T</p>
           <ol className="relative space-y-3.5 pt-1">
