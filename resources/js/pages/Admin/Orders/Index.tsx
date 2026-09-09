@@ -317,15 +317,15 @@ function OrderCardRow({
           </button>
           <Link
             href={order.href}
-            className="group/order inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-foreground transition hover:text-primary"
+            className="group/order inline-flex shrink-0 items-center gap-1.5 font-mono text-sm font-bold tracking-tight text-foreground transition hover:text-primary"
           >
-            {order.order_number}
-          <Icon
-            name="chevron-right"
-            className="size-3 text-muted-foreground transition group-hover/order:text-primary"
-            aria-hidden="true"
-          />
-        </Link>
+            <span>{order.order_number}</span>
+            <Icon
+              name="chevron-right"
+              className="size-3.5 text-muted-foreground transition group-hover/order:text-primary"
+              aria-hidden="true"
+            />
+          </Link>
       </div>
       </div>
 
