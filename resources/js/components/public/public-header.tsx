@@ -602,7 +602,7 @@ export function PublicHeader() {
               )}
               aria-hidden={!cartPreviewOpen}
             >
-              <div className="overflow-hidden rounded-xl border border-border bg-white shadow-[0_12px_32px_rgba(10,0,0,0.12)]">
+              <div className="overflow-hidden rounded-[5px] border border-border bg-white shadow-[0_12px_32px_rgba(10,0,0,0.12)]">
                 {previewItems.length > 0 ? (
                   <>
                     <div className="flex items-center justify-between border-b border-border bg-white px-4 py-3">
@@ -651,8 +651,7 @@ export function PublicHeader() {
                         ) : null}
                       </ul>
                     </div>
-                    <div className="flex items-center justify-between border-t border-border bg-surface px-4 py-3">
-                      <span className="text-xs text-muted-foreground">Detail lengkap di halaman keranjang</span>
+                    <div className="flex items-center justify-end border-t border-border bg-surface px-4 py-3">
                       <Button asChild size="sm">
                         <Link href={routeUrl("cart.index")}>Lihat keranjang</Link>
                       </Button>
