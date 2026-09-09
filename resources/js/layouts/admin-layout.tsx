@@ -63,12 +63,14 @@ export function AdminLayout({
   description,
   actions,
   backUrl,
+  fullWidth = false,
 }: {
   children: React.ReactNode
   title?: string
   description?: string | null
   actions?: React.ReactNode
   backUrl?: string | null
+  fullWidth?: boolean
 }) {
   const { auth, adminNotifications, adminActivityLogs, nav } = usePage<SharedPageProps>().props
   const breadcrumbItems = React.useMemo(() => {
@@ -242,8 +244,8 @@ export function AdminLayout({
 
         <FlashMessages />
 
-        <main id="admin-content" tabIndex={-1} className="admin-main outline-none">
-          {(title || actions) && (
+        <main id="admin-content" tabIndex={-1} className={`admin-main outline-none ${fullWidth ? "h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col" : ""}`}>
+          {!fullWidth && (title || actions) && (
             <div className="relative px-4 pb-5 pt-6 md:px-6 lg:px-8">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
@@ -270,7 +272,9 @@ export function AdminLayout({
               </div>
             </div>
           )}
-          <div className="w-full px-4 pb-24 pt-4 md:px-6 md:pt-5 lg:px-8 lg:pb-10">{children}</div>
+          <div className={fullWidth ? "flex-1 min-h-0 w-full overflow-hidden p-0" : "w-full px-4 pb-24 pt-4 md:px-6 md:pt-5 lg:px-8 lg:pb-10"}>
+            {children}
+          </div>
         </main>
       </div>
       <AdminBottomNav onOpenMenu={() => setNavigationOpen(true)} />
