@@ -14,12 +14,10 @@ const badgeVariants = cva(
         warning: "border-warning/25 bg-warning/10 text-warning",
         success: "border-success/20 bg-success/10 text-success",
         danger: "admin-status-danger border-destructive/20 bg-destructive/10 text-red-700",
-        // Nada sekunder lembut: tetap dibedakan keluarga warnanya, tapi jauan
-        // lebih rendah kontrasnya daripada status event utama pesanan.
-        "info-soft": "border-border bg-info/5 text-info/70",
-        "warning-soft": "border-border bg-warning/5 text-warning/75",
-        "success-soft": "border-border bg-success/5 text-success/70",
-        "neutral-soft": "border-border/70 bg-muted/50 text-muted-foreground/80",
+        "info-soft": "border-info/20 bg-info/10 text-info",
+        "warning-soft": "border-warning/25 bg-warning/10 text-warning",
+        "success-soft": "border-success/20 bg-success/10 text-success",
+        "neutral-soft": "border-border bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {
@@ -34,10 +32,10 @@ const dotVariants: Record<string, string> = {
   warning: "bg-warning",
   success: "bg-success",
   danger: "bg-destructive",
-  "info-soft": "bg-info/50",
-  "warning-soft": "bg-warning/50",
-  "success-soft": "bg-success/50",
-  "neutral-soft": "bg-muted-foreground/40",
+  "info-soft": "bg-info",
+  "warning-soft": "bg-warning",
+  "success-soft": "bg-success",
+  "neutral-soft": "bg-muted-foreground/70",
 }
 
 interface StatusBadgeProps extends VariantProps<typeof badgeVariants> {
