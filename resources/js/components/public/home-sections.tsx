@@ -264,7 +264,7 @@ export function CaraPesanSection({
           className="gap-1"
           title={title}
           action={
-            <SectionHeadingAction href={routeUrl("cara-pemesanan")}>Lihat Panduan →</SectionHeadingAction>
+            <SectionHeadingAction href={routeUrl("cara-pemesanan")}>Lihat Panduan</SectionHeadingAction>
           }
         />
 
