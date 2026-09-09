@@ -1,0 +1,509 @@
+import { Head, Link, router } from "@inertiajs/react"
+import * as React from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+
+import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Icon } from "@/components/shared/icon"
+import AdminLayout from "@/layouts/admin-layout"
+import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format"
+import { routeUrl } from "@/lib/routes"
+import { cn } from "@/lib/utils"
+
+export interface PaymentItem {
+  id: number
+  order_id: number | null
+  order_number: string
+  order_status: string | null
+  customer_name: string
+  customer_phone: string
+  whatsapp_url: string | null
+  payment_method: string
+  payment_method_label: string
+  status: string
+  status_label: string
+  amount: number
+  transaction_reference: string | null
+  evidence_url: string | null
+  paid_at: string | null
+  created_at: string
+  order_href: string
+}
+
+export interface PaymentSummary {
+  total_received: number
+  completed_count: number
+  transfer_paid: number
+  transfer_count: number
+  cod_paid: number
+  cod_count: number
+  pending_amount: number
+  pending_count: number
+}
+
+export interface StatusTab {
+  key: string
+  label: string
+  count: number
+}
+
+export interface PaymentsIndexProps {
+  title: string
+  description?: string
+  summary: PaymentSummary
+  tabs: StatusTab[]
+  activeStatus: string
+  activeMethod: string
+  searchQuery: string
+  payments: {
+    data: PaymentItem[]
+    links: Array<{ url: string | null; label: string; active: boolean }>
+    from: number | null
+    to: number | null
+    total: number
+    per_page: number
+    current_page: number
+    last_page: number
+  }
+}
+
+function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      aria-label={label}
+      title={copied ? "Tersalin!" : label}
+    >
+      {copied ? (
+        <Icon name="check" className="size-3 text-success" aria-hidden="true" />
+      ) : (
+        <Icon name="copy" className="size-3" aria-hidden="true" />
+      )}
+    </button>
+  )
+}
+
+export default function PaymentsIndex({
+  title,
+  description,
+  summary,
+  tabs,
+  activeStatus,
+  activeMethod,
+  searchQuery,
+  payments,
+}: PaymentsIndexProps) {
+  const [refreshing, setRefreshing] = React.useState(false)
+  const [q, setQ] = React.useState(searchQuery)
+  const [evidencePreviewUrl, setEvidencePreviewUrl] = React.useState<string | null>(null)
+
+  function visit(params: Record<string, string | undefined>) {
+    const next: Record<string, string> = {}
+    const merged = {
+      status: activeStatus,
+      method: activeMethod,
+      q: searchQuery,
+      ...params,
+    }
+    Object.entries(merged).forEach(([key, value]) => {
+      if (!value || value === "all") return
+      if (key === "q" && !value.trim()) return
+      next[key] = value
+    })
+    router.get(routeUrl("admin.payments.index"), next, {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+    })
+  }
+
+  function submitSearch(event: React.FormEvent) {
+    event.preventDefault()
+    visit({ q: q.trim() })
+  }
+
+  const actions = (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        disabled={refreshing}
+        onClick={() => {
+          setRefreshing(true)
+          router.reload({
+            onFinish: () => setRefreshing(false),
+          })
+        }}
+        className="inline-flex items-center gap-1.5"
+      >
+        <Icon
+          name="refresh"
+          className={cn("size-3.5", refreshing ? "animate-spin" : "")}
+          aria-hidden="true"
+        />
+        <span>{refreshing ? "Memuat..." : "Refresh data"}</span>
+      </Button>
+    </div>
+  )
+
+  return (
+    <AdminLayout
+      title={title}
+      description={
+        description ??
+        "Rekonsiliasi transaksi pembayaran toko, verifikasi transfer bank, dan penerimaan COD."
+      }
+      actions={actions}
+    >
+      <Head title={`${title} | Admin`} />
+
+      {/* 4 Kartu KPI Ringkasan Kas */}
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="p-4 space-y-1 bg-card">
+          <p className="text-xs font-medium text-muted-foreground">Total Kas Diterima (Cair)</p>
+          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+            {formatCurrency(summary.total_received)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {formatNumber(summary.completed_count)} transaksi lunas terverifikasi
+          </p>
+        </Card>
+
+        <Card className="p-4 space-y-1 bg-card">
+          <p className="text-xs font-medium text-muted-foreground">Transfer Bank Lunas</p>
+          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+            {formatCurrency(summary.transfer_paid)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {formatNumber(summary.transfer_count)} transfer terverifikasi admin
+          </p>
+        </Card>
+
+        <Card className="p-4 space-y-1 bg-card">
+          <p className="text-xs font-medium text-muted-foreground">COD Selesai Cair</p>
+          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+            {formatCurrency(summary.cod_paid)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {formatNumber(summary.cod_count)} paket sampai dan disetor kurir
+          </p>
+        </Card>
+
+        <Card className="p-4 space-y-1 bg-card">
+          <p className="text-xs font-medium text-muted-foreground">Menunggu Pelunasan</p>
+          <p className="font-mono text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400">
+            {formatCurrency(summary.pending_amount)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {formatNumber(summary.pending_count)} tagihan pending atau COD di jalan
+          </p>
+        </Card>
+      </div>
+
+      {/* Tabs status pembayaran */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto">
+          <div
+            className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1"
+            role="tablist"
+            aria-label="Filter status pembayaran"
+          >
+            {tabs.map((tab) => {
+              const active = tab.key === activeStatus
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => visit({ status: tab.key })}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition",
+                    active
+                      ? "bg-foreground text-background shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  )}
+                >
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "tabular-nums rounded-full px-1.5 py-px text-[11px] font-semibold",
+                      active
+                        ? "bg-background/20 text-background"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {formatNumber(tab.count)}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
+          <span>
+            Total Tercatat:{" "}
+            <strong className="tabular-nums font-semibold text-foreground">
+              {formatCurrency(summary.total_received + summary.pending_amount)}
+            </strong>
+          </span>
+        </div>
+      </div>
+
+      {/* Toolbar filter & search */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: submitSearch,
+          placeholder: "Cari nomor order, nama pembeli, no. HP, atau referensi transaksi...",
+        }}
+        className="mb-4 pb-[10px]"
+      >
+        <Select
+          value={activeMethod || "all"}
+          onChange={(event) =>
+            visit({ method: event.target.value === "all" ? undefined : event.target.value })
+          }
+          className="w-auto"
+          aria-label="Filter metode pembayaran"
+        >
+          <option value="all">Semua metode</option>
+          <option value="cod">COD (Bayar di Tempat)</option>
+          <option value="transfer">Transfer Bank</option>
+        </Select>
+      </ListToolbar>
+
+      {/* Tabel Pembayaran Table-First Desktop */}
+      <Card className="overflow-hidden border border-border bg-card">
+        {payments.data.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
+                  <th className="px-4 py-3 text-left">Pesanan & Pelanggan</th>
+                  <th className="px-3 py-3 text-center">Metode</th>
+                  <th className="px-3 py-3 text-center">Status Pembayaran</th>
+                  <th className="px-4 py-3 text-right">Nominal</th>
+                  <th className="px-3 py-3 text-center">Waktu Transaksi</th>
+                  <th className="px-3 py-3 text-center">Bukti Bayar</th>
+                  <th className="px-4 py-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {payments.data.map((item) => (
+                  <tr key={item.id} className="transition-colors hover:bg-muted/40">
+                    {/* Kolom 1: Pesanan & Pelanggan (Rata Kiri) */}
+                    <td className="px-4 py-3 align-middle">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <Link
+                            href={item.order_href}
+                            className="font-mono text-sm font-bold tracking-tight text-foreground hover:text-primary hover:underline"
+                          >
+                            {item.order_number}
+                          </Link>
+                          <CopyButton text={item.order_number} label="Salin nomor order" />
+                          {item.order_status ? (
+                            <StatusBadge status={item.order_status} />
+                          ) : null}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">{item.customer_name}</span>
+                          {item.customer_phone ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span>·</span>
+                              <span className="font-mono text-[11px]">{item.customer_phone}</span>
+                              {item.whatsapp_url ? (
+                                <a
+                                  href={item.whatsapp_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-success hover:opacity-80"
+                                  title="Chat WhatsApp pembeli"
+                                >
+                                  <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
+                                </a>
+                              ) : null}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Kolom 2: Metode (Rata Tengah) */}
+                    <td className="px-3 py-3 text-center align-middle">
+                      <div className="space-y-0.5">
+                        <span className="inline-flex min-h-6 items-center rounded-md border border-border bg-surface px-2 py-0.5 font-semibold text-foreground">
+                          {item.payment_method_label}
+                        </span>
+                        {item.transaction_reference ? (
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Ref: {item.transaction_reference}
+                          </p>
+                        ) : null}
+                      </div>
+                    </td>
+
+                    {/* Kolom 3: Status Pembayaran (Rata Tengah) */}
+                    <td className="px-3 py-3 text-center align-middle">
+                      <div className="inline-flex items-center justify-center">
+                        <StatusBadge status={item.status} />
+                      </div>
+                    </td>
+
+                    {/* Kolom 4: Nominal (Rata Kanan) */}
+                    <td className="px-4 py-3 text-right align-middle">
+                      <span className="font-mono text-sm font-bold tabular-nums text-foreground">
+                        {formatCurrency(item.amount)}
+                      </span>
+                    </td>
+
+                    {/* Kolom 5: Waktu Transaksi (Rata Tengah) */}
+                    <td className="px-3 py-3 text-center align-middle">
+                      {item.paid_at ? (
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-medium text-foreground">
+                            {formatDateTime(item.paid_at)}
+                          </span>
+                          <p className="text-[11px] text-success">Lunas</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-0.5">
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(item.created_at)}
+                          </span>
+                          <p className="text-[11px] text-muted-foreground">Dibuat</p>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Kolom 6: Bukti Bayar (Rata Tengah) */}
+                    <td className="px-3 py-3 text-center align-middle">
+                      {item.evidence_url ? (
+                        <button
+                          type="button"
+                          onClick={() => setEvidencePreviewUrl(item.evidence_url)}
+                          className="inline-flex items-center gap-1 rounded border border-border bg-surface px-2 py-1 text-[11px] font-medium text-primary hover:bg-muted"
+                        >
+                          <Icon name="image" className="size-3" aria-hidden="true" />
+                          <span>Lihat bukti</span>
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </td>
+
+                    {/* Kolom 7: Aksi (Rata Kanan) */}
+                    <td className="px-4 py-3 text-right align-middle">
+                      <Button asChild variant="secondary" size="xs">
+                        <Link href={item.order_href}>Detail pesanan</Link>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            className="p-8"
+            icon="hand-coins"
+            title="Belum ada transaksi pembayaran"
+            description="Transaksi pembayaran transfer bank atau COD yang tercatat akan muncul di tabel ini."
+          />
+        )}
+      </Card>
+
+      {/* Paginasi */}
+      <div className="mt-4">
+        <Pagination pagination={payments} />
+      </div>
+
+      {/* Dialog Preview Bukti Bayar */}
+      <DialogPrimitive.Root
+        open={Boolean(evidencePreviewUrl)}
+        onOpenChange={(open) => {
+          if (!open) setEvidencePreviewUrl(null)
+        }}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,42rem)] w-[min(calc(100%-2rem),36rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Bukti Transfer Pembayaran</DialogPrimitive.Title>
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Bukti Transfer Pembayaran</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Struk bukti transfer bank pelanggan
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEvidencePreviewUrl(null)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup preview bukti"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 flex items-center justify-center bg-muted/20">
+              {evidencePreviewUrl ? (
+                <img
+                  src={evidencePreviewUrl}
+                  alt="Bukti Transfer"
+                  className="max-h-[30rem] w-auto max-w-full rounded-lg object-contain shadow-md"
+                />
+              ) : null}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+              {evidencePreviewUrl ? (
+                <Button asChild variant="secondary" size="sm">
+                  <a href={evidencePreviewUrl} target="_blank" rel="noreferrer">
+                    <Icon name="arrow-up-right" className="size-3.5" aria-hidden="true" />
+                    <span>Buka tab baru</span>
+                  </a>
+                </Button>
+              ) : null}
+              <Button type="button" size="sm" onClick={() => setEvidencePreviewUrl(null)}>
+                Tutup
+              </Button>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    </AdminLayout>
+  )
+}
