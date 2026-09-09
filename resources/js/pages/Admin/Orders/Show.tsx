@@ -943,9 +943,7 @@ export default function OrderShow({
   const [editing, setEditing] = React.useState(false)
   const [showAllEvents, setShowAllEvents] = React.useState(false)
   const [showAllWa, setShowAllWa] = React.useState(false)
-  const [editingNotes, setEditingNotes] = React.useState(false)
   const { printing, handlePrint } = usePrintOrder()
-  const [adminNotes, setAdminNotes] = React.useState(order.admin_notes ?? "")
   const capabilities = useAdminCapabilities()
   const [liveChangedNotice, setLiveChangedNotice] = React.useState<string | null>(null)
   const { state: liveState, lastEventAt } = useAdminLiveOrders({
@@ -958,19 +956,37 @@ export default function OrderShow({
       }
     },
   })
-  const [adminNotesBusy, setAdminNotesBusy] = React.useState(false)
 
-  function saveAdminNotes(next: string) {
+  const [notesModalOpen, setNotesModalOpen] = React.useState(false)
+  const [notesMode, setNotesMode] = React.useState<"view" | "edit">(order.admin_notes?.trim() ? "view" : "edit")
+  const [notesText, setNotesText] = React.useState(order.admin_notes ?? "")
+  const [notesBusy, setNotesBusy] = React.useState(false)
+
+  function saveAdminNotes(content: string) {
     if (!adminNotesUrl) return
-    setAdminNotesBusy(true)
+    setNotesBusy(true)
     router.put(
       adminNotesUrl,
-      { admin_notes: next },
+      { admin_notes: content },
       {
         preserveScroll: true,
-        onFinish: () => setAdminNotesBusy(false),
+        onSuccess: () => {
+          setNotesBusy(false)
+          setNotesModalOpen(false)
+          if (content.trim()) {
+            setNotesMode("view")
+          } else {
+            setNotesMode("edit")
+          }
+        },
+        onError: () => setNotesBusy(false),
+        onFinish: () => setNotesBusy(false),
       },
     )
+  }
+
+  function deleteAdminNotes() {
+    saveAdminNotes("")
   }
 
   function updateStatus(next?: string, cancelReason?: string) {
@@ -1040,8 +1056,8 @@ export default function OrderShow({
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
 
-      {/* Ringkasan order - 3 sel utama proporsional tanpa ringkasan produk redundant */}
-      <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-3">
+      {/* Ringkasan order - 4 sel proporsional: Nomor order, Pembayaran, Detail penerima, Detail pengiriman */}
+      <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
         <div className="bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
           <div className="mt-1.5 flex items-center gap-1.5">
@@ -1092,7 +1108,7 @@ export default function OrderShow({
         </div>
 
         <div className="bg-card p-5">
-          <p className="text-xs font-medium text-muted-foreground">Penerima</p>
+          <p className="text-xs font-medium text-muted-foreground">Detail penerima</p>
           <p className="mt-1.5 text-sm font-semibold text-foreground">{order.customer_name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
           <p className="mt-1.5 text-[13px] leading-5 text-foreground">
@@ -1114,6 +1130,48 @@ export default function OrderShow({
             >
               <Icon name="printer" className="size-3" aria-hidden="true" />
               Cetak
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-card p-5">
+          <p className="text-xs font-medium text-muted-foreground">Detail pengiriman</p>
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
+            <span className="text-sm font-semibold text-foreground">
+              {latestShipping?.carrier_name || (latestShipping?.waybill_number ? "J&T Cargo" : "Pengiriman")}
+            </span>
+            <StatusBadge status={order.shipping_status || "pending_pickup"} />
+          </div>
+
+          <div className="mt-2 space-y-1 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">No. Resi:</span>
+              {latestShipping?.waybill_number ? (
+                <span className="inline-flex items-center gap-1.5 font-mono font-medium text-foreground">
+                  <span>{latestShipping.waybill_number}</span>
+                  <button
+                    type="button"
+                    onClick={() => copyText(latestShipping.waybill_number || "")}
+                    className="text-[11px] font-medium text-primary hover:underline"
+                    title="Salin nomor resi"
+                  >
+                    Salin
+                  </button>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Belum ada resi</span>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setTrackingOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            >
+              <Icon name="truck" className="size-3.5" aria-hidden="true" />
+              <span>Lacak pesanan</span>
             </button>
           </div>
         </div>
@@ -1190,6 +1248,38 @@ export default function OrderShow({
           <Icon name="truck" className="size-4" aria-hidden="true" />
           <span>Lacak Pesanan</span>
         </Button>
+
+        {order.admin_notes?.trim() ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setNotesMode("view")
+              setNotesText(order.admin_notes ?? "")
+              setNotesModalOpen(true)
+            }}
+            className="shrink-0 inline-flex items-center gap-1.5 border-amber-500/50 bg-amber-500/15 font-semibold text-amber-700 hover:bg-amber-500/25 dark:border-amber-500/40 dark:text-amber-300"
+            title="Lihat dan edit catatan admin"
+          >
+            <Icon name="clipboard-text" className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <span>Catatan admin</span>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setNotesMode("edit")
+              setNotesText("")
+              setNotesModalOpen(true)
+            }}
+            className="shrink-0 inline-flex items-center gap-1.5 border border-dashed border-border text-muted-foreground hover:text-foreground"
+            title="Tambah catatan internal admin"
+          >
+            <Icon name="plus" className="size-3.5" aria-hidden="true" />
+            <span>Tambah catatan</span>
+          </Button>
+        )}
 
         {order.whatsapp_url ? (
           <Button asChild variant="ghost">
@@ -1436,9 +1526,32 @@ export default function OrderShow({
         return <ReturnCasePanel order={order} cases={cases} eligibility={elig} />
       })()}
 
-      {/* Konten utama + aside */}
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
-        <div className="space-y-4">
+      {/* Banner Catatan Admin jika ada */}
+      {order.admin_notes?.trim() ? (
+        <div className="mt-4 flex items-start justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+          <div className="flex items-start gap-2">
+            <Icon name="clipboard-text" className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <div>
+              <span className="font-semibold text-amber-800 dark:text-amber-300">Catatan admin: </span>
+              <span className="text-foreground whitespace-pre-wrap">{order.admin_notes}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setNotesMode("edit")
+              setNotesText(order.admin_notes ?? "")
+              setNotesModalOpen(true)
+            }}
+            className="shrink-0 font-medium text-amber-700 hover:underline dark:text-amber-300"
+          >
+            Ubah
+          </button>
+        </div>
+      ) : null}
+
+      {/* Konten utama membentang penuh tanpa aside sempit */}
+      <div className="mt-4 space-y-4">
           <SectionCard
             title="Isi pesanan"
             contentClassName="p-0"
@@ -1582,148 +1695,13 @@ export default function OrderShow({
             </dl>
           </SectionCard>
 
-        </div>
-
-        <aside className="space-y-4">
-          {/* Ringkasan Pengiriman Ringkas & Tombol Lacak Pesanan */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
-                <Icon name="truck" className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                Pengiriman
-              </span>
-              <StatusBadge status={order.shipping_status || "pending_pickup"} />
-            </div>
-
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kurir:</span>
-                <span className="font-semibold text-foreground">
-                  {latestShipping?.carrier_name || (latestShipping?.waybill_number ? "J&T Cargo" : "Belum ditetapkan")}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">No. Resi:</span>
-                {latestShipping?.waybill_number ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="font-mono font-medium text-foreground">{latestShipping.waybill_number}</span>
-                    <button
-                      type="button"
-                      onClick={() => copyText(latestShipping.waybill_number || "")}
-                      className="text-[11px] font-medium text-primary hover:underline"
-                    >
-                      Salin
-                    </button>
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">Belum ada resi</span>
-                )}
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full text-xs inline-flex items-center justify-center gap-1.5"
-              onClick={() => setTrackingOpen(true)}
-            >
-              <Icon name="arrow-up-right" className="size-3.5" aria-hidden="true" />
-              <span>Lacak Pesanan Lengkap</span>
-            </Button>
+        {isCod && order.order_status === "delivered" ? (
+          <div className="rounded-lg border border-warning/25 bg-warning/10 p-3">
+            <p className="text-xs leading-5 text-warning-foreground">
+              Paket diterima. Pastikan pembayaran COD sudah disetorkan oleh kurir.
+            </p>
           </div>
-
-          {/* Catatan Internal Admin */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
-                <Icon name="clipboard-text" className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                Catatan Internal Admin
-              </span>
-              {order.admin_notes?.trim() && !editingNotes ? (
-                <button
-                  type="button"
-                  onClick={() => setEditingNotes(true)}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Edit
-                </button>
-              ) : null}
-            </div>
-
-            {order.admin_notes?.trim() && !editingNotes ? (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
-                <p className="whitespace-pre-wrap leading-relaxed text-foreground">
-                  {order.admin_notes}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Textarea
-                  rows={3}
-                  value={adminNotes}
-                  onChange={(event) => setAdminNotes(event.target.value)}
-                  placeholder="Tulis catatan internal (hanya untuk tim admin & gudang)..."
-                  maxLength={5000}
-                />
-                <div className="flex items-center justify-between gap-2">
-                  {order.admin_notes?.trim() ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10 text-xs"
-                      disabled={adminNotesBusy}
-                      onClick={() => {
-                        setAdminNotes("")
-                        saveAdminNotes("")
-                        setEditingNotes(false)
-                      }}
-                    >
-                      Hapus
-                    </Button>
-                  ) : <div />}
-                  <div className="flex items-center gap-2">
-                    {order.admin_notes?.trim() ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => {
-                          setEditingNotes(false)
-                          setAdminNotes(order.admin_notes ?? "")
-                        }}
-                      >
-                        Batal
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="text-xs"
-                      disabled={adminNotesBusy || (!adminNotes.trim() && !order.admin_notes)}
-                      onClick={() => {
-                        saveAdminNotes(adminNotes)
-                        setEditingNotes(false)
-                      }}
-                    >
-                      {adminNotesBusy ? "Menyimpan..." : (order.admin_notes?.trim() ? "Simpan" : "Simpan Catatan")}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {isCod && order.order_status === "delivered" ? (
-            <div className="rounded-lg border border-warning/25 bg-warning/10 p-3">
-              <p className="text-xs leading-5 text-warning-foreground">
-                Paket diterima. Pastikan pembayaran COD sudah disetorkan oleh kurir.
-              </p>
-            </div>
-          ) : null}
-        </aside>
+        ) : null}
       </div>
       {printing ? (
         <PrintOrderArea
@@ -1745,6 +1723,139 @@ export default function OrderShow({
           }}
         />
       ) : null}
+      {/* Dialog Modal Catatan Internal Admin */}
+      <DialogPrimitive.Root open={notesModalOpen} onOpenChange={setNotesModalOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,34rem)] w-[min(calc(100%-2rem),30rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Catatan internal admin</DialogPrimitive.Title>
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Catatan Internal Admin</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {order.order_number} · {order.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotesModalOpen(false)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup catatan"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            {notesMode === "view" ? (
+              <div className="p-5 space-y-4">
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    <Icon name="clipboard-text" className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                    <span>Isi Catatan Lengkap:</span>
+                  </div>
+                  <p className="mt-2.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground">
+                    {order.admin_notes}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 text-xs"
+                    disabled={notesBusy}
+                    onClick={deleteAdminNotes}
+                  >
+                    Hapus Catatan
+                  </Button>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setNotesModalOpen(false)}
+                    >
+                      Tutup
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setNotesText(order.admin_notes ?? "")
+                        setNotesMode("edit")
+                      }}
+                    >
+                      Edit Catatan
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  saveAdminNotes(notesText)
+                }}
+                className="p-5 space-y-4"
+              >
+                <div className="space-y-1.5">
+                  <label htmlFor="show-notes-textarea" className="text-xs font-semibold text-foreground">
+                    Catatan Internal (Khusus Tim Admin & Gudang)
+                  </label>
+                  <Textarea
+                    id="show-notes-textarea"
+                    rows={4}
+                    value={notesText}
+                    onChange={(event) => setNotesText(event.target.value)}
+                    placeholder="Tulis instruksi khusus, riwayat kendala pelanggan, atau catatan pengerjaan..."
+                    maxLength={5000}
+                    className="resize-y"
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Maksimal 5.000 karakter. Catatan ini bersifat privat dan tidak dapat dibaca oleh pembeli.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={notesBusy}
+                    onClick={() => {
+                      if (order.admin_notes?.trim()) {
+                        setNotesMode("view")
+                      } else {
+                        setNotesModalOpen(false)
+                      }
+                    }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={notesBusy || (!notesText.trim() && !order.admin_notes)}
+                  >
+                    {notesBusy ? "Menyimpan..." : "Simpan Catatan"}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+
       {/* Sheet Samping Khusus: Status Pengiriman & Lacak Pesanan J&T */}
       <Sheet open={trackingOpen} onOpenChange={setTrackingOpen}>
         <SheetContent side="right" className="w-[min(90vw,28rem)] sm:max-w-md p-0">
