@@ -13,6 +13,32 @@ export interface AdminPageGuide {
 }
 
 export const adminPageGuides: Record<string, AdminPageGuide> = {
+  "admin.store-settings.index": {
+    title: "Profil & Kontak Toko",
+    summary: "Pengaturan akun resmi marketplace, media sosial, nomor WhatsApp konsultasi, dan alamat workshop.",
+    steps: [
+      "Pilih tab Marketplace & Media Sosial untuk memperbarui tautan Shopee, Tokopedia, Lazada, atau Instagram.",
+      "Pilih tab Kontak & Jam Kerja untuk memperbarui nomor telepon, WhatsApp, dan alamat fisik workshop.",
+      "Gunakan tombol Simpan perubahan di kanan atas untuk menyimpan data.",
+    ],
+    notes: [
+      "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
+      "Nomor WhatsApp terhubung langsung dengan tombol konsultasi cepat pembeli.",
+    ],
+  },
+  "admin.storefront-platforms.edit": {
+    title: "Profil & Kontak Toko",
+    summary: "Pengaturan akun resmi marketplace, media sosial, nomor WhatsApp konsultasi, dan alamat workshop.",
+    steps: [
+      "Pilih tab Marketplace & Media Sosial untuk memperbarui tautan Shopee, Tokopedia, Lazada, atau Instagram.",
+      "Pilih tab Kontak & Jam Kerja untuk memperbarui nomor telepon, WhatsApp, dan alamat fisik workshop.",
+      "Gunakan tombol Simpan perubahan di kanan atas untuk menyimpan data.",
+    ],
+    notes: [
+      "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
+      "Nomor WhatsApp terhubung langsung dengan tombol konsultasi cepat pembeli.",
+    ],
+  },
   "admin.testimonials.index": {
     title: "Ulasan Pelanggan",
     summary: "Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace, dan galeri hasil pemasangan.",

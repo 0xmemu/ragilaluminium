@@ -13,13 +13,35 @@ use Inertia\Response;
 
 class StorefrontPlatformController extends Controller
 {
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
+        $tab = $request->query('tab') === 'kontak' ? 'kontak' : 'marketplace';
+
+        $kontakPage = CmsPage::where('slug', 'kontak')->first();
+        $kontakFields = $kontakPage && is_array($kontakPage->content)
+            ? $this->extractKontakFields($kontakPage->content)
+            : ['address' => '', 'phone' => '', 'email' => '', 'hours' => ''];
+
         return Inertia::render('Admin/StorefrontPlatforms/Edit', [
-            'title' => 'Marketplace & Media Sosial',
-            'description' => 'Atur tautan eksternal toko resmi di marketplace dan akun media sosial. Tampil di Informasi Toko dan footer.',
+            'title' => 'Profil & Kontak Toko',
+            'description' => 'Kelola tautan akun toko resmi di marketplace, media sosial, serta informasi kontak dan workshop.',
+            'tab' => $tab,
+            'tabs' => [
+                [
+                    'key' => 'marketplace',
+                    'label' => 'Marketplace & Media Sosial',
+                    'href' => route('admin.storefront-platforms.edit', ['tab' => 'marketplace']),
+                ],
+                [
+                    'key' => 'kontak',
+                    'label' => 'Kontak & Jam Kerja',
+                    'href' => route('admin.storefront-platforms.edit', ['tab' => 'kontak']),
+                ],
+            ],
             'platforms' => StorefrontPlatformSettings::forAdmin(),
             'submitUrl' => route('admin.storefront-platforms.update'),
+            'kontakFields' => $kontakFields,
+            'kontakSubmitUrl' => route('admin.beranda.kontak.update'),
             'previewUrl' => route('about'),
         ]);
     }
@@ -74,5 +96,31 @@ class StorefrontPlatformController extends Controller
         return redirect()
             ->route('admin.storefront-platforms.edit')
             ->with('success', 'Tautan marketplace & media sosial disimpan.');
+    }
+
+    /** @return array<string, string> */
+    private function extractKontakFields(array $content): array
+    {
+        $blocks = $content['blocks'] ?? [];
+        $current = null;
+        $fields = ['address' => '', 'phone' => '', 'email' => '', 'hours' => ''];
+
+        foreach ($blocks as $block) {
+            $type = $block['type'] ?? '';
+            $text = (string) ($block['text'] ?? '');
+            if ($type === 'heading') {
+                $current = match (mb_strtolower($text)) {
+                    'alamat' => 'address',
+                    'telepon / whatsapp', 'telepon/wa', 'telepon', 'whatsapp' => 'phone',
+                    'email' => 'email',
+                    'jam operasional' => 'hours',
+                    default => null,
+                };
+            } elseif ($type === 'paragraph' && $current !== null) {
+                $fields[$current] = $text;
+            }
+        }
+
+        return $fields;
     }
 }

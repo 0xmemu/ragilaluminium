@@ -128,15 +128,17 @@ return [
         'pengaturan_website' => [
             'title' => 'Pengaturan Website',
             'items' => [
-                ['label' => 'Beranda Toko', 'route' => 'admin.beranda.index', 'capability' => 'storefront_content.view', 'icon' => 'layout-grid', 'active' => ['admin.beranda.*']],
-
-                ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
-                ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
-                ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],
-                ['label' => 'Kontak', 'route' => 'admin.beranda.kontak.edit', 'icon' => 'phone', 'active' => ['admin.beranda.kontak.*']],
-                ['label' => 'Tentang Kami', 'route' => 'admin.tentang-kami.edit', 'icon' => 'info', 'active' => ['admin.tentang-kami.*']],
-                ['label' => 'Dokumen Halaman', 'route' => 'admin.documents.index', 'icon' => 'file-text', 'active' => ['admin.documents.*', 'admin.tentang-kami.*', 'admin.ketentuan-layanan.*', 'admin.kebijakan-privasi.*']],
-                ['label' => 'Marketplace & Media Sosial', 'route' => 'admin.storefront-platforms.edit', 'icon' => 'storefront', 'active' => ['admin.storefront-platforms.*']],
+                [
+                    'label' => 'Profil & Kontak Toko',
+                    'route' => 'admin.store-settings.index',
+                    'capability' => 'storefront_content.view',
+                    'icon' => 'storefront',
+                    'active' => [
+                        'admin.store-settings.*',
+                        'admin.storefront-platforms.*',
+                        'admin.beranda.kontak.*',
+                    ],
+                ],
             ],
         ],
         'akun_sistem' => [
