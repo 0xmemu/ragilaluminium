@@ -126,10 +126,17 @@ class ModelProductService
             $existing[] = $key;
         }
 
-        // Auto-arsip wadah kosong: pasangan CMS yang tidak lagi punya produk
-        // APA PUN (aktif maupun arsip) di katalog dimatikan. Kalau punya produk
-        // arsip saja tetap dipertahankan supaya riwayat/arsip bisa dipulihkan.
-        $activePairs = $pairs
+        // Auto-arsip wadah kosong (kontrak owner 2026-09-10): "wadah" berarti
+        // produk yang BISA dibeli, jadi ukurannya produk aktif. Pasangan CMS
+        // tanpa satu pun produk aktif (mis. semua produknya sudah diarsipkan)
+        // dimatikan otomatis; admin bisa mengaktifkan kembali manual.
+        $activePairs = Product::query()
+            ->where('status', 'active')
+            ->whereNotNull('product_category')
+            ->whereNotNull('product_model')
+            ->select('product_category', 'product_model')
+            ->groupBy('product_category', 'product_model')
+            ->get()
             ->map(fn ($pair) => $this->pairKey($pair->product_category, $pair->product_model))
             ->filter()
             ->all();

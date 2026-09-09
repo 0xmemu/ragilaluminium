@@ -73,11 +73,29 @@ class ModelProductAdminTest extends TestCase
         $this->assertContains('JENDELA|SLIDING', array_map($pairOf, $cards));
         $this->assertNotContains('JENDELA|KACA_MATI', array_map($pairOf, $cards));
 
-        // Auto-arsip: sinkronisasi mematikan pasangan CMS yang katalognya sudah
-        // tidak punya produk sama sekali (aktif maupun arsip).
+        // Auto-arsip: sinkronisasi mematikan pasangan CMS yang tidak punya
+        // produk aktif lagi (kontrak owner: wadah = produk yang bisa dibeli).
+        // Pasangan yang masih punya produk aktif tidak disentuh.
+        Product::create([
+            'parent_sku' => 'WIN-OLD-1',
+            'name' => 'Jendela Swing Lama',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SWING',
+            'design_variant' => 'POLOS',
+            'status' => 'archived',
+        ]);
+        CmsModelProduct::create([
+            'name' => 'Jendela Aluminium Swing',
+            'product_category' => 'JENDELA',
+            'product_model' => 'SWING',
+            'status' => 'active',
+            'sort_order' => 10,
+        ]);
+
         $result = app(\App\Services\ModelProductService::class)->syncFromCatalog($admin->id);
         $this->assertSame(0, $result['created']);
-        $this->assertSame(1, $result['archived']);
+        $this->assertSame(2, $result['archived']);
         $this->assertDatabaseHas('cms_model_products', [
             'product_category' => 'JENDELA',
             'product_model' => 'KACA_MATI',
