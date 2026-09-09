@@ -205,4 +205,31 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     ],
     notes: ["Nonaktif menjaga riwayat aktivitas tetap utuh."],
   },
+  "admin.customers.index": {
+    title: "Kelola Pelanggan",
+    summary: "Basis data pelanggan terpadu yang disinkronkan otomatis dari transaksi pesanan toko.",
+    steps: [
+      "Gunakan kotak pencarian untuk mencari pelanggan berdasarkan nama, nomor WhatsApp, atau alamat.",
+      "Gunakan menu urutkan untuk menyortir pelanggan terbaru, terlama, atau nama A-Z.",
+      "Klik nama pelanggan atau tombol Edit untuk mengelola detail profil dan alamat.",
+      "Gunakan tombol Unduh Excel untuk mengunduh laporan lengkap riwayat pesanan pelanggan.",
+    ],
+    notes: [
+      "Status keaktifan pelanggan: Aktif (memiliki transaksi pesanan dalam 90 hari terakhir), Baru (belum pernah memesan), atau Tidak aktif (tidak ada pesanan selama lebih dari 90 hari).",
+      "Nomor WhatsApp terhubung langsung dengan tombol aksi chat satu klik.",
+    ],
+  },
+  "admin.customers.edit": {
+    title: "Detail Pelanggan",
+    summary: "Informasi kontak pelanggan, pemetaan alamat kirim, skor risiko, dan riwayat pesanan.",
+    steps: [
+      "Perbarui nama lengkap atau detail alamat pengiriman bila diperlukan.",
+      "Tinjau daftar riwayat nomor pesanan pelanggan di panel samping.",
+      "Simpan perubahan menggunakan tombol Simpan di kanan atas.",
+    ],
+    notes: [
+      "Nomor WhatsApp dikunci sebagai identitas unik pelanggan dan tidak dapat diubah.",
+      "Fitur email telah ditiadakan sesuai kontrak guest checkout berbasis nomor WhatsApp.",
+    ],
+  },
 }

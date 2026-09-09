@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/admin/ui/tooltip"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -21,8 +22,7 @@ interface CustomerRow {
   no: number
   name: string
   phone: string
-  email?: string | null
-  location: string
+  address: string
   order_count: number
   total_spent: number
   status: { key: string; label: string }
@@ -30,6 +30,38 @@ interface CustomerRow {
   whatsapp_url: string
   href: string
   edit_href: string
+}
+
+function HoverHint({
+  label,
+  hint,
+  className,
+}: {
+  label: React.ReactNode
+  hint?: string
+  className?: string
+}) {
+  if (!hint) return <span className={className}>{label}</span>
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            className={cn(
+              "cursor-help underline decoration-muted-foreground/40 decoration-dotted underline-offset-[3px] transition hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+              className,
+            )}
+          >
+            {label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs font-normal leading-relaxed">
+          {hint}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 interface Summary {
@@ -84,11 +116,30 @@ export default function CustomersIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          <Button asChild variant="secondary" size="sm">
+            <a href={exportUrl}>
+              <Icon name="download" className="size-4" aria-hidden="true" />
+              Unduh Excel
+            </a>
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
-      {/* Baris kontrol seragam: search | sort | actions */}
+      {/* Baris kontrol seragam: search | sort */}
       <ListToolbar
         search={{
           value: q,
@@ -96,14 +147,6 @@ export default function CustomersIndex({
           onSubmit: () => apply({ q }),
           placeholder: "Cari nama atau nomor hp pelanggan",
         }}
-        actions={
-          <Button asChild variant="secondary">
-            <a href={exportUrl}>
-              <Icon name="download" className="size-4" aria-hidden="true" />
-              Unduh Excel
-            </a>
-          </Button>
-        }
         sort={
           <Select
             value={sort}
@@ -133,8 +176,13 @@ export default function CustomersIndex({
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Nama lengkap</th>
                     <th className="px-3 py-3 font-semibold">Kontak WhatsApp</th>
-                    <th className="px-3 py-3 font-semibold">Lokasi</th>
-                    <th className="px-3 py-3 font-semibold">Status</th>
+                    <th className="px-3 py-3 font-semibold">Alamat</th>
+                    <th className="px-3 py-3 font-semibold">
+                      <HoverHint
+                        label="Status"
+                        hint="Status keaktifan pelanggan: Aktif (memiliki pesanan dalam 90 hari terakhir), Baru (belum ada riwayat pesanan), atau Tidak aktif (tidak ada pesanan lebih dari 90 hari)."
+                      />
+                    </th>
                     <th className="px-3 py-3 font-semibold">Fraud score</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
                   </tr>
@@ -163,7 +211,7 @@ export default function CustomersIndex({
                           {row.phone}
                         </a>
                       </td>
-                      <td className="max-w-[14rem] px-3 py-3 text-muted-foreground">{row.location}</td>
+                      <td className="max-w-[14rem] px-3 py-3 text-muted-foreground">{row.address}</td>
                       <td className="px-3 py-3">
                         <StatusBadge status={row.status.key} label={row.status.label} />
                       </td>
@@ -238,8 +286,8 @@ export default function CustomersIndex({
                       </dd>
                     </div>
                     <div className="col-span-2">
-                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Lokasi</dt>
-                      <dd className="mt-1 text-sm text-muted-foreground">{row.location}</dd>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Alamat</dt>
+                      <dd className="mt-1 text-sm text-muted-foreground">{row.address}</dd>
                     </div>
                     <div>
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Status</dt>

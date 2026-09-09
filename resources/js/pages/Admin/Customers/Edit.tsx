@@ -18,7 +18,6 @@ interface CustomerForm {
   code: string
   name: string
   phone: string
-  email?: string | null
   default_address_line1?: string | null
   default_address_line2?: string | null
   default_city?: string | null
@@ -71,7 +70,6 @@ export default function CustomerEdit({
 
   const form = useForm({
     name: customer.name,
-    email: customer.email ?? "",
     default_address_line1: customer.default_address_line1 ?? "",
     default_address_line2: customer.default_address_line2 ?? "",
     default_city: customer.default_city ?? "",
@@ -89,30 +87,27 @@ export default function CustomerEdit({
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={metrics.status.key} label={metrics.status.label} />}
-    >
-      <Head title={`${customer.name} | Customer | Admin`} />
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Button asChild variant="secondary">
-          <Link href={backUrl}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali ke Customer
-          </Link>
-        </Button>
-        <div className="flex gap-2">
-          <Button asChild variant="secondary">
-            <a href={whatsappUrl} target="_blank" rel="noreferrer">
+      backUrl={backUrl}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={metrics.status.key} label={metrics.status.label} />
+          <Button asChild variant="secondary" size="sm">
+            <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5">
               <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-              Chat WA
+              <span>Chat WA</span>
             </a>
           </Button>
-          <Button type="button" variant="secondary" onClick={handlePrint}>
+          <Button type="button" variant="secondary" size="sm" onClick={handlePrint} className="inline-flex items-center gap-1.5">
             <Icon name="printer" className="size-4" aria-hidden="true" />
-            Cetak
+            <span>Cetak</span>
+          </Button>
+          <Button type="submit" form="customer-form" size="sm" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
-      </div>
+      }
+    >
+      <Head title={`${customer.name} | Customer | Admin`} />
 
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -159,12 +154,12 @@ export default function CustomerEdit({
           </div>
           <div>
             <dt className="text-muted-foreground">Order terakhir</dt>
-            <dd className="font-semibold">{metrics.last_order_at ? formatDate(metrics.last_order_at) : "—"}</dd>
+            <dd className="font-semibold">{metrics.last_order_at ? formatDate(metrics.last_order_at) : "-"}</dd>
           </div>
         </dl>
       </section>
 
-      <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+      <form id="customer-form" onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
         <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <h3 className="text-base font-bold">Edit data pelanggan</h3>
           <FormErrorSummary errors={form.errors} />
@@ -172,10 +167,7 @@ export default function CustomerEdit({
             <Field id="name" label="Nama lengkap" required error={form.errors.name}>
               <Input id="name" value={form.data.name} onChange={(e) => form.setData("name", e.target.value)} required />
             </Field>
-            <Field id="email" label="Email" error={form.errors.email}>
-              <Input id="email" type="email" value={form.data.email} onChange={(e) => form.setData("email", e.target.value)} />
-            </Field>
-            <Field id="phone" label="WhatsApp (tidak diubah)" className="sm:col-span-2">
+            <Field id="phone" label="Nomor WhatsApp (terkunci)">
               <Input id="phone" value={customer.phone} disabled className="font-mono" />
             </Field>
             <Field id="default_address_line1" label="Alamat" error={form.errors.default_address_line1} className="sm:col-span-2">
@@ -217,14 +209,7 @@ export default function CustomerEdit({
               />
             </Field>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan"}
-            </Button>
-            <Button asChild type="button" variant="secondary">
-              <Link href={backUrl}>Batal</Link>
-            </Button>
-          </div>
+
         </section>
 
         <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
@@ -241,7 +226,7 @@ export default function CustomerEdit({
                   </p>
                   <p className="mt-1 tabular-nums font-semibold">{formatCurrency(order.total_amount)}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {order.created_at ? formatDate(order.created_at) : "—"}
+                    {order.created_at ? formatDate(order.created_at) : "-"}
                   </p>
                 </li>
               ))}

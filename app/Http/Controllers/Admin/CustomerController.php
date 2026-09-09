@@ -34,7 +34,7 @@ class CustomerController extends Controller
                 $q->where(function ($inner) use ($search) {
                     LikeSearch::whereLike($inner, 'name', $search);
                     LikeSearch::orWhereLike($inner, 'phone', $search);
-                    LikeSearch::orWhereLike($inner, 'email', $search);
+                    LikeSearch::orWhereLike($inner, 'default_address_line1', $search);
                     LikeSearch::orWhereLike($inner, 'default_city', $search);
                     LikeSearch::orWhereLike($inner, 'default_province', $search);
                 });
@@ -46,12 +46,14 @@ class CustomerController extends Controller
             default => $query->latest('id'),
         };
 
-        $paginator = $query->paginate(20)->withQueryString();
+        // Paginasi 10 item per halaman (tampil saat pelanggan > 10)
+        $paginator = $query->paginate(10)->withQueryString();
 
         $rows = $paginator->getCollection()->values()->map(function (Customer $customer, int $index) use ($paginator) {
             $metrics = $this->customers->metricsFor($customer);
-            $location = collect([
+            $address = collect([
                 $customer->default_address_line1,
+                $customer->default_address_line2,
                 $customer->default_city,
                 $customer->default_province,
             ])->filter()->implode(', ');
@@ -62,8 +64,7 @@ class CustomerController extends Controller
                 'no' => ($paginator->firstItem() ?? 1) + $index,
                 'name' => $customer->name,
                 'phone' => $customer->phone,
-                'email' => $customer->email,
-                'location' => $location !== '' ? $location : '—',
+                'address' => $address !== '' ? $address : '-',
                 'order_count' => $metrics['order_count'],
                 'total_spent' => $metrics['total_spent'],
                 'status' => $metrics['status'],
@@ -84,7 +85,7 @@ class CustomerController extends Controller
             'sortOptions' => [
                 ['value' => 'newest', 'label' => 'Terbaru'],
                 ['value' => 'oldest', 'label' => 'Terlama'],
-                ['value' => 'name', 'label' => 'Nama A–Z'],
+                ['value' => 'name', 'label' => 'Nama A-Z'],
             ],
             'rows' => $rows,
             'pagination' => InertiaAdmin::pagination($paginator),
@@ -113,7 +114,6 @@ class CustomerController extends Controller
                 'code' => $this->customers->publicCode($customer),
                 'name' => $customer->name,
                 'phone' => $customer->phone,
-                'email' => $customer->email,
                 'default_address_line1' => $customer->default_address_line1,
                 'default_address_line2' => $customer->default_address_line2,
                 'default_city' => $customer->default_city,
@@ -133,7 +133,6 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
-            'email' => ['nullable', 'email', 'max:191'],
             'default_address_line1' => ['nullable', 'string', 'max:255'],
             'default_address_line2' => ['nullable', 'string', 'max:255'],
             'default_city' => ['nullable', 'string', 'max:191'],
@@ -159,6 +158,9 @@ class CustomerController extends Controller
                 $q->where(function ($inner) use ($search) {
                     LikeSearch::whereLike($inner, 'name', $search);
                     LikeSearch::orWhereLike($inner, 'phone', $search);
+                    LikeSearch::orWhereLike($inner, 'default_address_line1', $search);
+                    LikeSearch::orWhereLike($inner, 'default_city', $search);
+                    LikeSearch::orWhereLike($inner, 'default_province', $search);
                 });
             })
             ->latest('id');

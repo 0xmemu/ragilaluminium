@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exports\CustomerExport;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\User;
@@ -45,7 +46,8 @@ class CustomerAdminTest extends TestCase
                 ->component('Admin/Customers/Index')
                 ->has('rows', 1)
                 ->where('rows.0.name', 'Budi Santoso')
-                ->where('rows.0.phone', '6281234567890'));
+                ->where('rows.0.phone', '6281234567890')
+                ->where('rows.0.address', 'Jl Melati 1, Bandung, Jawa Barat'));
 
         $this->assertDatabaseHas('customers', [
             'phone' => '6281234567890',
@@ -53,7 +55,7 @@ class CustomerAdminTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_edit_customer_and_export_csv(): void
+    public function test_admin_can_edit_customer_and_export_xlsx_without_email(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $customer = Customer::create([
@@ -61,6 +63,42 @@ class CustomerAdminTest extends TestCase
             'phone' => '628111111111',
             'default_city' => 'Jakarta',
             'default_province' => 'DKI Jakarta',
+        ]);
+
+        Order::create([
+            'order_number' => 'ORD26080001',
+            'customer_name' => 'Ani',
+            'customer_phone' => '628111111111',
+            'shipping_address_line1' => 'Jl Sudirman',
+            'shipping_city' => 'Jakarta',
+            'shipping_province' => 'DKI Jakarta',
+            'shipping_postal_code' => '12190',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'completed',
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+            'subtotal_amount' => 300000,
+            'shipping_amount' => 20000,
+            'total_amount' => 320000,
+            'payment_method' => 'transfer',
+        ]);
+
+        Order::create([
+            'order_number' => 'ORD26080002',
+            'customer_name' => 'Ani',
+            'customer_phone' => '628111111111',
+            'shipping_address_line1' => 'Jl Sudirman',
+            'shipping_city' => 'Jakarta',
+            'shipping_province' => 'DKI Jakarta',
+            'shipping_postal_code' => '12190',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'completed',
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+            'subtotal_amount' => 400000,
+            'shipping_amount' => 20000,
+            'total_amount' => 420000,
+            'payment_method' => 'transfer',
         ]);
 
         $this->actingAs($admin)
@@ -73,8 +111,7 @@ class CustomerAdminTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.customers.update', $customer), [
                 'name' => 'Ani Wijaya',
-                'email' => 'ani@example.com',
-                'default_address_line1' => 'Jl Sudirman',
+                'default_address_line1' => 'Jl Sudirman No. 10',
                 'default_city' => 'Jakarta',
                 'default_province' => 'DKI Jakarta',
                 'default_postal_code' => '12190',
@@ -85,13 +122,47 @@ class CustomerAdminTest extends TestCase
         $this->assertDatabaseHas('customers', [
             'id' => $customer->id,
             'name' => 'Ani Wijaya',
-            'email' => 'ani@example.com',
+            'default_address_line1' => 'Jl Sudirman No. 10',
         ]);
+
+        $export = new CustomerExport(Customer::query()->latest('id'));
+        $headings = $export->headings();
+        $this->assertContains('Nomor Pesanan', $headings);
+        $this->assertContains('Alamat', $headings);
+        $this->assertNotContains('Email', $headings);
+
+        $mapped = $export->map($customer->fresh());
+        $this->assertSame('ORD26080001, ORD26080002', $mapped[3]);
+        $this->assertSame('Jl Sudirman No. 10', $mapped[4]);
 
         $this->actingAs($admin)
             ->get(route('admin.customers.export'))
             ->assertOk()
             ->assertHeader('content-disposition');
+    }
+
+    public function test_customer_pagination_ten_per_page(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        for ($i = 1; $i <= 12; $i++) {
+            Customer::create([
+                'name' => 'Customer '.$i,
+                'phone' => '62812000000'.str_pad((string) $i, 2, '0', STR_PAD_LEFT),
+                'default_city' => 'Semarang',
+                'default_province' => 'Jawa Tengah',
+            ]);
+        }
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Customers/Index')
+                ->has('rows', 10)
+                ->where('pagination.total', 12)
+                ->where('pagination.last_page', 2)
+                ->where('pagination.per_page', 10));
     }
 
     public function test_checkout_links_customer_id_on_order(): void
