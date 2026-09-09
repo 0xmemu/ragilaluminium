@@ -506,7 +506,6 @@ function OrderCardRow({
               className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/25 dark:border-amber-500/40 dark:text-amber-300"
               title="Klik untuk melihat catatan lengkap dan edit catatan"
             >
-              <span className="size-2 rounded-full bg-amber-500 ring-2 ring-amber-400/40" />
               <Icon name="clipboard-text" className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
               <span>Catatan admin</span>
             </button>
