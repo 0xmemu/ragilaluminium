@@ -7,6 +7,7 @@ use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
 use App\Services\ModelProductService;
+use App\Support\AboutPageSettings;
 use App\Support\CaraPemesananSettings;
 use App\Support\CatalogLabels;
 use App\Support\CmsDocumentSettings;
@@ -56,28 +57,16 @@ class PageController extends Controller
 
     public function about(): Response
     {
-        $page = CmsPage::where('slug', 'tentang-kami')->published()->first();
-
-        $title = $page?->title ?? 'Informasi Toko';
-        $heading = '';
-        $body = '';
-
-        if ($page) {
-            $content = is_array($page->content) ? $page->content : [];
-            $heading = trim((string) ($content['heading'] ?? ''));
-            $raw = is_array($page->content)
-                ? (string) ($content['html'] ?? $content['body'] ?? '')
-                : (is_string($page->content) ? $page->content : '');
-            if ($raw !== '') {
-                $body = CmsDocumentSettings::bodyToHtml($raw);
-            }
-        }
+        $about = AboutPageSettings::forStorefront();
 
         return Inertia::render('Public/About', [
             'page' => [
-                'title' => $title,
-                'heading' => $heading,
-                'body' => $body,
+                'title' => $about['hero_title'],
+                'heading' => $about['hero_title'],
+                'tagline' => $about['hero_tagline'],
+                'why_points' => $about['why_points'],
+                'work_steps' => $about['work_steps'],
+                'trust_rows' => $about['trust_rows'],
             ],
             'stats' => [
                 // Angka nyata dari database (bukan klaim marketing) utk trust strip halaman Tentang Kami.
@@ -124,7 +113,7 @@ class PageController extends Controller
 
     /**
      * Halaman "Ulasan pelanggan di website" (ulasan teks).
-     * /reviews/web — filter model via query ?model=KATEGORI|MODEL.
+     * /reviews/web - filter model via query ?model=KATEGORI|MODEL.
      */
     public function reviewsWebsite(Request $request): Response
     {
@@ -169,7 +158,7 @@ class PageController extends Controller
 
     /**
      * Halaman "Apa kata pelanggan kami" (galeri screenshot).
-     * /reviews/ss — hanya ulasan yang punya gambar (media).
+     * /reviews/ss - hanya ulasan yang punya gambar (media).
      */
     public function reviewsScreenshots(Request $request): Response
     {

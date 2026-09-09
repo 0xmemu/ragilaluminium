@@ -10,10 +10,24 @@ import { routeUrl } from "@/lib/routes"
 import { telephoneHref } from "@/lib/format"
 import type { SharedPageProps, SocialLink } from "@/types"
 
+interface WhyPoint {
+  icon: string
+  title: string
+  body: string
+}
+
+interface WorkStep {
+  title: string
+  body: string
+}
+
 interface PageData {
   title: string
   heading?: string
-  body: string
+  tagline?: string
+  why_points?: WhyPoint[]
+  work_steps?: WorkStep[]
+  trust_rows?: string[]
 }
 
 interface AboutStats {
@@ -185,6 +199,10 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
   const whatsappLabel = consultationWhatsApp?.directLabel ?? "Chat WhatsApp"
   const phoneHref = telephoneHref(brand.phone)
   const heading = page.heading?.trim() || "Tentang Kami"
+  const tagline = page.tagline?.trim() ?? ""
+  const whyPoints = page.why_points?.length ? page.why_points : WHY_POINTS
+  const workSteps = page.work_steps?.length ? page.work_steps : WORK_STEPS
+  const trustRows = page.trust_rows?.length ? page.trust_rows : TRUST_ROWS
 
   const yearStat = parseStatLabel(brand.years_experience_label ?? "")
   const unitStat = parseStatLabel(brand.units_installed_label ?? "")
@@ -227,11 +245,12 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
         <section aria-label="Tentang Ragil Aluminium" className="surface-panel mt-4 px-5 py-8 text-center sm:px-10 sm:py-10">
           <BrandWordmark className="mx-auto [&_img]:h-12 [&_img]:w-auto [&_img]:max-w-[min(100%,17rem)] sm:[&_img]:h-14" />
           <h2 className="mx-auto mt-2 max-w-xl text-base font-bold leading-snug tracking-tight text-foreground ![text-transform:none]">
-            <span className="text-primary">Sejak 2008</span> memproduksi jendela &amp; pintu aluminium
+            {tagline || (
+              <>
+                <span className="text-primary">Sejak 2008</span> memproduksi jendela &amp; pintu aluminium
+              </>
+            )}
           </h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Jendela dan pintu aluminium untuk rumah dan proyek di seluruh Indonesia.
-          </p>
         </section>
       </div>
 
@@ -256,7 +275,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
             Kenapa memilih Ragil Aluminium?
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {WHY_POINTS.map((item) => (
+            {whyPoints.map((item) => (
               <div key={item.title} className="surface-panel p-4">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon name={item.icon} className="size-5" weight="bold" aria-hidden="true" />
@@ -276,9 +295,9 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
             Cara kami bekerja
           </h2>
           <ol className="mt-3 grid gap-3 sm:grid-cols-3">
-            {WORK_STEPS.map((step) => (
-              <li key={step.number} className="surface-panel p-5">
-                <span className="text-2xl font-bold tabular-nums text-primary">{step.number}</span>
+            {workSteps.map((step, index) => (
+              <li key={index} className="surface-panel p-5">
+                <span className="text-2xl font-bold tabular-nums text-primary">{String(index + 1).padStart(2, "0")}</span>
                 <p className="mt-3 text-sm font-bold tracking-tight text-foreground">{step.title}</p>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{step.body}</p>
               </li>
@@ -301,7 +320,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
                   {unitsRow}
                 </li>
               ) : null}
-              {TRUST_ROWS.map((row) => (
+              {trustRows.map((row) => (
                 <li key={row} className="flex items-start gap-2.5 text-sm leading-5 text-muted-foreground">
                   <Icon name="check-circle" className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
                   {row}

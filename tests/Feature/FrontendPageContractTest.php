@@ -88,7 +88,7 @@ class FrontendPageContractTest extends TestCase
             ['admin.cara-pemesanan.edit', 'Admin/CaraPemesanan/Edit'],
             ['admin.faq.index', 'Admin/Faq/Index'],
             ['admin.masalah-solusi.index', 'Admin/MasalahSolusi/Index'],
-            ['admin.tentang-kami.edit', 'Admin/CmsDocument/Edit'],
+            ['admin.tentang-kami.edit', 'Admin/TentangKami/Edit'],
             ['admin.storefront-platforms.edit', 'Admin/StorefrontPlatforms/Edit'],
             ['admin.ketentuan-layanan.edit', 'Admin/CmsDocument/Edit'],
             ['admin.kebijakan-privasi.edit', 'Admin/CmsDocument/Edit'],

@@ -13,6 +13,47 @@ export interface AdminPageGuide {
 }
 
 export const adminPageGuides: Record<string, AdminPageGuide> = {
+  "admin.beranda.index": {
+    title: "Tata Letak Beranda",
+    summary: "Aktifkan, nonaktifkan, dan atur urutan section di halaman utama toko.",
+    steps: [
+      "Tekan Aktifkan mode geser untuk mengubah urutan section beranda.",
+      "Gunakan tombol naik atau turun, lalu tekan Simpan.",
+      "Gunakan Edit konten untuk membuka pengelolaan section terkait.",
+    ],
+    notes: [
+      "Section yang dinonaktifkan tidak tampil di beranda tanpa menghapus isinya.",
+      "Perubahan urutan langsung terlihat di halaman utama toko.",
+    ],
+  },
+  "admin.cara-pemesanan.edit": {
+    title: "Cara Pemesanan",
+    summary: "Isi panduan langkah belanja di halaman /cara-pemesanan.",
+    steps: [
+      "Isi judul hero dan subjudul halaman.",
+      "Atur langkah pemesanan: pilih ikon, judul, deskripsi, dan poin penting.",
+      "Atur kartu informasi pembayaran, pengiriman, dan garansi.",
+    ],
+    notes: [
+      "Tampilan halaman tetap mengikuti desain toko; Anda hanya mengisi isi.",
+      "Gunakan maksimal 8 langkah dan 6 kartu informasi.",
+    ],
+  },
+  "admin.tentang-kami.edit": {
+    title: "Tentang Kami",
+    summary: "Isi konten halaman profil toko /about: judul, keunggulan, langkah kerja, dan daftar jaminan.",
+    steps: [
+      "Isi Judul Utama dan Kalimat Pengantar. Kosongkan untuk memakai teks baku.",
+      "Atur Keunggulan Toko: pilih ikon, tulis judul singkat dan keterangan.",
+      "Atur Langkah Kerja dari konsultasi sampai pengiriman (maksimal 4).",
+      "Tulis Daftar Jaminan, satu jaminan per baris.",
+      "Tekan Simpan perubahan, lalu buka Lihat di toko untuk memeriksa hasilnya.",
+    ],
+    notes: [
+      "Tampilan halaman tetap mengikuti desain toko; Anda hanya mengisi isi.",
+      "Konten yang dikosongkan otomatis memakai teks baku, halaman tidak pernah kosong.",
+    ],
+  },
   "admin.store-settings.index": {
     title: "Profil & Kontak Toko",
     summary: "Pengaturan akun resmi marketplace, media sosial, nomor WhatsApp konsultasi, dan alamat workshop.",

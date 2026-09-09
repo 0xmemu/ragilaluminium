@@ -141,6 +141,9 @@ return [
                 ],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
                 ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],
+                ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
+                ['label' => 'Tentang Kami', 'route' => 'admin.tentang-kami.edit', 'icon' => 'info', 'active' => ['admin.tentang-kami.*']],
+                ['label' => 'Dokumen Halaman', 'route' => 'admin.documents.index', 'icon' => 'file-text', 'active' => ['admin.documents.*', 'admin.ketentuan-layanan.*', 'admin.kebijakan-privasi.*']],
             ],
         ],
         'akun_sistem' => [
