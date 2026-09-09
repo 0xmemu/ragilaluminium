@@ -132,9 +132,11 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Pengaturan biaya layanan COD yang dibebankan ke pembeli.",
     steps: [
       "Atur persentase biaya COD sesuai kebijakan toko.",
-      "Simpan perubahan dan periksa contoh perhitungan pada form.",
+      "Simpan perubahan dan pastikan layanan COD aktif.",
     ],
-    notes: ["Biaya COD dihitung dari nilai yang dibayar pembeli: subtotal setelah voucher ditambah ongkir."],
+    notes: [
+      "Nilai biaya (%). Rumus: biaya COD = 4% x (subtotal produk + ongkir yang dibayar pembeli). Subtotal produk dihitung dari harga yang sudah dikurangi diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, ongkir Rp 20.000. Biaya COD = 4% x (Rp 90.000 + Rp 20.000) = Rp 4.400.",
+    ],
   },
   "admin.shipping-subsidy.edit": {
     title: "Subsidi Ongkir",

@@ -1,18 +1,52 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/admin/ui/tooltip"
 import AdminLayout from "@/layouts/admin-layout"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
+import { cn } from "@/lib/utils"
 
 interface CodSettingsData {
   enabled: boolean
   fee_type: "percent"
   fee_value: number
   max_order_amount: number | null
+}
+
+function HoverHint({
+  label,
+  hint,
+  className,
+}: {
+  label: React.ReactNode
+  hint?: string
+  className?: string
+}) {
+  if (!hint) return <span className={className}>{label}</span>
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            className={cn(
+              "cursor-help underline decoration-muted-foreground/40 decoration-dotted underline-offset-[3px] transition hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+              className,
+            )}
+          >
+            {label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-sm text-xs font-normal leading-relaxed">
+          {hint}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 export default function CodSettingsEdit({
@@ -55,7 +89,21 @@ export default function CodSettingsEdit({
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={form.data.enabled ? "active" : "inactive"} />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={form.data.enabled ? "active" : "inactive"} />
+          <Button
+            type="submit"
+            form="cod-settings-form"
+            size="sm"
+            className="h-8 px-4"
+            disabled={form.processing || !canManage}
+            title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}
+          >
+            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
@@ -63,7 +111,7 @@ export default function CodSettingsEdit({
         Biaya COD berbeda dari subsidi ongkir dan tidak mengubah status pembayaran.
       </p>
 
-      <form onSubmit={submit} className="w-full space-y-5">
+      <form id="cod-settings-form" onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per pengaturan */}
@@ -91,7 +139,10 @@ export default function CodSettingsEdit({
               </tr>
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Biaya penanganan (handling fee)
+                  <HoverHint
+                    label="Biaya penanganan (handling fee)"
+                    hint="Nilai biaya (%). Rumus: biaya COD = 4% x (subtotal produk + ongkir yang dibayar pembeli). Subtotal produk dihitung dari harga yang sudah dikurangi diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, ongkir Rp 20.000. Biaya COD = 4% x (Rp 90.000 + Rp 20.000) = Rp 4.400."
+                  />
                 </th>
                 <td className="px-4 py-2.5">
                   <Input
@@ -108,7 +159,7 @@ export default function CodSettingsEdit({
                     <p className="mt-1 text-xs text-destructive">{form.errors.fee_value}</p>
                   ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Nilai biaya (%). Rumus: biaya COD = {form.data.fee_value || 0}% x (subtotal produk + ongkir yang dibayar pembeli). Subtotal produk dihitung dari harga yang sudah dikurangi diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, ongkir Rp 20.000. Biaya COD = 4% x (Rp 90.000 + Rp 20.000) = Rp 4.400.
+                    Nilai persentase (%). Arahkan kursor ke label atau buka Panduan untuk rincian rumus dan contoh perhitungan.
                   </p>
                 </td>
               </tr>
@@ -139,14 +190,7 @@ export default function CodSettingsEdit({
           </table>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={form.processing || !canManage} title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}>
-            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
-          </Button>
-          <Button asChild type="button" variant="secondary">
-            <Link href="/admin/vouchers">Ke Voucher Toko</Link>
-          </Button>
-        </div>
+
       </form>
     </AdminLayout>
   )
