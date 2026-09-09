@@ -117,6 +117,7 @@ export default function PaymentsIndex({
   const [refreshing, setRefreshing] = React.useState(false)
   const [q, setQ] = React.useState(searchQuery)
   const [evidencePreviewUrl, setEvidencePreviewUrl] = React.useState<string | null>(null)
+  const [evidenceLoadError, setEvidenceLoadError] = React.useState(false)
 
   function visit(params: Record<string, string | undefined>) {
     const next: Record<string, string> = {}
@@ -371,7 +372,7 @@ export default function PaymentsIndex({
                     {/* Kolom 3: Status Pembayaran (Rata Tengah) */}
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="inline-flex items-center justify-center">
-                        <StatusBadge status={item.status} />
+                        <StatusBadge status={item.status} label={item.status_label} />
                       </div>
                     </td>
 
@@ -406,7 +407,7 @@ export default function PaymentsIndex({
                       {item.evidence_url ? (
                         <button
                           type="button"
-                          onClick={() => setEvidencePreviewUrl(item.evidence_url)}
+                          onClick={() => { setEvidenceLoadError(false); setEvidencePreviewUrl(item.evidence_url); }}
                           className="inline-flex items-center gap-1 rounded border border-border bg-surface px-2 py-1 text-[11px] font-medium text-primary hover:bg-muted"
                         >
                           <Icon name="image" className="size-3" aria-hidden="true" />
@@ -478,13 +479,22 @@ export default function PaymentsIndex({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 flex items-center justify-center bg-muted/20">
+            <div className="flex-1 overflow-y-auto p-5 flex items-center justify-center bg-muted/20 min-h-[16rem]">
               {evidencePreviewUrl ? (
-                <img
-                  src={evidencePreviewUrl}
-                  alt="Bukti Transfer"
-                  className="max-h-[30rem] w-auto max-w-full rounded-lg object-contain shadow-md"
-                />
+                evidenceLoadError ? (
+                  <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+                    <Icon name="image" className="size-8 text-muted-foreground/40 mb-2" aria-hidden="true" />
+                    <p className="text-xs font-medium text-foreground">Gambar bukti transfer tidak dapat dimuat</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">Tautan mungkin telah kedaluwarsa atau file fisik telah dipindahkan.</p>
+                  </div>
+                ) : (
+                  <img
+                    src={evidencePreviewUrl}
+                    alt="Bukti Transfer"
+                    onError={() => setEvidenceLoadError(true)}
+                    className="max-h-[30rem] w-auto max-w-full rounded-lg object-contain shadow-md"
+                  />
+                )
               ) : null}
             </div>
 
