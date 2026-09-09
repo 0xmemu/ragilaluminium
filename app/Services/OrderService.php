@@ -300,7 +300,7 @@ class OrderService
 
         $isCod = $order->cod_flag || $order->payment_method === 'cod';
 
-        // Konfirmasi pelanggan via WA hanya untuk COD — transfer butuh bukti bayar.
+        // Konfirmasi pelanggan via WA hanya untuk COD , transfer butuh bukti bayar.
         if ($source === 'whatsapp_customer' && ! $isCod) {
             return false;
         }
