@@ -1,3 +1,4 @@
+/* build-rev: 2026-09-10-cool-slate-clean-v3 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,6 +24,7 @@
 @layer base {
   /* Logo accent: Signal Red from light-logo.png (#C00000) + Graphite ink */
   :root {
+    --admin-theme-version: "2026-09-10-cool-slate";
     color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 0 0% 20%;

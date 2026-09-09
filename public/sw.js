@@ -1,11 +1,9 @@
-// Service Worker — Jendela Ragil Aluminium
-// Strategi: navigasi network-first (Inertia butuh HTML segar);
-// aset build cache-first (immutable hash); offline fallback ke halaman cache.
-const CACHE = "ragil-v1";
+// Service Worker : Jendela Ragil Aluminium
+// Strategi: navigasi fresh network-first, rute admin dikecualikan dari cache sw.
+const CACHE = "ragil-v2";
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((c) => c.add("/")));
 });
 
 self.addEventListener("activate", (event) => {
@@ -24,7 +22,26 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
 
-  // Navigasi (HTML Inertia): network-first, fallback cache
+  // Jangan pernah cache rute admin atau login agar perubahan panel langsung aktif
+  if (url.pathname.startsWith("/admin") || url.pathname.startsWith("/login")) {
+    return;
+  }
+
+  // Aset build: ambil jaringan segar lebih dulu, fallback ke cache jika offline
+  if (url.pathname.startsWith("/build/") || url.pathname.startsWith("/images/")) {
+    event.respondWith(
+      fetch(request)
+        .then((resp) => {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => c.put(request, copy));
+          return resp;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Navigasi etalase publik
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -34,22 +51,6 @@ self.addEventListener("fetch", (event) => {
           return resp;
         })
         .catch(() => caches.match(request).then((r) => r || caches.match("/")))
-    );
-    return;
-  }
-
-  // Aset build (hash immutable): cache-first
-  if (url.pathname.startsWith("/build/") || url.pathname.startsWith("/images/")) {
-    event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((resp) => {
-            const copy = resp.clone();
-            caches.open(CACHE).then((c) => c.put(request, copy));
-            return resp;
-          })
-      )
     );
   }
 });
