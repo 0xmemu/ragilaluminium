@@ -13,6 +13,11 @@ const badgeVariants = cva(
         warning: "border-warning/25 bg-warning/10 text-warning-foreground",
         success: "border-success/20 bg-success/10 text-success",
         danger: "border-destructive/20 bg-destructive/10 text-destructive",
+        // Nada lembut untuk label status sekunder; visual identik dengan nada dasarnya.
+        "info-soft": "border-info/20 bg-info/10 text-info",
+        "success-soft": "border-success/20 bg-success/10 text-success",
+        "warning-soft": "border-warning/25 bg-warning/10 text-warning-foreground",
+        "neutral-soft": "border-border bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {

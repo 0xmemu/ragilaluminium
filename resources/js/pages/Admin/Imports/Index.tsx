@@ -339,9 +339,11 @@ export default function ImportsIndex({
                             {formatNumber(item.product_count)} produk
                           </span>
                         ) : null}
-                        <span className="block font-mono text-[11px] tabular-nums text-muted-foreground">
-                          {formatNumber(item.processed_rows)} / {formatNumber(item.total_rows)} baris
-                        </span>
+                        {item.total_rows > 0 ? (
+                          <span className="block font-mono text-[11px] tabular-nums text-muted-foreground">
+                            {formatNumber(item.processed_rows)} / {formatNumber(item.total_rows)} baris
+                          </span>
+                        ) : null}
                         <div className="flex items-center justify-center gap-2 text-[11px]">
                           <span className="text-success font-medium">
                             {formatNumber(item.success_rows)} ok
