@@ -97,10 +97,19 @@ class WhatsAppMessageController extends Controller
             ];
         })->values()->all();
 
-        // Tentukan nomor aktif
+        // Normalisasi jika requestedPhone adalah ID LID lama
+        if ($requestedPhone === '6299016327049364' || $requestedPhone === '99016327049364') {
+            $requestedPhone = '6285725116817';
+        }
+
+        // Prioritaskan percakapan pelanggan asli di atas saluran newsletter
+        $conversations = collect($conversations)->sortBy(fn ($c) => $c['is_channel'] ? 1 : 0)->values()->all();
+
+        // Tentukan nomor aktif: utamakan chat pelanggan asli
+        $firstCustomer = collect($conversations)->first(fn ($c) => ! $c['is_channel']);
         $activePhone = $requestedPhone !== ''
             ? $requestedPhone
-            : ($conversations[0]['phone'] ?? '');
+            : ($firstCustomer['phone'] ?? ($conversations[0]['phone'] ?? ''));
 
         // Ambil riwayat chat lengkap untuk nomor yang aktif
         $chatMessages = [];
