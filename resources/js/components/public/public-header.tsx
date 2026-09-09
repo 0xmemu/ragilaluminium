@@ -602,24 +602,24 @@ export function PublicHeader() {
               )}
               aria-hidden={!cartPreviewOpen}
             >
-              <div className="border border-border bg-white shadow-[0_8px_24px_rgba(10,0,0,0.16)]">
+              <div className="overflow-hidden rounded-xl border border-border bg-white shadow-[0_12px_32px_rgba(10,0,0,0.12)]">
                 {previewItems.length > 0 ? (
                   <>
-                    <div className="flex min-h-[72px] items-center justify-between bg-primary px-3 py-6 text-white">
-                      <p className="text-base font-semibold leading-[1.2]">Keranjang belanja</p>
+                    <div className="flex items-center justify-between border-b border-border bg-white px-4 py-3">
+                      <p className="text-sm font-semibold text-foreground">Keranjang belanja</p>
                       <button
                         type="button"
                         onClick={() => setCartPreviewOpen(false)}
-                        className="inline-flex size-11 items-center justify-center rounded-full text-2xl font-bold leading-none text-white transition-colors hover:bg-white/15 active:bg-white/25"
+                        className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         aria-label="Tutup ringkasan keranjang"
                       >
-                        ×
+                        <Icon name="x" className="size-4" aria-hidden="true" />
                       </button>
                     </div>
-                    <div className="min-h-[68px] bg-white p-3">
-                      <ul className="grid max-h-[19rem] gap-3 overflow-y-auto">
+                    <div className="bg-white px-3 py-1.5">
+                      <ul className="max-h-[19rem] divide-y divide-border/70 overflow-y-auto">
                         {previewItems.map((item) => (
-                          <li key={item.line_id} className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-3">
+                          <li key={item.line_id} className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3 py-2.5 transition-colors hover:bg-surface/60">
                             <Link href={routeUrl("product.show", { parent_sku: item.parent_sku })} tabIndex={-1}>
                               <ResponsiveImage
                                 src={item.image}
@@ -651,8 +651,9 @@ export function PublicHeader() {
                         ) : null}
                       </ul>
                     </div>
-                    <div className="bg-white p-3">
-                      <Button asChild size="xl" className="w-full">
+                    <div className="flex items-center justify-between border-t border-border bg-surface px-4 py-3">
+                      <span className="text-xs text-muted-foreground">Detail lengkap di halaman keranjang</span>
+                      <Button asChild size="sm">
                         <Link href={routeUrl("cart.index")}>Lihat keranjang</Link>
                       </Button>
                     </div>
