@@ -328,13 +328,13 @@
     }
   }
 
-  /* Spacing antar section standar (desktop): 40px (2.5rem) atas-bawah. */
+  /* Spacing antar section homepage (desktop): 20px (1.25rem) atas-bawah. */
   @media (min-width: 48em) {
     .public-title-case main > section:not([class*="border-b"]):not([class*="pb-5"]):not([class*="py-0"]) {
-      padding-block: 2.5rem;
+      padding-block: 1.25rem;
     }
     .public-title-case main > section.pb-5 {
-      padding-block: 2.5rem;
+      padding-block: 1.25rem;
     }
   }
 
