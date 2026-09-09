@@ -139,6 +139,8 @@ return [
                         'admin.beranda.kontak.*',
                     ],
                 ],
+                ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
+                ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],
             ],
         ],
         'akun_sistem' => [
