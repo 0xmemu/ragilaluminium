@@ -312,6 +312,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('whatsapp/templates/{template}/activate', [WhatsAppTemplateController::class, 'activate'])->name('whatsapp.templates.activate');
     Route::post('whatsapp/templates/{template}/deactivate', [WhatsAppTemplateController::class, 'deactivate'])->name('whatsapp.templates.deactivate');
     Route::get('whatsapp/messages', [WhatsAppMessageController::class, 'index'])->name('whatsapp.messages.index');
+    Route::post('whatsapp/messages/reply', [WhatsAppMessageController::class, 'reply'])->name('whatsapp.messages.reply');
     Route::get('orders/{order}/whatsapp', [WhatsAppMessageController::class, 'byOrder'])->name('orders.whatsapp');
     Route::get('whatsapp/messages/{message}', [WhatsAppMessageController::class, 'show'])->name('whatsapp.messages.show');
     Route::get('whatsapp/pairing', [WhatsAppPairingController::class, 'show'])->name('whatsapp.pairing');
@@ -330,6 +331,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('activity-logs/export', [ActivityLogController::class, 'export'])->name('activity-logs.export');
 
     // Notifikasi admin
+    Route::get('notifications/poll', [NotificationController::class, 'poll'])->name('notifications.poll');
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');

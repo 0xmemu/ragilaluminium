@@ -2,31 +2,75 @@
 
 namespace App\Support;
 
+use App\Events\AdminOrderCreated;
 use App\Events\AdminOrderUpdated;
+use App\Events\AdminWhatsAppReceived;
 use App\Models\Order;
+use App\Models\WhatsAppMessage;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Dispatcher terpusat utk event live admin (pilot: Pesanan).
+ * Dispatcher terpusat untuk event live admin (Pesanan dan WhatsApp).
  *
- * Dipanggil SETELAH transaction commit pada mutation order yang relevan.
- * Menghindari duplikasi: satu mutation path → satu event.
- *
- * @return string|null event_id atau null bila tidak dipancarkan
+ * Dipanggil setelah persistensi transaksi commit.
+ * Dilengkapi fail-safe: kegagalan broadcast tidak pernah membatalkan proses utama.
  */
 class AdminLiveEvents
 {
-    /** Perubahan order yang memerlukan broadcast ke admin. */
+    /** Pesanan baru masuk yang memerlukan notifikasi live ke admin. */
+    public static function orderCreated(Order $order): ?string
+    {
+        if (! $order->exists) {
+            return null;
+        }
+
+        try {
+            $event = new AdminOrderCreated($order);
+            event($event);
+
+            return $event->event_id;
+        } catch (\Throwable $e) {
+            Log::warning("AdminLiveEvents orderCreated broadcast failed: " . $e->getMessage());
+
+            return null;
+        }
+    }
+
+    /** Perubahan status pesanan yang memerlukan broadcast ke admin. */
     public static function orderUpdated(Order $order, array $changedFields = []): ?string
     {
-        // Jangan broadcast utk mutation yang belum dipersist (mis. model baru dgn
-        // updated_at null di dalam transaction belum commit).
         if (! $order->exists || $order->updated_at === null) {
             return null;
         }
 
-        $event = new AdminOrderUpdated($order, $changedFields);
-        event($event);
+        try {
+            $event = new AdminOrderUpdated($order, $changedFields);
+            event($event);
 
-        return $event->event_id;
+            return $event->event_id;
+        } catch (\Throwable $e) {
+            Log::warning("AdminLiveEvents orderUpdated broadcast failed: " . $e->getMessage());
+
+            return null;
+        }
+    }
+
+    /** Pesan WhatsApp masuk yang memerlukan notifikasi live ke admin. */
+    public static function whatsAppReceived(WhatsAppMessage $message): ?string
+    {
+        if (! $message->exists) {
+            return null;
+        }
+
+        try {
+            $event = new AdminWhatsAppReceived($message);
+            event($event);
+
+            return $event->event_id;
+        } catch (\Throwable $e) {
+            Log::warning("AdminLiveEvents whatsAppReceived broadcast failed: " . $e->getMessage());
+
+            return null;
+        }
     }
 }

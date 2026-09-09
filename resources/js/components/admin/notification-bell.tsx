@@ -15,6 +15,7 @@ const typeIcons: Record<string, string> = {
   order_created: "bell",
   order_delivered: "check-circle",
   order_cancelled: "x",
+  whatsapp_inbound: "whatsapp",
   media_failed: "warning",
   media_cleanup: "bell",
 }
@@ -23,6 +24,7 @@ const typeColors: Record<string, string> = {
   order_created: "bg-primary/10 text-primary",
   order_delivered: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   order_cancelled: "bg-destructive/10 text-destructive",
+  whatsapp_inbound: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   media_failed: "bg-destructive/10 text-destructive",
   media_cleanup: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
 }
@@ -101,8 +103,11 @@ export function NotificationBell({
         >
           <Icon name="bell" className="h-4 w-4" aria-hidden="true" />
           {unread > 0 ? (
-            <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
-              {unread > 99 ? "99+" : unread}
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+              <span className="relative inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
+                {unread > 99 ? "99+" : unread}
+              </span>
             </span>
           ) : null}
         </Button>

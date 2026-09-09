@@ -27,6 +27,8 @@ class CreateAdminNotifications
             'order_id' => $order->id,
             'href' => route('admin.orders.show', $order),
         ]);
+
+        \App\Support\AdminLiveEvents::orderCreated($order);
     }
 
     public function notifyOrderDelivered(ShippingStatusUpdated $event): void

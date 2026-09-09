@@ -61,5 +61,33 @@ class NotificationController extends Controller
 
         return redirect()->back();
     }
+
+    public function poll(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $lastId = (int) $request->query('last_id', 0);
+
+        $newNotifications = AdminNotification::query()
+            ->with('order:id,order_number')
+            ->when($lastId > 0, fn ($q) => $q->where('id', '>', $lastId))
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->map(fn (AdminNotification $n) => [
+                'id' => $n->id,
+                'type' => $n->type,
+                'title' => $n->title,
+                'body' => $n->body,
+                'href' => $n->href,
+                'read_at' => $n->read_at?->toIso8601String(),
+                'created_at' => $n->created_at?->toIso8601String(),
+                'created_at_label' => $n->created_at?->locale('id')->diffForHumans(),
+            ]);
+
+        return response()->json([
+            'unread_count' => AdminNotification::unread()->count(),
+            'latest_id' => (int) AdminNotification::max('id'),
+            'new_notifications' => $newNotifications,
+        ]);
+    }
 }
 

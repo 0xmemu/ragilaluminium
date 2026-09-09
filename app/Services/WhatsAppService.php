@@ -406,13 +406,25 @@ class WhatsAppService
     protected function handleInboundCustomerAction(WhatsAppMessage $message, array $msg, ?string $phone): void
     {
         $order = $this->resolveOrderForInbound($phone, $msg);
-        if (! $order) {
-            return;
+        if ($order) {
+            $message->update(['order_id' => $order->id]);
+            $message->setRelation('order', $order);
         }
 
-        $message->update(['order_id' => $order->id]);
+        $cleanPhone = $phone ?? $message->phone_number;
+        $senderName = $order?->customer_name;
+        $label = $senderName ? "{$senderName} ({$cleanPhone})" : $cleanPhone;
+        $preview = \Illuminate\Support\Str::limit((string) $message->content_text, 80);
 
-        // Auto-processing dinonaktifkan: pemrosesan pesanan dilakukan 100% manual oleh admin.
+        \App\Models\AdminNotification::create([
+            'type' => 'whatsapp_inbound',
+            'title' => 'Pesan WhatsApp Masuk',
+            'body' => "{$label}: {$preview}",
+            'order_id' => $order?->id,
+            'href' => route('admin.whatsapp.messages.index', ['phone' => $cleanPhone]),
+        ]);
+
+        \App\Support\AdminLiveEvents::whatsAppReceived($message);
     }
 
     /**
@@ -650,7 +662,7 @@ class WhatsAppService
     {
         $name = $this->customerName($order);
 
-        // Meta melarang indeks yang sama dua kali di body — {{1}} sapaan, {{3}} blok DATA PENERIMA.
+        // Meta melarang indeks yang sama dua kali di body: {{1}} sapaan, {{3}} blok DATA PENERIMA.
         return [
             $name,
             $order->order_number,
@@ -798,7 +810,7 @@ class WhatsAppService
             return $header.$suffix;
         })->filter()->values();
 
-        // Satu baris per item dipisah " | " — Meta menolak newline di parameter template.
+        // Satu baris per item dipisah " | ": Meta menolak newline di parameter template.
         return $lines->isNotEmpty() ? $lines->implode(' | ') : '-';
     }
 
