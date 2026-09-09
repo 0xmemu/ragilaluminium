@@ -964,7 +964,7 @@ export default function OrdersIndex({
             <option value="oldest">Terlama</option>
           </Select>
         }
-        className="mb-4"
+        className="mb-4 pb-2.5"
       >
         <Select
           value={activePaymentStatus || "all"}
