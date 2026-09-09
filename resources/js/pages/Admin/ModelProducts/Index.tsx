@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -104,7 +105,38 @@ export default function ModelProductsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
+            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
+          </Button>
+          {reorderMode ? (
+            <Button
+              type="button"
+              disabled={reorderForm.processing}
+              onClick={() => reorderForm.put(reorderUrl)}
+            >
+              {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.post(syncUrl)}
+              >
+                Sinkron dari katalog
+              </Button>
+              <Button asChild>
+                <Link href={createHref}>
+                  <Icon name="plus" className="size-4" aria-hidden="true" />
+                  Tambah model
+                </Link>
+              </Button>
+            </>
+          )}
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
       <ManageProductsTabs active="models" />
@@ -122,38 +154,7 @@ export default function ModelProductsIndex({
           onSubmit: () => apply({ q }),
           placeholder: "Cari nama atau kode model",
         }}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
-              {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
-            </Button>
-            {reorderMode ? (
-              <Button
-                type="button"
-                disabled={reorderForm.processing}
-                onClick={() => reorderForm.put(reorderUrl)}
-              >
-                {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-              </Button>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => router.post(syncUrl)}
-                >
-                  Sinkron dari katalog
-                </Button>
-                <Button asChild>
-                  <Link href={createHref}>
-                    <Icon name="plus" className="size-4" aria-hidden="true" />
-                    Tambah model
-                  </Link>
-                </Button>
-              </>
-            )}
-          </div>
-        }
+
         className="mb-4"
       >
         <Select
@@ -173,20 +174,20 @@ export default function ModelProductsIndex({
         </Select>
       </ListToolbar>
 
-      <section className="overflow-hidden">
+      <Card className="overflow-hidden border border-border bg-card">
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+              <thead className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-3 font-semibold">No</th>
-                  <th className="px-3 py-3 font-semibold">Model produk</th>
-                  <th className="px-3 py-3 font-semibold">Jumlah sub model</th>
-                  <th className="px-3 py-3 font-semibold">Produk aktif</th>
-                  <th className="px-3 py-3 font-semibold">Produk arsip</th>
-                  <th className="px-3 py-3 font-semibold">Total variasi</th>
-                  <th className="px-3 py-3 font-semibold">Status</th>
-                  <th className="px-3 py-3 font-semibold text-right">Aksi</th>
+                  <th className="px-3 py-3 text-center">No</th>
+                  <th className="px-4 py-3 text-left">Model Produk</th>
+                  <th className="px-3 py-3 text-center">Jumlah Sub Model</th>
+                  <th className="px-3 py-3 text-center">Produk Aktif</th>
+                  <th className="px-3 py-3 text-center">Produk Arsip</th>
+                  <th className="px-3 py-3 text-center">Total Variasi</th>
+                  <th className="px-3 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,20 +243,22 @@ export default function ModelProductsIndex({
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 text-center align-middle">
                       <p className="font-semibold tabular-nums">{formatNumber(row.sub_model_count)}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {row.sub_models.length ? row.sub_models.join(", ") : "-"}
                       </p>
                     </td>
-                    <td className="px-3 py-3 tabular-nums font-semibold">{formatNumber(row.active_count)}</td>
-                    <td className="px-3 py-3 tabular-nums text-muted-foreground">{formatNumber(row.archived_count)}</td>
-                    <td className="px-3 py-3 tabular-nums font-semibold">{formatNumber(row.variant_count)}</td>
-                    <td className="px-3 py-3">
-                      <StatusBadge
-                        status={row.status === "active" ? "active" : "inactive"}
-                        label={row.status === "active" ? "Aktif" : "Draft"}
-                      />
+                    <td className="px-3 py-3 text-center align-middle tabular-nums font-semibold">{formatNumber(row.active_count)}</td>
+                    <td className="px-3 py-3 text-center align-middle tabular-nums text-muted-foreground">{formatNumber(row.archived_count)}</td>
+                    <td className="px-3 py-3 text-center align-middle tabular-nums font-semibold">{formatNumber(row.variant_count)}</td>
+                    <td className="px-3 py-3 text-center align-middle">
+                      <div className="inline-flex items-center justify-center">
+                        <StatusBadge
+                          status={row.status === "active" ? "active" : "inactive"}
+                          label={row.status === "active" ? "Aktif" : "Draft"}
+                        />
+                      </div>
                     </td>
                     <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
                       <RowActions>
@@ -314,7 +317,7 @@ export default function ModelProductsIndex({
             className="border-0"
           />
         )}
-      </section>
+      </Card>
     </AdminLayout>
   )
 }

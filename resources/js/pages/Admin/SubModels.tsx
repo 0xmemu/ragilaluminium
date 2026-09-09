@@ -3,6 +3,8 @@ import * as React from "react"
 
 import { rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
+import { Icon } from "@/components/shared/icon"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -81,7 +83,23 @@ export default function SubModelsIndex({
   }
 
   return (
-    <AdminLayout title={title} description={description}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={saveOrder} disabled={reorderForm.processing}>
+            {reorderForm.processing ? "Menyimpan..." : "Simpan Urutan"}
+          </Button>
+          <Button asChild>
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Tambah sub model
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       <Head title={title} />
       <ManageProductsTabs active="subModels" />
       <div className="space-y-6">
@@ -103,32 +121,25 @@ export default function SubModelsIndex({
               </Button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="secondary" size="sm">
-              <Link href={createHref}>Tambah Sub Model</Link>
-            </Button>
-            <Button variant="secondary" size="sm" onClick={saveOrder} disabled={reorderForm.processing}>
-              Simpan Urutan
-            </Button>
-          </div>
         </div>
 
-        <div>
+        <Card className="overflow-hidden border border-border bg-card">
           {rows.length === 0 ? (
             <EmptyState
+              className="p-8"
               title="Belum ada sub model"
               description="Tambahkan sub model pertama untuk model ini."
             />
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">Urut</TableHead>
-                  <TableHead>Kode</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Deskripsi</TableHead>
-                  <TableHead className="text-right">Produk Aktif</TableHead>
-                  <TableHead>Status</TableHead>
+                <TableRow className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
+                  <TableHead className="w-12 text-center">Urut</TableHead>
+                  <TableHead className="text-left">Kode</TableHead>
+                  <TableHead className="text-left">Nama Sub Model</TableHead>
+                  <TableHead className="text-left">Deskripsi</TableHead>
+                  <TableHead className="text-center">Produk Aktif</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -207,7 +218,7 @@ export default function SubModelsIndex({
               </TableBody>
             </Table>
           )}
-        </div>
+        </Card>
       </div>
     </AdminLayout>
   )

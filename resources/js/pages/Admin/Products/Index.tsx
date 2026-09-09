@@ -250,7 +250,7 @@ export default function ProductsIndex({
   createHref,
   exportUrl,
   importHref,
-  importPerformanceHref,
+  importPerformanceHref: _importPerformanceHref,
   mediaHref,
 }: ProductsIndexProps) {
   const [q, setQ] = React.useState(searchQuery)
@@ -308,19 +308,23 @@ export default function ProductsIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="secondary">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          <Button asChild variant="secondary" size="sm">
             <a href={exportUrl}>Ekspor Produk ke Excel</a>
           </Button>
-          <Button asChild variant="secondary">
-            <Link href={importHref}>Import</Link>
+          <Button asChild variant="secondary" size="sm">
+            <Link href={mediaHref}>Media Library</Link>
           </Button>
-          <Button asChild variant="secondary">
-            <Link href={importPerformanceHref}>Performa Import</Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={mediaHref}>Media</Link>
-          </Button>
-          <Button asChild>
+          <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
               Tambah produk

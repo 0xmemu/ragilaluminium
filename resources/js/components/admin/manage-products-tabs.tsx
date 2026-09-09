@@ -12,24 +12,32 @@ const TABS = [
 
 export function ManageProductsTabs({ active }: { active: string }) {
   return (
-    <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
-      {TABS.map((tab) => {
-        const isActive = active === tab.key
-        return (
-          <Link
-            key={tab.key}
-            href={routeUrl(tab.href)}
-            className={cn(
-              "-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition",
-              isActive
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab.label}
-          </Link>
-        )
-      })}
+    <div className="mb-4">
+      <div
+        className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-xs"
+        role="tablist"
+        aria-label="Navigasi kelola produk"
+      >
+        {TABS.map((tab) => {
+          const isActive = active === tab.key
+          return (
+            <Link
+              key={tab.key}
+              href={routeUrl(tab.href)}
+              role="tab"
+              aria-selected={isActive}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition",
+                isActive
+                  ? "bg-foreground text-background shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+              )}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
+      </div>
     </div>
   )
 }
