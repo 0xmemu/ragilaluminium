@@ -25,7 +25,7 @@ class TestimonialController extends Controller
 {
     public function index(Request $request): Response
     {
-        $tab = $request->query('tab') === 'foto' ? 'foto' : 'website';
+        $tab = (string) $request->query('tab', 'website');
         $q = trim((string) $request->query('q', ''));
         $sort = (string) $request->query('sort', 'newest');
         $published = $request->query('published');
@@ -33,6 +33,10 @@ class TestimonialController extends Controller
 
         if ($tab === 'foto') {
             return $this->fotoIndex($q, $sort, $published, false);
+        }
+
+        if ($tab === 'eksternal' || $tab === 'marketplace') {
+            return $this->marketplaceScreenshotIndex($q, $published);
         }
 
         return $this->websiteIndex($q, $sort, $published, $channel);
@@ -75,8 +79,8 @@ class TestimonialController extends Controller
         );
 
         return redirect()
-            ->route('admin.apa-kata-pelanggan.index')
-            ->with('success', 'Urutan screenshot Apa Kata Pelanggan disimpan.');
+            ->route('admin.testimonials.index', ['tab' => 'eksternal'])
+            ->with('success', 'Urutan screenshot ulasan eksternal disimpan.');
     }
 
     public function updateApaKataMeta(Request $request): RedirectResponse
@@ -146,7 +150,7 @@ class TestimonialController extends Controller
             ? CmsTestimonial::MARKETPLACE_SOURCES
             : CmsTestimonial::SOURCES;
         $indexUrl = $intent === 'marketplace'
-            ? route('admin.apa-kata-pelanggan.index')
+            ? route('admin.testimonials.index', ['tab' => 'eksternal'])
             : route('admin.testimonials.index', ['tab' => 'website']);
 
         return Inertia::render('Admin/Testimonials/Form', [
@@ -178,8 +182,8 @@ class TestimonialController extends Controller
 
         if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
             return redirect()
-                ->route('admin.apa-kata-pelanggan.index')
-                ->with('success', 'Screenshot Apa Kata Pelanggan ditambahkan.');
+                ->route('admin.testimonials.index', ['tab' => 'eksternal'])
+                ->with('success', 'Screenshot ulasan eksternal ditambahkan.');
         }
 
         return redirect()
@@ -195,7 +199,7 @@ class TestimonialController extends Controller
             ? CmsTestimonial::MARKETPLACE_SOURCES
             : CmsTestimonial::SOURCES;
         $indexUrl = $intent === 'marketplace'
-            ? route('admin.apa-kata-pelanggan.index')
+            ? route('admin.testimonials.index', ['tab' => 'eksternal'])
             : route('admin.testimonials.index', ['tab' => 'website']);
 
         return Inertia::render('Admin/Testimonials/Form', [
@@ -239,8 +243,8 @@ class TestimonialController extends Controller
 
         if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
             return redirect()
-                ->route('admin.apa-kata-pelanggan.index')
-                ->with('success', 'Screenshot Apa Kata Pelanggan diperbarui.');
+                ->route('admin.testimonials.index', ['tab' => 'eksternal'])
+                ->with('success', 'Screenshot ulasan eksternal diperbarui.');
         }
 
         return redirect()
@@ -286,10 +290,10 @@ class TestimonialController extends Controller
         $items = $query->limit(200)->get();
 
         return Inertia::render('Admin/Testimonials/Index', [
-            'title' => 'Apa Kata Pelanggan Kami',
-            'description' => 'Hanya screenshot percakapan/ulasan Shopee atau WhatsApp di luar transaksi website. Geser urutan untuk prioritas tampilan di beranda dan /reviews.',
-            'tab' => 'website',
-            'tabs' => [],
+            'title' => 'Ulasan Pelanggan',
+            'description' => 'Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace (Shopee, Tokopedia, WA), dan foto hasil pemasangan.',
+            'tab' => 'eksternal',
+            'tabs' => $this->tabs(),
             'filters' => [
                 'q' => $q,
                 'sort' => 'sort_order',
@@ -305,10 +309,10 @@ class TestimonialController extends Controller
             ],
             'createHref' => route('admin.testimonials.create', ['intent' => 'marketplace']),
             'createLabel' => 'Tambah Screenshot',
-            'indexRoute' => 'admin.apa-kata-pelanggan.index',
-            'pageMeta' => TestimonialPageSettings::pageMeta(),
-            'metaUrl' => route('admin.apa-kata-pelanggan.meta.update'),
-            'metaHint' => 'Judul section Apa kata pelanggan kami di /reviews',
+            'indexRoute' => 'admin.testimonials.index',
+            'pageMeta' => null,
+            'metaUrl' => null,
+            'metaHint' => null,
             'previewUrl' => route('reviews.screenshots'),
             'reorderUrl' => route('admin.apa-kata-pelanggan.reorder'),
             'canReorder' => true,
@@ -378,8 +382,8 @@ class TestimonialController extends Controller
         $indexRoute = 'admin.testimonials.index';
 
         return Inertia::render('Admin/Testimonials/Index', [
-            'title' => 'Daftar Ulasan',
-            'description' => 'Pisahkan umpan balik: Apa kata pelanggan (screenshot Shopee/WA) vs ulasan pelanggan di website.',
+            'title' => 'Ulasan Pelanggan',
+            'description' => 'Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace (Shopee, Tokopedia, WA), dan foto hasil pemasangan.',
             'tab' => 'website',
             'tabs' => $this->tabs(),
             'filters' => [
@@ -542,12 +546,10 @@ class TestimonialController extends Controller
         })->all();
 
         return Inertia::render('Admin/Testimonials/Index', [
-            'title' => $pengaturanSurface ? 'Hasil Pemasangan Kami' : 'Daftar Ulasan',
-            'description' => $pengaturanSurface
-                ? 'Foto dari import produk (is_installation) + galeri manual untuk beranda dan /hasil-pemasangan.'
-                : 'Kelola foto hasil pemasangan: import batch produk dan unggah manual.',
+            'title' => 'Ulasan Pelanggan',
+            'description' => 'Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace (Shopee, Tokopedia, WA), dan foto hasil pemasangan.',
             'tab' => 'foto',
-            'tabs' => $pengaturanSurface ? [] : $this->tabs(),
+            'tabs' => $this->tabs(),
             'filters' => [
                 'q' => $q,
                 'sort' => in_array($sort, ['newest', 'oldest', 'sort_order'], true) ? $sort : 'newest',
@@ -586,8 +588,13 @@ class TestimonialController extends Controller
                 'href' => route('admin.testimonials.index', ['tab' => 'website']),
             ],
             [
-                'key' => 'foto',
+                'key' => 'eksternal',
                 'label' => 'Ulasan Eksternal',
+                'href' => route('admin.testimonials.index', ['tab' => 'eksternal']),
+            ],
+            [
+                'key' => 'foto',
+                'label' => 'Hasil Pemasangan',
                 'href' => route('admin.testimonials.index', ['tab' => 'foto']),
             ],
         ];

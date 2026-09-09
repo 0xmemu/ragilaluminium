@@ -110,7 +110,7 @@ class ApaKataController extends Controller
         );
 
         return redirect()
-            ->route('admin.apa-kata-pelanggan.index')
+            ->route('admin.testimonials.index', ['tab' => 'eksternal'])
             ->with('success', 'Meta halaman Apa Kata Pelanggan disimpan.');
     }
 
@@ -142,7 +142,7 @@ class ApaKataController extends Controller
         );
 
         return redirect()
-            ->route('admin.apa-kata-pelanggan.index')
+            ->route('admin.testimonials.index', ['tab' => 'eksternal'])
             ->with('success', 'Urutan screenshot Apa Kata Pelanggan disimpan.');
     }
 }

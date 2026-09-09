@@ -334,7 +334,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
 
-    // Customers (guest buyers — not admin users)
+    // Customers (guest buyers - not admin users)
     Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
     Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
@@ -458,10 +458,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('documents', ['App\\Http\\Controllers\\Admin\\DocumentPagesController', 'index'])->name('documents.index');
     Route::put('documents', ['App\\Http\\Controllers\\Admin\\DocumentPagesController', 'update'])->name('documents.update');
 
-    Route::get('apa-kata-pelanggan', [ApaKataController::class, 'index'])->name('apa-kata-pelanggan.index');
+    Route::get('apa-kata-pelanggan', fn () => redirect()->route('admin.testimonials.index', ['tab' => 'eksternal']))->name('apa-kata-pelanggan.index');
     Route::put('apa-kata-pelanggan/meta', [ApaKataController::class, 'updateMeta'])->name('apa-kata-pelanggan.meta.update');
     Route::put('apa-kata-pelanggan/reorder', [ApaKataController::class, 'reorder'])->name('apa-kata-pelanggan.reorder');
-    Route::get('hasil-pemasangan', [InstallationGalleryController::class, 'index'])->name('hasil-pemasangan.index');
+    Route::get('hasil-pemasangan', fn () => redirect()->route('admin.testimonials.index', ['tab' => 'foto']))->name('hasil-pemasangan.index');
     Route::put('hasil-pemasangan/meta', [InstallationGalleryController::class, 'updateMeta'])->name('hasil-pemasangan.meta.update');
 
     Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
@@ -532,7 +532,7 @@ Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])
     ->middleware(['throttle:120,1', 'verify.jnt.signature'])
     ->name('webhook.shipping.jnt');
 
-// TEMPORARY ErrorBoundary e2e test route — remove after verification
+// TEMPORARY ErrorBoundary e2e test route - remove after verification
 
 /*
 |--------------------------------------------------------------------------

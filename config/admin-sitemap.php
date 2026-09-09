@@ -116,7 +116,7 @@ return [
             'title' => 'Pelanggan & Komunikasi',
             'items' => [
                 ['label' => 'Customer', 'route' => 'admin.customers.index', 'capability' => 'customers.view', 'icon' => 'users', 'active' => ['admin.customers.*']],
-                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*']],
+                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*', 'admin.apa-kata-pelanggan.*', 'admin.hasil-pemasangan.*']],
                 [
                     'label' => 'WhatsApp',
                     'route' => 'admin.whatsapp.dashboard', 'capability' => 'whatsapp.view',
@@ -137,8 +137,6 @@ return [
                 ['label' => 'Tentang Kami', 'route' => 'admin.tentang-kami.edit', 'icon' => 'info', 'active' => ['admin.tentang-kami.*']],
                 ['label' => 'Dokumen Halaman', 'route' => 'admin.documents.index', 'icon' => 'file-text', 'active' => ['admin.documents.*', 'admin.tentang-kami.*', 'admin.ketentuan-layanan.*', 'admin.kebijakan-privasi.*']],
                 ['label' => 'Marketplace & Media Sosial', 'route' => 'admin.storefront-platforms.edit', 'icon' => 'storefront', 'active' => ['admin.storefront-platforms.*']],
-                ['label' => 'Apa Kata Pelanggan Kami', 'route' => 'admin.apa-kata-pelanggan.index', 'icon' => 'badge-check', 'active' => ['admin.apa-kata-pelanggan.*']],
-                ['label' => 'Hasil Pemasangan Kami', 'route' => 'admin.hasil-pemasangan.index', 'icon' => 'images', 'active' => ['admin.hasil-pemasangan.*']],
             ],
         ],
         'akun_sistem' => [

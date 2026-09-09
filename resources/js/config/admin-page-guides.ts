@@ -13,6 +13,20 @@ export interface AdminPageGuide {
 }
 
 export const adminPageGuides: Record<string, AdminPageGuide> = {
+  "admin.testimonials.index": {
+    title: "Ulasan Pelanggan",
+    summary: "Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace, dan galeri hasil pemasangan.",
+    steps: [
+      "Gunakan tab Ulasan Website untuk meninjau dan memoderasi ulasan riil pembeli.",
+      "Gunakan tab Ulasan Eksternal untuk mengelola tangkapan layar ulasan dari Shopee atau WhatsApp.",
+      "Gunakan tab Hasil Pemasangan untuk mengelola foto dan video aplikasi produk.",
+      "Gunakan tombol Atur urutan pada ulasan eksternal untuk mengatur urutan tampil di etalase.",
+    ],
+    notes: [
+      "Ulasan website dengan status terbit otomatis tampil di halaman produk terkait dan halaman ulasan publik.",
+      "Foto hasil pemasangan yang diimpor dari produk berstatus read-only dan dapat ditambah dengan foto manual.",
+    ],
+  },
   "admin.dashboard": {
     title: "Dashboard",
     summary: "Ringkasan kondisi toko hari ini dan daftar pekerjaan yang perlu ditangani.",

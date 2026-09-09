@@ -74,7 +74,7 @@ class FrontendPageContractTest extends TestCase
         $routes = [
             ['admin.dashboard', 'Admin/Dashboard'],
             ['admin.products.index', 'Admin/Products/Index'],
-            ['admin.imports.index', 'Admin/ResourceIndex'],
+            ['admin.imports.index', 'Admin/Imports/Index'],
             ['admin.orders.index', 'Admin/Orders/Index'],
             ['admin.payments.index', 'Admin/Payments/Index'],
             ['admin.shipping.index', 'Admin/Shipping/Index'],
@@ -92,8 +92,6 @@ class FrontendPageContractTest extends TestCase
             ['admin.storefront-platforms.edit', 'Admin/StorefrontPlatforms/Edit'],
             ['admin.ketentuan-layanan.edit', 'Admin/CmsDocument/Edit'],
             ['admin.kebijakan-privasi.edit', 'Admin/CmsDocument/Edit'],
-            ['admin.apa-kata-pelanggan.index', 'Admin/ApaKata/Index'],
-            ['admin.hasil-pemasangan.index', 'Admin/InstallationGallery/Index'],
             ['admin.pages.index', 'Admin/ResourceIndex'],
             ['admin.banners.index', 'Admin/Banners/Index'],
             ['admin.vouchers.index', 'Admin/Vouchers/Index'],

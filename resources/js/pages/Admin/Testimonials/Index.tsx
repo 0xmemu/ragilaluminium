@@ -19,7 +19,6 @@ import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
-import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -84,12 +83,13 @@ function formatDateTime(iso: string | null | undefined): string {
 function RatingStars({ rating }: { rating?: number | null }) {
   if (!rating) return <span className="text-muted-foreground">-</span>
   return (
-    <span className="inline-flex items-center gap-0.5 text-warning-foreground" aria-label={`${rating} dari 5 bintang`}>
+    <span className="inline-flex items-center gap-0.5 text-warning" aria-label={`${rating} dari 5 bintang`}>
       {Array.from({ length: 5 }, (_, index) => (
         <Icon
           key={index}
           name="star"
-          className={cn("size-3.5", index < rating ? "fill-current" : "opacity-25")}
+          weight="fill"
+          className={cn("size-3.5", index < rating ? "text-warning" : "text-muted/30")}
           aria-hidden="true"
         />
       ))}
@@ -288,16 +288,16 @@ export default function TestimonialsIndex({
   importedRows = [],
   pagination,
   indexRoute = "admin.testimonials.index",
-  pageMeta = null,
-  metaUrl = null,
-  metaHint = null,
+  pageMeta: _pageMeta = null,
+  metaUrl: _metaUrl = null,
+  metaHint: _metaHint = null,
   previewUrl = null,
   reorderUrl = null,
   canReorder = false,
 }: {
   title: string
   description: string
-  tab: "website" | "foto"
+  tab: "website" | "foto" | "eksternal"
   tabs: TabItem[]
   filters: { q: string; sort: string; published: string; channel?: string }
   channelOptions?: Array<{ value: string; label: string }>
@@ -328,13 +328,8 @@ export default function TestimonialsIndex({
   )
   const isPengaturanSurface =
     indexRoute === "admin.apa-kata-pelanggan.index" || indexRoute === "admin.hasil-pemasangan.index"
-  const isApaKata = indexRoute === "admin.apa-kata-pelanggan.index"
-  const metaForm = useForm({
-    title: pageMeta?.title ?? "",
-    heading: pageMeta?.heading ?? "",
-    subtitle: pageMeta?.subtitle ?? "",
-    published: pageMeta?.published ?? true,
-  })
+  const isApaKata = indexRoute === "admin.apa-kata-pelanggan.index" || tab === "eksternal"
+
   const reorderForm = useForm({
     rows: (rows as WebsiteRow[]).map((row, index) => ({
       id: row.id,
@@ -342,17 +337,7 @@ export default function TestimonialsIndex({
     })),
   })
 
-  React.useEffect(() => {
-    if (!pageMeta) return
-    metaForm.setData({
-      title: pageMeta.title,
-      heading: pageMeta.heading,
-      subtitle: pageMeta.subtitle,
-      published: pageMeta.published,
-    })
-    // `useForm` returns a new facade on every render; CMS metadata is the dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageMeta])
+
 
   React.useEffect(() => {
     if (tab !== "website") return
@@ -413,69 +398,81 @@ export default function TestimonialsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          {previewUrl ? (
+            <Button asChild variant="secondary" size="sm">
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5">
+                <Icon name="storefront" className="size-3.5" aria-hidden="true" />
+                <span>Lihat di toko</span>
+              </a>
+            </Button>
+          ) : null}
+          {canReorder && reorderUrl ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setReorderMode((value) => !value)
+                }}
+              >
+                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
+              </Button>
+              {reorderMode ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={reorderForm.processing}
+                  onClick={() => reorderForm.put(reorderUrl)}
+                >
+                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+                </Button>
+              ) : null}
+            </>
+          ) : null}
+
+          {tab === "website" && adminReviewHref ? (
+            <Button asChild variant="secondary" size="sm">
+              <Link href={adminReviewHref}>Ulasan dari order</Link>
+            </Button>
+          ) : null}
+          <Button asChild size="sm">
+            <Link href={createHref} className="inline-flex items-center gap-1.5">
+              <Icon name="plus" className="size-3.5" aria-hidden="true" />
+              <span>{createLabel}</span>
+            </Link>
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
-      {pageMeta && metaUrl ? (
-        <details className="group mb-6 rounded-lg border border-border bg-card shadow-sm">
-          <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5">
-            <div>
-              <p className="text-sm font-bold">Pengaturan tampilan (CMS)</p>
-              <p className="text-xs text-muted-foreground">{metaHint ?? "Meta halaman"}</p>
-            </div>
-            <Icon name="caret-down" className="size-4 text-muted-foreground transition group-open:rotate-180" aria-hidden="true" />
-          </summary>
-          <div className="border-t border-border p-5 sm:p-6">
-          <form
-            className="grid gap-4 sm:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              metaForm.put(metaUrl)
-            }}
-          >
-            <Field id="apk-title" label="Judul CMS">
-              <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
-            </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-              <input
-                type="checkbox"
-                checked={metaForm.data.published}
-                onChange={(event) => metaForm.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Terbitkan halaman
-            </label>
-            <Field id="apk-heading" label="Judul hero" className="sm:col-span-2">
-              <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
-            </Field>
-            <Field id="apk-subtitle" label="Subjudul" className="sm:col-span-2">
-              <Textarea
-                rows={2}
-                value={metaForm.data.subtitle}
-                onChange={(event) => metaForm.setData("subtitle", event.target.value)}
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Button type="submit" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-              </Button>
-            </div>
-          </form>
-          </div>
-        </details>
-      ) : null}
+
 
       {showTabs ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+          <div className="inline-flex rounded-lg border border-border bg-muted/60 p-1">
             {tabs.map((item) => (
               <Link
                 key={item.key}
                 href={item.href}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
-                  tab === item.key ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  "rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all",
+                  tab === item.key
+                    ? "bg-card text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {item.label}
@@ -496,49 +493,7 @@ export default function TestimonialsIndex({
               ? "Cari nama, komentar, atau sumber"
               : "Cari label atau URL foto",
         }}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {previewUrl ? (
-              <Button asChild variant="secondary">
-                <a href={previewUrl} target="_blank" rel="noreferrer">
-                  Lihat halaman publik
-                </a>
-              </Button>
-            ) : null}
-            {canReorder && reorderUrl ? (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setReorderMode((value) => !value)
-                  }}
-                >
-                  {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-                </Button>
-                {reorderMode ? (
-                  <Button
-                    type="button"
-                    disabled={reorderForm.processing}
-                    onClick={() => reorderForm.put(reorderUrl)}
-                  >
-                    {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                  </Button>
-                ) : null}
-              </>
-            ) : null}
 
-            {tab === "website" && adminReviewHref ? (
-              <Button asChild variant="secondary"><Link href={adminReviewHref}>Ulasan dari order</Link></Button>
-            ) : null}
-            <Button asChild>
-              <Link href={createHref}>
-                <Icon name="plus" className="size-4" aria-hidden="true" />
-                {createLabel}
-              </Link>
-            </Button>
-          </div>
-        }
         sort={
           sortOptions.length > 0 ? (
             <Select

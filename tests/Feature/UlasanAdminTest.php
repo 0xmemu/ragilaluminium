@@ -66,7 +66,7 @@ class UlasanAdminTest extends TestCase
                 'sort_order' => 1,
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
 
         $this->assertDatabaseHas('cms_testimonials', [
             'customer_name' => 'Ani',
@@ -87,7 +87,7 @@ class UlasanAdminTest extends TestCase
                 'sort_order' => 2,
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
 
         $this->assertDatabaseHas('cms_testimonials', [
             'customer_name' => 'Screenshot Only',
@@ -228,15 +228,16 @@ class UlasanAdminTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.apa-kata-pelanggan.index'))
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'eksternal']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/ApaKata/Index')
-                ->where('title', 'Apa Kata Pelanggan Kami')
-                ->where('indexRoute', 'admin.apa-kata-pelanggan.index')
+                ->component('Admin/Testimonials/Index')
+                ->where('title', 'Ulasan Pelanggan')
                 ->where('canReorder', true)
                 ->has('reorderUrl')
-                ->has('pageMeta')
-                ->where('pageMeta.heading', 'Apa kata pelanggan kami.')
                 ->has('rows', 1)
                 ->where('rows.0.customer_name', 'Siti')
                 ->where('rows.0.source', 'shopee'));
@@ -248,7 +249,7 @@ class UlasanAdminTest extends TestCase
                 'subtitle' => 'Dari Shopee dan WhatsApp.',
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
 
         $first = CmsTestimonial::query()->where('customer_name', 'Siti')->firstOrFail();
         $second = CmsTestimonial::create([
@@ -268,7 +269,7 @@ class UlasanAdminTest extends TestCase
                     ['id' => $first->id, 'sort_order' => 1],
                 ],
             ])
-            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
 
         $this->assertSame(0, $second->fresh()->sort_order);
         $this->assertSame(1, $first->fresh()->sort_order);
@@ -307,12 +308,14 @@ class UlasanAdminTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.hasil-pemasangan.index'))
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'foto']));
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'foto']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/InstallationGallery/Index')
-                ->where('title', 'Hasil Pemasangan Kami')
-                ->has('pageMeta')
-                ->where('pageMeta.heading', 'Hasil pemasangan')
+                ->component('Admin/Testimonials/Index')
+                ->where('title', 'Ulasan Pelanggan')
                 ->has('rows', 1)
                 ->where('rows.0.label', 'Pemasangan Kudus'));
 
@@ -400,6 +403,36 @@ class UlasanAdminTest extends TestCase
         $this->assertSame('rejected', $review->fresh()->moderation_status);
         $this->assertFalse($review->fresh()->published);
         $this->assertDatabaseHas('event_logs', ['event_type' => 'cms.testimonial_moderated', 'entity_id' => $review->id]);
+    }
+
+
+    public function test_admin_can_switch_between_three_tabs_in_ulasan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'website']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Testimonials/Index')
+                ->where('tab', 'website')
+                ->has('tabs', 3));
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'eksternal']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Testimonials/Index')
+                ->where('tab', 'eksternal')
+                ->has('tabs', 3));
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'foto']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Testimonials/Index')
+                ->where('tab', 'foto')
+                ->has('tabs', 3));
     }
 
 }
