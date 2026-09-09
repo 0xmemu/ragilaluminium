@@ -1,6 +1,7 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
+import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
@@ -39,9 +40,9 @@ interface VoucherCard {
 }
 
 function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—"
+  if (!iso) return "-"
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "—"
+  if (Number.isNaN(date.getTime())) return "-"
   return date.toLocaleString("id-ID", {
     day: "2-digit",
     month: "short",
@@ -209,9 +210,29 @@ export default function VouchersIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          <Button asChild size="sm">
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Buat Voucher
+            </Link>
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
+      <ManagePromotionsTabs active="vouchers" />
 
       <section className="mb-4 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
         Voucher aktif dapat dipakai bersamaan jika masing-masing mengizinkan stacking.
@@ -227,38 +248,30 @@ export default function VouchersIndex({
           placeholder: "Nama atau kode",
         }}
         actions={
-          <>
-            <div className="flex gap-1 rounded-md border border-border p-1">
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex size-9 items-center justify-center rounded",
-                  viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-                )}
-                onClick={() => visit({ view: "list" })}
-                aria-label="Tampilan list"
-              >
-                <Icon name="menu" className="size-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex size-9 items-center justify-center rounded",
-                  viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-                )}
-                onClick={() => visit({ view: "grid" })}
-                aria-label="Tampilan grid"
-              >
-                <Icon name="layout-grid" className="size-4" aria-hidden="true" />
-              </button>
-            </div>
-            <Button asChild>
-              <Link href={createHref}>
-                <Icon name="plus" className="size-4" aria-hidden="true" />
-                Buat Voucher
-              </Link>
-            </Button>
-          </>
+          <div className="flex gap-1 rounded-md border border-border p-1">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex size-9 items-center justify-center rounded",
+                viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+              )}
+              onClick={() => visit({ view: "list" })}
+              aria-label="Tampilan list"
+            >
+              <Icon name="menu" className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "inline-flex size-9 items-center justify-center rounded",
+                viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+              )}
+              onClick={() => visit({ view: "grid" })}
+              aria-label="Tampilan grid"
+            >
+              <Icon name="layout-grid" className="size-4" aria-hidden="true" />
+            </button>
+          </div>
         }
         className="mb-4"
       >

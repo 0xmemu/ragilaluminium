@@ -96,12 +96,19 @@ return [
         'harga_promo' => [
             'title' => 'Harga & Promo',
             'items' => [
-                ['label' => 'Promo Toko', 'route' => 'admin.promotions.index', 'icon' => 'ticket', 'activeType' => 'store', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
-                ['label' => 'Flash Sale', 'route' => 'admin.promotions.index', 'params' => ['type' => 'flash_sale'], 'icon' => 'lightning', 'activeType' => 'flash_sale', 'active' => ['admin.promotions.*', 'admin.flash-sale.*']],
-                ['label' => 'Voucher Toko', 'route' => 'admin.vouchers.index', 'icon' => 'ticket-percent', 'active' => ['admin.vouchers.*']],
+                [
+                    'label' => 'Promo Toko',
+                    'route' => 'admin.promotions.index',
+                    'icon' => 'ticket',
+                    'active' => [
+                        'admin.promotions.*',
+                        'admin.vouchers.*',
+                        'admin.banners.*',
+                        'admin.announcements.*',
+                        'admin.flash-sale.*',
+                    ],
+                ],
                 ['label' => 'Subsidi Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'icon' => 'truck', 'active' => ['admin.shipping-subsidy.*']],
-                ['label' => 'Banner Promo', 'route' => 'admin.banners.index', 'icon' => 'image', 'active' => ['admin.banners.*']],
-                ['label' => 'Bar Promo', 'route' => 'admin.announcements.index', 'icon' => 'megaphone', 'active' => ['admin.announcements.*']],
                 ['label' => 'Biaya COD', 'route' => 'admin.cod-settings.edit', 'capability' => 'cod_settings.view', 'icon' => 'hand-coins', 'active' => ['admin.cod-settings.*']],
             ],
         ],

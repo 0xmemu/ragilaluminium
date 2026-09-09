@@ -1,6 +1,10 @@
 import { Head, Link, router } from "@inertiajs/react"
+import { usePage } from "@inertiajs/react"
+import type { SharedPageProps } from "@/types"
 import * as React from "react"
 
+import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
+import { Card } from "@/components/admin/ui/card"
 import { rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -63,14 +67,21 @@ function canEnd(status: string): boolean {
 
 function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boolean; setBusy: (v: boolean) => void }) {
   const [impact, setImpact] = React.useState<{ products?: number; variants?: number; error?: string } | null>(null)
+  const { csrf } = usePage<SharedPageProps>().props
 
   async function fetchImpact() {
     setImpact(null)
     try {
       // Tanpa targets: backend memakai items tersimpan sebagai sumber otoritatif.
+      // POST fetch wajib membawa CSRF token, tanpa itu endpoint impact 419 dan
+      // dialog salah bilang "Kampanye tidak valid untuk diaktifkan".
       const response = await fetch(row.impact_url, {
         method: "POST",
-        headers: { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" },
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": csrf ?? "",
+        },
         body: JSON.stringify({}),
       })
       const data = (await response.json()) as { ok: boolean; products?: number; variants?: number; errors?: string[] }
@@ -148,8 +159,32 @@ export default function PromotionsIndex({
   }, [initialRows])
 
   return (
-    <AdminLayout title={title} description={description}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          <Button asChild size="sm">
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Tambah {activeType === "flash_sale" ? "Flash Sale" : "Promo"}
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       <Head title={title} />
+      <ManagePromotionsTabs active="promotions" />
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -161,9 +196,6 @@ export default function PromotionsIndex({
               </Button>
             ))}
           </div>
-          <Button asChild size="sm">
-            <Link href={createHref}>Tambah {activeType === "flash_sale" ? "Flash Sale" : "Promo"}</Link>
-          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -190,12 +222,13 @@ export default function PromotionsIndex({
           </Select>
         </div>
 
-        <div className="overflow-hidden">
+        <div>
           {filteredRows.length === 0 ? (
             <EmptyState title="Belum ada kampanye" description="Buat kampanye pertama untuk mulai memberikan diskon." />
           ) : (
-            <div className="overflow-x-auto">
-            <Table className="min-w-[62rem]">
+            <Card className="overflow-hidden border border-border bg-card">
+              <div className="overflow-x-auto">
+                <Table className="min-w-[62rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
@@ -204,7 +237,7 @@ export default function PromotionsIndex({
                   <TableHead>Periode</TableHead>
                   <TableHead>Target</TableHead>
                   <TableHead className="text-right">Produk</TableHead>
-                  <TableHead className="sticky right-0 z-10 bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">Aksi</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -250,7 +283,7 @@ export default function PromotionsIndex({
                       </ul>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{row.products_count}</TableCell>
-                    <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">
+                    <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-3">
                         <Link className={rowActionTextClass} href={row.edit_href}>
                           Edit
@@ -291,8 +324,9 @@ export default function PromotionsIndex({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-            </div>
+                </Table>
+              </div>
+            </Card>
           )}
         </div>
       </div>

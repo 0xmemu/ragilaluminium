@@ -1,6 +1,7 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
+import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
@@ -162,9 +163,29 @@ export default function AnnouncementsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={undefined}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => router.reload()}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            <span>Refresh data</span>
+          </Button>
+          <Button asChild size="sm">
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Tambah Bar Promo
+            </Link>
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
+      <ManagePromotionsTabs active="announcements" />
 
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <h2 className="text-base font-bold">Cara kerja</h2>
@@ -186,14 +207,7 @@ export default function AnnouncementsIndex({
           onSubmit: () => visit({ q }),
           placeholder: "Teks atau link promo…",
         }}
-        actions={
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah Bar Promo
-            </Link>
-          </Button>
-        }
+
         className="mb-6"
       >
         <Select
