@@ -209,7 +209,7 @@ class ShippingService
 
         if ($this->jnt->isEnabled()) {
             try {
-                // agingCost/get — cek tarif & estimasi waktu.
+                // agingCost/get, cek tarif dan estimasi waktu.
                 $resp = $this->jnt->tariff([
                     'paymentType' => config('jnt.defaults.payment_type'),
                     'expressType' => config('jnt.defaults.express_type'),
@@ -654,7 +654,7 @@ class ShippingService
         }
 
         // J&T mengembalikan details urut TERBARU dahulu; jangan andalkan
-        // urutan — pilih scan dengan scanTime paling akhir.
+        // urutan, pilih scan dengan scanTime paling akhir.
         usort($details, fn ($a, $b) => strcmp(
             (string) ($a['scanTime'] ?? $a['time'] ?? ''),
             (string) ($b['scanTime'] ?? $b['time'] ?? ''),
@@ -673,7 +673,7 @@ class ShippingService
 
     /**
      * Simpan seluruh riwayat scan sebagai tracking events (idempoten via
-     * event_hash — hash sama dengan applyCarrierUpdate, jadi tidak duplikat).
+     * event_hash, hash sama dengan applyCarrierUpdate, jadi tidak duplikat).
      * Urutan lama -> baru agar timeline konsisten.
      */
     public function persistTraceEvents(ShippingRecord $record, array $details, string $source = 'poll'): void

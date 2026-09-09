@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
@@ -58,11 +58,18 @@ export default function ShippingSubsidyEdit({
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={form.data.enabled ? "active" : "inactive"} />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={form.data.enabled ? "active" : "inactive"} />
+          <Button type="submit" form="subsidy-form" size="sm" className="h-8 px-4" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan"}
+          </Button>
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
-      <form onSubmit={submit} className="w-full space-y-5">
+      <form id="subsidy-form" onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per pengaturan */}
@@ -154,14 +161,6 @@ export default function ShippingSubsidyEdit({
               </tr>
             </tbody>
           </table>
-          <div className="flex items-center justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3">
-            {form.recentlySuccessful ? (
-              <span className="mr-auto text-xs font-medium text-success">Tersimpan.</span>
-            ) : null}
-            <Button type="submit" size="sm" className="h-8 px-4" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </div>
         </div>
 
       </form>
