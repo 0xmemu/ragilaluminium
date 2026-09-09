@@ -111,7 +111,7 @@
   }
 
   /* ==========================================================================
-     ADMIN DESIGN LANGUAGE — "Ink" (dark command-center, fintech bento)
+     ADMIN DESIGN LANGUAGE : "Ink" (dark command-center, fintech bento)
      Dark-first: token gelap adalah DEFAULT admin. Mode terang opsional via
      <html class="admin-shell light">. Storefront tidak terpengaruh.
      Kanvas: mono near-black · Kartu: dark raised + hairline · CTA: putih solid ·
@@ -157,26 +157,26 @@
     --shadow-float: 0 24px 48px -16px hsl(0 0% 0% / 0.65);
   }
 
-  /* Mode terang alternatif (toggle) — putih bersih (netral), tanpa warm paper. */
+  /* Mode terang alternatif (toggle) : putih bersih (netral), tanpa warm paper. */
   html.admin-shell.light {
     color-scheme: light;
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --action-foreground: 0 0% 9%;
-    --body-foreground: 0 0% 45.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --background: 215 28% 97%; /* #f8fafc kanvas slate dingin, beda kontras tegas vs kartu */
+    --foreground: 222 47% 11%; /* #0f172a teks obsidian slate tajam dan kontras tinggi */
+    --action-foreground: 222 47% 11%;
+    --body-foreground: 215 16% 42%; /* #475569 teks body slate sejuk */
+    --card: 0 0% 100%; /* #ffffff kartu konten putih murni terangkat */
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-hover: 0 0% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-hover: 222 47% 20%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 215 20% 94%; /* #f1f5f9 chip dan tombol sekunder cool slate */
+    --secondary-foreground: 222 47% 11%;
+    --muted: 215 20% 94%; /* #f1f5f9 */
+    --muted-foreground: 215 16% 45%;
+    --accent: 215 25% 92%;
+    --accent-foreground: 222 47% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --sale: 0 84.2% 60.2%;
@@ -187,17 +187,17 @@
     --info: 207 55% 38%;
     --info-foreground: 0 0% 100%;
     --whatsapp: 142 71% 45%;
-    --header-bg: 0 0% 7.1%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 9%;
+    --header-bg: 0 0% 100%;
+    --border: 215 20% 89%; /* #e2e8f0 garis pembatas slate dingin bersih */
+    --input: 215 20% 89%;
+    --ring: 222 47% 11%;
     --surface: 0 0% 100%;
-    --surface-muted: 0 0% 96%;
-    --sidebar: 0 0% 98%; /* sidebar light: abu sangat muda, beda tipis dari kanvas putih */
+    --surface-muted: 215 20% 95%; /* #f1f5f9 */
+    --sidebar: 215 25% 98%; /* #f8fafc sidebar sejuk */
     --radius: 0.5rem;
     --radius-control: 0.375rem;
-    --shadow-soft: 0 1px 2px hsl(0 0% 11% / 0.06), 0 2px 12px -2px hsl(0 0% 11% / 0.08);
-    --shadow-float: 0 16px 40px -16px hsl(0 0% 11% / 0.12);
+    --shadow-soft: 0 1px 3px 0 hsl(215 25% 20% / 0.05), 0 1px 2px -1px hsl(215 25% 20% / 0.05);
+    --shadow-float: 0 10px 25px -5px hsl(215 25% 20% / 0.08), 0 8px 10px -6px hsl(215 25% 20% / 0.06);
   }
 
   * {
@@ -390,7 +390,7 @@
   }
 
   /* ================================================================
-     Product card — BEM visual system (Zalora-inspired guideline)
+     Product card : BEM visual system (Zalora-inspired guideline)
      Block: .product-card | Elements: .product-card__* | Modifier: --*
      Semua visual berasal dari token :root. Flow layout; position
      absolute hanya untuk overlay (badge flash, label stok, wishlist).
@@ -424,7 +424,7 @@
   }
 
   /* Modifier: judul tipografi model (container query, carousel Home).
-     Versi desain baru — flat ala kartu model (tanpa shadow/lift),
+     Versi desain baru : flat ala kartu model (tanpa shadow/lift),
      border #dee3e0, judul semibold, padding body 10px. */
   .product-card--model {
     container-type: inline-size;
@@ -519,7 +519,7 @@
     }
   }
 
-  /* Modifier: stok habis — kartu redup, tidak interaktif. */
+  /* Modifier: stok habis : kartu redup, tidak interaktif. */
   .product-card--unavailable .product-card__image {
     filter: grayscale(0.85);
     opacity: 0.55;
@@ -536,7 +536,7 @@
     pointer-events: none;
   }
 
-  /* Area klik kartu — dua link (media + body) menutup seluruh kartu,
+  /* Area klik kartu : dua link (media + body) menutup seluruh kartu,
      pola multi-link standar (navigasi, bukan aksi state). */
   .product-card__link {
     display: block;
@@ -618,7 +618,7 @@
     line-height: 1;
   }
 
-  /* Overlay: tombol wishlist (kanan atas media) — hanya dirender bila
+  /* Overlay: tombol wishlist (kanan atas media) : hanya dirender bila
      consumer menyediakan onWishlistChange. */
   .product-card__favorite {
     position: absolute;
@@ -819,7 +819,7 @@
     line-height: 1;
   }
 
-  /* Overlay: "X terjual" — floating pojok kanan atas card text (content),
+  /* Overlay: "X terjual" : floating pojok kanan atas card text (content),
      di atas nama produk. Flow layout lain (padding/space) tidak diubah. */
   .product-card__sold {
     position: absolute;
@@ -1039,7 +1039,7 @@
   animation-play-state: paused;
 }
 
-/* Inertia NProgress — yellow bar above sticky header */
+/* Inertia NProgress : yellow bar above sticky header */
 #nprogress {
   pointer-events: none;
 }
@@ -1065,7 +1065,7 @@
   transform: rotate(3deg) translate(0px, -4px);
 }
 
-/* Public storefront: capitalize headings/nav/CTA labels only — body stays sentence case. */
+/* Public storefront: capitalize headings/nav/CTA labels only : body stays sentence case. */
 .public-title-case :is(h1, h2, h3, h4, h5, h6),
 .public-title-case :is(nav, header) a,
 .public-title-case button,
