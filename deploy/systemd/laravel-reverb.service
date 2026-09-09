@@ -1,0 +1,19 @@
+[Unit]
+Description=Laravel Reverb WebSocket server (admin live events)
+After=network.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/root/ragilaluminium
+ExecStart=/usr/bin/php /root/ragilaluminium/artisan reverb:start --host=127.0.0.1 --port=8080
+Restart=on-failure
+RestartSec=3
+Environment=APP_BASE_PATH=/root/ragilaluminium
+StandardOutput=append:/root/ragilaluminium/storage/logs/reverb.log
+StandardError=append:/root/ragilaluminium/storage/logs/reverb.log
+
+[Install]
+WantedBy=multi-user.target
