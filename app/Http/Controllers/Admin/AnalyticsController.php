@@ -8,6 +8,7 @@ use App\Services\StorePerformanceService;
 use App\Support\ExportSafety;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\StorePerformanceExport;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -84,7 +85,7 @@ class AnalyticsController extends Controller
 
     /**
      * Tambahkan breakdown konkret "N dari N pengunjung" untuk KPI conversion
-     * HANYA di halaman analytics (bukan dashboard) — dashboard kontrak ketat 6 key
+     * HANYA di halaman analytics (bukan dashboard) - dashboard kontrak ketat 6 key
      * tetap terjaga karena service tidak menyentuh detail.
      *
      * @param  array<string, mixed>  $payload
@@ -193,36 +194,12 @@ class AnalyticsController extends Controller
         return Excel::download(new StorePerformanceExport($payload), 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx');
     }
 
-    public function importPerformance(): Response
+    public function importPerformance(): RedirectResponse
     {
-        $jobs = ImportJob::latest()->limit(50)->get();
-
-        $total = ImportJob::count();
-        $completed = ImportJob::where('status', 'completed')->count();
-        $failed = ImportJob::where('status', 'failed')->count();
-        $totalRows = (int) ImportJob::sum('total_rows');
-        $failedRows = (int) ImportJob::sum('failed_rows');
-        $rowFailureRate = $totalRows > 0 ? round(($failedRows / $totalRows) * 100, 2) : 0;
-
-        return Inertia::render('Admin/ResourceShow', [
-            'title' => 'Performa Import',
-            'subtitle' => '50 job terbaru',
-            'fields' => [
-                ['label' => 'Total Job', 'value' => $total],
-                ['label' => 'Completed', 'value' => $completed],
-                ['label' => 'Failed', 'value' => $failed],
-                ['label' => 'Row Failure Rate', 'value' => $rowFailureRate.'%'],
-            ],
-            'sections' => [
-                [
-                    'title' => 'Job Terbaru',
-                    'rows' => $jobs->map(fn (ImportJob $j) => [
-                        'label' => '#'.$j->id.' · '.$j->type,
-                        'value' => $j->status.' · '.($j->success_rows ?? 0).' ok / '.($j->failed_rows ?? 0).' gagal',
-                    ])->values()->all(),
-                ],
-            ],
-        ]);
+        // Semua metrik performa import kini tersaji langsung di daftar import
+        // (KPI kartu + kolom Hasil Import). Halaman analitik terpisah hanya
+        // menduplikasi informasi yang sama, jadi dialihkan ke sumber utamanya.
+        return redirect()->route('admin.imports.index');
     }
 
     /**

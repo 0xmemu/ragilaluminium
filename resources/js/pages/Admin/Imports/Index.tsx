@@ -81,7 +81,7 @@ export default function ImportsIndex({
   activeType,
   searchQuery,
   createHref,
-  importPerformanceHref,
+  importPerformanceHref: _importPerformanceHref,
   jobs,
 }: ImportsIndexProps) {
   const [refreshing, setRefreshing] = React.useState(false)
@@ -134,10 +134,6 @@ export default function ImportsIndex({
           aria-hidden="true"
         />
         <span>{refreshing ? "Memuat..." : "Refresh data"}</span>
-      </Button>
-
-      <Button asChild variant="secondary" size="sm">
-        <Link href={importPerformanceHref}>Performa Import</Link>
       </Button>
 
       <Button asChild size="sm">

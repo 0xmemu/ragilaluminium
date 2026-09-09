@@ -53,13 +53,19 @@ class Fase13AdminIATest extends TestCase
         $this->assertNotContains('admin.analytics.import-performance', $routes);
     }
 
-    public function test_import_performance_is_reachable_from_the_import_page(): void
+    public function test_import_performance_route_redirects_to_imports_index(): void
     {
+        // Metrik performa import kini tersaji langsung di daftar import (KPI +
+        // kolom Hasil Import); halaman analitik terpisah hanya redirect ke sana.
+        $this->actingAs($this->admin())
+            ->get(route('admin.analytics.import-performance'))
+            ->assertRedirect(route('admin.imports.index'));
+
         $this->actingAs($this->admin())
             ->get(route('admin.imports.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Imports/Index')
-                ->where('toolbarLinks.0.label', 'Performa Import'));
+                ->has('summary.total_success_rows'));
     }
 }

@@ -131,8 +131,6 @@ class ImportJobController extends Controller
             'activeType' => $type,
             'searchQuery' => $q,
             'createHref' => route('admin.imports.create'),
-            'importPerformanceHref' => route('admin.analytics.import-performance'),
-            'toolbarLinks' => [['label' => 'Performa Import', 'href' => route('admin.analytics.import-performance')]],
             'jobs' => [
                 'data' => $mappedData->all(),
                 'links' => $paginated->linkCollection()->toArray(),
