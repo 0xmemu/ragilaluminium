@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/root/ragilaluminium
-ExecStart=/usr/bin/php /root/ragilaluminium/artisan queue:work --queue=imports,media,default --tries=3 --timeout=1800 --max-time=3600
+WorkingDirectory=/var/www/ragilaluminium
+ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan queue:work --queue=imports,media,default --tries=3 --timeout=1800 --max-time=3600
 Restart=always
 RestartSec=3
 Nice=5

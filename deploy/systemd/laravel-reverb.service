@@ -7,13 +7,13 @@ Wants=redis-server.service
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/root/ragilaluminium
-ExecStart=/usr/bin/php /root/ragilaluminium/artisan reverb:start --host=127.0.0.1 --port=8080
+WorkingDirectory=/var/www/ragilaluminium
+ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan reverb:start --host=127.0.0.1 --port=8080
 Restart=on-failure
 RestartSec=3
-Environment=APP_BASE_PATH=/root/ragilaluminium
-StandardOutput=append:/root/ragilaluminium/storage/logs/reverb.log
-StandardError=append:/root/ragilaluminium/storage/logs/reverb.log
+Environment=APP_BASE_PATH=/var/www/ragilaluminium
+StandardOutput=append:/var/www/ragilaluminium/storage/logs/reverb.log
+StandardError=append:/var/www/ragilaluminium/storage/logs/reverb.log
 
 [Install]
 WantedBy=multi-user.target

@@ -96,12 +96,13 @@ MYSQL_EOF
 
 echo "Database ${DB_NAME} & user ${DB_USER} siap."
 
-echo ">>> [6/7] Menyiapkan Direktori & Izin www-data..."
-mkdir -p /root/ragilaluminium
-mkdir -p /root/ragilaluminium/storage/logs
-chown -R www-data:www-data /root/ragilaluminium/storage 2>/dev/null || true
+echo ">>> [7/8] Menyiapkan Direktori Aplikasi /var/www/ragilaluminium..."
+mkdir -p /var/www/ragilaluminium
+chown -R www-data:www-data /var/www/ragilaluminium
+chmod -R 775 /var/www/ragilaluminium
+usermod -aG www-data jendelaragilaluminium 2>/dev/null || true
 
-echo ">>> [7/7] Mengonfigurasi UFW Firewall..."
+echo ">>> [8/8] Mengonfigurasi UFW Firewall..."
 ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
