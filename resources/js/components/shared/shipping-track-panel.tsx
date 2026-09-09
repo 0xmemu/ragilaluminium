@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -37,6 +38,38 @@ type ShippingTrackPanelProps = {
   onCopyWaybill?: (waybill: string) => void
 }
 
+function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      aria-label={label}
+      title={copied ? "Tersalin!" : label}
+    >
+      {copied ? (
+        <Icon name="check" className="size-3 text-success" aria-hidden="true" />
+      ) : (
+        <Icon name="copy" className="size-3" aria-hidden="true" />
+      )}
+    </button>
+  )
+}
+
 export function ShippingTrackPanel({
   track,
   timeline,
@@ -46,7 +79,7 @@ export function ShippingTrackPanel({
   className,
   onRefresh,
   refreshBusy = false,
-  onCopyWaybill,
+  onCopyWaybill: _onCopyWaybill,
 }: ShippingTrackPanelProps) {
   // Sinkron dgn checklist: badge pakai status kurir (J&T) saat ada timeline,
   // selain itu (fallback alur pesanan) pakai status order supaya tidak beda-dua.
@@ -149,21 +182,13 @@ export function ShippingTrackPanel({
             {track.carrier_name?.trim() || (hasWaybill ? "J&T Cargo" : "Belum ditetapkan")}
           </dd>
         </div>
-        <div className="flex justify-between gap-3">
+        <div className="flex justify-between items-center gap-3">
           <dt className="text-xs text-muted-foreground">Nomor resi</dt>
           <dd className="text-right">
             {hasWaybill ? (
-              <span className="inline-flex flex-wrap items-center justify-end gap-2">
+              <span className="inline-flex items-center justify-end gap-1">
                 <span className="font-mono text-xs font-semibold">{track.waybill_number}</span>
-                {onCopyWaybill ? (
-                  <button
-                    type="button"
-                    className="text-[11px] font-semibold text-primary hover:underline"
-                    onClick={() => onCopyWaybill(track.waybill_number || "")}
-                  >
-                    Salin
-                  </button>
-                ) : null}
+                <CopyButton text={track.waybill_number || ""} label="Salin nomor resi" />
               </span>
             ) : (
               <span className="text-xs text-muted-foreground">Belum ada</span>

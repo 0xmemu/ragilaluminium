@@ -897,6 +897,38 @@ function ReturnCasePanel({
     </div>
   )
 }
+function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      aria-label={label}
+      title={copied ? "Tersalin!" : label}
+    >
+      {copied ? (
+        <Icon name="check" className="size-3 text-success" aria-hidden="true" />
+      ) : (
+        <Icon name="copy" className="size-3" aria-hidden="true" />
+      )}
+    </button>
+  )
+}
+
 export default function OrderShow({
   order,
   events = [],
@@ -1147,17 +1179,10 @@ export default function OrderShow({
             <div className="flex items-center justify-between gap-2">
               <span className="text-muted-foreground">No. Resi:</span>
               {latestShipping?.waybill_number ? (
-                <span className="inline-flex items-center gap-1.5 font-mono font-medium text-foreground">
-                  <span>{latestShipping.waybill_number}</span>
-                  <button
-                    type="button"
-                    onClick={() => copyText(latestShipping.waybill_number || "")}
-                    className="text-[11px] font-medium text-primary hover:underline"
-                    title="Salin nomor resi"
-                  >
-                    Salin
-                  </button>
-                </span>
+                <div className="inline-flex items-center gap-1">
+                  <span className="font-mono font-medium text-foreground">{latestShipping.waybill_number}</span>
+                  <CopyButton text={latestShipping.waybill_number} label="Salin nomor resi" />
+                </div>
               ) : (
                 <span className="text-muted-foreground">Belum ada resi</span>
               )}
