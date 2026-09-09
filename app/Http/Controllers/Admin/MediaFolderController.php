@@ -89,16 +89,55 @@ class MediaFolderController extends Controller
         return redirect()->back()->with('success', 'Aset dipindahkan.');
     }
 
-    /** Hanya folder KOSONG yang boleh dihapus (asset harus dipindah/diarsipkan dulu). */
+    /**
+     * Hapus folder/subfolder.
+     * Jika folder memiliki aset atau subfolder, seluruh aset otomatis dipindahkan
+     * ke folder "Semua Media" (folder_id = null) sebelum folder dihapus.
+     */
     public function destroy(Request $request, MediaFolder $folder): RedirectResponse
     {
-        if ($folder->assets()->exists() || $folder->children()->exists()) {
-            return redirect()->back()->withErrors(['folder' => 'Folder masih berisi asset/subfolder. Pindahkan dulu, atau arsipkan folder.']);
+        $movedCount = DB::transaction(function () use ($folder, $request): int {
+            // Kumpulkan ID folder ini dan seluruh subfoldernya secara rekursif
+            $folderIds = $this->allDescendantIds($folder);
+            $folderIds[] = $folder->id;
+
+            // Pindahkan seluruh aset yang berada di folder ini atau subfoldernya ke Semua Media (folder_id = null)
+            $count = MediaAsset::query()
+                ->whereIn('folder_id', $folderIds)
+                ->update(['folder_id' => null]);
+
+            ActivityLogService::record('media.folder_deleted', 'media_folder', (int) $folder->id, [
+                'name' => $folder->name,
+                'moved_assets_count' => $count,
+                'deleted_folders_count' => count($folderIds),
+            ], (int) $request->user()->id);
+
+            // Hapus folder dan seluruh subfoldernya
+            MediaFolder::query()->whereIn('id', $folderIds)->delete();
+
+            return $count;
+        });
+
+        $message = $movedCount > 0
+            ? "Folder {$folder->name} dihapus. {$movedCount} aset di dalamnya dipindahkan ke Semua Media."
+            : "Folder {$folder->name} dihapus.";
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function allDescendantIds(MediaFolder $folder): array
+    {
+        $ids = [];
+        $children = MediaFolder::query()->where('parent_id', $folder->id)->get();
+        foreach ($children as $child) {
+            $ids[] = $child->id;
+            $ids = array_merge($ids, $this->allDescendantIds($child));
         }
 
-        $folder->delete();
-
-        return redirect()->back()->with('success', 'Folder kosong dihapus.');
+        return $ids;
     }
 
     public function archive(Request $request, MediaFolder $folder): RedirectResponse

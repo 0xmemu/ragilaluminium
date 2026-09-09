@@ -42,18 +42,44 @@ class MediaLibraryFolderTest extends TestCase
         $this->assertNull(MediaFolder::find($child->id));
     }
 
-    public function test_folder_berisi_asset_tidak_bisa_dihapus(): void
+    public function test_hapus_folder_berisi_asset_memindahkan_asset_ke_semua_media(): void
     {
         $this->actingAs($this->admin());
         $folder = MediaFolder::create(['name' => 'Berisi']);
-        MediaAsset::create([
+        $asset = MediaAsset::create([
             'kind' => 'image', 'label' => 'a.jpg', 'object_key' => 'k/a.jpg',
             'mime_type' => 'image/jpeg', 'size_bytes' => 1,
             'status' => 'ready', 'visibility' => 'visible', 'folder_id' => $folder->id,
         ]);
 
         $this->delete(route('admin.media.folders.destroy', $folder))->assertRedirect();
-        $this->assertNotNull(MediaFolder::find($folder->id));
+        $this->assertNull(MediaFolder::find($folder->id), 'Folder harus terhapus');
+        $this->assertNull($asset->fresh()->folder_id, 'Asset harus dipindahkan ke Semua Media (folder_id null)');
+    }
+
+    public function test_hapus_folder_dengan_subfolder_memindahkan_seluruh_asset_dan_hapus_pohon(): void
+    {
+        $this->actingAs($this->admin());
+        $parent = MediaFolder::create(['name' => 'Induk']);
+        $child = MediaFolder::create(['name' => 'Anak', 'parent_id' => $parent->id]);
+
+        $assetParent = MediaAsset::create([
+            'kind' => 'image', 'label' => 'parent.jpg', 'object_key' => 'k/parent.jpg',
+            'mime_type' => 'image/jpeg', 'size_bytes' => 1,
+            'status' => 'ready', 'visibility' => 'visible', 'folder_id' => $parent->id,
+        ]);
+
+        $assetChild = MediaAsset::create([
+            'kind' => 'image', 'label' => 'child.jpg', 'object_key' => 'k/child.jpg',
+            'mime_type' => 'image/jpeg', 'size_bytes' => 1,
+            'status' => 'ready', 'visibility' => 'visible', 'folder_id' => $child->id,
+        ]);
+
+        $this->delete(route('admin.media.folders.destroy', $parent))->assertRedirect();
+        $this->assertNull(MediaFolder::find($parent->id));
+        $this->assertNull(MediaFolder::find($child->id));
+        $this->assertNull($assetParent->fresh()->folder_id);
+        $this->assertNull($assetChild->fresh()->folder_id);
     }
 
     public function test_upload_tanpa_folder_masuk_inbox_dan_url_immutable(): void

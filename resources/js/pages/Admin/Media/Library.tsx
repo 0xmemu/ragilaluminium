@@ -76,15 +76,35 @@ function flattenFolders(nodes: FolderNode[], depth = 0, out: Array<{ id: number;
   return out
 }
 
-// --- FolderTree component ---
-function FolderTree({ nodes, currentFolderId, onSelect }: {
+// --- FolderTree component dengan fitur Expand/Collapse & Hapus Folder ---
+function FolderTreeList({
+  nodes,
+  currentFolderId,
+  onSelect,
+  expandedIds,
+  onToggleExpand,
+}: {
   nodes: FolderNode[]
   currentFolderId: string
   onSelect: (id: string) => void
+  expandedIds: Record<number, boolean>
+  onToggleExpand: (id: number) => void
 }) {
   const [menuFor, setMenuFor] = React.useState<number | null>(null)
 
-  function submitFolderAction(folderId: number, action: "rename" | "archive", name?: string) {
+  function submitFolderAction(folderId: number, action: "rename" | "archive" | "delete", name?: string) {
+    if (action === "delete") {
+      router.delete(routeUrl("admin.media.folders.destroy", { folder: folderId }), {
+        preserveState: true,
+        onSuccess: () => {
+          if (currentFolderId === String(folderId)) {
+            onSelect("")
+          }
+        },
+      })
+      setMenuFor(null)
+      return
+    }
     const fd = new FormData()
     if (action === "rename") {
       if (!name?.trim()) return
@@ -102,7 +122,14 @@ function FolderTree({ nodes, currentFolderId, onSelect }: {
       const fd = new FormData()
       fd.append("name", name.trim())
       fd.append("parent_id", String(parentId))
-      router.post(routeUrl("admin.media.folders.store"), fd, { preserveState: true })
+      router.post(routeUrl("admin.media.folders.store"), fd, {
+        preserveState: true,
+        onSuccess: () => {
+          if (!expandedIds[parentId]) {
+            onToggleExpand(parentId)
+          }
+        },
+      })
     }
     setMenuFor(null)
   }
@@ -112,16 +139,44 @@ function FolderTree({ nodes, currentFolderId, onSelect }: {
       {nodes.map((node) => {
         const isActive = String(node.id) === currentFolderId
         const hasChildren = node.children.length > 0
+        const isExpanded = Boolean(expandedIds[node.id])
         const isOpen = menuFor === node.id
+
         return (
           <li key={node.id} className="relative">
-            <div className={cn("group/folder flex items-center gap-1 rounded-md", isActive && "bg-primary/10")}>
+            <div className={cn("group/folder flex items-center gap-0.5 rounded-md", isActive && "bg-primary/10")}>
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleExpand(node.id)
+                  }}
+                  className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-foreground"
+                  aria-label={isExpanded ? "Ciutkan subfolder" : "Bentangkan subfolder"}
+                  title={isExpanded ? "Ciutkan subfolder" : "Bentangkan subfolder"}
+                >
+                  <Icon
+                    name={isExpanded ? "caret-down" : "caret-right"}
+                    className="size-3"
+                    aria-hidden="true"
+                  />
+                </button>
+              ) : (
+                <span className="size-5 shrink-0" aria-hidden="true" />
+              )}
+
               <button
                 type="button"
-                onClick={() => onSelect(String(node.id))}
+                onClick={() => {
+                  onSelect(String(node.id))
+                  if (hasChildren && !isExpanded) {
+                    onToggleExpand(node.id)
+                  }
+                }}
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground hover:bg-card-hover",
+                  "flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-xs font-medium transition-colors",
+                  isActive ? "text-primary font-semibold" : "text-muted-foreground hover:bg-card-hover",
                 )}
               >
                 <Icon name={isActive ? "folder-open" : "folder"} className="size-3.5 shrink-0" aria-hidden="true" />
@@ -132,6 +187,7 @@ function FolderTree({ nodes, currentFolderId, onSelect }: {
                   </span>
                 ) : null}
               </button>
+
               <button
                 type="button"
                 aria-label={`Menu folder ${node.name}`}
@@ -145,9 +201,14 @@ function FolderTree({ nodes, currentFolderId, onSelect }: {
                 <Icon name="dots-three" className="size-3.5" aria-hidden="true" />
               </button>
             </div>
+
             {isOpen ? (
-              <div className="absolute right-0 top-full z-30 mt-1 w-44 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
-                <button type="button" onClick={() => createSubfolder(node.id)} className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover">
+              <div className="absolute right-0 top-full z-30 mt-1 w-48 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
+                <button
+                  type="button"
+                  onClick={() => createSubfolder(node.id)}
+                  className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                >
                   Buat subfolder
                 </button>
                 <button
@@ -158,24 +219,125 @@ function FolderTree({ nodes, currentFolderId, onSelect }: {
                   }}
                   className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
                 >
-                  Rename
+                  Ganti nama
                 </button>
                 <ConfirmAction
-                  trigger={<span className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-card-hover">Arsipkan</span>}
-                  title="Arsipkan folder?" description="Aset di dalamnya ikut diarsipkan." confirmLabel="Arsipkan"
+                  trigger={
+                    <button
+                      type="button"
+                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                    >
+                      Arsipkan
+                    </button>
+                  }
+                  title="Arsipkan folder?"
+                  description="Aset di dalamnya ikut diarsipkan."
+                  confirmLabel="Arsipkan"
                   onConfirm={() => submitFolderAction(node.id, "archive")}
+                />
+                <ConfirmAction
+                  trigger={
+                    <button
+                      type="button"
+                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      Hapus folder
+                    </button>
+                  }
+                  title={`Hapus folder "${node.name}"?`}
+                  description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
+                  confirmLabel="Hapus Folder"
+                  onConfirm={() => submitFolderAction(node.id, "delete")}
                 />
               </div>
             ) : null}
-            {hasChildren ? (
-              <div className="ml-3 border-l border-border pl-2">
-                <FolderTree nodes={node.children} currentFolderId={currentFolderId} onSelect={onSelect} />
+
+            {hasChildren && isExpanded ? (
+              <div className="ml-2.5 border-l border-border pl-2">
+                <FolderTreeList
+                  nodes={node.children}
+                  currentFolderId={currentFolderId}
+                  onSelect={onSelect}
+                  expandedIds={expandedIds}
+                  onToggleExpand={onToggleExpand}
+                />
               </div>
             ) : null}
           </li>
         )
       })}
     </ul>
+  )
+}
+
+function FolderTree({
+  nodes,
+  currentFolderId,
+  onSelect,
+}: {
+  nodes: FolderNode[]
+  currentFolderId: string
+  onSelect: (id: string) => void
+}) {
+  const [expandedIds, setExpandedIds] = React.useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {}
+    if (currentFolderId && currentFolderId !== "0") {
+      const activeId = Number(currentFolderId)
+      const findAncestors = (list: FolderNode[], path: number[] = []): boolean => {
+        for (const n of list) {
+          if (n.id === activeId) {
+            path.forEach((pid) => { init[pid] = true })
+            return true
+          }
+          if (n.children?.length) {
+            if (findAncestors(n.children, [...path, n.id])) return true
+          }
+        }
+        return false
+      }
+      findAncestors(nodes)
+    }
+    return init
+  })
+
+  React.useEffect(() => {
+    if (currentFolderId && currentFolderId !== "0") {
+      const activeId = Number(currentFolderId)
+      const findAncestors = (list: FolderNode[], path: number[] = []): boolean => {
+        for (const n of list) {
+          if (n.id === activeId) {
+            setExpandedIds((prev) => {
+              const next = { ...prev }
+              path.forEach((pid) => { next[pid] = true })
+              return next
+            })
+            return true
+          }
+          if (n.children?.length) {
+            if (findAncestors(n.children, [...path, n.id])) return true
+          }
+        }
+        return false
+      }
+      findAncestors(nodes)
+    }
+  }, [currentFolderId, nodes])
+
+  function handleToggleExpand(id: number) {
+    setExpandedIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
+
+  return (
+    <FolderTreeList
+      nodes={nodes}
+      currentFolderId={currentFolderId}
+      onSelect={onSelect}
+      expandedIds={expandedIds}
+      onToggleExpand={handleToggleExpand}
+    />
   )
 }
 
