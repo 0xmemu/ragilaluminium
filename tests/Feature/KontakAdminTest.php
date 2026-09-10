@@ -32,7 +32,7 @@ class KontakAdminTest extends TestCase
             'email' => 'halo@ragil.test',
             'hours' => 'Senin-Jumat 08.00-17.00',
             'problems_content' => 'Hubungi kami jika ada kendala.',
-        ])->assertRedirect(route('admin.beranda.kontak.edit'));
+        ])->assertRedirect(route('admin.storefront-platforms.edit', ['tab' => 'kontak']));
 
         $page = CmsPage::where('slug', 'kontak')->first();
         $this->assertNotNull($page);
