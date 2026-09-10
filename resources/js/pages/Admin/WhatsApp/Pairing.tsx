@@ -371,11 +371,7 @@ export default function Pairing({
                   QR belum tersedia.
                   <br />
                   Status gateway: <b>{statusText}</b>
-                  <div className="mt-3 flex justify-center gap-2">
-                    <Button type="button" variant="secondary" size="sm" onClick={handleManualRefresh} disabled={refreshing}>
-                      <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
-                      {refreshing ? "Memuat..." : "Coba Lagi"}
-                    </Button>
+                  <div className="mt-3 flex justify-center">
                     <form method="post" action={refreshQrUrl} onSubmit={confirmRefreshQr}>
                       <Button type="submit" size="sm">
                         <Icon name="qr" className="size-4" aria-hidden="true" />
