@@ -317,9 +317,33 @@ class WhatsAppService
                 ->where('provider_message_id', $providerId)
                 ->first();
 
-            if ($message) {
-                $message->update(['status' => $status['status'] ?? $message->status]);
+            if (! $message) {
+                continue;
             }
+
+            // Pesan masuk tidak punya siklus kirim: begitu diterima, statusnya
+            // selesai. Ack untuk pesan masuk diabaikan agar 'received' tidak
+            // ditimpa menjadi 'pending'.
+            if ($message->direction === 'inbound') {
+                continue;
+            }
+
+            $next = $status['status'] ?? null;
+            if (! $next) {
+                continue;
+            }
+
+            // Ack tidak boleh menurunkan status yang sudah lebih maju
+            // (mis. ack 'sent' datang terlambat setelah 'read').
+            $rank = ['pending' => 0, 'queued' => 0, 'sent' => 1, 'delivered' => 2, 'read' => 3];
+            $currentRank = $rank[$message->status] ?? -1;
+            $nextRank = $rank[$next] ?? -1;
+
+            if ($nextRank >= 0 && $currentRank > $nextRank) {
+                continue;
+            }
+
+            $message->update(['status' => $next]);
         }
     }
 

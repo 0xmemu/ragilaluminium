@@ -933,6 +933,37 @@ function CopyButton({ text, label = "Salin" }: { text: string; label?: string })
   )
 }
 
+/**
+ * Istilah status untuk PESAN WhatsApp.
+ *
+ * Peta status bersama (lib/status) memakai kosakata pesanan: 'pending' di sana
+ * berarti menunggu pembayaran dan 'delivered' berarti barang sampai. Kalau
+ * dipakai untuk pesan, labelnya jadi menyesatkan, sehingga pesan pelanggan
+ * berbunyi 'Menunggu pembayaran'. Peta kecil ini memakai istilah pengiriman
+ * pesan yang benar.
+ */
+const WA_MESSAGE_STATUS: Record<string, { label: string; tone: "neutral" | "info" | "warning" | "success" | "danger" | "neutral-soft" | "info-soft" | "success-soft" }> = {
+  pending: { label: "Belum ada tanda kirim", tone: "neutral-soft" },
+  queued: { label: "Menunggu dikirim", tone: "neutral-soft" },
+  sent: { label: "Terkirim", tone: "info-soft" },
+  delivered: { label: "Sampai di HP", tone: "success-soft" },
+  read: { label: "Dibaca", tone: "success" },
+  received: { label: "Diterima", tone: "success" },
+  failed: { label: "Gagal terkirim", tone: "danger" },
+}
+
+function waMessageStatus(status: string, direction: string) {
+  const known = WA_MESSAGE_STATUS[status]
+  if (known) return known
+
+  // Pesan masuk yang statusnya tidak dikenal tetap berarti sudah kita terima.
+  if (direction === "inbound") {
+    return { label: "Diterima", tone: "success" as const }
+  }
+
+  return { label: humanize(status), tone: "neutral-soft" as const }
+}
+
 export default function OrderShow({
   order,
   events = [],
@@ -1543,7 +1574,10 @@ export default function OrderShow({
                       )}
 
                       <p className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <StatusBadge status={message.status} />
+                        <StatusBadge
+                          status={waMessageStatus(message.status, message.direction).tone}
+                          label={waMessageStatus(message.status, message.direction).label}
+                        />
                         {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
                       </p>
                     </div>
