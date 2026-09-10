@@ -141,9 +141,18 @@ class WhatsAppService
         $session = $payload['session'] ?? config('services.whatsapp.baileys.session');
 
         if ($event === 'message' && ! ($body['fromMe'] ?? false)) {
+            $chatId = $body['from'] ?? ($body['chatId'] ?? null);
+
+            // Hanya obrolan pribadi yang masuk ke Live Chat. Grup, saluran,
+            // status, dan siaran diabaikan agar kotak masuk admin tidak
+            // tercemar. Nomor pribadi di luar pelanggan tetap diterima.
+            if ($this->isNonPersonalChat($chatId)) {
+                return;
+            }
+
             $this->handleCanonicalWebhook('baileys', [[
                 'provider_message_id' => $body['id'] ?? null,
-                'phone' => $this->normalizeBaileysPhone($body['from'] ?? ($body['chatId'] ?? null)),
+                'phone' => $this->normalizeBaileysPhone($chatId),
                 'text' => $body['body'] ?? null,
                 'raw' => $payload,
                 'provider_session' => $session,
@@ -372,6 +381,28 @@ class WhatsAppService
     protected function toBaileysChatId(string $phone): string
     {
         return $phone.'@s.whatsapp.net';
+    }
+
+    /**
+     * Obrolan non pribadi: grup, saluran, status, dan siaran.
+     * Identitas ini bukan nomor pelanggan sehingga tidak boleh
+     * membuat thread di Live Chat admin.
+     */
+    protected function isNonPersonalChat(?string $chatId): bool
+    {
+        if (! $chatId) {
+            return true;
+        }
+
+        $chatId = strtolower(trim($chatId));
+
+        foreach (['@g.us', '@newsletter', '@broadcast', 'status@'] as $marker) {
+            if (str_contains($chatId, $marker)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function normalizeBaileysPhone(?string $chatId): ?string

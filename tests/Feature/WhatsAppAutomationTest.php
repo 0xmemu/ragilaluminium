@@ -98,13 +98,18 @@ class WhatsAppAutomationTest extends TestCase
                 ->has('stats.total'));
     }
 
-    public function test_legacy_dashboard_route_redirects_to_live_chat(): void
+    public function test_whatsapp_menu_shows_hub_with_three_choices(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $this->actingAs($admin)
             ->get(route('admin.whatsapp.dashboard'))
-            ->assertRedirect('/admin/whatsapp/messages');
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/WhatsApp/Hub')
+                ->where('cards.0.key', 'messages')
+                ->where('cards.1.key', 'templates')
+                ->where('cards.2.key', 'pairing'));
     }
 
     public function test_order_created_uses_cod_or_transfer_template_key(): void

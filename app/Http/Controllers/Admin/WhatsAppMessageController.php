@@ -102,8 +102,12 @@ class WhatsAppMessageController extends Controller
             $requestedPhone = '6285725116817';
         }
 
-        // Prioritaskan percakapan pelanggan asli di atas saluran newsletter
-        $conversations = collect($conversations)->sortBy(fn ($c) => $c['is_channel'] ? 1 : 0)->values()->all();
+        // Grup dan saluran tidak ditampilkan di Live Chat. Yang tersisa adalah
+        // percakapan pribadi, termasuk nomor di luar daftar pelanggan.
+        $conversations = collect($conversations)
+            ->reject(fn ($c) => $c['is_channel'])
+            ->values()
+            ->all();
 
         // Tentukan nomor aktif: utamakan chat pelanggan asli
         $firstCustomer = collect($conversations)->first(fn ($c) => ! $c['is_channel']);

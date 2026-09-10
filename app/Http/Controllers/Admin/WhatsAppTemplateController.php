@@ -15,6 +15,57 @@ use Inertia\Response;
 class WhatsAppTemplateController extends Controller
 {
 
+    /**
+     * Halaman pilihan menu WhatsApp. Menjadi titik masuk menu agar admin
+     * memilih tujuan lebih dulu, bukan langsung dibawa ke Live Chat.
+     */
+    public function hub(): Response
+    {
+        $unreadInbound = WhatsAppMessage::query()
+            ->where('direction', 'inbound')
+            ->whereDate('created_at', '>=', now()->subDays(7))
+            ->count();
+
+        $activeTemplates = WhatsAppTemplate::query()
+            ->whereIn('internal_key', WhatsAppAutomationCatalog::keys())
+            ->where('status', 'active')
+            ->count();
+
+        $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
+        $gatewayReady = (bool) ($connection['providers']['baileys']['configured'] ?? false);
+
+        return Inertia::render('Admin/WhatsApp/Hub', [
+            'title' => 'WhatsApp',
+            'description' => 'Pilih pekerjaan WhatsApp yang ingin Anda buka.',
+            'cards' => [
+                [
+                    'key' => 'messages',
+                    'label' => 'Live Chat',
+                    'description' => 'Balas pesan pelanggan langsung, lihat profil dan pesanan aktifnya.',
+                    'icon' => 'message-circle',
+                    'href' => route('admin.whatsapp.messages.index'),
+                    'meta' => $unreadInbound.' pesan masuk 7 hari terakhir',
+                ],
+                [
+                    'key' => 'templates',
+                    'label' => 'Template Pesan',
+                    'description' => 'Atur pesan otomatis yang dikirim pada tiap tahapan pesanan.',
+                    'icon' => 'clipboard-text',
+                    'href' => route('admin.whatsapp.templates.index'),
+                    'meta' => $activeTemplates.' template aktif',
+                ],
+                [
+                    'key' => 'pairing',
+                    'label' => 'Sambungkan Nomor',
+                    'description' => 'Hubungkan nomor WhatsApp toko lewat scan QR atau kode pairing.',
+                    'icon' => 'qr',
+                    'href' => route('admin.whatsapp.pairing'),
+                    'meta' => $gatewayReady ? 'Gateway siap' : 'Gateway belum dikonfigurasi',
+                ],
+            ],
+        ]);
+    }
+
     public function index(): Response
     {
         $this->ensureAutomationTemplates();

@@ -26,15 +26,11 @@ export default function WhatsAppIndex({
   title,
   description,
   automations = [],
-  pairingUrl,
-  messagesUrl,
   totalTemplates = 0,
 }: {
   title: string
   description: string
   automations: AutomationRow[]
-  pairingUrl: string
-  messagesUrl: string
   totalTemplates?: number
 }) {
   const [busyId, setBusyId] = React.useState<number | null>(null)

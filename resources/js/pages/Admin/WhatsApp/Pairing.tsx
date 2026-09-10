@@ -47,7 +47,6 @@ export default function Pairing({
   codeUrl,
   refreshQrUrl,
   disconnectUrl = "/admin/whatsapp/pairing/disconnect",
-  provider,
   flash,
 }: Props) {
   const [status, setStatus] = useState<string>("unknown")
@@ -60,7 +59,11 @@ export default function Pairing({
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [qrError, setQrError] = useState<boolean>(false)
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState<boolean>(false)
+  const [justConnected, setJustConnected] = useState<boolean>(false)
+  const [pairingNotice, setPairingNotice] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState<boolean>(false)
+
+  const wasLinkedRef = React.useRef<boolean>(false)
 
   const fetchStatus = React.useCallback((): void => {
     fetch(statusUrl, { headers: { Accept: "application/json" } })
@@ -76,6 +79,18 @@ export default function Pairing({
           setQrTs(Date.now())
           setQrError(false)
         }
+
+        // Perangkat baru saja tersambung: tampilkan konfirmasi sukses dan
+        // bersihkan instruksi pairing yang sudah tidak relevan.
+        const nowLinked = d.status === "open"
+        if (nowLinked && !wasLinkedRef.current) {
+          setJustConnected(true)
+          setPairingNotice(null)
+        }
+        if (!nowLinked && wasLinkedRef.current) {
+          setJustConnected(false)
+        }
+        wasLinkedRef.current = nowLinked
       })
       .catch(() => {})
       .finally(() => setRefreshing(false))
@@ -89,6 +104,21 @@ export default function Pairing({
   React.useEffect(() => {
     fetchStatus()
   }, [fetchStatus])
+
+  // Live sync status tanpa memuat ulang halaman.
+  // Hanya membaca status (GET), tidak pernah memutus atau mengganti sesi.
+  // Berhenti otomatis begitu perangkat tersambung.
+  React.useEffect(() => {
+    if (status === "open") return
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchStatus()
+      }
+    }, 4000)
+
+    return () => window.clearInterval(timer)
+  }, [status, fetchStatus])
 
   const connected = status === "open"
   const unreachable = status === "unreachable"
@@ -148,16 +178,25 @@ export default function Pairing({
 
       <WhatsAppTabs active="pairing" />
 
-      {flash.success && (
+      {justConnected ? (
         <Alert tone="success" className="mb-4">
-          <p className="text-sm">{flash.success}</p>
+          <p className="text-sm font-semibold">
+            Nomor WhatsApp berhasil tersambung. Panel siap mengirim dan menerima pesan.
+          </p>
         </Alert>
-      )}
-      {flash.error && (
+      ) : null}
+
+      {/* Instruksi pairing hanya relevan selama belum tersambung. */}
+      {!hasLinkedDevice && (pairingNotice ?? flash.success) ? (
+        <Alert tone="success" className="mb-4">
+          <p className="text-sm">{pairingNotice ?? flash.success}</p>
+        </Alert>
+      ) : null}
+      {!hasLinkedDevice && flash.error ? (
         <Alert tone="danger" className="mb-4">
           <p className="text-sm">{flash.error}</p>
         </Alert>
-      )}
+      ) : null}
 
       {/* =================================================================== */}
       {/* KONDISI 1: ADA NOMOR YANG TERHUBUNG (KARTU PAIRING DISEMBUNYIKAN)   */}

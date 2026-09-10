@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 
 const TABS = [
+  { key: "hub", label: "Ringkasan", href: "admin.whatsapp.dashboard" },
   { key: "messages", label: "Live Chat", href: "admin.whatsapp.messages.index" },
   { key: "templates", label: "Template Pesan", href: "admin.whatsapp.templates.index" },
   { key: "pairing", label: "Sambungkan Nomor", href: "admin.whatsapp.pairing" },

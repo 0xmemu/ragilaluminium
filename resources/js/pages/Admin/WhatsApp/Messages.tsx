@@ -5,6 +5,7 @@ import { AdminLayout } from "@/layouts/admin-layout"
 import { Button } from "@/components/admin/ui/button"
 import { Icon } from "@/components/shared/icon"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
 import { routeUrl } from "@/lib/routes"
 
 interface LastMessage {
@@ -89,7 +90,6 @@ export default function WhatsAppMessagesPage({
   templates_url,
 }: MessagesPageProps): React.ReactElement {
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [activeTab, setActiveTab] = React.useState<"all" | "customers" | "channels">("customers")
   const [replyText, setReplyText] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [copySuccess, setCopySuccess] = React.useState(false)
@@ -141,6 +141,21 @@ export default function WhatsAppMessagesPage({
     scrollToBottom("smooth")
   }, [messages.length, scrollToBottom])
 
+  // Live sync pesan masuk tanpa memuat ulang halaman.
+  // Partial reload Inertia: hanya data percakapan yang diambil ulang,
+  // sehingga teks balasan yang sedang diketik tidak hilang.
+  React.useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+
+      router.reload({
+        only: ["conversations", "messages", "customer_context", "gateway_status"],
+      })
+    }, 5000)
+
+    return () => window.clearInterval(timer)
+  }, [])
+
   // Deteksi posisi scroll untuk memunculkan tombol melayang 'Scroll ke bawah'
   function handleChatScroll(): void {
     if (!chatContainerRef.current) return
@@ -152,8 +167,6 @@ export default function WhatsAppMessagesPage({
   // Filter daftar kontak percakapan
   const filteredConversations = React.useMemo(() => {
     return conversations.filter((c) => {
-      if (activeTab === "customers" && c.is_channel) return false
-      if (activeTab === "channels" && !c.is_channel) return false
 
       if (!searchQuery.trim()) return true
       const q = searchQuery.toLowerCase()
@@ -164,7 +177,7 @@ export default function WhatsAppMessagesPage({
 
       return matchPhone || matchName || matchOrder || matchText
     })
-  }, [conversations, activeTab, searchQuery])
+  }, [conversations, searchQuery])
 
   const activeConversation = React.useMemo(() => {
     return conversations.find((c) => c.phone === active_phone) || conversations[0]
@@ -282,12 +295,17 @@ export default function WhatsAppMessagesPage({
     <AdminLayout fullWidth>
       <Head title="Live Chat WhatsApp : Panel Admin" />
 
+      {/* Navigasi menu WhatsApp tetap terlihat di dalam layout penuh. */}
+      <div className="shrink-0 border-b border-border bg-background px-4 pt-3">
+        <WhatsAppTabs active="messages" />
+      </div>
+
       {/* Kontainer Utama Live Chat Full Viewport */}
-      <div className="flex h-full w-full overflow-hidden bg-background">
+      <div className="flex min-h-0 flex-1 w-full overflow-hidden bg-background">
         {/* ==================================================================== */}
         {/* PANEL KIRI: DAFTAR KONTAK & PERCAKAPAN (Lebar Tetap 350px di Desktop) */}
         {/* ==================================================================== */}
-        <aside className="flex h-full w-full flex-col border-r border-border bg-[hsl(210_20%_96%)] transition-all duration-300 sm:w-80 md:w-96 shrink-0">
+        <aside className="flex h-full w-full flex-col border-r border-border bg-surface-muted transition-all duration-300 sm:w-80 md:w-96 shrink-0">
           {/* Header Panel Kiri */}
           <div className="flex h-14 items-center justify-between border-b border-border px-4">
             <div className="flex items-center gap-2">
@@ -338,42 +356,6 @@ export default function WhatsAppMessagesPage({
               ) : null}
             </div>
 
-            {/* Segmented Filter Tab Geser */}
-            <div className="flex rounded-lg border border-border bg-card/60 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab("customers")}
-                className={`flex-1 rounded-md py-1 text-center font-medium transition-all duration-200 ${
-                  activeTab === "customers"
-                    ? "bg-card text-foreground font-semibold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Pelanggan
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("all")}
-                className={`flex-1 rounded-md py-1 text-center font-medium transition-all duration-200 ${
-                  activeTab === "all"
-                    ? "bg-card text-foreground font-semibold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Semua ({conversations.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("channels")}
-                className={`flex-1 rounded-md py-1 text-center font-medium transition-all duration-200 ${
-                  activeTab === "channels"
-                    ? "bg-card text-foreground font-semibold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Saluran
-              </button>
-            </div>
           </div>
 
           {/* Daftar Percakapan dengan Smooth Scroll */}
