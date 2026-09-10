@@ -355,7 +355,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
           onMouseLeave={() => setPaused(false)}
           onFocusCapture={() => setPaused(true)}
           onBlurCapture={() => setPaused(false)}
-          className="relative w-full overflow-hidden [touch-action:pan-x_pan-y]"
+          className="relative w-full overflow-hidden [touch-action:pan-y]"
         >
           <div
             className={cn(
@@ -388,14 +388,14 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                 side="left"
                 label="Slide sebelumnya"
                 enabled
-                sideOffset="inset"
+                sideOffset="outset"
                 onClick={() => goTo(visibleIndex - 1)}
               />
               <CarouselNavButton
                 side="right"
                 label="Slide berikutnya"
                 enabled
-                sideOffset="inset"
+                sideOffset="outset"
                 onClick={() => goTo(visibleIndex + 1)}
               />
 
