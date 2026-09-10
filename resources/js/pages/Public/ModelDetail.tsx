@@ -217,7 +217,6 @@ export default function ModelDetail({
               { value: model.count ?? 0, label: "Produk" },
               { value: "100%", label: "Garansi" },
             ]}
-            hubHref={hubHref}
           />
 
           {/* Konten 1 kolom penuh: varian & produk (carousel 5 kartu) */}

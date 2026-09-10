@@ -33,7 +33,6 @@ export function ModelHero({
   highlights,
   thumbs,
   stats,
-  hubHref,
 }: {
   title: string
   /** Deskripsi panjang (kolom kanan desktop). */
@@ -44,7 +43,6 @@ export function ModelHero({
   highlights?: Array<{ label: string }>
   thumbs: ModelHeroThumb[]
   stats: ModelHeroStat[]
-  hubHref?: string | null
 }) {
   const trackRef = React.useRef<HTMLDivElement>(null)
   useDragScroll(trackRef)
@@ -189,14 +187,6 @@ export function ModelHero({
               </div>
             ))}
           </div>
-          {hubHref ? (
-            <a
-              href={hubHref}
-              className="mt-4 hidden text-xs font-semibold text-primary hover:underline lg:inline-block"
-            >
-              Lihat semua model
-            </a>
-          ) : null}
         </div>
       </div>
     </div>
