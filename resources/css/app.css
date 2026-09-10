@@ -344,12 +344,14 @@
     }
   }
 
-  /* Spacing antar section homepage (desktop): 10px (0.625rem) atas-bawah. */
+  /* Spacing antar section homepage (desktop): 10px (0.625rem) atas-bawah.
+     Pengecualian: section dengan data-pdp-section (halaman detail produk)
+     mengatur padding vertikalnya sendiri via utility Tailwind. */
   @media (min-width: 48em) {
-    .public-title-case main > section:not([class*="border-b"]):not([class*="pb-5"]):not([class*="py-0"]) {
+    .public-title-case main > section:not([class*="border-b"]):not([class*="pb-5"]):not([class*="py-0"]):not([data-pdp-section]) {
       padding-block: 0.625rem;
     }
-    .public-title-case main > section.pb-5 {
+    .public-title-case main > section.pb-5:not([data-pdp-section]) {
       padding-block: 0.625rem;
     }
   }
