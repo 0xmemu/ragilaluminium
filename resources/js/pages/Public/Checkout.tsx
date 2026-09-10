@@ -185,15 +185,20 @@ export default function Checkout({
       {/* Indikator langkah checkout */}
       <section className="border-b border-border bg-surface">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <ol className="flex items-center justify-between gap-2 py-3" aria-label="Langkah checkout">
+          <ol className="grid grid-cols-3 w-full py-3" aria-label="Langkah checkout">
             {steps.map((step, idx) => {
               const active = !step.done && (idx === 0 || [0, 1].slice(0, idx).every((i) => steps[i].done))
               return (
-                <li key={step.n} className="flex min-w-0 flex-1 items-center gap-2">
-                  {idx > 0 ? <span className="h-px flex-1 bg-border" aria-hidden="true" /> : null}
+                <li key={step.n} className="relative flex min-w-0 flex-col items-center text-center">
+                  {idx > 0 ? (
+                    <div
+                      aria-hidden="true"
+                      className="absolute left-1/2 right-[-50%] top-[10px] h-[2px] -translate-y-1/2 z-0 bg-border"
+                    />
+                  ) : null}
                   <span
                     className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                      "relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
                       step.done
                         ? "bg-primary text-primary-foreground"
                         : active
@@ -205,7 +210,7 @@ export default function Checkout({
                   </span>
                   <span
                     className={cn(
-                      "truncate text-xs font-semibold",
+                      "mt-1 text-[11px] leading-tight font-semibold",
                       step.done || active ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
