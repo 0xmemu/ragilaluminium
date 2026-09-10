@@ -287,7 +287,7 @@ export default function WhatsAppMessagesPage({
         {/* ==================================================================== */}
         {/* PANEL KIRI: DAFTAR KONTAK & PERCAKAPAN (Lebar Tetap 350px di Desktop) */}
         {/* ==================================================================== */}
-        <aside className="flex h-full w-full flex-col border-r border-border bg-card transition-all duration-300 sm:w-80 md:w-96 shrink-0">
+        <aside className="flex h-full w-full flex-col border-r border-border bg-[hsl(210_20%_96%)] transition-all duration-300 sm:w-80 md:w-96 shrink-0">
           {/* Header Panel Kiri */}
           <div className="flex h-14 items-center justify-between border-b border-border px-4">
             <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export default function WhatsAppMessagesPage({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari kontak, nomor, atau pesanan..."
-                className="w-full rounded-lg border border-border bg-surface py-1.5 pl-8 pr-8 text-xs text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full rounded-lg border border-border bg-card py-1.5 pl-8 pr-8 text-xs text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
               {searchQuery ? (
                 <button
@@ -339,7 +339,7 @@ export default function WhatsAppMessagesPage({
             </div>
 
             {/* Segmented Filter Tab Geser */}
-            <div className="flex rounded-lg border border-border bg-surface p-0.5 text-xs">
+            <div className="flex rounded-lg border border-border bg-card/60 p-0.5 text-xs">
               <button
                 type="button"
                 onClick={() => setActiveTab("customers")}
@@ -396,8 +396,8 @@ export default function WhatsAppMessagesPage({
                     onClick={() => selectConversation(conv.phone)}
                     className={`group relative flex w-full items-start gap-3 p-3.5 text-left transition-all duration-150 ${
                       isActive
-                        ? "bg-primary/10 dark:bg-primary/15"
-                        : "hover:bg-muted/40"
+                        ? "bg-card shadow-xs"
+                        : "hover:bg-card/50"
                     }`}
                   >
                     {/* Active indicator bar di sisi kiri */}
@@ -466,7 +466,7 @@ export default function WhatsAppMessagesPage({
           </div>
 
           {/* Footer Status Gateway Baileys */}
-          <div className="border-t border-border bg-surface/50 p-2.5 px-3">
+          <div className="border-t border-border bg-card/40 p-2.5 px-3">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span
