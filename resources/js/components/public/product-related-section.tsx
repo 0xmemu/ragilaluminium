@@ -20,7 +20,9 @@ export function ProductRelatedSection({ products }: { products: ProductCardData[
 
   return (
     <section id="produk-terkait" className="pt-5 pb-6 lg:pt-6 lg:pb-8">
-      <div className="container-page !px-2.5 border-t border-border pt-5 md:!px-8 lg:!px-12 lg:pt-6">
+      <div className="container-page">
+        <div className="border-t border-border" />
+        <div className="!px-2.5 pt-5 md:!px-8 lg:!px-12 lg:pt-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="min-w-0 break-words text-base font-bold text-foreground">
             Anda mungkin juga suka
@@ -58,6 +60,7 @@ export function ProductRelatedSection({ products }: { products: ProductCardData[
             }
           />
         )}
+        </div>
       </div>
     </section>
   )
