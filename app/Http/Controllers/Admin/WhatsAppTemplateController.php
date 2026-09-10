@@ -15,78 +15,6 @@ use Inertia\Response;
 class WhatsAppTemplateController extends Controller
 {
 
-    public function dashboard(): Response
-    {
-        $this->ensureAutomationTemplates();
-
-        $templates = WhatsAppTemplate::query()
-            ->whereIn('internal_key', WhatsAppAutomationCatalog::keys())
-            ->get()
-            ->keyBy('internal_key');
-
-        $automations = collect(WhatsAppAutomationCatalog::all())->map(function (array $trigger) use ($templates) {
-            /** @var WhatsAppTemplate $template */
-            $template = $templates->get($trigger['internal_key']);
-
-            return [
-                'id' => $template?->id,
-                'internal_key' => $trigger['internal_key'],
-                'label' => $trigger['label'],
-                'description' => $trigger['description'],
-                'icon' => $trigger['icon'],
-                'status' => $template?->status ?? 'inactive',
-                'provider_template_name' => $template?->provider_template_name ?? '',
-                'language_code' => $template?->language_code ?? '',
-                'editUrl' => $template ? route('admin.whatsapp.templates.edit', $template) : null,
-            ];
-        })->values()->all();
-
-        $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
-
-        $recentMessages = WhatsAppMessage::query()
-            ->with('order')
-            ->latest()
-            ->limit(10)
-            ->get()
-            ->map(fn (WhatsAppMessage $m) => [
-                'id' => $m->id,
-                'provider' => strtoupper((string) $m->provider),
-                'direction' => $m->direction,
-                'phone_number' => $m->phone_number,
-                'status' => $m->status,
-                'content' => mb_substr((string) $m->content_text, 0, 80),
-                'order_number' => $m->order?->order_number ?? '-',
-                'created_at' => optional($m->created_at)?->toDateTimeString(),
-            ]);
-
-        $outbound = WhatsAppMessage::query()->where('direction', 'outbound');
-        $stats = [
-            'sent' => (clone $outbound)->whereIn('status', ['sent', 'delivered', 'read'])->count(),
-            'failed' => (clone $outbound)->where('status', 'failed')->count(),
-            'total' => WhatsAppMessage::query()->count(),
-            'last_sent_at' => (clone $outbound)->whereNotNull('sent_at')->latest('sent_at')->value('sent_at'),
-        ];
-
-        return Inertia::render('Admin/WhatsApp/Dashboard', [
-            'title' => 'WhatsApp',
-            'description' => 'Kelola koneksi, template pesan otomatis, dan log pengiriman WhatsApp dalam satu tempat.',
-            'automations' => $automations,
-            'connection' => array_merge($connection, [
-                'webhook_path' => '/webhook/whatsapp',
-                'baileys_webhook_path' => '/webhook/whatsapp/baileys',
-            ]),
-            'recentMessages' => $recentMessages,
-            'stats' => $stats,
-            'statusUrl' => route('admin.whatsapp.pairing.status'),
-            'qrUrl' => route('admin.whatsapp.pairing.qr'),
-            'refreshQrUrl' => route('admin.whatsapp.pairing.refresh-qr'),
-            'codeUrl' => route('admin.whatsapp.pairing.code'),
-            'templatesUrl' => route('admin.whatsapp.templates.index'),
-            'messagesUrl' => route('admin.whatsapp.messages.index'),
-            'pairingUrl' => route('admin.whatsapp.pairing'),
-        ]);
-    }
-
     public function index(): Response
     {
         $this->ensureAutomationTemplates();
@@ -119,7 +47,7 @@ class WhatsAppTemplateController extends Controller
             'title' => 'WhatsApp Otomatis',
             'description' => 'Konfigurasi template pesan WhatsApp yang akan dikirim secara otomatis pada setiap tahapan pesanan.',
             'automations' => $automations,
-            'connectionUrl' => route('admin.whatsapp.connection'),
+            'pairingUrl' => route('admin.whatsapp.pairing'),
             'messagesUrl' => route('admin.whatsapp.messages.index'),
             'totalTemplates' => count($automations),
         ]);
@@ -150,31 +78,6 @@ class WhatsAppTemplateController extends Controller
             'statusUrl' => route('admin.whatsapp.pairing.status'),
             'activateUrl' => route('admin.whatsapp.templates.activate', $template),
             'deactivateUrl' => route('admin.whatsapp.templates.deactivate', $template),
-        ]);
-    }
-
-    public function connection(): Response
-    {
-        $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
-
-        $outbound = WhatsAppMessage::query()->where('direction', 'outbound');
-        $sentCount = (clone $outbound)->whereIn('status', ['sent', 'delivered', 'read'])->count();
-        $failedCount = (clone $outbound)->where('status', 'failed')->count();
-        $lastSentAt = (clone $outbound)->whereNotNull('sent_at')->latest('sent_at')->value('sent_at');
-
-        return Inertia::render('Admin/WhatsApp/Connection', [
-            'title' => 'Hubungkan WhatsApp',
-            'description' => 'Status gateway WhatsApp untuk pesan otomatis toko dan jalur webhook masuk.',
-            'backUrl' => route('admin.whatsapp.dashboard'),
-            'connection' => array_merge($connection, [
-                'webhook_path' => '/webhook/whatsapp',
-                'baileys_webhook_path' => '/webhook/whatsapp/baileys',
-            ]),
-            'stats' => [
-                'sent_count' => $sentCount,
-                'failed_count' => $failedCount,
-                'last_sent_at' => $lastSentAt?->toIso8601String(),
-            ],
         ]);
     }
 

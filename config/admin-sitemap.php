@@ -119,9 +119,9 @@ return [
                 ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*', 'admin.apa-kata-pelanggan.*', 'admin.hasil-pemasangan.*']],
                 [
                     'label' => 'WhatsApp',
-                    'route' => 'admin.whatsapp.dashboard', 'capability' => 'whatsapp.view',
+                    'route' => 'admin.whatsapp.messages.index', 'capability' => 'whatsapp.view',
                     'icon' => 'message-circle',
-                    'active' => ['admin.whatsapp.dashboard', 'admin.whatsapp.messages.*', 'admin.whatsapp.connection', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
+                    'active' => ['admin.whatsapp.messages.*', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
                 ],
             ],
         ],

@@ -303,9 +303,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('shipping/{shipping_record}/refresh', [ShippingRecordController::class, 'refreshStatus'])->name('shipping.refresh');
 
     // WhatsApp
-    Route::get('whatsapp', [WhatsAppTemplateController::class, 'dashboard'])->name('whatsapp.dashboard');
+    // Halaman ringkasan lama dihapus: seluruh isinya duplikat halaman lain.
+    // Menu WhatsApp kini membuka Live Chat sebagai pusat kerja harian admin.
+    Route::get('whatsapp', fn () => redirect()->route('admin.whatsapp.messages.index'))->name('whatsapp.dashboard');
     Route::get('whatsapp/templates', [WhatsAppTemplateController::class, 'index'])->name('whatsapp.templates.index');
-    Route::get('whatsapp/connection', [WhatsAppTemplateController::class, 'connection'])->name('whatsapp.connection');
+    Route::get('whatsapp/connection', fn () => redirect()->route('admin.whatsapp.pairing'))->name('whatsapp.connection');
     Route::post('whatsapp/templates', [WhatsAppTemplateController::class, 'store'])->name('whatsapp.templates.store');
     Route::get('whatsapp/templates/{template}/edit', [WhatsAppTemplateController::class, 'edit'])->name('whatsapp.templates.edit');
     Route::put('whatsapp/templates/{template}', [WhatsAppTemplateController::class, 'update'])->name('whatsapp.templates.update');

@@ -5,6 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Switch } from "@/components/admin/ui/switch"
+import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface AutomationRow {
@@ -25,14 +26,14 @@ export default function WhatsAppIndex({
   title,
   description,
   automations = [],
-  connectionUrl,
+  pairingUrl,
   messagesUrl,
   totalTemplates = 0,
 }: {
   title: string
   description: string
   automations: AutomationRow[]
-  connectionUrl: string
+  pairingUrl: string
   messagesUrl: string
   totalTemplates?: number
 }) {
@@ -48,21 +49,10 @@ export default function WhatsAppIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <Link href={messagesUrl}>Log pesan</Link>
-          </Button>
-          <Button asChild>
-            <Link href={connectionUrl}>
-              <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-              Status Koneksi
-            </Link>
-          </Button>
-        </div>
-      }
     >
       <Head title={`${title} | Admin`} />
+
+      <WhatsAppTabs active="templates" />
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         <div className="hidden grid-cols-[minmax(0,1fr)_8rem_5rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-tight text-muted-foreground sm:grid">

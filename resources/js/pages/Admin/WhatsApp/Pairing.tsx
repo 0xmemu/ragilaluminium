@@ -7,12 +7,13 @@ import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Card } from "@/components/ui/card"
+import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface Props {
   title: string
   description: string
-  backUrl: string
+  stats?: { sent: number; failed: number; total: number }
   messagesUrl?: string
   statusUrl: string
   qrUrl: string
@@ -39,7 +40,7 @@ function formatPhoneDisplay(raw: string): string {
 export default function Pairing({
   title,
   description,
-  backUrl,
+  stats,
   messagesUrl = "/admin/whatsapp/messages",
   statusUrl,
   qrUrl,
@@ -145,23 +146,7 @@ export default function Pairing({
     >
       <Head title={`${title} | Admin`} />
 
-      <div className="mb-4 flex items-center justify-between">
-        <Button asChild variant="secondary" size="sm">
-          <Link href={backUrl} className="inline-flex items-center gap-1.5">
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            <span>Kembali ke WhatsApp Otomatis</span>
-          </Link>
-        </Button>
-
-        {hasLinkedDevice ? (
-          <Button asChild variant="outline" size="sm">
-            <Link href={messagesUrl} className="inline-flex items-center gap-1.5 text-primary">
-              <Icon name="whatsapp" className="size-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Buka Live Chat WhatsApp</span>
-            </Link>
-          </Button>
-        ) : null}
-      </div>
+      <WhatsAppTabs active="pairing" />
 
       {flash.success && (
         <Alert tone="success" className="mb-4">
@@ -430,6 +415,22 @@ export default function Pairing({
           </section>
         </div>
       )}
+      {stats ? (
+        <section className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-xs">
+            <p className="text-xs font-medium text-muted-foreground">Pesan Terkirim</p>
+            <p className="mt-1 text-xl font-bold text-foreground">{stats.sent.toLocaleString("id-ID")}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4 shadow-xs">
+            <p className="text-xs font-medium text-muted-foreground">Pesan Gagal</p>
+            <p className="mt-1 text-xl font-bold text-foreground">{stats.failed.toLocaleString("id-ID")}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4 shadow-xs">
+            <p className="text-xs font-medium text-muted-foreground">Total Lalu Lintas Pesan</p>
+            <p className="mt-1 text-xl font-bold text-foreground">{stats.total.toLocaleString("id-ID")}</p>
+          </div>
+        </section>
+      ) : null}
     </AdminLayout>
   )
 }

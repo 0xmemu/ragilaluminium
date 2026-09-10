@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ActivityLogService;
+use App\Models\WhatsAppMessage;
 use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,11 +29,19 @@ class WhatsAppPairingController extends Controller
     {
         $service = app(WhatsAppService::class);
 
+        $outbound = WhatsAppMessage::query()->where('direction', 'outbound');
+        $stats = [
+            'sent' => (clone $outbound)->whereIn('status', ['sent', 'delivered', 'read'])->count(),
+            'failed' => (clone $outbound)->where('status', 'failed')->count(),
+            'total' => WhatsAppMessage::query()->count(),
+        ];
+
         return Inertia::render('Admin/WhatsApp/Pairing', [
-            'title' => 'Pairing WhatsApp',
-            'description' => 'Hubungkan gateway WhatsApp ke nomor Anda lewat scan QR atau pairing code.',
-            'backUrl' => route('admin.whatsapp.dashboard'),
+            'title' => 'Sambungkan Nomor WhatsApp',
+            'description' => 'Hubungkan gateway WhatsApp ke nomor toko lewat scan QR atau kode pairing.',
+            'stats' => $stats,
             'messagesUrl' => route('admin.whatsapp.messages.index'),
+            'templatesUrl' => route('admin.whatsapp.templates.index'),
             'statusUrl' => route('admin.whatsapp.pairing.status'),
             'qrUrl' => route('admin.whatsapp.pairing.qr'),
             'codeUrl' => route('admin.whatsapp.pairing.code'),

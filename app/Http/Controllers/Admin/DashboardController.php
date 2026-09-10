@@ -183,7 +183,7 @@ class DashboardController extends Controller
                 'key' => 'wa_disconnected',
                 'label' => 'WhatsApp Belum Terhubung',
                 'count' => ($whatsappReadiness['configured'] ?? false) ? 0 : 1,
-                'href' => route('admin.whatsapp.connection'),
+                'href' => route('admin.whatsapp.pairing'),
             ],
         ];
 
@@ -453,7 +453,7 @@ class DashboardController extends Controller
                         ? 'Konfigurasi ada, live check belum dilakukan'
                         : 'Konfigurasi belum lengkap',
                     'detail' => ($whatsappReadiness['default_provider'] ?? 'meta').' provider',
-                    'href' => route('admin.whatsapp.connection'),
+                    'href' => route('admin.whatsapp.pairing'),
                 ],
                 [
                     'key' => 'media',

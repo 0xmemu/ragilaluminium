@@ -73,18 +73,38 @@ class WhatsAppAutomationTest extends TestCase
         ]);
     }
 
-    public function test_connection_page_renders_baileys_status(): void
+    public function test_legacy_connection_route_redirects_to_pairing_page(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        // Halaman Hubungkan WhatsApp dihapus: seluruh isinya duplikat halaman
+        // Sambungkan Nomor. Rute lama dipertahankan sebagai redirect permanen.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.connection'))
+            ->assertRedirect('/admin/whatsapp/pairing');
+    }
+
+    public function test_pairing_page_carries_delivery_stats(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $this->actingAs($admin)
-            ->get(route('admin.whatsapp.connection'))
+            ->get(route('admin.whatsapp.pairing'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/WhatsApp/Connection')
-                ->where('connection.default_provider', 'baileys')
-                ->has('connection.providers.baileys')
-                ->has('stats'));
+                ->component('Admin/WhatsApp/Pairing')
+                ->has('stats.sent')
+                ->has('stats.failed')
+                ->has('stats.total'));
+    }
+
+    public function test_legacy_dashboard_route_redirects_to_live_chat(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard'))
+            ->assertRedirect('/admin/whatsapp/messages');
     }
 
     public function test_order_created_uses_cod_or_transfer_template_key(): void
