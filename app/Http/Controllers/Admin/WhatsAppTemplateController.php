@@ -20,18 +20,56 @@ class WhatsAppTemplateController extends Controller
      * Halaman pilihan menu WhatsApp. Menjadi titik masuk menu agar admin
      * memilih tujuan lebih dulu, bukan langsung dibawa ke Live Chat.
      */
-    public function hub(): Response
+    /** Pilihan rentang waktu ringkasan WhatsApp. */
+    protected const HUB_RANGES = [
+        '24h' => ['label' => '24 Jam', 'days' => 1],
+        '7d' => ['label' => '7 Hari', 'days' => 7],
+        '30d' => ['label' => '30 Hari', 'days' => 30],
+        'all' => ['label' => 'Semua', 'days' => null],
+    ];
+
+    public function hub(Request $request): Response
     {
+        $range = (string) $request->query('range', '7d');
+        if (! array_key_exists($range, self::HUB_RANGES)) {
+            $range = '7d';
+        }
+
+        $days = self::HUB_RANGES[$range]['days'];
+        $rangeLabel = self::HUB_RANGES[$range]['label'];
         $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
         $gatewayReady = (bool) ($connection['providers']['baileys']['configured'] ?? false);
-        $connected = ($connection['providers']['baileys']['status'] ?? null) === 'open';
 
-        $since = now()->subDays(7);
+        // Status sambungan nyata hanya diketahui dari gateway, bukan dari
+        // konfigurasi. Kegagalan menanyakan status tidak boleh membuat
+        // halaman error, jadi dianggap belum diketahui.
+        $connected = false;
+        $connectedPhone = null;
+
+        if ($gatewayReady) {
+            try {
+                $response = \Illuminate\Support\Facades\Http::timeout(4)
+                    ->get(rtrim((string) config('services.whatsapp.baileys.base_url'), '/').'/status');
+
+                if ($response->successful()) {
+                    $payload = $response->json() ?? [];
+                    $connected = ($payload['status'] ?? null) === 'open';
+                    $rawPhone = (string) ($payload['connected_phone'] ?? ($payload['phone'] ?? ''));
+                    $connectedPhone = $rawPhone === '' ? null : preg_replace('/[:@].*$/', '', $rawPhone);
+                }
+            } catch (\Throwable) {
+                $connected = false;
+            }
+        }
+
+        $since = $days === null ? null : now()->subDays($days);
+
+        $countInRange = fn ($query) => $since ? $query->where('created_at', '>=', $since) : $query;
 
         $stats = [
-            'inbound_7d' => WhatsAppMessage::personalNumbers()->where('direction', 'inbound')->where('created_at', '>=', $since)->count(),
-            'outbound_7d' => WhatsAppMessage::personalNumbers()->where('direction', 'outbound')->where('created_at', '>=', $since)->count(),
-            'failed_7d' => WhatsAppMessage::personalNumbers()->where('direction', 'outbound')->where('status', 'failed')->where('created_at', '>=', $since)->count(),
+            'inbound' => $countInRange(WhatsAppMessage::personalNumbers()->where('direction', 'inbound'))->count(),
+            'outbound' => $countInRange(WhatsAppMessage::personalNumbers()->where('direction', 'outbound'))->count(),
+            'failed' => $countInRange(WhatsAppMessage::personalNumbers()->where('direction', 'outbound')->where('status', 'failed'))->count(),
             'active_templates' => WhatsAppTemplate::whereIn('internal_key', WhatsAppAutomationCatalog::keys())
                 ->where('status', 'active')
                 ->count(),
@@ -41,6 +79,7 @@ class WhatsAppTemplateController extends Controller
         // pesan terbaru sekaligus pesanan terkini nomor tersebut.
         $recent = WhatsAppMessage::query()
             ->personalNumbers()
+            ->when($since, fn ($q) => $q->where('created_at', '>=', $since))
             ->orderByDesc('id')
             ->limit(400)
             ->get(['id', 'phone_number', 'direction', 'status', 'content_text', 'created_at']);
@@ -83,10 +122,16 @@ class WhatsAppTemplateController extends Controller
             'title' => 'WhatsApp',
             'description' => 'Ringkasan percakapan pelanggan dan status pesanan terkini.',
             'stats' => $stats,
+            'range' => $range,
+            'range_label' => $rangeLabel,
+            'range_options' => collect(self::HUB_RANGES)
+                ->map(fn (array $meta, string $key) => ['value' => $key, 'label' => $meta['label']])
+                ->values()
+                ->all(),
             'connection' => [
                 'connected' => $connected,
                 'ready' => $gatewayReady,
-                'phone' => $connection['providers']['baileys']['connected_phone'] ?? null,
+                'phone' => $connectedPhone,
             ],
             'conversations' => $conversations,
         ]);

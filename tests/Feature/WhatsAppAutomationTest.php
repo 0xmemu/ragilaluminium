@@ -159,8 +159,56 @@ class WhatsAppAutomationTest extends TestCase
                 ->where('conversations.0.order_number', $order->order_number)
                 ->where('conversations.0.order_status', 'processing')
                 ->where('conversations.0.last_text', 'Pesanan saya sudah dikirim belum?')
-                ->has('stats.inbound_7d')
+                ->has('stats.inbound')
+                ->where('range', '7d')
                 ->count('conversations', 1));
+    }
+
+    public function test_whatsapp_hub_range_filter_limits_summary(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        WhatsAppMessage::create([
+            'phone_number' => '6285725116817',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Pesan baru',
+            'provider' => 'baileys',
+            'received_at' => now(),
+        ]);
+
+        $old = WhatsAppMessage::create([
+            'phone_number' => '6289990001112',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Pesan lama',
+            'provider' => 'baileys',
+            'received_at' => now()->subDays(20),
+        ]);
+        $old->forceFill(['created_at' => now()->subDays(20)])->save();
+
+        // Rentang 24 jam hanya memuat percakapan baru.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard', ['range' => '24h']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('range', '24h')
+                ->where('stats.inbound', 1)
+                ->count('conversations', 1));
+
+        // Rentang 30 hari memuat keduanya.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard', ['range' => '30d']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('stats.inbound', 2)
+                ->count('conversations', 2));
+
+        // Nilai rentang tidak sah jatuh ke bawaan 7 hari.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard', ['range' => 'sembarang']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('range', '7d'));
     }
 
     public function test_order_created_uses_cod_or_transfer_template_key(): void

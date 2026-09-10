@@ -25,11 +25,14 @@ interface Props {
   title: string
   description: string
   stats: {
-    inbound_7d: number
-    outbound_7d: number
-    failed_7d: number
+    inbound: number
+    outbound: number
+    failed: number
     active_templates: number
   }
+  range: string
+  range_label: string
+  range_options: { value: string; label: string }[]
   connection: {
     connected: boolean
     ready: boolean
@@ -47,44 +50,68 @@ function Metric({ label, value, tone }: { label: string; value: string | number;
   )
 }
 
-export default function WhatsAppHub({ title, description, stats, connection, conversations }: Props) {
+export default function WhatsAppHub({ title, description, stats, connection, conversations, range, range_label, range_options }: Props) {
   return (
     <AdminLayout
       title={title}
       description={description}
       actions={
-        <button
-          type="button"
-          onClick={() => router.reload({ only: ["stats", "conversations", "connection"] })}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40"
-        >
-          <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-          Refresh data
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-xs"
+            role="group"
+            aria-label="Rentang waktu ringkasan"
+          >
+            {range_options.map((option) => (
+              <Link
+                key={option.value}
+                href={`/admin/whatsapp?range=${option.value}`}
+                preserveScroll
+                className={
+                  option.value === range
+                    ? "rounded-md bg-foreground px-2.5 py-1 text-xs font-semibold text-background shadow-xs"
+                    : "rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+                }
+              >
+                {option.label}
+              </Link>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => router.reload({ only: ["stats", "conversations", "connection"] })}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40"
+          >
+            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
+            Refresh data
+          </button>
+        </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
       <WhatsAppTabs active="hub" />
 
+      <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Pesan Masuk (7 Hari)" value={stats.inbound_7d} />
-        <Metric label="Pesan Terkirim (7 Hari)" value={stats.outbound_7d} />
+        <Metric label={`Pesan Masuk (${range_label})`} value={stats.inbound} />
+        <Metric label={`Pesan Terkirim (${range_label})`} value={stats.outbound} />
         <Metric
-          label="Gagal Terkirim (7 Hari)"
-          value={stats.failed_7d}
-          tone={stats.failed_7d > 0 ? "text-destructive" : "text-foreground"}
+          label={`Gagal Terkirim (${range_label})`}
+          value={stats.failed}
+          tone={stats.failed > 0 ? "text-destructive" : "text-foreground"}
         />
         <Metric label="Template Aktif" value={stats.active_templates} />
       </div>
 
       <SectionCard
         title="Percakapan Terakhir"
-        description="Pesan terbaru tiap pelanggan beserta pesanan terkininya."
+        description={`Pesan terbaru tiap pelanggan beserta pesanan terkininya, rentang ${range_label.toLowerCase()}.`}
         contentClassName="p-0"
       >
         {conversations.length === 0 ? (
-          <p className="p-5 text-xs text-muted-foreground">Belum ada percakapan.</p>
+          <p className="p-5 text-xs text-muted-foreground">Belum ada percakapan pada rentang {range_label.toLowerCase()}.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[880px] text-left">
@@ -173,6 +200,7 @@ export default function WhatsAppHub({ title, description, stats, connection, con
           </Link>
         </div>
       ) : null}
+      </div>
     </AdminLayout>
   )
 }
