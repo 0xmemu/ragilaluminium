@@ -32,11 +32,27 @@ interface StatusBadgeProps extends VariantProps<typeof badgeVariants> {
   className?: string
 }
 
+/** Nada yang sah dipakai apa adanya bila dikirim lewat prop `status`. */
+const DIRECT_TONES = new Set([
+  "neutral",
+  "info",
+  "warning",
+  "success",
+  "danger",
+  "info-soft",
+  "warning-soft",
+  "success-soft",
+  "neutral-soft",
+])
+
 export function StatusBadge({ status, label, tone, className }: StatusBadgeProps) {
+  const rawStatus = String(status ?? "")
   const meta = statusMeta(status)
+  const statusIsTone = DIRECT_TONES.has(rawStatus)
+  const resolvedTone = tone ?? (statusIsTone ? (rawStatus as typeof meta.tone) : meta.tone)
 
   return (
-    <span className={cn(badgeVariants({ tone: tone ?? meta.tone }), className)}>
+    <span className={cn(badgeVariants({ tone: resolvedTone }), className)}>
       {label ?? meta.label}
     </span>
   )

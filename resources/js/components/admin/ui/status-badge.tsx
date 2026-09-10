@@ -46,9 +46,27 @@ interface StatusBadgeProps extends VariantProps<typeof badgeVariants> {
   hideDot?: boolean
 }
 
+/** Nada yang sah dipakai apa adanya bila dikirim lewat prop `status`. */
+const DIRECT_TONES = new Set([
+  "neutral",
+  "info",
+  "warning",
+  "success",
+  "danger",
+  "info-soft",
+  "warning-soft",
+  "success-soft",
+  "neutral-soft",
+])
+
 export function StatusBadge({ status, label, tone, className, hideDot = false }: StatusBadgeProps) {
+  const rawStatus = String(status ?? "")
   const meta = statusMeta(status)
-  const resolvedTone = tone ?? meta.tone
+  // Sebagian pemanggil mengirim nada (bukan kunci status) lewat `status`.
+  // Tanpa penanganan ini nada tersebut tidak ditemukan di peta dan badge
+  // selalu jatuh ke abu-abu netral meski statusnya sehat atau gagal.
+  const statusIsTone = DIRECT_TONES.has(rawStatus)
+  const resolvedTone = tone ?? (statusIsTone ? (rawStatus as typeof meta.tone) : meta.tone)
 
   return (
     <span className={cn(badgeVariants({ tone: resolvedTone }), className)}>

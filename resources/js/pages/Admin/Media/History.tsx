@@ -28,7 +28,7 @@ interface LogRow {
 }
 
 const EVENT_META: Record<string, { label: string; tone: string }> = {
-  queued: { label: "Antre", tone: "secondary" },
+  queued: { label: "Antre", tone: "neutral-soft" },
   processing: { label: "Diproses", tone: "info" },
   success: { label: "Siap", tone: "success" },
   failed: { label: "Gagal", tone: "danger" },
@@ -290,7 +290,7 @@ export default function MediaHistory({
                 </thead>
                 <tbody>
                   {liveRows.map((row) => {
-                    const meta = EVENT_META[row.event] ?? { label: row.event, tone: "secondary" }
+                    const meta = EVENT_META[row.event] ?? { label: row.event, tone: "neutral" }
                     return (
                       <tr key={row.id} className="border-t border-border align-top">
                         <td className="whitespace-nowrap px-3 py-3 text-[12px] tabular-nums text-muted-foreground">
@@ -355,7 +355,7 @@ export default function MediaHistory({
 
             <div className="divide-y divide-border md:hidden">
               {liveRows.map((row) => {
-                const meta = EVENT_META[row.event] ?? { label: row.event, tone: "secondary" }
+                const meta = EVENT_META[row.event] ?? { label: row.event, tone: "neutral" }
                 return (
                   <div key={row.id} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-2">
