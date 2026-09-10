@@ -137,7 +137,7 @@ export default function WhatsAppDashboard({
               </h2>
               <p className="text-sm text-muted-foreground">
                 {connected
-                  ? `Nomor: ${connectedPhone || "-"} · Gateway Baileys aktif`
+                  ? `Nomor: ${connectedPhone || "-"} · Gateway WhatsApp aktif`
                   : unreachable
                     ? statusText
                     : hasSession

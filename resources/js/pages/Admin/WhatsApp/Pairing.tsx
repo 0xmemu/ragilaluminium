@@ -214,7 +214,7 @@ export default function Pairing({
                   ) : null}
 
                   <p className="pt-1 text-xs leading-relaxed text-muted-foreground max-w-xl">
-                    Gateway WhatsApp aktif dan siap mengirim serta menerima pesan pelanggan. Pesan automasi toko berjalan normal lewat provider <b>{provider?.toUpperCase()}</b>.
+                    Gateway WhatsApp aktif dan siap mengirim serta menerima pesan pelanggan.
                   </p>
                 </div>
               </div>
@@ -364,7 +364,7 @@ export default function Pairing({
                   <Icon name="alert-triangle" className="mx-auto mb-2 size-8" aria-hidden="true" />
                   Gateway tidak dapat dijangkau.
                   <br />
-                  Cek service Baileys di server.
+                  Cek service WhatsApp gateway di server.
                 </div>
               ) : (
                 <div className="py-8 text-center text-sm text-muted-foreground">
@@ -392,7 +392,7 @@ export default function Pairing({
 
             {unreachable ? (
               <p className="mt-1 text-center text-xs text-destructive">
-                Gateway tidak dapat dijangkau. Cek service Baileys di server.
+                Gateway tidak dapat dijangkau. Cek service WhatsApp gateway di server.
               </p>
             ) : null}
           </section>

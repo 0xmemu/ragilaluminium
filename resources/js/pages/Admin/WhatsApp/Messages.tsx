@@ -465,7 +465,7 @@ export default function WhatsAppMessagesPage({
             )}
           </div>
 
-          {/* Footer Status Gateway Baileys */}
+          {/* Footer Status Gateway WhatsApp */}
           <div className="border-t border-border bg-card/40 p-2.5 px-3">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">

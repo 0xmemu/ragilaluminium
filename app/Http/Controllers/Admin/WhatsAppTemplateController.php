@@ -164,7 +164,7 @@ class WhatsAppTemplateController extends Controller
 
         return Inertia::render('Admin/WhatsApp/Connection', [
             'title' => 'Hubungkan WhatsApp',
-            'description' => 'Status gateway WhatsApp (Baileys) untuk pesan otomatis toko dan jalur webhook masuk.',
+            'description' => 'Status gateway WhatsApp untuk pesan otomatis toko dan jalur webhook masuk.',
             'backUrl' => route('admin.whatsapp.dashboard'),
             'connection' => array_merge($connection, [
                 'webhook_path' => '/webhook/whatsapp',

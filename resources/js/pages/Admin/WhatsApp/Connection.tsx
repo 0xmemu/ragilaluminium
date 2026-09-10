@@ -125,10 +125,10 @@ export default function WhatsAppConnection({
             </span>
             <div>
               <h2 className="text-lg font-bold">
-                {isBaileysActive ? "Gateway Baileys aktif" : "Provider aktif belum disetel"}
+                {isBaileysActive ? "Gateway WhatsApp aktif" : "Provider aktif belum disetel"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                WhatsApp dikirim lewat gateway <b>Baileys</b> yang berjalan di server. Hubungkan nomor
+                WhatsApp dikirim lewat gateway yang berjalan di server. Hubungkan nomor
                 lewat tombol <b>Pairing WhatsApp</b> di atas.
               </p>
             </div>
@@ -136,49 +136,28 @@ export default function WhatsAppConnection({
 
           <Alert tone={isBaileysActive ? "info" : "warning"}>
             {isBaileysActive
-              ? `Provider aktif: ${connection.default_provider.toUpperCase()}. Pesan otomatis toko dikirim lewat gateway Baileys yang sudah terhubung.`
-              : `Provider aktif belum disetel ke Baileys. Pastikan WHATSAPP_PROVIDER=baileys di .env.`}
+              ? `Pesan otomatis toko dikirim lewat gateway WhatsApp yang sudah terhubung.`
+              : `Gateway WhatsApp belum aktif. Hubungi pengelola sistem untuk pemasangan.`}
           </Alert>
 
           <div className="rounded-md border border-border p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-sm font-bold">Baileys (gateway)</h3>
+              <h3 className="text-sm font-bold">Gateway WhatsApp</h3>
               <StatusBadge status={baileys.configured ? "active" : "inactive"} />
             </div>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">API key</dt>
-                <dd className="font-semibold">{baileys.api_key_set ? "Terisi" : "Kosong"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Session</dt>
-                <dd className="font-mono text-xs font-semibold">{baileys.session ?? "default"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Webhook secret</dt>
-                <dd className="font-semibold">{baileys.webhook_secret_set ? "Terisi" : "Kosong"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Webhook</dt>
-                <dd className="font-mono text-xs font-semibold">{connection.baileys_webhook_path}</dd>
-              </div>
-              {baileys.base_url ? (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Base URL</dt>
-                  <dd className="max-w-[60%] truncate font-mono text-xs">{baileys.base_url}</dd>
-                </div>
-              ) : null}
-            </dl>
+            <p className="text-sm text-muted-foreground">
+              Kredensial koneksi dikelola di sisi server dan tidak ditampilkan di panel.
+            </p>
           </div>
 
           <dl className="space-y-3 border-t border-border pt-4 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Provider aktif</dt>
-              <dd className="font-semibold uppercase">{connection.default_provider}</dd>
+              <dd className="font-semibold uppercase">{connection.default_provider === "baileys" ? "Gateway WhatsApp" : connection.default_provider}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Compare provider</dt>
-              <dd className="font-semibold uppercase">{connection.compare_provider ?? "-"}</dd>
+              <dd className="font-semibold uppercase">{connection.compare_provider === "baileys" ? "Gateway WhatsApp" : (connection.compare_provider ?? "-")}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Allowlist compare</dt>

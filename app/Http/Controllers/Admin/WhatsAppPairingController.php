@@ -30,7 +30,7 @@ class WhatsAppPairingController extends Controller
 
         return Inertia::render('Admin/WhatsApp/Pairing', [
             'title' => 'Pairing WhatsApp',
-            'description' => 'Hubungkan gateway WhatsApp (Baileys) ke nomor Anda lewat scan QR atau pairing code.',
+            'description' => 'Hubungkan gateway WhatsApp ke nomor Anda lewat scan QR atau pairing code.',
             'backUrl' => route('admin.whatsapp.dashboard'),
             'messagesUrl' => route('admin.whatsapp.messages.index'),
             'statusUrl' => route('admin.whatsapp.pairing.status'),

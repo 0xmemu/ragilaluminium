@@ -310,7 +310,6 @@ final class CampaignService
             'starts_at' => $campaign->starts_at,
             'ends_at' => $campaign->ends_at,
             'discount_percent' => $campaign->discount_percent,
-            'sync_banner' => (bool) $campaign->sync_banner,
             'created_by_user_id' => $userId,
             'updated_by_user_id' => $userId,
         ]);
