@@ -36,7 +36,6 @@ interface PromotionRow {
   name: string
   status: string
   discount_percent: number
-  sync_banner: boolean
   starts_at?: string | null
   ends_at?: string | null
   items_count: number
@@ -265,12 +264,6 @@ export default function PromotionsIndex({
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{row.name}</span>
-                        {row.sync_banner ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                            <Icon name="image" className="h-3 w-3" />
-                            Banner
-                          </span>
-                        ) : null}
                       </div>
                     </TableCell>
                     <TableCell>

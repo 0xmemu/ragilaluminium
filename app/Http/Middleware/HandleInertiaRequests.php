@@ -116,8 +116,6 @@ class HandleInertiaRequests extends Middleware
                 ];
             })(),
             'announcements' => \App\Support\ActiveAnnouncements::items(),
-            'campaignBanner' => fn () => \App\Support\CampaignBannerSync::activeBanner(),
-            'campaignBarPromo' => fn () => \App\Support\CampaignBannerSync::activeBarPromo(),
             'announcementSlide' => \App\Support\AnnouncementSlideSettings::sharedProps(),
             'flashSalePeriod' => fn () => \App\Support\FlashSalePeriodSettings::publicState(),
             'footer' => config('sitemap.footer', []),

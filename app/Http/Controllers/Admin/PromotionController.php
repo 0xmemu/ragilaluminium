@@ -80,11 +80,6 @@ class PromotionController extends Controller
             'starts_at' => $validated['starts_at'],
             'ends_at' => $validated['ends_at'],
             'discount_percent' => $validated['discount_percent'],
-            'sync_banner' => $validated['sync_banner'],
-            'sync_banner_image_url' => $validated['sync_banner_image_url'] ?? null,
-            'sync_banner_media_asset_id' => $validated['sync_banner_media_asset_id'] ?? null,
-            'sync_banner_link_url' => $validated['sync_banner_link_url'] ?? null,
-            'sync_bar_promo' => $validated['sync_bar_promo'] ?? false,
             'created_by_user_id' => $request->user()->id,
             'updated_by_user_id' => $request->user()->id,
         ]);
@@ -119,11 +114,6 @@ class PromotionController extends Controller
                 'starts_at' => optional($promotion->starts_at)?->format('Y-m-d\TH:i'),
                 'ends_at' => optional($promotion->ends_at)?->format('Y-m-d\TH:i'),
                 'discount_percent' => $promotion->discount_percent,
-                'sync_banner' => (bool) $promotion->sync_banner,
-                'sync_banner_image_url' => $promotion->sync_banner_image_url,
-                'sync_banner_media_asset_id' => $promotion->sync_banner_media_asset_id,
-                'sync_banner_link_url' => $promotion->sync_banner_link_url,
-                'sync_bar_promo' => (bool) $promotion->sync_bar_promo,
                 'targets' => $promotion->items->map(fn (PromotionItem $item) => [
                     'target_type' => $item->target_type,
                     'target_id' => $item->target_type === PromotionItem::TARGET_PRODUCT ? (int) $item->target_id : (string) $item->target_id,
@@ -146,11 +136,6 @@ class PromotionController extends Controller
             'starts_at' => $validated['starts_at'],
             'ends_at' => $validated['ends_at'],
             'discount_percent' => $validated['discount_percent'],
-            'sync_banner' => $validated['sync_banner'],
-            'sync_banner_image_url' => $validated['sync_banner_image_url'] ?? null,
-            'sync_banner_media_asset_id' => $validated['sync_banner_media_asset_id'] ?? null,
-            'sync_banner_link_url' => $validated['sync_banner_link_url'] ?? null,
-            'sync_bar_promo' => $validated['sync_bar_promo'] ?? false,
             'updated_by_user_id' => $request->user()->id,
         ]);
 
@@ -256,7 +241,6 @@ class PromotionController extends Controller
             'name' => $promotion->name,
             'status' => $promotion->status,
             'discount_percent' => (int) $promotion->discount_percent,
-            'sync_banner' => (bool) $promotion->sync_banner,
             'starts_at' => optional($promotion->starts_at)?->toIso8601String(),
             'ends_at' => optional($promotion->ends_at)?->toIso8601String(),
             'items_count' => (int) ($promotion->items_count ?? $promotion->items->count()),
@@ -292,20 +276,6 @@ class PromotionController extends Controller
             'discount_percent' => ['required', 'integer', 'min:1', 'max:90'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'sync_banner' => ['sometimes', 'boolean'],
-            'sync_banner_image_url' => ['nullable', 'string', 'max:2048'],
-            'sync_banner_media_asset_id' => ['nullable', 'integer'],
-            'sync_banner_link_url' => [
-                'nullable',
-                'string',
-                'max:2048',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value && ! str_starts_with((string) $value, '/') && ! filter_var($value, FILTER_VALIDATE_URL)) {
-                        $fail('Link banner harus berupa URL penuh atau path internal seperti /flash-sale.');
-                    }
-                },
-            ],
-            'sync_bar_promo' => ['sometimes', 'boolean'],
             'targets' => ['required', 'array', 'min:1'],
             'targets.*.target_type' => ['required', 'in:product,sub_model,model'],
             'targets.*.target_id' => ['required', 'string', 'max:100'],

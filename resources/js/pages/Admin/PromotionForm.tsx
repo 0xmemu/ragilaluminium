@@ -1,15 +1,12 @@
-import { Head, Link, useForm, usePage } from "@inertiajs/react"
+import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
-import { Switch } from "@/components/admin/ui/switch"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
-import { routeUrl } from "@/lib/routes"
-import type { SharedPageProps } from "@/types"
 import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 
@@ -33,11 +30,6 @@ interface PromotionFormData {
   discount_percent: number
   starts_at: string
   ends_at: string
-  sync_banner: boolean
-  sync_banner_image_url: string | null
-  sync_banner_media_asset_id: number | null
-  sync_banner_link_url: string | null
-  sync_bar_promo: boolean
   targets: TargetDraft[]
 }
 
@@ -76,11 +68,6 @@ export default function PromotionForm({
     discount_percent: promotion?.discount_percent ?? 10,
     starts_at: toLocalInput(promotion?.starts_at),
     ends_at: toLocalInput(promotion?.ends_at),
-    sync_banner: promotion?.sync_banner ?? false,
-    sync_banner_image_url: promotion?.sync_banner_image_url ?? null,
-    sync_banner_media_asset_id: promotion?.sync_banner_media_asset_id ?? null,
-    sync_banner_link_url: promotion?.sync_banner_link_url ?? null,
-    sync_bar_promo: promotion?.sync_bar_promo ?? false,
     targets: promotion?.targets?.map((target) => ({
       target_type: target.target_type,
       target_id: String(target.target_id),
@@ -90,65 +77,8 @@ export default function PromotionForm({
   })
   const [excludeSearch, setExcludeSearch] = React.useState("")
   const [pickerOpen, setPickerOpen] = React.useState(false)
-  const bannerFileInputRef = React.useRef<HTMLInputElement | null>(null)
-  const [bannerFile, setBannerFile] = React.useState<File | null>(null)
-  const [uploadingBanner, setUploadingBanner] = React.useState(false)
-  const { csrf } = usePage<SharedPageProps>().props
-  const presignUrl = routeUrl("admin.media.presign")
 
-  const bannerPreview = React.useMemo(
-    () => (bannerFile ? URL.createObjectURL(bannerFile) : form.data.sync_banner_image_url),
-    [bannerFile, form.data.sync_banner_image_url],
-  )
 
-  React.useEffect(() => {
-    return () => {
-      if (bannerPreview && bannerFile) URL.revokeObjectURL(bannerPreview)
-    }
-  }, [bannerPreview, bannerFile])
-
-  async function uploadBannerImage(file: File) {
-    setUploadingBanner(true)
-    try {
-      const presignRes = await fetch(presignUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          "X-CSRF-TOKEN": csrf ?? "",
-        },
-        body: JSON.stringify({
-          kind: "image",
-          filename: file.name,
-          size_bytes: file.size,
-          mime: file.type || "application/octet-stream",
-          context: "banner",
-        }),
-      })
-      if (!presignRes.ok) {
-        const body = await presignRes.json().catch(() => null)
-        throw new Error(body?.message ?? `Gagal menyiapkan upload (${presignRes.status})`)
-      }
-      const presigned = (await presignRes.json()) as { upload_url: string; object_key: string }
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open("PUT", presigned.upload_url)
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error(`Upload ke penyimpanan gagal (${xhr.status})`))
-        }
-        xhr.onerror = () => reject(new Error("Upload gagal - periksa koneksi internet."))
-        xhr.send(file)
-      })
-
-      form.setData("sync_banner_image_url", `/media/${presigned.object_key}`)
-    } finally {
-      setUploadingBanner(false)
-    }
-  }
   const [pickerProducts, setPickerProducts] = React.useState<PickerProduct[]>(() =>
     options.productOptions
       .filter((option) => form.data.targets.some((t) => t.target_type === "product" && !t.excluded && t.target_id === option.value))
@@ -203,13 +133,6 @@ export default function PromotionForm({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
-    if (bannerFile) {
-      try {
-        await uploadBannerImage(bannerFile)
-      } catch {
-        return
-      }
-    }
     const payload = {
       ...form.data,
       starts_at: form.data.starts_at || null,
@@ -254,74 +177,6 @@ export default function PromotionForm({
             </Field>
             <Field id="promotion-discount" label="Diskon (%)" required error={form.errors.discount_percent}>
               <Input type="number" min="1" max="90" value={form.data.discount_percent} onChange={(event) => form.setData("discount_percent", Number(event.target.value))} />
-            </Field>
-            <Field id="promotion-banner" label="Tandai juga sebagai banner beranda" className="sm:col-span-2">
-              <div className="space-y-3 rounded-md border border-border bg-surface p-3">
-                <div className="flex h-6 items-center">
-                  <Switch label="Tandai juga sebagai banner beranda" checked={form.data.sync_banner} onCheckedChange={(checked) => form.setData("sync_banner", checked)} />
-                  <span className="ml-3 text-sm text-muted-foreground">Kampanye ini tampil sebagai banner promosi beranda selama periode live</span>
-                </div>
-
-                {form.data.sync_banner ? (
-                  <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
-                    <Field id="promotion-banner-image" label="Gambar banner" hint="Rasio disarankan 1024 x 426 px (sekitar 2,4:1)">
-                      <div className="flex items-center gap-3">
-                        {bannerPreview ? (
-                          <div className="relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                            <img src={bannerPreview} alt="Pratinjau banner" className="size-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted text-muted-foreground">
-                            <Icon name="image" className="size-5" aria-hidden="true" />
-                          </div>
-                        )}
-                        <div className="flex flex-col gap-1.5">
-                          <input
-                            ref={bannerFileInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(event) => {
-                              const file = event.target.files?.[0] ?? null
-                              setBannerFile(file)
-                              event.target.value = ""
-                            }}
-                          />
-                          <Button type="button" variant="outline" size="sm" disabled={uploadingBanner} onClick={() => bannerFileInputRef.current?.click()}>
-                            <Icon name="upload" className="mr-2 size-4" aria-hidden="true" />
-                            {uploadingBanner ? "Mengunggah..." : bannerFile || form.data.sync_banner_image_url ? "Ganti gambar" : "Pilih gambar"}
-                          </Button>
-                          {form.data.sync_banner_image_url || bannerFile ? (
-                            <button
-                              type="button"
-                              className="text-left text-xs text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                setBannerFile(null)
-                                form.setData("sync_banner_image_url", null)
-                              }}
-                            >
-                              Hapus gambar
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </Field>
-                    <Field id="promotion-banner-link" label="Link banner" hint="URL penuh atau path internal. Kosongkan untuk otomatis (/flash-sale atau /promo)">
-                      <Input
-                        value={form.data.sync_banner_link_url ?? ""}
-                        onChange={(event) => form.setData("sync_banner_link_url", event.target.value || null)}
-                        placeholder={form.data.type === "flash_sale" ? "/flash-sale" : "/promo"}
-                      />
-                    </Field>
-                    <div className="sm:col-span-2">
-                      <div className="flex h-6 items-center">
-                        <Switch label="Aktifkan bar promo beranda" checked={form.data.sync_bar_promo} onCheckedChange={(checked) => form.setData("sync_bar_promo", checked)} />
-                        <span className="ml-3 text-sm text-muted-foreground">Tampilkan juga baris bar promo di atas beranda selama kampanye live</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
             </Field>
           </div>
         </section>
