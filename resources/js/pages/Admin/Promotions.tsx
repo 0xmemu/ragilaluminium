@@ -42,7 +42,6 @@ interface PromotionRow {
   products_count: number
   targets: TargetRow[]
   edit_href: string
-  duplicate_url: string
   activate_url: string
   end_url: string
   impact_url: string
@@ -61,7 +60,13 @@ function canActivate(status: string): boolean {
 }
 
 function canEnd(status: string): boolean {
-  return status === "draft" || status === "scheduled" || status === "active"
+  return status === "scheduled" || status === "active"
+}
+
+// Kampanye selesai/diakhiri sepenuhnya nonaktif (keputusan owner 2026-09-11):
+// tidak bisa diedit, tidak bisa diaktifkan ulang. Buat kampanye baru.
+function canEdit(status: string): boolean {
+  return status !== "ended" && status !== "finished"
 }
 
 function formatSchedule(iso?: string | null): string {
@@ -297,20 +302,18 @@ export default function PromotionsIndex({
                     <TableCell className="text-right tabular-nums">{row.products_count}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-3">
-                        <Link className={rowActionTextClass} href={row.edit_href}>
-                          Edit
-                        </Link>
-                        <button
-                          type="button"
-                          className={rowActionTextClass}
-                          disabled={busyId === row.id}
-                          onClick={() => {
-                            setBusyId(row.id)
-                            router.post(row.duplicate_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
-                          }}
-                        >
-                          Duplikat
-                        </button>
+                        {canEdit(row.status) ? (
+                          <Link className={rowActionTextClass} href={row.edit_href}>
+                            Edit
+                          </Link>
+                        ) : (
+                          <span
+                            className={cn(rowActionTextClass, "cursor-not-allowed text-muted-foreground/60")}
+                            title="Kampanye yang selesai atau diakhiri tidak dapat diubah. Buat kampanye baru."
+                          >
+                            Edit
+                          </span>
+                        )}
                         {canActivate(row.status) ? (
                           <ActivateAction row={row} busy={busyId === row.id} setBusy={(v) => setBusyId(v ? row.id : null)} />
                         ) : null}

@@ -99,8 +99,16 @@ class PromotionController extends Controller
             ->with('success', 'Kampanye "'.$campaign->name.'" dibuat sebagai draft.');
     }
 
-    public function edit(Request $request, Promotion $promotion): Response
+    public function edit(Request $request, Promotion $promotion): Response|RedirectResponse
     {
+        // Kampanye selesai/diakhiri sepenuhnya nonaktif (keputusan owner 2026-09-11):
+        // dilarang diubah, alur yang benar adalah membuat kampanye baru.
+        if (in_array($promotion->status, [Promotion::STATUS_ENDED, Promotion::STATUS_FINISHED], true)) {
+            return redirect()
+                ->route('admin.promotions.index', ['type' => $promotion->type])
+                ->with('error', 'Kampanye yang sudah selesai atau diakhiri tidak dapat diubah. Buat kampanye baru.');
+        }
+
         $promotion->load('items');
 
         return Inertia::render('Admin/PromotionForm', [
@@ -129,6 +137,13 @@ class PromotionController extends Controller
 
     public function update(Request $request, Promotion $promotion): RedirectResponse
     {
+        // Guard sama dengan edit(): kampanye mati tidak boleh diubah.
+        if (in_array($promotion->status, [Promotion::STATUS_ENDED, Promotion::STATUS_FINISHED], true)) {
+            return redirect()
+                ->route('admin.promotions.index', ['type' => $promotion->type])
+                ->with('error', 'Kampanye yang sudah selesai atau diakhiri tidak dapat diubah. Buat kampanye baru.');
+        }
+
         $validated = $this->validateRequest($request);
 
         $promotion->fill([
@@ -218,14 +233,6 @@ class PromotionController extends Controller
         return back()->with('success', 'Kampanye "'.$promotion->name.'" diakhiri.');
     }
 
-    public function duplicate(Request $request, Promotion $promotion): RedirectResponse
-    {
-        $copy = $this->campaigns->duplicate($promotion, (int) $request->user()->id);
-
-        return redirect()->route('admin.promotions.edit', $copy)
-            ->with('success', 'Kampanye disalin. Periksa lalu aktifkan.');
-    }
-
     private function row(Promotion $promotion): array
     {
         $productIds = $this->campaigns->resolveProductIds(
@@ -251,7 +258,6 @@ class PromotionController extends Controller
                 'override_discount_percent' => $item->override_discount_percent,
             ])->values()->all(),
             'edit_href' => route('admin.promotions.edit', $promotion),
-            'duplicate_url' => route('admin.promotions.duplicate', $promotion),
             'activate_url' => route('admin.promotions.activate', $promotion),
             'end_url' => route('admin.promotions.end', $promotion),
             'impact_url' => route('admin.promotions.impact', $promotion),

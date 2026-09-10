@@ -724,13 +724,6 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
-    "admin.promotions.duplicate": [
-        {
-            "name": "promotion",
-            "required": true,
-            "binding": "id"
-        }
-    ],
     "admin.promotions.end": [
         {
             "name": "promotion",

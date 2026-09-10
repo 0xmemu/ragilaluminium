@@ -301,58 +301,6 @@ final class CampaignService
         ];
     }
 
-    public function duplicate(Promotion $campaign, int $userId): Promotion
-    {
-        $copy = Promotion::create([
-            'type' => $campaign->type,
-            'name' => $campaign->name.' (Salinan)',
-            'status' => Promotion::STATUS_DRAFT,
-            'starts_at' => $campaign->starts_at,
-            'ends_at' => $campaign->ends_at,
-            'discount_percent' => $campaign->discount_percent,
-            'created_by_user_id' => $userId,
-            'updated_by_user_id' => $userId,
-        ]);
-
-        foreach ($campaign->items as $item) {
-            PromotionItem::create([
-                'promotion_id' => $copy->id,
-                'target_type' => $item->target_type,
-                'target_id' => $item->target_id,
-                'excluded' => $item->excluded,
-                'override_discount_percent' => $item->override_discount_percent,
-                'created_by_user_id' => $userId,
-            ]);
-        }
-
-        ActivityLogService::record(
-            'product.promotion.duplicated',
-            'promotion',
-            $copy->id,
-            ['name' => $copy->name, 'from' => $campaign->id],
-            $userId,
-        );
-
-        return $copy;
-    }
-
-    public function endEarly(Promotion $campaign, int $userId): void
-    {
-        $campaign->update([
-            'status' => Promotion::STATUS_ENDED,
-            'updated_by_user_id' => $userId,
-        ]);
-
-        ActivityLogService::record(
-            'product.promotion.ended',
-            'promotion',
-            $campaign->id,
-            ['name' => $campaign->name],
-            $userId,
-        );
-
-        $this->flushCache();
-    }
 
     public function activate(Promotion $campaign, int $userId): void
     {

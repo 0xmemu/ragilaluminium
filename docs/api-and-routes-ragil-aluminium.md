@@ -236,7 +236,6 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `GET /admin/promotions/create` -> `Admin\PromotionController@create`  (name: `admin.promotions.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/promotions/{promotion}` -> `Admin\PromotionController@update`  (name: `admin.promotions.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/promotions/{promotion}/activate` -> `Admin\PromotionController@activate`  (name: `admin.promotions.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `POST /admin/promotions/{promotion}/duplicate` -> `Admin\PromotionController@duplicate`  (name: `admin.promotions.duplicate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/promotions/{promotion}/edit` -> `Admin\PromotionController@edit`  (name: `admin.promotions.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/promotions/{promotion}/end` -> `Admin\PromotionController@end`  (name: `admin.promotions.end`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/promotions/{promotion}/impact` -> `Admin\PromotionController@impact`  (name: `admin.promotions.impact`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

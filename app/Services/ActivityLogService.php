@@ -293,7 +293,6 @@ class ActivityLogService
                 isset($payload['amount']) ? ' (Rp '.number_format((float) $payload['amount'], 0, ',', '.').')' : ''
             ),
             'product.promotion.created' => sprintf('Kampanye promo dibuat%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
-            'product.promotion.duplicated' => sprintf('Kampanye promo diduplikasi%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
             'product.promotion.activated' => sprintf('Kampanye promo diaktifkan%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
             'product.promotion.ended' => sprintf('Kampanye promo diakhiri%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
             'product.sub_model_created' => sprintf(

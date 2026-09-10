@@ -410,7 +410,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('promotions', [PromotionController::class, 'store'])->name('promotions.store');
     Route::get('promotions/{promotion}/edit', [PromotionController::class, 'edit'])->name('promotions.edit');
     Route::put('promotions/{promotion}', [PromotionController::class, 'update'])->name('promotions.update');
-    Route::post('promotions/{promotion}/duplicate', [PromotionController::class, 'duplicate'])->name('promotions.duplicate');
     Route::post('promotions/{promotion}/end', [PromotionController::class, 'end'])->name('promotions.end');
     Route::post('promotions/{promotion}/activate', [PromotionController::class, 'activate'])->name('promotions.activate');
     Route::post('promotions/{promotion}/impact', [PromotionController::class, 'impact'])->name('promotions.impact');
