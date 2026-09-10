@@ -7,6 +7,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WhatsAppMessage extends Model
 {
+    /**
+     * Hanya percakapan nomor pribadi.
+     *
+     * Grup dan saluran kini ditolak di pintu masuk, tetapi riwayat lama
+     * sudah tersimpan memakai nomor pseudo hasil pemotongan JID
+     * (mis. 62120363363090730395, 20 digit). Nomor Indonesia yang sah
+     * tidak pernah sepanjang itu, jadi batas 15 digit memisahkannya
+     * tanpa menyentuh nomor pelanggan asli.
+     */
+    public function scopePersonalNumbers($query)
+    {
+        return $query
+            ->whereNotNull('phone_number')
+            ->where('phone_number', '!=', '-')
+            ->whereRaw('LENGTH(phone_number) <= 15');
+    }
+
     protected $table = 'whatsapp_messages';
 
     protected $fillable = [

@@ -107,18 +107,60 @@ class WhatsAppAutomationTest extends TestCase
             ->assertRedirect(route('admin.orders.index'));
     }
 
-    public function test_whatsapp_menu_shows_hub_with_three_choices(): void
+    public function test_whatsapp_hub_shows_summary_of_conversations(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $order = Order::create([
+            'order_number' => 'RA-HUB-1',
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => '6285725116817',
+            'shipping_address_line1' => 'Jl A',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'processing',
+            'payment_status' => 'pending',
+            'shipping_status' => 'pending_pickup',
+            'subtotal_amount' => 100000,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 100000,
+        ]);
+
+        WhatsAppMessage::create([
+            'phone_number' => '6285725116817',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Pesanan saya sudah dikirim belum?',
+            'provider' => 'baileys',
+            'received_at' => now(),
+        ]);
+
+        // Sampah saluran lama memakai nomor pseudo panjang dan wajib
+        // tidak muncul di ringkasan.
+        WhatsAppMessage::create([
+            'phone_number' => '62120363363090730395',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Promo spam saluran',
+            'provider' => 'baileys',
+            'received_at' => now(),
+        ]);
 
         $this->actingAs($admin)
             ->get(route('admin.whatsapp.dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Admin/WhatsApp/Hub')
-                ->where('cards.0.key', 'orders')
-                ->where('cards.1.key', 'templates')
-                ->where('cards.2.key', 'pairing'));
+                ->where('conversations.0.phone', '6285725116817')
+                ->where('conversations.0.name', 'Budi Santoso')
+                ->where('conversations.0.order_number', $order->order_number)
+                ->where('conversations.0.order_status', 'processing')
+                ->where('conversations.0.last_text', 'Pesanan saya sudah dikirim belum?')
+                ->has('stats.inbound_7d')
+                ->count('conversations', 1));
     }
 
     public function test_order_created_uses_cod_or_transfer_template_key(): void

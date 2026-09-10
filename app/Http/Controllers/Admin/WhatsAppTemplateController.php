@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
 use App\Services\ActivityLogService;
@@ -21,48 +22,73 @@ class WhatsAppTemplateController extends Controller
      */
     public function hub(): Response
     {
-        $unreadInbound = WhatsAppMessage::query()
-            ->where('direction', 'inbound')
-            ->whereDate('created_at', '>=', now()->subDays(7))
-            ->count();
-
-        $activeTemplates = WhatsAppTemplate::query()
-            ->whereIn('internal_key', WhatsAppAutomationCatalog::keys())
-            ->where('status', 'active')
-            ->count();
-
         $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
         $gatewayReady = (bool) ($connection['providers']['baileys']['configured'] ?? false);
+        $connected = ($connection['providers']['baileys']['status'] ?? null) === 'open';
+
+        $since = now()->subDays(7);
+
+        $stats = [
+            'inbound_7d' => WhatsAppMessage::personalNumbers()->where('direction', 'inbound')->where('created_at', '>=', $since)->count(),
+            'outbound_7d' => WhatsAppMessage::personalNumbers()->where('direction', 'outbound')->where('created_at', '>=', $since)->count(),
+            'failed_7d' => WhatsAppMessage::personalNumbers()->where('direction', 'outbound')->where('status', 'failed')->where('created_at', '>=', $since)->count(),
+            'active_templates' => WhatsAppTemplate::whereIn('internal_key', WhatsAppAutomationCatalog::keys())
+                ->where('status', 'active')
+                ->count(),
+        ];
+
+        // Percakapan terakhir per nomor: satu baris per pelanggan, memuat
+        // pesan terbaru sekaligus pesanan terkini nomor tersebut.
+        $recent = WhatsAppMessage::query()
+            ->personalNumbers()
+            ->orderByDesc('id')
+            ->limit(400)
+            ->get(['id', 'phone_number', 'direction', 'status', 'content_text', 'created_at']);
+
+        $threads = $recent->groupBy('phone_number')->take(12);
+        $phones = $threads->keys()->all();
+
+        $orders = Order::query()
+            ->whereIn('customer_phone', $phones)
+            ->orderByDesc('id')
+            ->get(['id', 'order_number', 'customer_name', 'customer_phone', 'order_status', 'total_amount', 'created_at'])
+            ->groupBy('customer_phone');
+
+        $conversations = $threads->map(function ($messages, string $phone) use ($orders) {
+            /** @var \App\Models\WhatsAppMessage $last */
+            $last = $messages->first();
+            $orderList = $orders->get($phone) ?? collect();
+            /** @var \App\Models\Order|null $latestOrder */
+            $latestOrder = $orderList->first();
+
+            $text = trim((string) $last->content_text);
+            $text = preg_replace('/\s+/', ' ', $text) ?? '';
+
+            return [
+                'phone' => $phone,
+                'name' => $latestOrder?->customer_name,
+                'last_text' => $text === '' ? null : \Illuminate\Support\Str::limit($text, 90),
+                'last_direction' => $last->direction,
+                'last_status' => $last->status,
+                'last_at' => $last->created_at?->diffForHumans(),
+                'order_number' => $latestOrder?->order_number,
+                'order_status' => $latestOrder?->order_status,
+                'order_total' => $latestOrder?->total_amount,
+                'order_url' => $latestOrder ? route('admin.orders.show', $latestOrder->id) : null,
+                'order_count' => $orderList->count(),
+            ];
+        })->values()->all();
 
         return Inertia::render('Admin/WhatsApp/Hub', [
             'title' => 'WhatsApp',
-            'description' => 'Pilih pekerjaan WhatsApp yang ingin Anda buka.',
-            'cards' => [
-                [
-                    'key' => 'orders',
-                    'label' => 'Percakapan di Pesanan',
-                    'description' => 'Riwayat obrolan pelanggan tersimpan pada detail pesanan masing masing.',
-                    'icon' => 'package',
-                    'href' => route('admin.orders.index'),
-                    'meta' => $unreadInbound.' pesan masuk 7 hari terakhir',
-                ],
-                [
-                    'key' => 'templates',
-                    'label' => 'Template Pesan',
-                    'description' => 'Atur pesan otomatis yang dikirim pada tiap tahapan pesanan.',
-                    'icon' => 'clipboard-text',
-                    'href' => route('admin.whatsapp.templates.index'),
-                    'meta' => $activeTemplates.' template aktif',
-                ],
-                [
-                    'key' => 'pairing',
-                    'label' => 'Sambungkan Nomor',
-                    'description' => 'Hubungkan nomor WhatsApp toko lewat scan QR atau kode pairing.',
-                    'icon' => 'qr',
-                    'href' => route('admin.whatsapp.pairing'),
-                    'meta' => $gatewayReady ? 'Gateway siap' : 'Gateway belum dikonfigurasi',
-                ],
+            'description' => 'Ringkasan percakapan pelanggan dan status pesanan terkini.',
+            'stats' => $stats,
+            'connection' => [
+                'connected' => $connected,
+                'ready' => $gatewayReady,
+                'phone' => $connection['providers']['baileys']['connected_phone'] ?? null,
             ],
+            'conversations' => $conversations,
         ]);
     }
 
