@@ -95,6 +95,10 @@ class HandleInertiaRequests extends Middleware
                         return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($query);
                     })(),
                     'maps_embed_url' => (static function () use ($address): ?string {
+                        $explicitEmbed = trim((string) config('sitemap.brand.maps_embed_url', ''));
+                        if ($explicitEmbed !== '') {
+                            return $explicitEmbed;
+                        }
                         $query = trim((string) config('sitemap.brand.maps_query', ''));
                         if ($query === '') {
                             $query = trim($address);

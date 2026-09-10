@@ -347,7 +347,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
         <section aria-labelledby="store-contact">
           <div className="mt-3 grid gap-3 lg:grid-cols-1">
             <div className="surface-panel overflow-hidden p-5 sm:p-6">
-              <p className="text-sm font-bold tracking-tight text-foreground">Workshop Ragil Aluminium</p>
+              <p className="text-sm font-bold tracking-tight text-foreground">Toko & Workshop Ragil Aluminium</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
 
               <div className="mt-4 space-y-2 text-sm">
@@ -392,12 +392,29 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
               {/* Maps di urutan paling akhir card (di bawah tombol chat whatsapp) */}
               <div className="mt-4 overflow-hidden rounded-lg border border-border">
                 <iframe
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(brand.address)}&z=15&output=embed`}
-                  title="Lokasi Workshop Ragil Aluminium"
+                  src={
+                    brand.maps_embed_url ||
+                    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3956.273646849492!2d109.5288635!3d-7.44972!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e65530ecf16e515%3A0x9c84f69c3e0477df!2sToko%20Ragil%20Aluminium%20(Interior%2C%20Furniture)!5e0!3m2!1sid!2sid!4v1"
+                  }
+                  title="Lokasi Toko Ragil Aluminium"
                   loading="lazy"
                   className="h-56 w-full border-0"
                 />
               </div>
+
+              {brand.maps_url ? (
+                <div className="mt-2 flex justify-end">
+                  <a
+                    href={brand.maps_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Icon name="map-pin" className="size-3.5" aria-hidden="true" />
+                    <span>Buka di Google Maps</span>
+                  </a>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>

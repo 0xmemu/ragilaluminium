@@ -480,13 +480,20 @@ return [
             'BRAND_ADDRESS',
             'Jln. Raya Mandiraja Wetan, Samping Barat Pom Bensin Mandiraja, Desa Mandiraja Wetan, Kec. Mandiraja, Kab. Banjarnegara, Jawa Tengah 53473'
         ),
-        'hours' => env('BRAND_HOURS', 'Senin – Sabtu, 08.00 – 17.00 WIB'),
+        'hours' => env('BRAND_HOURS', 'Senin - Sabtu, 08.00 - 17.00 WIB'),
         // Query untuk embed + tautan Google Maps (override via .env bila pin lebih akurat).
         'maps_query' => env(
             'BRAND_MAPS_QUERY',
-            'Toko Ragil Aluminium Jln. Raya Mandiraja Wetan Samping Barat Pom Bensin Mandiraja Banjarnegara'
+            'Toko Ragil Aluminium Mandiraja Banjarnegara'
         ),
-        'maps_url' => env('BRAND_MAPS_URL'),
+        'maps_url' => env(
+            'BRAND_MAPS_URL',
+            'https://www.google.com/maps/place/Toko+Ragil+Aluminium+(Interior,+Furniture%E2%80%A6/@-7.44972,109.5314384,17z/data=!4m6!3m5!1s0x2e65530ecf16e515:0x9c84f69c3e0477df!8m2!3d-7.44972!4d109.5314384!16s%2Fg%2F11b6d13_2h'
+        ),
+        'maps_embed_url' => env(
+            'BRAND_MAPS_EMBED_URL',
+            'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3956.273646849492!2d109.5288635!3d-7.44972!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e65530ecf16e515%3A0x9c84f69c3e0477df!2sToko%20Ragil%20Aluminium%20(Interior%2C%20Furniture)!5e0!3m2!1sid!2sid!4v1'
+        ),
         // Social proof beranda (teks); logo marketplace → platforms + Informasi Toko/Footer.
         'units_installed_label' => env(
             'BRAND_UNITS_INSTALLED_LABEL',
