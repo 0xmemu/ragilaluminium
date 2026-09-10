@@ -32,10 +32,12 @@ class WhatsAppPairingController extends Controller
             'title' => 'Pairing WhatsApp',
             'description' => 'Hubungkan gateway WhatsApp (Baileys) ke nomor Anda lewat scan QR atau pairing code.',
             'backUrl' => route('admin.whatsapp.dashboard'),
+            'messagesUrl' => route('admin.whatsapp.messages.index'),
             'statusUrl' => route('admin.whatsapp.pairing.status'),
             'qrUrl' => route('admin.whatsapp.pairing.qr'),
             'codeUrl' => route('admin.whatsapp.pairing.code'),
             'refreshQrUrl' => route('admin.whatsapp.pairing.refresh-qr'),
+            'disconnectUrl' => route('admin.whatsapp.pairing.disconnect'),
             'provider' => $service->connectionStatus()['default_provider'],
             'flash' => [
                 'success' => session('whatsapp_success'),
@@ -48,7 +50,7 @@ class WhatsAppPairingController extends Controller
     protected function sessionInfo(bool $connected): array
     {
         // Only a truly connected (open) gateway has a linked device. A creds file
-        // with a `me.id` does NOT mean the device was linked — requestPairingCode
+        // with a `me.id` does NOT mean the device was linked : requestPairingCode
         // writes it before pairing completes. So report the number only when open.
         if (! $connected) {
             return ['has_session' => false, 'connected_phone' => null, 'session_name' => null];
@@ -95,7 +97,24 @@ class WhatsAppPairingController extends Controller
             ];
 
             $connected = (($payload['status'] ?? '') === 'open');
-            return response()->json(array_merge($payload, $this->sessionInfo($connected)));
+            $sessionInfo = $this->sessionInfo($connected);
+
+            // Fallback: gunakan data connected_phone dan has_session dari gateway
+            if ($connected) {
+                $sessionInfo['has_session'] = true;
+                if (empty($sessionInfo['connected_phone'])) {
+                    $sessionInfo['connected_phone'] = (string) ($payload['connected_phone'] ?? ($payload['phone'] ?? ''));
+                }
+                if (empty($sessionInfo['session_name']) && ! empty($payload['session_name'])) {
+                    $sessionInfo['session_name'] = (string) $payload['session_name'];
+                }
+            }
+
+            $merged = array_merge($payload, $sessionInfo);
+            if (! empty($merged['connected_phone'])) {
+                $merged['connected_phone'] = preg_replace('/[:@].*$/', '', (string) $merged['connected_phone']);
+            }
+            return response()->json($merged);
         } catch (\Throwable $e) {
             return response()->json([
                 'status' => 'unreachable',
@@ -174,6 +193,31 @@ class WhatsAppPairingController extends Controller
             }
 
             return back()->with('whatsapp_code', (string) $response->json('code'));
+        } catch (\Throwable $e) {
+            return back()->with('whatsapp_error', 'Gateway tidak dapat dijangkau.');
+        }
+    }
+
+    public function disconnect(): \Illuminate\Http\RedirectResponse
+    {
+        ActivityLogService::record(
+            'whatsapp.disconnect',
+            'whatsapp_gateway',
+            1,
+            ['reason' => 'Putuskan sesi WhatsApp dari panel admin'],
+            request()->user()?->id,
+        );
+
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders($this->headers())
+                ->post($this->baseUrl().'/disconnect');
+
+            if ($response->failed()) {
+                return back()->with('whatsapp_error', $response->json('message') ?? 'Gagal memutuskan sesi WhatsApp.');
+            }
+
+            return back()->with('whatsapp_success', 'Sesi WhatsApp berhasil diputuskan. Kartu scan QR dan pairing code kini dapat digunakan untuk menghubungkan nomor baru.');
         } catch (\Throwable $e) {
             return back()->with('whatsapp_error', 'Gateway tidak dapat dijangkau.');
         }

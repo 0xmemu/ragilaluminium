@@ -67,4 +67,20 @@ class WhatsAppPairingTest extends TestCase
             'Flash whatsapp_code/whatsapp_error tidak ada di session: '.json_encode($session)
         );
     }
+
+    public function test_pairing_disconnect_redirects_with_flash_feedback(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->from(route('admin.whatsapp.pairing'))
+            ->post(route('admin.whatsapp.pairing.disconnect'))
+            ->assertRedirect(route('admin.whatsapp.pairing'));
+
+        $session = session()->all();
+        $this->assertTrue(
+            array_key_exists('whatsapp_success', $session) || array_key_exists('whatsapp_error', $session),
+            'Flash whatsapp_success/whatsapp_error tidak ada di session: '.json_encode($session)
+        );
+    }
 }

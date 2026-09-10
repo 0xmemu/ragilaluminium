@@ -320,6 +320,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('whatsapp/pairing/qr', [WhatsAppPairingController::class, 'qr'])->name('whatsapp.pairing.qr');
     Route::post('whatsapp/pairing/code', [WhatsAppPairingController::class, 'code'])->name('whatsapp.pairing.code');
     Route::post('whatsapp/pairing/refresh-qr', [WhatsAppPairingController::class, 'refreshQr'])->name('whatsapp.pairing.refresh-qr');
+    Route::post('whatsapp/pairing/disconnect', [WhatsAppPairingController::class, 'disconnect'])->name('whatsapp.pairing.disconnect');
 
 
     // Analytics
