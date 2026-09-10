@@ -2,7 +2,7 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, formatNumber } from "@/lib/format"
 import { displayEtaRangeLabel } from "@/lib/order-eta-display"
 import { cn } from "@/lib/utils"
 import type { CheckoutCodConfig, CheckoutController, CheckoutVoucher } from "@/hooks/use-checkout"
@@ -327,7 +327,9 @@ export function CheckoutSummary({
         ) : null}
         {showCodFee ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Biaya COD</dt>
+            <dt className="text-muted-foreground min-w-0 break-words">
+              Biaya COD{cod.fee_type === "percent" ? ` (${formatNumber(cod.fee_value)}%)` : ""}
+            </dt>
             <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
           </div>
         ) : null}
