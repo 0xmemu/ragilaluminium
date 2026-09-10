@@ -41,6 +41,20 @@ function toLocalInput(iso: string | null | undefined): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function nowLocalInput(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function addHoursLocalInput(base: string | null | undefined, hours: number): string {
+  const date = base ? new Date(base) : new Date()
+  if (Number.isNaN(date.getTime())) return ""
+  const target = new Date(date.getTime() + hours * 60 * 60 * 1000)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}T${pad(target.getHours())}:${pad(target.getMinutes())}`
+}
+
 export default function PromotionForm({
   title,
   promotion,
@@ -62,12 +76,28 @@ export default function PromotionForm({
   }
 }) {
   const editing = Boolean(promotion?.id)
+  const [periodMode, setPeriodMode] = React.useState<"now" | "scheduled" | "indefinite">(() => {
+    if (!promotion?.id) {
+      return "now"
+    }
+    if (!promotion.starts_at && !promotion.ends_at) {
+      return "indefinite"
+    }
+    if (promotion.starts_at) {
+      const startTime = new Date(promotion.starts_at).getTime()
+      if (startTime <= Date.now() + 10 * 60 * 1000) {
+        return "now"
+      }
+    }
+    return "scheduled"
+  })
+
   const form = useForm<PromotionFormData>({
     type: promotion?.type ?? options.type,
     name: promotion?.name ?? "",
     discount_percent: promotion?.discount_percent ?? 10,
-    starts_at: toLocalInput(promotion?.starts_at),
-    ends_at: toLocalInput(promotion?.ends_at),
+    starts_at: promotion?.starts_at ? toLocalInput(promotion.starts_at) : nowLocalInput(),
+    ends_at: promotion?.ends_at ? toLocalInput(promotion.ends_at) : addHoursLocalInput(nowLocalInput(), 24),
     targets: promotion?.targets?.map((target) => ({
       target_type: target.target_type,
       target_id: String(target.target_id),
@@ -133,10 +163,22 @@ export default function PromotionForm({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
+    let finalStartsAt = form.data.starts_at || null
+    if (periodMode === "now") {
+      finalStartsAt = form.data.starts_at || nowLocalInput()
+    } else if (periodMode === "indefinite") {
+      finalStartsAt = null
+    }
+
+    let finalEndsAt = form.data.ends_at || null
+    if (periodMode === "indefinite") {
+      finalEndsAt = null
+    }
+
     const payload = {
       ...form.data,
-      starts_at: form.data.starts_at || null,
-      ends_at: form.data.ends_at || null,
+      starts_at: finalStartsAt,
+      ends_at: finalEndsAt,
     }
     if (editing) {
       form.put(submitUrl, { ...payload, onError: () => undefined } as never)
@@ -182,17 +224,181 @@ export default function PromotionForm({
         </section>
 
         <section className="space-y-4 rounded-lg border border-border bg-card p-4">
-          <h2 className="text-base font-bold">Waktu berlaku</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field id="promotion-starts" label="Mulai" error={form.errors.starts_at}>
-              <Input type="datetime-local" value={form.data.starts_at} onChange={(event) => form.setData("starts_at", event.target.value)} />
-            </Field>
-            <Field id="promotion-ends" label="Selesai" error={form.errors.ends_at}>
-              <Input type="datetime-local" value={form.data.ends_at} onChange={(event) => form.setData("ends_at", event.target.value)} />
-            </Field>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+            <div>
+              <h2 className="text-base font-bold">Waktu berlaku</h2>
+              <p className="text-xs text-muted-foreground">
+                Tentukan waktu mulai kampanye dan batas waktu berakhir.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setPeriodMode("now")
+                  const now = nowLocalInput()
+                  form.setData("starts_at", now)
+                  if (!form.data.ends_at || form.data.ends_at <= now) {
+                    form.setData("ends_at", addHoursLocalInput(now, 24))
+                  }
+                }}
+                className={`rounded px-2.5 py-1 transition-colors ${
+                  periodMode === "now"
+                    ? "bg-card text-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Mulai Sekarang
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPeriodMode("scheduled")
+                  if (!form.data.starts_at) {
+                    form.setData("starts_at", nowLocalInput())
+                  }
+                }}
+                className={`rounded px-2.5 py-1 transition-colors ${
+                  periodMode === "scheduled"
+                    ? "bg-card text-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Jadwalkan Waktu
+              </button>
+              {form.data.type === "store" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPeriodMode("indefinite")
+                    form.setData("starts_at", "")
+                    form.setData("ends_at", "")
+                  }}
+                  className={`rounded px-2.5 py-1 transition-colors ${
+                    periodMode === "indefinite"
+                      ? "bg-card text-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Tanpa Batas
+                </button>
+              )}
+            </div>
           </div>
+
+          {periodMode === "indefinite" ? (
+            <div className="rounded-md border border-dashed border-border bg-surface/50 p-4 text-center text-xs text-muted-foreground">
+              Promo Toko berlaku terus menerus tanpa batas waktu hingga dinonaktifkan secara manual dari daftar promo.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="promotion-starts" className="text-xs font-semibold">
+                    Waktu Mulai
+                  </label>
+                  {periodMode === "now" && (
+                    <button
+                      type="button"
+                      onClick={() => form.setData("starts_at", nowLocalInput())}
+                      className="text-[11px] font-medium text-primary hover:underline"
+                    >
+                      Update menit ini
+                    </button>
+                  )}
+                </div>
+
+                {periodMode === "now" ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300">
+                      <div className="flex items-center gap-2">
+                        <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="font-semibold">Mulai Sekarang</span>
+                        <span className="text-[11px] opacity-80">(Langsung Aktif)</span>
+                      </div>
+                      <span className="font-mono text-xs font-medium">
+                        {form.data.starts_at ? form.data.starts_at.replace("T", " ") : nowLocalInput().replace("T", " ")}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Kampanye langsung aktif seketika setelah disimpan atau diaktifkan.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Input
+                      id="promotion-starts"
+                      type="datetime-local"
+                      value={form.data.starts_at}
+                      onChange={(event) => form.setData("starts_at", event.target.value)}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Kampanye akan berstatus Terjadwal dan otomatis aktif pada waktu di atas.
+                    </p>
+                  </div>
+                )}
+                {form.errors.starts_at && <p className="text-xs text-destructive">{form.errors.starts_at}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="promotion-ends" className="text-xs font-semibold">
+                    Waktu Selesai (Kustom)
+                  </label>
+                  <span className="text-[10px] text-muted-foreground">Pilih bebas tanggal dan jam</span>
+                </div>
+
+                <Input
+                  id="promotion-ends"
+                  type="datetime-local"
+                  value={form.data.ends_at}
+                  onChange={(event) => form.setData("ends_at", event.target.value)}
+                  placeholder="Pilih tanggal dan jam selesai kustom"
+                />
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                  <span className="text-muted-foreground">Preset cepat:</span>
+                  {[
+                    { label: "+2 Jam", hours: 2 },
+                    { label: "+6 Jam", hours: 6 },
+                    { label: "+12 Jam", hours: 12 },
+                    { label: "+24 Jam", hours: 24 },
+                    { label: "+3 Hari", hours: 72 },
+                    { label: "+7 Hari", hours: 168 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        const base = (periodMode === "now" ? nowLocalInput() : form.data.starts_at) || nowLocalInput()
+                        form.setData("ends_at", addHoursLocalInput(base, preset.hours))
+                      }}
+                      className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-foreground transition-colors hover:bg-muted"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  {form.data.ends_at && (
+                    <button
+                      type="button"
+                      onClick={() => form.setData("ends_at", "")}
+                      className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                    >
+                      Kosongkan
+                    </button>
+                  )}
+                </div>
+
+                {form.errors.ends_at && <p className="text-xs text-destructive">{form.errors.ends_at}</p>}
+              </div>
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
-            Kosongkan periode = berlaku terus (dibatasi aturan: hanya 1 Promo Toko aktif & 1 Flash Sale aktif).
+            {form.data.type === "flash_sale"
+              ? "Flash Sale membutuhkan tanggal dan jam berakhir. Kampanye otomatis selesai saat waktu habis."
+              : "Kosongkan periode jika ingin promo toko berjalan terus sampai dihentikan manual."}
           </p>
         </section>
 

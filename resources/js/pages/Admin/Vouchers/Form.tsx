@@ -42,6 +42,20 @@ function toLocalInput(iso: string | null | undefined): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function nowLocalInput(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function addHoursLocalInput(base: string | null | undefined, hours: number): string {
+  const date = base ? new Date(base) : new Date()
+  if (Number.isNaN(date.getTime())) return ""
+  const target = new Date(date.getTime() + hours * 60 * 60 * 1000)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}T${pad(target.getHours())}:${pad(target.getMinutes())}`
+}
+
 export default function VoucherForm({
   voucher,
   submitUrl,
@@ -287,34 +301,87 @@ export default function VoucherForm({
                   Periode berlaku
                 </th>
                 <td className="px-4 py-2.5">
-                  <div className="grid max-w-md gap-3 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="starts_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mulai</label>
-                      <Input
-                        id="starts_at"
-                        type="datetime-local"
-                        value={form.data.starts_at ?? ""}
-                        onChange={(event) => form.setData("starts_at", event.target.value)}
-                        className="h-8 text-xs"
-                      />
+                  <div className="max-w-lg space-y-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const now = nowLocalInput()
+                          form.setData("starts_at", now)
+                          if (!form.data.ends_at) {
+                            form.setData("ends_at", addHoursLocalInput(now, 24 * 7))
+                          }
+                        }}
+                        className="rounded border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                      >
+                        Mulai Sekarang
+                      </button>
+                      <span className="text-[11px] text-muted-foreground">
+                        Atau atur tanggal dan jam mulai secara kustom di bawah
+                      </span>
                     </div>
-                    <div>
-                      <label htmlFor="ends_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Selesai</label>
-                      <Input
-                        id="ends_at"
-                        type="datetime-local"
-                        value={form.data.ends_at ?? ""}
-                        onChange={(event) => form.setData("ends_at", event.target.value)}
-                        className="h-8 text-xs"
-                      />
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="starts_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mulai</label>
+                        <Input
+                          id="starts_at"
+                          type="datetime-local"
+                          value={form.data.starts_at ?? ""}
+                          onChange={(event) => form.setData("starts_at", event.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="ends_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Selesai (Kustom)</label>
+                        <Input
+                          id="ends_at"
+                          type="datetime-local"
+                          value={form.data.ends_at ?? ""}
+                          onChange={(event) => form.setData("ends_at", event.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
                     </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="text-muted-foreground">Preset durasi:</span>
+                      {[
+                        { label: "+24 Jam", hours: 24 },
+                        { label: "+3 Hari", hours: 72 },
+                        { label: "+7 Hari", hours: 168 },
+                        { label: "+30 Hari", hours: 720 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => {
+                            const base = form.data.starts_at || nowLocalInput()
+                            form.setData("ends_at", addHoursLocalInput(base, preset.hours))
+                          }}
+                          className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-foreground transition-colors hover:bg-muted"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                      {form.data.ends_at && (
+                        <button
+                          type="button"
+                          onClick={() => form.setData("ends_at", "")}
+                          className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                        >
+                          Kosongkan
+                        </button>
+                      )}
+                    </div>
+
+                    {form.errors.starts_at ? (
+                      <p className="mt-1 text-xs text-destructive">{form.errors.starts_at}</p>
+                    ) : null}
+                    {form.errors.ends_at ? (
+                      <p className="mt-1 text-xs text-destructive">{form.errors.ends_at}</p>
+                    ) : null}
                   </div>
-                  {form.errors.starts_at ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.starts_at}</p>
-                  ) : null}
-                  {form.errors.ends_at ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.ends_at}</p>
-                  ) : null}
                 </td>
               </tr>
               <tr>
