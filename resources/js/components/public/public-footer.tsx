@@ -20,7 +20,7 @@ function FooterLinks({ column }: { column?: FooterColumn }) {
   return (
     <nav aria-label={column.title ?? "Tautan footer"}>
       {column.title ? (
-        <h2 className="text-sm font-bold tracking-tight text-white">
+        <h2 className="mt-3 text-xs font-bold tracking-tight text-white">
           {column.title}
         </h2>
       ) : null}
@@ -120,6 +120,7 @@ export function PublicFooter({ className }: { className?: string }) {
               <StorefrontPlatforms
                 platforms={platforms}
                 title="Ikuti Kami"
+                titleClassName="mt-3 text-xs"
                 variant="dark"
                 compact
                 iconsOnly
@@ -128,7 +129,7 @@ export function PublicFooter({ className }: { className?: string }) {
           ) : null}
           {showLegacySocial ? (
             <div className="sm:col-span-2 lg:col-span-3">
-              <p className="text-sm font-bold tracking-tight text-white">Ikuti Kami</p>
+              <p className="mt-3 text-xs font-bold tracking-tight text-white">Ikuti Kami</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {socials.map((social) => (
                   <SocialIcon key={social.key} social={social} />

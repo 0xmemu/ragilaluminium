@@ -89,6 +89,7 @@ function PlatformChip({
 export function StorefrontPlatforms({
   platforms,
   title = "Ikuti Kami",
+  titleClassName,
   className,
   variant = "light",
   layout = "grouped",
@@ -98,6 +99,8 @@ export function StorefrontPlatforms({
 }: {
   platforms: SocialLink[]
   title?: string
+  /** Override gaya judul (mis. footer: turun 12px + 12px). */
+  titleClassName?: string
   className?: string
   variant?: "light" | "dark"
   /** grouped = Marketplace + Media Sosial terpisah; inline = deretan ringkas */
@@ -123,6 +126,7 @@ export function StorefrontPlatforms({
             className={cn(
               "text-sm font-bold tracking-tight",
               dark ? "text-white" : "text-muted-foreground",
+              titleClassName,
             )}
           >
             {title}
@@ -153,6 +157,7 @@ export function StorefrontPlatforms({
             compact ? "text-sm font-bold" : "text-lg font-semibold",
             "tracking-tight",
             dark ? "text-white" : "text-foreground",
+            titleClassName,
           )}
         >
           {title}
