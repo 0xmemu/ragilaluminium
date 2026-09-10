@@ -345,6 +345,7 @@ const iconRegistry: Record<string, ComponentType<IconProps>> = {
   api: PlugsConnected,
   integration: PlugsConnected,
   webhook: LinkSimple,
+  circle: Circle,
 }
 
 export interface RagilIconProps extends IconProps {
