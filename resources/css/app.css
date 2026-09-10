@@ -159,10 +159,10 @@
     --shadow-float: 0 24px 48px -16px hsl(0 0% 0% / 0.65);
   }
 
-  /* Mode terang admin : semua permukaan seragam putih murni #ffffff, hierarki dari border & shadow. */
+  /* Mode terang admin : kanvas slate tipis #f8fafc sebagai pembeda, kartu & header putih #ffffff. */
   html.admin-shell.light {
     color-scheme: light;
-    --background: 0 0% 100%; /* #ffffff kanvas putih murni, seragam dgn kartu */
+    --background: 210 20% 98%; /* #f8fafc kanvas slate dingin tipis, pembeda dari kartu putih */
     --foreground: 222 47% 11%; /* #0f172a teks obsidian slate tajam dan kontras tinggi */
     --action-foreground: 222 47% 11%;
     --body-foreground: 215 16% 42%; /* #475569 teks body slate sejuk */
@@ -195,11 +195,11 @@
     --ring: 222 47% 11%;
     --surface: 0 0% 100%;
     --surface-muted: 215 20% 95%; /* #f1f5f9 */
-    --sidebar: 0 0% 100%; /* #ffffff sidebar putih murni, seragam dgn kanvas */
+    --sidebar: 210 20% 98%; /* #f8fafc sidebar menyatu dgn kanvas */
     --radius: 0.5rem;
     --radius-control: 0.375rem;
-    --shadow-soft: 0 1px 2px 0 hsl(215 25% 20% / 0.06), 0 1px 3px 0 hsl(215 25% 20% / 0.08);
-    --shadow-float: 0 12px 28px -6px hsl(215 25% 20% / 0.10), 0 8px 12px -6px hsl(215 25% 20% / 0.08);
+    --shadow-soft: 0 1px 2px 0 hsl(215 25% 20% / 0.05), 0 1px 3px 0 hsl(215 25% 20% / 0.05);
+    --shadow-float: 0 10px 25px -5px hsl(215 25% 20% / 0.08), 0 8px 10px -6px hsl(215 25% 20% / 0.06);
   }
 
   * {
