@@ -79,7 +79,7 @@ function AdminNavLink({
         "group/item flex h-8 items-center gap-2.5 rounded-lg text-[13px] font-medium transition duration-100",
         "h-9 px-2.5",
         active
-          ? "bg-secondary text-foreground"
+          ? "bg-secondary text-foreground font-semibold"
           : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
       )}
       aria-current={active ? "page" : undefined}
@@ -131,7 +131,7 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav
-        className="scrollbar-none flex-1 overflow-y-auto px-2.5 py-3"
+        className="admin-sidebar-nav scrollbar-none flex-1 overflow-y-auto px-2.5 py-3"
         aria-label="Navigasi admin"
       >
         {groups.map(([key, group], groupIndex) => {
@@ -140,7 +140,7 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
           return (
           <div key={key} className={cn(groupIndex > 0 && "mt-4")}>
             {group.title ? (
-              <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+              <p className="admin-sidebar-title px-2.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.08em]">
                 {group.title}
               </p>
             ) : null}

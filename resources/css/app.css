@@ -232,6 +232,20 @@
     font-size: 0.857rem; /* 12px literal di root 14px */
   }
 
+  /* Sidebar light: teks menu lebih kontras (anti kusam di kanvas slate).
+     Label menu naik dari muted 45% ke slate 700; ikon mengikuti warna label. */
+  html.admin-shell.light .admin-sidebar-nav {
+    color: hsl(215 25% 27%); /* #334155 slate 700, kontras kuat di #f8fafc */
+  }
+
+  html.admin-shell.light .admin-sidebar-nav:hover {
+    color: hsl(222 47% 11%); /* #0f172a obsidian saat hover */
+  }
+
+  html.admin-shell.light .admin-sidebar-title {
+    color: hsl(215 16% 47%); /* #64748b slate 500, lebih tegas dari muted/80 */
+  }
+
   html.admin-shell:not(.light) .admin-status-danger {
     color: hsl(0 90% 72%);
   }
