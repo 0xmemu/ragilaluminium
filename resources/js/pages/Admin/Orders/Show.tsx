@@ -1009,7 +1009,14 @@ export default function OrderShow({
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [showAllEvents, setShowAllEvents] = React.useState(false)
-  const [showAllWa, setShowAllWa] = React.useState(false)
+  const waLogRef = React.useRef<HTMLUListElement | null>(null)
+
+  React.useEffect(() => {
+    const el = waLogRef.current
+    if (el) {
+      el.scrollTop = el.scrollHeight
+    }
+  }, [order.whatsapp_messages.length])
   const { printing, handlePrint } = usePrintOrder()
   const capabilities = useAdminCapabilities()
   const [liveChangedNotice, setLiveChangedNotice] = React.useState<string | null>(null)
@@ -1543,8 +1550,8 @@ export default function OrderShow({
         <SectionCard title="Percakapan WhatsApp">
           {order.whatsapp_messages.length ? (
             <>
-            <ul className="space-y-2.5">
-              {(showAllWa ? order.whatsapp_messages : order.whatsapp_messages.slice(-6)).map((message) => {
+            <ul ref={waLogRef} className="max-h-[420px] space-y-2.5 overflow-y-auto pr-1">
+              {order.whatsapp_messages.map((message) => {
                 const outbound = message.direction !== "inbound"
 
                 return (
@@ -1585,15 +1592,6 @@ export default function OrderShow({
                 )
               })}
             </ul>
-            {order.whatsapp_messages.length > 6 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllWa((v) => !v)}
-                className="mt-3 text-xs font-medium text-primary hover:underline"
-              >
-                {showAllWa ? "Tampilkan 6 pesan terakhir" : `Tampilkan semua ${order.whatsapp_messages.length} pesan`}
-              </button>
-            ) : null}
             </>
           ) : (
             <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
