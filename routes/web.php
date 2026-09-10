@@ -534,6 +534,9 @@ Route::post('/webhook/whatsapp/baileys', [WhatsAppController::class, 'handleBail
 Route::post('/webhook/shipping/jnt', [ShippingController::class, 'handleJnt'])
     ->middleware(['throttle:120,1', 'verify.jnt.signature'])
     ->name('webhook.shipping.jnt');
+Route::post('/api/jnt', [ShippingController::class, 'handleJnt'])
+    ->middleware(['throttle:120,1', 'verify.jnt.signature'])
+    ->name('webhook.shipping.jnt.legacy');
 
 // TEMPORARY ErrorBoundary e2e test route - remove after verification
 
