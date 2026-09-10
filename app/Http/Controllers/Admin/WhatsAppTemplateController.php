@@ -39,11 +39,11 @@ class WhatsAppTemplateController extends Controller
             'description' => 'Pilih pekerjaan WhatsApp yang ingin Anda buka.',
             'cards' => [
                 [
-                    'key' => 'messages',
-                    'label' => 'Live Chat',
-                    'description' => 'Balas pesan pelanggan langsung, lihat profil dan pesanan aktifnya.',
-                    'icon' => 'message-circle',
-                    'href' => route('admin.whatsapp.messages.index'),
+                    'key' => 'orders',
+                    'label' => 'Percakapan di Pesanan',
+                    'description' => 'Riwayat obrolan pelanggan tersimpan pada detail pesanan masing masing.',
+                    'icon' => 'package',
+                    'href' => route('admin.orders.index'),
                     'meta' => $unreadInbound.' pesan masuk 7 hari terakhir',
                 ],
                 [
@@ -99,7 +99,6 @@ class WhatsAppTemplateController extends Controller
             'description' => 'Konfigurasi template pesan WhatsApp yang akan dikirim secara otomatis pada setiap tahapan pesanan.',
             'automations' => $automations,
             'pairingUrl' => route('admin.whatsapp.pairing'),
-            'messagesUrl' => route('admin.whatsapp.messages.index'),
             'totalTemplates' => count($automations),
         ]);
     }

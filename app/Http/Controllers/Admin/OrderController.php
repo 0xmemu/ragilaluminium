@@ -275,9 +275,37 @@ class OrderController extends Controller
             'items.product.mainImage',
             'payments',
             'shippingRecords' => fn ($q) => $q->latest('id'),
-            'whatsappMessages' => fn ($q) => $q->latest()->limit(10),
             'returnCases.items.orderItem',
         ]);
+
+        // Percakapan WhatsApp pelanggan ini. Diambil per NOMOR agar obrolan
+        // manual yang tidak tertaut pesanan tetap terlihat, lengkap dengan
+        // isi pesannya (menggantikan halaman Live Chat terpisah).
+        $customerPhone = PhoneNumber::normalize((string) $order->customer_phone) ?: (string) $order->customer_phone;
+
+        $whatsappThread = \App\Models\WhatsAppMessage::query()
+            ->when($customerPhone !== '', fn ($q) => $q->where('phone_number', $customerPhone))
+            ->when($customerPhone === '', fn ($q) => $q->where('order_id', $order->id))
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->sortBy('id')
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'direction' => $m->direction,
+                'status' => $m->status,
+                'text' => (string) $m->content_text,
+                'internal_template_key' => $m->internal_template_key,
+                'label' => OrderEventLabels::whatsappTemplate($m->internal_template_key ?: $m->direction),
+                'is_automated' => (bool) $m->internal_template_key,
+                'phone_number' => $m->phone_number,
+                'time_label' => optional($m->created_at)?->format('H:i'),
+                'date_label' => optional($m->created_at)?->locale('id')->translatedFormat('d M Y'),
+                'sent_at' => optional($m->sent_at)?->toIso8601String(),
+                'received_at' => optional($m->received_at)?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
 
         $events = EventLog::query()
             ->where('entity_type', 'order')
@@ -375,16 +403,7 @@ class OrderController extends Controller
                     'tracking_url' => $s->tracking_url,
                     'last_status_at' => optional($s->last_status_at)?->toIso8601String(),
                 ])->values()->all(),
-                'whatsapp_messages' => $order->whatsappMessages->map(fn ($m) => [
-                    'id' => $m->id,
-                    'direction' => $m->direction,
-                    'status' => $m->status,
-                    'internal_template_key' => $m->internal_template_key,
-                    'label' => OrderEventLabels::whatsappTemplate($m->internal_template_key ?: $m->direction),
-                    'phone_number' => $m->phone_number,
-                    'sent_at' => optional($m->sent_at)?->toIso8601String(),
-                    'received_at' => optional($m->received_at)?->toIso8601String(),
-                ])->values()->all(),
+                'whatsapp_messages' => $whatsappThread,
                 'return_cases' => $order->returnCases->map(fn ($case) => [
                     'id' => $case->id,
                     'status' => $case->status,

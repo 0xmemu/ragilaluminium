@@ -98,6 +98,15 @@ class WhatsAppAutomationTest extends TestCase
                 ->has('stats.total'));
     }
 
+    public function test_live_chat_route_redirects_to_orders(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.messages.index'))
+            ->assertRedirect(route('admin.orders.index'));
+    }
+
     public function test_whatsapp_menu_shows_hub_with_three_choices(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
@@ -107,7 +116,7 @@ class WhatsAppAutomationTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Admin/WhatsApp/Hub')
-                ->where('cards.0.key', 'messages')
+                ->where('cards.0.key', 'orders')
                 ->where('cards.1.key', 'templates')
                 ->where('cards.2.key', 'pairing'));
     }

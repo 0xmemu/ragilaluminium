@@ -1,4 +1,4 @@
-import { Head, Link } from "@inertiajs/react"
+import { Head } from "@inertiajs/react"
 import * as React from "react"
 import { useState, type FormEvent } from "react"
 
@@ -14,7 +14,6 @@ interface Props {
   title: string
   description: string
   stats?: { sent: number; failed: number; total: number }
-  messagesUrl?: string
   statusUrl: string
   qrUrl: string
   codeUrl: string
@@ -41,7 +40,6 @@ export default function Pairing({
   title,
   description,
   stats,
-  messagesUrl = "/admin/whatsapp/messages",
   statusUrl,
   qrUrl,
   codeUrl,
@@ -245,12 +243,6 @@ export default function Pairing({
 
               {/* Tombol Aksi Cepat */}
               <div className="flex shrink-0 flex-wrap gap-2 pt-2 sm:pt-0">
-                <Button asChild size="sm">
-                  <Link href={messagesUrl} className="inline-flex items-center gap-1.5">
-                    <Icon name="chat" className="size-4" />
-                    <span>Buka Pesan WhatsApp</span>
-                  </Link>
-                </Button>
                 <Button type="button" variant="secondary" size="sm" onClick={handleManualRefresh} disabled={refreshing}>
                   <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
                   <span>Cek Status</span>

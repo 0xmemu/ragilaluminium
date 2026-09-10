@@ -312,7 +312,7 @@ class DashboardController extends Controller
                 'key' => 'failed_wa',
                 'label' => 'Pesan WhatsApp Gagal',
                 'count' => $failedMessages,
-                'href' => route('admin.whatsapp.messages.index', ['status' => 'failed']),
+                'href' => route('admin.whatsapp.templates.index'),
             ];
         }
         if ($runningImports > 0) {

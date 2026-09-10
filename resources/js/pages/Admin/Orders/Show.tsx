@@ -105,6 +105,10 @@ interface OrderDetail {
     }>
     return_cases?: ReturnCase[]
     whatsapp_messages: Array<{
+      text?: string
+      is_automated?: boolean
+      time_label?: string | null
+      date_label?: string | null
     id: number
     direction: string
     status: string
@@ -1504,36 +1508,56 @@ export default function OrderShow({
             <p className="text-xs text-muted-foreground">Belum ada log status.</p>
           )}
         </SectionCard>
-        <SectionCard title="Riwayat WA otomatis">
+        <div id="percakapan-whatsapp" className="scroll-mt-20">
+        <SectionCard title="Percakapan WhatsApp">
           {order.whatsapp_messages.length ? (
             <>
-            <ul className="space-y-2.5 text-[13px]">
-              {(showAllWa ? order.whatsapp_messages : order.whatsapp_messages.slice(0, 4)).map((message) => (
-                <li
-                  key={message.id}
-                  className="border-b border-border pb-2.5 last:border-0 last:pb-0"
-                >
-                  <p className="font-medium">
-                    {message.label ||
-                      (message.internal_template_key
-                        ? humanize(message.internal_template_key)
-                        : humanize(message.direction))}
-                  </p>
-                  <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <StatusBadge status={message.status} />
-                    {formatDateTime(message.sent_at || message.received_at)}
-                  </p>
-                </li>
-              ))}
-            
+            <ul className="space-y-2.5">
+              {(showAllWa ? order.whatsapp_messages : order.whatsapp_messages.slice(-6)).map((message) => {
+                const outbound = message.direction !== "inbound"
+
+                return (
+                  <li key={message.id} className={outbound ? "flex justify-end" : "flex justify-start"}>
+                    <div
+                      className={`max-w-[85%] rounded-lg border px-3 py-2 ${
+                        outbound
+                          ? "border-border bg-muted/40"
+                          : "border-success/30 bg-success/5"
+                      }`}
+                    >
+                      <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                        <span>{outbound ? "Toko" : "Pelanggan"}</span>
+                        {message.is_automated ? (
+                          <span className="rounded border border-border px-1 text-[10px]">Otomatis</span>
+                        ) : null}
+                      </p>
+
+                      {message.text ? (
+                        <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 text-foreground">
+                          {message.text}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[13px] text-muted-foreground">
+                          {message.label || humanize(message.direction)}
+                        </p>
+                      )}
+
+                      <p className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <StatusBadge status={message.status} />
+                        {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
-            {order.whatsapp_messages.length > 4 ? (
+            {order.whatsapp_messages.length > 6 ? (
               <button
                 type="button"
                 onClick={() => setShowAllWa((v) => !v)}
                 className="mt-3 text-xs font-medium text-primary hover:underline"
               >
-                {showAllWa ? "Sembunyikan riwayat" : "Tampilkan riwayat lengkap"}
+                {showAllWa ? "Tampilkan 6 pesan terakhir" : `Tampilkan semua ${order.whatsapp_messages.length} pesan`}
               </button>
             ) : null}
             </>
@@ -1541,6 +1565,7 @@ export default function OrderShow({
             <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
           )}
         </SectionCard>
+        </div>
       </section>
 
       {(() => {

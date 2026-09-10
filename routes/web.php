@@ -312,10 +312,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('whatsapp/templates/{template}', [WhatsAppTemplateController::class, 'update'])->name('whatsapp.templates.update');
     Route::post('whatsapp/templates/{template}/activate', [WhatsAppTemplateController::class, 'activate'])->name('whatsapp.templates.activate');
     Route::post('whatsapp/templates/{template}/deactivate', [WhatsAppTemplateController::class, 'deactivate'])->name('whatsapp.templates.deactivate');
-    Route::get('whatsapp/messages', [WhatsAppMessageController::class, 'index'])->name('whatsapp.messages.index');
-    Route::post('whatsapp/messages/reply', [WhatsAppMessageController::class, 'reply'])->name('whatsapp.messages.reply');
+    // Live Chat dihentikan (keputusan owner 2026-09-11): obrolan harian memakai
+    // WhatsApp Desktop, sedangkan riwayat percakapan tetap tersimpan dan tampil
+    // di detail pesanan. Tautan lama diarahkan ke tempat yang masih hidup.
+    Route::get('whatsapp/messages', [WhatsAppMessageController::class, 'redirectToOrders'])->name('whatsapp.messages.index');
     Route::get('orders/{order}/whatsapp', [WhatsAppMessageController::class, 'byOrder'])->name('orders.whatsapp');
-    Route::get('whatsapp/messages/{message}', [WhatsAppMessageController::class, 'show'])->name('whatsapp.messages.show');
     Route::get('whatsapp/pairing', [WhatsAppPairingController::class, 'show'])->name('whatsapp.pairing');
     Route::get('whatsapp/pairing/status', [WhatsAppPairingController::class, 'status'])->name('whatsapp.pairing.status');
     Route::get('whatsapp/pairing/qr', [WhatsAppPairingController::class, 'qr'])->name('whatsapp.pairing.qr');

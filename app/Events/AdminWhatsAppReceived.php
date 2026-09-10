@@ -34,7 +34,9 @@ class AdminWhatsAppReceived implements ShouldBroadcast
         $this->customer_name = $message->order?->customer_name;
         $this->order_number = $message->order?->order_number;
         $this->content_text = Str::limit((string) $message->content_text, 140);
-        $this->href = route('admin.whatsapp.messages.index', ['phone' => $message->phone_number]);
+        $this->href = $message->order
+            ? route('admin.orders.show', $message->order).'#percakapan-whatsapp'
+            : route('admin.orders.index', ['search' => $message->phone_number]);
     }
 
     public function broadcastOn(): array

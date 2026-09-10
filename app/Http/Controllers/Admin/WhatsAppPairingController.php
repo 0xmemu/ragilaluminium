@@ -40,7 +40,6 @@ class WhatsAppPairingController extends Controller
             'title' => 'Sambungkan Nomor WhatsApp',
             'description' => 'Hubungkan gateway WhatsApp ke nomor toko lewat scan QR atau kode pairing.',
             'stats' => $stats,
-            'messagesUrl' => route('admin.whatsapp.messages.index'),
             'templatesUrl' => route('admin.whatsapp.templates.index'),
             'statusUrl' => route('admin.whatsapp.pairing.status'),
             'qrUrl' => route('admin.whatsapp.pairing.qr'),

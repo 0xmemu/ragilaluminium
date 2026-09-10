@@ -452,7 +452,9 @@ class WhatsAppService
             'title' => 'Pesan WhatsApp Masuk',
             'body' => "{$label}: {$preview}",
             'order_id' => $order?->id,
-            'href' => route('admin.whatsapp.messages.index', ['phone' => $cleanPhone]),
+            'href' => $order
+                ? route('admin.orders.show', $order).'#percakapan-whatsapp'
+                : route('admin.orders.index', ['search' => $cleanPhone]),
         ]);
 
         \App\Support\AdminLiveEvents::whatsAppReceived($message);

@@ -79,7 +79,6 @@ class FrontendPageContractTest extends TestCase
             ['admin.payments.index', 'Admin/Payments/Index'],
             ['admin.shipping.index', 'Admin/Shipping/Index'],
             ['admin.whatsapp.templates.index', 'Admin/WhatsApp/Index'],
-            ['admin.whatsapp.messages.index', 'Admin/WhatsApp/Messages'],
             ['admin.analytics.store-performance', 'Admin/Analytics/StorePerformance'],
             ['admin.activity-logs.index', 'Admin/ActivityLogs/Index'],
             ['admin.beranda.index', 'Admin/Beranda/Index'],

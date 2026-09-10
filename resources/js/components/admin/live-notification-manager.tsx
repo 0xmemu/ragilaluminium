@@ -200,7 +200,7 @@ export function LiveNotificationManager(): React.ReactElement | null {
             title: "Pesan WhatsApp Masuk",
             subtitle: senderLabel,
             body: data.content_text,
-            href: data.href || routeUrl("admin.whatsapp.messages.index", { phone: data.phone_number }),
+            href: data.href || routeUrl("admin.orders.index", { search: data.phone_number }),
             timestamp: Date.now(),
           })
         })

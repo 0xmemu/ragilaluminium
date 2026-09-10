@@ -121,7 +121,7 @@ return [
                     'label' => 'WhatsApp',
                     'route' => 'admin.whatsapp.dashboard', 'capability' => 'whatsapp.view',
                     'icon' => 'message-circle',
-                    'active' => ['admin.whatsapp.dashboard', 'admin.whatsapp.messages.*', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
+                    'active' => ['admin.whatsapp.dashboard', 'admin.whatsapp.pairing', 'admin.whatsapp.templates.*'],
                 ],
             ],
         ],
