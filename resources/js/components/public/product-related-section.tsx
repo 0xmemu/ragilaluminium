@@ -19,7 +19,7 @@ export function ProductRelatedSection({ products }: { products: ProductCardData[
   const items = products.slice(0, 8)
 
   return (
-    <section id="produk-terkait" className="pt-5 pb-5 lg:pb-5">
+    <section id="produk-terkait" className="border-t border-border pt-5 pb-6 lg:pt-6 lg:pb-8">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <div className="flex items-center justify-between gap-3">
           <h2 className="min-w-0 break-words text-base font-bold text-foreground">
