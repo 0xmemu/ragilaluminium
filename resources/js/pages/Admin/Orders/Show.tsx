@@ -942,26 +942,17 @@ function CopyButton({ text, label = "Salin" }: { text: string; label?: string })
  * berbunyi 'Menunggu pembayaran'. Peta kecil ini memakai istilah pengiriman
  * pesan yang benar.
  */
-const WA_MESSAGE_STATUS: Record<string, { label: string; tone: "neutral" | "info" | "warning" | "success" | "danger" | "neutral-soft" | "info-soft" | "success-soft" }> = {
-  pending: { label: "Belum ada tanda kirim", tone: "neutral-soft" },
-  queued: { label: "Menunggu dikirim", tone: "neutral-soft" },
-  sent: { label: "Terkirim", tone: "info-soft" },
-  delivered: { label: "Sampai di HP", tone: "success-soft" },
-  read: { label: "Dibaca", tone: "success" },
-  received: { label: "Diterima", tone: "success" },
-  failed: { label: "Gagal terkirim", tone: "danger" },
+const WA_MESSAGE_STATUS: Record<string, { icon: string; title: string; className: string }> = {
+  pending: { icon: "clock", title: "Menunggu tanda kirim", className: "text-muted-foreground/60" },
+  queued: { icon: "clock", title: "Menunggu dikirim", className: "text-muted-foreground/60" },
+  sent: { icon: "check", title: "Terkirim", className: "text-muted-foreground" },
+  delivered: { icon: "checks", title: "Sampai di HP pelanggan", className: "text-muted-foreground" },
+  read: { icon: "checks", title: "Dibaca pelanggan", className: "text-info" },
+  failed: { icon: "warning", title: "Gagal terkirim", className: "text-destructive" },
 }
 
-function waMessageStatus(status: string, direction: string) {
-  const known = WA_MESSAGE_STATUS[status]
-  if (known) return known
-
-  // Pesan masuk yang statusnya tidak dikenal tetap berarti sudah kita terima.
-  if (direction === "inbound") {
-    return { label: "Diterima", tone: "success" as const }
-  }
-
-  return { label: humanize(status), tone: "neutral-soft" as const }
+function waMessageStatus(status: string) {
+  return WA_MESSAGE_STATUS[status] ?? null
 }
 
 export default function OrderShow({
@@ -1580,12 +1571,19 @@ export default function OrderShow({
                         </p>
                       )}
 
-                      <p className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <StatusBadge
-                          status={waMessageStatus(message.status, message.direction).tone}
-                          label={waMessageStatus(message.status, message.direction).label}
-                        />
-                        {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                      <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <span>
+                          {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                        </span>
+                        {outbound && waMessageStatus(message.status) ? (
+                          <span
+                            title={waMessageStatus(message.status)!.title}
+                            aria-label={waMessageStatus(message.status)!.title}
+                            className={`inline-flex shrink-0 ${waMessageStatus(message.status)!.className}`}
+                          >
+                            <Icon name={waMessageStatus(message.status)!.icon as never} className="size-3.5" />
+                          </span>
+                        ) : null}
                       </p>
                     </div>
                   </li>
