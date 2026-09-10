@@ -195,8 +195,11 @@ class StorePerformanceContractTest extends TestCase
         $revenue = collect($sales)->firstWhere('key', 'omzet');
 
         $this->assertSame(3, $visitors['value']);
-        $this->assertEqualsWithDelta(33.33, $conversion['value'], 0.01); // 1 order / 3 pengunjung * 100
-        $this->assertSame('1 dari 3 pengunjung', $conversion['detail']);
+        // Pembilang adalah jumlah PEMBELI unik, bukan jumlah pesanan: label
+        // metriknya "Pengunjung yang Membeli" sehingga satu pelanggan dengan
+        // beberapa pesanan tetap dihitung satu orang.
+        $this->assertEqualsWithDelta(33.33, $conversion['value'], 0.01); // 1 pembeli / 3 pengunjung * 100
+        $this->assertSame('1 pembeli dari 3 pengunjung', $conversion['detail']);
         $this->assertEqualsWithDelta(1_500_000.0, $revenue['value'], 0.01);
         $this->assertSame('number', $visitors['format']);
         $this->assertSame('percent', $conversion['format']);

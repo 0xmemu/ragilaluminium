@@ -191,8 +191,8 @@ class StorePerformanceService
                 $previous['conversion_rate'],
                 'percent',
                 sprintf(
-                    '%s dari %s pengunjung',
-                    number_format((int) $current['orders'], 0, ',', '.'),
+                    '%s pembeli dari %s pengunjung',
+                    number_format((int) ($current['buyers'] ?? 0), 0, ',', '.'),
                     number_format((int) $current['visitors'], 0, ',', '.')
                 )
             ),
@@ -269,6 +269,10 @@ class StorePerformanceService
             'generated_at' => now()->timezone(config('app.timezone', 'Asia/Jakarta'))->toIso8601String(),
             'financial' => [
                 'gross_revenue' => $current['gross_revenue'],
+                'items_before_discount' => $current['items_before_discount'] ?? 0.0,
+                'product_discount' => $current['product_discount'] ?? 0.0,
+                'voucher_discount' => $current['voucher_discount'] ?? 0.0,
+                'insurance' => $current['insurance'] ?? 0.0,
                 'shipping_raw' => $current['shipping_raw'],
                 'shipping_paid_by_customer' => $current['shipping_paid_by_customer'],
                 'shipping_subsidy' => $current['shipping_subsidy'],
@@ -285,6 +289,7 @@ class StorePerformanceService
                 'payment_pending_count' => $current['payment_pending_count'],
                 'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, subsidi ongkir, refund retur, dan ongkir retur toko. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
+            'previous_has_data' => ($previous['orders'] ?? 0) > 0,
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
                 ['key' => 'traffic', 'title' => 'Kunjungan & Customer', 'kpis' => $trafficKpis],
@@ -364,6 +369,13 @@ class StorePerformanceService
         $shippingSubsidy = (float) (clone $revenueOrders)->sum('shipping_subsidy_amount');
         $shippingRaw = $shippingNet + $shippingSubsidy;
         $codFees = (float) (clone $revenueOrders)->sum('cod_fee_amount');
+        // Komponen pendapatan untuk laporan laba rugi bertingkat. Diambil dari
+        // scope yang sama dengan revenue agar jumlah komponen konsisten dengan
+        // gross yang dilaporkan.
+        $itemsBeforeDiscount = (float) (clone $revenueOrders)->sum('subtotal_amount');
+        $productDiscount = (float) (clone $revenueOrders)->sum('discount_amount');
+        $voucherDiscount = (float) (clone $revenueOrders)->sum('voucher_discount_amount');
+        $insurance = (float) (clone $revenueOrders)->sum('shipping_insurance_amount');
         $revenueOrderIds = (clone $revenueOrders)->pluck('id');
 
         $units = $revenueOrderIds->isEmpty()
@@ -420,7 +432,15 @@ class StorePerformanceService
         $cancellationCounts = $this->cancellationCounts($from, $to);
 
         $visitors = $this->visitorsBetween($from, $to);
-        $conversionRate = $visitors > 0 ? round(($orders / $visitors) * 100, 2) : 0.0;
+        // Jumlah pembeli unik, bukan jumlah pesanan: label metriknya
+        // "Pengunjung yang Membeli", jadi satu pelanggan dengan beberapa
+        // pesanan tetap dihitung satu orang.
+        $buyers = (clone $revenueOrders)
+            ->whereNotNull('customer_phone')
+            ->where('customer_phone', '!=', '')
+            ->distinct()
+            ->count('customer_phone');
+        $conversionRate = $visitors > 0 ? round(($buyers / $visitors) * 100, 2) : 0.0;
 
         [$newCustomers, $repeatCustomers] = $this->customerCounts($from, $to);
         $shippingCost = $this->shippingCostCounts($from, $to);
@@ -429,6 +449,10 @@ class StorePerformanceService
             'orders' => $orders,
             'revenue' => round($revenue, 2),
             'gross_revenue' => round($revenue, 2),
+            'items_before_discount' => round($itemsBeforeDiscount, 2),
+            'product_discount' => round($productDiscount, 2),
+            'voucher_discount' => round($voucherDiscount, 2),
+            'insurance' => round($insurance, 2),
             'shipping_raw' => round($shippingRaw, 2),
             'shipping_paid_by_customer' => round($shippingNet, 2),
             'shipping_subsidy' => round($shippingSubsidy, 2),
@@ -441,6 +465,7 @@ class StorePerformanceService
             'products_sold' => $productsSold,
             'avg_unit_price' => $avgUnitPrice,
             'visitors' => $visitors,
+            'buyers' => $buyers,
             'conversion_rate' => $conversionRate,
             'new_customers' => $newCustomers,
             'repeat_customers' => $repeatCustomers,
