@@ -57,7 +57,6 @@ export default function ModelProductForm({
   modelProduct,
   statuses,
   categories,
-  models,
   submitUrl,
   indexUrl,
   backUrl,
@@ -65,7 +64,6 @@ export default function ModelProductForm({
   modelProduct: ModelRecord | null
   statuses: string[]
   categories: Array<{ value: string; label: string }>
-  models: Array<{ value: string; label: string }>
   submitUrl: string
   indexUrl: string
   backUrl?: string | null
@@ -74,7 +72,6 @@ export default function ModelProductForm({
   const form = useForm({
     name: modelProduct?.name ?? "",
     product_category: modelProduct?.product_category ?? "",
-    product_model: modelProduct?.product_model ?? "",
     image_url: modelProduct?.image_url ?? "",
     description: modelProduct?.description ?? "",
     keywords: modelProduct?.keywords ?? [],
@@ -87,7 +84,7 @@ export default function ModelProductForm({
     <AdminLayout
       backUrl={backUrl}
       title={editing ? "Edit model produk" : "Tambah model produk"}
-      description="Tautkan ke kategori/model katalog agar statistik dan link storefront akurat."
+      description="Buat dan atur tampilan model produk di storefront."
       actions={
         <div className="flex items-center gap-2">
           <Button asChild variant="secondary">
@@ -125,7 +122,7 @@ export default function ModelProductForm({
               </tr>
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kategori katalog
+                  Kategori katalog <span className="text-destructive">*</span>
                 </th>
                 <td className="px-4 py-2.5">
                   <Select
@@ -133,33 +130,13 @@ export default function ModelProductForm({
                     onChange={(event) => form.setData("product_category", event.target.value)}
                     className="h-8 w-72 text-xs"
                   >
-                    <option value="">Pilih</option>
+                    <option value="">Pilih kategori</option>
                     {categories.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </Select>
                   {form.errors.product_category ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.product_category}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kode model katalog
-                </th>
-                <td className="px-4 py-2.5">
-                  <Select
-                    value={form.data.product_model}
-                    onChange={(event) => form.setData("product_model", event.target.value)}
-                    className="h-8 w-72 text-xs"
-                  >
-                    <option value="">Pilih</option>
-                    {models.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </Select>
-                  {form.errors.product_model ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.product_model}</p>
                   ) : null}
                 </td>
               </tr>

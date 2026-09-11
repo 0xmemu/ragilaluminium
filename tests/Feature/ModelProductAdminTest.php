@@ -153,7 +153,7 @@ class ModelProductAdminTest extends TestCase
             'name' => 'Jungkit',
             'category_id' => 1,
             'product_category' => 'JENDELA',
-            'product_model' => 'JUNGKIT',
+            'product_model' => 'JENDELA_JUNGKIT_UNGGULAN',
             'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
@@ -162,7 +162,6 @@ class ModelProductAdminTest extends TestCase
             ->post(route('admin.model-products.store'), [
                 'name' => 'Jendela Jungkit Unggulan',
                 'product_category' => 'JENDELA',
-                'product_model' => 'JUNGKIT',
                 'image_url' => 'https://cdn.example.com/jungkit.jpg',
                 'description' => 'Deskripsi jungkit dari admin untuk halaman detail model.',
                 'type' => 'polos',
@@ -172,7 +171,7 @@ class ModelProductAdminTest extends TestCase
             ->assertRedirect(route('admin.model-products.index'));
 
         $this->assertDatabaseHas('cms_model_products', [
-            'product_model' => 'JUNGKIT',
+            'product_model' => 'JENDELA_JUNGKIT_UNGGULAN',
             'description' => 'Deskripsi jungkit dari admin untuk halaman detail model.',
         ]);
 
@@ -181,11 +180,11 @@ class ModelProductAdminTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Home')
                 ->where('modelCards.0.title', 'Jendela Jungkit Unggulan')
-                ->where('modelCards.0.model', 'JUNGKIT')
+                ->where('modelCards.0.model', 'JENDELA_JUNGKIT_UNGGULAN')
                 ->where('modelCards.0.desc', 'Deskripsi jungkit dari admin untuk halaman detail model.')
                 ->where('modelCards.0.subtitle', null));
 
-        $this->get(route('catalog.model', ['category' => 'jendela', 'model' => 'jungkit']))
+        $this->get(route('catalog.model', ['category' => 'jendela', 'model' => 'jendela-jungkit-unggulan']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/ModelDetail')

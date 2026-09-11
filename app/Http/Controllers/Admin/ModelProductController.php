@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\CmsModelProduct;
 use App\Services\ActivityLogService;
 use App\Services\ModelProductService;
-use App\Support\CatalogLabels;
 use App\Support\CatalogTaxonomy;
 use App\Support\CategoryUrl;
+use Illuminate\Support\Str;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,7 +26,7 @@ class ModelProductController extends Controller
 
         return Inertia::render('Admin/ModelProducts/Index', [
             'title' => 'Daftar Model Produk',
-            'description' => 'Kelola model produk yang digunakan untuk mengelompokkan produk di toko.',
+            'description' => 'Kelola model produk yang tampil sebagai wadah produk di toko.',
             'filters' => [
                 'q' => $q,
                 'status' => in_array($status, CmsModelProduct::STATUSES, true) ? $status : '',
@@ -53,7 +53,6 @@ class ModelProductController extends Controller
             'modelProduct' => null,
             'statuses' => CmsModelProduct::STATUSES,
             'categories' => $this->categoryOptions(),
-            'models' => $this->modelOptions(),
             'submitUrl' => route('admin.model-products.store'),
             'indexUrl' => route('admin.model-products.index'),
         ]);
@@ -99,7 +98,6 @@ class ModelProductController extends Controller
             ],
             'statuses' => CmsModelProduct::STATUSES,
             'categories' => $this->categoryOptions(),
-            'models' => $this->modelOptions(),
             'submitUrl' => route('admin.model-products.update', $modelProduct),
             'indexUrl' => route('admin.model-products.index'),
         ]);
@@ -107,7 +105,7 @@ class ModelProductController extends Controller
 
     public function update(Request $request, CmsModelProduct $modelProduct): RedirectResponse
     {
-        $modelProduct->update($this->validated($request));
+        $modelProduct->update($this->validated($request, $modelProduct));
         CatalogTaxonomy::forgetCache();
 
         ActivityLogService::record(
@@ -176,12 +174,11 @@ class ModelProductController extends Controller
     }
 
     /** @return array<string, mixed> */
-    protected function validated(Request $request): array
+    protected function validated(Request $request, ?CmsModelProduct $existing = null): array
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'product_category' => ['nullable', 'string', Rule::in(CategoryUrl::productCategoryCodes())],
-            'product_model' => ['nullable', 'string', 'max:64'],
+            'product_category' => ['required', 'string', Rule::in(CategoryUrl::productCategoryCodes())],
             'image_url' => ['nullable', 'string', 'max:2048'],
             'description' => ['nullable', 'string', 'max:5000'],
             'keywords' => ['nullable', 'array', 'max:6'],
@@ -192,7 +189,8 @@ class ModelProductController extends Controller
         ]);
 
         $validated['product_category'] = $validated['product_category'] ?: null;
-        $validated['product_model'] = CatalogLabels::normalizeModel($validated['product_model'] ?? null);
+        $validated['product_model'] = $existing?->product_model
+            ?: mb_strtoupper(Str::slug((string) $validated['name'], '_'));
         $validated['image_url'] = $validated['image_url'] ?: null;
         $validated['description'] = filled($validated['description'] ?? null)
             ? trim((string) $validated['description'])
@@ -237,15 +235,4 @@ class ModelProductController extends Controller
             ->all();
     }
 
-    /** @return list<array{value:string,label:string}> */
-    protected function modelOptions(): array
-    {
-        return collect(CatalogLabels::modelCodes())
-            ->map(fn (string $code) => [
-                'value' => $code,
-                'label' => CatalogLabels::model($code),
-            ])
-            ->values()
-            ->all();
-    }
 }
