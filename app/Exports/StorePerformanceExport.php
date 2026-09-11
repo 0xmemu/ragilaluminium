@@ -595,8 +595,8 @@ class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
         $r = 1;
 
         $rows[] = [
-            'Nomor Pesanan', 'Tanggal Pesanan', 'Parent SKU', 'Nama Produk',
-            'Variasi', 'Harga Satuan', 'Qty', 'Subtotal Baris', 'Diskon Baris',
+            'Nomor Pesanan', 'Tanggal Pesanan', 'SKU Induk', 'Nama Produk',
+            'Variasi', 'Harga Satuan', 'Jumlah', 'Subtotal Baris', 'Diskon Baris',
         ];
         $r++;
 
