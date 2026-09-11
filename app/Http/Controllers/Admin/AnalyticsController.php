@@ -179,6 +179,13 @@ class AnalyticsController extends Controller
                     to: $monthTo->toDateString(),
                     granularity: $exportGranularity,
                 );
+
+                // Kontrak export: rincian baris wajib ikut rentang payload
+                // bulan ini. Tanpa ini, sheet Rincian Pesanan & Item Terjual
+                // tiap bulan kosong padahal angka finansialnya ada (bug 2026-09-11).
+                $monthPayload['income_detail'] = \App\Support\IncomeDetailQuery::orders($monthPayload['range']['from_date_iso'], $monthPayload['range']['to_date_iso']);
+                $monthPayload['sold_items'] = \App\Support\IncomeDetailQuery::items($monthPayload['range']['from_date_iso'], $monthPayload['range']['to_date_iso']);
+
                 ExportSafety::assertPerformancePayloadWithinLimit($monthPayload);
                 $suffix = $monthFrom->translatedFormat('M Y');
                 $sheets = array_merge($sheets, (new StorePerformanceExport($monthPayload, $suffix))->sheets());

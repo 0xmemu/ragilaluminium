@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Exports\Concerns\RagilStyledExport;
 use App\Support\ExportSafety;
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -28,6 +29,9 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  *                         retur dalam satu sheet, tiap blok berjudul.
  *   5. Panduan          - aturan baca, definisi, format angka.
  *
+ * PENTING: baris pemisah antarblok wajib ditulis [""] (satu sel kosong),
+ * BUKAN array kosong []. Maatwebsite membuang [] saat menulis sehingga
+ * seluruh nomor baris styling bergeser (insiden 2026-09-11).
  * Aturan format: header tabel WAJIB di baris 1 (freeze + autofilter milik
  * RagilStyledExport mengunci baris 1), jadi sheet yang butuh blok ringkasan
  * memakai layout dua kolom label-nilai tanpa header tabel, bukan menyelipkan
@@ -60,7 +64,7 @@ class StorePerformanceExport implements WithMultipleSheets
  * Basis sheet tabel datar: styling RagilStyledExport (header merah baris 1,
  * border, zebra, freeze, autofilter) + format angka per sel.
  */
-abstract class StorePerformanceTableSheet extends RagilStyledExport implements FromArray, WithTitle
+abstract class StorePerformanceTableSheet extends RagilStyledExport implements FromArray, WithTitle, WithStrictNullComparison
 {
     /** @var list<array{0: int, 1: int, 2: string}> [baris, indeks kolom, format] */
     protected array $numberCells = [];
@@ -307,7 +311,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $this->subtitleRows[] = $r - 1;
         $push(['', 'Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-'), '', '', '']);
         $this->subtitleRows[] = $r - 1;
-        $push([]);
+        $push([""]);
 
         // Judul kolom laporan (bukan header tabel, hanya penanda kolom).
         $head = $push(['', 'Keterangan', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
@@ -343,7 +347,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $money('TOTAL DIBAYAR PEMBELI', $fin['gross_revenue'] ?? null, 0, true);
         $push(['', '    Nilai produk terjual sudah memakai harga promo yang berlaku. Pembeli menghemat '.number_format($num($fin['product_discount'] ?? 0), 0, ',', '.').' dibanding harga normal, angka itu bukan pengurang tagihan sehingga tidak dikurangkan di sini.', '', '', '']);
         $this->noteRows[] = $r - 1;
-        $push([]);
+        $push([""]);
 
         // ---- BEBAN ----
         $push(['', 'BEBAN YANG DITANGGUNG TOKO', '', '', '']);
@@ -356,7 +360,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $totalBeban = $num($fin['shipping_raw'] ?? 0) + $num($fin['cod_fee'] ?? 0)
             + $num($fin['refund_adjustments'] ?? 0) + $num($fin['return_shipping_store'] ?? 0);
         $money('Jumlah beban toko', -1 * $totalBeban, 0, true);
-        $push([]);
+        $push([""]);
 
         // ---- HASIL ----
         $push(['', 'HASIL', '', '', '']);
@@ -365,15 +369,18 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $this->grandTotalRows[] = $r - 1;
         $push(['', '    Catatan: subsidi ongkir '.number_format($num($fin['shipping_subsidy'] ?? 0), 0, ',', '.').' sudah termasuk dalam ongkir yang dibayarkan ke J&T, tidak dikurangkan dua kali.', '', '', '']);
         $this->noteRows[] = $r - 1;
-        $push([]);
+        $push([""]);
 
         // ---- ARUS KAS ----
         $push(['', 'ARUS KAS', '', '', '']);
         $this->groupRows[] = $r - 1;
-        $money('Pembayaran sudah diterima', $fin['payments_received'] ?? null, 1);
+        // Alur uang: komponen dulu, hasil akhir belakangan. Transfer cair
+        // diturunkan dari pembayaran selesai dikurangi COD selesai.
+        $money('Transfer bank sudah cair', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0), 1);
         $money('COD sudah cair', $fin['cod_paid'] ?? null, 1);
+        $money('Pembayaran sudah diterima', $fin['payments_received'] ?? null, 0, true);
         $money('COD belum cair, '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null, 1);
-        $push([]);
+        $push([""]);
 
         // ---- KPI OPERASIONAL ----
         foreach ($this->payload['sections'] ?? [] as $section) {
@@ -400,7 +407,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
                     }
                 }
             }
-            $push([]);
+            $push([""]);
         }
 
         return $rows;
@@ -664,7 +671,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         $rows[$r - 2][0] = 'ANALISIS PENJUALAN';
         $push(['Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')]);
         $this->subtitleRows[] = $r - 1;
-        $push([]);
+        $push([""]);
 
         // Judul blok dan subtitle memakai kolom A, jadi styleReportRows
         // versi kelas ini menargetkan kolom A.
@@ -707,7 +714,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $push(['Menampilkan 15 produk teratas dari '.count($topAll).' produk yang terjual.']);
             $this->noteRows[] = $r - 1;
         }
-        $push([]);
+        $push([""]);
 
         // ---- BLOK 2: INTERAKSI PRODUK (sebelumnya tidak pernah diekspor) ----
         $block('PRODUK PALING DILIHAT', ['SKU Induk', 'Nama Produk', 'Dilihat', 'Diklik', 'Total Interaksi'], 'E');
@@ -733,7 +740,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $push(['Menampilkan 15 produk teratas dari '.count($viewedAll).' produk yang pernah dilihat.']);
             $this->noteRows[] = $r - 1;
         }
-        $push([]);
+        $push([""]);
 
         // ---- BLOK 3: PELANGGAN ----
         $block('PELANGGAN TERBAIK', ['Nama Pelanggan', 'Nomor HP', 'Jumlah Pesanan', 'Total Belanja', 'Pesanan Terakhir'], 'E');
@@ -764,7 +771,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $money($line, [3, 4]);
             $this->trackZeroCells($row, $line);
         }
-        $push([]);
+        $push([""]);
 
         // ---- BLOK 4: BAURAN PEMBAYARAN (sebelumnya tidak pernah diekspor) ----
         $block('BAURAN METODE PEMBAYARAN', ['Metode', 'Jumlah Pesanan', 'Nilai Penjualan', 'Porsi Nilai', ''], 'D');
@@ -790,7 +797,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $this->registerNumber($line, 3, '#,##0');
             $this->registerNumber($line, 4, '0.00"%"');
         }
-        $push([]);
+        $push([""]);
 
         // ---- BLOK 5: BIAYA RETUR ----
         $block('BIAYA RETUR DITANGGUNG TOKO', ['Nomor Pesanan', 'Tanggal Selesai', 'Pihak Penyebab', 'Alasan', 'Ongkir Retur'], 'E');
@@ -882,12 +889,12 @@ class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\E
         return [
             ['PANDUAN LAPORAN PERFORMA TOKO', 'Ragil Aluminium'],
             ['Periode laporan: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')],
-            [],
+            [''],
             ['ISI BERKAS', 'Laba Rugi = laporan bertingkat, pendapatan lalu beban lalu penjualan bersih. Rincian Pesanan = 1 baris per pesanan, header di baris 1, baris terakhir JUMLAH. Rincian Item = 1 baris per item pesanan. Analisis = produk, pelanggan, bauran pembayaran, dan biaya retur dalam satu sheet berblok.'],
             ['CARA MEMBACA', 'Mulai dari sheet Laba Rugi untuk melihat hasil periode. Bila sebuah angka ingin diperiksa asalnya, buka Rincian Pesanan dan cocokkan dengan baris JUMLAH di bawah tabel. Angka pada baris JUMLAH sama dengan angka pada Laba Rugi.'],
             ['ALUR UANG', 'Nilai produk sebelum potongan, dikurangi diskon produk dan voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan, menghasilkan Total Dibayar Pembeli. Dari angka itu dikurangi ongkir yang dibayarkan ke J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko, menghasilkan Penjualan Bersih.'],
             ['SUBSIDI ONGKIR', 'Subsidi ongkir adalah bagian ongkir yang ditanggung toko. Nilainya sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah. Kolom Subsidi Ongkir Toko di Rincian Pesanan hanya keterangan, bukan pengurang tambahan.'],
-            ['ARUS KAS', 'Penjualan Bersih adalah hak toko atas periode ini, belum tentu sudah menjadi uang. Uang Sudah Masuk adalah yang benar-benar diterima. Belum Cair adalah pesanan COD yang barangnya belum sampai sehingga pembeli belum membayar.'],
+            ['ARUS KAS', 'Penjualan Bersih adalah hak toko atas periode ini, belum tentu sudah menjadi uang. Pembayaran sudah diterima = transfer bank cair + COD cair pada periode. COD belum cair dihitung terpisah: barangnya belum sampai sehingga pembeli belum membayar.'],
             ['METRIK PRODUK', 'Tiga tingkat berbeda: Model Produk Terjual menghitung jenis model, Produk Terjual menghitung varian atau ukuran, Jumlah Unit Terjual menghitung batang barang. Jangan disamakan.'],
             ['PENGUNJUNG YANG MEMBELI', 'Dihitung dari jumlah pembeli unik dibagi jumlah pengunjung, bukan jumlah pesanan dibagi pengunjung. Satu pelanggan dengan beberapa pesanan tetap dihitung satu orang.'],
             ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya membandingkan dengan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data, bukan angka nol, supaya tidak muncul persentase perubahan yang menyesatkan.'],
