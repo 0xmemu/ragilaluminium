@@ -92,7 +92,6 @@ class ModelProductController extends Controller
                 'image_url' => $modelProduct->image_url,
                 'description' => $modelProduct->description,
                 'keywords' => $modelProduct->keywords ?? [],
-                'menu_href' => $modelProduct->menu_href,
                 'status' => $modelProduct->status,
                 'sort_order' => $modelProduct->sort_order,
             ],
@@ -183,7 +182,6 @@ class ModelProductController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'keywords' => ['nullable', 'array', 'max:6'],
             'keywords.*' => ['nullable', 'string', 'max:64'],
-            'menu_href' => ['nullable', 'string', 'max:2048'],
             'status' => ['required', Rule::in(CmsModelProduct::STATUSES)],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
@@ -194,9 +192,6 @@ class ModelProductController extends Controller
         $validated['image_url'] = $validated['image_url'] ?: null;
         $validated['description'] = filled($validated['description'] ?? null)
             ? trim((string) $validated['description'])
-            : null;
-        $validated['menu_href'] = filled($validated['menu_href'] ?? null)
-            ? trim((string) $validated['menu_href'])
             : null;
         $validated['keywords'] = array_values(array_filter(
             array_map(

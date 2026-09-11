@@ -611,7 +611,7 @@ Indexes:
 - `product_category` (`VARCHAR`), nullable
 - `product_model` (`VARCHAR`), nullable
 - `description` (`TEXT`), nullable
-- `menu_href` (`VARCHAR 2048`), nullable (link menu override, migrasi 2026-08-10)
+- `menu_href` (`VARCHAR 2048`), nullable, legacy tidak dipakai UI/runtime (menu model selalu link otomatis kategori/model)
 - `keywords` (`JSON`), nullable (array kata kunci 0-6, migrasi 2026-08-17; menggantikan kolom highlights)
 
 Nilai enum `type`: `polos`, `ornamen`, `lainnya` (default `polos`).

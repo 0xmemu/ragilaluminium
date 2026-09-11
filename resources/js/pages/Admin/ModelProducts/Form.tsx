@@ -18,7 +18,6 @@ interface ModelRecord {
   image_url?: string | null
   description?: string | null
   keywords?: string[]
-  menu_href?: string | null
   status: string
   sort_order: number
 }
@@ -75,7 +74,6 @@ export default function ModelProductForm({
     image_url: modelProduct?.image_url ?? "",
     description: modelProduct?.description ?? "",
     keywords: modelProduct?.keywords ?? [],
-    menu_href: modelProduct?.menu_href ?? "",
     status: modelProduct?.status ?? "draft",
     sort_order: modelProduct?.sort_order ?? 0,
   })
@@ -258,26 +256,6 @@ export default function ModelProductForm({
                   ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
                     Tiap baris menjadi satu pill di hero halaman detail model. Pilih dari template atau tulis sendiri, maksimal 2 kata. Maksimal 6 pill.
-                  </p>
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  URL menu kustom (opsional)
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    type="url"
-                    value={form.data.menu_href}
-                    onChange={(event) => form.setData("menu_href", event.target.value)}
-                    className="h-8 text-xs"
-                    placeholder="https://… atau /products/…"
-                  />
-                  {form.errors.menu_href ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.menu_href}</p>
-                  ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Dipakai di menu kategori beranda. Kosongkan untuk memakai link otomatis ke halaman model.
                   </p>
                 </td>
               </tr>

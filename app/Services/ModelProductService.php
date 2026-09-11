@@ -347,8 +347,7 @@ class ModelProductService
 
     /**
      * Menu kategori horizontal beranda — model produk aktif (urut CMS `sort_order`)
-     * beserta sub-model (desain) masing-masing. Routing default dari category/model,
-     * atau `menu_href` kustom bila diisi di admin.
+     * beserta sub-model (desain) masing-masing. Routing selalu otomatis dari category/model.
      *
      * @return list<array{key:string,label:string,href:string,category:?string,model:?string,subs:list<array{label:string,href:string}>}>
      */
@@ -385,12 +384,10 @@ class ModelProductService
             $categorySlug = CategoryUrl::categoryToSlug((string) $row->product_category);
             $modelSlug = strtolower(str_replace('_', '-', $row->product_model));
 
-            $href = filled($row->menu_href)
-                ? (string) $row->menu_href
-                : route('catalog.model', [
-                    'category' => $categorySlug,
-                    'model' => $modelSlug,
-                ], absolute: false);
+            $href = route('catalog.model', [
+                'category' => $categorySlug,
+                'model' => $modelSlug,
+            ], absolute: false);
 
             $subs = [];
             foreach ($designCodes as $code) {
