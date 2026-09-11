@@ -3,6 +3,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,7 +13,12 @@ import {
 import { formatCurrency } from "@/lib/format"
 
 interface SalesAreaChartProps {
-  series: Array<{ label: string; value: number }>
+  series: Array<{
+    label: string
+    value: number
+    previous_value?: number
+    previous_label?: string | null
+  }>
 }
 
 function getCleanTicks<T extends { label: string }>(series: T[]): string[] {
@@ -75,16 +81,61 @@ export default function SalesAreaChart({ series = [] }: SalesAreaChartProps) {
           <Tooltip
             content={({ active, payload }) => {
               if (!active || !payload || !payload.length) return null
-              const item = payload[0].payload as { label: string; value: number }
+              const item = payload[0].payload as {
+                label: string
+                value: number
+                previous_value?: number
+                previous_label?: string | null
+              }
+              const currentVal = Number(item.value ?? 0)
+              const prevVal = Number(item.previous_value ?? 0)
+              const hasPrev = item.previous_value !== undefined
+
               return (
-                <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur-md">
-                  <p className="font-medium text-muted-foreground">{item.label}</p>
-                  <p className="tabular-nums mt-0.5 text-sm font-bold text-foreground">
-                    {formatCurrency(Number(item.value))}
+                <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur-md space-y-1">
+                  <p className="font-semibold text-foreground border-b border-border/50 pb-1">
+                    {item.label} {item.previous_label ? <span className="text-[11px] font-normal text-muted-foreground">vs {item.previous_label}</span> : null}
                   </p>
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                      <span className="size-2 rounded-full inline-block" style={{ backgroundColor: "hsl(var(--primary))" }} />
+                      Periode Ini:
+                    </span>
+                    <span className="tabular-nums font-bold text-foreground">
+                      {formatCurrency(currentVal)}
+                    </span>
+                  </div>
+                  {hasPrev ? (
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <span className="size-2 rounded-full inline-block bg-muted-foreground/40" />
+                        Periode Lalu:
+                      </span>
+                      <span className="tabular-nums font-medium text-muted-foreground">
+                        {formatCurrency(prevVal)}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               )
             }}
+          />
+          <Line
+            type="monotone"
+            dataKey="previous_value"
+            name="Periode Lalu"
+            stroke="hsl(var(--muted-foreground) / 0.4)"
+            strokeWidth={1.75}
+            strokeDasharray="4 4"
+            dot={false}
+            activeDot={{
+              r: 4,
+              stroke: "hsl(var(--background))",
+              strokeWidth: 2,
+              fill: "hsl(var(--muted-foreground))",
+            }}
+            isAnimationActive={true}
+            animationDuration={600}
           />
           <Area
             type="monotone"

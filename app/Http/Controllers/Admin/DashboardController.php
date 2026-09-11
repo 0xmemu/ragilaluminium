@@ -506,6 +506,7 @@ class DashboardController extends Controller
                 'units_delta' => $unitsDelta,
                 'sparkline' => $revenueSparkline,
                 'series' => $revenueChart['series'] ?? [],
+                'previous_series' => $revenueChart['previous_series'] ?? [],
             ],
             'financial' => [
                 'awaiting_confirmation_amount' => (float) $pendingPaymentQuery->sum('total_amount'),
@@ -533,6 +534,7 @@ class DashboardController extends Controller
                     'total_format' => 'number',
                     'granularity' => $performance['range']['granularity'] ?? 'day',
                     'series' => $performaVisitorChart['series'] ?? [],
+                    'previous_series' => $performaVisitorChart['previous_series'] ?? [],
                 ],
                 'detail_href' => route('admin.analytics.store-performance', ['period' => $performaPeriod]),
             ],
