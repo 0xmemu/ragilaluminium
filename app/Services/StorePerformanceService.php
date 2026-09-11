@@ -287,7 +287,7 @@ class StorePerformanceService
                 'cod_pending_amount' => $current['cod_pending_amount'],
                 'cod_pending_count' => $current['cod_pending_count'],
                 'payment_pending_count' => $current['payment_pending_count'],
-                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, subsidi ongkir, refund retur, dan ongkir retur toko. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
+                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di ongkir raw J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
             'sections' => [

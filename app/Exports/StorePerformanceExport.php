@@ -379,7 +379,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $money('Transfer bank sudah cair', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0), 1);
         $money('COD sudah cair', $fin['cod_paid'] ?? null, 1);
         $money('Pembayaran sudah diterima', $fin['payments_received'] ?? null, 0, true);
-        $money('COD belum cair, '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null, 1);
+        $money('COD belum dibayar pembeli, '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null, 1);
         $push([""]);
 
         // ---- KPI OPERASIONAL ----
@@ -894,7 +894,7 @@ class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\E
             ['CARA MEMBACA', 'Mulai dari sheet Laba Rugi untuk melihat hasil periode. Bila sebuah angka ingin diperiksa asalnya, buka Rincian Pesanan dan cocokkan dengan baris JUMLAH di bawah tabel. Angka pada baris JUMLAH sama dengan angka pada Laba Rugi.'],
             ['ALUR UANG', 'Nilai produk sebelum potongan, dikurangi diskon produk dan voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan, menghasilkan Total Dibayar Pembeli. Dari angka itu dikurangi ongkir yang dibayarkan ke J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko, menghasilkan Penjualan Bersih.'],
             ['SUBSIDI ONGKIR', 'Subsidi ongkir adalah bagian ongkir yang ditanggung toko. Nilainya sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah. Kolom Subsidi Ongkir Toko di Rincian Pesanan hanya keterangan, bukan pengurang tambahan.'],
-            ['ARUS KAS', 'Penjualan Bersih adalah hak toko atas periode ini, belum tentu sudah menjadi uang. Pembayaran sudah diterima = transfer bank cair + COD cair pada periode. COD belum cair dihitung terpisah: barangnya belum sampai sehingga pembeli belum membayar.'],
+            ['ARUS KAS', 'Penjualan Bersih adalah hak toko atas periode ini, belum tentu sudah menjadi uang. Pembayaran sudah diterima = transfer bank cair + COD cair pada periode. COD belum dibayar pembeli dihitung terpisah: barangnya belum sampai sehingga pembeli memang belum membayar, bukan uang yang tertahan di pihak kurir.'],
             ['METRIK PRODUK', 'Tiga tingkat berbeda: Model Produk Terjual menghitung jenis model, Produk Terjual menghitung varian atau ukuran, Jumlah Unit Terjual menghitung batang barang. Jangan disamakan.'],
             ['PENGUNJUNG YANG MEMBELI', 'Dihitung dari jumlah pembeli unik dibagi jumlah pengunjung, bukan jumlah pesanan dibagi pengunjung. Satu pelanggan dengan beberapa pesanan tetap dihitung satu orang.'],
             ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya membandingkan dengan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data, bukan angka nol, supaya tidak muncul persentase perubahan yang menyesatkan.'],
