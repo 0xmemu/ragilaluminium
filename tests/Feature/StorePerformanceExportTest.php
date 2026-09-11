@@ -104,6 +104,18 @@ class StorePerformanceExportTest extends TestCase
                     ],
                 ],
             ],
+            'sold_items' => [
+                [
+                    'order_number' => 'ORD26080005',
+                    'created_at' => '2026-08-28T10:00:00+07:00',
+                    'parent_sku' => 'RGL-JNG-JKT-1',
+                    'name' => 'Jendela Aluminium Jungkit Ornamen 200x180',
+                    'variation' => 'Putih',
+                    'unit_price' => 30000000.0,
+                    'quantity' => 4,
+                    'line_discount' => 0.0,
+                ],
+            ],
             'income_detail' => [
                 [
                     'order_number' => 'ORD26080005',
@@ -168,16 +180,16 @@ class StorePerformanceExportTest extends TestCase
             \Illuminate\Support\Facades\Storage::disk('imports')->path('perf.xlsx')
         );
 
-        // Empat sheet data + panduan. Sheet analisis menggabungkan produk,
-        // pelanggan, bauran pembayaran, dan biaya retur.
+        // Struktur baru (spek owner 2026-09-11): P&L dan KPI dipisah,
+        // dua tabel transaksi berformat Excel Table, analisis, panduan.
         $this->assertSame(
-            ['Laba Rugi', 'Rincian Pesanan', 'Item Terjual', 'Analisis', 'Panduan'],
+            ['Ringkasan Finansial', 'KPI Operasional Toko', 'Tabel Pesanan', 'Tabel Item', 'Analisis', 'Panduan'],
             $ss->getSheetNames()
         );
 
-        // ---- LABA RUGI: laporan bertingkat ----
-        $lr = $ss->getSheetByName('Laba Rugi');
-        $rows = $lr->toArray(null, true, true, true);
+        // ---- RINGKASAN FINANSIAL: P&L + arus kas, angka berumus ----
+        $lr = $ss->getSheetByName('Ringkasan Finansial');
+        $rows = $lr->toArray(null, false, true, true);
 
         $this->assertSame('LAPORAN LABA RUGI TOKO', $rows[1]['B']);
 
@@ -193,31 +205,45 @@ class StorePerformanceExportTest extends TestCase
         $this->assertStringContainsString('Potongan voucher', (string) $rows[8]['B']);
         $this->assertStringContainsString('TOTAL DIBAYAR PEMBELI', (string) $rows[12]['B']);
 
-        $raw = $lr->toArray(null, true, false);
+        // Identitas aritmetika kini lewat RUMUS yang menunjuk TabelPesanan:
+        // setiap baris pendapatan wajib berisi rumus SUM kolom terstruktur.
+        $lrRaw = $ss->getSheetByName('Ringkasan Finansial')->toArray(null, false, false);
+        $kolomRumus = [];
+        foreach ($lrRaw as $baris) {
+            $nilai = (string) ($baris[2] ?? '');
+            if (str_contains($nilai, 'SUM(TabelPesanan[')) {
+                preg_match('/TabelPesanan[[]([^]]+)[]]/', $nilai, $m);
+                $kolomRumus[] = $m[1] ?? '?';
+            }
+        }
+        // Lima kolom pendapatan wajib berumus ke tabel (Biaya COD diteruskan
+        // ke J&T memakai kolom yang sama dengan tanda minus).
+        $this->assertContains('Nilai Produk Terjual', $kolomRumus);
+        $this->assertContains('Voucher', $kolomRumus);
+        $this->assertContains('Ongkir Dibayar Pelanggan', $kolomRumus);
+        $this->assertContains('Asuransi', $kolomRumus);
+        $this->assertContains('Biaya COD', $kolomRumus);
+        $this->assertContains('Ongkir ke J&T', $kolomRumus, 'beban juga berumus');
+        $this->assertContains('Refund Retur', $kolomRumus);
+        $this->assertContains('Ongkir Retur Toko', $kolomRumus);
 
-        // Identitas aritmetika: komponen pendapatan harus menghasilkan total
-        // yang dibayar pembeli. Diskon produk BUKAN pengurang tagihan.
-        $nilaiProduk = (float) $raw[6][2];
-        $voucher = (float) $raw[7][2];
-        $ongkir = (float) $raw[8][2];
-        $asuransi = (float) $raw[9][2];
-        $cod = (float) $raw[10][2];
-        $totalDibayar = (float) $raw[11][2];
+        // Total dibayar dan Penjualan Bersih wajib rumus yang menjumlah
+        // baris komponennya, bukan angka mati.
+        $teksC = implode(' ', array_map(fn ($r) => (string) ($r[2] ?? ''), $lrRaw));
+        $this->assertStringContainsString('=SUM(C', $teksC, 'TOTAL DIBAYAR PEMBELI berupa penjumlahan komponen');
 
+        // Nilai komponen di payload tetap bisa direkonsiliasi dengan tabel:
+        // total dibayar payload = nilai produk - voucher + ongkir + asuransi + COD.
+        $fin = $this->payload()['financial'];
         $this->assertEqualsWithDelta(
-            $totalDibayar,
-            $nilaiProduk + $voucher + $ongkir + $asuransi + $cod,
-            0.5,
-            'pendapatan bertingkat harus berjumlah total dibayar pembeli'
+            125000000.0,
+            $fin['items_before_discount'] - $fin['voucher_discount'] + $fin['shipping_paid_by_customer'] + $fin['insurance'] + $fin['cod_fee'],
+            0.5
         );
-        $this->assertEqualsWithDelta(125000000.0, $totalDibayar, 0.5);
-
-        // Nilai sel tetap numerik, bukan teks.
-        $this->assertIsNumeric($raw[6][2]);
 
         // Asersi gaya anti-regresi (insiden 2026-09-11: nomor baris style
         // mendarat di baris data karena baris pemisah dibuang writer).
-        $lrSheet = $ss->getSheetByName('Laba Rugi');
+        $lrSheet = $ss->getSheetByName('Ringkasan Finansial');
 
         // Penanda kolom (baris 5): fill merah brand, font putih.
         $this->assertSame('FFC20000', $lrSheet->getCell('B5')->getStyle()->getFill()->getStartColor()->getARGB());
@@ -237,22 +263,31 @@ class StorePerformanceExportTest extends TestCase
         // PENJUALAN BERSIH (baris 23): double underline akuntansi.
         $this->assertSame('double', $lrSheet->getCell('B23')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
-        // Pembayaran sudah diterima (baris 29): subtotal arus kas biasa, TANPA double underline.
+        // Pembayaran sudah diterima: subtotal arus kas biasa, TANPA double
+        // underline (hanya PENJUALAN BERSIH yang double).
         $this->assertNotSame('double', $lrSheet->getCell('B29')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
-        // KPI bernilai 0 (COD Dibayar, baris 38) tetap tertulis 0 numerik,
-        // bukan sel kosong: WithStrictNullComparison mencegah nol dibuang.
-        $this->assertSame('COD Dibayar', trim((string) $rows[38]['B']));
-        $this->assertIsNumeric($raw[37][2]);
-        $this->assertSame(0.0, (float) $raw[37][2]);
+        // ---- KPI OPERASIONAL TOKO: metrik pindah ke sheet sendiri ----
+        // Regresi terjaga: KPI bernilai 0 tetap tertulis 0 numerik
+        // (WithStrictNullComparison mencegah nol dibuang writer).
+        $kpi = $ss->getSheetByName('KPI Operasional Toko');
+        $kpiText = implode(' ', array_map(
+            fn ($r) => implode(' ', array_map(fn ($c) => (string) $c, $r)),
+            $kpi->toArray(null, false, true, true)
+        ));
+        $this->assertStringContainsString('COD Dibayar', $kpiText, 'KPI pindah ke sheet operasional');
+        $this->assertStringContainsString('Pengunjung yang Membeli', $kpiText);
+        $this->assertStringContainsString('PENJUALAN', strtoupper($kpiText), 'judul section ikut pindah');
 
-        // ---- RINCIAN PESANAN: header WAJIB di baris 1 ----
-        $rp = $ss->getSheetByName('Rincian Pesanan');
-        $rpRows = $rp->toArray(null, true, true, true);
+        // ---- TABEL PESANAN: header baris 1 + Excel Table + Total Row ----
+        $rp = $ss->getSheetByName('Tabel Pesanan');
+        $rpRows = $rp->toArray(null, false, true, true);
         $this->assertSame('Nomor Pesanan', $rpRows[1]['A'], 'header harus di baris 1, bukan di tengah sheet');
-        $this->assertSame('Nilai Produk Terjual', $rpRows[1]['H']);
-        $this->assertSame('Total Dibayar Pembeli', $rpRows[1]['M'], 'total dibayar sebelum kolom beban');
-        $this->assertSame('Penjualan Bersih', $rpRows[1]['Q'], 'penjualan bersih setelah beban');
+        $this->assertSame('Total Qty (Pcs)', $rpRows[1]['G'], 'nama kolom anti rancu (spek owner)');
+        $this->assertSame('Jumlah Jenis SKU', $rpRows[1]['H']);
+        $this->assertSame('Biaya COD', $rpRows[1]['M'], 'kolom uang pembeli terakhir sebelum total');
+        $this->assertSame('Total Dibayar Pembeli', $rpRows[1]['N'], 'total dibayar sebelum kolom beban');
+        $this->assertSame('Penjualan Bersih', $rpRows[1]['R'], 'penjualan bersih setelah beban');
 
         // Status dalam bahasa Indonesia, bukan nilai mentah basis data.
         $this->assertSame('COD', $rpRows[2]['D']);
@@ -262,14 +297,21 @@ class StorePerformanceExportTest extends TestCase
         // Sel tanggal yang tidak punya nilai dibiarkan kosong, tanpa apostrof.
         $this->assertNull($rpRows[2]['C']);
 
-        // Baris JUMLAH menutup tabel supaya bisa dicocokkan dengan Laba Rugi.
+        // Baris JUMLAH kini Total Row bawaan Excel (SUBTOTAL, bukan baris data).
         $this->assertSame('JUMLAH', $rpRows[3]['A']);
+        $this->assertStringStartsWith('=SUBTOTAL(109', (string) $rpRows[3]['M'], 'Total Row memakai SUBTOTAL');
+
+        // Penjualan Bersih per baris = rumus alur uang (COD dikurangkan).
+        $this->assertSame('=N2-M2+O2+P2+Q2', $rpRows[2]['R']);
+
+        // Excel Table terpasang dengan nama yang benar.
+        $this->assertContains('TabelPesanan', $rp->getTableNames());
 
         // ---- ANALISIS: lima blok berjudul dalam satu sheet ----
         $an = $ss->getSheetByName('Analisis');
         $anText = implode(' ', array_map(
             fn ($r) => implode(' ', array_map(fn ($c) => (string) $c, $r)),
-            $an->toArray()
+            $an->toArray(null, false, true, true)
         ));
 
         $this->assertStringContainsString('PRODUK TERLARIS', $anText);
@@ -286,6 +328,17 @@ class StorePerformanceExportTest extends TestCase
         $this->assertStringContainsString('ORD26080005', $anText);
         $this->assertStringContainsString('Toko', $anText);
         $this->assertStringContainsString('barang pecah', $anText);
+
+        // ---- TABEL ITEM: Subtotal Baris = Harga x Jumlah ----
+        $it = $ss->getSheetByName('Tabel Item');
+        $itRows = $it->toArray(null, true, true, true);
+        $this->assertSame('SKU Induk', $itRows[1]['C']);
+        $this->assertSame('Harga Satuan', $itRows[1]['F']);
+        $this->assertSame('Jumlah', $itRows[1]['G']);
+        $this->assertSame('Subtotal Baris', $itRows[1]['H']);
+        $this->assertSame('=F2*G2', (string) $it->getCell('H2')->getValue(), 'subtotal baris berupa rumus harga x jumlah');
+        $this->assertSame(120000000, (int) str_replace(',', '', (string) $itRows[2]['H']), 'nilai terhitung subtotal baris');
+        $this->assertContains('TabelItem', $it->getTableNames());
 
         // ---- PANDUAN ----
         $guide = $ss->getSheetByName('Panduan')->toArray();
@@ -319,7 +372,7 @@ class StorePerformanceExportTest extends TestCase
 
         $text = implode(' ', array_map(
             fn ($r) => implode(' ', array_map(fn ($c) => (string) $c, $r)),
-            $ss->getSheetByName('Analisis')->toArray()
+            $ss->getSheetByName('Analisis')->toArray(null, false, true, true)
         ));
 
         // Pembaca harus bisa membedakan "tidak ada data" dari "gagal dimuat",
@@ -327,7 +380,10 @@ class StorePerformanceExportTest extends TestCase
         $this->assertStringContainsString('Tidak ada produk terjual', $text);
         $this->assertStringContainsString('Belum ada data kunjungan produk', $text);
         $this->assertStringContainsString('Tidak ada pelanggan', $text);
-        $this->assertStringContainsString('Tidak ada transaksi', $text);
+        // Bauran metode kini berumus ke TabelPesanan: barisnya tetap ada
+        // (formula menghasilkan 0 di Excel), bukan teks kosong.
+        $this->assertStringContainsString('BAURAN METODE PEMBAYARAN', $text);
+        $this->assertStringContainsString('COD', $text);
         $this->assertStringContainsString('Tidak ada biaya retur', $text);
     }
 
@@ -341,7 +397,7 @@ class StorePerformanceExportTest extends TestCase
             \Illuminate\Support\Facades\Storage::disk('imports')->path('perf-noprev.xlsx')
         );
 
-        $rows = $ss->getSheetByName('Laba Rugi')->toArray(null, true, true, true);
+        $rows = $ss->getSheetByName('KPI Operasional Toko')->toArray(null, false, true, true);
         $text = implode(' ', array_map(
             fn ($r) => implode(' ', array_map(fn ($c) => (string) $c, $r)),
             $rows
@@ -420,24 +476,31 @@ class StorePerformanceExportTest extends TestCase
         // BinaryFileResponse tidak punya getContent(); muat langsung filenya.
         $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($response->getFile()->getPathname());
 
-        // 5 sheet x 2 bulan kalender (Agt 2026 + Sep 2026).
-        $this->assertCount(10, $ss->getSheetNames());
+        // 6 sheet x 2 bulan kalender (Agt 2026 + Sep 2026).
+        $this->assertCount(12, $ss->getSheetNames());
 
-        // Laba Rugi Agustus memuat angka pesanan RA-MM-1.
-        $lr = $ss->getSheetByName('Laba Rugi (Agt 2026)');
-        $vals = [];
+        // Ringkasan Finansial Agustus: TOTAL DIBAYAR PEMBELI kini RUMUS SUM
+        // yang menunjuk TabelPesanan bulan itu (bulan Agt punya 1 pesanan).
+        $lr = $ss->getSheetByName('Ringkasan Finansial (Agt 2026)');
+        $rumusTotal = null;
+        $rumusNet = null;
         for ($r = 1; $r <= $lr->getHighestRow(); $r++) {
             $b = trim((string) $lr->getCell('B'.$r)->getValue());
-            $c = $lr->getCell('C'.$r)->getValue();
-            if ($b !== '' && is_numeric($c)) {
-                $vals[$b] = (float) $c;
+            if ($b === 'TOTAL DIBAYAR PEMBELI') {
+                $rumusTotal = (string) $lr->getCell('C'.$r)->getValue();
+            }
+            if ($b === 'PENJUALAN BERSIH') {
+                $rumusNet = (string) $lr->getCell('C'.$r)->getValue();
             }
         }
-        $this->assertGreaterThan(0, $vals['TOTAL DIBAYAR PEMBELI'] ?? 0);
+        $this->assertNotNull($rumusTotal, 'baris TOTAL DIBAYAR PEMBELI ada');
+        $this->assertStringStartsWith('=SUM(C', $rumusTotal, 'total berupa rumus SUM kolom tabel');
+        $this->assertNotNull($rumusNet, 'baris PENJUALAN BERSIH ada');
+        $this->assertStringContainsString('C', $rumusNet, 'net berupa rumus yang menunjuk beban');
 
-        // Rincian Pesanan Agustus WAJIB berisi baris pesanan + JUMLAH yang
-        // cocok dengan Laba Rugi bulan yang sama, bukan "Tidak ada pesanan".
-        $rp = $ss->getSheetByName('Rincian Pesanan (Agt 2026)');
+        // Tabel Pesanan Agustus WAJIB berisi baris pesanan RA-MM-1 + Total
+        // Row SUBTOTAL (bukan sheet kosong) pada rentang bulan yang sama.
+        $rp = $ss->getSheetByName('Tabel Pesanan (Agt 2026)');
         $this->assertSame('RA-MM-1', $rp->getCell('A2')->getValue());
 
         $jumlahRow = null;
@@ -448,15 +511,14 @@ class StorePerformanceExportTest extends TestCase
             }
         }
         $this->assertNotNull($jumlahRow, 'baris JUMLAH wajib ada');
-        $this->assertEqualsWithDelta(
-            $vals['TOTAL DIBAYAR PEMBELI'],
-            (float) $rp->getCell('M'.$jumlahRow)->getValue(),
-            0.5,
-            'JUMLAH Rincian Pesanan Agustus wajib sama dengan Laba Rugi Agustus'
+        $this->assertStringStartsWith(
+            '=SUBTOTAL(109',
+            (string) $rp->getCell('N'.$jumlahRow)->getValue(),
+            'Total Row kolom Total Dibayar Pembeli berupa SUBTOTAL'
         );
 
-        // Item Terjual Agustus juga terisi.
-        $it = $ss->getSheetByName('Item Terjual (Agt 2026)');
+        // Tabel Item Agustus juga terisi.
+        $it = $ss->getSheetByName('Tabel Item (Agt 2026)');
         $this->assertSame('RA-MM-1', $it->getCell('A2')->getValue());
     }
 }

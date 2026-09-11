@@ -26,6 +26,7 @@ class IncomeDetailQuery
         return Order::query()
             ->with('payments')
             ->with(['returnCases' => fn ($q) => $q->where('status', 'completed')->whereNotNull('completed_at')->whereBetween('completed_at', [$fromDate.' 00:00:00', $toDate.' 23:59:59'])])
+            ->with('items:order_id,parent_sku,quantity')
             ->withCount('items')
             ->whereIn('order_status', $statuses)
             ->whereDate('created_at', '>=', $fromDate)
@@ -75,6 +76,8 @@ class IncomeDetailQuery
                     'paid_amount' => $paidAmount,
                     'outstanding' => max(0.0, $totalPaidByCustomer - $paidAmount),
                     'items_count' => (int) $order->items_count,
+                    'total_qty' => (int) $order->items->sum('quantity'),
+                    'sku_count' => $order->items->pluck('parent_sku')->filter()->unique()->count(),
                 ];
             })
             ->all();

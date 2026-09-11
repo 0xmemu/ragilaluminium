@@ -28,6 +28,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
+    protected bool $skipSheetAutoFilter = false;
+
     use RegistersEventListeners;
 
     protected string $sheetTitle = 'Laporan';
@@ -102,8 +104,10 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
         // Freeze header row supaya kolom tetap terbaca saat scroll.
         $sheet->freezePane('A2');
 
-        // AutoFilter pada baris header.
-        if ($lastRow >= 1) {
+        // AutoFilter pada baris header. Sheet dengan Excel Table melewati
+        // ini: tabel membawa autofilter sendiri, dua-duanya sekaligus
+        // memicu dialog repair Excel (autofilter tumpang tindih).
+        if ($lastRow >= 1 && ! $this->skipSheetAutoFilter) {
             $sheet->setAutoFilter("A1:{$lastCol}1");
         }
 

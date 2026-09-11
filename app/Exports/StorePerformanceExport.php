@@ -9,41 +9,40 @@ use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Table;
+use PhpOffice\PhpSpreadsheet\Worksheet\Table\Column as TableColumn;
 
 /**
- * Laporan Performa Toko XLSX, desain tabel mengikuti Laporan Pesanan
- * (OrderExport): setiap sheet = SATU tabel datar (header merah #c20000,
- * zebra, freeze A2, autofilter), angka POLOS tanpa "Rp" (nilai sel tetap
- * numerik), plus sheet Panduan. Sheet:
- *   1. Laba Rugi        - laporan bertingkat gaya pembukuan: pendapatan
- *                         bruto, pengurang, penjualan bersih, lalu arus kas
- *                         dan KPI operasional. Angka dapat dijumlah menurun.
- *   2. Rincian Pesanan  - 1 baris per pesanan, header di baris 1, urutan
- *                         kolom mengikuti alur uang (nilai produk -> potongan
- *                         -> dibayar pembeli -> beban toko -> bersih -> kas).
- *   3. Rincian Item     - 1 baris per item pesanan (SKU, qty, harga).
- *   4. Analisis         - produk, pelanggan, bauran pembayaran, dan biaya
- *                         retur dalam satu sheet, tiap blok berjudul.
- *   5. Panduan          - aturan baca, definisi, format angka.
+ * Laporan Performa Toko XLSX, arsitektur workbook (2026-09-11, arah owner):
+ *   1. Ringkasan Finansial - P&L bertingkat + Arus Kas SAJA. Angka pendapatan
+ *      dan beban adalah RUMUS SUM/SUMIFS yang menunjuk TabelPesanan, jadi
+ *      bila admin mengoreksi satu sel di tabel, P&L ikut berubah.
+ *   2. KPI Operasional Toko - metrik e-commerce (penjualan, kunjungan,
+ *      operasional) yang dulu menumpuk di bawah P&L (baris 31-75).
+ *   3. Tabel Pesanan - 1 baris = 1 pesanan, Format Table (Ctrl+T) dengan
+ *      Total Row bawaan Excel (SUBTOTAL, bukan baris data JUMLAH).
+ *   4. Tabel Item - 1 baris = 1 item; Subtotal Baris = rumus Harga*Jumlah
+ *      (verifikasi basis data: line_subtotal = unit_price x quantity).
+ *   5. Analisis - agregat yang TIDAK bisa diturunkan dari dua tabel
+ *      (kunjungan produk, pelanggan, retur). Dihubungkan dengan SUMIFS ke
+ *      TabelPesanan/TabelItem; pivot asli tidak didukung pustaka penulis.
+ *   6. Panduan - aturan baca, definisi, format angka.
  *
  * PENTING: baris pemisah antarblok wajib ditulis [""] (satu sel kosong),
  * BUKAN array kosong []. Maatwebsite membuang [] saat menulis sehingga
  * seluruh nomor baris styling bergeser (insiden 2026-09-11).
- * Aturan format: header tabel WAJIB di baris 1 (freeze + autofilter milik
- * RagilStyledExport mengunci baris 1), jadi sheet yang butuh blok ringkasan
- * memakai layout dua kolom label-nilai tanpa header tabel, bukan menyelipkan
- * header di tengah sheet.
+ *
+ * PENTING (tabel): override afterSheet pada sheet bertabel WAJIB memanggil
+ * parent::afterSheet($event) di AKHIR method. Loop addTable milik basis
+ * membaca $this->excelTables; dipanggil di awal membuat tabel tidak pernah
+ * tertulis di berkas (insiden 2026-09-11).
  */
 class StorePerformanceExport implements WithMultipleSheets
 {
-    /**
-     * @param string|null $sheetSuffix Label bulan utk export multi-bulan
-     *                                 (mis. " Jan 2026") -> nama sheet unik
-     *                                 per bulan dalam satu file.
-     */
     public function __construct(protected array $payload, protected ?string $sheetSuffix = null)
     {
     }
@@ -52,7 +51,8 @@ class StorePerformanceExport implements WithMultipleSheets
     {
         return [
             new StorePerformanceSummarySheet($this->payload, $this->sheetSuffix),
-            new StorePerformanceIncomeDetailSheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceKpiSheet($this->payload, $this->sheetSuffix),
+            new StorePerformanceOrdersSheet($this->payload, $this->sheetSuffix),
             new StorePerformanceSoldItemsSheet($this->payload, $this->sheetSuffix),
             new StorePerformanceAnalysisSheet($this->payload, $this->sheetSuffix),
             new StorePerformanceGuideSheet($this->payload, $this->sheetSuffix),
@@ -69,11 +69,6 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
     /** @var list<array{0: int, 1: int, 2: string}> [baris, indeks kolom, format] */
     protected array $numberCells = [];
 
-    /**
-     * Sheet laporan bertingkat (Laba Rugi) tidak memakai header tabel merah
-     * di baris 1, sehingga freeze pane dan autofilter milik RagilStyledExport
-     * harus dimatikan. Sheet tabel datar tetap true.
-     */
     protected bool $useTableHeader = true;
 
     /** @var list<int> Baris judul besar laporan. */
@@ -82,7 +77,7 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
     /** @var list<int> Baris anak judul (nama toko, periode). */
     protected array $subtitleRows = [];
 
-    /** @var list<int> Baris judul kelompok (PENDAPATAN, BEBAN, dan seterusnya). */
+    /** @var list<int> Baris judul kelompok. */
     protected array $groupRows = [];
 
     /** @var list<int> Baris penanda kolom pada laporan bertingkat. */
@@ -99,6 +94,9 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
 
     /** @var list<array{0: int, 1: string}> Baris judul blok di dalam sheet tabel. */
     protected array $blockTitleRows = [];
+
+    /** @var array<string, Table> Tabel Excel yang dipasang di afterSheet. */
+    protected array $excelTables = [];
 
     public function __construct(protected array $payload, protected ?string $sheetSuffix = null)
     {
@@ -125,7 +123,6 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
         if ($this->useTableHeader) {
             parent::afterSheet($event);
         } else {
-            // Laporan bertingkat: styling sendiri, tanpa header merah baris 1.
             $sheet->setShowGridlines(false);
             foreach ($this->columnWidths as $col => $width) {
                 $sheet->getColumnDimension($col)->setWidth($width);
@@ -138,12 +135,15 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
             $sheet->getStyle($coord)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
+        // Pasang Excel Table (Format Table / Ctrl+T) setelah autofilter
+        // milik basis; Table membawa autofilter dan Total Row sendiri.
+        foreach ($this->excelTables as $table) {
+            $sheet->addTable($table);
+        }
+
         $this->styleReportRows($sheet);
     }
 
-    /**
-     * Gaya baris laporan bertingkat dan judul blok di dalam sheet tabel.
-     */
     protected function styleReportRows($sheet): void
     {
         foreach ($this->titleRows as $row) {
@@ -213,10 +213,6 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
         $this->numberCells[] = [$rowNum, $colIdx, $fmt];
     }
 
-    /**
-     * Status pesanan dalam bahasa Indonesia. Laporan ini dibaca pemilik toko,
-     * bukan pengembang, jadi nilai mentah basis data tidak boleh bocor.
-     */
     protected function orderStatusLabel(?string $status): string
     {
         return [
@@ -252,9 +248,6 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
         ][$method ?? ''] ?? ($method ?? '-');
     }
 
-    /**
-     * Format angka sesuai jenis KPI (nilai persen sudah skala persen).
-     */
     protected function kpiNumberFormat(string $kpiFormat): string
     {
         return match ($kpiFormat) {
@@ -264,24 +257,49 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
             default => '#,##0',
         };
     }
+
+    /**
+     * Rumus total baris tabel sebagai string Excel, dipakai oleh sel Total
+     * Row dan Ringkasan Finansial. SUBTOTAL(109) menjumlah hanya sel yang
+     * terlihat, jadi ikut benar saat admin memfilter tabel.
+     */
+    protected static function subtotal(string $range): string
+    {
+        return '=SUBTOTAL(109,'.$range.')';
+    }
+
+    /**
+     * Nama Excel Table harus unik per workbook. Export multi-bulan
+     * menulis set sheet per bulan dalam SATU file, jadi nama tabel
+     * wajib diberi akhiran bulan (TabelPesanan_Agt2026). Tanpa itu
+     * Excel menolak berkas dengan dialog repair.
+     */
+    protected function tableName(string $base): string
+    {
+        $suffix = preg_replace('/[^A-Za-z0-9]/', '', (string) $this->sheetSuffix);
+
+        return $suffix !== '' ? $base.'_'.$suffix : $base;
+    }
 }
 
-// ------ 1. LABA RUGI (laporan bertingkat, gaya pembukuan) ------
+// ------ 1. RINGKASAN FINANSIAL (P&L + Arus Kas, angka berumus) ------
 
 /**
- * Sheet Laba Rugi. Bentuknya laporan bertingkat, bukan daftar metrik acak:
- * pendapatan bruto di atas, pengurang berurut di bawahnya, lalu subtotal
- * Penjualan Bersih, dilanjutkan arus kas dan KPI operasional.
- *
- * Kolom C berisi nilai periode ini, kolom D periode sebelumnya, kolom E
- * perubahan. Bila periode pembanding tidak punya data sama sekali, kolom D
- * dan E diisi keterangan, bukan angka nol yang memicu persentase palsu.
+ * Sheet Ringkasan Finansial. Hanya P&L dan Arus Kas; KPI operasional
+ * dipindah ke sheet sendiri (KPI Operasional Toko) agar pembacaan
+ * manajemen fokus. Angka pendapatan/beban adalah rumus SUMIFS yang
+ * menunjuk TabelPesanan (sheet Tabel Pesanan), bukan angka mati:
+ *   Nilai produk   = SUM(TabelPesanan[Nilai Produk Terjual])
+ *   Voucher        = -SUM(TabelPesanan[Voucher])
+ *   dst.
+ * Rumus menunjuk kolom terstruktur, jadi tetap benar bila admin menambah
+ * atau memfilter baris tabel.
  */
 class StorePerformanceSummarySheet extends StorePerformanceTableSheet
 {
     protected function configure(): void
     {
-        $this->sheetTitle = 'Laba Rugi';
+        $this->sheetTitle = 'Ringkasan Finansial';
         $this->columnWidths = ['A' => 4, 'B' => 40, 'C' => 20, 'D' => 20, 'E' => 18];
         $this->useTableHeader = false;
     }
@@ -304,6 +322,13 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
             return $current;
         };
 
+        // Rumus SUM kolom terstruktur TabelPesanan (sheet Tabel Pesanan).
+        // Kolom P&L ditulis sebagai formula agar hidup mengikuti tabel.
+        // Nama tabel ikut suffix bulan (workbook multi-bulan punya tabel
+        // per bulan dengan nama unik).
+        $tableName = $this->tableName('TabelPesanan');
+        $sum = static fn (string $col) => '=SUM('.$tableName.'['.$col.'])';
+
         // Kepala laporan.
         $push(['', 'LAPORAN LABA RUGI TOKO', '', '', '']);
         $this->titleRows[] = $r - 1;
@@ -317,16 +342,11 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $head = $push(['', 'Keterangan', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
         $this->columnLabelRows[] = $head;
 
-        $prevHasData = (bool) ($this->payload['previous_has_data'] ?? true);
-        $prevText = 'Tidak ada data';
-
-        // Nilai periode sebelumnya untuk baris keuangan tidak tersedia per
-        // komponen, jadi kolom D dan E baris keuangan diberi tanda hubung
-        // dan pembaca diarahkan ke blok KPI di bawah.
-        $money = function (string $label, $value, int $indent = 0, bool $isTotal = false) use ($push, $guard, $num, &$r) {
+        // Baris keuangan: kolom C berisi rumus, D dan E kosong (nilai
+        // pembanding per komponen tidak tersedia dari payload).
+        $moneyF = function (string $label, string $formula, int $indent = 0, bool $isTotal = false) use ($push, $guard, &$r) {
             $prefix = str_repeat('    ', $indent);
-            $row = ['', $guard($prefix.$label), $num($value), '', ''];
-            $line = $push($row);
+            $line = $push(['', $guard($prefix.$label), $formula, '', '']);
             $this->registerNumber($line, 3, '#,##0');
             if ($isTotal) {
                 $this->totalRows[] = $line;
@@ -335,54 +355,130 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
             return $line;
         };
 
-        // ---- PENDAPATAN ----
+        // Baris arus kas tetap angka dari payload (data pembayaran bukan
+        // kolom tabel pesanan).
+        $money = function (string $label, $value, int $indent = 0, bool $isTotal = false) use ($push, $guard, $num, &$r) {
+            $prefix = str_repeat('    ', $indent);
+            $line = $push(['', $guard($prefix.$label), $num($value), '', '']);
+            $this->registerNumber($line, 3, '#,##0');
+            if ($isTotal) {
+                $this->totalRows[] = $line;
+            }
+
+            return $line;
+        };
+
+        // Bulan tanpa satu pun baris pesanan tidak membuat Excel Table,
+        // sehingga rumus kolom terstruktur akan menjadi nama yang menggantung
+        // (#NAME?). Untuk keadaan itu angka diambil dari payload (nol).
+        $hasRows = ($this->payload['income_detail'] ?? []) !== [];
+        $moneyRow = function (string $label, string $formula, $static, int $indent = 1) use ($hasRows, $moneyF, $money) {
+            return $hasRows
+                ? $moneyF($label, $formula, $indent)
+                : $money($label, $static, $indent);
+        };
+
+        // ---- PENDAPATAN (rumus -> TabelPesanan) ----
         $push(['', 'PENDAPATAN', '', '', '']);
         $this->groupRows[] = $r - 1;
 
-        $money('Nilai produk terjual', $fin['items_before_discount'] ?? null, 1);
-        $money('Potongan voucher', -1 * $num($fin['voucher_discount'] ?? 0), 1);
-        $money('Ongkir dibayar pelanggan', $fin['shipping_paid_by_customer'] ?? null, 1);
-        $money('Asuransi dibayar pelanggan', $fin['insurance'] ?? null, 1);
-        $money('Biaya COD dibayar pelanggan', $fin['cod_fee'] ?? null, 1);
-        $money('TOTAL DIBAYAR PEMBELI', $fin['gross_revenue'] ?? null, 0, true);
-        $push(['', '    Nilai produk terjual sudah memakai harga promo yang berlaku. Pembeli menghemat '.number_format($num($fin['product_discount'] ?? 0), 0, ',', '.').' dibanding harga normal, angka itu bukan pengurang tagihan sehingga tidak dikurangkan di sini.', '', '', '']);
-        $this->noteRows[] = $r - 1;
+        $rowNilai = $moneyRow('Nilai produk terjual', $sum('Nilai Produk Terjual'), $fin['items_before_discount'] ?? null);
+        // Kolom Voucher di tabel sudah negatif; jangan dibalik lagi.
+        $rowVoucher = $moneyRow('Potongan voucher', $sum('Voucher'), -1 * $num($fin['voucher_discount'] ?? 0));
+        $rowOngkir = $moneyRow('Ongkir dibayar pelanggan', $sum('Ongkir Dibayar Pelanggan'), $fin['shipping_paid_by_customer'] ?? null);
+        $rowAsuransi = $moneyRow('Asuransi dibayar pelanggan', $sum('Asuransi'), $fin['insurance'] ?? null);
+        $rowCod = $moneyRow('Biaya COD dibayar pelanggan', $sum('Biaya COD'), $fin['cod_fee'] ?? null);
+        $rowTotalDibayar = $push(['', 'TOTAL DIBAYAR PEMBELI', '=SUM(C'.$rowNilai.':C'.$rowCod.')', '', '']);
+        $this->totalRows[] = $rowTotalDibayar;
+        $this->registerNumber($rowTotalDibayar, 3, '#,##0');
+        $this->noteRows[] = $push(['', '    Angka pada kolom Periode Ini berupa rumus yang menunjuk Tabel Pesanan. Koreksi nilai di tabel akan mengubah laporan ini.', '', '', '']);
         $push([""]);
 
-        // ---- BEBAN ----
+        // ---- BEBAN (rumus -> TabelPesanan) ----
         $push(['', 'BEBAN YANG DITANGGUNG TOKO', '', '', '']);
         $this->groupRows[] = $r - 1;
 
-        $money('Ongkir dibayarkan ke J&T', -1 * $num($fin['shipping_raw'] ?? 0), 1);
-        $money('Biaya COD diteruskan ke J&T', -1 * $num($fin['cod_fee'] ?? 0), 1);
-        $money('Refund retur', -1 * $num($fin['refund_adjustments'] ?? 0), 1);
-        $money('Ongkir retur ditanggung toko', -1 * $num($fin['return_shipping_store'] ?? 0), 1);
-        $totalBeban = $num($fin['shipping_raw'] ?? 0) + $num($fin['cod_fee'] ?? 0)
-            + $num($fin['refund_adjustments'] ?? 0) + $num($fin['return_shipping_store'] ?? 0);
-        $money('Jumlah beban toko', -1 * $totalBeban, 0, true);
+        // Tiga kolom beban di tabel sudah bernilai negatif.
+        $rowOngkirJnt = $moneyRow('Ongkir dibayarkan ke J&T', $sum('Ongkir ke J&T'), -1 * $num($fin['shipping_raw'] ?? 0));
+        // Kolom Biaya COD positif (uang diterima pembeli), jadi beban
+        // ke J&T memang dibalik di sini.
+        $rowCodJnt = $moneyRow('Biaya COD diteruskan ke J&T', '-'.$sum('Biaya COD'), -1 * $num($fin['cod_fee'] ?? 0));
+        $rowRefund = $moneyRow('Refund retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0));
+        $rowRetShip = $moneyRow('Ongkir retur ditanggung toko', $sum('Ongkir Retur Toko'), -1 * $num($fin['return_shipping_store'] ?? 0));
+        $rowBeban = $push(['', 'Jumlah beban toko', '=SUM(C'.$rowOngkirJnt.':C'.$rowRetShip.')', '', '']);
+        $this->totalRows[] = $rowBeban;
+        $this->registerNumber($rowBeban, 3, '#,##0');
         $push([""]);
 
         // ---- HASIL ----
         $push(['', 'HASIL', '', '', '']);
         $this->groupRows[] = $r - 1;
-        $money('PENJUALAN BERSIH', $fin['net_revenue'] ?? null, 0, true);
+        // Penjualan bersih = total dibayar + jumlah beban (beban sudah negatif).
+        // Referensi WAJIB baris Jumlah beban yang ditangkap di atas; kalkulasi
+        // offset manual ($r-2) pernah menunjuk baris pemisah kosong.
+        $push(['', 'PENJUALAN BERSIH', '=C'.$rowTotalDibayar.'+C'.$rowBeban, '', '']);
         $this->grandTotalRows[] = $r - 1;
-        $push(['', '    Catatan: subsidi ongkir '.number_format($num($fin['shipping_subsidy'] ?? 0), 0, ',', '.').' sudah termasuk dalam ongkir yang dibayarkan ke J&T, tidak dikurangkan dua kali.', '', '', '']);
-        $this->noteRows[] = $r - 1;
+        $this->registerNumber($r - 1, 3, '#,##0');
+        $this->noteRows[] = $push(['', '    Catatan: subsidi ongkir sudah termasuk dalam Ongkir ke J&T, tidak dikurangkan dua kali.', '', '', '']);
         $push([""]);
 
-        // ---- ARUS KAS ----
+        // ---- ARUS KAS (angka payload: sumbernya pembayaran, bukan tabel) ----
         $push(['', 'ARUS KAS', '', '', '']);
         $this->groupRows[] = $r - 1;
-        // Alur uang: komponen dulu, hasil akhir belakangan. Transfer cair
-        // diturunkan dari pembayaran selesai dikurangi COD selesai.
         $money('Transfer bank sudah cair', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0), 1);
         $money('COD sudah cair', $fin['cod_paid'] ?? null, 1);
         $money('Pembayaran sudah diterima', $fin['payments_received'] ?? null, 0, true);
         $money('COD (barang belum sampai), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null, 1);
         $push([""]);
 
-        // ---- KPI OPERASIONAL ----
+        return $rows;
+    }
+}
+
+// ------ 2. KPI OPERASIONAL TOKO (dipisah dari P&L) ------
+
+/**
+ * Metrik e-commerce yang dulu menumpuk di baris 31-75 sheet Laba Rugi:
+ * penjualan, kunjungan, operasional, pembayaran, retur dan pembatalan.
+ * Format sama dengan P&L (kolom C nilai, D pembanding, E perubahan).
+ */
+class StorePerformanceKpiSheet extends StorePerformanceTableSheet
+{
+    protected function configure(): void
+    {
+        $this->sheetTitle = 'KPI Operasional Toko';
+        $this->columnWidths = ['A' => 4, 'B' => 40, 'C' => 20, 'D' => 20, 'E' => 18];
+        $this->useTableHeader = false;
+    }
+
+    protected function buildRows(): array
+    {
+        $guard = static fn ($value) => ExportSafety::cell($value);
+        $range = $this->payload['range'] ?? [];
+
+        $rows = [];
+        $r = 1;
+
+        $push = function (array $row) use (&$rows, &$r): int {
+            $rows[] = $row;
+            $current = $r;
+            $r++;
+
+            return $current;
+        };
+
+        $push(['', 'KPI OPERASIONAL TOKO', '', '', '']);
+        $this->titleRows[] = $r - 1;
+        $push(['', 'Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-'), '', '', '']);
+        $this->subtitleRows[] = $r - 1;
+        $push([""]);
+
+        $head = $push(['', 'Keterangan', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
+        $this->columnLabelRows[] = $head;
+
+        $prevHasData = (bool) ($this->payload['previous_has_data'] ?? true);
+        $prevText = 'Tidak ada data';
+
         foreach ($this->payload['sections'] ?? [] as $section) {
             $push(['', mb_strtoupper((string) ($section['title'] ?? 'RINCIAN')), '', '', '']);
             $this->groupRows[] = $r - 1;
@@ -414,45 +510,38 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
     }
 }
 
-// ------ 2. RINCIAN PESANAN (1 baris = 1 pesanan, header di baris 1) ------
+// ------ 3. TABEL PESANAN (Excel Table + Total Row) ------
 
 /**
- * Sheet Rincian Pesanan. Header WAJIB di baris 1 supaya freeze pane dan
- * autofilter bekerja, dan supaya pembaca tidak menemukan header terselip di
- * tengah sheet. Blok rekap yang dulu berada di atas header sudah dipindahkan
- * ke sheet Laba Rugi, tempatnya yang benar.
- *
- * Urutan kolom mengikuti alur uang, kiri ke kanan:
- *   identitas -> nilai produk -> potongan -> yang dibayar pembeli
- *   -> beban toko -> penjualan bersih -> kas masuk.
- * Baris terakhir adalah baris JUMLAH, sehingga angka sheet ini dapat
- * dicocokkan langsung dengan sheet Laba Rugi.
+ * 1 baris = 1 pesanan. Dibungkus Excel Table "TabelPesanan" (sama dengan
+ * Format Table / Ctrl+T): Total Row bawaan Excel berisi SUBTOTAL sehingga
+ * baris total bukan baris data (bisa disembunyikan, ikut filter), kolom
+ * Penjualan Bersih berisi rumus sel per baris. Nama kolom:
+ *   - "Total Qty (Pcs)" menggantikan "Jumlah Item" (rancu dengan jenis).
+ *   - "Jumlah Jenis SKU" = banyak SKU unik dalam pesanan.
  */
-class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
+class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
 {
     protected function configure(): void
     {
-        $this->sheetTitle = 'Rincian Pesanan';
+        $this->sheetTitle = 'Tabel Pesanan';
+        $this->skipSheetAutoFilter = true;
         $this->columnWidths = [
             'A' => 16, 'B' => 18, 'C' => 18, 'D' => 12, 'E' => 16,
-            'F' => 16, 'G' => 9, 'H' => 18, 'I' => 15, 'J' => 14,
+            'F' => 16, 'G' => 14, 'H' => 17, 'I' => 18, 'J' => 15,
             'K' => 16, 'L' => 12, 'M' => 15, 'N' => 19, 'O' => 17,
             'P' => 15, 'Q' => 14, 'R' => 16, 'S' => 17, 'T' => 15,
             'U' => 30,
         ];
     }
 
-    protected function buildRows(): array
+    /** Header kolom tabel pesanan (dipakai sheet ini dan Ringkasan Finansial). */
+    public static function headers(): array
     {
-        $guard = static fn ($value) => ExportSafety::cell($value);
-        $num = static fn ($v) => (float) ($v ?? 0);
-        $rows = [];
-        $r = 1;
-
-        // Header di BARIS 1. Tidak ada blok rekap di atasnya.
-        $rows[] = [
+        return [
             'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Dibayar', 'Metode',
-            'Status Pesanan', 'Status Pembayaran', 'Jumlah Item',
+            'Status Pesanan', 'Status Pembayaran', 'Total Qty (Pcs)',
+            'Jumlah Jenis SKU',
             'Nilai Produk Terjual', 'Voucher',
             'Ongkir Dibayar Pelanggan', 'Asuransi', 'Biaya COD',
             'Total Dibayar Pembeli',
@@ -461,50 +550,19 @@ class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
             'Uang Sudah Masuk', 'Belum Cair',
             'Subsidi Ongkir Toko', 'Hemat Pembeli vs Harga Normal',
         ];
-        $r++;
+    }
 
-        $sum = array_fill_keys([
-            'items', 'subtotal', 'discount', 'voucher', 'shipping_net', 'insurance',
-            'cod_fee', 'paid_by_customer', 'shipping_raw', 'refund', 'return_shipping',
-            'net', 'received', 'outstanding', 'subsidy',
-        ], 0.0);
+    protected function buildRows(): array
+    {
+        $guard = static fn ($value) => ExportSafety::cell($value);
+        $num = static fn ($v) => (float) ($v ?? 0);
+        $rows = [$this->headers()];
+        $r = 2;
 
         $dataRows = $this->payload['income_detail'] ?? [];
 
         foreach ($dataRows as $row) {
             $paidAt = $row['paid_at'] ?? null;
-
-            $items = (float) ($row['items_count'] ?? 0);
-            $subtotal = $num($row['subtotal_before_discount'] ?? 0);
-            $discount = $num($row['discount'] ?? 0);
-            $voucher = $num($row['voucher_discount'] ?? 0);
-            $shipNet = $num($row['shipping_net_paid_by_customer'] ?? 0);
-            $insurance = $num($row['insurance'] ?? 0);
-            $codFee = $num($row['cod_fee'] ?? 0);
-            $paidBy = $num($row['total_paid_by_customer'] ?? 0);
-            $shipRaw = $num($row['shipping_raw'] ?? 0);
-            $refund = $num($row['refund_amount'] ?? 0);
-            $retShip = $num($row['return_shipping_store'] ?? 0);
-            $net = $num($row['net_revenue'] ?? 0);
-            $received = $num($row['paid_amount'] ?? 0);
-            $outstanding = $num($row['outstanding'] ?? 0);
-            $subsidy = $num($row['shipping_subsidy'] ?? 0);
-
-            $sum['items'] += $items;
-            $sum['subtotal'] += $subtotal;
-            $sum['discount'] += $discount;
-            $sum['voucher'] += $voucher;
-            $sum['shipping_net'] += $shipNet;
-            $sum['insurance'] += $insurance;
-            $sum['cod_fee'] += $codFee;
-            $sum['paid_by_customer'] += $paidBy;
-            $sum['shipping_raw'] += $shipRaw;
-            $sum['refund'] += $refund;
-            $sum['return_shipping'] += $retShip;
-            $sum['net'] += $net;
-            $sum['received'] += $received;
-            $sum['outstanding'] += $outstanding;
-            $sum['subsidy'] += $subsidy;
 
             $out = [
                 $guard($row['order_number'] ?? '-'),
@@ -513,75 +571,106 @@ class StorePerformanceIncomeDetailSheet extends StorePerformanceTableSheet
                 $guard($this->paymentMethodLabel($row['payment_method'] ?? null)),
                 $guard($this->orderStatusLabel($row['order_status'] ?? null)),
                 $guard($this->paymentStatusLabel($row['payment_status'] ?? null)),
-                $items,
-                $subtotal, $voucher,
-                $shipNet, $insurance, $codFee,
-                $paidBy,
-                $shipRaw, $refund, $retShip,
-                $net,
-                $received, $outstanding,
-                $subsidy, $discount,
+                (int) ($row['total_qty'] ?? 0),
+                (int) ($row['sku_count'] ?? 0),
+                $num($row['subtotal_before_discount'] ?? 0),
+                -1 * $num($row['voucher_discount'] ?? 0),
+                $num($row['shipping_net_paid_by_customer'] ?? 0),
+                $num($row['insurance'] ?? 0),
+                $num($row['cod_fee'] ?? 0),
+                $num($row['total_paid_by_customer'] ?? 0),
+                -1 * $num($row['shipping_raw'] ?? 0),
+                -1 * $num($row['refund_amount'] ?? 0),
+                -1 * $num($row['return_shipping_store'] ?? 0),
+                // Penjualan Bersih per baris = rumus alur uang. Kolom O, P, Q
+                // sudah negatif; kolom M (Biaya COD, positif) dikurangkan.
+                '=N{r}-M{r}+O{r}+P{r}+Q{r}',
+                $num($row['paid_amount'] ?? 0),
+                $num($row['outstanding'] ?? 0),
+                $num($row['shipping_subsidy'] ?? 0),
+                $num($row['discount'] ?? 0),
             ];
+
             $rows[] = $out;
-            for ($c = 7; $c <= 21; $c++) {
+            for ($c = 7; $c <= 22; $c++) {
                 $this->registerNumber($r, $c, '#,##0');
             }
             $this->trackZeroCells($out, $r);
             $r++;
         }
 
-        // Baris JUMLAH, supaya bisa dicocokkan dengan sheet Laba Rugi.
-        if ($dataRows !== []) {
-            $rows[] = [
-                'JUMLAH', '', '', '', '', '',
-                $sum['items'],
-                $sum['subtotal'], $sum['voucher'],
-                $sum['shipping_net'], $sum['insurance'], $sum['cod_fee'],
-                $sum['paid_by_customer'],
-                $sum['shipping_raw'], $sum['refund'], $sum['return_shipping'],
-                $sum['net'],
-                $sum['received'], $sum['outstanding'],
-                $sum['subsidy'], $sum['discount'],
-            ];
-            for ($c = 7; $c <= 21; $c++) {
-                $this->registerNumber($r, $c, '#,##0');
-            }
-            $this->totalRows[] = $r;
-            $r++;
-        } else {
-            $rows[] = ['Tidak ada pesanan pada periode ini.'];
-            $this->noteRows[] = $r;
-            $r++;
-        }
-
         return $rows;
     }
 
-    protected function styleReportRows($sheet): void
+    public function afterSheet(AfterSheet $event): void
     {
-        // Baris JUMLAH memakai kolom A sampai U, bukan B sampai E.
-        foreach ($this->totalRows as $row) {
-            $sheet->getStyle('A'.$row.':U'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10],
-                'borders' => [
-                    'top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF121212']],
-                    'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['argb' => 'FF121212']],
-                ],
-            ]);
-        }
-        $this->totalRows = [];
+        // parent::afterSheet() WAJIB dipanggil di AKHIR override: loop
+        // addTable milik basis membaca $this->excelTables. Dipanggil di
+        // awal membuat tabel tidak pernah terpasang (insiden 2026-09-11).
+        $sheet = $event->sheet->getDelegate();
+        $count = count($this->payload['income_detail'] ?? []);
 
-        parent::styleReportRows($sheet);
+        if ($count === 0) {
+            return;
+        }
+
+        // Ganti placeholder {r} pada rumus Penjualan Bersih per baris.
+        for ($i = 0; $i < $count; $i++) {
+            $rowNum = 2 + $i;
+            $sheet->setCellValue(
+                'R'.$rowNum,
+                str_replace(
+                    '{r}',
+                    (string) $rowNum,
+                    '=N{r}-M{r}+O{r}+P{r}+Q{r}'
+                )
+            );
+        }
+
+        // Baris total: label + rumus SUBTOTAL (Total Row bawaan Excel),
+        // lalu Excel Table membungkus seluruh rentang termasuk baris total.
+        $totalRow = 2 + $count;
+        $sheet->setCellValue('A'.$totalRow, 'JUMLAH');
+        $sumCols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
+        foreach ($sumCols as $col) {
+            $sheet->setCellValue($col.$totalRow, '=SUBTOTAL(109,'.$col.'2:'.$col.($totalRow - 1).')');
+        }
+        foreach ($sumCols as $i => $col) {
+            $this->registerNumber($totalRow, $i + 7, '#,##0');
+        }
+
+        // Excel Table: rentang A1:V{totalRow}, Total Row dihidupkan lewat
+        // XML (setShowTotalsRow). Kolom uang diberi totalsRowFunction=sum.
+        $lastCol = 'V';
+        $table = new Table('A1:'.$lastCol.$totalRow, $this->tableName('TabelPesanan'));
+        $table->setShowTotalsRow(true);
+
+        foreach (range('A', 'V') as $colLetter) {
+            $c = new TableColumn($colLetter, $table);
+            if (in_array($colLetter, $sumCols, true)) {
+                $c->setTotalsRowFunction('sum');
+            }
+            $table->setColumn($c);
+        }
+        $this->excelTables[] = $table;
+
+        parent::afterSheet($event);
     }
 }
 
-// ------ 3. ITEM TERJUAL (1 baris = 1 item pesanan) ------
+// ------ 4. TABEL ITEM (Excel Table + rumus baris) ------
 
+/**
+ * 1 baris = 1 item pesanan. Subtotal Baris = rumus Harga Satuan * Jumlah
+ * (konsisten dengan snapshot: line_subtotal = unit_price x quantity),
+ * dibungkus Excel Table "TabelItem" dengan Total Row SUBTOTAL.
+ */
 class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
 {
     protected function configure(): void
     {
-        $this->sheetTitle = 'Item Terjual';
+        $this->sheetTitle = 'Tabel Item';
+        $this->skipSheetAutoFilter = true;
         $this->columnWidths = [
             'A' => 16, 'B' => 17, 'C' => 14, 'D' => 34, 'E' => 18,
             'F' => 16, 'G' => 12, 'H' => 14, 'I' => 14,
@@ -591,14 +680,11 @@ class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
     protected function buildRows(): array
     {
         $guard = static fn ($value) => ExportSafety::cell($value);
-        $rows = [];
-        $r = 1;
-
-        $rows[] = [
-            'Nomor Pesanan', 'Tanggal Pesanan', 'SKU Induk', 'Nama Produk',
-            'Variasi', 'Harga Satuan', 'Jumlah', 'Subtotal Baris', 'Diskon Baris',
+        $rows = [
+            ['Nomor Pesanan', 'Tanggal Pesanan', 'SKU Induk', 'Nama Produk',
+                'Variasi', 'Harga Satuan', 'Jumlah', 'Subtotal Baris', 'Diskon Baris'],
         ];
-        $r++;
+        $r = 2;
 
         foreach ($this->payload['sold_items'] ?? [] as $row) {
             $out = [
@@ -609,36 +695,72 @@ class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
                 $guard($row['variation'] ?? '-'),
                 $guard($row['unit_price'] ?? 0),
                 $guard($row['quantity'] ?? 0),
-                $guard($row['line_total'] ?? 0),
+                '=F{r}*G{r}',
                 $guard($row['line_discount'] ?? 0),
             ];
             $rows[] = $out;
-            $this->registerNumber($r, 6, '#,##0');
-            $this->registerNumber($r, 7, '#,##0');
-            $this->registerNumber($r, 8, '#,##0');
-            $this->registerNumber($r, 9, '#,##0');
+            for ($c = 6; $c <= 9; $c++) {
+                $this->registerNumber($r, $c, '#,##0');
+            }
             $this->trackZeroCells($out, $r);
             $r++;
         }
 
         return $rows;
     }
+
+    public function afterSheet(AfterSheet $event): void
+    {
+        // parent::afterSheet() WAJIB dipanggil di AKHIR override (lihat
+        // catatan pada Tabel Pesanan).
+        $sheet = $event->sheet->getDelegate();
+        $count = count($this->payload['sold_items'] ?? []);
+
+        if ($count === 0) {
+            return;
+        }
+
+        for ($i = 0; $i < $count; $i++) {
+            $rowNum = 2 + $i;
+            $sheet->setCellValue('H'.$rowNum, str_replace('{r}', (string) $rowNum, '=F{r}*G{r}'));
+        }
+
+        $totalRow = 2 + $count;
+        $sheet->setCellValue('A'.$totalRow, 'JUMLAH');
+        foreach (['F', 'G', 'H', 'I'] as $col) {
+            $sheet->setCellValue($col.$totalRow, '=SUBTOTAL(109,'.$col.'2:'.$col.($totalRow - 1).')');
+        }
+        foreach (['F', 'G', 'H', 'I'] as $i => $col) {
+            $this->registerNumber($totalRow, $i + 6, '#,##0');
+        }
+
+        $table = new Table('A1:I'.$totalRow, $this->tableName('TabelItem'));
+        $table->setShowTotalsRow(true);
+        foreach (range('A', 'I') as $colLetter) {
+            $c = new TableColumn($colLetter, $table);
+            if (in_array($colLetter, ['F', 'G', 'H', 'I'], true)) {
+                $c->setTotalsRowFunction('sum');
+            }
+            if ($colLetter === 'F') {
+                $c->setTotalsRowLabel('JUMLAH');
+            }
+            $table->setColumn($c);
+        }
+        $this->excelTables[] = $table;
+
+        parent::afterSheet($event);
+    }
 }
 
-// ------ 4. ANALISIS (produk, pelanggan, pembayaran, retur) ------
+// ------ 5. ANALISIS (agregat non-tabel + SUMIFS ke dua tabel) ------
 
 /**
- * Sheet Analisis. Empat sheet lama (Produk Terlaris, Pelanggan Terbaik,
- * Biaya Retur, ditambah bauran pembayaran dan interaksi produk yang dulu
- * dihitung tetapi tidak pernah diekspor) dilebur ke satu sheet.
- *
- * Alasan peleburan: keempatnya sama sama tabel pendek yang hanya dibaca,
- * tidak dipakai untuk rekonsiliasi, dan lebarnya mirip. Memisahkannya
- * memaksa pembaca berpindah tab untuk pertanyaan yang saling terkait
- * ("produk apa yang laris, siapa yang beli, bayar pakai apa").
- *
- * Tiap blok diberi judul dan header sendiri, dipisahkan baris kosong, jadi
- * autofilter tidak dipakai di sheet ini (header tidak tunggal).
+ * Blok yang TIDAK bisa diturunkan dari Tabel Pesanan/Tabel Item
+ * (kunjungan produk, pelanggan, retur) tetap diekspor dari payload.
+ * Blok yang bisa (bauran metode, produk terlaris) dihitung dengan
+ * SUMIFS/COUNTIFS yang menunjuk tabel, supaya sumbernya satu.
+ * Pivot Table asli tidak didukung pustaka penulis XLSX (PhpSpreadsheet
+ * tidak punya API pivot); struktur data tabel tetap pivot-ready.
  */
 class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
 {
@@ -673,8 +795,6 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         $this->subtitleRows[] = $r - 1;
         $push([""]);
 
-        // Judul blok dan subtitle memakai kolom A, jadi styleReportRows
-        // versi kelas ini menargetkan kolom A.
         $block = function (string $title, array $header, string $lastCol) use ($push, &$r) {
             $line = $push([$title]);
             $this->blockTitleRows[] = [$line, $lastCol];
@@ -690,7 +810,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             }
         };
 
-        // ---- BLOK 1: PRODUK TERLARIS ----
+        // ---- BLOK 1: PRODUK TERLARIS (Unit Terjual via SUMIFS ke TabelItem) ----
         $block('PRODUK TERLARIS', ['SKU Induk', 'Nama Produk', 'Unit Terjual', 'Penjualan', 'Jumlah Pesanan'], 'E');
         $topAll = $this->payload['top_products'] ?? [];
         $top = array_slice($topAll, 0, 15);
@@ -699,15 +819,18 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $this->noteRows[] = $r - 1;
         }
         foreach ($top as $pr) {
+            $sku = (string) ($pr['parent_sku'] ?? '');
             $row = [
-                $guard($pr['parent_sku'] ?? ''),
+                $guard($sku),
                 $guard($pr['name'] ?? ''),
-                (float) ($pr['units'] ?? 0),
-                (float) ($pr['revenue'] ?? 0),
-                (float) ($pr['order_count'] ?? 0),
+                '=SUMIFS(' . $this->tableName('TabelItem') . '[Jumlah],' . $this->tableName('TabelItem') . '[SKU Induk],$A'.$r.')',
+                $guard($pr['revenue'] ?? 0),
+                '=COUNTIFS(' . $this->tableName('TabelItem') . '[SKU Induk],$A'.$r.')',
             ];
             $line = $push($row);
-            $money($line, [3, 4, 5]);
+            $money($line, [4]);
+            $this->registerNumber($line, 3, '#,##0');
+            $this->registerNumber($line, 5, '#,##0');
             $this->trackZeroCells($row, $line);
         }
         if (count($topAll) > count($top)) {
@@ -716,7 +839,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         }
         $push([""]);
 
-        // ---- BLOK 2: INTERAKSI PRODUK (sebelumnya tidak pernah diekspor) ----
+        // ---- BLOK 2: INTERAKSI PRODUK (payload: data klik bukan kolom tabel) ----
         $block('PRODUK PALING DILIHAT', ['SKU Induk', 'Nama Produk', 'Dilihat', 'Diklik', 'Total Interaksi'], 'E');
         $viewedAll = $this->payload['product_breakdowns']['most_viewed'] ?? [];
         $viewed = array_slice($viewedAll, 0, 15);
@@ -742,7 +865,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         }
         $push([""]);
 
-        // ---- BLOK 3: PELANGGAN ----
+        // ---- BLOK 3: PELANGGAN (payload: gabungan beberapa pesanan) ----
         $block('PELANGGAN TERBAIK', ['Nama Pelanggan', 'Nomor HP', 'Jumlah Pesanan', 'Total Belanja', 'Pesanan Terakhir'], 'E');
         $customers = $this->payload['customers'] ?? [];
         if ($customers === []) {
@@ -773,33 +896,36 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         }
         $push([""]);
 
-        // ---- BLOK 4: BAURAN PEMBAYARAN (sebelumnya tidak pernah diekspor) ----
+        // ---- BLOK 4: BAURAN METODE (COUNTIFS/SUMIFS ke kolom Metode tabel) ----
         $block('BAURAN METODE PEMBAYARAN', ['Metode', 'Jumlah Pesanan', 'Nilai Penjualan', 'Porsi Nilai', ''], 'D');
-        $mix = $this->payload['payment_mix'] ?? [];
-        $mixTotal = 0.0;
-        foreach ($mix as $m) {
-            $mixTotal += (float) ($m['revenue'] ?? 0);
-        }
-        if ($mix === []) {
-            $push(['Tidak ada transaksi pada periode ini.']);
-            $this->noteRows[] = $r - 1;
-        }
-        foreach ($mix as $m) {
-            $revenue = (float) ($m['revenue'] ?? 0);
+        $methods = [
+            'COD' => 'COD',
+            'Transfer bank' => 'Transfer bank',
+        ];
+        $rowFirst = null;
+        foreach ($methods as $label => $needle) {
             $row = [
-                $guard($this->paymentMethodLabel($m['method'] ?? null)),
-                (float) ($m['count'] ?? 0),
-                $revenue,
-                $mixTotal > 0 ? round($revenue / $mixTotal * 100, 2) : 0.0,
+                $guard($label),
+                '=COUNTIFS(' . $this->tableName('TabelPesanan') . '[Metode],"'.$needle.'")',
+                '=SUMIFS(' . $this->tableName('TabelPesanan') . '[Total Dibayar Pembeli],' . $this->tableName('TabelPesanan') . '[Metode],"'.$needle.'")',
+                null, // porsi dihitung setelah tahu baris
             ];
             $line = $push($row);
+            if ($rowFirst === null) {
+                $rowFirst = $line;
+            }
             $this->registerNumber($line, 2, '#,##0');
             $this->registerNumber($line, 3, '#,##0');
-            $this->registerNumber($line, 4, '0.00"%"');
+        }
+        $rowLast = $r - 1;
+        // Porsi nilai: baris ini dibagi jumlah seluruh baris blok.
+        for ($rr = $rowFirst; $rr <= $rowLast; $rr++) {
+            $rows[$rr - 1][3] = '=IFERROR(C'.$rr.'/SUM($C$'.$rowFirst.':$C$'.$rowLast.'),0)';
+            $this->registerNumber($rr, 4, '0.00"%"');
         }
         $push([""]);
 
-        // ---- BLOK 5: BIAYA RETUR ----
+        // ---- BLOK 5: BIAYA RETUR (payload: kasus retur) ----
         $block('BIAYA RETUR DITANGGUNG TOKO', ['Nomor Pesanan', 'Tanggal Selesai', 'Pihak Penyebab', 'Alasan', 'Ongkir Retur'], 'E');
         $returns = $this->payload['return_shipping_costs'] ?? [];
         if ($returns === []) {
@@ -838,7 +964,6 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
 
     protected function styleReportRows($sheet): void
     {
-        // Judul dan subtitle sheet ini berada di kolom A.
         foreach ($this->titleRows as $row) {
             $sheet->getStyle('A'.$row)->applyFromArray([
                 'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
@@ -872,7 +997,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
     }
 }
 
-// ------ 7. PANDUAN ------
+// ------ 6. PANDUAN ------
 
 class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\Excel\Concerns\WithEvents
 {
@@ -890,15 +1015,16 @@ class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\E
             ['PANDUAN LAPORAN PERFORMA TOKO', 'Ragil Aluminium'],
             ['Periode laporan: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')],
             [''],
-            ['ISI BERKAS', 'Laba Rugi = laporan bertingkat, pendapatan lalu beban lalu penjualan bersih. Rincian Pesanan = 1 baris per pesanan, header di baris 1, baris terakhir JUMLAH. Rincian Item = 1 baris per item pesanan. Analisis = produk, pelanggan, bauran pembayaran, dan biaya retur dalam satu sheet berblok.'],
-            ['CARA MEMBACA', 'Mulai dari sheet Laba Rugi untuk melihat hasil periode. Bila sebuah angka ingin diperiksa asalnya, buka Rincian Pesanan dan cocokkan dengan baris JUMLAH di bawah tabel. Angka pada baris JUMLAH sama dengan angka pada Laba Rugi.'],
-            ['ALUR UANG', 'Nilai produk sebelum potongan, dikurangi diskon produk dan voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan, menghasilkan Total Dibayar Pembeli. Dari angka itu dikurangi ongkir yang dibayarkan ke J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko, menghasilkan Penjualan Bersih.'],
-            ['SUBSIDI ONGKIR', 'Subsidi ongkir adalah bagian ongkir yang ditanggung toko. Nilainya sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah. Kolom Subsidi Ongkir Toko di Rincian Pesanan hanya keterangan, bukan pengurang tambahan.'],
-            ['ARUS KAS', 'Penjualan Bersih adalah hak toko atas periode ini, belum tentu sudah menjadi uang. Pembayaran sudah diterima = transfer bank cair + COD cair pada periode. Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba, bukan dari catatan pembayaran.'],
-            ['METRIK PRODUK', 'Tiga tingkat berbeda: Model Produk Terjual menghitung jenis model, Produk Terjual menghitung varian atau ukuran, Jumlah Unit Terjual menghitung batang barang. Jangan disamakan.'],
-            ['PENGUNJUNG YANG MEMBELI', 'Dihitung dari jumlah pembeli unik dibagi jumlah pengunjung, bukan jumlah pesanan dibagi pengunjung. Satu pelanggan dengan beberapa pesanan tetap dihitung satu orang.'],
-            ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya membandingkan dengan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data, bukan angka nol, supaya tidak muncul persentase perubahan yang menyesatkan.'],
-            ['FORMAT ANGKA', 'Semua kolom uang berupa angka polos tanpa Rp, contoh 3.000.000. Nilai selnya tetap numerik sehingga aman dijumlah di Excel. Sel yang memang tidak punya nilai dibiarkan kosong, bukan diisi tanda hubung.'],
+            ['ISI BERKAS', 'Ringkasan Finansial = laba rugi dan arus kas; angka pendapatan dan beban berupa rumus yang menunjuk Tabel Pesanan. KPI Operasional Toko = metrik kunjungan, operasional, retur, dan pembatalan. Tabel Pesanan = 1 baris per pesanan, Format Table dengan Total Row bawaan Excel. Tabel Item = 1 baris per item, Subtotal Baris berupa rumus Harga x Jumlah. Analisis = agregat yang tidak bisa diturunkan dari dua tabel.'],
+            ['CARA MEMBACA', 'Mulai dari Ringkasan Finansial. Setiap angka pendapatan dan beban adalah rumus SUM kolom Tabel Pesanan; klik selnya untuk melihat asalnya. Baris JUMLAH di kedua tabel adalah Total Row bawaan Excel: nilai ikut menyesuaikan bila tabel difilter.'],
+            ['ALUR UANG', 'Nilai produk terjual dikurangi voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan menghasilkan Total Dibayar Pembeli. Dari situ dikurangi ongkir ke J&T, biaya COD ke J&T, refund retur, dan ongkir retur toko menghasilkan Penjualan Bersih. Kolom Penjualan Bersih di Tabel Pesanan juga berupa rumus dengan urutan yang sama.'],
+            ['DISKON PRODUK', 'Kolom Hemat Pembeli vs Harga Normal adalah selisih harga normal dengan harga jual, bukan pengurang tagihan. Nilai produk terjual sudah memakai harga promo yang berlaku.'],
+            ['SUBSIDI ONGKIR', 'Subsidi ongkir sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah.'],
+            ['ARUS KAS', 'Pembayaran sudah diterima = transfer bank cair + COD cair pada periode. Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba, bukan dari catatan pembayaran.'],
+            ['PENGUNJUNG YANG MEMBELI', 'Dihitung dari jumlah pembeli unik dibagi jumlah pengunjung, bukan jumlah pesanan dibagi pengunjung.'],
+            ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya di KPI Operasional membandingkan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data.'],
+            ['ANALISIS', 'Blok Produk Terlaris menghitung Unit Terjual dan Jumlah Pesanan langsung dari Tabel Item lewat SUMIFS/COUNTIFS; blok Bauran Metode menghitung dari kolom Metode Tabel Pesanan. Untuk memutar data per SKU, metode, atau status, gunakan Pivot Table di Excel dengan sumber TabelPesanan atau TabelItem; keduanya sudah berformat tabel sehingga tinggal dipilih sebagai sumber pivot.'],
+            ['FORMAT ANGKA', 'Semua kolom uang berupa angka polos tanpa Rp. Sel yang memang tidak punya nilai dibiarkan kosong.'],
         ];
     }
 
