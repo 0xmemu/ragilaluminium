@@ -43,7 +43,7 @@ export function ValuePropositionsCard({ className }: { className?: string }) {
               name={item.icon}
               className={cn(
                 "size-5 shrink-0",
-                item.icon === "shield-check" ? "text-warning" : "text-foreground",
+                item.icon === "shield-check" ? "text-copper" : "text-foreground",
               )}
               weight="regular"
               aria-hidden="true"

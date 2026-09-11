@@ -52,6 +52,9 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 35 92% 10%;
+    /* Copper: aksen garansi/kepercayaan brand (lebih hangat dari warning emas). */
+    --copper: 25 65% 47%;
+    --copper-foreground: 0 0% 100%;
     --info: 205 56% 39%;
     --info-foreground: 0 0% 100%;
     --whatsapp: 142 71% 45%;
@@ -146,6 +149,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 36 92% 58%;
     --warning-foreground: 36 95% 82%;
+    --copper: 27 70% 62%;
+    --copper-foreground: 0 0% 12%;
     --info: 207 82% 62%;
     --info-foreground: 207 90% 84%;
     --border: 0 0% 16.5%; /* #2a2a2a hairline terlihat di #121212 & #1d1d22 */
@@ -186,6 +191,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 36 75% 38%;
     --warning-foreground: 36 80% 26%;
+    --copper: 25 60% 38%;
+    --copper-foreground: 0 0% 100%;
     --info: 207 55% 38%;
     --info-foreground: 0 0% 100%;
     --whatsapp: 142 71% 45%;
@@ -831,7 +838,7 @@
     align-items: center;
     gap: 4px;
     min-width: 0;
-    color: hsl(var(--warning));
+    color: hsl(var(--copper));
     font-size: 10px;
     font-weight: 500;
     line-height: 1;

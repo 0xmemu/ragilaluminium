@@ -249,7 +249,7 @@ export function ProductCard({
             <span className="product-card__meta-start">
             {showCod ? <CodBadge /> : null}
             <span className="product-card__warranty">
-              <SealCheck weight="fill" className="size-3.5 shrink-0 text-warning lg:size-4" aria-hidden />
+              <SealCheck weight="fill" className="size-3.5 shrink-0 text-copper lg:size-4" aria-hidden />
               <span className="truncate">{warrantyLabel}</span>
             </span>
             </span>

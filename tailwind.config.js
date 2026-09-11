@@ -62,6 +62,10 @@ export default {
                     DEFAULT: 'hsl(var(--warning))',
                     foreground: 'hsl(var(--warning-foreground))',
                 },
+                copper: {
+                    DEFAULT: 'hsl(var(--copper))',
+                    foreground: 'hsl(var(--copper-foreground))',
+                },
                 whatsapp: { DEFAULT: "hsl(var(--whatsapp))" },
                 "header-bg": "hsl(var(--header-bg))",
                 info: {
