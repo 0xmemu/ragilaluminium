@@ -11,7 +11,7 @@ export function TrustAssuranceCard({ className }: { className?: string }) {
     >
       <Icon
         name="shield-check"
-        className="mt-0.5 h-6 w-6 shrink-0 text-foreground"
+        className="mt-0.5 h-6 w-6 shrink-0 text-warning"
         weight="regular"
         aria-hidden="true"
       />

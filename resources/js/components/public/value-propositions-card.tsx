@@ -41,7 +41,10 @@ export function ValuePropositionsCard({ className }: { className?: string }) {
           >
             <Icon
               name={item.icon}
-              className="size-5 shrink-0 text-foreground"
+              className={cn(
+                "size-5 shrink-0",
+                item.icon === "shield-check" ? "text-warning" : "text-foreground",
+              )}
               weight="regular"
               aria-hidden="true"
             />
