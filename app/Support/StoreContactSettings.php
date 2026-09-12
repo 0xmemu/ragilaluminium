@@ -10,7 +10,7 @@ class StoreContactSettings
 
     public static function customPhone(): ?string
     {
-        $page = CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        $page = CmsSettings::pageBySlug(self::PAGE_SLUG);
         if (! $page || ! is_array($page->content)) {
             return null;
         }
@@ -41,7 +41,7 @@ class StoreContactSettings
      */
     public static function get(): array
     {
-        $page = CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        $page = CmsSettings::pageBySlug(self::PAGE_SLUG);
         $fields = ['address' => '', 'phone' => '', 'email' => '', 'hours' => ''];
 
         if ($page && is_array($page->content)) {

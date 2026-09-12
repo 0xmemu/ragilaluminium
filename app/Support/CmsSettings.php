@@ -39,13 +39,37 @@ abstract class CmsSettings
     /**
      * Cache halaman per request.
      *
-     * Satu halaman storefront memanggil banyak kelas *Settings, dan beberapa di
-     * antaranya membaca slug yang sama. Tanpa cache, tiap pemanggilan menambah
-     * satu query ke cms_pages (terukur 14 sampai 18 query per halaman).
+     * Satu halaman storefront memanggil banyak kelas *Settings dan pengaturan
+     * toko tersebar di beberapa slug (kontak, checkout, faq, beranda,
+     * flash-sale, tentang-kami, dan seterusnya), sehingga tanpa cache setiap
+     * halaman menempuh 6 sampai 7 query ke cms_pages.
      *
-     * @var array<string, CmsPage|null>
+     * @var array<string, CmsPage>
      */
     private static array $pageCache = [];
+
+    /** Penanda bahwa seluruh isi cms_pages sudah dimuat ke cache. */
+    private static bool $allPagesLoaded = false;
+
+    /**
+     * Muat seluruh cms_pages sekali.
+     *
+     * Tabel ini kecil (13 baris, sekitar 17 KB), jadi satu query untuk semuanya
+     * lebih murah daripada satu query per slug. Setelah ini, slug yang tidak ada
+     * di cache memang tidak ada di database dan tidak perlu query lagi.
+     */
+    private static function loadAllPages(): void
+    {
+        if (self::$allPagesLoaded) {
+            return;
+        }
+
+        foreach (CmsPage::query()->get() as $page) {
+            self::$pageCache[$page->slug] = $page;
+        }
+
+        self::$allPagesLoaded = true;
+    }
 
     /**
      * Ambil CmsPage untuk slug ini (tanpa membuat).
@@ -56,13 +80,41 @@ abstract class CmsSettings
             return null;
         }
 
-        $slug = static::PAGE_SLUG;
+        self::loadAllPages();
 
-        if (! array_key_exists($slug, self::$pageCache)) {
-            self::$pageCache[$slug] = CmsPage::query()->where('slug', $slug)->first();
+        return self::$pageCache[static::PAGE_SLUG] ?? null;
+    }
+
+    /**
+     * Halaman berdasarkan slug, memakai cache batch.
+     *
+     * Pintu baca tunggal untuk kelas *Settings yang punya pembacaan sendiri.
+     * Dipakai agar pengaturan toko yang tersebar di beberapa slug tidak
+     * menempuh satu query per slug pada setiap request.
+     */
+    public static function pageBySlug(string $slug): ?CmsPage
+    {
+        if ($slug === '') {
+            return null;
         }
 
-        return self::$pageCache[$slug];
+        self::loadAllPages();
+
+        if (array_key_exists($slug, self::$pageCache)) {
+            return self::$pageCache[$slug];
+        }
+
+        // Belum ada di cache batch. Bisa berarti slug ini memang belum ada di
+        // database, atau halamannya baru dibuat setelah batch dimuat. Query
+        // tunggal ini memastikan hasilnya benar; bila ketemu, hasilnya disimpan
+        // supaya pemanggilan berikutnya tidak query lagi.
+        $page = CmsPage::query()->where('slug', $slug)->first();
+
+        if ($page !== null) {
+            self::$pageCache[$slug] = $page;
+        }
+
+        return $page;
     }
 
     /**
@@ -72,11 +124,13 @@ abstract class CmsSettings
     {
         if ($slug === null) {
             self::$pageCache = [];
+            self::$allPagesLoaded = false;
 
             return;
         }
 
         unset(self::$pageCache[$slug]);
+        self::$allPagesLoaded = false;
     }
 
     /**

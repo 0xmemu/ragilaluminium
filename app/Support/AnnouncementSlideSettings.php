@@ -74,6 +74,6 @@ class AnnouncementSlideSettings
 
     private static function page(): ?CmsPage
     {
-        return CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        return CmsSettings::pageBySlug(self::PAGE_SLUG);
     }
 }

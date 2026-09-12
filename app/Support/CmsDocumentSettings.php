@@ -54,6 +54,11 @@ class CmsDocumentSettings
         self::assertKey($key);
         $meta = self::DOCUMENTS[$key];
 
+        $cached = CmsSettings::pageBySlug($key);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         return CmsPage::query()->firstOrCreate(
             ['slug' => $key],
             [

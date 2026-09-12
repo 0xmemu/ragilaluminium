@@ -19,6 +19,11 @@ class TestimonialPageSettings
 
     public static function ensurePage(): CmsPage
     {
+        $cached = CmsSettings::pageBySlug(self::PAGE_SLUG);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         return CmsPage::query()->firstOrCreate(
             ['slug' => self::PAGE_SLUG],
             [

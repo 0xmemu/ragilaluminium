@@ -68,6 +68,11 @@ class AboutPageSettings
 
     public static function ensurePage(): CmsPage
     {
+        $cached = CmsSettings::pageBySlug(self::PAGE_SLUG);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         return CmsPage::query()->firstOrCreate(
             ['slug' => self::PAGE_SLUG],
             [
@@ -151,7 +156,7 @@ class AboutPageSettings
     /** @return array<string,mixed> */
     protected static function rawContent(): array
     {
-        $page = CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        $page = CmsSettings::pageBySlug(self::PAGE_SLUG);
         $content = $page && is_array($page->content) ? $page->content : [];
 
         return $content;

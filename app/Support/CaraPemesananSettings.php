@@ -191,11 +191,16 @@ class CaraPemesananSettings
 
     protected static function page(): ?CmsPage
     {
-        return CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        return CmsSettings::pageBySlug(self::PAGE_SLUG);
     }
 
     protected static function ensurePage(): CmsPage
     {
+        $cached = CmsSettings::pageBySlug(self::PAGE_SLUG);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         return CmsPage::query()->firstOrCreate(
             ['slug' => self::PAGE_SLUG],
             [

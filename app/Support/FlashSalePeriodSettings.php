@@ -245,7 +245,7 @@ class FlashSalePeriodSettings
 
     private static function page(bool $create = false): ?CmsPage
     {
-        $page = CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        $page = CmsSettings::pageBySlug(self::PAGE_SLUG);
         if ($page || ! $create) {
             return $page;
         }
