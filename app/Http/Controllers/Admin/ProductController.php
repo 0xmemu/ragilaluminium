@@ -176,8 +176,6 @@ class ProductController extends Controller
             'width_cm' => ['nullable', 'numeric', 'min:0'],
             'height_cm' => ['nullable', 'numeric', 'min:0'],
             'depth_cm' => ['nullable', 'numeric', 'min:0'],
-            'pallet_allowance_per_side_cm' => ['nullable', 'numeric', 'min:0'],
-            'pallet_weight_kg' => ['nullable', 'numeric', 'min:0'],
             // ADR-021: definisi varian (nama bebas + daftar opsi).
             'variant_defs' => ['nullable', 'array', 'max:5'],
             'variant_defs.*.name' => ['required_with:variant_defs', 'string', 'max:100'],
@@ -210,7 +208,7 @@ class ProductController extends Controller
             $validated['initial_stock'],
         );
         // ADR-021: dimensi/berat produk; short_name sepenuhnya otomatis.
-        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm', 'pallet_allowance_per_side_cm', 'pallet_weight_kg'] as $dimensionField) {
+        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm'] as $dimensionField) {
             if (array_key_exists($dimensionField, $validated)) {
                 $validated[$dimensionField] = $validated[$dimensionField] !== null
                     ? (float) $validated[$dimensionField]
@@ -505,10 +503,7 @@ class ProductController extends Controller
                 'weight_kg' => $product->weight_kg !== null ? self::cleanDimension($product->weight_kg) : '',
                 'height_cm' => $product->height_cm !== null ? self::cleanDimension($product->height_cm) : '',
                 'width_cm' => $product->width_cm !== null ? self::cleanDimension($product->width_cm) : '',
-                'depth_cm' => $product->depth_cm !== null ? self::cleanDimension($product->depth_cm) : '',
-                'pallet_allowance_per_side_cm' => $product->pallet_allowance_per_side_cm !== null ? self::cleanDimension($product->pallet_allowance_per_side_cm) : '3',
-                'pallet_weight_kg' => $product->pallet_weight_kg !== null ? self::cleanDimension($product->pallet_weight_kg) : '0',
-                // ADR-020: media katalog umum (posisi 1..9) dimuat di form galeri utama.
+                'depth_cm' => $product->depth_cm !== null ? self::cleanDimension($product->depth_cm) : '',                // ADR-020: media katalog umum (posisi 1..9) dimuat di form galeri utama.
                 // Media opsi varian (posisi 50+) dan video (posisi 80+) dipisahkan
                 // agar tidak tercampur ke dalam galeri foto utama.
                 'media' => $product->media
@@ -574,8 +569,6 @@ class ProductController extends Controller
             'width_cm' => ['nullable', 'numeric', 'min:0'],
             'height_cm' => ['nullable', 'numeric', 'min:0'],
             'depth_cm' => ['nullable', 'numeric', 'min:0'],
-            'pallet_allowance_per_side_cm' => ['nullable', 'numeric', 'min:0'],
-            'pallet_weight_kg' => ['nullable', 'numeric', 'min:0'],
             'homepage_popular' => ['sometimes', 'boolean'],
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'wizard_step' => ['nullable', 'in:identity,variants,media,review'],
@@ -594,7 +587,7 @@ class ProductController extends Controller
         ], [], [
             'name' => 'Nama produk',
         ]);
-        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm', 'pallet_allowance_per_side_cm', 'pallet_weight_kg'] as $dimensionField) {
+        foreach (['weight_kg', 'width_cm', 'height_cm', 'depth_cm'] as $dimensionField) {
             if (array_key_exists($dimensionField, $validated)) {
                 $validated[$dimensionField] = $validated[$dimensionField] !== null && $validated[$dimensionField] !== ''
                     ? (float) $validated[$dimensionField]

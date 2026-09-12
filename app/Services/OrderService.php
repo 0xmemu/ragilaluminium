@@ -424,8 +424,6 @@ class OrderService
                 'length_cm' => (float) ($product?->width_cm ?? $variant?->width_cm ?? 0),
                 'width_cm' => (float) ($product?->depth_cm ?? $variant?->depth_cm ?? 0),
                 'quantity' => max(1, (int) $item['quantity']),
-                'pallet_allowance_per_side_cm' => $product?->pallet_allowance_per_side_cm,
-                'pallet_weight_kg' => $product?->pallet_weight_kg,
             ];
         }
         $calculator = new ShipmentPackageCalculator(
@@ -803,8 +801,6 @@ class OrderService
                 'length_cm' => (float) ($product->width_cm ?? $variant?->width_cm ?? 0),
                 'width_cm' => (float) ($product->depth_cm ?? $variant?->depth_cm ?? 0),
                 'quantity' => max(1, (int) $line['qty']),
-                'pallet_allowance_per_side_cm' => $product->pallet_allowance_per_side_cm,
-                'pallet_weight_kg' => $product->pallet_weight_kg,
             ];
         }, $lines);
 

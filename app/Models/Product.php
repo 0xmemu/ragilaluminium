@@ -28,8 +28,6 @@ class Product extends Model
         'width_cm',
         'height_cm',
         'depth_cm',
-        'pallet_allowance_per_side_cm',
-        'pallet_weight_kg',
         'status',
         'homepage_popular',
         'homepage_popular_sort',
@@ -46,8 +44,6 @@ class Product extends Model
         'homepage_popular_sort' => 'integer',
         'popularity_seed' => 'integer',
         'popularity_seed_applied_at' => 'datetime',
-        'pallet_allowance_per_side_cm' => 'decimal:3',
-        'pallet_weight_kg' => 'decimal:3',
     ];
 
     public function variants(): HasMany

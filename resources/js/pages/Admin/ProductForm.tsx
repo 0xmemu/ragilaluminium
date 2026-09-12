@@ -32,8 +32,6 @@ interface VariantDraft {
   width_cm: string
   height_cm: string
   depth_cm: string
-  pallet_allowance_per_side_cm?: string
-  pallet_weight_kg?: string
   status: string
 }
 
@@ -57,8 +55,6 @@ interface ProductFormData {
   width_cm?: string
   height_cm?: string
   depth_cm?: string
-  pallet_allowance_per_side_cm?: string
-  pallet_weight_kg?: string
 }
 
 interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"> {
@@ -147,8 +143,6 @@ export default function ProductForm({
     width_cm: (product as unknown as Record<string, unknown> & { width_cm?: string })?.width_cm as string ?? "",
     height_cm: (product as unknown as Record<string, unknown> & { height_cm?: string })?.height_cm as string ?? "",
     depth_cm: (product as unknown as Record<string, unknown> & { depth_cm?: string })?.depth_cm as string ?? "",
-    pallet_allowance_per_side_cm: (product as unknown as Record<string, unknown> & { pallet_allowance_per_side_cm?: string })?.pallet_allowance_per_side_cm as string ?? "3",
-    pallet_weight_kg: (product as unknown as Record<string, unknown> & { pallet_weight_kg?: string })?.pallet_weight_kg as string ?? "0",
   })
 
   // ADR-021: media dipilih/diunggah langsung di form (upload atau Media Library),
@@ -506,30 +500,6 @@ export default function ProductForm({
                           className="h-8 text-xs font-mono"
                         />
                         {form.errors.depth_cm ? <p className="mt-1 text-xs text-destructive">{form.errors.depth_cm}</p> : null}
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2 border-t border-border/60 pt-3">
-                      <div>
-                        <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Tambahan pallet per sisi (cm)</label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="Contoh: 3"
-                          value={form.data.pallet_allowance_per_side_cm ?? "3"}
-                          onChange={(event) => form.setData("pallet_allowance_per_side_cm", event.target.value as never)}
-                          className="h-8 text-xs font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Berat pallet (kg)</label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="Contoh: 3"
-                          value={form.data.pallet_weight_kg ?? "0"}
-                          onChange={(event) => form.setData("pallet_weight_kg", event.target.value as never)}
-                          className="h-8 text-xs font-mono"
-                        />
                       </div>
                     </div>
                   </td>

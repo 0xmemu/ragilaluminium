@@ -64,20 +64,8 @@ final class ShipmentPackageCalculator
         $innerWidth = array_sum(array_map(static fn (array $i): float => (float) $i['width_cm'] * (int) $i['quantity'], $items));
         $productWeight = array_sum(array_map(static fn (array $i): float => (float) $i['weight_kg'] * (int) $i['quantity'], $items));
 
-        $allowances = array_map(static fn (array $item): float =>
-            is_numeric($item['pallet_allowance_per_side_cm'] ?? null)
-                ? max(0, (float) $item['pallet_allowance_per_side_cm'])
-                : 3.0,
-            $items,
-        );
-        $palletWeights = array_map(static fn (array $item): float =>
-            is_numeric($item['pallet_weight_kg'] ?? null)
-                ? max(0, (float) $item['pallet_weight_kg'])
-                : 0.0,
-            $items,
-        );
-        $allowance = max($allowances);
-        $palletWeight = array_sum($palletWeights);
+        $allowance = $this->allowancePerSideCm;
+        $palletWeight = $this->palletWeightKg;
         $length = $innerLength + (2 * $allowance);
         $width = $innerWidth + (2 * $allowance);
         $height = $innerHeight + (2 * $allowance);
