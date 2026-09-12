@@ -185,7 +185,7 @@ export default function Checkout({
       {/* Indikator langkah checkout */}
       <section className="border-b border-border bg-surface">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <ol className="mx-auto grid w-full max-w-md grid-cols-3 py-3" aria-label="Langkah checkout">
+          <ol className="mx-auto grid w-full max-w-lg grid-cols-3 py-4 lg:py-5" aria-label="Langkah checkout">
             {steps.map((step, idx) => {
               const active = !step.done && (idx === 0 || [0, 1].slice(0, idx).every((i) => steps[i].done))
               return (
@@ -193,12 +193,12 @@ export default function Checkout({
                   {idx < steps.length - 1 ? (
                     <div
                       aria-hidden="true"
-                      className="absolute left-1/2 right-[-50%] top-[10px] h-[2px] -translate-y-1/2 z-0 bg-border"
+                      className="absolute left-1/2 right-[-50%] top-3 h-[2px] -translate-y-1/2 z-0 bg-border lg:top-[14px]"
                     />
                   ) : null}
                   <span
                     className={cn(
-                      "relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                      "relative z-10 flex size-6 lg:size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold lg:text-sm",
                       step.done
                         ? "bg-primary text-primary-foreground"
                         : active
@@ -206,11 +206,11 @@ export default function Checkout({
                           : "border border-border bg-surface text-muted-foreground",
                     )}
                   >
-                    {step.done ? <Icon name="check" className="size-3" weight="bold" /> : step.n}
+                    {step.done ? <Icon name="check" className="size-3 lg:size-3.5" weight="bold" /> : step.n}
                   </span>
                   <span
                     className={cn(
-                      "mt-1 text-[11px] leading-tight font-semibold",
+                      "mt-1.5 text-xs leading-tight font-semibold lg:text-sm",
                       step.done || active ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
