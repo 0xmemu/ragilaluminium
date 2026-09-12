@@ -521,4 +521,39 @@ class StorePerformanceExportTest extends TestCase
         $it = $ss->getSheetByName('Tabel Item (Agt 2026)');
         $this->assertSame('RA-MM-1', $it->getCell('A2')->getValue());
     }
+    public function test_nomor_hp_pelanggan_disimpan_sebagai_teks(): void
+    {
+        $payload = $this->payload();
+        $payload['customers'] = [[
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => '6285725116817',
+            'order_count' => 3,
+            'total_spent' => 15000000.0,
+            'last_order_at' => '2026-09-01T09:30:00+07:00',
+        ]];
+
+        Excel::store(new StorePerformanceExport($payload), 'ident_performa.xlsx', 'imports');
+        $ss = IOFactory::load(\Illuminate\Support\Facades\Storage::disk('imports')->path('ident_performa.xlsx'));
+        $an = $ss->getSheetByName('Analisis');
+
+        // Nomor HP ada di blok PELANGGAN TERBAIK (baris judul, baris kolom,
+        // lalu data mulai dua baris di bawahnya).
+        $phoneRow = null;
+        for ($r = 1; $r <= $an->getHighestRow(); $r++) {
+            if (trim((string) $an->getCell('A'.$r)->getValue()) === 'PELANGGAN TERBAIK') {
+                $phoneRow = $r + 2;
+                break;
+            }
+        }
+        $this->assertNotNull($phoneRow, 'blok PELANGGAN TERBAIK wajib ada');
+
+        $cell = $an->getCell('B'.$phoneRow);
+        $this->assertSame('6285725116817', (string) $cell->getValue(), 'nomor HP terbaca utuh');
+        $this->assertSame(
+            \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+            $cell->getDataType(),
+            'nomor HP disimpan sebagai teks'
+        );
+        $this->assertSame('@', $cell->getStyle()->getNumberFormat()->getFormatCode(), 'kolom HP berformat teks');
+    }
 }

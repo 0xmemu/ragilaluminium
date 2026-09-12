@@ -81,6 +81,17 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
     protected array $textColumns = [];
 
     /**
+     * Sel teks per baris+kolom: [nomor baris, indeks kolom 1-based].
+     *
+     * Dipakai laporan bertingkat (mis. blok "Pelanggan Terbaik" di sheet
+     * Analisis) yang hanya sebagian barisnya berisi identitas, sehingga
+     * tidak bisa memakai $textColumns yang berlaku satu kolom penuh.
+     *
+     * @var list<array{0:int, 1:int}>
+     */
+    protected array $textCells = [];
+
+    /**
      * Sel bernilai 0.0 yang dibuang Maatwebsite (fromArray loose-null
      * comparison: 0 == null). Dicatat oleh trackZeroCells() lalu ditulis
      * ulang via setCellValue di afterSheet supaya 0 tetap tampil.
@@ -178,25 +189,8 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
             $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
-        // Kolom identitas: format teks dan nilai dipaksa jadi string asli.
-        // Menyimpan nomor panjang sebagai angka membuat Excel menampilkan
-        // notasi ilmiah (2,01719E+11) dan, di atas 15 digit, membulatkan
-        // digit terakhir sehingga nomor resi jadi salah.
-        foreach ($this->textColumns as $col) {
-            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
-            $sheet->getStyle($range)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
-
-            for ($row = $this->firstBodyRow; $row <= $lastRow; $row++) {
-                $cell = $sheet->getCell($col.$row);
-                if ($cell->getDataType() === DataType::TYPE_NUMERIC) {
-                    $sheet->setCellValueExplicit(
-                        $col.$row,
-                        (string) $cell->getValue(),
-                        DataType::TYPE_STRING
-                    );
-                }
-            }
-        }
+        // Kolom identitas (nomor resi, HP, SKU, kode pos) wajib teks.
+        $this->applyTextCells($sheet, $lastRow);
 
         // Tulis ulang sel 0.0 yang dibuang Maatwebsite (fromArray loose-null).
         foreach ($this->zeroCells as $zc) {
@@ -216,6 +210,52 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
                     'col' => Coordinate::stringFromColumnIndex($colIndex + 1),
                 ];
             }
+        }
+    }
+
+    /**
+     * Tandai satu sel sebagai teks (identitas: nomor HP, SKU, resi).
+     */
+    protected function registerTextCell(int $row, int $colIndex): void
+    {
+        $this->textCells[] = [$row, $colIndex];
+    }
+
+    /**
+     * Terapkan format teks pada kolom identitas dan sel identitas.
+     *
+     * Tanpa ini, string angka seperti nomor resi atau nomor HP ditulis
+     * sebagai ANGKA oleh PhpSpreadsheet, lalu Excel menampilkannya sebagai
+     * notasi ilmiah (2,01719E+11); di atas 15 digit angkanya dibulatkan
+     * sehingga nomornya salah, bukan sekadar jelek tampilannya.
+     */
+    protected function applyTextCells(Worksheet $sheet, int $lastRow): void
+    {
+        foreach ($this->textColumns as $col) {
+            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
+            $sheet->getStyle($range)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+
+            for ($row = $this->firstBodyRow; $row <= $lastRow; $row++) {
+                $this->forceCellToText($sheet, $col.$row);
+            }
+        }
+
+        foreach ($this->textCells as [$row, $colIndex]) {
+            $coord = Coordinate::stringFromColumnIndex($colIndex).$row;
+            $sheet->getStyle($coord)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+            $this->forceCellToText($sheet, $coord);
+        }
+    }
+
+    /**
+     * Paksa satu sel jadi string asli supaya angka panjang tidak kehilangan
+     * digit karena disimpan sebagai pecahan biner.
+     */
+    protected function forceCellToText(Worksheet $sheet, string $coord): void
+    {
+        $cell = $sheet->getCell($coord);
+        if ($cell->getDataType() === DataType::TYPE_NUMERIC) {
+            $sheet->setCellValueExplicit($coord, (string) $cell->getValue(), DataType::TYPE_STRING);
         }
     }
 

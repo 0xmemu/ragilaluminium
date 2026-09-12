@@ -135,6 +135,10 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
             $sheet->getStyle($coord)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
+        // Sheet ini tidak memanggil parent::afterSheet, jadi sel identitas
+        // (nomor HP pelanggan) diterapkan di sini.
+        $this->applyTextCells($sheet, $sheet->getHighestRow());
+
         // Pasang Excel Table (Format Table / Ctrl+T) setelah autofilter
         // milik basis; Table membawa autofilter dan Total Row sendiri.
         foreach ($this->excelTables as $table) {
@@ -892,6 +896,8 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             ];
             $line = $push($row);
             $money($line, [3, 4]);
+            // Nomor HP pelanggan: identitas, wajib teks.
+            $this->registerTextCell($line, 2);
             $this->trackZeroCells($row, $line);
         }
         $push([""]);

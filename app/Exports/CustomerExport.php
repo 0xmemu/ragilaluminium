@@ -32,6 +32,9 @@ class CustomerExport extends RagilStyledExport implements FromQuery, WithHeading
         ];
         $this->currencyColumns = ['J'];
         $this->quantityColumns = ['I'];
+        // No. WhatsApp adalah identitas: sebagai angka, Excel menampilkan
+        // 2,62857E+12 dan nomor 16+ digit bisa dibulatkan.
+        $this->textColumns = ['C'];
     }
 
     public function query()

@@ -184,4 +184,33 @@ class CustomerAdminTest extends TestCase
         $this->assertArrayHasKey('score', $fraud);
         $this->assertLessThanOrEqual(100, $fraud['score']);
     }
+    public function test_export_pelanggan_nomor_wa_disimpan_sebagai_teks(): void
+    {
+        Customer::create([
+            'name' => 'Pelanggan Uji Nomor',
+            'phone' => '6285725116817',
+            'default_city' => 'Banjarnegara',
+            'default_province' => 'Jawa Tengah',
+        ]);
+
+        \Maatwebsite\Excel\Facades\Excel::store(
+            new CustomerExport(Customer::query()),
+            'ident_customer.xlsx',
+            'imports'
+        );
+        $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load(
+            \Illuminate\Support\Facades\Storage::disk('imports')->path('ident_customer.xlsx')
+        );
+        $cell = $ss->getSheetByName('Laporan Pelanggan')->getCell('C2');
+
+        // Nomor WA format asli Ragil (berawalan 62). Sebagai angka, Excel
+        // menampilkan 2,62857E+12 dan nomor 16+ digit dibulatkan.
+        $this->assertSame('6285725116817', (string) $cell->getValue(), 'nomor WA terbaca utuh');
+        $this->assertSame(
+            \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+            $cell->getDataType(),
+            'nomor WA disimpan sebagai teks'
+        );
+        $this->assertSame('@', $cell->getStyle()->getNumberFormat()->getFormatCode(), 'kolom WA berformat teks');
+    }
 }
