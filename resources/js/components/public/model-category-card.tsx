@@ -1,6 +1,5 @@
-import { Link } from "@inertiajs/react"
-
 import { Icon } from "@/components/shared/icon"
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { formatNumber } from "@/lib/format"
 import type { ModelCardData } from "@/types"
@@ -16,9 +15,8 @@ export function ModelCategoryCard({ model }: { model: ModelCardData }) {
 
   return (
     <article className="group h-full overflow-hidden rounded-[5px] border border-border bg-white transition-colors duration-200 hover:border-border">
-      <Link
+      <PrefetchLink
         href={href}
-        prefetch
         className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
@@ -46,7 +44,7 @@ export function ModelCategoryCard({ model }: { model: ModelCardData }) {
             <Icon name="arrow-up-right" className="size-3.5 shrink-0 text-foreground" aria-hidden="true" />
           </div>
         </div>
-      </Link>
+      </PrefetchLink>
     </article>
   )
 }

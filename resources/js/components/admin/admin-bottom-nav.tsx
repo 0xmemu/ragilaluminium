@@ -1,8 +1,6 @@
-import { Link } from "@inertiajs/react"
-
-import { useHoverPrefetch } from "@/components/admin/admin-navigation"
 
 import { Icon } from "@/components/shared/icon"
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
 
@@ -22,15 +20,11 @@ type BottomNavItem = (typeof items)[number]
  */
 function BottomNavLink({ item }: { item: BottomNavItem }) {
   const href = routeUrl(item.route)
-  const prefetchHandlers = useHoverPrefetch(href)
   const active = isRouteActive(item.active ?? [item.route])
 
   return (
-    <Link
+    <PrefetchLink
       href={href}
-      onMouseEnter={prefetchHandlers.onMouseEnter}
-      onMouseLeave={prefetchHandlers.onMouseLeave}
-      onClick={prefetchHandlers.cancel}
       className={cn(
         "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition",
         active ? "text-foreground" : "text-muted-foreground active:text-foreground",
@@ -47,7 +41,7 @@ function BottomNavLink({ item }: { item: BottomNavItem }) {
       <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-tight">
         {item.label}
       </span>
-    </Link>
+    </PrefetchLink>
   )
 }
 

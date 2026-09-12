@@ -1,7 +1,8 @@
-import { Link, usePage } from "@inertiajs/react"
+import { usePage } from "@inertiajs/react"
 import { ClipboardText, House, Info, Package, Storefront, type IconProps } from "@phosphor-icons/react"
 import type { ComponentType } from "react"
 
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -50,10 +51,9 @@ export function MobileBottomNav() {
         {items.map((item) => {
           const active = isRouteActive(item.active ?? [item.route])
           return (
-            <Link
+            <PrefetchLink
               key={`${item.label}-${item.route}`}
               href={routeUrl(item.route, item.params)}
-              prefetch
               className={cn(
                 "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 active ? "text-foreground" : "text-muted-foreground active:text-foreground",
@@ -70,7 +70,7 @@ export function MobileBottomNav() {
               <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-tight">
                 {item.label}
               </span>
-            </Link>
+            </PrefetchLink>
           )
         })}
       </div>

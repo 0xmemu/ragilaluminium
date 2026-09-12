@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { FlashSaleNavCountdown } from "@/components/public/flash-sale-stage"
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -485,15 +486,14 @@ export function PublicHeader() {
                         <h3 className="mb-2 text-sm font-bold text-foreground">{group.label}</h3>
                         <div className="grid gap-1">
                           {group.items.map((model) => (
-                            <Link
+                            <PrefetchLink
                               key={`${model.category}-${model.label}`}
                               href={model.href}
-                              prefetch
                               onClick={closeMenu}
                               className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition hover:translate-x-1 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:text-primary"
                             >
                               {model.label}
-                            </Link>
+                            </PrefetchLink>
                           ))}
                         </div>
                       </section>
@@ -727,10 +727,9 @@ export function PublicHeader() {
             }
 
             return (
-              <Link
+              <PrefetchLink
                 key={`${item.label}-${item.route}-${item.hash ?? ""}`}
                 href={navHref(item)}
-                prefetch
                 className={cn(
                   "inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold transition",
                   isFlashSale
@@ -754,7 +753,7 @@ export function PublicHeader() {
                   />
                 ) : null}
                 {item.label}
-              </Link>
+              </PrefetchLink>
             )
           })}
         </div>

@@ -1,7 +1,8 @@
-import { Link, usePage } from "@inertiajs/react"
+import { usePage } from "@inertiajs/react"
 import { Heart, Lightning, SealCheck } from "@phosphor-icons/react"
 import * as React from "react"
 
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { formatCurrency, productName } from "@/lib/format"
 import { trackProductClick } from "@/lib/product-engage"
@@ -148,9 +149,8 @@ export function ProductCard({
   return (
     <article className={cardClass}>
       <div className="product-card__media">
-        <Link
+        <PrefetchLink
           href={product.href}
-          prefetch
           className={linkClass}
           onClick={() => trackProductClick(product.id, csrf)}
         >
@@ -165,7 +165,7 @@ export function ProductCard({
               imageFit === "contain" ? "!object-contain" : "object-cover",
             )}
           />
-        </Link>
+        </PrefetchLink>
 
         {flashEmphasis ? (
           <span className="product-card__badge">
@@ -195,9 +195,8 @@ export function ProductCard({
         ) : null}
       </div>
 
-      <Link
+      <PrefetchLink
         href={product.href}
-        prefetch
         className={cn(linkClass, "product-card__link--body")}
         onClick={() => trackProductClick(product.id, csrf)}
       >
@@ -255,7 +254,7 @@ export function ProductCard({
             </span>
           </div>
         </div>
-      </Link>
+      </PrefetchLink>
     </article>
   )
 }

@@ -1,46 +1,13 @@
-import { Link, router, usePage } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
 import { clearReadyCount, getReadyCount, onReadyCountChange } from "@/lib/media-live"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
 import type { SharedPageProps } from "@/types"
-
-/**
- * Prefetch saat hover dengan timer yang BISA DIBATALKAN.
- *
- * Prefetch bawaan Inertia (`prefetch={["hover","click"]}`) memasang timer hover
- * 75 ms yang tidak dibatalkan ketika link diklik. Bila pengguna mengklik sebelum
- * timer menyala, klik sudah menavigasi lebih dulu, lalu timer menyusul memicu
- * prefetch tambahan. Respons prefetch itu tiba belakangan dan memicu render
- * ulang halaman (mount kedua), sehingga progress bar tampak selesai lebih dulu
- * baru halaman berpindah. Timer di sini dibatalkan pada klik agar satu klik
- * hanya menghasilkan satu kunjungan.
- */
-export function useHoverPrefetch(url: string, delay = 75) {
-  const timer = React.useRef<number | null>(null)
-
-  const cancel = React.useCallback(() => {
-    if (timer.current !== null) {
-      window.clearTimeout(timer.current)
-      timer.current = null
-    }
-  }, [])
-
-  React.useEffect(() => cancel, [cancel])
-
-  const onMouseEnter = React.useCallback(() => {
-    cancel()
-    timer.current = window.setTimeout(() => {
-      timer.current = null
-      router.prefetch(url)
-    }, delay)
-  }, [cancel, delay, url])
-
-  return { onMouseEnter, onMouseLeave: cancel, cancel }
-}
 
 interface AdminNavItemData {
   label: string
@@ -56,14 +23,10 @@ interface AdminNavItemData {
 
 function AdminBrand() {
   const dashboardHref = routeUrl("admin.dashboard")
-  const prefetchHandlers = useHoverPrefetch(dashboardHref)
 
   return (
-    <Link
+    <PrefetchLink
       href={dashboardHref}
-      onMouseEnter={prefetchHandlers.onMouseEnter}
-      onMouseLeave={prefetchHandlers.onMouseLeave}
-      onClick={prefetchHandlers.cancel}
       className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition hover:bg-muted"
       aria-label="Ragil Aluminium, ke dashboard admin"
     >
@@ -89,7 +52,7 @@ function AdminBrand() {
         </span>
         <span className="block text-[11px] leading-4 text-muted-foreground">Panel Admin</span>
       </span>
-    </Link>
+    </PrefetchLink>
   )
 }
 
@@ -102,19 +65,15 @@ function AdminNavLink({
   onNavigate?: () => void
 }) {
   const navHref = routeUrl(item.route, item.params)
-  const prefetchHandlers = useHoverPrefetch(navHref)
   let active = isRouteActive(item.active ?? [item.route])
   if (item.activeType && typeof window !== "undefined") {
     const type = new URLSearchParams(window.location.search).get("type")
     active = active && (item.activeType === "flash_sale" ? type === "flash_sale" : type !== "flash_sale")
   }
   return (
-    <Link
+    <PrefetchLink
       href={navHref}
-      onMouseEnter={prefetchHandlers.onMouseEnter}
-      onMouseLeave={prefetchHandlers.onMouseLeave}
       onClick={() => {
-        prefetchHandlers.cancel()
         if (item.route === "admin.media.library") clearReadyCount()
         onNavigate?.()
       }}
@@ -142,7 +101,7 @@ function AdminNavLink({
       {item.route === "admin.media.library" ? (
         <MediaBadge />
       ) : null}
-    </Link>
+    </PrefetchLink>
   )
 }
 
