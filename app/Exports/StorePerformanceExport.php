@@ -5,11 +5,12 @@ namespace App\Exports;
 use App\Exports\Concerns\RagilStyledExport;
 use App\Support\ExportSafety;
 use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
+use Maatwebsite\Excel\Concerns\RegistersEventListeners;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -43,9 +44,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Table\Column as TableColumn;
  */
 class StorePerformanceExport implements WithMultipleSheets
 {
-    public function __construct(protected array $payload, protected ?string $sheetSuffix = null)
-    {
-    }
+    public function __construct(protected array $payload, protected ?string $sheetSuffix = null) {}
 
     public function sheets(): array
     {
@@ -64,7 +63,7 @@ class StorePerformanceExport implements WithMultipleSheets
  * Basis sheet tabel datar: styling RagilStyledExport (header merah baris 1,
  * border, zebra, freeze, autofilter) + format angka per sel.
  */
-abstract class StorePerformanceTableSheet extends RagilStyledExport implements FromArray, WithTitle, WithStrictNullComparison
+abstract class StorePerformanceTableSheet extends RagilStyledExport implements FromArray, WithStrictNullComparison, WithTitle
 {
     /** @var list<array{0: int, 1: int, 2: string}> [baris, indeks kolom, format] */
     protected array $numberCells = [];
@@ -340,7 +339,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $this->subtitleRows[] = $r - 1;
         $push(['', 'Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-'), '', '', '']);
         $this->subtitleRows[] = $r - 1;
-        $push([""]);
+        $push(['']);
 
         // Judul kolom laporan (bukan header tabel, hanya penanda kolom).
         $head = $push(['', 'Keterangan', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
@@ -396,7 +395,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $this->totalRows[] = $rowTotalDibayar;
         $this->registerNumber($rowTotalDibayar, 3, '#,##0');
         $this->noteRows[] = $push(['', '    Angka pada kolom Periode Ini berupa rumus yang menunjuk Tabel Pesanan. Koreksi nilai di tabel akan mengubah laporan ini.', '', '', '']);
-        $push([""]);
+        $push(['']);
 
         // ---- BEBAN (rumus -> TabelPesanan) ----
         $push(['', 'BEBAN YANG DITANGGUNG TOKO', '', '', '']);
@@ -406,13 +405,15 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $rowOngkirJnt = $moneyRow('Ongkir dibayarkan ke J&T', $sum('Ongkir ke J&T'), -1 * $num($fin['shipping_raw'] ?? 0));
         // Kolom Biaya COD positif (uang diterima pembeli), jadi beban
         // ke J&T memang dibalik di sini.
-        $rowCodJnt = $moneyRow('Biaya COD diteruskan ke J&T', '-'.$sum('Biaya COD'), -1 * $num($fin['cod_fee'] ?? 0));
+        // Negasi rumus: '=' harus tetap di depan, jika tidak Excel menyimpan
+        // sel sebagai teks dan COD hilang dari jumlah beban (bug 2026-09-12).
+        $rowCodJnt = $moneyRow('Biaya COD diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0));
         $rowRefund = $moneyRow('Refund retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0));
         $rowRetShip = $moneyRow('Ongkir retur ditanggung toko', $sum('Ongkir Retur Toko'), -1 * $num($fin['return_shipping_store'] ?? 0));
         $rowBeban = $push(['', 'Jumlah beban toko', '=SUM(C'.$rowOngkirJnt.':C'.$rowRetShip.')', '', '']);
         $this->totalRows[] = $rowBeban;
         $this->registerNumber($rowBeban, 3, '#,##0');
-        $push([""]);
+        $push(['']);
 
         // ---- HASIL ----
         $push(['', 'HASIL', '', '', '']);
@@ -424,7 +425,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $this->grandTotalRows[] = $r - 1;
         $this->registerNumber($r - 1, 3, '#,##0');
         $this->noteRows[] = $push(['', '    Catatan: subsidi ongkir sudah termasuk dalam Ongkir ke J&T, tidak dikurangkan dua kali.', '', '', '']);
-        $push([""]);
+        $push(['']);
 
         // ---- ARUS KAS (angka payload: sumbernya pembayaran, bukan tabel) ----
         $push(['', 'ARUS KAS', '', '', '']);
@@ -433,7 +434,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $money('COD sudah cair', $fin['cod_paid'] ?? null, 1);
         $money('Pembayaran sudah diterima', $fin['payments_received'] ?? null, 0, true);
         $money('COD (barang belum sampai), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null, 1);
-        $push([""]);
+        $push(['']);
 
         return $rows;
     }
@@ -475,7 +476,7 @@ class StorePerformanceKpiSheet extends StorePerformanceTableSheet
         $this->titleRows[] = $r - 1;
         $push(['', 'Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-'), '', '', '']);
         $this->subtitleRows[] = $r - 1;
-        $push([""]);
+        $push(['']);
 
         $head = $push(['', 'Keterangan', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
         $this->columnLabelRows[] = $head;
@@ -507,7 +508,7 @@ class StorePerformanceKpiSheet extends StorePerformanceTableSheet
                     }
                 }
             }
-            $push([""]);
+            $push(['']);
         }
 
         return $rows;
@@ -797,7 +798,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         $rows[$r - 2][0] = 'ANALISIS PENJUALAN';
         $push(['Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')]);
         $this->subtitleRows[] = $r - 1;
-        $push([""]);
+        $push(['']);
 
         $block = function (string $title, array $header, string $lastCol) use ($push, &$r) {
             $line = $push([$title]);
@@ -827,9 +828,9 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $row = [
                 $guard($sku),
                 $guard($pr['name'] ?? ''),
-                '=SUMIFS(' . $this->tableName('TabelItem') . '[Jumlah],' . $this->tableName('TabelItem') . '[SKU Induk],$A'.$r.')',
+                '=SUMIFS('.$this->tableName('TabelItem').'[Jumlah],'.$this->tableName('TabelItem').'[SKU Induk],$A'.$r.')',
                 $guard($pr['revenue'] ?? 0),
-                '=COUNTIFS(' . $this->tableName('TabelItem') . '[SKU Induk],$A'.$r.')',
+                '=COUNTIFS('.$this->tableName('TabelItem').'[SKU Induk],$A'.$r.')',
             ];
             $line = $push($row);
             $money($line, [4]);
@@ -841,7 +842,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $push(['Menampilkan 15 produk teratas dari '.count($topAll).' produk yang terjual.']);
             $this->noteRows[] = $r - 1;
         }
-        $push([""]);
+        $push(['']);
 
         // ---- BLOK 2: INTERAKSI PRODUK (payload: data klik bukan kolom tabel) ----
         $block('PRODUK PALING DILIHAT', ['SKU Induk', 'Nama Produk', 'Dilihat', 'Diklik', 'Total Interaksi'], 'E');
@@ -867,7 +868,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $push(['Menampilkan 15 produk teratas dari '.count($viewedAll).' produk yang pernah dilihat.']);
             $this->noteRows[] = $r - 1;
         }
-        $push([""]);
+        $push(['']);
 
         // ---- BLOK 3: PELANGGAN (payload: gabungan beberapa pesanan) ----
         $block('PELANGGAN TERBAIK', ['Nama Pelanggan', 'Nomor HP', 'Jumlah Pesanan', 'Total Belanja', 'Pesanan Terakhir'], 'E');
@@ -900,7 +901,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $this->registerTextCell($line, 2);
             $this->trackZeroCells($row, $line);
         }
-        $push([""]);
+        $push(['']);
 
         // ---- BLOK 4: BAURAN METODE (COUNTIFS/SUMIFS ke kolom Metode tabel) ----
         $block('BAURAN METODE PEMBAYARAN', ['Metode', 'Jumlah Pesanan', 'Nilai Penjualan', 'Porsi Nilai', ''], 'D');
@@ -912,8 +913,8 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         foreach ($methods as $label => $needle) {
             $row = [
                 $guard($label),
-                '=COUNTIFS(' . $this->tableName('TabelPesanan') . '[Metode],"'.$needle.'")',
-                '=SUMIFS(' . $this->tableName('TabelPesanan') . '[Total Dibayar Pembeli],' . $this->tableName('TabelPesanan') . '[Metode],"'.$needle.'")',
+                '=COUNTIFS('.$this->tableName('TabelPesanan').'[Metode],"'.$needle.'")',
+                '=SUMIFS('.$this->tableName('TabelPesanan').'[Total Dibayar Pembeli],'.$this->tableName('TabelPesanan').'[Metode],"'.$needle.'")',
                 null, // porsi dihitung setelah tahu baris
             ];
             $line = $push($row);
@@ -929,7 +930,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $rows[$rr - 1][3] = '=IFERROR(C'.$rr.'/SUM($C$'.$rowFirst.':$C$'.$rowLast.'),0)';
             $this->registerNumber($rr, 4, '0.00"%"');
         }
-        $push([""]);
+        $push(['']);
 
         // ---- BLOK 5: BIAYA RETUR (payload: kasus retur) ----
         $block('BIAYA RETUR DITANGGUNG TOKO', ['Nomor Pesanan', 'Tanggal Selesai', 'Pihak Penyebab', 'Alasan', 'Ongkir Retur'], 'E');
@@ -1005,13 +1006,11 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
 
 // ------ 6. PANDUAN ------
 
-class StorePerformanceGuideSheet implements FromArray, WithTitle, \Maatwebsite\Excel\Concerns\WithEvents
+class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
 {
-    use \Maatwebsite\Excel\Concerns\RegistersEventListeners;
+    use RegistersEventListeners;
 
-    public function __construct(protected array $payload, protected ?string $sheetSuffix = null)
-    {
-    }
+    public function __construct(protected array $payload, protected ?string $sheetSuffix = null) {}
 
     public function array(): array
     {

@@ -6,10 +6,10 @@ use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderReturnCase;
-use App\Models\Product;
 use App\Models\Payment;
 use App\Models\PerformanceMetric;
 use App\Models\PerformanceVisitorEvent;
+use App\Models\Product;
 use App\Models\ShippingRecord;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -168,11 +168,13 @@ class StorePerformanceService
             : $range['to'];
         $current = $this->metricsFor($range['from'], $currentTo);
         // Sinkronkan portabel current utk grafik/label bila running.
-        if ($range['is_running'] ?? false) { $range['to'] = $currentTo; }
+        if ($range['is_running'] ?? false) {
+            $range['to'] = $currentTo;
+        }
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
 
         $salesKpis = [
-            $this->kpi('omzet', 'Omzet', $current['revenue'], $previous['revenue'], 'currency'),
+            $this->kpi('omzet', 'Penjualan Gross', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
             $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
             $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number'),
@@ -292,7 +294,7 @@ class StorePerformanceService
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
-                ['key' => 'traffic', 'title' => 'Kunjungan & Customer', 'kpis' => $trafficKpis],
+                ['key' => 'traffic', 'title' => 'Kunjungan & Pelanggan', 'kpis' => $trafficKpis],
                 ['key' => 'operations', 'title' => 'Operasional', 'kpis' => $opsKpis],
                 ['key' => 'payments', 'title' => 'Pembayaran', 'kpis' => $paymentsKpis],
                 ['key' => 'returns_cancellations', 'title' => 'Retur & Pembatalan', 'kpis' => array_merge($returnsKpis, $returnCostKpis, $cancellationsKpis)],
@@ -373,7 +375,7 @@ class StorePerformanceService
         // checkout supaya pesanan lama tidak berubah. Asumsi = ongkir pembeli +
         // subsidi toko + asuransi, SEBANDING dengan totalFreight yang juga
         // sudah memuat asuransi, supaya tidak terhitung dua kali.
-        $actualOngkir = \App\Models\ShippingRecord::actualOngkirByOrder(
+        $actualOngkir = ShippingRecord::actualOngkirByOrder(
             (clone $revenueOrders)->pluck('id')->all()
         );
         $ongkirDasar = 0.0;
@@ -572,6 +574,7 @@ class StorePerformanceService
             'refund' => $refund,
         ];
     }
+
     /**
      * KPI pembayaran (Task 2). Event date = payments.paid_at.
      * payments_received & cod_paid HANYA status=completed (tidak termasuk refunded/cancelled/pending).
@@ -616,6 +619,7 @@ class StorePerformanceService
             'cod_pending_count' => $codPendingCount,
         ];
     }
+
     public function seriesWithComparison(Carbon $from, Carbon $to, Carbon $prevFrom, Carbon $prevTo, string $granularity, string $metric): array
     {
         $current = $this->series($from, $to, $granularity, $metric);
@@ -805,6 +809,7 @@ class StorePerformanceService
             'value' => round($cancelledValue, 2),
         ];
     }
+
     /**
      * Breakdown performa produk (Task 3) - ADDITIVE, tanpa mengubah top_products.
      *
@@ -915,6 +920,7 @@ class StorePerformanceService
                     'total' => $views + $clicks,
                 ];
             }
+
             return $out;
         };
 
@@ -924,6 +930,7 @@ class StorePerformanceService
             'best_sellers' => $bestSellers,
         ];
     }
+
     public function topProducts(Carbon $from, Carbon $to, int $limit = 50): array
     {
         $rows = OrderItem::query()
@@ -1114,12 +1121,14 @@ class StorePerformanceService
             ])->all(),
         ];
     }
+
     protected function repeatOrderRate(int $newCustomers, int $repeatCustomers): float
     {
         $unique = $newCustomers + $repeatCustomers;
 
         return $unique > 0 ? round(($repeatCustomers / $unique) * 100, 2) : 0.0;
     }
+
     protected function customerCounts(Carbon $from, Carbon $to): array
     {
         // KPI-011: 'customer' punya order VALID (konsisten dgn KPI-003), exclude pending/cancelled.
@@ -1173,6 +1182,7 @@ class StorePerformanceService
         $orders = Order::query()->whereBetween('created_at', [$from, $to])->get(['id', 'created_at']);
         $durations = $orders->map(function (Order $order): ?float {
             $confirmedAt = $this->statusEventAt($order->id, ['awaiting_confirmation', 'pending_payment'], 'processing');
+
             return $confirmedAt ? max(0, $order->created_at->diffInMinutes($confirmedAt) / 60) : null;
         })->filter(fn (?float $value): bool => $value !== null);
 
@@ -1366,5 +1376,4 @@ class StorePerformanceService
     {
         return $query->whereRaw($this->paidRevenueStatusSql($alias));
     }
-
 }
