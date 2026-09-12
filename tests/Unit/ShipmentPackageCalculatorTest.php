@@ -9,7 +9,7 @@ class ShipmentPackageCalculatorTest extends TestCase
 {
     public function test_pallet_and_volumetric_weight_win_for_40_by_100_product(): void
     {
-        $calculator = new ShipmentPackageCalculator(3, 5000, 3);
+        $calculator = new ShipmentPackageCalculator(3, 5000);
         $result = $calculator->calculate([[
             'weight_kg' => 8.8,
             'height_cm' => 40,
@@ -27,7 +27,7 @@ class ShipmentPackageCalculatorTest extends TestCase
 
     public function test_same_package_adds_width_for_two_units(): void
     {
-        $result = (new ShipmentPackageCalculator(3, 5000, 3))->calculate([[
+        $result = (new ShipmentPackageCalculator(3, 5000))->calculate([[
             'weight_kg' => 8.8,
             'height_cm' => 40,
             'length_cm' => 100,

@@ -11,7 +11,6 @@ final class ShipmentPackageCalculator
     public function __construct(
         private readonly float $allowancePerSideCm = 3.0,
         private readonly float $volumetricDivisor = 5000.0,
-        private readonly float $palletWeightKg = 0.0,
     ) {}
 
     /** @param list<array{weight_kg:float, height_cm:float, length_cm:float, width_cm:float, quantity:int}> $items */
@@ -64,13 +63,14 @@ final class ShipmentPackageCalculator
         $innerWidth = array_sum(array_map(static fn (array $i): float => (float) $i['width_cm'] * (int) $i['quantity'], $items));
         $productWeight = array_sum(array_map(static fn (array $i): float => (float) $i['weight_kg'] * (int) $i['quantity'], $items));
 
+        // Allowance pallet seragam dari config/shipping.php (tanpa berat pallet:
+        // pemakaian pallet berubah mengikuti qty, jadi tidak ada berat tetap).
         $allowance = $this->allowancePerSideCm;
-        $palletWeight = $this->palletWeightKg;
         $length = $innerLength + (2 * $allowance);
         $width = $innerWidth + (2 * $allowance);
         $height = $innerHeight + (2 * $allowance);
         $volume = $length * $width * $height;
-        $actual = $productWeight + $palletWeight;
+        $actual = $productWeight;
         $volumetric = $volume / $this->volumetricDivisor;
 
         return [

@@ -109,7 +109,6 @@ return [
                     ],
                 ],
                 ['label' => 'Subsidi Ongkir', 'route' => 'admin.shipping-subsidy.edit', 'icon' => 'truck', 'active' => ['admin.shipping-subsidy.*']],
-                ['label' => 'Pallet Pengiriman', 'route' => 'admin.shipping-pallet.edit', 'icon' => 'package', 'active' => ['admin.shipping-pallet.*']],
                 ['label' => 'Biaya COD', 'route' => 'admin.cod-settings.edit', 'capability' => 'cod_settings.view', 'icon' => 'hand-coins', 'active' => ['admin.cod-settings.*']],
             ],
         ],

@@ -17,7 +17,6 @@ final class OperationalSettings
     public const COD = 'cod';
     public const SHIPPING_SUBSIDY = 'shipping_subsidy';
     public const STOCK_RANDOMIZATION = 'stock_randomization';
-    public const SHIPPING_PALLET = 'shipping_pallet';
     public const ETA = 'eta';
 
     /** @return array<string, array<string, mixed>> */
@@ -30,9 +29,6 @@ final class OperationalSettings
                 'default_enabled' => true,
                 'min' => 700,
                 'max' => 5000,
-            ],
-            self::SHIPPING_PALLET => [
-                'allowance_per_side_cm' => 3.0,
             ],
             self::ETA => [
                 'production_days' => max(0, (int) config('shipping.eta.production_days', 1)),
@@ -148,9 +144,6 @@ final class OperationalSettings
                 'carriers' => [
                     'jnt' => (bool) ($value['carriers']['jnt'] ?? $value['jnt_enabled'] ?? true),
                 ],
-            ],
-            self::SHIPPING_PALLET => [
-                'allowance_per_side_cm' => max(0, (float) ($value['allowance_per_side_cm'] ?? 3.0)),
             ],
             self::STOCK_RANDOMIZATION => self::normalizeStock($value),
             self::ETA => self::normalizeEta($value),

@@ -16,6 +16,13 @@ return [
     'default_item_weight_kg' => (float) env('SHIPPING_DEFAULT_ITEM_WEIGHT', 1.0),
 
     /*
+    | Allowance kemasan kayu/pallet per sisi (cm).
+    | Dimensi luar paket = dimensi susunan isi + (2 x allowance).
+    | Dipakai ShipmentPackageCalculator; nilai per produk sudah dihapus.
+    */
+    'pallet_allowance_per_side_cm' => (float) env('SHIPPING_PALLET_ALLOWANCE_CM', 3.0),
+
+    /*
     | Estimasi waktu tiba (OrderEta): hari produksi + rentang pengiriman.
     | Tampil di checkout, konfirmasi order, status pesanan, dan WA.
     */
