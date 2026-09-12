@@ -362,7 +362,7 @@ export function CheckoutSummary({
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="min-w-0 break-words text-muted-foreground">
-                    Hemat Subsidi Ongkir ({Math.round((effectiveShipping.subsidy / effectiveShipping.gross) * 100)}%)
+                    Hemat Subsidi Ongkir ({Math.round((effectiveShipping.subsidy / (effectiveShipping.freight || effectiveShipping.gross || 1)) * 100)}%)
                   </dt>
                   <dd className="tabular-nums font-semibold text-sale">
                     {formatCurrency(effectiveShipping.subsidy)}
