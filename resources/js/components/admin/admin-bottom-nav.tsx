@@ -1,5 +1,7 @@
 import { Link } from "@inertiajs/react"
 
+import { useHoverPrefetch } from "@/components/admin/admin-navigation"
+
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
@@ -11,6 +13,44 @@ const items = [
   { label: "Produk", route: "admin.products.index", icon: "package", active: ["admin.products.*", "admin.variants.*", "admin.attributes.*", "admin.sub-models.*", "admin.model-products.*"] },
 ]
 
+type BottomNavItem = (typeof items)[number]
+
+/**
+ * Item bottom nav dengan prefetch hover yang bisa dibatalkan.
+ * Tanpa ini, timer hover bawaan Inertia menyala setelah klik dan memicu
+ * kunjungan kedua yang membuat halaman ter-render ulang.
+ */
+function BottomNavLink({ item }: { item: BottomNavItem }) {
+  const href = routeUrl(item.route)
+  const prefetchHandlers = useHoverPrefetch(href)
+  const active = isRouteActive(item.active ?? [item.route])
+
+  return (
+    <Link
+      href={href}
+      onMouseEnter={prefetchHandlers.onMouseEnter}
+      onMouseLeave={prefetchHandlers.onMouseLeave}
+      onClick={prefetchHandlers.cancel}
+      className={cn(
+        "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition",
+        active ? "text-foreground" : "text-muted-foreground active:text-foreground",
+      )}
+      aria-current={active ? "page" : undefined}
+    >
+      {active ? (
+        <span
+          className="absolute inset-x-0 top-0 mx-auto h-0.5 w-7 rounded-full bg-foreground"
+          aria-hidden="true"
+        />
+      ) : null}
+      <Icon name={item.icon} className="h-5 w-5" weight={active ? "fill" : "regular"} aria-hidden="true" />
+      <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-tight">
+        {item.label}
+      </span>
+    </Link>
+  )
+}
+
 export function AdminBottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <nav
@@ -18,32 +58,9 @@ export function AdminBottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
       aria-label="Navigasi admin cepat"
     >
       <div className="mx-auto grid h-14 w-full max-w-lg grid-cols-5 items-stretch px-1">
-        {items.map((item) => {
-          const active = isRouteActive(item.active ?? [item.route])
-          return (
-            <Link
-              key={item.label}
-              href={routeUrl(item.route)}
-              prefetch
-              className={cn(
-                "relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden px-0.5 pt-1.5 pb-1 text-center transition",
-                active ? "text-foreground" : "text-muted-foreground active:text-foreground",
-              )}
-              aria-current={active ? "page" : undefined}
-            >
-              {active ? (
-                <span
-                  className="absolute inset-x-0 top-0 mx-auto h-0.5 w-7 rounded-full bg-foreground"
-                  aria-hidden="true"
-                />
-              ) : null}
-              <Icon name={item.icon} className="h-5 w-5" weight={active ? "fill" : "regular"} aria-hidden="true" />
-              <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-tight">
-                {item.label}
-              </span>
-            </Link>
-          )
-        })}
+        {items.map((item) => (
+          <BottomNavLink key={item.label} item={item} />
+        ))}
         <button
           type="button"
           onClick={onOpenMenu}
