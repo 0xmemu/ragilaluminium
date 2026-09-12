@@ -7,8 +7,8 @@ use App\Models\Order;
 use App\Support\ExportSafety;
 use App\Support\OrderEventLabels;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\RegistersEventListeners;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
@@ -17,7 +17,6 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -26,9 +25,11 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * rumus dipertahankan persis, hanya gaya yang ikut merek Ragil (merah).
  *
  *  1. 'Laporan Transaksi (Skema A)' -> 1 baris = 1 item; kolom pesanan
- *     (voucher/subsidi/ongkir/COD/V/W/AA) diulang sebagai referensi dan
- *     TIDAK di-SUM vertikal. Rumus bawaan: N=L-M, P=M*O, Q=N*O, V dan W
- *     dan AA sesuai template; baris TOTAL hanya O/P/Q.
+ *     (voucher/subsidi/ongkir/COD/asuransi) diulang sebagai referensi dan
+ *     TIDAK di-SUM vertikal. Rumus bawaan: N=Diskon % (M/L), O=L-M,
+ *     Q=M*P, R=O*P; Net Profit (AC) = net profit PESANAN dialokasikan
+ *     proporsional per subtotal baris (per produk, aman di-SUM); baris
+ *     TOTAL menjumlah P/Q/R/AC.
  *  2. 'Rekap Keuangan per Pesanan' -> 1 baris = 1 pesanan; E/F/G menarik
  *     sheet 1 lewat SUMIF; TOTAL SUM E:R (sesuai template).
  *  3. 'Panduan & Kamus Lengkap' -> kamus kolom owner.
@@ -51,9 +52,7 @@ class OrderExport implements WithMultipleSheets
 
     public const SHEET_GUIDE = 'Panduan & Kamus Lengkap';
 
-    public function __construct(protected Builder $query)
-    {
-    }
+    public function __construct(protected Builder $query) {}
 
     public function sheets(): array
     {
@@ -62,7 +61,7 @@ class OrderExport implements WithMultipleSheets
         return [
             new OrderTxSheet($blocks),
             new OrderRekapSheet($blocks),
-            new OrderGuideSheet(),
+            new OrderGuideSheet,
         ];
     }
 
@@ -79,7 +78,7 @@ class OrderExport implements WithMultipleSheets
             ->with([
                 'items:id,order_id,parent_sku,variant_sku,name,variation_1_name,variation_1_option,variation_2_name,variation_2_option,unit_price,quantity,line_discount,discount_source',
                 'payments:id,order_id,status,paid_at',
-                'shippingRecords:id,order_id,waybill_number',
+                'shippingRecords:id,order_id,waybill_number,shipping_cost,status',
                 'returnCases:id,order_id,status,resolution_type,reason,refund_amount,additional_shipping_amount',
             ])
             ->latest('created_at')
@@ -139,6 +138,16 @@ class OrderExport implements WithMultipleSheets
                 ];
             }
 
+            // Ongkir ASLI dari konsol J&T Cargo (diisi admin saat input resi);
+            // record aktif terbaru yang menang. null = belum dicatat, dan
+            // laporan memakai asumsi checkout untuk pesanan itu.
+            $actualRecord = $order->shippingRecords
+                ->whereNotIn('status', ['cancelled'])
+                ->whereNotNull('shipping_cost')
+                ->sortBy('id')
+                ->last();
+            $jntOngkirActual = $actualRecord ? (float) $actualRecord->shipping_cost : null;
+
             $blocks[] = [
                 'order_number' => $order->order_number,
                 'created_at' => $order->created_at?->timezone('Asia/Jakarta')->format('Y-m-d H:i:s') ?? '-',
@@ -152,6 +161,7 @@ class OrderExport implements WithMultipleSheets
                 'ongkir' => (float) $order->shipping_amount,
                 'cod' => (float) $order->cod_fee_amount,
                 'insurance' => (float) $order->shipping_insurance_amount,
+                'jnt_ongkir_actual' => $jntOngkirActual,
                 'return_type' => $returnType,
                 'refund' => $refund,
                 'retur_ongkir' => $returOngkir,
@@ -189,11 +199,11 @@ final class OrderReportBands
     public const TX = [
         [1, 5, 'FFE2E8F0', 'FF1B365D', 'FF334155', 'FFF8FAFC', false],
         [6, 10, 'FFE0F2FE', 'FF1B365D', 'FF0369A1', 'FFF0F9FF', false],
-        [11, 17, 'FFD1E7DD', 'FF1B365D', 'FF065F46', 'FFF0FDF4', false],
-        [18, 24, 'FFFEF3C7', 'FF1B365D', 'FF92400E', 'FFFFFBEB', false],
-        [25, 27, 'FFFEE2E2', 'FF1B365D', 'FF991B1B', 'FFFEF2F2', false],
-        [28, 28, 'FFBBF7D0', 'FF14532D', 'FF166534', 'FFDCFCE7', true],
-        [29, 36, 'FFEDE9FE', 'FF1B365D', 'FF5B21B6', 'FFF5F3FF', false],
+        [11, 18, 'FFD1E7DD', 'FF1B365D', 'FF065F46', 'FFF0FDF4', false],
+        [19, 25, 'FFFEF3C7', 'FF1B365D', 'FF92400E', 'FFFFFBEB', false],
+        [26, 28, 'FFFEE2E2', 'FF1B365D', 'FF991B1B', 'FFFEF2F2', false],
+        [29, 29, 'FFBBF7D0', 'FF14532D', 'FF166534', 'FFDCFCE7', true],
+        [30, 37, 'FFEDE9FE', 'FF1B365D', 'FF5B21B6', 'FFF5F3FF', false],
     ];
 
     /** @var list<array{0:int, 1:int, 2:string, 3:string, 4:string, 5:string, 6:bool}> */
@@ -202,10 +212,10 @@ final class OrderReportBands
         [5, 7, 'FFD1E7DD', 'FF1B365D', 'FF065F46', 'FFF0FDF4', false],
         [8, 9, 'FFFEE2E2', 'FF7F1D1D', 'FF991B1B', 'FFFEF2F2', true],
         [10, 13, 'FFFEF3C7', 'FF1B365D', 'FF92400E', 'FFFFFBEB', false],
-        [14, 16, 'FFE0E7FF', 'FF312E81', 'FF3730A3', 'FFEEF2FF', true],
-        [17, 18, 'FFFEE2E2', 'FF7F1D1D', 'FF991B1B', 'FFFEF2F2', true],
-        [19, 19, 'FFBBF7D0', 'FF14532D', 'FF166534', 'FFDCFCE7', true],
-        [20, 22, 'FFEDE9FE', 'FF1B365D', 'FF5B21B6', 'FFF5F3FF', false],
+        [14, 17, 'FFE0E7FF', 'FF312E81', 'FF3730A3', 'FFEEF2FF', true],
+        [18, 19, 'FFFEE2E2', 'FF7F1D1D', 'FF991B1B', 'FFFEF2F2', true],
+        [20, 20, 'FFBBF7D0', 'FF14532D', 'FF166534', 'FFDCFCE7', true],
+        [21, 23, 'FFEDE9FE', 'FF1B365D', 'FF5B21B6', 'FFF5F3FF', false],
     ];
 
     /** Warna teks isi tabel (slate 800, sama seperti template). */
@@ -276,34 +286,34 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
     protected const WIDTHS = [
         'A' => 16, 'B' => 18, 'C' => 18, 'D' => 14, 'E' => 16,
         'F' => 28, 'G' => 46, 'H' => 28, 'I' => 12, 'J' => 12,
-        'K' => 16, 'L' => 20, 'M' => 18, 'N' => 18, 'O' => 8,
-        'P' => 20, 'Q' => 24, 'R' => 20, 'S' => 22, 'T' => 20,
-        'U' => 20, 'V' => 20, 'W' => 24, 'X' => 24, 'Y' => 20,
-        'Z' => 18, 'AA' => 18, 'AB' => 24, 'AC' => 22, 'AD' => 18,
-        'AE' => 40, 'AF' => 18, 'AG' => 18, 'AH' => 22, 'AI' => 18,
-        'AJ' => 12,
+        'K' => 16, 'L' => 20, 'M' => 18, 'N' => 12, 'O' => 18,
+        'P' => 8, 'Q' => 20, 'R' => 24, 'S' => 20, 'T' => 22,
+        'U' => 20, 'V' => 20, 'W' => 20, 'X' => 24, 'Y' => 24,
+        'Z' => 20, 'AA' => 18, 'AB' => 18, 'AC' => 24, 'AD' => 22,
+        'AE' => 18, 'AF' => 40, 'AG' => 18, 'AH' => 18, 'AI' => 22,
+        'AJ' => 18, 'AK' => 12,
     ];
 
     protected const GROUPS = [
         ['A1', 'E1', '1. IDENTITAS PESANAN & WAKTU'],
         ['F1', 'J1', '2. SPESIFIKASI PRODUK & DIMENSI'],
-        ['K1', 'Q1', '3. RINCIAN HARGA & DISKON (Aman Di-SUM & Dibuat Pivot)'],
-        ['R1', 'X1', '4. BEBAN TOKO, ONGKIR, COD & ASURANSI (Header Repeat - JANGAN Di-SUM)'],
-        ['Y1', 'AA1', '5. STATUS RETUR & REFUND'],
-        ['AB1', 'AB1', '6. HASIL BERSIH'],
-        ['AC1', 'AJ1', '7. DETAIL PELANGGAN & ALAMAT PENGIRIMAN (DI PALING AKHIR)'],
+        ['K1', 'R1', '3. RINCIAN HARGA & DISKON (Aman Di-SUM & Dibuat Pivot)'],
+        ['S1', 'Y1', '4. BEBAN TOKO, ONGKIR, COD & ASURANSI (Header Repeat - JANGAN Di-SUM)'],
+        ['Z1', 'AB1', '5. STATUS RETUR & REFUND'],
+        ['AC1', 'AC1', '6. HASIL BERSIH'],
+        ['AD1', 'AK1', '7. DETAIL PELANGGAN & ALAMAT PENGIRIMAN (DI PALING AKHIR)'],
     ];
 
     protected const HEADERS = [
         'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Bayar Cair', 'Status Pesanan', 'No. Resi J&T',
         'SKU Varian', 'Nama Produk', 'Variasi Kusen & Kaca', 'Berat (kg)', 'Volume',
-        'Sumber Diskon', 'Harga Produk (Normal)', 'Diskon per Produk', 'Harga Jual Satuan', 'Qty',
+        'Sumber Diskon', 'Harga Produk (Normal)', 'Diskon per Produk', 'Diskon per Produk (%)', 'Harga Jual Satuan', 'Qty',
         'Total Diskon Produk', 'Subtotal Penjualan Produk',
         'Voucher Pesanan (Beban Toko)', 'Subsidi Ongkir Toko (Beban Toko)', 'Ongkir Ditanggung Pembeli',
         'Biaya COD Ditanggung Pembeli', 'Asuransi Pengiriman Dibayar Pembeli',
         'Total Tagihan Dibayar Pembeli', 'Pengurangan Nilai Pesanan ke J&T',
         'Kasus Retur / Alasan', 'Nilai Refund Pembeli', 'Ongkir Retur Tambahan',
-        'Net Profit Toko (Kas Bersih)',
+        'Net Profit Toko per Produk (Kas Bersih)',
         'Nama Pelanggan', 'No. Telepon / WA', 'Alamat Pengiriman', 'Kelurahan / Desa',
         'Kecamatan', 'Kabupaten / Kota', 'Provinsi', 'Kode Pos',
     ];
@@ -317,11 +327,11 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         $this->firstBodyRow = 3;
         // Kolom uang: angka polos #,##0 (pivot-friendly). Berat (I) terpisah
         // karena memakai desimal (2 angka) sesuai berat tagih pengiriman.
-        $this->currencyColumns = ['L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Z', 'AA', 'AB'];
+        $this->currencyColumns = ['L', 'M', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'AA', 'AB', 'AC'];
         $this->currencyFormat = '#,##0';
         // Nomor pesanan, nomor resi J&T, SKU varian, telepon, dan kode pos
         // adalah identitas: harus teks, bukan angka.
-        $this->textColumns = ['A', 'E', 'F', 'AD', 'AJ'];
+        $this->textColumns = ['A', 'E', 'F', 'AE', 'AK'];
         $this->columnWidths = self::WIDTHS;
     }
 
@@ -344,36 +354,49 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         }
         $lastItem = max($first, $r - 1);
         $rangeA = "\$A\${$first}:\$A\${$lastItem}";
-        $rangeQ = "\$Q\${$first}:\$Q\${$lastItem}";
+        $rangeSubtotal = "\$R\${$first}:\$R\${$lastItem}";
 
         foreach ($rows as [$item, $b, $r]) {
+            // Net profit per baris produk = net profit pesanan dialokasikan
+            // proporsional terhadap subtotal baris; bila total subtotal
+            // pesanan 0, alokasi dibagi rata antar barisnya.
+            $share = "IFERROR(R{$r}/SUMIF({$rangeA}, A{$r}, {$rangeSubtotal}), 1/COUNTIF({$rangeA}, A{$r}))";
+            $netOrder = "IF(D{$r}=\"Dibatalkan\", 0-AA{$r}-AB{$r}, X{$r}-Y{$r}-AA{$r}-AB{$r})";
+            // Pengurangan ke J&T memakai ongkir ASLI dari konsol J&T bila admin
+            // sudah mencatatnya; kalau belum, asumsi checkout (ongkir pembeli +
+            // subsidi toko). Wajib sama dengan Sheet 2 agar kedua sheet rekonsiliasi.
+            $ongkirBasis = $b['jnt_ongkir_actual'] !== null
+                ? number_format($b['jnt_ongkir_actual'], 2, '.', '')
+                : "(U{$r}+T{$r})";
             $out[] = [
-                    $b['order_number'], $b['created_at'], $b['paid_at'], $b['status'], $b['waybill'],
-                    $item['variant_sku'], $item['name'], $item['variations'],
-                    $b['charge_kg'] ?? '-', $b['volume'],
-                    $item['discount_source'], $item['normal'], $item['line_discount'],
-                    "=L{$r}-M{$r}", $item['qty'],
-                    "=M{$r}*O{$r}", "=N{$r}*O{$r}",
-                    $b['voucher'], $b['subsidi'], $b['ongkir'], $b['cod'], $b['insurance'],
-                    "=IF(D{$r}=\"Dibatalkan\", 0, SUMIF({$rangeA}, A{$r}, {$rangeQ}) - R{$r} + T{$r} + U{$r} + V{$r})",
-                    "=(T{$r}+S{$r})+U{$r}+V{$r}",
-                    $b['return_type'], $b['refund'], $b['retur_ongkir'],
-                    "=IF(D{$r}=\"Dibatalkan\", 0 - AA{$r}, W{$r}-X{$r}-Z{$r}-AA{$r})",
-                    $b['customer_name'], $b['customer_phone'], $b['address'], $b['village'],
-                    $b['district'], $b['city'], $b['province'], $b['postal'],
+                $b['order_number'], $b['created_at'], $b['paid_at'], $b['status'], $b['waybill'],
+                $item['variant_sku'], $item['name'], $item['variations'],
+                $b['charge_kg'] ?? '-', $b['volume'],
+                $item['discount_source'], $item['normal'], $item['line_discount'],
+                "=IF(L{$r}=0, 0, M{$r}/L{$r})", "=L{$r}-M{$r}", $item['qty'],
+                "=M{$r}*P{$r}", "=O{$r}*P{$r}",
+                $b['voucher'], $b['subsidi'], $b['ongkir'], $b['cod'], $b['insurance'],
+                "=IF(D{$r}=\"Dibatalkan\", 0, SUMIF({$rangeA}, A{$r}, {$rangeSubtotal}) - S{$r} + U{$r} + V{$r} + W{$r})",
+                "={$ongkirBasis}+V{$r}+W{$r}",
+                $b['return_type'], $b['refund'], $b['retur_ongkir'],
+                "={$netOrder}*{$share}",
+                $b['customer_name'], $b['customer_phone'], $b['address'], $b['village'],
+                $b['district'], $b['city'], $b['province'], $b['postal'],
             ];
             $this->trackZeroCells($out[count($out) - 1], $r);
         }
 
-        // Baris TOTAL: hanya O/P/Q (aturan owner, kolom pesanan lewat Rekap).
+        // Baris TOTAL: Qty/Total Diskon/Subtotal/Net Profit per produk
+        // di-SUM; kolom pesanan level order tetap lewat Rekap.
         $total = array_fill(0, count(self::HEADERS), null);
         $total[0] = 'TOTAL';
-        $total[14] = "=SUM(O{$first}:O{$lastItem})";
         $total[15] = "=SUM(P{$first}:P{$lastItem})";
         $total[16] = "=SUM(Q{$first}:Q{$lastItem})";
-        // Kolom pesanan R..AB -> penanda lihat Rekap (persis template).
-        foreach (['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB'] as $i => $col) {
-            $total[17 + $i] = '[Lihat Tab Rekap]';
+        $total[17] = "=SUM(R{$first}:R{$lastItem})";
+        $total[28] = "=SUM(AC{$first}:AC{$lastItem})";
+        // Kolom pesanan S..AB -> penanda lihat Rekap (persis template).
+        foreach (['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB'] as $i => $col) {
+            $total[18 + $i] = '[Lihat Tab Rekap]';
         }
         $out[] = $total;
 
@@ -384,7 +407,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
     {
         $row = array_fill(0, count(self::HEADERS), '');
         foreach (self::GROUPS as [$a, $b, $label]) {
-            $row[\PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(preg_replace('/\d+/', '', $a)) - 1] = $label;
+            $row[Coordinate::columnIndexFromString(preg_replace('/\d+/', '', $a)) - 1] = $label;
         }
 
         return $row;
@@ -407,11 +430,11 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         OrderReportBands::paint($sheet, OrderReportBands::TX, 3, $lastRow - 1, 'F3');
 
         // Garis tipis mulai baris judul; baris kelompok dibiarkan bersih.
-        $sheet->getStyle("A2:AJ{$lastRow}")->getBorders()->getAllBorders()->applyFromArray([
+        $sheet->getStyle("A2:AK{$lastRow}")->getBorders()->getAllBorders()->applyFromArray([
             'borderStyle' => Border::BORDER_THIN,
             'color' => ['argb' => 'FFCBD5E1'],
         ]);
-        $sheet->getStyle('A1:AJ1')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+        $sheet->getStyle('A1:AK1')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
 
         if ($lastRow < 3) {
             return;
@@ -419,25 +442,27 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
 
         // Perataan per kolom: identitas & teks tengah, nama/alamat kiri,
         // uang kanan (persis template).
-        foreach (['B', 'C', 'D', 'E', 'F', 'I', 'J', 'K', 'O', 'Y', 'AD', 'AJ'] as $col) {
+        foreach (['B', 'C', 'D', 'E', 'F', 'I', 'J', 'K', 'P', 'Z', 'AE', 'AK'] as $col) {
             $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
-        foreach (['G', 'H', 'AC', 'AE', 'AF', 'AG', 'AH', 'AI'] as $col) {
+        foreach (['G', 'H', 'AD', 'AF', 'AG', 'AH', 'AI', 'AJ'] as $col) {
             $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         }
-        foreach (['L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Z', 'AA', 'AB'] as $col) {
+        foreach (['L', 'M', 'N', 'O', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'AA', 'AB', 'AC'] as $col) {
             $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
         // Nomor pesanan dan kolom uang kunci ditebalkan seperti template.
         $sheet->getStyle("A3:A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle("A3:A{$lastRow}")->getFont()->setBold(true);
-        foreach (['N', 'O', 'P', 'Q', 'W', 'X', 'AB'] as $col) {
+        foreach (['O', 'P', 'Q', 'R', 'X', 'Y', 'AC'] as $col) {
             $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getFont()->setBold(true);
         }
 
         // Berat (kg): desimal bebas (22,45 tampil penuh; "-" tetap teks).
         $sheet->getStyle("I3:I{$lastRow}")->getNumberFormat()->setFormatCode('0.##');
+        // Diskon per Produk (%): pecahan berformat persen (10%).
+        $sheet->getStyle("N3:N{$lastRow}")->getNumberFormat()->setFormatCode('0%');
 
         // Baris TOTAL: hanya angka kunci yang tebal, sisanya normal, dan
         // kolom pesanan diisi penunjuk ke tab Rekap (persis template).
@@ -457,18 +482,19 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
             ]);
         }
 
-        foreach (['A', 'O'] as $col) {
+        foreach (['A', 'P'] as $col) {
             $sheet->getStyle("{$col}{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
             $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
         }
-        foreach (['P', 'Q'] as $col) {
+        foreach (['Q', 'R', 'AC'] as $col) {
             $sheet->getStyle("{$col}{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
             $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
         }
-        $sheet->getStyle("O{$lastRow}:Q{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
-        foreach (['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB'] as $col) {
+        $sheet->getStyle("P{$lastRow}:R{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle("AC{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        foreach (['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB'] as $col) {
             $sheet->getStyle("{$col}{$lastRow}")->getFont()->setSize(9)->getColor()->setARGB('FF64748B');
             $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
@@ -489,8 +515,8 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         'J' => 20, 'K' => 22, 'L' => 24,
         'M' => 20, 'N' => 18, 'O' => 22,
         'P' => 18, 'Q' => 18, 'R' => 18,
-        'S' => 26,
-        'T' => 22, 'U' => 18, 'V' => 22,
+        'S' => 18, 'T' => 26,
+        'U' => 22, 'V' => 18, 'W' => 22,
     ];
 
     protected const GROUPS = [
@@ -498,10 +524,10 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         ['E1', 'G1', '2. PENJUALAN PRODUK (DARI SHEET 1)'],
         ['H1', 'I1', '3. BEBAN TOKO'],
         ['J1', 'M1', '4. PEMBAYARAN PEMBELI (UANG MASUK)'],
-        ['N1', 'P1', '5. PENGURANGAN PESANAN (KE J&T)'],
-        ['Q1', 'R1', '6. RETUR & REFUND'],
-        ['S1', 'S1', '7. HASIL AKHIR'],
-        ['T1', 'V1', '8. DETAIL PELANGGAN (DI PALING AKHIR)'],
+        ['N1', 'Q1', '5. PENGURANGAN PESANAN (KE J&T)'],
+        ['R1', 'S1', '6. RETUR & REFUND'],
+        ['T1', 'T1', '7. HASIL AKHIR'],
+        ['U1', 'W1', '8. DETAIL PELANGGAN (DI PALING AKHIR)'],
     ];
 
     protected const HEADERS = [
@@ -510,7 +536,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         'Voucher Toko', 'Subsidi Ongkir Toko',
         'Ongkir Dibayar Pembeli', 'Biaya COD Dibayar Pembeli', 'Asuransi Pengiriman Dibayar Pembeli',
         'TOTAL DIBAYAR PEMBELI',
-        'Ongkir Total ke J&T', 'Biaya COD ke J&T', 'Total Potongan J&T',
+        'Ongkir Total ke J&T', 'Selisih Ongkir J&T', 'Biaya COD ke J&T', 'Total Potongan J&T',
         'Nilai Refund Pembeli', 'Ongkir Retur Toko',
         'NET PROFIT TOKO (KAS BERSIH)',
         'Nama Pelanggan', 'No. Telepon / WA', 'Kabupaten / Kota',
@@ -523,10 +549,10 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $this->skipDefaultHeaderStyle = true;
         $this->skipZebra = true;
         $this->firstBodyRow = 3;
-        $this->currencyColumns = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'];
+        $this->currencyColumns = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
         $this->currencyFormat = '#,##0';
         // Nomor pesanan dan telepon pelanggan adalah identitas: harus teks.
-        $this->textColumns = ['A', 'U'];
+        $this->textColumns = ['A', 'V'];
         $this->columnWidths = self::WIDTHS;
     }
 
@@ -538,8 +564,8 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $lastItem = max($lastItem, $firstItem);
         $src = "'".OrderExport::SHEET_TX."'!";
         $rangeA = $src."\$A\${$firstItem}:\$A\${$lastItem}";
-        $rangeP = $src."\$P\${$firstItem}:\$P\${$lastItem}";
-        $rangeQ = $src."\$Q\${$firstItem}:\$Q\${$lastItem}";
+        $rangeDiskon = $src."\$Q\${$firstItem}:\$Q\${$lastItem}";
+        $rangeSubtotal = $src."\$R\${$firstItem}:\$R\${$lastItem}";
 
         $out = [
             [
@@ -547,7 +573,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
                 '2. PENJUALAN PRODUK (DARI SHEET 1)', '', '',
                 '3. BEBAN TOKO', '',
                 '4. PEMBAYARAN PEMBELI (UANG MASUK)', '', '', '',
-                '5. PENGURANGAN PESANAN (KE J&T)', '', '',
+                '5. PENGURANGAN PESANAN (KE J&T)', '', '', '',
                 '6. RETUR & REFUND', '',
                 '7. HASIL AKHIR',
                 '8. DETAIL PELANGGAN (DI PALING AKHIR)', '', '',
@@ -557,17 +583,24 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
 
         $r = $firstOrder;
         foreach ($this->blocks as $b) {
+            // Ongkir Total ke J&T: ongkir ASLI dari konsol J&T bila admin sudah
+            // mencatatnya saat input resi; kalau belum, asumsi checkout
+            // (subsidi toko + ongkir pembeli) supaya pesanan lama tidak berubah.
+            $ongkirJnt = $b['jnt_ongkir_actual'] !== null
+                ? $b['jnt_ongkir_actual']
+                : "=I{$r}+J{$r}";
+
             $out[] = [
                 $b['order_number'], $b['created_at'], $b['paid_at'], $b['status'],
                 "=F{$r}+G{$r}",
-                "=SUMIF({$rangeA}, A{$r}, {$rangeP})",
-                "=SUMIF({$rangeA}, A{$r}, {$rangeQ})",
+                "=SUMIF({$rangeA}, A{$r}, {$rangeDiskon})",
+                "=SUMIF({$rangeA}, A{$r}, {$rangeSubtotal})",
                 $b['voucher'], $b['subsidi'],
                 $b['ongkir'], $b['cod'], $b['insurance'],
                 "=IF(D{$r}=\"Dibatalkan\", 0, G{$r}-H{$r}+J{$r}+K{$r}+L{$r})",
-                "=I{$r}+J{$r}", "=K{$r}", "=N{$r}+O{$r}+L{$r}",
+                $ongkirJnt, "=N{$r}-I{$r}-J{$r}", "=K{$r}", "=N{$r}+P{$r}+L{$r}",
                 $b['refund'], $b['retur_ongkir'],
-                "=IF(D{$r}=\"Dibatalkan\", 0 - Q{$r}, M{$r}-P{$r}-Q{$r}-R{$r})",
+                "=IF(D{$r}=\"Dibatalkan\", 0 - R{$r} - S{$r}, M{$r}-Q{$r}-R{$r}-S{$r})",
                 $b['customer_name'], $b['customer_phone'], $b['city'],
             ];
             $this->trackZeroCells($out[count($out) - 1], $r);
@@ -577,7 +610,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $last = max($firstOrder, $r - 1);
         $total = array_fill(0, count(self::HEADERS), null);
         $total[0] = 'TOTAL';
-        foreach (['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'] as $i => $col) {
+        foreach (['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'] as $i => $col) {
             $total[4 + $i] = "=SUM({$col}{$firstOrder}:{$col}{$last})";
         }
         $out[] = $total;
@@ -610,7 +643,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         }
 
         // Kolom TOTAL DIBAYAR PEMBELI selalu disorot amber (uang masuk).
-        $sheet->getStyle("M3:M".($lastRow - 1))->getFill()
+        $sheet->getStyle('M3:M'.($lastRow - 1))->getFill()
             ->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFEF3C7');
 
         foreach (['B', 'C', 'D', 'U'] as $col) {
@@ -653,12 +686,12 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $sheet->getStyle("A{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
         $sheet->getStyle("A{$lastRow}")->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        foreach (['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'] as $col) {
+        foreach (['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'] as $col) {
             $sheet->getStyle("{$col}{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
             $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
         }
-        $sheet->getStyle("E{$lastRow}:S{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle("E{$lastRow}:T{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->freezePane('E3');
     }
@@ -666,9 +699,9 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
 
 // ============ SHEET 3: PANDUAN & KAMUS LENGKAP ============
 
-class OrderGuideSheet implements FromArray, WithTitle, WithEvents
+class OrderGuideSheet implements FromArray, WithEvents, WithTitle
 {
-    use \Maatwebsite\Excel\Concerns\RegistersEventListeners;
+    use RegistersEventListeners;
 
     public function array(): array
     {
@@ -686,28 +719,30 @@ class OrderGuideSheet implements FromArray, WithTitle, WithEvents
             ['9. Sumber Diskon (discount_source)', 'Jenis promo yang berlaku (misal: Reguler, Flash Sale, Promo Toko).'],
             ['10. Harga Produk (Normal)', 'Harga katalog normal sebelum promo (harga jual + diskon garis produk).'],
             ['11. Diskon per Produk (line_discount)', 'Potongan harga yang disetting khusus pada produk tersebut untuk menurunkan margin harga normal.'],
-            ['12. Harga Jual Satuan', 'Harga riil setelah diskon per unit: [Harga Normal] - [Diskon per Produk].'],
-            ['13. Qty (quantity)', 'Jumlah unit fisik barang yang dibeli.'],
-            ['14. Total Diskon Produk', 'Total penghematan diskon produk pada baris tersebut: [Diskon per Produk] x [Qty].'],
-            ['15. Subtotal Penjualan Produk', 'Nilai penjualan bersih barang sebelum biaya pesanan: [Harga Jual Satuan] x [Qty]. Kolom ini aman di-SUM dan dipakai Pivot Table untuk performa produk.'],
-            ['16. Voucher Pesanan (Beban Toko)', 'Kupon diskon keranjang belanja yang ditanggung toko. Berlaku per nomor pesanan, bukan per produk.'],
-            ['17. Subsidi Ongkir Toko (Beban Toko)', 'Bagian ongkir yang ditanggung penjual/toko ke ekspedisi J&T. Merupakan beban riil pengurang laba toko.'],
-            ['18. Ongkir Ditanggung Pembeli', 'Tarif ongkir kurir sesudah dipotong subsidi toko. Dibayar oleh pembeli saat checkout / bayar di tempat.'],
-            ['19. Biaya COD Ditanggung Pembeli', 'Fee penanganan COD yang dibebankan kepada pembeli. Dibayar oleh pembeli ke kurir J&T saat serah terima barang.'],
-            ['20. Asuransi Pengiriman Dibayar Pembeli (shipping_insurance_amount)', 'Biaya asuransi paket yang dibayar pembeli. Besarnya DIHITUNG OLEH J&T dari nilai barang yang diasuransikan; sistem tidak menghitung tarif ini sendiri, angkanya diambil apa adanya dari J&T. Bersifat opsional: muncul sebagai pilihan di checkout, dan hanya ditagihkan bila pembeli memilihnya. Termasuk uang titipan: masuk di tagihan pembeli lalu dipotong utuh oleh J&T.'],
-            ['21. Total Tagihan Dibayar Pembeli', 'Total uang yang ditagih kurir ke pembeli: [Total Penjualan Produk] - [Voucher] + [Ongkir Pembeli] + [Biaya COD] + [Asuransi Pengiriman].'],
-            ['22. Pengurangan Nilai Pesanan ke J&T', 'Total saldo yang dipotong oleh pihak J&T: [Ongkir Total (Subsidi + Ongkir Pembeli)] + [Biaya COD] + [Asuransi Pengiriman].'],
-            ['23. Kasus Retur / Alasan (return_case)', 'Keterangan alasan kendala pesanan (misal: Refund (rusak), Pesanan dibatalkan, atau -).'],
-            ['24. Nilai Refund Pembeli (refund_amount)', 'Uang yang dikembalikan ke pembeli jika terjadi klaim barang rusak atau batal.'],
-            ['25. Ongkir Retur Tambahan (additional_shipping)', 'Biaya kirim balik dari pembeli ke toko yang dibebankan ke toko jika terjadi retur komplain.'],
-            ['26. Net Profit Toko (Kas Bersih)', 'Uang bersih yang dicairkan ke rekening toko: [Total Tagihan Dibayar Pembeli] - [Pengurangan Nilai Pesanan ke J&T] - [Refund] - [Ongkir Retur]. Hasilnya sama persis dengan: [Total Penjualan Produk] - [Voucher] - [Subsidi Ongkir] - [Refund] - [Ongkir Retur].'],
-            ['27. Nama Pelanggan (customer_name)', 'Nama pembeli / penerima paket yang tertera pada resi dan pesanan.'],
-            ['28. No. Telepon / WA (customer_phone)', 'Nomor kontak pelanggan (disimpan dalam format Teks agar angka 0 dan digit panjang tidak terpotong atau berubah eksponensial).'],
-            ['29. Alamat Pengiriman (shipping_address)', 'Alamat tujuan pengiriman (jalan, RT/RW, nomor rumah, atau patokan).'],
-            ['30. Kelurahan s.d. Provinsi', 'Tingkat wilayah penerima (Desa/Kelurahan, Kecamatan, Kota/Kabupaten, Provinsi). Sangat berguna untuk filter & analisis wilayah pengiriman.'],
-            ['31. Kode Pos (shipping_postal_code)', 'Kode pos area pengiriman untuk validasi zona tarif ekspedisi.'],
-            ['32. Prinsip COD & Ongkir (Pass-Through)', 'Biaya COD dan Ongkir Pembeli diperlakukan sebagai uang titipan: masuk di tagihan pembeli, lalu keluar utuh dipotong J&T. Dampak netronya Rp 0 terhadap laba toko.'],
-            ['33. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, HANYA kolom Qty, Total Diskon, dan Subtotal Penjualan yang boleh di-SUM vertikal. Kolom tingkat pesanan (Voucher, Ongkir, Net Profit) ditulis sebagai informasi referensi dan tidak boleh di-SUM vertikal agar tidak terjadi pelipatgandaan. Untuk melihat total keuangan toko secara utuh, gunakan Sheet 2 (Rekap Keuangan per Pesanan).'],
+            ['12. Diskon per Produk (%)', 'Persentase potongan harga terhadap harga normal: [Diskon per Produk] / [Harga Produk (Normal)]. Ditampilkan sebagai persen (misal 10%); 0% berarti produk terjual tanpa diskon.'],
+            ['13. Harga Jual Satuan', 'Harga riil setelah diskon per unit: [Harga Normal] - [Diskon per Produk].'],
+            ['14. Qty (quantity)', 'Jumlah unit fisik barang yang dibeli.'],
+            ['15. Total Diskon Produk', 'Total penghematan diskon produk pada baris tersebut: [Diskon per Produk] x [Qty].'],
+            ['16. Subtotal Penjualan Produk', 'Nilai penjualan bersih barang sebelum biaya pesanan: [Harga Jual Satuan] x [Qty]. Kolom ini aman di-SUM dan dipakai Pivot Table untuk performa produk.'],
+            ['17. Voucher Pesanan (Beban Toko)', 'Kupon diskon keranjang belanja yang ditanggung toko. Berlaku per nomor pesanan, bukan per produk.'],
+            ['18. Subsidi Ongkir Toko (Beban Toko)', 'Bagian ongkir yang ditanggung penjual/toko ke ekspedisi J&T. Merupakan beban riil pengurang laba toko.'],
+            ['19. Ongkir Ditanggung Pembeli', 'Tarif ongkir kurir sesudah dipotong subsidi toko. Dibayar oleh pembeli saat checkout / bayar di tempat.'],
+            ['20. Biaya COD Ditanggung Pembeli', 'Fee penanganan COD yang dibebankan kepada pembeli. Dibayar oleh pembeli ke kurir J&T saat serah terima barang.'],
+            ['21. Asuransi Pengiriman Dibayar Pembeli (shipping_insurance_amount)', 'Biaya asuransi paket yang dibayar pembeli. Besarnya DIHITUNG OLEH J&T dari nilai barang yang diasuransikan; sistem tidak menghitung tarif ini sendiri, angkanya diambil apa adanya dari J&T. Bersifat opsional: muncul sebagai pilihan di checkout, dan hanya ditagihkan bila pembeli memilihnya. Termasuk uang titipan: masuk di tagihan pembeli lalu dipotong utuh oleh J&T.'],
+            ['22. Total Tagihan Dibayar Pembeli', 'Total uang yang ditagih kurir ke pembeli: [Total Penjualan Produk] - [Voucher] + [Ongkir Pembeli] + [Biaya COD] + [Asuransi Pengiriman].'],
+            ['23. Pengurangan Nilai Pesanan ke J&T', 'Total saldo yang dipotong oleh pihak J&T: [Ongkir Total ke J&T] + [Biaya COD] + [Asuransi Pengiriman].'],
+            ['24. Kasus Retur / Alasan (return_case)', 'Keterangan alasan kendala pesanan (misal: Refund (rusak), Pesanan dibatalkan, atau -).'],
+            ['25. Nilai Refund Pembeli (refund_amount)', 'Uang yang dikembalikan ke pembeli jika terjadi klaim barang rusak atau batal.'],
+            ['26. Ongkir Retur Tambahan (additional_shipping)', 'Biaya kirim balik dari pembeli ke toko yang dibebankan ke toko jika terjadi retur komplain.'],
+            ['27. Net Profit Toko per Produk (Kas Bersih)', 'Kontribusi laba bersih pada baris produk tersebut: [Net Profit pesanan] dialokasikan proporsional terhadap porsi [Subtotal Penjualan Produk] baris itu dari total subtotal pesanan. Jumlahkan seluruh baris satu pesanan = NET PROFIT pesanan di Sheet 2 (Rekap). Pesanan Dibatalkan: kerugian (-Refund -Ongkir Retur) dialokasikan dengan cara yang sama. Kolom ini aman di-SUM.'],
+            ['28. Nama Pelanggan (customer_name)', 'Nama pembeli / penerima paket yang tertera pada resi dan pesanan.'],
+            ['29. No. Telepon / WA (customer_phone)', 'Nomor kontak pelanggan (disimpan dalam format Teks agar angka 0 dan digit panjang tidak terpotong atau berubah eksponensial).'],
+            ['30. Alamat Pengiriman (shipping_address)', 'Alamat tujuan pengiriman (jalan, RT/RW, nomor rumah, atau patokan).'],
+            ['31. Kelurahan s.d. Provinsi', 'Tingkat wilayah penerima (Desa/Kelurahan, Kecamatan, Kota/Kabupaten, Provinsi). Sangat berguna untuk filter & analisis wilayah pengiriman.'],
+            ['32. Kode Pos (shipping_postal_code)', 'Kode pos area pengiriman untuk validasi zona tarif ekspedisi.'],
+            ['33. Prinsip COD & Ongkir (Pass-Through)', 'Biaya COD dan Ongkir Pembeli diperlakukan sebagai uang titipan: masuk di tagihan pembeli, lalu keluar utuh dipotong J&T. Dampak netronya Rp 0 terhadap laba toko.'],
+            ['35. Ongkir J&T Asli & Selisih Ongkir J&T (Sheet 2 kolom N & O)', 'Ongkir Total ke J&T (N) memakai ongkir ASLI yang admin catat dari konsol J&T Cargo saat input resi. Bila belum dicatat, dipakai asumsi checkout: [Subsidi Ongkir Toko] + [Ongkir Ditanggung Pembeli], dan Selisih Ongkir (O) bernilai 0. Selisih Ongkir = [Ongkir J&T Asli] - [Subsidi] - [Ongkir Pembeli]; nilai POSITIF berarti tagihan J&T lebih besar dari yang dibayar pembeli (ditanggung toko), NEGATIF berarti lebih hemat. Asuransi tidak termasuk karena J&T menagihnya terpisah (kolom L).'],
+            ['34. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Total Tagihan, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan).'],
         ];
     }
 
