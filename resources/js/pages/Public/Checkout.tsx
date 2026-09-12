@@ -185,12 +185,12 @@ export default function Checkout({
       {/* Indikator langkah checkout */}
       <section className="border-b border-border bg-surface">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <ol className="grid grid-cols-3 w-full py-3" aria-label="Langkah checkout">
+          <ol className="mx-auto grid w-full max-w-md grid-cols-3 py-3" aria-label="Langkah checkout">
             {steps.map((step, idx) => {
               const active = !step.done && (idx === 0 || [0, 1].slice(0, idx).every((i) => steps[i].done))
               return (
                 <li key={step.n} className="relative flex min-w-0 flex-col items-center text-center">
-                  {idx > 0 ? (
+                  {idx < steps.length - 1 ? (
                     <div
                       aria-hidden="true"
                       className="absolute left-1/2 right-[-50%] top-[10px] h-[2px] -translate-y-1/2 z-0 bg-border"
@@ -202,8 +202,8 @@ export default function Checkout({
                       step.done
                         ? "bg-primary text-primary-foreground"
                         : active
-                          ? "border-2 border-primary text-primary"
-                          : "border border-border text-muted-foreground",
+                          ? "border-2 border-primary bg-surface text-primary"
+                          : "border border-border bg-surface text-muted-foreground",
                     )}
                   >
                     {step.done ? <Icon name="check" className="size-3" weight="bold" /> : step.n}
