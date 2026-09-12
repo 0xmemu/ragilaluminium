@@ -16,19 +16,28 @@ return [
     'default_item_weight_kg' => (float) env('SHIPPING_DEFAULT_ITEM_WEIGHT', 1.0),
 
     /*
-    | Pembagi berat volumetrik (cm3 per kg).
+    | Pembagi berat volumetrik (cm3 per kg) - RUMUS RESMI J&T CARGO.
     |
-    | PENTING soal asal angka ini: ini BUKAN aturan resmi yang tertulis di
-    | dokumen J&T. Endpoint tarif yang kami pakai (agingCost/get) HANYA
-    | menerima `weight`, bukan dimensi, sehingga berat tagih harus dihitung
-    | di sisi kami dan dikirim sebagai data. Endpoint dimensi resmi J&T
-    | (spmComCost/getComCost) ada, tetapi akun kami belum punya izinnya
-    | (diuji 2026-09-12: "API account has no interface permissions").
+    | Kurir Ragil adalah J&T Cargo (endpoint openapi.jtcargo.co.id).
+    | Rumus resmi J&T Cargo: (Panjang x Lebar x Tinggi) / 5000.
+    |   - FAQ resmi: jtcargo.id/problem/qa ("Bagaimana perhitungan paket
+    |     dengan berat volumetrik? (Panjang x Lebar x Tinggi) X 1 Kg / 5000")
+    |   - Kanal resmi @jtcargoid (Instagram/Facebook/TikTok): "panjang kali
+    |     lebar kali tinggi dibagi 5000"
     |
-    | Angka 5000 berasal dari pengukuran perilaku tarif J&T, jadi perlakukan
-    | sebagai INFERENSI yang bisa diuji ulang, bukan aturan resmi. Kalau izin
-    | spmComCost/getComCost sudah ada, pakai endpoint itu supaya J&T sendiri
-    | yang menghitung berat tagih dan angka ini tidak dipakai lagi.
+    | Kenapa dihitung di sisi kami: endpoint tarif yang kami pakai
+    | (agingCost/get) hanya menerima `weight`, bukan dimensi, sehingga berat
+    | tagih dihitung memakai rumus resmi di atas lalu dikirim sebagai data.
+    | Endpoint dimensi J&T (spmComCost/getComCost) ada tetapi akun kami belum
+    | berizin (diuji 2026-09-12: "API account has no interface permissions").
+    |
+    | Aturan resmi J&T Cargo lain yang terkait:
+    |   - Berat minimal 10 kg; di bawah itu tetap dihitung 10 kg. J&T sudah
+    |     menerapkannya sendiri pada tarifnya (terbukti: 0,5 kg dan 10 kg
+    |     menghasilkan ongkir sama), jadi sistem TIDAK menambahkan minimum.
+    |   - Berat maksimal 500 kg.
+    |   - Kelas layanan: H50 (<50 kg), H100 (50-100 kg), H300 (100-300 kg),
+    |     H500 (300 kg ke atas).
     */
     'volumetric_divisor' => (float) env('SHIPPING_VOLUMETRIC_DIVISOR', 5000),
 
