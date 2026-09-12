@@ -316,6 +316,9 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         // karena memakai desimal (2 angka) sesuai berat tagih pengiriman.
         $this->currencyColumns = ['L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'Y', 'Z', 'AA'];
         $this->currencyFormat = '#,##0';
+        // Nomor pesanan, nomor resi J&T, SKU varian, telepon, dan kode pos
+        // adalah identitas: harus teks, bukan angka.
+        $this->textColumns = ['A', 'E', 'F', 'AC', 'AI'];
         $this->columnWidths = self::WIDTHS;
     }
 
@@ -430,10 +433,6 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
             $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getFont()->setBold(true);
         }
 
-        // No. Telepon / WA + Kode Pos: format teks (aturan Panduan no. 27).
-        $sheet->getStyle("AC3:AC{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
-        $sheet->getStyle("AI3:AI{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
-
         // Berat (kg): desimal bebas (22,45 tampil penuh; "-" tetap teks).
         $sheet->getStyle("I3:I{$lastRow}")->getNumberFormat()->setFormatCode('0.##');
 
@@ -522,6 +521,8 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $this->firstBodyRow = 3;
         $this->currencyColumns = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
         $this->currencyFormat = '#,##0';
+        // Nomor pesanan dan telepon pelanggan adalah identitas: harus teks.
+        $this->textColumns = ['A', 'T'];
         $this->columnWidths = self::WIDTHS;
     }
 
@@ -624,8 +625,6 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
             $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getFont()->setBold(true);
         }
 
-        $sheet->getStyle("T3:T{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
-
         // Baris TOTAL: kolom kunci disorot, angka tebal, garis bawah ganda.
         $sheet->getStyle("G{$lastRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFA7F3D0');
         $sheet->getStyle("L{$lastRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFDE68A');
@@ -676,7 +675,7 @@ class OrderGuideSheet implements FromArray, WithTitle, WithEvents
             ['2. Tanggal Pesanan (created_at)', 'Waktu saat pembeli membuat pesanan di sistem toko online.'],
             ['3. Tanggal Bayar Cair (paid_at)', 'Waktu saat pembayaran pesanan telah terkonfirmasi lunas dan masuk ke saldo toko (krusial untuk monitoring arus kas cair).'],
             ['4. Status Pesanan (order_status)', 'Status operasional terkini: Diproses, Selesai, atau Dibatalkan.'],
-            ['5. No. Resi J&T (waybill_number)', 'Nomor Air Waybill (AWB) dari kurir J&T untuk bukti pengiriman fisik dan pelacakan paket.'],
+            ['5. No. Resi J&T (waybill_number)', 'Nomor Air Waybill (AWB) dari kurir J&T untuk bukti pengiriman fisik dan pelacakan paket. Disimpan dalam format Teks karena resi J&T murni angka: sebagai angka, Excel menampilkannya sebagai notasi ilmiah (2,01719E+11) dan digit di atas 15 bisa dibulatkan.'],
             ['6. SKU Varian (variant_sku)', 'Kode unik kombinasi model dan varian. Digunakan untuk melacak pergerakan stok per jenis.'],
             ['7. Nama Produk & Variasi', 'Nama model barang dan varian detailnya (contoh: Warna: Putih, Kaca: Kaca Es). Dipisah kolomnya agar memudahkan Pivot Table varian.'],
             ['8. Berat (kg) & Volume', 'Mengikuti format modul pengiriman: berat tagih paket (max berat aktual vs volumetrik P x L x T / 5000, pallet kayu allowance 3 cm/sisi) dan dimensi luar paket, sebagai snapshot yang direkam saat order dibuat. Tanda "-" berarti order dibuat sebelum sistem menyimpan snapshot; nilai lama tidak dihitung ulang agar angka historis tidak berubah.'],

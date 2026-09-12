@@ -11,6 +11,7 @@ use App\Models\ShippingRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
@@ -261,5 +262,61 @@ class OrderExportContractTest extends TestCase
         $this->assertStringContainsString('P x L x T / 5000', $text);
         $this->assertStringNotContainsString('—', $text);
         $this->assertStringNotContainsString('–', $text);
+    }
+
+    public function test_nomor_resi_numerik_tetap_teks_bukan_notasi_ilmiah(): void
+    {
+        $order = $this->makeOrder();
+        $this->makeItem($order, 'RA-A', 'RA-A-1', 'Jendela Jungkit A', 1250000, 1, 0);
+        ShippingRecord::create([
+            'order_id' => $order->id, 'carrier_name' => 'JNT',
+            'waybill_number' => '201718781511', 'shipping_cost' => 150000, 'status' => 'delivered',
+        ]);
+
+        Excel::store(new \App\Exports\OrderExport(Order::query()), 'exp_resi.xlsx', 'imports');
+        $ss = IOFactory::load(\Illuminate\Support\Facades\Storage::disk('imports')->path('exp_resi.xlsx'));
+
+        // Nomor resi J&T asli murni angka. Disimpan sebagai angka, Excel
+        // menampilkan 2,01719E+11 dan digit di atas 15 dibulatkan.
+        $cell = $ss->getSheetByName('Laporan Transaksi (Skema A)')->getCell('E3');
+        $this->assertSame('201718781511', (string) $cell->getValue(), 'nomor resi terbaca utuh');
+        $this->assertSame(
+            DataType::TYPE_STRING,
+            $cell->getDataType(),
+            'nomor resi disimpan sebagai teks, bukan angka'
+        );
+        $this->assertSame(
+            '@',
+            $cell->getStyle()->getNumberFormat()->getFormatCode(),
+            'kolom No. Resi J&T berformat teks'
+        );
+    }
+
+    public function test_kolom_identitas_pakai_format_teks(): void
+    {
+        $order = $this->makeOrder();
+        $this->makeItem($order, 'RA-A', 'RA-A-1', 'Jendela Jungkit A', 1250000, 1, 0);
+
+        Excel::store(new \App\Exports\OrderExport(Order::query()), 'exp_ident.xlsx', 'imports');
+        $ss = IOFactory::load(\Illuminate\Support\Facades\Storage::disk('imports')->path('exp_ident.xlsx'));
+
+        // Nomor pesanan, SKU varian, telepon, kode pos: identitas, wajib teks.
+        $tx = $ss->getSheetByName('Laporan Transaksi (Skema A)');
+        foreach (['A', 'F', 'AC', 'AI'] as $col) {
+            $this->assertSame(
+                '@',
+                $tx->getCell($col.'3')->getStyle()->getNumberFormat()->getFormatCode(),
+                "kolom {$col} sheet 1 wajib berformat teks"
+            );
+        }
+
+        $rk = $ss->getSheetByName('Rekap Keuangan per Pesanan');
+        foreach (['A', 'T'] as $col) {
+            $this->assertSame(
+                '@',
+                $rk->getCell($col.'3')->getStyle()->getNumberFormat()->getFormatCode(),
+                "kolom {$col} sheet Rekap wajib berformat teks"
+            );
+        }
     }
 }

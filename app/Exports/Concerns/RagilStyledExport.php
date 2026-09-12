@@ -9,10 +9,12 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Conditional;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -67,6 +69,16 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
 
     /** @var list<string> kolom kuantitas (format #,##0) */
     protected array $quantityColumns = [];
+
+    /**
+     * Kolom identitas (nomor resi, SKU, telepon, kode pos) yang WAJIB
+     * berformat teks. Tanpa ini, angka panjang seperti nomor resi J&T
+     * ditulis sebagai angka lalu Excel menampilkannya sebagai notasi
+     * ilmiah (2,01719E+11) dan bisa kehilangan digit.
+     *
+     * @var list<string>
+     */
+    protected array $textColumns = [];
 
     /**
      * Sel bernilai 0.0 yang dibuang Maatwebsite (fromArray loose-null
@@ -164,6 +176,26 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
             $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
             $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+
+        // Kolom identitas: format teks dan nilai dipaksa jadi string asli.
+        // Menyimpan nomor panjang sebagai angka membuat Excel menampilkan
+        // notasi ilmiah (2,01719E+11) dan, di atas 15 digit, membulatkan
+        // digit terakhir sehingga nomor resi jadi salah.
+        foreach ($this->textColumns as $col) {
+            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
+            $sheet->getStyle($range)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+
+            for ($row = $this->firstBodyRow; $row <= $lastRow; $row++) {
+                $cell = $sheet->getCell($col.$row);
+                if ($cell->getDataType() === DataType::TYPE_NUMERIC) {
+                    $sheet->setCellValueExplicit(
+                        $col.$row,
+                        (string) $cell->getValue(),
+                        DataType::TYPE_STRING
+                    );
+                }
+            }
         }
 
         // Tulis ulang sel 0.0 yang dibuang Maatwebsite (fromArray loose-null).
