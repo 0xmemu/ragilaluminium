@@ -47,5 +47,11 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/wilayah/regencies/{provinceId}', [WilayahController::class, 'regencies']);
     Route::get('/wilayah/districts/{regencyId}', [WilayahController::class, 'districts']);
     Route::get('/wilayah/villages/{districtId}', [WilayahController::class, 'villages']);
-    Route::post('/shipping/quote', [ShippingQuoteController::class, 'store']);
+    // Quote ongkir membaca keranjang (subtotal = nilai pertanggungan
+    // asuransi yang dihitung server). Keranjang berbasis SESI, dan grup api
+    // tidak membawa sesi, sehingga tanpa middleware web cart->subtotal()
+    // selalu 0: offerFee tak pernah terkirim, opsi asuransi tidak pernah
+    // muncul di checkout (bug 2026-09-13, ditemukan lewat E2E browser).
+    Route::post('/shipping/quote', [ShippingQuoteController::class, 'store'])
+        ->middleware('web');
 });
