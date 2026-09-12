@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\CodSettings;
+use App\Support\ShippingPalletSettings;
 use App\Services\Shipping\ShipmentPackageCalculator;
 use App\Support\PhoneNumber;
 use Illuminate\Database\QueryException;
@@ -428,7 +429,7 @@ class OrderService
             ];
         }
         $calculator = new ShipmentPackageCalculator(
-            (float) config('shipping.pallet_allowance_per_side_cm', 3),
+            ShippingPalletSettings::allowancePerSideCm(),
             (float) config('shipping.volumetric_divisor', 5000),
             (float) config('shipping.pallet_weight_kg', 0),
         );
@@ -808,7 +809,7 @@ class OrderService
         }, $lines);
 
         return (new ShipmentPackageCalculator(
-            (float) config('shipping.pallet_allowance_per_side_cm', 3),
+            ShippingPalletSettings::allowancePerSideCm(),
             (float) config('shipping.volumetric_divisor', 5000),
             (float) config('shipping.pallet_weight_kg', 0),
         ))->calculate($items);
