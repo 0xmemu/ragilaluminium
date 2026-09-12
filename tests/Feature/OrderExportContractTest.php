@@ -252,6 +252,13 @@ class OrderExportContractTest extends TestCase
             'order_status' => 'cancelled',
         ]);
         $this->makeItem($batal, 'RA-X', 'RA-X-1', 'Produk X', 400000, 1, 0);
+        // Pesanan batal setelah dibayar lalu diretur: refund TETAP terdata.
+        $caseBatal = new OrderReturnCase([
+            'status' => 'completed', 'reason' => 'rusak', 'resolution_type' => 'refund',
+            'refund_amount' => 150000, 'additional_shipping_amount' => 0,
+        ]);
+        $caseBatal->order_id = $batal->id;
+        $caseBatal->save();
 
         $retur = $this->makeOrder([
             'order_number' => 'ORD-EXP-RETUR',
@@ -277,7 +284,16 @@ class OrderExportContractTest extends TestCase
         $this->assertEquals(25000, (float) $tx->getCell('AB3')->getValue());
         $this->assertSame('ORD-EXP-BATAL', $tx->getCell('A4')->getValue());
         $this->assertSame('Dibatalkan', $tx->getCell('D4')->getValue());
-        $this->assertSame('Pesanan dibatalkan', $tx->getCell('Z4')->getValue());
+        // Pesanan batal: kasus retur selesai tercatat, uang lain 0.
+        $this->assertSame('Refund (rusak)', $tx->getCell('Z4')->getValue());
+        $this->assertEquals(0, (float) $tx->getCell('L4')->getValue(), 'harga normal pesanan batal = 0');
+        $this->assertEquals(0, (float) $tx->getCell('M4')->getValue(), 'diskon produk pesanan batal = 0');
+        $this->assertEquals(1, (float) $tx->getCell('P4')->getValue(), 'qty tetap terdata');
+        $this->assertEquals(0, (float) $tx->getCell('T4')->getValue(), 'subsidi pesanan batal = 0');
+        $this->assertEquals(0, (float) $tx->getCell('U4')->getValue(), 'ongkir pesanan batal = 0');
+        $this->assertEquals(0, (float) $tx->getCell('V4')->getValue(), 'COD pesanan batal = 0');
+        $this->assertEquals(0, (float) $tx->getCell('W4')->getValue(), 'asuransi pesanan batal = 0');
+        $this->assertEquals(150000, (float) $tx->getCell('AA4')->getValue(), 'refund pesanan batal tetap terdata');
 
         // Rekap: penjualan pesanan Dibatalkan tidak dihitung (SUMIFS
         // berlaku sampai ke baris TOTAL.
@@ -302,6 +318,11 @@ class OrderExportContractTest extends TestCase
             }
         }
         $this->assertNotNull($netCol, 'header NET PROFIT TOKO ditemukan');
+        // Beban toko pesanan batal = 0; refund tetap terdata di Rekap.
+        foreach (['H', 'I', 'J', 'K', 'L', 'N'] as $col) {
+            $this->assertEquals(0, (float) $rk->getCell("{$col}{$rowBatal}")->getValue(), "kolom {$col} pesanan batal = 0");
+        }
+        $this->assertEquals(150000, (float) $rk->getCell("R{$rowBatal}")->getValue(), 'refund pesanan batal tetap terdata di Rekap');
         $this->assertStringStartsWith('=IF(D'.$rowBatal.'="Dibatalkan", 0 - ', (string) $rk->getCell($netCol.$rowBatal)->getValue(), 'net profit pesanan batal = -(refund + ongkir retur)');
 
         // Status mentah DB tidak pernah tampil.

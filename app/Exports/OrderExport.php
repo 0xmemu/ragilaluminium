@@ -35,6 +35,10 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *     SUM E:R (sesuai template).
  *  3. 'Panduan & Kamus Lengkap' -> kamus kolom owner.
  *
+ * Pesanan Dibatalkan: seluruh nilai uang = 0 di semua sheet (item tetap
+ * terdata sebagai catatan fisik: SKU, nama, qty); hanya Refund & Ongkir
+ * Retur yang tetap tercatat bila ada kasus retur selesai.
+ *
  * Sumber data: sistem Ragil (orders, order_items, payments, shipping_records,
  * order_return_cases, voucher_discount_amount). Berat (kg) dan Volume memakai
  * FORMAT MODUL PENGIRIMAN (keputusan owner): snapshot paket yang direkam saat
@@ -88,6 +92,9 @@ class OrderExport implements WithMultipleSheets
 
         $blocks = [];
         foreach ($orders as $order) {
+            // Pesanan Dibatalkan: seluruh nilai uang 0 di semua sheet; hanya
+            // Refund & Ongkir Retur yang tetap tercatat (retur harus terdata).
+            $isBatal = $order->order_status === 'cancelled';
             $paidAt = $order->payments->firstWhere('status', 'completed')?->paid_at;
 
             $completedCase = $order->returnCases->firstWhere('status', 'completed');
@@ -133,8 +140,8 @@ class OrderExport implements WithMultipleSheets
                     'name' => $item->name,
                     'variations' => $variations !== '' ? $variations : '-',
                     'discount_source' => $item->discount_source === 'flashsale' ? 'Flashsale' : 'Reguler',
-                    'normal' => (float) $item->unit_price + (float) $item->line_discount,
-                    'line_discount' => (float) $item->line_discount,
+                    'normal' => $isBatal ? 0.0 : (float) $item->unit_price + (float) $item->line_discount,
+                    'line_discount' => $isBatal ? 0.0 : (float) $item->line_discount,
                     'qty' => (int) $item->quantity,
                 ];
             }
@@ -163,16 +170,18 @@ class OrderExport implements WithMultipleSheets
                 'waybill' => $order->shippingRecords->first()->waybill_number ?? '-',
                 'charge_kg' => $chargeKg,
                 'volume' => $volume,
-                'voucher' => (float) $order->voucher_discount_amount,
-                'subsidi' => (float) $order->shipping_subsidy_amount,
-                'ongkir' => (float) $order->shipping_amount,
-                'cod' => (float) $order->cod_fee_amount,
-                'insurance' => (float) $order->shipping_insurance_amount,
-                'jnt_ongkir_actual' => $jntOngkirActual,
-                'jnt_ongkir_assumed' => $jntAsumsi,
-                'jnt_ongkir_selisih' => $jntOngkirActual !== null
-                    ? $jntOngkirActual - $jntAsumsi
-                    : null,
+                'voucher' => $isBatal ? 0.0 : (float) $order->voucher_discount_amount,
+                'subsidi' => $isBatal ? 0.0 : (float) $order->shipping_subsidy_amount,
+                'ongkir' => $isBatal ? 0.0 : (float) $order->shipping_amount,
+                'cod' => $isBatal ? 0.0 : (float) $order->cod_fee_amount,
+                'insurance' => $isBatal ? 0.0 : (float) $order->shipping_insurance_amount,
+                'jnt_ongkir_actual' => $isBatal ? 0.0 : $jntOngkirActual,
+                'jnt_ongkir_assumed' => $isBatal ? 0.0 : $jntAsumsi,
+                'jnt_ongkir_selisih' => $isBatal
+                    ? 0.0
+                    : ($jntOngkirActual !== null
+                        ? $jntOngkirActual - $jntAsumsi
+                        : null),
                 'return_type' => $returnType,
                 'refund' => $refund,
                 'retur_ongkir' => $returOngkir,
@@ -729,7 +738,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['1. Nomor Pesanan (order_number)', 'Kode unik transaksi pesanan. Pada pesanan dengan multi-item (beberapa produk), nomor pesanan ini akan berulang (Skema A).'],
             ['2. Tanggal Pesanan (created_at)', 'Waktu saat pembeli membuat pesanan di sistem toko online.'],
             ['3. Tanggal Bayar Cair (paid_at)', 'Waktu saat pembayaran pesanan telah terkonfirmasi lunas dan masuk ke saldo toko (krusial untuk monitoring arus kas cair).'],
-            ['4. Status Pesanan (order_status)', 'Status operasional terkini: Diproses, Selesai, atau Dibatalkan.'],
+            ['4. Status Pesanan (order_status)', 'Status operasional terkini: Diproses, Selesai, atau Dibatalkan. Pesanan Dibatalkan: seluruh nilai uang = 0 di semua sheet; hanya Retur/Refund yang tetap tercatat.'],
             ['5. No. Resi J&T (waybill_number)', 'Nomor Air Waybill (AWB) dari kurir J&T untuk bukti pengiriman fisik dan pelacakan paket. Disimpan dalam format Teks karena resi J&T murni angka: sebagai angka, Excel menampilkannya sebagai notasi ilmiah (2,01719E+11) dan digit di atas 15 bisa dibulatkan.'],
             ['6. SKU Varian (variant_sku)', 'Kode unik kombinasi model dan varian. Digunakan untuk melacak pergerakan stok per jenis.'],
             ['7. Nama Produk & Variasi', 'Nama model barang dan varian detailnya (contoh: Warna: Putih, Kaca: Kaca Es). Dipisah kolomnya agar memudahkan Pivot Table varian.'],
@@ -741,7 +750,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['13. Harga Jual Satuan', 'Harga riil setelah diskon per unit: [Harga Normal] - [Diskon per Produk].'],
             ['14. Qty (quantity)', 'Jumlah unit fisik barang yang dibeli.'],
             ['15. Total Diskon Produk', 'Total penghematan diskon produk pada baris tersebut: [Diskon per Produk] x [Qty].'],
-            ['16. Subtotal Penjualan Produk', 'Nilai penjualan bersih barang sebelum biaya pesanan: [Harga Jual Satuan] x [Qty]. Kolom ini aman di-SUM dan dipakai Pivot Table untuk performa produk. Catatan: baris milik pesanan Dibatalkan TIDAK ikut terhitung di kolom penjualan Sheet 2 (Rekap).'],
+            ['16. Subtotal Penjualan Produk', 'Nilai penjualan bersih barang sebelum biaya pesanan: [Harga Jual Satuan] x [Qty]. Kolom ini aman di-SUM dan dipakai Pivot Table untuk performa produk. Catatan: baris milik pesanan Dibatalkan bernilai uang 0 (item tetap terdata), otomatis tidak terhitung di penjualan Sheet 2 (Rekap).'],
             ['17. Voucher Pesanan (Beban Toko)', 'Kupon diskon keranjang belanja yang ditanggung toko. Berlaku per nomor pesanan, bukan per produk.'],
             ['18. Subsidi Ongkir Toko (Beban Toko)', 'Bagian ongkir yang ditanggung penjual/toko ke ekspedisi J&T. Merupakan beban riil pengurang laba toko.'],
             ['19. Ongkir Ditanggung Pembeli', 'Tarif ongkir kurir sesudah dipotong subsidi toko. Dibayar oleh pembeli saat checkout / bayar di tempat.'],
@@ -760,7 +769,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['32. Kode Pos (shipping_postal_code)', 'Kode pos area pengiriman untuk validasi zona tarif ekspedisi.'],
             ['33. Prinsip COD & Ongkir (Pass-Through)', 'Biaya COD dan Ongkir Pembeli diperlakukan sebagai uang titipan: masuk di tagihan pembeli, lalu keluar utuh dipotong J&T. Dampak netronya Rp 0 terhadap laba toko.'],
             ['35. Tagihan J&T Asli & Selisihnya (Sheet 2 kolom N & O)', 'Tagihan J&T (N) memakai angka ASLI dari J&T Cargo yang diambil otomatis dari pelacakan resi (field totalFreight), jadi tidak ada input manual dan tidak ada perhitungan sendiri. Angka itu SUDAH termasuk asuransi (insuredFee), sehingga asuransi tidak ditambahkan lagi di atasnya. Bila J&T belum melaporkan, dipakai asumsi checkout: [Subsidi Ongkir Toko] + [Ongkir Ditanggung Pembeli] + [Asuransi Pengiriman], dan Selisih (O) bernilai 0. Selisih = [Tagihan J&T Asli] - [Subsidi] - [Ongkir Pembeli] - [Asuransi]; nilai POSITIF berarti tagihan J&T lebih besar dari asumsi (ditanggung toko), NEGATIF berarti lebih hemat dari perkiraan.'],
-            ['34. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Total Tagihan, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan). Di Sheet 2, kolom penjualan (Total Nilai Normal, Total Diskon Produk, Total Penjualan Produk) mengecualikan pesanan Dibatalkan sehingga identitas Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit berlaku sampai ke baris TOTAL.'],
+            ['34. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Total Tagihan, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan). Di Sheet 2, kolom penjualan (Total Nilai Normal, Total Diskon Produk, Total Penjualan Produk) mengecualikan pesanan Dibatalkan sehingga identitas Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit berlaku sampai ke baris TOTAL. Pesanan Dibatalkan tampil dengan seluruh nilai uang 0 di kedua sheet; hanya kolom Retur & Refund yang tetap tercatat.'],
         ];
     }
 
