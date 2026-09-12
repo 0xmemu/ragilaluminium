@@ -37,7 +37,7 @@ class CartService
 
         $variant = $variantSku ? ProductVariant::where('variant_sku', $variantSku)->first() : null;
         $product = Product::where('parent_sku', $parentSku)
-            ->with(['attributes', 'activeVariants', 'mainImage'])
+            ->with(['attributes', 'activeVariants.attributes', 'mainImage'])
             ->firstOrFail();
         $stock = $this->stockFor($product, $variant);
 
@@ -268,7 +268,7 @@ class CartService
 
         $products = Product::query()
             ->whereIn('parent_sku', $raw->pluck('parent_sku')->unique()->all())
-            ->with(['attributes', 'activeVariants', 'mainImage'])
+            ->with(['attributes', 'activeVariants.attributes', 'mainImage'])
             ->get()
             ->keyBy('parent_sku');
 

@@ -179,7 +179,7 @@ protected function category(?string $category, Request $request, string $mode = 
                 }
                 $this->scopeFlashSaleActive($q);
             })
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withMin('activeVariants as min_price_sort', 'price')
             ->withMin('activeVariants as min_height_sort', 'height_cm')
             ->withMin('activeVariants as min_width_sort', 'width_cm')
@@ -252,7 +252,7 @@ protected function category(?string $category, Request $request, string $mode = 
             $this->scopeFlashSaleActive($flashQuery);
             $flashSaleSpotlight = InertiaCatalog::productCards(
                 $flashQuery
-                    ->with(['mainImage', 'activeVariants', 'attributes'])
+                    ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
                     ->withPopularityScore()
                     ->latest('updated_at')
                     ->orderByDesc('id')
@@ -401,7 +401,7 @@ protected function category(?string $category, Request $request, string $mode = 
                             ->orWhereBetween('width_cm', [$dimension - 15, $dimension + 15]);
                     }
                 })
-                ->with(['mainImage', 'activeVariants', 'attributes'])
+                ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
                 ->withPopularityScore()
                 ->latest('id')
                 ->limit(8)
@@ -486,7 +486,7 @@ protected function category(?string $category, Request $request, string $mode = 
 
         return InertiaCatalog::productCards(
             $flashQuery
-                ->with(['mainImage', 'activeVariants', 'attributes'])
+                ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
                 ->withPopularityScore()
                 ->latest('updated_at')
                 ->orderByDesc('id')
@@ -562,7 +562,7 @@ protected function category(?string $category, Request $request, string $mode = 
         $products = Product::visible()
             ->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($categoryCode))
             ->where('product_model', $modelCode)
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withPopularityScore()
             ->latest('id')
             ->limit(48)

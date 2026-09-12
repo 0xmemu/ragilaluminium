@@ -77,7 +77,7 @@ class OrderService
 
                     foreach ($items as $item) {
                         $product = Product::where('parent_sku', $item['parent_sku'])
-                            ->with(['attributes', 'activeVariants'])
+                            ->with(['attributes', 'activeVariants.attributes'])
                             ->first();
                         if (! $product || $product->status !== 'active') {
                             throw new \DomainException("Produk {$item['parent_sku']} tidak tersedia.");
@@ -542,7 +542,7 @@ class OrderService
                     $variant = $oldItem->productVariant;
                 } else {
                     $product = Product::where('parent_sku', trim((string) ($raw['parent_sku'] ?? '')))
-                        ->with(['attributes', 'activeVariants'])
+                        ->with(['attributes', 'activeVariants.attributes'])
                         ->first();
                     if (! $product || $product->status !== 'active') {
                         throw new \DomainException("Produk {$raw['parent_sku']} tidak tersedia.");

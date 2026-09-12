@@ -23,6 +23,18 @@ return [
     | manual_sku_floor is legacy (sequential era) and unused by the random allocator.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Jumlah produk per halaman katalog
+    |--------------------------------------------------------------------------
+    |
+    | Dipakai CatalogController lewat paginate(). Sebelumnya kunci ini tidak ada
+    | sehingga (int) null = 0 dan paginate(0) diam-diam memakai default model (15).
+    | Nilai di bawah mempertahankan 15 agar perilaku tidak berubah.
+    |
+    */
+    'catalog_page_size' => (int) env('STOREFRONT_CATALOG_PAGE_SIZE', 15),
+
     'manual_sku_prefix' => env('STOREFRONT_MANUAL_SKU_PREFIX', 'RA'),
     'manual_sku_floor' => (int) env('STOREFRONT_MANUAL_SKU_FLOOR', 1),
 

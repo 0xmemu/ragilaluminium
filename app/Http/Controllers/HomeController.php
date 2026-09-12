@@ -32,7 +32,7 @@ class HomeController extends Controller
 
             $featuredProducts = Cache::remember('home.featured_products', 120, function () {
                 return Product::visible()
-                    ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                    ->with(['mainImage', 'media', 'activeVariants.attributes', 'attributes'])
                     ->withPopularityScore()
                     ->latest()
                     ->limit(8)

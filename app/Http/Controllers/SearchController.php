@@ -20,7 +20,7 @@ class SearchController extends Controller
         $flashPeriodLive = FlashSalePeriodSettings::isLive();
 
         $products = Product::visible()
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withPopularityScore()
             ->when($q !== '', fn ($query) => CatalogSearch::apply($query, $q))
             ->when($q !== '' && $flashPeriodLive, function ($query) {

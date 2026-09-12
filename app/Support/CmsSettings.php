@@ -37,6 +37,17 @@ abstract class CmsSettings
     public const CONTENT_KEY = null;
 
     /**
+     * Cache halaman per request.
+     *
+     * Satu halaman storefront memanggil banyak kelas *Settings, dan beberapa di
+     * antaranya membaca slug yang sama. Tanpa cache, tiap pemanggilan menambah
+     * satu query ke cms_pages (terukur 14 sampai 18 query per halaman).
+     *
+     * @var array<string, CmsPage|null>
+     */
+    private static array $pageCache = [];
+
+    /**
      * Ambil CmsPage untuk slug ini (tanpa membuat).
      */
     protected static function page(): ?CmsPage
@@ -45,7 +56,27 @@ abstract class CmsSettings
             return null;
         }
 
-        return CmsPage::query()->where('slug', static::PAGE_SLUG)->first();
+        $slug = static::PAGE_SLUG;
+
+        if (! array_key_exists($slug, self::$pageCache)) {
+            self::$pageCache[$slug] = CmsPage::query()->where('slug', $slug)->first();
+        }
+
+        return self::$pageCache[$slug];
+    }
+
+    /**
+     * Buang cache halaman (dipakai setelah halaman dibuat atau diubah di luar seam ini).
+     */
+    public static function forgetPage(?string $slug = null): void
+    {
+        if ($slug === null) {
+            self::$pageCache = [];
+
+            return;
+        }
+
+        unset(self::$pageCache[$slug]);
     }
 
     /**
@@ -58,12 +89,16 @@ abstract class CmsSettings
             return $page;
         }
 
-        return CmsPage::create([
+        $created = CmsPage::create([
             'slug' => static::PAGE_SLUG,
             'title' => ucwords(str_replace('-', ' ', static::PAGE_SLUG)),
             'content' => [],
             'published' => true,
         ]);
+
+        self::$pageCache[static::PAGE_SLUG] = $created;
+
+        return $created;
     }
 
     /**
@@ -114,6 +149,7 @@ abstract class CmsSettings
                 'content' => $content,
                 'published' => true,
             ]);
+            self::$pageCache[static::PAGE_SLUG] = $page;
         } else {
             $page->update(['content' => $content]);
         }

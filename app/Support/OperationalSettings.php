@@ -39,10 +39,23 @@ final class OperationalSettings
         ];
     }
 
+    /**
+     * Cache hasil cek tabel. Schema::hasTable menempuh information_schema dan
+     * dipanggil berulang dalam satu request.
+     *
+     * @var array<string, bool>
+     */
+    private static array $tableCache = [];
+
+    private static function hasTable(string $table): bool
+    {
+        return self::$tableCache[$table] ??= Schema::hasTable($table);
+    }
+
     /** @return array<string, mixed>|null */
     public static function current(string $key): ?array
     {
-        if (! Schema::hasTable('operational_setting_versions')) {
+        if (! self::hasTable('operational_setting_versions')) {
             return null;
         }
         $row = OperationalSettingVersion::query()
@@ -56,7 +69,7 @@ final class OperationalSettings
 
     public static function available(): bool
     {
-        return Schema::hasTable('operational_setting_versions');
+        return self::hasTable('operational_setting_versions');
     }
 
     public static function get(string $key): array

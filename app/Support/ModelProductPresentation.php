@@ -13,6 +13,19 @@ use Illuminate\Support\Facades\Schema;
 class ModelProductPresentation
 {
     /**
+     * Cache hasil cek tabel. Schema::hasTable menempuh information_schema dan
+     * dipanggil berulang dalam satu request.
+     *
+     * @var array<string, bool>
+     */
+    private static array $tableCache = [];
+
+    private static function hasTable(string $table): bool
+    {
+        return self::$tableCache[$table] ??= Schema::hasTable($table);
+    }
+
+    /**
      * @return array{subtitle: string, desc: string, highlights: list<array{icon: string, label: string}>}
      */
     public static function forModel(string $model): array
@@ -116,7 +129,7 @@ class ModelProductPresentation
             $out[$key] = ['count' => 0, 'href' => null];
         }
 
-        if ($out === [] || ! Schema::hasTable('product_media') || ! Schema::hasTable('products')) {
+        if ($out === [] || ! self::hasTable('product_media') || ! self::hasTable('products')) {
             return $out;
         }
 

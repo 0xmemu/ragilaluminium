@@ -111,7 +111,7 @@ class HomepagePromotions
             ->values();
 
         $products = Product::visible()
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->whereIn('parent_sku', $skus)
             ->get()
             ->keyBy('parent_sku');
@@ -190,7 +190,7 @@ class HomepagePromotions
     private static function eligibleProducts(): Collection
     {
         return Product::visible()
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withPopularityScore()
             ->whereHas('activeVariants', fn ($q) => $q->where('price', '>', 0))
             ->whereHas('mainImage')
@@ -304,7 +304,7 @@ class HomepagePromotions
         };
 
         return Product::visible()
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->whereIn('product_category', $aliases)
             ->whereHas('mainImage')
             ->whereHas('activeVariants', fn ($q) => $q->where('price', '>', 0))

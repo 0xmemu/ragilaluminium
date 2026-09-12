@@ -56,12 +56,7 @@ final class PriceService
             }
         } else {
             // Diskon biasa: atribut promo_compare_price pada varian (non-kampanye).
-            $manual = ProductAttribute::query()
-                ->where('product_variant_id', $variant->id)
-                ->whereIn('attribute_name', ['promo_compare_price', 'compare_price', 'harga_asli', 'harga_sebelum_diskon'])
-                ->where('attribute_value', '>', '0')
-                ->orderBy('id')
-                ->first();
+            $manual = self::manualCompareAttribute($variant);
             if ($manual !== null) {
                 $compare = max(0, (float) $manual->attribute_value);
                 if ($compare > $bandrol) {
@@ -81,6 +76,45 @@ final class PriceService
             'source' => $source,
             'flash_sale' => $source === 'flash_sale',
         ];
+    }
+
+    /**
+     * Nama atribut yang bisa menjadi harga pembanding manual.
+     *
+     * @var list<string>
+     */
+    private const MANUAL_COMPARE_ATTRIBUTES = [
+        'promo_compare_price',
+        'compare_price',
+        'harga_asli',
+        'harga_sebelum_diskon',
+    ];
+
+    /**
+     * Atribut harga pembanding manual untuk satu varian.
+     *
+     * Bila relasi `attributes` sudah dimuat (eager load `activeVariants.attributes`),
+     * pencarian dilakukan di memori. Tanpa itu setiap varian menambah satu query,
+     * dan katalog berisi ratusan varian sehingga biayanya sangat besar padahal
+     * atribut ini jarang ada.
+     */
+    private static function manualCompareAttribute(ProductVariant $variant): ?ProductAttribute
+    {
+        if ($variant->relationLoaded('attributes')) {
+            return $variant->attributes
+                ->filter(static fn (ProductAttribute $attribute): bool =>
+                    in_array($attribute->attribute_name, self::MANUAL_COMPARE_ATTRIBUTES, true)
+                    && $attribute->attribute_value > '0')
+                ->sortBy('id')
+                ->first();
+        }
+
+        return ProductAttribute::query()
+            ->where('product_variant_id', $variant->id)
+            ->whereIn('attribute_name', self::MANUAL_COMPARE_ATTRIBUTES)
+            ->where('attribute_value', '>', '0')
+            ->orderBy('id')
+            ->first();
     }
 
     /**

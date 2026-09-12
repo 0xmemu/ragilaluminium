@@ -262,7 +262,7 @@ class InertiaCatalog
      */
     public static function popularProductCards(int $limit = 10): array
     {
-        $with = ['mainImage', 'media', 'activeVariants', 'attributes'];
+        $with = ['mainImage', 'media', 'activeVariants.attributes', 'attributes'];
 
         $products = Product::visible()
             ->homepagePopular()
@@ -299,7 +299,7 @@ class InertiaCatalog
             $trueValues = ['true', '1', 'yes', 'on'];
 
             $products = Product::visible()
-                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                ->with(['mainImage', 'media', 'activeVariants.attributes', 'attributes'])
                 ->withPopularityScore()
                 ->whereHas('attributes', function ($attr) use ($flashNames, $trueValues) {
                     $attr->whereIn('attribute_name', $flashNames)
@@ -316,7 +316,7 @@ class InertiaCatalog
         } else {
             $products = Product::visible()
                 ->whereIn('id', $flashIds)
-                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
+                ->with(['mainImage', 'media', 'activeVariants.attributes', 'attributes'])
                 ->withPopularityScore()
                 ->orderByRaw(Product::popularityScoreSql().' DESC')
                 ->orderByDesc('id')

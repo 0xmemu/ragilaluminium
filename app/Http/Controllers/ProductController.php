@@ -269,7 +269,7 @@ class ProductController extends Controller
             }
             $batch = $query()
                 ->whereNotIn('id', $exclude->all())
-                ->with(['mainImage', 'activeVariants', 'attributes'])
+                ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
                 ->limit($limit)
                 ->get();
             foreach ($batch as $p) {
@@ -300,7 +300,7 @@ class ProductController extends Controller
             $curated = Product::visible()
                 ->homepagePopular()
                 ->whereNotIn('id', $exclude->all())
-                ->with(['mainImage', 'activeVariants', 'attributes'])
+                ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
                 ->withPopularityScore()
                 ->orderBy('homepage_popular_sort')
                 ->orderByDesc('id')
