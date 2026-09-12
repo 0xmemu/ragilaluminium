@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Hash;
  *
  * Mode interaktif:            php artisan admin:create
  * Mode non-interaktif:        php artisan admin:create --name="Owner" --username="owner" \
- *                                 --email="owner@ragilaluminium.com" --password="..." --role="super_admin"
+ *                                 --email="owner@ragilaluminium.com" --password="..." --role="admin"
  *
  * Validasi: username unik, email unik (bila diisi), role enum valid,
  * password min 8 karakter. Password di-hash bcrypt; status default active.
@@ -23,7 +23,7 @@ class CreateAdminUser extends Command
         {--username= : Username (unik, dipakai login)}
         {--email= : Email admin (opsional)}
         {--password= : Password minimal 8 karakter}
-        {--role=super_admin : Role: super_admin|admin|staff|viewer}';
+        {--role=admin : Role kanonik admin (staff|viewer tidak punya akses panel)}';
 
     protected $description = 'Buat user admin baru (interaktif atau via opsi).';
 
@@ -48,16 +48,16 @@ class CreateAdminUser extends Command
             $email = $emailOpt;
 
             $role = $this->option('role')
-                ?: $this->choice('Role', ['super_admin', 'admin', 'staff', 'viewer'], 0);
+                ?: $this->choice('Role', ['admin', 'staff', 'viewer'], 0);
         } else {
             $email = trim((string) ($this->option('email') ?? ''));
-            $role = $this->option('role') ?: 'super_admin';
+            $role = $this->option('role') ?: 'admin';
         }
 
         $password = $this->option('password')
             ?? $this->secret('Password (minimal 8 karakter)');
 
-        $roles = ['super_admin', 'admin', 'staff', 'viewer'];
+        $roles = ['admin', 'staff', 'viewer'];
 
         if (! $password || mb_strlen((string) $password) < 8) {
             $this->error('Password minimal 8 karakter.');

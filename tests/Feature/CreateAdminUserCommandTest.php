@@ -24,7 +24,7 @@ class CreateAdminUserCommandTest extends TestCase
         $this->assertDatabaseHas('users', [
             'username' => 'owner',
             'email' => 'owner@ragilaluminium.com',
-            'role' => 'super_admin',
+            'role' => 'admin',
             'status' => 'active',
         ]);
 
@@ -79,7 +79,7 @@ class CreateAdminUserCommandTest extends TestCase
             '--password' => 'rahasia123',
             '--role' => 'god',
         ])
-            ->expectsOutput("Role 'god' tidak valid. Pilihan: super_admin, admin, staff, viewer.")
+            ->expectsOutput("Role 'god' tidak valid. Pilihan: admin, staff, viewer.")
             ->assertExitCode(1);
 
         $this->assertDatabaseMissing('users', ['username' => 'rogue']);
@@ -105,5 +105,21 @@ class CreateAdminUserCommandTest extends TestCase
             ->assertExitCode(1);
 
         $this->assertDatabaseMissing('users', ['username' => 'pendek']);
+    }
+
+    public function test_akun_hasil_create_bisa_masuk_panel_admin(): void
+    {
+        $this->artisan('admin:create', [
+            '--name' => 'Admin Baru',
+            '--username' => 'adminbaru',
+            '--password' => 'rahasia123',
+        ])->assertExitCode(0);
+
+        $user = User::where('username', 'adminbaru')->first();
+
+        $this->assertNotNull($user);
+        $this->assertSame('admin', $user->role);
+        $this->assertTrue($user->isAdmin(), 'Akun hasil admin:create harus lolos isAdmin() agar bisa masuk panel.');
+        $this->assertTrue($user->isActive());
     }
 }

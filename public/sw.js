@@ -1,6 +1,6 @@
 // Service Worker : Jendela Ragil Aluminium
 // Strategi: navigasi fresh network-first, rute admin dikecualikan dari cache sw.
-const CACHE = "ragil-v2";
+const CACHE = "ragil-v3";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -32,8 +32,12 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((resp) => {
-          const copy = resp.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
+          // Hanya simpan respons sukses. Respons 404/403/500 yang ikut
+          // tersimpan akan disajikan seolah valid saat jaringan bermasalah.
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then((c) => c.put(request, copy));
+          }
           return resp;
         })
         .catch(() => caches.match(request))
@@ -46,8 +50,12 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((resp) => {
-          const copy = resp.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
+          // Hanya simpan respons sukses. Respons 404/403/500 yang ikut
+          // tersimpan akan disajikan seolah valid saat jaringan bermasalah.
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then((c) => c.put(request, copy));
+          }
           return resp;
         })
         .catch(() => caches.match(request).then((r) => r || caches.match("/")))
