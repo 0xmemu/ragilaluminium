@@ -298,11 +298,11 @@ export default function Cart({
       </section>
 
       {showUndoToast && initialUndoCount > 0 ? (
-        <div className="pointer-events-none fixed inset-x-3 top-[calc(3rem+0.75rem)] z-toast mx-auto flex w-auto max-w-lg justify-center lg:inset-x-auto lg:left-1/2 lg:top-20 lg:w-full lg:max-w-xl lg:-translate-x-1/2">
-          <div className="pointer-events-auto flex w-auto max-w-full items-center gap-3 rounded-xl border border-destructive/70 bg-surface px-4 py-3 shadow-float">
+        <div className="pointer-events-none fixed inset-x-3 top-[calc(3rem+0.75rem)] z-toast flex flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:top-20 lg:-translate-x-1/2">
+          <div className="pointer-events-auto ml-auto flex w-full max-w-xl items-center gap-3 rounded-xl border border-destructive/70 bg-surface px-4 py-3 shadow-float">
             <Icon name="trash" className="size-5 shrink-0 text-destructive" aria-hidden="true" />
             <span className="shrink-0 text-xs font-semibold text-destructive">
-              Produk dihapus dari keranjang
+              Produk dihapus dari keranjang.
             </span>
             <button
               type="button"
