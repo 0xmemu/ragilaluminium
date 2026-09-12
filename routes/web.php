@@ -389,6 +389,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('shipping-subsidy', [ShippingSubsidyController::class, 'edit'])->name('shipping-subsidy.edit');
     Route::put('shipping-subsidy', [ShippingSubsidyController::class, 'update'])->name('shipping-subsidy.update');
+    Route::get('shipping-pallet', [ShippingPalletSettingsController::class, 'edit'])->name('shipping-pallet.edit');
+    Route::put('shipping-pallet', [ShippingPalletSettingsController::class, 'update'])->name('shipping-pallet.update');
 
     Route::get('beranda', [BerandaController::class, 'index'])->name('beranda.index');
     Route::put('beranda', [BerandaController::class, 'update'])->name('beranda.update');
