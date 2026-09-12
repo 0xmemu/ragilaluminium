@@ -95,9 +95,14 @@ class OrderExportContractTest extends TestCase
         $tx = $ss->getSheetByName('Laporan Transaksi (Skema A)');
         // Baris 1 grup, baris 2 kolom (header TIDAK di tengah sheet).
         $this->assertSame('1. IDENTITAS PESANAN & WAKTU', $tx->getCell('A1')->getValue());
-        $this->assertSame('7. DETAIL PELANGGAN & ALAMAT PENGIRIMAN (DI PALING AKHIR)', $tx->getCell('AB1')->getValue());
+        $this->assertSame('7. DETAIL PELANGGAN & ALAMAT PENGIRIMAN (DI PALING AKHIR)', $tx->getCell('AC1')->getValue());
         $this->assertSame('Nomor Pesanan', $tx->getCell('A2')->getValue());
-        $this->assertSame('Net Profit Toko (Kas Bersih)', $tx->getCell('AA2')->getValue());
+        $this->assertSame('Net Profit Toko (Kas Bersih)', $tx->getCell('AB2')->getValue());
+        // Kolom asuransi (V) menyisip setelah Biaya COD.
+        $this->assertSame('Biaya COD Ditanggung Pembeli', $tx->getCell('U2')->getValue());
+        $this->assertSame('Asuransi Pengiriman Dibayar Pembeli', $tx->getCell('V2')->getValue());
+        $this->assertSame('Total Tagihan Dibayar Pembeli', $tx->getCell('W2')->getValue());
+        $this->assertSame('Pengurangan Nilai Pesanan ke J&T', $tx->getCell('X2')->getValue());
 
         // 2 item = baris 3 dan 4; baris 5 TOTAL.
         $this->assertSame('ORD-EXP-001', $tx->getCell('A3')->getValue());
@@ -116,9 +121,12 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('=L3-M3', $tx->getCell('N3')->getValue());
         $this->assertSame('=M3*O3', $tx->getCell('P3')->getValue());
         $this->assertSame('=N3*O3', $tx->getCell('Q3')->getValue());
-        $this->assertStringStartsWith('=IF(D3="Dibatalkan", 0, SUMIF($A$3:$A$4, A3, $Q$3:$Q$4)', (string) $tx->getCell('V3')->getValue());
-        $this->assertSame('=(T3+S3)+U3', $tx->getCell('W3')->getValue());
-        $this->assertSame('=IF(D3="Dibatalkan", 0 - Z3, V3-W3-Y3-Z3)', $tx->getCell('AA3')->getValue());
+        // Total Tagihan = subtotal - voucher + ongkir + COD + ASURANSI.
+        $this->assertStringStartsWith('=IF(D3="Dibatalkan", 0, SUMIF($A$3:$A$4, A3, $Q$3:$Q$4)', (string) $tx->getCell('W3')->getValue());
+        $this->assertStringEndsWith('- R3 + T3 + U3 + V3)', (string) $tx->getCell('W3')->getValue());
+        // Pengurangan J&T = ongkir + subsidi + COD + ASURANSI.
+        $this->assertSame('=(T3+S3)+U3+V3', $tx->getCell('X3')->getValue());
+        $this->assertSame('=IF(D3="Dibatalkan", 0 - AA3, W3-X3-Z3-AA3)', $tx->getCell('AB3')->getValue());
 
         // Kolom biaya level pesanan DIULANG per baris (header repeat) dengan
         // nilai pesanan penuh (bukan dibagi per unit lagi - aturan v3).
@@ -126,6 +134,8 @@ class OrderExportContractTest extends TestCase
         $this->assertEquals(20000, (float) $tx->getCell('S4')->getValue());
         $this->assertEquals(150000, (float) $tx->getCell('T3')->getValue());
         $this->assertEquals(5000, (float) $tx->getCell('U3')->getValue());
+        // Asuransi = 0 bila pembeli tidak memilih (pesanan uji tanpa asuransi).
+        $this->assertEquals(0, (float) $tx->getCell('V3')->getValue());
 
         // Baris TOTAL hanya O/P/Q ber-rumus; kolom pesanan = [Lihat Tab Rekap].
         $this->assertSame('=SUM(O3:O4)', $tx->getCell('O5')->getValue());
@@ -134,11 +144,12 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('[Lihat Tab Rekap]', $tx->getCell('R5')->getValue());
         $this->assertSame('[Lihat Tab Rekap]', $tx->getCell('V5')->getValue());
         $this->assertSame('[Lihat Tab Rekap]', $tx->getCell('AA5')->getValue());
-        $this->assertNull($tx->getCell('AB5')->getValue(), 'kolom pelanggan di baris TOTAL kosong');
+        $this->assertSame('[Lihat Tab Rekap]', $tx->getCell('AB5')->getValue());
+        $this->assertNull($tx->getCell('AC5')->getValue(), 'kolom pelanggan di baris TOTAL kosong');
 
         // No. Telepon & Kode Pos ditulis TEXT (aturan Panduan 27/30).
-        $this->assertSame('081234567890', $tx->getCell('AC3')->getValue());
-        $this->assertSame('53411', (string) $tx->getCell('AI3')->getValue(), 'kode pos terbaca utuh');
+        $this->assertSame('081234567890', $tx->getCell('AD3')->getValue());
+        $this->assertSame('53411', (string) $tx->getCell('AJ3')->getValue(), 'kode pos terbaca utuh');
     }
 
     public function test_rekap_per_pesanan_dengan_sumif_lintas_sheet(): void
@@ -153,23 +164,26 @@ class OrderExportContractTest extends TestCase
 
         $this->assertSame('1. IDENTITAS PESANAN', $rk->getCell('A1')->getValue());
         $this->assertSame('Nomor Pesanan', $rk->getCell('A2')->getValue());
-        $this->assertSame('NET PROFIT TOKO (KAS BERSIH)', $rk->getCell('R2')->getValue());
+        $this->assertSame('Asuransi Pengiriman Dibayar Pembeli', $rk->getCell('L2')->getValue());
+        $this->assertSame('TOTAL DIBAYAR PEMBELI', $rk->getCell('M2')->getValue());
+        $this->assertSame('NET PROFIT TOKO (KAS BERSIH)', $rk->getCell('S2')->getValue());
 
         $this->assertSame('ORD-EXP-001', $rk->getCell('A3')->getValue());
         $this->assertSame('=F3+G3', $rk->getCell('E3')->getValue());
         $this->assertStringStartsWith("=SUMIF('Laporan Transaksi (Skema A)'!\$A\$3:\$A\$4, A3,", (string) $rk->getCell('F3')->getValue());
         $this->assertStringContainsString("\$Q\$3:\$Q\$4)", (string) $rk->getCell('G3')->getValue());
         $this->assertEquals(100000, (float) $rk->getCell('H3')->getValue());
-        $this->assertSame('=IF(D3="Dibatalkan", 0, G3-H3+J3+K3)', $rk->getCell('L3')->getValue());
-        $this->assertSame('=I3+J3', $rk->getCell('M3')->getValue());
-        $this->assertSame('=K3', $rk->getCell('N3')->getValue());
-        $this->assertSame('=M3+N3', $rk->getCell('O3')->getValue());
-        $this->assertSame('=IF(D3="Dibatalkan", 0 - Q3, L3-O3-P3-Q3)', $rk->getCell('R3')->getValue());
+        $this->assertEquals(0, (float) $rk->getCell('L3')->getValue(), 'asuransi 0 bila tidak dipilih');
+        $this->assertSame('=IF(D3="Dibatalkan", 0, G3-H3+J3+K3+L3)', $rk->getCell('M3')->getValue());
+        $this->assertSame('=I3+J3', $rk->getCell('N3')->getValue());
+        $this->assertSame('=K3', $rk->getCell('O3')->getValue());
+        $this->assertSame('=N3+O3+L3', $rk->getCell('P3')->getValue());
+        $this->assertSame('=IF(D3="Dibatalkan", 0 - Q3, M3-P3-Q3-R3)', $rk->getCell('S3')->getValue());
 
         // Baris TOTAL menjumlah E:R (satu baris per pesanan, aman di-SUM).
         $this->assertSame('TOTAL', $rk->getCell('A4')->getValue());
         $this->assertSame('=SUM(E3:E3)', $rk->getCell('E4')->getValue());
-        $this->assertSame('=SUM(R3:R3)', $rk->getCell('R4')->getValue());
+        $this->assertSame('=SUM(S3:S3)', $rk->getCell('S4')->getValue());
     }
 
     public function test_berat_volume_pakai_format_pengiriman_snapshot(): void
@@ -235,12 +249,12 @@ class OrderExportContractTest extends TestCase
         // Urutan template: pesanan terbaru dulu.
         $this->assertSame('ORD-EXP-RETUR', $tx->getCell('A3')->getValue());
         $this->assertSame('Retur diproses', $tx->getCell('D3')->getValue());
-        $this->assertSame('Refund (pecah)', $tx->getCell('X3')->getValue());
-        $this->assertEquals(300000, (float) $tx->getCell('Y3')->getValue());
-        $this->assertEquals(25000, (float) $tx->getCell('Z3')->getValue());
+        $this->assertSame('Refund (pecah)', $tx->getCell('Y3')->getValue());
+        $this->assertEquals(300000, (float) $tx->getCell('Z3')->getValue());
+        $this->assertEquals(25000, (float) $tx->getCell('AA3')->getValue());
         $this->assertSame('ORD-EXP-BATAL', $tx->getCell('A4')->getValue());
         $this->assertSame('Dibatalkan', $tx->getCell('D4')->getValue());
-        $this->assertSame('Pesanan dibatalkan', $tx->getCell('X4')->getValue());
+        $this->assertSame('Pesanan dibatalkan', $tx->getCell('Y4')->getValue());
 
         // Status mentah DB tidak pernah tampil.
         $grid = json_encode($tx->toArray(null, true, false));
@@ -255,9 +269,10 @@ class OrderExportContractTest extends TestCase
         $text = implode(' | ', array_map(fn ($r) => implode(' ', (array) $r), $guide));
 
         $this->assertStringContainsString('KAMUS KOLOM', $text);
-        $this->assertStringContainsString('25. Net Profit Toko', $text);
-        $this->assertStringContainsString('31. Prinsip COD & Ongkir (Pass-Through)', $text);
-        $this->assertStringContainsString('32. Aturan Agregasi', $text);
+        $this->assertStringContainsString('20. Asuransi Pengiriman Dibayar Pembeli', $text);
+        $this->assertStringContainsString('26. Net Profit Toko', $text);
+        $this->assertStringContainsString('32. Prinsip COD & Ongkir (Pass-Through)', $text);
+        $this->assertStringContainsString('33. Aturan Agregasi', $text);
         $this->assertStringContainsString('berat tagih paket', $text);
         $this->assertStringContainsString('P x L x T / 5000', $text);
         $this->assertStringNotContainsString('—', $text);
@@ -302,7 +317,7 @@ class OrderExportContractTest extends TestCase
 
         // Nomor pesanan, SKU varian, telepon, kode pos: identitas, wajib teks.
         $tx = $ss->getSheetByName('Laporan Transaksi (Skema A)');
-        foreach (['A', 'F', 'AC', 'AI'] as $col) {
+        foreach (['A', 'F', 'AD', 'AJ'] as $col) {
             $this->assertSame(
                 '@',
                 $tx->getCell($col.'3')->getStyle()->getNumberFormat()->getFormatCode(),
@@ -311,12 +326,53 @@ class OrderExportContractTest extends TestCase
         }
 
         $rk = $ss->getSheetByName('Rekap Keuangan per Pesanan');
-        foreach (['A', 'T'] as $col) {
+        foreach (['A', 'U'] as $col) {
             $this->assertSame(
                 '@',
                 $rk->getCell($col.'3')->getStyle()->getNumberFormat()->getFormatCode(),
                 "kolom {$col} sheet Rekap wajib berformat teks"
             );
         }
+    }
+    /**
+     * Kontrak: asuransi masuk ke Total Tagihan Dibayar Pembeli DAN ke
+     * pengurangan nilai pesanan ke J&T (keduanya, karena J&T memotong biaya
+     * asuransi). Kalau hanya salah satu, net profit jadi salah.
+     */
+    public function test_asuransi_ikut_di_total_dan_pengurangan_jnt(): void
+    {
+        // subtotal 2.750.000 + ongkir 150.000 + COD 5.000 + asuransi 20.000
+        $order = $this->makeOrder([
+            'shipping_amount' => 150000,
+            'shipping_insurance_amount' => 20000,
+            'total_amount' => 2925000,
+        ]);
+        $this->makeItem($order, 'RA-A', 'RA-A-1', 'Jendela Jungkit A', 2750000, 1, 0);
+
+        Excel::store(new \App\Exports\OrderExport(Order::query()), 'exp_ins.xlsx', 'imports');
+        $ss = IOFactory::load(\Illuminate\Support\Facades\Storage::disk('imports')->path('exp_ins.xlsx'));
+        $tx = $ss->getSheetByName('Laporan Transaksi (Skema A)');
+        $rk = $ss->getSheetByName('Rekap Keuangan per Pesanan');
+
+        // Nilai asuransi tampil di kedua sheet.
+        $this->assertEquals(20000, (float) $tx->getCell('V3')->getValue(), 'sheet 1 kolom V');
+        $this->assertEquals(20000, (float) $rk->getCell('L3')->getValue(), 'sheet rekap kolom L');
+
+        // Aritmetika laporan = total pesanan di DB.
+        $subtotal = (float) $order->subtotal_amount;
+        $voucher = (float) $order->voucher_discount_amount;
+        $ongkir = (float) $order->shipping_amount;
+        $cod = (float) $order->cod_fee_amount;
+        $asuransi = (float) $order->shipping_insurance_amount;
+
+        $totalLaporan = $subtotal - $voucher + $ongkir + $cod + $asuransi;
+        $this->assertEquals((float) $order->total_amount, $totalLaporan, 'total laporan = total DB');
+
+        // Pengurangan J&T memuat asuransi (ongkir + subsidi + COD + asuransi).
+        $potongan = $ongkir + (float) $order->shipping_subsidy_amount + $cod + $asuransi;
+        $this->assertEquals(150000 + 20000 + 5000 + 20000, $potongan, 'asuransi dipotong J&T');
+
+        // Net profit = total - potongan (tanpa refund/retur).
+        $this->assertEquals($totalLaporan - $potongan, 2750000.0 - 20000, 'asuransi saling meniadakan di net');
     }
 }

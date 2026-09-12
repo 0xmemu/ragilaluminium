@@ -367,7 +367,9 @@ class StorePerformanceService
         // diterima toko hanya untuk diteruskan ke J&T, bukan pendapatan toko.
         $shippingNet = (float) (clone $revenueOrders)->sum('shipping_amount');
         $shippingSubsidy = (float) (clone $revenueOrders)->sum('shipping_subsidy_amount');
-        $shippingRaw = $shippingNet + $shippingSubsidy;
+        $insurance = (float) (clone $revenueOrders)->sum('shipping_insurance_amount');
+        // Ongkir yang dipotong J&T mencakup subsidi toko + asuransi.
+        $shippingRaw = $shippingNet + $shippingSubsidy + $insurance;
         $codFees = (float) (clone $revenueOrders)->sum('cod_fee_amount');
         // Komponen pendapatan untuk laporan laba rugi bertingkat. Diambil dari
         // scope yang sama dengan revenue agar jumlah komponen konsisten dengan
@@ -375,7 +377,6 @@ class StorePerformanceService
         $itemsBeforeDiscount = (float) (clone $revenueOrders)->sum('subtotal_amount');
         $productDiscount = (float) (clone $revenueOrders)->sum('discount_amount');
         $voucherDiscount = (float) (clone $revenueOrders)->sum('voucher_discount_amount');
-        $insurance = (float) (clone $revenueOrders)->sum('shipping_insurance_amount');
         $revenueOrderIds = (clone $revenueOrders)->pluck('id');
 
         $units = $revenueOrderIds->isEmpty()
@@ -648,7 +649,7 @@ class StorePerformanceService
         if ($metric === 'net_revenue') {
             $orderRows = Order::query()
                 ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
-                ->selectRaw('SUM(total_amount - COALESCE(shipping_amount, 0) - COALESCE(shipping_subsidy_amount, 0) - COALESCE(cod_fee_amount, 0)) as value')
+                ->selectRaw('SUM(total_amount - COALESCE(shipping_amount, 0) - COALESCE(shipping_subsidy_amount, 0) - COALESCE(shipping_insurance_amount, 0) - COALESCE(cod_fee_amount, 0)) as value')
                 ->whereBetween('created_at', [$from, $to])
                 ->whereRaw($this->paidRevenueStatusSql())
                 ->groupBy('bucket')

@@ -46,7 +46,9 @@ class IncomeDetailQuery
 
                 $shippingNet = (float) $order->shipping_amount;
                 $shippingSubsidy = (float) $order->shipping_subsidy_amount;
-                $shippingRaw = $shippingNet + $shippingSubsidy;
+                // Asuransi juga dipotong J&T, jadi bagian dari shipping_raw.
+                $insurance = (float) $order->shipping_insurance_amount;
+                $shippingRaw = $shippingNet + $shippingSubsidy + $insurance;
                 $codFee = (float) $order->cod_fee_amount;
                 $refund = (float) $order->returnCases->sum('refund_amount');
                 $returnShippingStore = (float) $order->returnCases->sum('return_shipping_cost');

@@ -34,6 +34,7 @@ class Order extends Model
         'subtotal_amount',
         'shipping_amount',
         'shipping_subsidy_amount',
+        'shipping_insurance_amount',
         'shipping_chargeable_weight_kg',
         'shipping_package_snapshot',
         'discount_amount',

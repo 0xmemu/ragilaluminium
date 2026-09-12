@@ -85,6 +85,7 @@ class CheckoutController extends Controller
                 $details['postal_code'] ?? null,
                 $details['district'] ?? null,
                 (bool) $request->session()->get('checkout_insurance', false),
+                $this->cart->subtotal(),
             );
             $shippingPreview = [
                 'gross' => $breakdown['gross'],
@@ -97,6 +98,13 @@ class CheckoutController extends Controller
                 'manual_review' => $breakdown['manual_review'],
                 'message' => $breakdown['message'],
                 'carrier_eta' => $breakdown['carrier_eta'] ?? null,
+                // Asuransi wajib ikut di props awal. Tanpa ini ketersediaan
+                // asuransi tidak diketahui frontend sampai alamat diisi ulang,
+                // sehingga opsi di checkout tidak pernah muncul.
+                'insurance' => (float) ($breakdown['insurance'] ?? 0),
+                'insurance_selected' => (bool) ($breakdown['insurance_selected'] ?? false),
+                'insurance_available' => (bool) ($breakdown['insurance_available'] ?? false),
+                'insured_value' => (float) ($breakdown['insured_value'] ?? 0),
             ];
         }
 
@@ -276,6 +284,7 @@ class CheckoutController extends Controller
             $details['postal_code'] ?? null,
             $details['district'] ?? null,
             $withInsurance,
+            $this->cart->subtotal(),
         );
 
         $sessionVoucher = $request->session()->get(VoucherService::SESSION_KEY);
@@ -286,10 +295,10 @@ class CheckoutController extends Controller
                 customer: $details,
                 shipping: $details,
                 paymentMethod: $validated['payment_method'],
-                shippingCost: $shipping['net'],
+                shippingCost: (float) ($shipping['net_ongkir'] ?? $shipping['net']),
                 voucher: $voucher,
                 shippingSubsidy: $shipping['subsidy'],
-                shippingInsurance: (float) ($shipping['insurance'] ?? 0),
+                shippingInsurance: (float) ($shipping['insurance_charged'] ?? 0),
                 idempotencyKey: $idempotencyKey,
             );
         } catch (\DomainException $e) {

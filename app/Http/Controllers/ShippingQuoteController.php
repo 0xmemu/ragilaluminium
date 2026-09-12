@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ShippingQuoteRequest;
+use App\Services\CartService;
 use App\Services\ShippingService;
 use Illuminate\Http\JsonResponse;
 
 class ShippingQuoteController extends Controller
 {
-    public function __construct(protected ShippingService $shipping) {}
+    public function __construct(
+        protected ShippingService $shipping,
+        protected CartService $cart,
+    ) {}
 
     public function store(ShippingQuoteRequest $request): JsonResponse
     {
@@ -30,6 +34,7 @@ class ShippingQuoteController extends Controller
                 $validated['postal_code'] ?? null,
                 $validated['destination_area'] ?? null,
                 $withInsurance,
+                $this->cart->subtotal(),
             ),
         ]);
     }

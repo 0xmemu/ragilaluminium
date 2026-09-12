@@ -168,7 +168,7 @@ class OrderService
                         $packageWeight = $fallbackWeight > 0 ? $fallbackWeight : (float) config('shipping.default_item_weight_kg', 1.0);
                         $package['chargeable_weight_kg'] = $packageWeight;
                     }
-                    $total = max(0, $subtotal + $shippingCost - $voucherDiscount + $codFee);
+                    $total = max(0, $subtotal + $shippingCost + $shippingInsurance - $voucherDiscount + $codFee);
 
                     $customerRecord = $this->customers->upsertFromCheckout([
                         'name' => $customer['name'],
@@ -643,17 +643,21 @@ class OrderService
             $isCod = (bool) $locked->cod_flag || $locked->payment_method === 'cod';
             $codFee = 0.0;
 
-            $shippingInsurance = max(0, (float) ($locked->shipping_insurance_amount ?? 0));
+            $wantsInsurance = max(0, (float) ($locked->shipping_insurance_amount ?? 0)) > 0;
 
             $breakdown = $this->shipping->estimateBreakdown(
                 $this->cartWeightForLines($lines),
                 (string) $data['city'],
                 $data['province'] ?? null,
                 $data['postal_code'] ?? null,
-                $shippingInsurance > 0,
+                $wantsInsurance,
+                $subtotalAfterVoucher,
             );
-            $shippingCost = $breakdown['net'];
+            $shippingCost = (float) ($breakdown['net_ongkir'] ?? $breakdown['net']);
             $shippingSubsidy = $breakdown['subsidy'];
+            // Biaya asuransi diambil dari hasil quote (bukan nilai lama),
+            // supaya pertanggungan mengikuti nilai pesanan setelah diubah.
+            $shippingInsurance = (float) ($breakdown['insurance_charged'] ?? 0);
             if ($isCod) {
                 CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
                 $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost);
@@ -669,7 +673,7 @@ class OrderService
                 $packageWeight = $fallbackWeight > 0 ? $fallbackWeight : (float) config('shipping.default_item_weight_kg', 1.0);
                 $package['chargeable_weight_kg'] = $packageWeight;
             }
-            $total = max(0, $subtotal + $shippingCost - $voucherDiscount + $codFee);
+            $total = max(0, $subtotal + $shippingCost + $shippingInsurance - $voucherDiscount + $codFee);
 
             // Persist baris.
             $changes = [];

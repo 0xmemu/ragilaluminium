@@ -37,6 +37,8 @@ export interface CheckoutShipping {
   freight?: number
   insurance?: number
   insurance_available?: boolean
+  insurance_selected?: boolean
+  insured_value?: number
   message?: string | null
   carrier_eta?: string | null
 }
@@ -398,7 +400,12 @@ export function CheckoutSummary({
                 checked={Boolean(insurance)}
                 onChange={(event) => setInsurance(event.target.checked)}
               />
-              <span className="min-w-0 break-words">Lindungi paket dengan asuransi pengiriman</span>
+              <span className="min-w-0 break-words">
+                Asuransi pengiriman
+                {(effectiveShipping.insured_value ?? 0) > 0
+                  ? ` (pertanggungan ${formatCurrency(effectiveShipping.insured_value ?? 0)})`
+                  : null}
+              </span>
             </label>
             {(effectiveShipping.insurance ?? 0) > 0 ? (
               <span className="tabular-nums shrink-0 font-semibold text-foreground">

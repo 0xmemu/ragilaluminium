@@ -24,7 +24,33 @@ class ShippingService
         protected OrderStateMachine $states,
         protected ReturnService $returns,
         protected JntAddressResolver $jntAddresses,
+        protected CartService $cart,
     ) {}
+
+    /**
+     * Nilai barang yang diasuransikan (dasar `offerFee` ke J&T).
+     *
+     * Diambil dari subtotal keranjang, bukan angka tetap: pertanggungan harus
+     * mengikuti nilai barang yang berisiko. Pemanggil yang tidak memakai
+     * keranjang (mis. admin mengubah pesanan) boleh mengirim nilai eksplisit.
+     */
+    protected function resolveInsuredValue(?float $insuredValue): float
+    {
+        if ($insuredValue !== null) {
+            return max(0.0, round($insuredValue, 2));
+        }
+
+        if (! config('jnt.insurance_enabled', true)) {
+            return 0.0;
+        }
+
+        try {
+            return max(0.0, round($this->cart->subtotal(), 2));
+        } catch (Throwable) {
+            // Tanpa sesi keranjang (queue/CLI): asuransi tidak ditawarkan.
+            return 0.0;
+        }
+    }
 
     /**
      * Estimasi ongkir. Jika J&T aktif & tarif dikonfigurasi, pakai API tarif;
@@ -46,18 +72,23 @@ class ShippingService
         ?string $postalCode = null,
         ?string $destinationArea = null,
         bool $withInsurance = false,
+        ?float $insuredValue = null,
     ): array {
-        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea, $withInsurance);
+        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea, $withInsurance, $insuredValue);
     }
 
     /**
      * Customer-facing quote contract shared by checkout and the quote endpoint.
      * Provisional states never pretend to be a final carrier tariff.
      *
-     * Asuransi pengiriman (opsional, pilihan pembeli): saat `$withInsurance`,
-     * payload menyertakan `offerFee` sehingga J&T menghitung komponen
-     * `estimateInsuranceCost`. Ongkir (freight) tetap basis subsidi;
-     * asuransi ditambahkan di atas ongkir net: net = freight - subsidi + asuransi.
+     * Asuransi pengiriman (opsional, pilihan pembeli): `offerFee` = NILAI
+     * BARANG yang diasuransikan (dokumen J&T: 保价金额) dan SELALU dikirim
+     * selama nilai barang diketahui, supaya biaya asuransi bisa ditawarkan
+     * SEBELUM pembeli memilih. Yang menentukan biaya ditagihkan atau tidak
+     * adalah `$withInsurance`, bukan ada/tidaknya `offerFee`.
+     *
+     * Ongkir (freight) tetap basis subsidi; saat dipilih, asuransi
+     * ditambahkan di atas ongkir net: net = freight - subsidi + asuransi.
      *
      * @return array<string, mixed>
      */
@@ -68,8 +99,10 @@ class ShippingService
         ?string $postalCode = null,
         ?string $destinationArea = null,
         bool $withInsurance = false,
+        ?float $insuredValue = null,
     ): array {
         $weightKg = max($weightKg, 1.0);
+        $insuredValue = $this->resolveInsuredValue($insuredValue);
 
         $jntAddress = $this->jntAddresses->resolve(
             $destinationProvince,
@@ -131,10 +164,13 @@ class ShippingService
                 'receiveCity' => $destinationCity,
                 'receiveArea' => $destinationArea ?? $destinationCity,
             ];
-            // offerFee (asuransi) HANYA dikirim saat pembeli memilih asuransi.
-            $offerFee = config('jnt.defaults.offer_fee');
-            if ($withInsurance && filled($offerFee)) {
-                $payload['offerFee'] = (string) $offerFee;
+            // offerFee = nilai barang yang diasuransikan. SELALU dikirim bila
+            // nilai barang diketahui: tanpa ini biaya asuransi tidak pernah
+            // bisa ditampilkan, sehingga pilihan asuransi di checkout tidak
+            // akan pernah muncul (butuh biaya untuk memunculkan opsi,
+            // sementara biaya baru ada setelah opsi dipilih).
+            if ($insuredValue > 0) {
+                $payload['offerFee'] = (string) (int) round($insuredValue);
             }
 
             $resp = $this->jnt->tariff($payload);
@@ -151,18 +187,29 @@ class ShippingService
                 // ongkir Rp 0 tidak pernah tampil ke pembeli.
                 if (is_numeric($freight) && (float) $freight > 0) {
                     $freight = round((float) $freight, 2);
-                    $insurance = max(0, round((float) ($resp->get('estimateInsuranceCost') ?? 0), 2));
-                    $gross = round($freight + $insurance, 2);
+                    // Biaya asuransi SELALU dihitung supaya bisa ditawarkan;
+                    // hanya ditagihkan bila pembeli memilihnya.
+                    $insuranceCost = max(0, round((float) ($resp->get('estimateInsuranceCost') ?? 0), 2));
+                    $insuranceCharged = $withInsurance ? $insuranceCost : 0.0;
+                    $gross = round($freight + $insuranceCharged, 2);
                     $applied = ShippingSubsidySettings::apply($freight, 'jnt');
-                    $net = round(max(0, (float) $applied['net']) + $insurance, 2);
+                    $net = round(max(0, (float) $applied['net']) + $insuranceCharged, 2);
 
                     return [
                         ...$applied,
                         'gross' => $gross,
                         'net' => $net,
+                        // Ongkir bersih setelah subsidi TANPA asuransi: nilai
+                        // inilah yang disimpan sebagai shipping_amount, supaya
+                        // kolom "Ongkir" tidak bercampur dengan asuransi dan
+                        // total pesanan menjumlahkan keduanya secara eksplisit.
+                        'net_ongkir' => round(max(0, (float) $applied['net']), 2),
                         'freight' => $freight,
-                        'insurance' => $insurance,
-                        'insurance_available' => $insurance > 0,
+                        'insurance' => $insuranceCost,
+                        'insurance_selected' => $withInsurance && $insuranceCost > 0,
+                        'insurance_charged' => $insuranceCharged,
+                        'insurance_available' => $insuranceCost > 0,
+                        'insured_value' => $insuredValue,
                         'carrier' => 'jnt',
                         'state' => 'ready',
                         'is_final' => true,
