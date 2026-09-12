@@ -123,6 +123,74 @@
                 }, 8000);
             })();
         </script>
+    @else
+        {{-- Skeleton etalase publik. Sama seperti panel admin, ditulis langsung
+             di HTML supaya browser mengecatnya sebelum React mount. Terukur
+             tanpa ini: beranda putih 2,3 detik, katalog 2,0 detik, halaman
+             produk 1,5 detik. React createRoot().render() otomatis
+             menggantikan isi #app saat mount. --}}
+        <style>
+            .pub-skel { min-height: 100vh; display: flex; flex-direction: column; }
+            .pub-skel__bar { border-radius: .375rem; background: rgba(128,128,128,.18); animation: pub-skel-pulse 1.4s ease-in-out infinite; }
+            .pub-skel__announce { height: 2rem; border-radius: 0; }
+            .pub-skel__head { height: 3.5rem; border-radius: 0; border-bottom: 1px solid rgba(128,128,128,.18); }
+            .pub-skel__wrap { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+            .pub-skel__hero { height: 11rem; border-radius: .5rem; }
+            .pub-skel__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+            .pub-skel__card { border-radius: .5rem; overflow: hidden; border: 1px solid rgba(128,128,128,.14); background: rgba(128,128,128,.06); }
+            .pub-skel__img { aspect-ratio: 1 / 1; }
+            .pub-skel__meta { padding: .625rem; display: flex; flex-direction: column; gap: .4rem; }
+            .pub-skel__t1 { height: .75rem; width: 90%; }
+            .pub-skel__t2 { height: 1rem; width: 55%; }
+            .pub-skel__fallback { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem; text-align: center; }
+            @keyframes pub-skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+            @media (min-width: 640px) { .pub-skel__row { grid-template-columns: repeat(4, minmax(0, 1fr)); } .pub-skel__wrap { padding: 1.5rem; } }
+            @media (prefers-reduced-motion: reduce) { .pub-skel__bar { animation: none } }
+        </style>
+        <template id="pub-skel-template">
+            <div id="app-skeleton" class="pub-skel" aria-busy="true">
+                <div class="pub-skel__bar pub-skel__announce"></div>
+                <div class="pub-skel__bar pub-skel__head"></div>
+                <div class="pub-skel__wrap">
+                    <div class="pub-skel__bar pub-skel__hero"></div>
+                    <div class="pub-skel__row">
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                    </div>
+                    <div class="pub-skel__row">
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <script>
+            (function () {
+                var mount = document.getElementById('app');
+                var template = document.getElementById('pub-skel-template');
+                if (!mount || !template) return;
+                if (mount.children.length === 0) {
+                    mount.appendChild(template.content.cloneNode(true));
+                }
+                // Jaring pengaman: bila bundle JS gagal dimuat (mis. 404 tepat saat
+                // deploy karena Vite menghapus public/build tiap build), skeleton
+                // akan macet selamanya. Setelah 8 detik ganti dengan tombol muat
+                // ulang supaya pengunjung tidak buntu di layar abu-abu.
+                window.setTimeout(function () {
+                    var skeleton = document.getElementById('app-skeleton');
+                    if (!skeleton) return;
+                    skeleton.className = 'pub-skel__fallback';
+                    skeleton.innerHTML =
+                        '<p style="margin:0;font-size:15px;font-weight:600">Halaman gagal dimuat</p>' +
+                        '<p style="margin:0;max-width:24rem;font-size:13px;opacity:.7">Koneksi terputus atau situs baru saja diperbarui. Muat ulang halaman untuk melanjutkan.</p>' +
+                        '<button type="button" onclick="window.location.reload()" style="margin-top:.5rem;border:0;border-radius:9999px;background:#c20000;color:#fff;padding:.625rem 1.5rem;font-size:14px;font-weight:600;cursor:pointer">Muat ulang halaman</button>';
+                }, 8000);
+            })();
+        </script>
     @endif
     <script>
       // Service Worker (PWA) — hanya production & bila didukung

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers"
 import { ErrorBoundary } from "./components/shared/error-boundary"
 import { adminShellLayout } from "./layouts/admin-layout"
+import { publicShellLayout } from "./layouts/public-layout"
 
 const appName = import.meta.env.VITE_APP_NAME || "Ragil Aluminium"
 
@@ -21,6 +22,15 @@ createInertiaApp({
     if (name.startsWith("Admin/")) {
       const target = component as { layout?: unknown }
       if (!target.layout) target.layout = adminShellLayout
+    }
+
+    // Persistent layout publik: header, pengumuman, keranjang terbang, footer,
+    // dan bottom nav tidak dibongkar saat berpindah halaman. Halaman tetap
+    // memakai <PublicLayout> sendiri yang otomatis hanya merender frame <main>
+    // karena sudah berada di dalam shell.
+    if (name.startsWith("Public/")) {
+      const target = component as { layout?: unknown }
+      if (!target.layout) target.layout = publicShellLayout
     }
 
     return component as never
