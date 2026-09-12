@@ -31,7 +31,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *     proporsional per subtotal baris (per produk, aman di-SUM); baris
  *     TOTAL menjumlah P/Q/R/AC.
  *  2. 'Rekap Keuangan per Pesanan' -> 1 baris = 1 pesanan; E/F/G menarik
- *     sheet 1 lewat SUMIF; TOTAL SUM E:R (sesuai template).
+ *     sheet 1 lewat SUMPRODUCT yang mengecualikan pesanan Dibatalkan; TOTAL
+ *     SUM E:R (sesuai template).
  *  3. 'Panduan & Kamus Lengkap' -> kamus kolom owner.
  *
  * Sumber data: sistem Ragil (orders, order_items, payments, shipping_records,
@@ -78,7 +79,7 @@ class OrderExport implements WithMultipleSheets
             ->with([
                 'items:id,order_id,parent_sku,variant_sku,name,variation_1_name,variation_1_option,variation_2_name,variation_2_option,unit_price,quantity,line_discount,discount_source',
                 'payments:id,order_id,status,paid_at',
-                'shippingRecords:id,order_id,waybill_number,shipping_cost,status',
+                'shippingRecords:id,order_id,waybill_number,shipping_cost,shipping_freight,shipping_insured_fee,shipping_chargeable_weight_kg,status',
                 'returnCases:id,order_id,status,resolution_type,reason,refund_amount,additional_shipping_amount',
             ])
             ->latest('created_at')
@@ -138,15 +139,21 @@ class OrderExport implements WithMultipleSheets
                 ];
             }
 
-            // Ongkir ASLI dari konsol J&T Cargo (diisi admin saat input resi);
-            // record aktif terbaru yang menang. null = belum dicatat, dan
-            // laporan memakai asumsi checkout untuk pesanan itu.
+            // Tagihan ASLI dari J&T (totalFreight, diisi otomatis dari
+            // pelacakan resi); record aktif terbaru yang menang. null = J&T
+            // belum melaporkan, dan laporan memakai asumsi checkout.
             $actualRecord = $order->shippingRecords
                 ->whereNotIn('status', ['cancelled'])
                 ->whereNotNull('shipping_cost')
                 ->sortBy('id')
                 ->last();
             $jntOngkirActual = $actualRecord ? (float) $actualRecord->shipping_cost : null;
+            // Asumsi checkout: ongkir pembeli + subsidi toko + asuransi.
+            // totalFreight juga sudah memuat asuransi, jadi keduanya sebanding
+            // dan tidak ada asuransi yang terhitung dua kali.
+            $jntAsumsi = (float) $order->shipping_amount
+                + (float) $order->shipping_subsidy_amount
+                + (float) $order->shipping_insurance_amount;
 
             $blocks[] = [
                 'order_number' => $order->order_number,
@@ -162,6 +169,10 @@ class OrderExport implements WithMultipleSheets
                 'cod' => (float) $order->cod_fee_amount,
                 'insurance' => (float) $order->shipping_insurance_amount,
                 'jnt_ongkir_actual' => $jntOngkirActual,
+                'jnt_ongkir_assumed' => $jntAsumsi,
+                'jnt_ongkir_selisih' => $jntOngkirActual !== null
+                    ? $jntOngkirActual - $jntAsumsi
+                    : null,
                 'return_type' => $returnType,
                 'refund' => $refund,
                 'retur_ongkir' => $returOngkir,
@@ -365,9 +376,12 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
             // Pengurangan ke J&T memakai ongkir ASLI dari konsol J&T bila admin
             // sudah mencatatnya; kalau belum, asumsi checkout (ongkir pembeli +
             // subsidi toko). Wajib sama dengan Sheet 2 agar kedua sheet rekonsiliasi.
+            // Tagihan J&T: angka ASLI bila J&T sudah melaporkan (totalFreight,
+            // sudah memuat asuransi), atau rumus asumsi checkout
+            // (ongkir pembeli + subsidi + asuransi) bila belum.
             $ongkirBasis = $b['jnt_ongkir_actual'] !== null
                 ? number_format($b['jnt_ongkir_actual'], 2, '.', '')
-                : "(U{$r}+T{$r})";
+                : "(U{$r}+T{$r}+W{$r})";
             $out[] = [
                 $b['order_number'], $b['created_at'], $b['paid_at'], $b['status'], $b['waybill'],
                 $item['variant_sku'], $item['name'], $item['variations'],
@@ -377,7 +391,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
                 "=M{$r}*P{$r}", "=O{$r}*P{$r}",
                 $b['voucher'], $b['subsidi'], $b['ongkir'], $b['cod'], $b['insurance'],
                 "=IF(D{$r}=\"Dibatalkan\", 0, SUMIF({$rangeA}, A{$r}, {$rangeSubtotal}) - S{$r} + U{$r} + V{$r} + W{$r})",
-                "={$ongkirBasis}+V{$r}+W{$r}",
+                "={$ongkirBasis}+V{$r}",
                 $b['return_type'], $b['refund'], $b['retur_ongkir'],
                 "={$netOrder}*{$share}",
                 $b['customer_name'], $b['customer_phone'], $b['address'], $b['village'],
@@ -564,8 +578,12 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $lastItem = max($lastItem, $firstItem);
         $src = "'".OrderExport::SHEET_TX."'!";
         $rangeA = $src."\$A\${$firstItem}:\$A\${$lastItem}";
+        $rangeD = $src."\$D\${$firstItem}:\$D\${$lastItem}";
         $rangeDiskon = $src."\$Q\${$firstItem}:\$Q\${$lastItem}";
         $rangeSubtotal = $src."\$R\${$firstItem}:\$R\${$lastItem}";
+        // Penjualan produk mengecualikan pesanan Dibatalkan (barang tidak
+        // pernah dibayar) supaya identitas Rekap berlaku sampai ke TOTAL:
+        // Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit.
 
         $out = [
             [
@@ -583,22 +601,22 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
 
         $r = $firstOrder;
         foreach ($this->blocks as $b) {
-            // Ongkir Total ke J&T: ongkir ASLI dari konsol J&T bila admin sudah
-            // mencatatnya saat input resi; kalau belum, asumsi checkout
-            // (subsidi toko + ongkir pembeli) supaya pesanan lama tidak berubah.
+            // Tagihan J&T: angka ASLI bila J&T sudah melaporkan (totalFreight,
+            // sudah memuat asuransi), atau asumsi checkout
+            // (subsidi + ongkir pembeli + asuransi) bila belum.
             $ongkirJnt = $b['jnt_ongkir_actual'] !== null
                 ? $b['jnt_ongkir_actual']
-                : "=I{$r}+J{$r}";
+                : "=I{$r}+J{$r}+L{$r}";
 
             $out[] = [
                 $b['order_number'], $b['created_at'], $b['paid_at'], $b['status'],
                 "=F{$r}+G{$r}",
-                "=SUMIF({$rangeA}, A{$r}, {$rangeDiskon})",
-                "=SUMIF({$rangeA}, A{$r}, {$rangeSubtotal})",
+                "=SUMPRODUCT(({$rangeA} = A{$r}) * ({$rangeD} <> \"Dibatalkan\") * {$rangeDiskon})",
+                "=SUMPRODUCT(({$rangeA} = A{$r}) * ({$rangeD} <> \"Dibatalkan\") * {$rangeSubtotal})",
                 $b['voucher'], $b['subsidi'],
                 $b['ongkir'], $b['cod'], $b['insurance'],
                 "=IF(D{$r}=\"Dibatalkan\", 0, G{$r}-H{$r}+J{$r}+K{$r}+L{$r})",
-                $ongkirJnt, "=N{$r}-I{$r}-J{$r}", "=K{$r}", "=N{$r}+P{$r}+L{$r}",
+                $ongkirJnt, "=N{$r}-I{$r}-J{$r}-L{$r}", "=K{$r}", "=N{$r}+P{$r}",
                 $b['refund'], $b['retur_ongkir'],
                 "=IF(D{$r}=\"Dibatalkan\", 0 - R{$r} - S{$r}, M{$r}-Q{$r}-R{$r}-S{$r})",
                 $b['customer_name'], $b['customer_phone'], $b['city'],
@@ -723,7 +741,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['13. Harga Jual Satuan', 'Harga riil setelah diskon per unit: [Harga Normal] - [Diskon per Produk].'],
             ['14. Qty (quantity)', 'Jumlah unit fisik barang yang dibeli.'],
             ['15. Total Diskon Produk', 'Total penghematan diskon produk pada baris tersebut: [Diskon per Produk] x [Qty].'],
-            ['16. Subtotal Penjualan Produk', 'Nilai penjualan bersih barang sebelum biaya pesanan: [Harga Jual Satuan] x [Qty]. Kolom ini aman di-SUM dan dipakai Pivot Table untuk performa produk.'],
+            ['16. Subtotal Penjualan Produk', 'Nilai penjualan bersih barang sebelum biaya pesanan: [Harga Jual Satuan] x [Qty]. Kolom ini aman di-SUM dan dipakai Pivot Table untuk performa produk. Catatan: baris milik pesanan Dibatalkan TIDAK ikut terhitung di kolom penjualan Sheet 2 (Rekap).'],
             ['17. Voucher Pesanan (Beban Toko)', 'Kupon diskon keranjang belanja yang ditanggung toko. Berlaku per nomor pesanan, bukan per produk.'],
             ['18. Subsidi Ongkir Toko (Beban Toko)', 'Bagian ongkir yang ditanggung penjual/toko ke ekspedisi J&T. Merupakan beban riil pengurang laba toko.'],
             ['19. Ongkir Ditanggung Pembeli', 'Tarif ongkir kurir sesudah dipotong subsidi toko. Dibayar oleh pembeli saat checkout / bayar di tempat.'],
@@ -741,8 +759,8 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['31. Kelurahan s.d. Provinsi', 'Tingkat wilayah penerima (Desa/Kelurahan, Kecamatan, Kota/Kabupaten, Provinsi). Sangat berguna untuk filter & analisis wilayah pengiriman.'],
             ['32. Kode Pos (shipping_postal_code)', 'Kode pos area pengiriman untuk validasi zona tarif ekspedisi.'],
             ['33. Prinsip COD & Ongkir (Pass-Through)', 'Biaya COD dan Ongkir Pembeli diperlakukan sebagai uang titipan: masuk di tagihan pembeli, lalu keluar utuh dipotong J&T. Dampak netronya Rp 0 terhadap laba toko.'],
-            ['35. Ongkir J&T Asli & Selisih Ongkir J&T (Sheet 2 kolom N & O)', 'Ongkir Total ke J&T (N) memakai ongkir ASLI yang admin catat dari konsol J&T Cargo saat input resi. Bila belum dicatat, dipakai asumsi checkout: [Subsidi Ongkir Toko] + [Ongkir Ditanggung Pembeli], dan Selisih Ongkir (O) bernilai 0. Selisih Ongkir = [Ongkir J&T Asli] - [Subsidi] - [Ongkir Pembeli]; nilai POSITIF berarti tagihan J&T lebih besar dari yang dibayar pembeli (ditanggung toko), NEGATIF berarti lebih hemat. Asuransi tidak termasuk karena J&T menagihnya terpisah (kolom L).'],
-            ['34. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Total Tagihan, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan).'],
+            ['35. Tagihan J&T Asli & Selisihnya (Sheet 2 kolom N & O)', 'Tagihan J&T (N) memakai angka ASLI dari J&T Cargo yang diambil otomatis dari pelacakan resi (field totalFreight), jadi tidak ada input manual dan tidak ada perhitungan sendiri. Angka itu SUDAH termasuk asuransi (insuredFee), sehingga asuransi tidak ditambahkan lagi di atasnya. Bila J&T belum melaporkan, dipakai asumsi checkout: [Subsidi Ongkir Toko] + [Ongkir Ditanggung Pembeli] + [Asuransi Pengiriman], dan Selisih (O) bernilai 0. Selisih = [Tagihan J&T Asli] - [Subsidi] - [Ongkir Pembeli] - [Asuransi]; nilai POSITIF berarti tagihan J&T lebih besar dari asumsi (ditanggung toko), NEGATIF berarti lebih hemat dari perkiraan.'],
+            ['34. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Total Tagihan, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan). Di Sheet 2, kolom penjualan (Total Nilai Normal, Total Diskon Produk, Total Penjualan Produk) mengecualikan pesanan Dibatalkan sehingga identitas Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit berlaku sampai ke baris TOTAL.'],
         ];
     }
 
