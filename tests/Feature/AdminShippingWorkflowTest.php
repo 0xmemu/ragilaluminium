@@ -140,7 +140,6 @@ class AdminShippingWorkflowTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.orders.shipping.store', $order), [
                 'waybill_number' => 'JT-MANUAL-LIVE',
-                'shipping_cost' => 70000,
                 'mark_shipped' => false,
             ])
             ->assertRedirect(route('admin.orders.show', $order));
@@ -175,47 +174,92 @@ class AdminShippingWorkflowTest extends TestCase
             ->assertSessionMissing('success');
     }
     /**
-     * Ongkir ASLI dari konsol J&T Cargo WAJIB diisi saat input resi.
-     * Tanpa angka itu pembukuan kembali memakai asumsi checkout, sehingga
-     * selisih ongkir tidak akan pernah terdeteksi.
+     * Biaya J&T diambil OTOMATIS dari pelacakan resi (field totalFreight),
+     * bukan diketik admin. Rincian ongkir/asuransi/berat ikut tersimpan.
      */
-    public function test_input_resi_tanpa_ongkir_asli_ditolak(): void
+    public function test_biaya_jnt_diambil_otomatis_dari_pelacakan(): void
     {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('track')->andReturn(new JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: [
+                    'code' => '1',
+                    'msg' => 'success',
+                    'data' => [[
+                        'billCode' => 'JT-AUTO-COST',
+                        'details' => [[
+                            'scanCode' => 10,
+                            'scanType' => 'Tanda Terima',
+                            'desc' => 'Paket diterima penerima',
+                            'scanTime' => '2026-08-25 19:35:49',
+                            'totalFreight' => 57500,
+                            'freight' => 52500,
+                            'insuredFee' => 5000,
+                            'weight' => 14.4,
+                        ]],
+                    ]],
+                ],
+                requestId: 'req-auto-cost',
+                elapsedMs: 10,
+            ));
+        });
+
         $admin = $this->admin();
         $order = $this->order();
 
         $this->actingAs($admin)
             ->post(route('admin.orders.shipping.store', $order), [
-                'waybill_number' => 'JT-TANPA-ONGKIR',
-                'mark_shipped' => false,
-            ])
-            ->assertSessionHasErrors('shipping_cost');
-
-        $this->assertDatabaseMissing('shipping_records', [
-            'waybill_number' => 'JT-TANPA-ONGKIR',
-        ]);
-    }
-
-    /**
-     * Ongkir asli yang diisi admin tersimpan apa adanya di shipping_cost,
-     * bukan diganti harga ongkir yang ditagih ke pembeli.
-     */
-    public function test_ongkir_asli_tersimpan_apa_adanya(): void
-    {
-        $admin = $this->admin();
-        $order = $this->order();
-
-        $this->actingAs($admin)
-            ->post(route('admin.orders.shipping.store', $order), [
-                'waybill_number' => 'JT-ONGKIR-ASLI',
-                'shipping_cost' => 87500,
+                'waybill_number' => 'JT-AUTO-COST',
                 'mark_shipped' => false,
             ])
             ->assertRedirect(route('admin.orders.show', $order));
 
-        $record = \App\Models\ShippingRecord::where('waybill_number', 'JT-ONGKIR-ASLI')->first();
+        $record = ShippingRecord::where('waybill_number', 'JT-AUTO-COST')->first();
         $this->assertNotNull($record);
-        $this->assertSame(87500.0, (float) $record->shipping_cost);
+        $this->assertSame(57500.0, (float) $record->shipping_cost, 'total tagihan J&T tersimpan otomatis');
+        $this->assertSame(52500.0, (float) $record->shipping_freight, 'ongkir saja');
+        $this->assertSame(5000.0, (float) $record->shipping_insured_fee, 'asuransi dari J&T');
+        $this->assertSame(14.4, (float) $record->shipping_chargeable_weight_kg, 'berat tagih versi J&T');
+        $this->assertNotNull($record->shipping_cost_synced_at, 'waktu sinkron biaya tercatat');
     }
 
+    /**
+     * Harga yang DITAGIH KE PEMBELI tidak boleh dipakai sebagai biaya J&T.
+     * Kalau J&T belum melaporkan angkanya, kolom biaya harus tetap kosong
+     * supaya pembukuan memakai asumsi checkout, bukan angka yang salah arti.
+     */
+    public function test_biaya_jnt_tidak_diisi_harga_tagihan_pembeli(): void
+    {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('track')->andReturn(new JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: ['code' => '1', 'msg' => 'success', 'data' => []],
+                requestId: 'req-tanpa-biaya',
+                elapsedMs: 8,
+            ));
+        });
+
+        $admin = $this->admin();
+        $order = $this->order();
+        // Ongkir yang ditagih ke pembeli; bukan biaya J&T.
+        $order->update(['shipping_amount' => 150000]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-TANPA-BIAYA',
+                'mark_shipped' => false,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $record = ShippingRecord::where('waybill_number', 'JT-TANPA-BIAYA')->first();
+        $this->assertNotNull($record);
+        $this->assertNull(
+            $record->shipping_cost,
+            'biaya J&T dibiarkan kosong sampai J&T melaporkan angkanya'
+        );
+    }
 }

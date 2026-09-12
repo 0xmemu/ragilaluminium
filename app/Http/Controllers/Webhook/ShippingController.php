@@ -88,6 +88,9 @@ class ShippingController extends Controller
         // Simpan seluruh riwayat scan push (idempoten) lalu majukan status.
         if (is_array($details) && ! empty($details)) {
             $this->shipping->persistTraceEvents($record, $details, 'webhook');
+            // Push J&T juga membawa rincian tagihan (totalFreight/freight/
+            // insuredFee/weight); simpan supaya pembukuan memakai angka asli.
+            $this->shipping->syncActualCost($record, $details);
         }
 
         if ($scanType !== '' || $scanTypeCode !== null) {

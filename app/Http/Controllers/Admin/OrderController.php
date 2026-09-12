@@ -336,7 +336,12 @@ class OrderController extends Controller
         // Ongkir ASLI dari konsol J&T (diisi admin saat input resi) vs asumsi
         // checkout (ongkir pembeli + subsidi toko). Selisih positif berarti
         // tagihan J&T lebih besar dari yang dibayar pembeli, ditanggung toko.
-        $assumedOngkir = (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount;
+        // Asumsi checkout: ongkir pembeli + subsidi toko + asuransi.
+        $assumedOngkir = (float) $order->shipping_amount
+            + (float) $order->shipping_subsidy_amount
+            + (float) $order->shipping_insurance_amount;
+        // Tagihan ASLI J&T (totalFreight), sudah termasuk asuransi. Diisi
+        // otomatis dari endpoint pelacakan, bukan input manual.
         $actualOngkir = $activeShipping?->shipping_cost !== null
             ? (float) $activeShipping->shipping_cost
             : null;
@@ -387,6 +392,16 @@ class OrderController extends Controller
                 'jnt_ongkir_selisih' => $actualOngkir !== null
                     ? round($actualOngkir - $assumedOngkir, 2)
                     : null,
+                'jnt_freight_actual' => $activeShipping?->shipping_freight !== null
+                    ? (float) $activeShipping->shipping_freight
+                    : null,
+                'jnt_insured_fee_actual' => $activeShipping?->shipping_insured_fee !== null
+                    ? (float) $activeShipping->shipping_insured_fee
+                    : null,
+                'jnt_chargeable_weight_kg' => $activeShipping?->shipping_chargeable_weight_kg !== null
+                    ? (float) $activeShipping->shipping_chargeable_weight_kg
+                    : null,
+                'jnt_cost_synced_at' => optional($activeShipping?->shipping_cost_synced_at)?->toIso8601String(),
                 'discount_amount' => (float) $order->discount_amount,
                 'voucher_code' => $order->voucher_code,
                 'voucher_discount_amount' => (float) $order->voucher_discount_amount,
@@ -476,10 +491,6 @@ class OrderController extends Controller
             // nomor resi yang sudah diterbitkan kurir.
             'mode' => ['nullable', 'in:manual'],
             'waybill_number' => ['required', 'string', 'max:100'],
-            // Ongkir ASLI dari konsol J&T Cargo (ongkir saja, asuransi
-            // terpisah). Wajib supaya pembukuan memakai biaya ekspedisi
-            // sebenarnya, bukan asumsi ongkir checkout.
-            'shipping_cost' => ['required', 'numeric', 'min:0'],
             'mark_shipped' => ['nullable', 'boolean'],
         ]);
 
@@ -491,12 +502,7 @@ class OrderController extends Controller
         }
 
         try {
-            $record = $this->shipping->attachManualWaybill(
-                $order,
-                (string) $validated['waybill_number'],
-                'J&T Cargo',
-                (float) $validated['shipping_cost'],
-            );
+            $record = $this->shipping->attachManualWaybill($order, (string) $validated['waybill_number']);
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
         }

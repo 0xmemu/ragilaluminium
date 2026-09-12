@@ -368,17 +368,22 @@ class StorePerformanceService
         $shippingNet = (float) (clone $revenueOrders)->sum('shipping_amount');
         $shippingSubsidy = (float) (clone $revenueOrders)->sum('shipping_subsidy_amount');
         $insurance = (float) (clone $revenueOrders)->sum('shipping_insurance_amount');
-        // Ongkir yang dipotong J&T: pakai ongkir ASLI dari konsol J&T bila admin
-        // sudah mencatatnya saat input resi; kalau belum, pakai asumsi checkout
-        // (ongkir pembeli + subsidi toko) supaya pesanan lama tidak berubah.
-        // Asuransi ditagih J&T terpisah, jadi selalu ditambahkan.
+        // Tagihan J&T: pakai angka ASLI dari J&T (totalFreight, diisi otomatis
+        // dari pelacakan resi) bila sudah ada; kalau belum, pakai asumsi
+        // checkout supaya pesanan lama tidak berubah. Asumsi = ongkir pembeli +
+        // subsidi toko + asuransi, SEBANDING dengan totalFreight yang juga
+        // sudah memuat asuransi, supaya tidak terhitung dua kali.
         $actualOngkir = \App\Models\ShippingRecord::actualOngkirByOrder(
             (clone $revenueOrders)->pluck('id')->all()
         );
         $ongkirDasar = 0.0;
         $ongkirSelisih = 0.0;
-        foreach ((clone $revenueOrders)->get(['id', 'shipping_amount', 'shipping_subsidy_amount']) as $shippingRow) {
-            $asumsiOngkir = (float) $shippingRow->shipping_amount + (float) $shippingRow->shipping_subsidy_amount;
+        foreach ((clone $revenueOrders)->get([
+            'id', 'shipping_amount', 'shipping_subsidy_amount', 'shipping_insurance_amount',
+        ]) as $shippingRow) {
+            $asumsiOngkir = (float) $shippingRow->shipping_amount
+                + (float) $shippingRow->shipping_subsidy_amount
+                + (float) $shippingRow->shipping_insurance_amount;
             $asliOngkir = $actualOngkir[$shippingRow->id] ?? null;
             $ongkirDasar += $asliOngkir ?? $asumsiOngkir;
 
@@ -386,7 +391,7 @@ class StorePerformanceService
                 $ongkirSelisih += $asliOngkir - $asumsiOngkir;
             }
         }
-        $shippingRaw = $ongkirDasar + $insurance;
+        $shippingRaw = $ongkirDasar;
         $codFees = (float) (clone $revenueOrders)->sum('cod_fee_amount');
         // Komponen pendapatan untuk laporan laba rugi bertingkat. Diambil dari
         // scope yang sama dengan revenue agar jumlah komponen konsisten dengan

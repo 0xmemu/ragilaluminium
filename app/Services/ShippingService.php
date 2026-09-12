@@ -378,7 +378,6 @@ class ShippingService
         Order $order,
         string $waybillNumber,
         string $carrierName = 'J&T Cargo',
-        ?float $shippingCost = null,
     ): ShippingRecord {
         $waybillNumber = trim($waybillNumber);
         $existing = $order->shippingRecords()->whereNotIn('status', ['cancelled'])->first();
@@ -391,22 +390,18 @@ class ShippingService
                 'waybill_number' => $waybillNumber,
                 'carrier_name' => $carrierName,
                 'last_status_at' => $waybillChanged ? null : $existing->last_status_at,
-                // Ongkir asli dari konsol J&T; dibiarkan apa adanya bila tidak dikirim.
-                'shipping_cost' => $shippingCost ?? $existing->shipping_cost,
             ]);
 
             $record = $existing->fresh();
         } else {
-            $record = DB::transaction(function () use ($order, $waybillNumber, $carrierName, $shippingCost) {
+            $record = DB::transaction(function () use ($order, $waybillNumber, $carrierName) {
                 $record = ShippingRecord::create([
                     'order_id' => $order->id,
                     'carrier_name' => $carrierName,
                     'service_name' => config('jnt.defaults.express_type'),
                     'waybill_number' => $waybillNumber,
-                    // Ongkir ASLI dari konsol J&T Cargo, bukan harga yang
-                    // ditagih ke pembeli. null = belum dicatat, dan pembukuan
-                    // memakai asumsi checkout untuk pesanan itu.
-                    'shipping_cost' => $shippingCost,
+                    // Biaya J&T diisi otomatis dari endpoint pelacakan saat
+                    // resi ini di-refresh (syncActualCost), bukan input manual.
                     'status' => 'pending_pickup',
                     'status_raw' => 'manual',
                 ]);
@@ -464,6 +459,10 @@ class ShippingService
         // timeline tracking langsung lengkap, bukan hanya scan terakhir.
         if (! empty($details)) {
             $this->persistTraceEvents($record, $details, 'poll');
+            // Respons yang sama juga membawa rincian tagihan J&T yang
+            // sebenarnya (totalFreight/freight/insuredFee/weight). Simpan
+            // supaya pembukuan tidak lagi memakai asumsi ongkir checkout.
+            $this->syncActualCost($record, $details);
         }
 
         [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractLatestTrace($resp);
@@ -788,6 +787,72 @@ class ShippingService
                 ],
             );
         }
+    }
+
+    /**
+     * Simpan rincian tagihan ASLI dari J&T Cargo (endpoint pelacakan).
+     *
+     * Setiap scan pada respons `logistics/trace` membawa:
+     *   totalFreight = total tagihan (SUDAH termasuk asuransi)
+     *   freight      = ongkir saja
+     *   insuredFee   = asuransi
+     *   weight       = berat tagih versi J&T (angka final, bukan hitungan kami)
+     *
+     * Ini satu-satunya sumber biaya ekspedisi: tidak ada input manual dan
+     * tidak ada perhitungan sendiri. Kalau J&T belum melaporkan angkanya,
+     * kolomnya dibiarkan kosong dan pembukuan memakai asumsi checkout.
+     *
+     * @param  array<int|string, mixed>  $details
+     * @return bool  true bila rincian biaya tersimpan
+     */
+    public function syncActualCost(ShippingRecord $record, array $details): bool
+    {
+        $best = null;
+        $bestAt = '';
+
+        foreach ($details as $detail) {
+            if (! is_array($detail) || ! isset($detail['totalFreight']) || ! is_numeric($detail['totalFreight'])) {
+                continue;
+            }
+
+            $at = (string) ($detail['scanTime'] ?? $detail['time'] ?? '');
+            if ($best === null || $at >= $bestAt) {
+                $best = $detail;
+                $bestAt = $at;
+            }
+        }
+
+        if ($best === null) {
+            return false;
+        }
+
+        $total = round((float) $best['totalFreight'], 2);
+        // Rp 0 bukan tagihan yang sah; perlakukan sebagai data belum ada.
+        if ($total <= 0) {
+            return false;
+        }
+
+        $number = fn (string $key): ?float => isset($best[$key]) && is_numeric($best[$key])
+            ? round((float) $best[$key], 2)
+            : null;
+
+        $record->update([
+            'shipping_cost' => $total,
+            'shipping_freight' => $number('freight'),
+            'shipping_insured_fee' => $number('insuredFee'),
+            'shipping_chargeable_weight_kg' => $number('weight'),
+            'shipping_cost_synced_at' => now(),
+        ]);
+
+        Log::channel('jnt')->info('Shipping actual cost synced from J&T', [
+            'waybill_ref' => substr(hash('sha256', (string) $record->waybill_number), 0, 12),
+            'total_freight' => $total,
+            'freight' => $number('freight'),
+            'insured_fee' => $number('insuredFee'),
+            'chargeable_weight_kg' => $number('weight'),
+        ]);
+
+        return true;
     }
 
     /**

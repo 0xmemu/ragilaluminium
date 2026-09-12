@@ -53,13 +53,15 @@ class IncomeDetailQuery
                 $shippingSubsidy = (float) $order->shipping_subsidy_amount;
                 // Asuransi juga dipotong J&T, jadi bagian dari shipping_raw.
                 $insurance = (float) $order->shipping_insurance_amount;
-                // Ongkir yang dipotong J&T: pakai ongkir ASLI dari konsol J&T
-                // bila admin sudah mencatatnya saat input resi; kalau belum,
-                // pakai asumsi checkout (ongkir pembeli + subsidi toko) supaya
-                // pesanan lama tidak berubah. Asuransi ditagih J&T terpisah.
-                $assumedOngkir = $shippingNet + $shippingSubsidy;
+                // Tagihan J&T: pakai angka ASLI dari J&T (totalFreight, diisi
+                // otomatis dari pelacakan resi) bila sudah ada; kalau belum,
+                // pakai asumsi checkout supaya pesanan lama tidak berubah.
+                // Asumsi = ongkir pembeli + subsidi toko + asuransi, SEBANDING
+                // dengan totalFreight yang juga sudah memuat asuransi, supaya
+                // tidak ada asuransi terhitung dua kali.
+                $assumedOngkir = $shippingNet + $shippingSubsidy + $insurance;
                 $actualOngkirOrder = $actualOngkir[$order->id] ?? null;
-                $shippingRaw = ($actualOngkirOrder ?? $assumedOngkir) + $insurance;
+                $shippingRaw = $actualOngkirOrder ?? $assumedOngkir;
                 $codFee = (float) $order->cod_fee_amount;
                 $refund = (float) $order->returnCases->sum('refund_amount');
                 $returnShippingStore = (float) $order->returnCases->sum('return_shipping_cost');

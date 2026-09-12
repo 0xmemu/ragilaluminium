@@ -75,6 +75,10 @@ interface OrderDetail {
   jnt_ongkir_assumed?: number
   jnt_ongkir_actual?: number | null
   jnt_ongkir_selisih?: number | null
+  jnt_freight_actual?: number | null
+  jnt_insured_fee_actual?: number | null
+  jnt_chargeable_weight_kg?: number | null
+  jnt_cost_synced_at?: string | null
   shipping_subsidy_amount?: number
   shipping_insurance_amount?: number
   discount_amount: number
@@ -993,7 +997,6 @@ export default function OrderShow({
 
   const shippingForm = useForm({
     waybill_number: "",
-    shipping_cost: "",
     mark_shipped: true,
 
   })
@@ -1449,22 +1452,11 @@ export default function OrderShow({
                   />
                 </Field>
 
-                <Field
-                  id="popup-shipping-cost"
-                  label="Ongkir J&T Cargo (Rp)"
-                  required
-                  error={shippingForm.errors.shipping_cost}
-                  hint="Angka ongkir dari konsol J&T Cargo (ongkir saja, asuransi terpisah). Dipakai pembukuan supaya selisih ongkir terdeteksi."
-                >
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={shippingForm.data.shipping_cost}
-                    onChange={(event) => shippingForm.setData("shipping_cost", event.target.value)}
-                    placeholder="Contoh: 70000"
-                    className="font-mono"
-                  />
-                </Field>
+                <p className="rounded-md border border-border bg-surface/80 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  Biaya J&T Cargo diisi otomatis dari pelacakan resi, jadi tidak perlu
+                  diketik. Setelah resi disimpan, tekan Refresh J&T bila angkanya belum
+                  muncul.
+                </p>
 
                 <Checkbox
                   compact
@@ -1744,15 +1736,39 @@ export default function OrderShow({
               {order.jnt_ongkir_actual != null ? (
                 <>
                   <div className="flex justify-between gap-3">
-                    <dt className="text-muted-foreground">Ongkir J&T Cargo</dt>
+                    <dt className="text-muted-foreground">Tagihan J&T Cargo</dt>
                     <dd className="tabular-nums font-medium">
                       {formatCurrency(order.jnt_ongkir_actual)}
                     </dd>
                   </div>
+                  {order.jnt_freight_actual != null ? (
+                    <div className="flex justify-between gap-3 text-xs">
+                      <dt className="pl-3 text-muted-foreground">Ongkir</dt>
+                      <dd className="tabular-nums text-muted-foreground">
+                        {formatCurrency(order.jnt_freight_actual)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {(order.jnt_insured_fee_actual ?? 0) > 0 ? (
+                    <div className="flex justify-between gap-3 text-xs">
+                      <dt className="pl-3 text-muted-foreground">Asuransi dari J&T</dt>
+                      <dd className="tabular-nums text-muted-foreground">
+                        {formatCurrency(order.jnt_insured_fee_actual ?? 0)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {order.jnt_chargeable_weight_kg != null ? (
+                    <div className="flex justify-between gap-3 text-xs">
+                      <dt className="pl-3 text-muted-foreground">Berat tagih J&T</dt>
+                      <dd className="tabular-nums text-muted-foreground">
+                        {order.jnt_chargeable_weight_kg} kg
+                      </dd>
+                    </div>
+                  ) : null}
                   {(order.jnt_ongkir_selisih ?? 0) !== 0 ? (
                     <div className="flex justify-between gap-3">
                       <dt className="text-muted-foreground">
-                        Selisih ongkir{" "}
+                        Selisih tagihan{" "}
                         <span className="text-[11px]">
                           {(order.jnt_ongkir_selisih ?? 0) > 0
                             ? "(ditanggung toko)"
@@ -1774,8 +1790,10 @@ export default function OrderShow({
                 </>
               ) : (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">Ongkir J&T Cargo</dt>
-                  <dd className="text-xs text-muted-foreground">Belum dicatat</dd>
+                  <dt className="text-muted-foreground">Tagihan J&T Cargo</dt>
+                  <dd className="text-xs text-muted-foreground">
+                    Belum dilaporkan J&T
+                  </dd>
                 </div>
               )}
               {order.discount_amount > 0 ? (
