@@ -333,6 +333,14 @@ class OrderController extends Controller
             fn ($s) => $s->status !== 'cancelled'
         ) ?? $order->shippingRecords->first();
 
+        // Ongkir ASLI dari konsol J&T (diisi admin saat input resi) vs asumsi
+        // checkout (ongkir pembeli + subsidi toko). Selisih positif berarti
+        // tagihan J&T lebih besar dari yang dibayar pembeli, ditanggung toko.
+        $assumedOngkir = (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount;
+        $actualOngkir = $activeShipping?->shipping_cost !== null
+            ? (float) $activeShipping->shipping_cost
+            : null;
+
         // Poll J&T saat buka detail (throttle ~2 menit), sama seperti status publik.
         if ($activeShipping?->waybill_number
             && (! $activeShipping->last_status_at || $activeShipping->last_status_at->lt(now()->subMinutes(2)))
@@ -374,6 +382,11 @@ class OrderController extends Controller
                 'shipping_amount' => (float) $order->shipping_amount,
                 'shipping_subsidy_amount' => (float) $order->shipping_subsidy_amount,
                 'shipping_insurance_amount' => (float) $order->shipping_insurance_amount,
+                'jnt_ongkir_assumed' => round($assumedOngkir, 2),
+                'jnt_ongkir_actual' => $actualOngkir,
+                'jnt_ongkir_selisih' => $actualOngkir !== null
+                    ? round($actualOngkir - $assumedOngkir, 2)
+                    : null,
                 'discount_amount' => (float) $order->discount_amount,
                 'voucher_code' => $order->voucher_code,
                 'voucher_discount_amount' => (float) $order->voucher_discount_amount,
@@ -463,6 +476,10 @@ class OrderController extends Controller
             // nomor resi yang sudah diterbitkan kurir.
             'mode' => ['nullable', 'in:manual'],
             'waybill_number' => ['required', 'string', 'max:100'],
+            // Ongkir ASLI dari konsol J&T Cargo (ongkir saja, asuransi
+            // terpisah). Wajib supaya pembukuan memakai biaya ekspedisi
+            // sebenarnya, bukan asumsi ongkir checkout.
+            'shipping_cost' => ['required', 'numeric', 'min:0'],
             'mark_shipped' => ['nullable', 'boolean'],
         ]);
 
@@ -474,7 +491,12 @@ class OrderController extends Controller
         }
 
         try {
-            $record = $this->shipping->attachManualWaybill($order, (string) $validated['waybill_number']);
+            $record = $this->shipping->attachManualWaybill(
+                $order,
+                (string) $validated['waybill_number'],
+                'J&T Cargo',
+                (float) $validated['shipping_cost'],
+            );
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
         }

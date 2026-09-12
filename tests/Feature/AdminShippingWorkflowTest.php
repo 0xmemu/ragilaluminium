@@ -98,6 +98,8 @@ class AdminShippingWorkflowTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.orders.shipping.store', $order), [
                 'waybill_number' => 'JT-MANUAL-1',
+                // Ongkir asli dari konsol J&T (sekarang wajib saat input resi).
+                'shipping_cost' => 70000,
                 'mark_shipped' => false,
             ])
             ->assertRedirect(route('admin.orders.show', $order));
@@ -138,6 +140,7 @@ class AdminShippingWorkflowTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.orders.shipping.store', $order), [
                 'waybill_number' => 'JT-MANUAL-LIVE',
+                'shipping_cost' => 70000,
                 'mark_shipped' => false,
             ])
             ->assertRedirect(route('admin.orders.show', $order));
@@ -171,4 +174,48 @@ class AdminShippingWorkflowTest extends TestCase
             ->assertSessionHas('status', fn (string $message): bool => str_contains($message, 'belum diperbarui'))
             ->assertSessionMissing('success');
     }
+    /**
+     * Ongkir ASLI dari konsol J&T Cargo WAJIB diisi saat input resi.
+     * Tanpa angka itu pembukuan kembali memakai asumsi checkout, sehingga
+     * selisih ongkir tidak akan pernah terdeteksi.
+     */
+    public function test_input_resi_tanpa_ongkir_asli_ditolak(): void
+    {
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-TANPA-ONGKIR',
+                'mark_shipped' => false,
+            ])
+            ->assertSessionHasErrors('shipping_cost');
+
+        $this->assertDatabaseMissing('shipping_records', [
+            'waybill_number' => 'JT-TANPA-ONGKIR',
+        ]);
+    }
+
+    /**
+     * Ongkir asli yang diisi admin tersimpan apa adanya di shipping_cost,
+     * bukan diganti harga ongkir yang ditagih ke pembeli.
+     */
+    public function test_ongkir_asli_tersimpan_apa_adanya(): void
+    {
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-ONGKIR-ASLI',
+                'shipping_cost' => 87500,
+                'mark_shipped' => false,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $record = \App\Models\ShippingRecord::where('waybill_number', 'JT-ONGKIR-ASLI')->first();
+        $this->assertNotNull($record);
+        $this->assertSame(87500.0, (float) $record->shipping_cost);
+    }
+
 }

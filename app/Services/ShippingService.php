@@ -348,7 +348,10 @@ class ShippingService
                 'carrier_name' => 'J&T Cargo',
                 'service_name' => config('jnt.defaults.express_type'),
                 'waybill_number' => $resp->billCode(),
-                'shipping_cost' => $order->shipping_amount,
+                // createOrder J&T tidak mengembalikan biaya ongkir aslinya,
+                // jadi dibiarkan kosong (bukan diisi harga tagihan pembeli).
+                // Admin melengkapinya dari konsol J&T saat resi dicatat.
+                'shipping_cost' => null,
                 'status' => 'pending_pickup',
                 'status_raw' => 'created',
                 'last_status_at' => now(),
@@ -375,6 +378,7 @@ class ShippingService
         Order $order,
         string $waybillNumber,
         string $carrierName = 'J&T Cargo',
+        ?float $shippingCost = null,
     ): ShippingRecord {
         $waybillNumber = trim($waybillNumber);
         $existing = $order->shippingRecords()->whereNotIn('status', ['cancelled'])->first();
@@ -387,17 +391,22 @@ class ShippingService
                 'waybill_number' => $waybillNumber,
                 'carrier_name' => $carrierName,
                 'last_status_at' => $waybillChanged ? null : $existing->last_status_at,
+                // Ongkir asli dari konsol J&T; dibiarkan apa adanya bila tidak dikirim.
+                'shipping_cost' => $shippingCost ?? $existing->shipping_cost,
             ]);
 
             $record = $existing->fresh();
         } else {
-            $record = DB::transaction(function () use ($order, $waybillNumber, $carrierName) {
+            $record = DB::transaction(function () use ($order, $waybillNumber, $carrierName, $shippingCost) {
                 $record = ShippingRecord::create([
                     'order_id' => $order->id,
                     'carrier_name' => $carrierName,
                     'service_name' => config('jnt.defaults.express_type'),
                     'waybill_number' => $waybillNumber,
-                    'shipping_cost' => $order->shipping_amount,
+                    // Ongkir ASLI dari konsol J&T Cargo, bukan harga yang
+                    // ditagih ke pembeli. null = belum dicatat, dan pembukuan
+                    // memakai asumsi checkout untuk pesanan itu.
+                    'shipping_cost' => $shippingCost,
                     'status' => 'pending_pickup',
                     'status_raw' => 'manual',
                 ]);

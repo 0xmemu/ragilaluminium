@@ -44,6 +44,9 @@ export interface CheckoutShippingQuote {
   freight?: number
   insurance?: number
   insurance_available?: boolean
+  insurance_selected?: boolean
+  /** Nilai barang yang diasuransikan (dikirim ke J&T sebagai offerFee). */
+  insured_value?: number
   message?: string | null
   carrier_eta?: string | null
 }

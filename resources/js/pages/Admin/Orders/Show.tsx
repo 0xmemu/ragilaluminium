@@ -72,6 +72,9 @@ interface OrderDetail {
   admin_notes?: string | null
   subtotal_amount: number
   shipping_amount: number
+  jnt_ongkir_assumed?: number
+  jnt_ongkir_actual?: number | null
+  jnt_ongkir_selisih?: number | null
   shipping_subsidy_amount?: number
   shipping_insurance_amount?: number
   discount_amount: number
@@ -990,6 +993,7 @@ export default function OrderShow({
 
   const shippingForm = useForm({
     waybill_number: "",
+    shipping_cost: "",
     mark_shipped: true,
 
   })
@@ -1445,6 +1449,23 @@ export default function OrderShow({
                   />
                 </Field>
 
+                <Field
+                  id="popup-shipping-cost"
+                  label="Ongkir J&T Cargo (Rp)"
+                  required
+                  error={shippingForm.errors.shipping_cost}
+                  hint="Angka ongkir dari konsol J&T Cargo (ongkir saja, asuransi terpisah). Dipakai pembukuan supaya selisih ongkir terdeteksi."
+                >
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={shippingForm.data.shipping_cost}
+                    onChange={(event) => shippingForm.setData("shipping_cost", event.target.value)}
+                    placeholder="Contoh: 70000"
+                    className="font-mono"
+                  />
+                </Field>
+
                 <Checkbox
                   compact
                   checked={Boolean(shippingForm.data.mark_shipped)}
@@ -1720,6 +1741,43 @@ export default function OrderShow({
                   </dd>
                 </div>
               ) : null}
+              {order.jnt_ongkir_actual != null ? (
+                <>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">Ongkir J&T Cargo</dt>
+                    <dd className="tabular-nums font-medium">
+                      {formatCurrency(order.jnt_ongkir_actual)}
+                    </dd>
+                  </div>
+                  {(order.jnt_ongkir_selisih ?? 0) !== 0 ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">
+                        Selisih ongkir{" "}
+                        <span className="text-[11px]">
+                          {(order.jnt_ongkir_selisih ?? 0) > 0
+                            ? "(ditanggung toko)"
+                            : "(lebih hemat)"}
+                        </span>
+                      </dt>
+                      <dd
+                        className={`tabular-nums font-medium ${
+                          (order.jnt_ongkir_selisih ?? 0) > 0
+                            ? "text-destructive"
+                            : "text-success"
+                        }`}
+                      >
+                        {(order.jnt_ongkir_selisih ?? 0) > 0 ? "+" : "−"}
+                        {formatCurrency(Math.abs(order.jnt_ongkir_selisih ?? 0))}
+                      </dd>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Ongkir J&T Cargo</dt>
+                  <dd className="text-xs text-muted-foreground">Belum dicatat</dd>
+                </div>
+              )}
               {order.discount_amount > 0 ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Potongan harga (promo item)</dt>

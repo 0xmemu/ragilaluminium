@@ -368,8 +368,25 @@ class StorePerformanceService
         $shippingNet = (float) (clone $revenueOrders)->sum('shipping_amount');
         $shippingSubsidy = (float) (clone $revenueOrders)->sum('shipping_subsidy_amount');
         $insurance = (float) (clone $revenueOrders)->sum('shipping_insurance_amount');
-        // Ongkir yang dipotong J&T mencakup subsidi toko + asuransi.
-        $shippingRaw = $shippingNet + $shippingSubsidy + $insurance;
+        // Ongkir yang dipotong J&T: pakai ongkir ASLI dari konsol J&T bila admin
+        // sudah mencatatnya saat input resi; kalau belum, pakai asumsi checkout
+        // (ongkir pembeli + subsidi toko) supaya pesanan lama tidak berubah.
+        // Asuransi ditagih J&T terpisah, jadi selalu ditambahkan.
+        $actualOngkir = \App\Models\ShippingRecord::actualOngkirByOrder(
+            (clone $revenueOrders)->pluck('id')->all()
+        );
+        $ongkirDasar = 0.0;
+        $ongkirSelisih = 0.0;
+        foreach ((clone $revenueOrders)->get(['id', 'shipping_amount', 'shipping_subsidy_amount']) as $shippingRow) {
+            $asumsiOngkir = (float) $shippingRow->shipping_amount + (float) $shippingRow->shipping_subsidy_amount;
+            $asliOngkir = $actualOngkir[$shippingRow->id] ?? null;
+            $ongkirDasar += $asliOngkir ?? $asumsiOngkir;
+
+            if ($asliOngkir !== null) {
+                $ongkirSelisih += $asliOngkir - $asumsiOngkir;
+            }
+        }
+        $shippingRaw = $ongkirDasar + $insurance;
         $codFees = (float) (clone $revenueOrders)->sum('cod_fee_amount');
         // Komponen pendapatan untuk laporan laba rugi bertingkat. Diambil dari
         // scope yang sama dengan revenue agar jumlah komponen konsisten dengan
@@ -455,6 +472,9 @@ class StorePerformanceService
             'voucher_discount' => round($voucherDiscount, 2),
             'insurance' => round($insurance, 2),
             'shipping_raw' => round($shippingRaw, 2),
+            'jnt_ongkir_actual' => round(array_sum($actualOngkir), 2),
+            'jnt_ongkir_selisih' => round($ongkirSelisih, 2),
+            'jnt_ongkir_recorded_orders' => count($actualOngkir),
             'shipping_paid_by_customer' => round($shippingNet, 2),
             'shipping_subsidy' => round($shippingSubsidy, 2),
             'cod_fee' => round($codFees, 2),

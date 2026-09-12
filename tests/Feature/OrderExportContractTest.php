@@ -132,8 +132,10 @@ class OrderExportContractTest extends TestCase
         // Total Tagihan = subtotal - voucher + ongkir + COD + ASURANSI.
         $this->assertStringStartsWith('=IF(D3="Dibatalkan", 0, SUMIF($A$3:$A$4, A3, $R$3:$R$4)', (string) $tx->getCell('X3')->getValue());
         $this->assertStringEndsWith('- S3 + U3 + V3 + W3)', (string) $tx->getCell('X3')->getValue());
-        // Pengurangan J&T = ongkir + subsidi + COD + ASURANSI.
-        $this->assertSame('=(U3+T3)+V3+W3', $tx->getCell('Y3')->getValue());
+        // Pengurangan J&T = ONGKIR ASLI J&T + COD + ASURANSI. Fixture mencatat
+        // shipping_cost 150000 dari konsol J&T, jadi angka itu yang dipakai,
+        // bukan asumsi checkout (ongkir pembeli 150000 + subsidi 20000).
+        $this->assertSame('=150000.00+V3+W3', $tx->getCell('Y3')->getValue());
         // Net profit per produk = net profit pesanan x porsi subtotal baris.
         $this->assertStringStartsWith('=IF(D3="Dibatalkan", 0-AA3-AB3, X3-Y3-AA3-AB3)', (string) $tx->getCell('AC3')->getValue());
         $this->assertStringContainsString('IFERROR(R3/SUMIF($A$3:$A$4, A3, $R$3:$R$4), 1/COUNTIF($A$3:$A$4, A3))', (string) $tx->getCell('AC3')->getValue());
@@ -176,7 +178,11 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('Nomor Pesanan', $rk->getCell('A2')->getValue());
         $this->assertSame('Asuransi Pengiriman Dibayar Pembeli', $rk->getCell('L2')->getValue());
         $this->assertSame('TOTAL DIBAYAR PEMBELI', $rk->getCell('M2')->getValue());
-        $this->assertSame('NET PROFIT TOKO (KAS BERSIH)', $rk->getCell('S2')->getValue());
+        $this->assertSame('Ongkir Total ke J&T', $rk->getCell('N2')->getValue());
+        $this->assertSame('Selisih Ongkir J&T', $rk->getCell('O2')->getValue());
+        $this->assertSame('Biaya COD ke J&T', $rk->getCell('P2')->getValue());
+        $this->assertSame('Total Potongan J&T', $rk->getCell('Q2')->getValue());
+        $this->assertSame('NET PROFIT TOKO (KAS BERSIH)', $rk->getCell('T2')->getValue());
 
         $this->assertSame('ORD-EXP-001', $rk->getCell('A3')->getValue());
         $this->assertSame('=F3+G3', $rk->getCell('E3')->getValue());
@@ -186,15 +192,18 @@ class OrderExportContractTest extends TestCase
         $this->assertEquals(100000, (float) $rk->getCell('H3')->getValue());
         $this->assertEquals(0, (float) $rk->getCell('L3')->getValue(), 'asuransi 0 bila tidak dipilih');
         $this->assertSame('=IF(D3="Dibatalkan", 0, G3-H3+J3+K3+L3)', $rk->getCell('M3')->getValue());
+        // Fixture ini tidak mencatat ongkir J&T asli, jadi N memakai asumsi
+        // checkout (subsidi + ongkir pembeli) dan selisihnya nol.
         $this->assertSame('=I3+J3', $rk->getCell('N3')->getValue());
-        $this->assertSame('=K3', $rk->getCell('O3')->getValue());
-        $this->assertSame('=N3+O3+L3', $rk->getCell('P3')->getValue());
-        $this->assertSame('=IF(D3="Dibatalkan", 0 - Q3 - R3, M3-P3-Q3-R3)', $rk->getCell('S3')->getValue());
+        $this->assertSame('=N3-I3-J3', $rk->getCell('O3')->getValue(), 'selisih = ongkir J&T - asumsi checkout');
+        $this->assertSame('=K3', $rk->getCell('P3')->getValue());
+        $this->assertSame('=N3+P3+L3', $rk->getCell('Q3')->getValue());
+        $this->assertSame('=IF(D3="Dibatalkan", 0 - R3 - S3, M3-Q3-R3-S3)', $rk->getCell('T3')->getValue());
 
         // Baris TOTAL menjumlah E:R (satu baris per pesanan, aman di-SUM).
         $this->assertSame('TOTAL', $rk->getCell('A4')->getValue());
         $this->assertSame('=SUM(E3:E3)', $rk->getCell('E4')->getValue());
-        $this->assertSame('=SUM(S3:S3)', $rk->getCell('S4')->getValue());
+        $this->assertSame('=SUM(T3:T3)', $rk->getCell('T4')->getValue());
     }
 
     public function test_berat_volume_pakai_format_pengiriman_snapshot(): void
@@ -338,7 +347,7 @@ class OrderExportContractTest extends TestCase
         }
 
         $rk = $ss->getSheetByName('Rekap Keuangan per Pesanan');
-        foreach (['A', 'U'] as $col) {
+        foreach (['A', 'V'] as $col) {
             $this->assertSame(
                 '@',
                 $rk->getCell($col.'3')->getStyle()->getNumberFormat()->getFormatCode(),
@@ -387,5 +396,96 @@ class OrderExportContractTest extends TestCase
 
         // Net profit = total - potongan (tanpa refund/retur).
         $this->assertEquals($totalLaporan - $potongan, 2750000.0 - 20000, 'asuransi saling meniadakan di net');
+    }
+    /**
+     * Ongkir ASLI dari konsol J&T (diisi admin saat input resi) WAJIB dipakai
+     * pembukuan, dan selisihnya terhadap asumsi checkout harus terdeteksi.
+     *
+     * Skenario: pembeli bayar ongkir 150.000, toko subsidi 20.000, sehingga
+     * asumsi checkout = 170.000. Konsol J&T ternyata menagih 185.000.
+     */
+    public function test_ongkir_asli_jnt_dipakai_dan_selisih_terdeteksi(): void
+    {
+        $order = $this->makeOrder();
+        $this->makeItem($order, 'RA-A', 'RA-A-1', 'Jendela Jungkit A', 1250000, 1, 0);
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => '201718781599',
+            'shipping_cost' => 185000,
+            'status' => 'delivered',
+        ]);
+
+        Excel::store(new OrderExport(Order::query()), 'ongkir.xlsx', 'imports');
+        $ss = IOFactory::load(Storage::disk('imports')->path('ongkir.xlsx'));
+        $rk = $ss->getSheetByName('Rekap Keuangan per Pesanan');
+
+        // N = ongkir ASLI, bukan rumus asumsi.
+        $this->assertEquals(185000, (float) $rk->getCell('N3')->getValue(), 'pakai ongkir asli J&T');
+        // O = 185.000 - (150.000 + 20.000) = +15.000 ditanggung toko.
+        $this->assertEquals(15000, (float) $rk->getCell('O3')->getCalculatedValue(), 'selisih terdeteksi');
+        // Q = Total Potongan J&T = ongkir asli + COD (5.000) + asuransi (0).
+        $this->assertEquals(190000, (float) $rk->getCell('Q3')->getCalculatedValue());
+
+        // Sheet 1 memakai basis yang sama supaya kedua sheet rekonsiliasi.
+        $tx = $ss->getSheetByName('Laporan Transaksi (Skema A)');
+        $this->assertSame('=185000.00+V3+W3', $tx->getCell('Y3')->getValue());
+        $this->assertEquals(
+            (float) $rk->getCell('Q3')->getCalculatedValue(),
+            (float) $tx->getCell('Y3')->getCalculatedValue(),
+            'Sheet 1 dan Sheet 2 memakai ongkir yang sama'
+        );
+    }
+
+    /**
+     * Pesanan yang belum dicatat ongkir aslinya tetap memakai asumsi checkout
+     * (ongkir pembeli + subsidi) supaya pembukuan lama tidak berubah, dan
+     * selisihnya nol.
+     */
+    public function test_ongkir_asli_kosong_pakai_asumsi_checkout(): void
+    {
+        $order = $this->makeOrder();
+        $this->makeItem($order, 'RA-A', 'RA-A-1', 'Jendela Jungkit A', 1250000, 1, 0);
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => '201718781600',
+            // shipping_cost sengaja dibiarkan kosong: belum dicatat admin.
+            'status' => 'delivered',
+        ]);
+
+        Excel::store(new OrderExport(Order::query()), 'ongkir2.xlsx', 'imports');
+        $ss = IOFactory::load(Storage::disk('imports')->path('ongkir2.xlsx'));
+        $rk = $ss->getSheetByName('Rekap Keuangan per Pesanan');
+
+        $this->assertSame('=I3+J3', $rk->getCell('N3')->getValue(), 'kembali ke asumsi checkout');
+        $this->assertEquals(0, (float) $rk->getCell('O3')->getCalculatedValue(), 'selisih nol saat belum dicatat');
+
+        $tx = $ss->getSheetByName('Laporan Transaksi (Skema A)');
+        $this->assertSame('=(U3+T3)+V3+W3', $tx->getCell('Y3')->getValue());
+    }
+
+    /**
+     * Ongkir asli dari record yang sudah dibatalkan tidak boleh dipakai:
+     * resi batal bukan biaya yang ditagih J&T.
+     */
+    public function test_ongkir_asli_record_cancelled_diabaikan(): void
+    {
+        $order = $this->makeOrder();
+        $this->makeItem($order, 'RA-A', 'RA-A-1', 'Jendela Jungkit A', 1250000, 1, 0);
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => '201718781601',
+            'shipping_cost' => 999000,
+            'status' => 'cancelled',
+        ]);
+
+        Excel::store(new OrderExport(Order::query()), 'ongkir3.xlsx', 'imports');
+        $ss = IOFactory::load(Storage::disk('imports')->path('ongkir3.xlsx'));
+        $rk = $ss->getSheetByName('Rekap Keuangan per Pesanan');
+
+        $this->assertSame('=I3+J3', $rk->getCell('N3')->getValue(), 'record cancelled diabaikan');
+        $this->assertEquals(0, (float) $rk->getCell('O3')->getCalculatedValue());
     }
 }

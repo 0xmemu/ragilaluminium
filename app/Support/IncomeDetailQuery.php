@@ -23,7 +23,7 @@ class IncomeDetailQuery
     {
         $statuses = \App\Services\StorePerformanceService::REVENUE_STATUSES;
 
-        return Order::query()
+        $orders = Order::query()
             ->with('payments')
             ->with(['returnCases' => fn ($q) => $q->where('status', 'completed')->whereNotNull('completed_at')->whereBetween('completed_at', [$fromDate.' 00:00:00', $toDate.' 23:59:59'])])
             ->with('items:order_id,parent_sku,quantity')
@@ -33,8 +33,13 @@ class IncomeDetailQuery
             ->whereDate('created_at', '<=', $toDate)
             ->orderBy('created_at')
             ->orderBy('id')
-            ->get()
-            ->map(function (Order $order) {
+            ->get();
+
+        // Ongkir ASLI dari konsol J&T per pesanan (satu query untuk semua baris).
+        $actualOngkir = \App\Models\ShippingRecord::actualOngkirByOrder($orders->pluck('id')->all());
+
+        return $orders
+            ->map(function (Order $order) use ($actualOngkir) {
                 $paidAmount = (float) $order->payments
                     ->where('status', 'completed')
                     ->sum('amount');
@@ -48,7 +53,13 @@ class IncomeDetailQuery
                 $shippingSubsidy = (float) $order->shipping_subsidy_amount;
                 // Asuransi juga dipotong J&T, jadi bagian dari shipping_raw.
                 $insurance = (float) $order->shipping_insurance_amount;
-                $shippingRaw = $shippingNet + $shippingSubsidy + $insurance;
+                // Ongkir yang dipotong J&T: pakai ongkir ASLI dari konsol J&T
+                // bila admin sudah mencatatnya saat input resi; kalau belum,
+                // pakai asumsi checkout (ongkir pembeli + subsidi toko) supaya
+                // pesanan lama tidak berubah. Asuransi ditagih J&T terpisah.
+                $assumedOngkir = $shippingNet + $shippingSubsidy;
+                $actualOngkirOrder = $actualOngkir[$order->id] ?? null;
+                $shippingRaw = ($actualOngkirOrder ?? $assumedOngkir) + $insurance;
                 $codFee = (float) $order->cod_fee_amount;
                 $refund = (float) $order->returnCases->sum('refund_amount');
                 $returnShippingStore = (float) $order->returnCases->sum('return_shipping_cost');
@@ -67,6 +78,11 @@ class IncomeDetailQuery
                     'voucher_discount' => (float) $order->voucher_discount_amount,
                     'gross_revenue' => $gross,
                     'shipping_raw' => $shippingRaw,
+                    'jnt_ongkir_assumed' => $assumedOngkir,
+                    'jnt_ongkir_actual' => $actualOngkirOrder,
+                    'jnt_ongkir_selisih' => $actualOngkirOrder !== null
+                        ? $actualOngkirOrder - $assumedOngkir
+                        : null,
                     'shipping_subsidy' => $shippingSubsidy,
                     'shipping_net_paid_by_customer' => $shippingNet,
                     'cod_fee' => $codFee,
