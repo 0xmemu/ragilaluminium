@@ -176,22 +176,38 @@ class ShippingService
             $resp = $this->jnt->tariff($payload);
 
             if ($resp->ok) {
-                // Basis tarif = estimateCustomerCost (yang dibayar pelanggan);
-                // estimateSumFreight = freight + asuransi saat offerFee dikirim.
-                $freight = $resp->get('estimateCustomerCost')
-                    ?? $resp->get('estimateSumFreight')
-                    ?? $resp->get('totalFreight');
-                // Guard: freight 0 dianggap tarif tidak valid (J&T dapat
+                // Semua angka uang diambil dari J&T apa adanya.
+                $insuranceCost = max(0, round((float) ($resp->get('estimateInsuranceCost') ?? 0), 2));
+                $sumFromJnt = $resp->get('estimateSumFreight');
+
+                // ONGKIR selalu berasal dari angka J&T, TIDAK PERNAH dari rumus
+                // tarif sendiri. Utamakan ongkos standar (estimateCustomerCost).
+                // Bila J&T hanya memberi TOTAL, kurangkan komponen asuransi
+                // yang ikut di dalamnya: total J&T SUDAH memuat asuransi saat
+                // offerFee dikirim, jadi memakainya mentah-mentah lalu menambah
+                // asuransi lagi akan menagih asuransi dua kali (ongkir
+                // membengkak). Keduanya angka J&T, bukan hitungan kita.
+                $freight = $resp->get('estimateCustomerCost');
+                if (! is_numeric($freight) || (float) $freight <= 0) {
+                    $freight = is_numeric($sumFromJnt)
+                        ? (float) $sumFromJnt - $insuranceCost
+                        : null;
+                }
+
+                // Guard: ongkir kosong/0 dianggap tarif tidak valid (J&T dapat
                 // mengembalikan 0 untuk kombinasi produk/area yang tidak
-                // tersedia) -> jatuh ke estimasi provisional + manual review,
-                // ongkir Rp 0 tidak pernah tampil ke pembeli.
+                // tersedia) -> estimasi provisional + manual review; ongkir
+                // Rp 0 tidak pernah tampil ke pembeli. Kalau J&T tidak memberi
+                // angka sama sekali, sistem tidak menebak tarif sendiri.
                 if (is_numeric($freight) && (float) $freight > 0) {
                     $freight = round((float) $freight, 2);
-                    // Biaya asuransi SELALU dihitung supaya bisa ditawarkan;
-                    // hanya ditagihkan bila pembeli memilihnya.
-                    $insuranceCost = max(0, round((float) ($resp->get('estimateInsuranceCost') ?? 0), 2));
+                    // Asuransi hanya ditagihkan bila pembeli memilihnya.
                     $insuranceCharged = $withInsurance ? $insuranceCost : 0.0;
-                    $gross = round($freight + $insuranceCharged, 2);
+                    // Total memakai total J&T apa adanya saat asuransi
+                    // ditagihkan; tanpa asuransi = onkos standar J&T.
+                    $gross = $insuranceCharged > 0 && is_numeric($sumFromJnt)
+                        ? round((float) $sumFromJnt, 2)
+                        : round($freight + $insuranceCharged, 2);
                     $applied = ShippingSubsidySettings::apply($freight, 'jnt');
                     $net = round(max(0, (float) $applied['net']) + $insuranceCharged, 2);
 
@@ -273,8 +289,10 @@ class ShippingService
                 ]);
 
                 if ($resp->ok) {
-                    $cost = $resp->get('estimateSumFreight')
-                        ?? $resp->get('estimateCustomerCost')
+                    // Ongkos standar J&T lebih dulu, konsisten dengan quote():
+                    // estimateSumFreight bisa memuat asuransi.
+                    $cost = $resp->get('estimateCustomerCost')
+                        ?? $resp->get('estimateSumFreight')
                         ?? $resp->get('totalFreight');
                     if (is_numeric($cost)) {
                         return round((float) $cost, 2);

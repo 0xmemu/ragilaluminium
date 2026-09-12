@@ -108,11 +108,11 @@ return [
         'price_currency' => env('JNT_PRICE_CURRENCY', 'IDR'),
         // Asuransi pengiriman (opsional, pilihan pembeli). `offerFee` yang
         // dikirim ke J&T = NILAI BARANG yang diasuransikan (dokumen J&T:
-        // 保价金额, satuan IDR), BUKAN angka tetap; J&T yang menghitung
-        // biayanya (terverifikasi live 2026-09-12: nilai 1.000.000 -> 5.000;
-        // 5.000.000 -> 10.000; 10.283.000 -> 20.566; sekitar 0,2% dengan
-        // minimum Rp 5.000). Angka tetap lama ('200') membuat pertanggungan
-        // hanya Rp 200 sementara pembeli tetap ditagih Rp 5.000.
+        // 保价金额, satuan IDR), BUKAN angka tetap. BIAYA asuransinya
+        // dihitung J&T dan dibaca apa adanya dari estimateInsuranceCost;
+        // sistem tidak menghitungnya sendiri supaya tidak ada dua rumus
+        // yang bisa berbeda. Angka tetap lama ('200') membuat pertanggungan
+        // hanya Rp 200 sementara pembeli tetap ditagih minimum J&T.
         'insurance_enabled' => (bool) env('JNT_INSURANCE_ENABLED', true),
     ],
 

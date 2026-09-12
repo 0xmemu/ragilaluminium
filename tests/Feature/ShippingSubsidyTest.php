@@ -298,4 +298,129 @@ class ShippingSubsidyTest extends TestCase
         $kosong = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', false, 0);
         $this->assertFalse($kosong['insurance_available']);
     }
+    /**
+     * Penjaga: ongkir HANYA dari estimateCustomerCost (ongkos standar J&T).
+     *
+     * Saat offerFee dikirim, estimateSumFreight SUDAH memuat asuransi. Kalau
+     * angka itu dipakai sebagai ongkir lalu asuransi ditambahkan lagi,
+     * asuransi tertagih dua kali (ongkir membengkak). Test ini mengunci
+     * kontraknya dengan J&T palsu yang meniru perilaku nyata.
+     */
+    public function test_ongkir_hanya_dari_estimatecustomercost(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => false,
+            'subsidy_type' => 'fixed',
+            'subsidy_value' => 0,
+            'jnt_enabled' => true,
+        ]);
+
+        $fake = new class extends \App\Services\Shipping\JntCargoClient
+        {
+            public function isEnabled(): bool
+            {
+                return true;
+            }
+
+            public function tariff(array $bizContent): \App\Services\Shipping\JntResponse
+            {
+                $offer = (int) ($bizContent['offerFee'] ?? 0);
+                $insurance = $offer > 0 ? max(5000, (int) round($offer * 0.002)) : 0;
+
+                // Bentuk balasan nyata J&T: customerCost = ongkos standar,
+                // sumFreight = customerCost + asuransi.
+                return new \App\Services\Shipping\JntResponse(
+                    ok: true,
+                    httpStatus: 200,
+                    data: ['data' => [
+                        'estimateTime' => '1-3',
+                        'estimateCustomerCost' => '120000',
+                        'estimateSumFreight' => (string) (120000 + $insurance),
+                        'estimateInsuranceCost' => (string) $insurance,
+                    ]],
+                    requestId: 'test',
+                    elapsedMs: 1,
+                );
+            }
+        };
+
+        $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
+        $svc = app(\App\Services\ShippingService::class);
+
+        // Tanpa asuransi: ongkir = 120.000. sumFreight (130.000) TIDAK BOLEH
+        // bocor jadi ongkir.
+        $tanpa = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', false, 5000000);
+        $this->assertEquals(120000.0, (float) $tanpa['freight'], 'ongkir dari estimateCustomerCost');
+        $this->assertEquals(120000.0, (float) $tanpa['gross'], 'gross tanpa asuransi');
+        $this->assertEquals(120000.0, (float) $tanpa['net'], 'net tanpa asuransi');
+        $this->assertEquals(0.0, (float) $tanpa['insurance_charged']);
+
+        // Dengan asuransi: net = 120.000 + 10.000 = 130.000.
+        // Kalau sumFreight dipakai sebagai ongkir, hasilnya 140.000 (dobel).
+        $dengan = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', true, 5000000);
+        $this->assertEquals(120000.0, (float) $dengan['freight'], 'ongkir tetap ongkos standar');
+        $this->assertEquals(10000.0, (float) $dengan['insurance_charged']);
+        $this->assertEquals(130000.0, (float) $dengan['net'], 'net = ongkir + asuransi (sekali)');
+        $this->assertNotEquals(140000.0, (float) $dengan['net'], 'asuransi tidak boleh terhitung dua kali');
+        $this->assertEquals(130000.0, (float) $dengan['gross'], 'gross memakai total J&T apa adanya');
+    }
+
+    /**
+     * Penjaga: kalau J&T hanya memberi TOTAL (tanpa ongkos standar), ongkir
+     * diturunkan dari angka J&T SENDIRI (total dikurangi asuransi yang ikut
+     * di dalamnya) - bukan dari rumus tarif lokal, dan bukan dengan memakai
+     * total mentah-mentah lalu menambah asuransi lagi.
+     */
+    public function test_jnt_tanpa_ongkos_standar_diturunkan_dari_angka_jnt(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => false,
+            'subsidy_type' => 'fixed',
+            'subsidy_value' => 0,
+            'jnt_enabled' => true,
+        ]);
+
+        $fake = new class extends \App\Services\Shipping\JntCargoClient
+        {
+            public function isEnabled(): bool
+            {
+                return true;
+            }
+
+            public function tariff(array $bizContent): \App\Services\Shipping\JntResponse
+            {
+                // Hanya sumFreight yang ada (sudah termasuk asuransi).
+                return new \App\Services\Shipping\JntResponse(
+                    ok: true,
+                    httpStatus: 200,
+                    data: ['data' => [
+                        'estimateTime' => '1-3',
+                        'estimateSumFreight' => '130000',
+                        'estimateInsuranceCost' => '10000',
+                    ]],
+                    requestId: 'test',
+                    elapsedMs: 1,
+                );
+            }
+        };
+
+        $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
+        $svc = app(\App\Services\ShippingService::class);
+
+        $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', true, 5000000);
+
+        // Ongkir diturunkan: 130.000 (total J&T) - 10.000 (asuransi J&T).
+        $this->assertSame('ready', $q['state'], 'tarif J&T tetap dianggap final');
+        $this->assertEquals(120000.0, (float) $q['freight'], 'ongkir = total J&T - asuransi');
+        $this->assertEquals(10000.0, (float) $q['insurance_charged']);
+        $this->assertEquals(130000.0, (float) $q['net'], 'net = ongkir + asuransi (sekali)');
+        $this->assertNotEquals(140000.0, (float) $q['net'], 'asuransi tidak boleh terhitung dua kali');
+        // Rumus tarif lokal TIDAK dipakai selama J&T memberi angka.
+        $this->assertNotEquals(
+            (float) config('shipping.local_base_rate', 15000) + 30.0 * (float) config('shipping.local_per_kg', 2000),
+            (float) $q['freight'],
+            'rumus tarif lokal tidak boleh dipakai'
+        );
+    }
+
 }
