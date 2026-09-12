@@ -3,7 +3,8 @@
 namespace App\Support;
 
 use App\Models\Order;
-use Illuminate\Support\Carbon;
+use App\Models\ShippingRecord;
+use App\Services\StorePerformanceService;
 
 /**
  * Sumber data sheet Income Detail + Item Terjual pada export Performa Toko.
@@ -21,7 +22,7 @@ class IncomeDetailQuery
     /** @return list<array<string, mixed>> */
     public static function orders(string $fromDate, string $toDate): array
     {
-        $statuses = \App\Services\StorePerformanceService::REVENUE_STATUSES;
+        $statuses = StorePerformanceService::REVENUE_STATUSES;
 
         $orders = Order::query()
             ->with('payments')
@@ -36,7 +37,7 @@ class IncomeDetailQuery
             ->get();
 
         // Ongkir ASLI dari konsol J&T per pesanan (satu query untuk semua baris).
-        $actualOngkir = \App\Models\ShippingRecord::actualOngkirByOrder($orders->pluck('id')->all());
+        $actualOngkir = ShippingRecord::actualOngkirByOrder($orders->pluck('id')->all());
 
         return $orders
             ->map(function (Order $order) use ($actualOngkir) {
@@ -98,6 +99,10 @@ class IncomeDetailQuery
                     'items_count' => (int) $order->items_count,
                     'total_qty' => (int) $order->items->sum('quantity'),
                     'sku_count' => $order->items->pluck('parent_sku')->filter()->unique()->count(),
+                    // Identitas pembeli untuk kolom W-Y Tabel Pesanan.
+                    'customer_name' => $order->customer_name,
+                    'customer_phone' => (string) $order->customer_phone,
+                    'city' => $order->shipping_city,
                 ];
             })
             ->all();
@@ -106,7 +111,7 @@ class IncomeDetailQuery
     /** @return list<array<string, mixed>> */
     public static function items(string $fromDate, string $toDate): array
     {
-        $statuses = \App\Services\StorePerformanceService::REVENUE_STATUSES;
+        $statuses = StorePerformanceService::REVENUE_STATUSES;
 
         return Order::query()
             ->whereIn('order_status', $statuses)

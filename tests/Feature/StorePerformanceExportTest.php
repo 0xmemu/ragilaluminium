@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Exports\StorePerformanceExport;
-use App\Models\User;
-use App\Models\Product;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
@@ -177,7 +179,7 @@ class StorePerformanceExportTest extends TestCase
         $export = new StorePerformanceExport($this->payload());
         Excel::store($export, 'perf.xlsx', 'imports');
         $ss = IOFactory::load(
-            \Illuminate\Support\Facades\Storage::disk('imports')->path('perf.xlsx')
+            Storage::disk('imports')->path('perf.xlsx')
         );
 
         // Struktur baru (spek owner 2026-09-11): P&L dan KPI dipisah,
@@ -191,26 +193,26 @@ class StorePerformanceExportTest extends TestCase
         $lr = $ss->getSheetByName('Ringkasan Finansial');
         $rows = $lr->toArray(null, false, true, true);
 
-        $this->assertSame('LAPORAN LABA RUGI TOKO', $rows[1]['B']);
+        $this->assertSame('LAPORAN LABA RUGI & ARUS KAS TOKO', $rows[1]['A']);
 
         // Regresi 2026-09-11: baris pemisah antarblok dahulu ditulis [] dan
         // DIBUANG Maatwebsite sehingga seluruh styling bergeser satu baris.
         // Baris 4 kini WAJIB tetap berupa pemisah kosong.
-        $this->assertSame('', (string) $rows[4]['B'], 'baris 4 = pemisah antar judul dan kolom, tidak boleh tergeser');
-        $this->assertSame('Keterangan', $rows[5]['B'], 'penanda kolom laporan');
-        $this->assertSame('PENDAPATAN', $rows[6]['B']);
+        $this->assertSame('', (string) $rows[3]['A'], 'baris 3 = pemisah antar subjudul dan kolom, tidak boleh tergeser');
+        $this->assertSame('Keterangan Akun', $rows[4]['A'], 'penanda kolom laporan');
+        $this->assertSame('I. PENDAPATAN PENJUALAN', $rows[5]['A']);
 
         // Urutan pendapatan: nilai produk, voucher, ongkir, asuransi, COD, total.
-        $this->assertStringContainsString('Nilai produk terjual', (string) $rows[7]['B']);
-        $this->assertStringContainsString('Potongan voucher', (string) $rows[8]['B']);
-        $this->assertStringContainsString('TOTAL DIBAYAR PEMBELI', (string) $rows[12]['B']);
+        $this->assertStringContainsString('Nilai Produk Terjual', (string) $rows[6]['A']);
+        $this->assertStringContainsString('Potongan Voucher Toko', (string) $rows[7]['A']);
+        $this->assertStringContainsString('TOTAL DIBAYAR PEMBELI', (string) $rows[11]['A']);
 
         // Identitas aritmetika kini lewat RUMUS yang menunjuk TabelPesanan:
         // setiap baris pendapatan wajib berisi rumus SUM kolom terstruktur.
         $lrRaw = $ss->getSheetByName('Ringkasan Finansial')->toArray(null, false, false);
         $kolomRumus = [];
         foreach ($lrRaw as $baris) {
-            $nilai = (string) ($baris[2] ?? '');
+            $nilai = (string) ($baris[1] ?? '');
             if (str_contains($nilai, 'SUM(TabelPesanan[')) {
                 preg_match('/TabelPesanan[[]([^]]+)[]]/', $nilai, $m);
                 $kolomRumus[] = $m[1] ?? '?';
@@ -229,8 +231,8 @@ class StorePerformanceExportTest extends TestCase
 
         // Total dibayar dan Penjualan Bersih wajib rumus yang menjumlah
         // baris komponennya, bukan angka mati.
-        $teksC = implode(' ', array_map(fn ($r) => (string) ($r[2] ?? ''), $lrRaw));
-        $this->assertStringContainsString('=SUM(C', $teksC, 'TOTAL DIBAYAR PEMBELI berupa penjumlahan komponen');
+        $teksC = implode(' ', array_map(fn ($r) => (string) ($r[1] ?? ''), $lrRaw));
+        $this->assertStringContainsString('=SUM(B', $teksC, 'TOTAL DIBAYAR PEMBELI berupa penjumlahan komponen');
 
         // Nilai komponen di payload tetap bisa direkonsiliasi dengan tabel:
         // total dibayar payload = nilai produk - voucher + ongkir + asuransi + COD.
@@ -245,27 +247,27 @@ class StorePerformanceExportTest extends TestCase
         // mendarat di baris data karena baris pemisah dibuang writer).
         $lrSheet = $ss->getSheetByName('Ringkasan Finansial');
 
-        // Penanda kolom (baris 5): fill merah brand, font putih.
-        $this->assertSame('FFC20000', $lrSheet->getCell('B5')->getStyle()->getFill()->getStartColor()->getARGB());
-        $this->assertSame('FFFFFFFF', $lrSheet->getCell('B5')->getStyle()->getFont()->getColor()->getARGB());
+        // Band judul (baris 1): fill navy, font putih (gaya referensi owner).
+        $this->assertSame('FF1B365D', $lrSheet->getCell('A1')->getStyle()->getFill()->getStartColor()->getARGB());
+        $this->assertSame('FFFFFFFF', $lrSheet->getCell('A1')->getStyle()->getFont()->getColor()->getARGB());
 
-        // Header grup PENDAPATAN (baris 6): zebra surface + font merah brand.
-        $this->assertSame('FFF7F8F7', $lrSheet->getCell('B6')->getStyle()->getFill()->getStartColor()->getARGB());
-        $this->assertSame('FFC20000', $lrSheet->getCell('B6')->getStyle()->getFont()->getColor()->getARGB());
+        // Judul seksi PENDAPATAN (baris 5): surface biru muda + font navy.
+        $this->assertSame('FFF1F5F9', $lrSheet->getCell('A5')->getStyle()->getFill()->getStartColor()->getARGB());
+        $this->assertSame('FF1B365D', $lrSheet->getCell('A5')->getStyle()->getFont()->getColor()->getARGB());
 
         // Baris data pertama (baris 7): format ribuan terpasang, font hitam normal.
-        $this->assertSame('#,##0', $lrSheet->getCell('C7')->getStyle()->getNumberFormat()->getFormatCode());
-        $this->assertSame('FF000000', $lrSheet->getCell('B7')->getStyle()->getFont()->getColor()->getARGB());
+        $this->assertSame('#,##0', $lrSheet->getCell('B6')->getStyle()->getNumberFormat()->getFormatCode());
+        $this->assertSame('FF000000', $lrSheet->getCell('A6')->getStyle()->getFont()->getColor()->getARGB());
 
-        // Biaya COD diteruskan ke J&T (baris 17): TIDAK boleh kena gaya header grup.
-        $this->assertNotSame('FFC20000', $lrSheet->getCell('B17')->getStyle()->getFont()->getColor()->getARGB());
+        // Biaya COD diteruskan ke J&T (baris 15): TIDAK boleh kena gaya judul seksi.
+        $this->assertNotSame('FF1B365D', $lrSheet->getCell('A15')->getStyle()->getFont()->getColor()->getARGB());
 
-        // PENJUALAN BERSIH (baris 23): double underline akuntansi.
-        $this->assertSame('double', $lrSheet->getCell('B23')->getStyle()->getBorders()->getBottom()->getBorderStyle());
+        // PENJUALAN BERSIH (baris 20): double underline akuntansi.
+        $this->assertSame('double', $lrSheet->getCell('A20')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
         // Pembayaran sudah diterima: subtotal arus kas biasa, TANPA double
         // underline (hanya PENJUALAN BERSIH yang double).
-        $this->assertNotSame('double', $lrSheet->getCell('B29')->getStyle()->getBorders()->getBottom()->getBorderStyle());
+        $this->assertNotSame('double', $lrSheet->getCell('A26')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
         // ---- KPI OPERASIONAL TOKO: metrik pindah ke sheet sendiri ----
         // Regresi terjaga: KPI bernilai 0 tetap tertulis 0 numerik
@@ -288,6 +290,9 @@ class StorePerformanceExportTest extends TestCase
         $this->assertSame('Biaya COD', $rpRows[1]['M'], 'kolom uang pembeli terakhir sebelum total');
         $this->assertSame('Total Dibayar Pembeli', $rpRows[1]['N'], 'total dibayar sebelum kolom beban');
         $this->assertSame('Penjualan Bersih', $rpRows[1]['R'], 'penjualan bersih setelah beban');
+        $this->assertSame('Nama Pelanggan', $rpRows[1]['W'], 'kolom identitas pembeli (gaya referensi owner)');
+        $this->assertSame('Nomor HP / WA', $rpRows[1]['X']);
+        $this->assertSame('Kota Pengiriman', $rpRows[1]['Y']);
 
         // Status dalam bahasa Indonesia, bukan nilai mentah basis data.
         $this->assertSame('COD', $rpRows[2]['D']);
@@ -343,13 +348,13 @@ class StorePerformanceExportTest extends TestCase
         // ---- PANDUAN ----
         $guide = $ss->getSheetByName('Panduan')->toArray();
         $guideText = implode(' ', array_map(fn ($r) => implode(' ', array_map(fn ($c) => (string) $c, $r)), $guide));
-        $this->assertStringContainsString('Periode laporan: 2026-08-26 sampai 2026-09-01', $guideText);
+        $this->assertStringContainsString('Periode Laporan: 2026-08-26 sampai 2026-09-01', $guideText);
 
         // Regresi 2026-09-11: pemisah [] dibuang writer membuat konten Panduan
         // bergeser ke baris 3 dan kehilangan gaya label (merah tebal + border).
         $gs = $ss->getSheetByName('Panduan');
         $this->assertSame('ISI BERKAS', $gs->getCell('A4')->getValue());
-        $this->assertSame('FFC20000', $gs->getCell('A4')->getStyle()->getFont()->getColor()->getARGB());
+        $this->assertSame('FF1B365D', $gs->getCell('A4')->getStyle()->getFont()->getColor()->getARGB());
         $this->assertSame('thin', $gs->getCell('A4')->getStyle()->getBorders()->getBottom()->getBorderStyle());
         $this->assertStringContainsString('Penjualan Bersih', $guideText);
         $this->assertStringContainsString('pembeli unik', $guideText);
@@ -367,7 +372,7 @@ class StorePerformanceExportTest extends TestCase
 
         Excel::store(new StorePerformanceExport($payload), 'perf-empty.xlsx', 'imports');
         $ss = IOFactory::load(
-            \Illuminate\Support\Facades\Storage::disk('imports')->path('perf-empty.xlsx')
+            Storage::disk('imports')->path('perf-empty.xlsx')
         );
 
         $text = implode(' ', array_map(
@@ -394,7 +399,7 @@ class StorePerformanceExportTest extends TestCase
 
         Excel::store(new StorePerformanceExport($payload), 'perf-noprev.xlsx', 'imports');
         $ss = IOFactory::load(
-            \Illuminate\Support\Facades\Storage::disk('imports')->path('perf-noprev.xlsx')
+            Storage::disk('imports')->path('perf-noprev.xlsx')
         );
 
         $rows = $ss->getSheetByName('KPI Operasional Toko')->toArray(null, false, true, true);
@@ -474,7 +479,7 @@ class StorePerformanceExportTest extends TestCase
         $response->assertOk();
 
         // BinaryFileResponse tidak punya getContent(); muat langsung filenya.
-        $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($response->getFile()->getPathname());
+        $ss = IOFactory::load($response->getFile()->getPathname());
 
         // 6 sheet x 2 bulan kalender (Agt 2026 + Sep 2026).
         $this->assertCount(12, $ss->getSheetNames());
@@ -485,18 +490,18 @@ class StorePerformanceExportTest extends TestCase
         $rumusTotal = null;
         $rumusNet = null;
         for ($r = 1; $r <= $lr->getHighestRow(); $r++) {
-            $b = trim((string) $lr->getCell('B'.$r)->getValue());
+            $b = trim((string) $lr->getCell('A'.$r)->getValue());
             if ($b === 'TOTAL DIBAYAR PEMBELI') {
-                $rumusTotal = (string) $lr->getCell('C'.$r)->getValue();
+                $rumusTotal = (string) $lr->getCell('B'.$r)->getValue();
             }
             if ($b === 'PENJUALAN BERSIH') {
-                $rumusNet = (string) $lr->getCell('C'.$r)->getValue();
+                $rumusNet = (string) $lr->getCell('B'.$r)->getValue();
             }
         }
         $this->assertNotNull($rumusTotal, 'baris TOTAL DIBAYAR PEMBELI ada');
-        $this->assertStringStartsWith('=SUM(C', $rumusTotal, 'total berupa rumus SUM kolom tabel');
+        $this->assertStringStartsWith('=SUM(B', $rumusTotal, 'total berupa rumus SUM kolom tabel');
         $this->assertNotNull($rumusNet, 'baris PENJUALAN BERSIH ada');
-        $this->assertStringContainsString('C', $rumusNet, 'net berupa rumus yang menunjuk beban');
+        $this->assertStringContainsString('B', $rumusNet, 'net berupa rumus yang menunjuk beban');
 
         // Tabel Pesanan Agustus WAJIB berisi baris pesanan RA-MM-1 + Total
         // Row SUBTOTAL (bukan sheet kosong) pada rentang bulan yang sama.
@@ -521,6 +526,7 @@ class StorePerformanceExportTest extends TestCase
         $it = $ss->getSheetByName('Tabel Item (Agt 2026)');
         $this->assertSame('RA-MM-1', $it->getCell('A2')->getValue());
     }
+
     public function test_nomor_hp_pelanggan_disimpan_sebagai_teks(): void
     {
         $payload = $this->payload();
@@ -533,14 +539,14 @@ class StorePerformanceExportTest extends TestCase
         ]];
 
         Excel::store(new StorePerformanceExport($payload), 'ident_performa.xlsx', 'imports');
-        $ss = IOFactory::load(\Illuminate\Support\Facades\Storage::disk('imports')->path('ident_performa.xlsx'));
+        $ss = IOFactory::load(Storage::disk('imports')->path('ident_performa.xlsx'));
         $an = $ss->getSheetByName('Analisis');
 
         // Nomor HP ada di blok PELANGGAN TERBAIK (baris judul, baris kolom,
         // lalu data mulai dua baris di bawahnya).
         $phoneRow = null;
         for ($r = 1; $r <= $an->getHighestRow(); $r++) {
-            if (trim((string) $an->getCell('A'.$r)->getValue()) === 'PELANGGAN TERBAIK') {
+            if (str_contains((string) $an->getCell('A'.$r)->getValue(), 'PELANGGAN TERBAIK')) {
                 $phoneRow = $r + 2;
                 break;
             }
@@ -550,7 +556,7 @@ class StorePerformanceExportTest extends TestCase
         $cell = $an->getCell('B'.$phoneRow);
         $this->assertSame('6285725116817', (string) $cell->getValue(), 'nomor HP terbaca utuh');
         $this->assertSame(
-            \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+            DataType::TYPE_STRING,
             $cell->getDataType(),
             'nomor HP disimpan sebagai teks'
         );

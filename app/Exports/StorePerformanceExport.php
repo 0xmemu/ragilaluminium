@@ -18,29 +18,33 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Table;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table\Column as TableColumn;
 
 /**
- * Laporan Performa Toko XLSX, arsitektur workbook (2026-09-11, arah owner):
- *   1. Ringkasan Finansial - P&L bertingkat + Arus Kas SAJA. Angka pendapatan
- *      dan beban adalah RUMUS SUM/SUMIFS yang menunjuk TabelPesanan, jadi
- *      bila admin mengoreksi satu sel di tabel, P&L ikut berubah.
- *   2. KPI Operasional Toko - metrik e-commerce (penjualan, kunjungan,
- *      operasional) yang dulu menumpuk di bawah P&L (baris 31-75).
- *   3. Tabel Pesanan - 1 baris = 1 pesanan, Format Table (Ctrl+T) dengan
- *      Total Row bawaan Excel (SUBTOTAL, bukan baris data JUMLAH).
- *   4. Tabel Item - 1 baris = 1 item; Subtotal Baris = rumus Harga*Jumlah
- *      (verifikasi basis data: line_subtotal = unit_price x quantity).
- *   5. Analisis - agregat yang TIDAK bisa diturunkan dari dua tabel
- *      (kunjungan produk, pelanggan, retur). Dihubungkan dengan SUMIFS ke
- *      TabelPesanan/TabelItem; pivot asli tidak didukung pustaka penulis.
+ * Laporan Performa Toko XLSX. Arsitektur workbook (2026-09-11) dengan gaya
+ * visual baru (2026-09-13, referensi gaya owner: band navy + subjudul):
+ *   1. Ringkasan Finansial - P&L bertingkat (I-III) + Status Arus Kas (IV).
+ *      Angka pendapatan dan beban adalah RUMUS SUM/SUMIFS yang menunjuk
+ *      TabelPesanan, jadi bila admin mengoreksi satu sel di tabel, P&L ikut
+ *      berubah. Arus kas tetap angka payload (sumbernya ledger pembayaran,
+ *      bukan baris tabel pesanan, agar pesanan yang dibayar di luar periode
+ *      pembuatannya tetap terhitung benar).
+ *   2. KPI Operasional Toko - metrik e-commerce per seksi (I-V).
+ *   3. Tabel Pesanan - 1 baris = 1 pesanan, Excel Table "TabelPesanan"
+ *      dengan Total Row SUBTOTAL + kolom identitas pembeli (W-X-Y).
+ *   4. Tabel Item - 1 baris = 1 item; Subtotal Baris = rumus Harga*Jumlah.
+ *   5. Analisis - agregat yang tidak bisa diturunkan dari dua tabel
+ *      (kunjungan produk, pelanggan, retur); sisanya SUMIFS/COUNTIFS.
  *   6. Panduan - aturan baca, definisi, format angka.
+ *
+ * Label kontrak owner: "Penjualan Gross" (ADR-018), "Penjualan Bersih"
+ * TANPA sisipan lain, label COD menyatakan keadaan barang ("COD (barang
+ * belum sampai), N pesanan"), 100% Bahasa Indonesia.
  *
  * PENTING: baris pemisah antarblok wajib ditulis [""] (satu sel kosong),
  * BUKAN array kosong []. Maatwebsite membuang [] saat menulis sehingga
  * seluruh nomor baris styling bergeser (insiden 2026-09-11).
  *
  * PENTING (tabel): override afterSheet pada sheet bertabel WAJIB memanggil
- * parent::afterSheet($event) di AKHIR method. Loop addTable milik basis
- * membaca $this->excelTables; dipanggil di awal membuat tabel tidak pernah
- * tertulis di berkas (insiden 2026-09-11).
+ * parent::afterSheet($event) sebelum mengecat ulang header, karena loop
+ * addTable milik basis membaca $this->excelTables.
  */
 class StorePerformanceExport implements WithMultipleSheets
 {
@@ -60,8 +64,9 @@ class StorePerformanceExport implements WithMultipleSheets
 }
 
 /**
- * Basis sheet tabel datar: styling RagilStyledExport (header merah baris 1,
- * border, zebra, freeze, autofilter) + format angka per sel.
+ * Basis sheet tabel datar. Laporan bertingkat (Laba Rugi, KPI, Analisis)
+ * memakai band judul navy di baris 1 + subjudul slate di baris 2 (gaya
+ * referensi owner 2026-09-13); dua sheet tabel memakai header Table navy.
  */
 abstract class StorePerformanceTableSheet extends RagilStyledExport implements FromArray, WithStrictNullComparison, WithTitle
 {
@@ -70,17 +75,17 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
 
     protected bool $useTableHeader = true;
 
-    /** @var list<int> Baris judul besar laporan. */
-    protected array $titleRows = [];
+    /** @var list<array{0: int, 1: string}> Band judul: [baris, kolom terakhir]. */
+    protected array $bandRows = [];
 
-    /** @var list<int> Baris anak judul (nama toko, periode). */
-    protected array $subtitleRows = [];
-
-    /** @var list<int> Baris judul kelompok. */
-    protected array $groupRows = [];
+    /** @var list<array{0: int, 1: string}> Band subjudul: [baris, kolom terakhir]. */
+    protected array $bandSubtitleRows = [];
 
     /** @var list<int> Baris penanda kolom pada laporan bertingkat. */
     protected array $columnLabelRows = [];
+
+    /** @var list<int> Baris judul seksi (I. II. III. ...). */
+    protected array $groupRows = [];
 
     /** @var list<int> Baris subtotal. */
     protected array $totalRows = [];
@@ -93,6 +98,9 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
 
     /** @var list<array{0: int, 1: string}> Baris judul blok di dalam sheet tabel. */
     protected array $blockTitleRows = [];
+
+    /** @var list<array{0: int, 1: int}> Rentang baris data per blok untuk zebra. */
+    protected array $zebraRanges = [];
 
     /** @var array<string, Table> Tabel Excel yang dipasang di afterSheet. */
     protected array $excelTables = [];
@@ -134,8 +142,7 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
             $sheet->getStyle($coord)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
-        // Sheet ini tidak memanggil parent::afterSheet, jadi sel identitas
-        // (nomor HP pelanggan) diterapkan di sini.
+        // Sel identitas (nomor HP pelanggan) diterapkan di sini.
         $this->applyTextCells($sheet, $sheet->getHighestRow());
 
         // Pasang Excel Table (Format Table / Ctrl+T) setelah autofilter
@@ -144,68 +151,98 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
             $sheet->addTable($table);
         }
 
+        $this->paintBands($sheet);
         $this->styleReportRows($sheet);
     }
 
-    protected function styleReportRows($sheet): void
+    /**
+     * Band judul navy + subjudul slate (baris 1-2, di-merge selebar laporan).
+     */
+    protected function paintBands($sheet): void
     {
-        foreach ($this->titleRows as $row) {
-            $sheet->getStyle('B'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
+        foreach ($this->bandRows as [$row, $lastCol]) {
+            $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
             $sheet->getRowDimension($row)->setRowHeight(24);
         }
 
-        foreach ($this->subtitleRows as $row) {
-            $sheet->getStyle('B'.$row)->applyFromArray([
-                'font' => ['size' => 10, 'color' => ['argb' => 'FF666666']],
+        foreach ($this->bandSubtitleRows as [$row, $lastCol]) {
+            $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+                'font' => ['size' => 9, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF2E5B88']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
+            $sheet->getRowDimension($row)->setRowHeight(18);
         }
+    }
 
+    /**
+     * Zebra manual untuk rentang baris data (baris genap = F8FAFC).
+     */
+    protected function paintZebra($sheet): void
+    {
+        foreach ($this->zebraRanges as [$first, $last]) {
+            for ($row = $first; $row <= $last; $row++) {
+                if ($row % 2 === 0) {
+                    $sheet->getStyle("A{$row}:".$sheet->getHighestColumn().$row)->applyFromArray([
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
+                    ]);
+                }
+            }
+        }
+    }
+
+    protected function styleReportRows($sheet): void
+    {
         foreach ($this->columnLabelRows as $row) {
-            $sheet->getStyle('B'.$row.':E'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
-                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+            $sheet->getStyle("A{$row}:".chr(64 + 4).$row)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF334155']],
+                'borders' => ['bottom' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF94A3B8']]],
             ]);
-            $sheet->getStyle('C'.$row.':E'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getRowDimension($row)->setRowHeight(20);
         }
 
         foreach ($this->groupRows as $row) {
-            $sheet->getStyle('B'.$row.':E'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFC20000']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF7F8F7']],
+            $sheet->getStyle("A{$row}:D{$row}")->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF1B365D']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF1F5F9']],
             ]);
+            $sheet->getRowDimension($row)->setRowHeight(18);
         }
 
         foreach ($this->totalRows as $row) {
-            $sheet->getStyle('B'.$row.':E'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10],
-                'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
+            $sheet->getStyle("A{$row}:D{$row}")->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF1E293B']],
+                'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCBD5E1']]],
             ]);
         }
 
         foreach ($this->grandTotalRows as $row) {
-            $sheet->getStyle('B'.$row.':E'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FF121212']],
+            $sheet->getStyle("A{$row}:D{$row}")->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FF1E293B']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFDCFCE7']],
                 'borders' => [
-                    'top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF121212']],
-                    'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['argb' => 'FF121212']],
+                    'top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF0F172A']],
+                    'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['argb' => 'FF0F172A']],
                 ],
             ]);
         }
 
         foreach ($this->noteRows as $row) {
-            $sheet->getStyle('B'.$row)->applyFromArray([
+            $sheet->getStyle('A'.$row)->applyFromArray([
                 'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF666666']],
             ]);
         }
 
         foreach ($this->blockTitleRows as [$row, $lastCol]) {
             $sheet->getStyle('A'.$row.':'.$lastCol.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FFC20000']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF7F8F7']],
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FF1B365D']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF1F5F9']],
             ]);
             $sheet->getRowDimension($row)->setRowHeight(20);
         }
@@ -285,25 +322,23 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
     }
 }
 
-// ------ 1. RINGKASAN FINANSIAL (P&L + Arus Kas, angka berumus) ------
+// ------ 1. RINGKASAN FINANSIAL (P&L bertingkat + Status Arus Kas) ------
 
 /**
- * Sheet Ringkasan Finansial. Hanya P&L dan Arus Kas; KPI operasional
- * dipindah ke sheet sendiri (KPI Operasional Toko) agar pembacaan
- * manajemen fokus. Angka pendapatan/beban adalah rumus SUMIFS yang
- * menunjuk TabelPesanan (sheet Tabel Pesanan), bukan angka mati:
- *   Nilai produk   = SUM(TabelPesanan[Nilai Produk Terjual])
- *   Voucher        = -SUM(TabelPesanan[Voucher])
- *   dst.
- * Rumus menunjuk kolom terstruktur, jadi tetap benar bila admin menambah
- * atau memfilter baris tabel.
+ * I. PENDAPATAN PENJUALAN, II. BEBAN YANG DITANGGUNG TOKO,
+ * III. HASIL BERSIH, IV. STATUS ARUS KAS. Kolom B berisi rumus yang
+ * menunjuk TabelPesanan; kolom C/D hanya terisi bila ada periode
+ * pembanding (bila tidak: "Tidak ada data" dan "-").
+ * Arus kas SENGAJA angka payload (ledger pembayaran per paid_at), bukan
+ * SUMIFS ke tabel: baris tabel hanya pesanan yang dibuat dalam periode,
+ * sedangkan kas mengikuti tanggal pembayaran.
  */
 class StorePerformanceSummarySheet extends StorePerformanceTableSheet
 {
     protected function configure(): void
     {
         $this->sheetTitle = 'Ringkasan Finansial';
-        $this->columnWidths = ['A' => 4, 'B' => 40, 'C' => 20, 'D' => 20, 'E' => 18];
+        $this->columnWidths = ['A' => 50, 'B' => 24, 'C' => 20, 'D' => 16];
         $this->useTableHeader = false;
     }
 
@@ -325,32 +360,22 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
             return $current;
         };
 
-        // Rumus SUM kolom terstruktur TabelPesanan (sheet Tabel Pesanan).
-        // Kolom P&L ditulis sebagai formula agar hidup mengikuti tabel.
-        // Nama tabel ikut suffix bulan (workbook multi-bulan punya tabel
-        // per bulan dengan nama unik).
         $tableName = $this->tableName('TabelPesanan');
         $sum = static fn (string $col) => '=SUM('.$tableName.'['.$col.'])';
 
-        // Kepala laporan.
-        $push(['', 'LAPORAN LABA RUGI TOKO', '', '', '']);
-        $this->titleRows[] = $r - 1;
-        $push(['', 'Ragil Aluminium', '', '', '']);
-        $this->subtitleRows[] = $r - 1;
-        $push(['', 'Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-'), '', '', '']);
-        $this->subtitleRows[] = $r - 1;
+        // Band judul + subjudul + baris kosong + penanda kolom.
+        $push(['LAPORAN LABA RUGI & ARUS KAS TOKO']);
+        $this->bandRows[] = [$r - 1, 'D'];
+        $push(['Ragil Aluminium  |  Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')]);
+        $this->bandSubtitleRows[] = [$r - 1, 'D'];
         $push(['']);
 
-        // Judul kolom laporan (bukan header tabel, hanya penanda kolom).
-        $head = $push(['', 'Keterangan', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
+        $head = $push(['Keterangan Akun', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
         $this->columnLabelRows[] = $head;
 
-        // Baris keuangan: kolom C berisi rumus, D dan E kosong (nilai
-        // pembanding per komponen tidak tersedia dari payload).
-        $moneyF = function (string $label, string $formula, int $indent = 0, bool $isTotal = false) use ($push, $guard, &$r) {
-            $prefix = str_repeat('    ', $indent);
-            $line = $push(['', $guard($prefix.$label), $formula, '', '']);
-            $this->registerNumber($line, 3, '#,##0');
+        $moneyF = function (string $label, string $formula, bool $isTotal = false) use ($push, $guard, &$r) {
+            $line = $push([$guard($label), $formula, 'Tidak ada data', '-']);
+            $this->registerNumber($line, 2, '#,##0');
             if ($isTotal) {
                 $this->totalRows[] = $line;
             }
@@ -358,12 +383,10 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
             return $line;
         };
 
-        // Baris arus kas tetap angka dari payload (data pembayaran bukan
-        // kolom tabel pesanan).
-        $money = function (string $label, $value, int $indent = 0, bool $isTotal = false) use ($push, $guard, $num, &$r) {
-            $prefix = str_repeat('    ', $indent);
-            $line = $push(['', $guard($prefix.$label), $num($value), '', '']);
-            $this->registerNumber($line, 3, '#,##0');
+        // Arus kas: angka payload (ledger pembayaran), bukan kolom tabel.
+        $money = function (string $label, $value, bool $isTotal = false) use ($push, $guard, $num, &$r) {
+            $line = $push([$guard($label), $num($value), 'Tidak ada data', '-']);
+            $this->registerNumber($line, 2, '#,##0');
             if ($isTotal) {
                 $this->totalRows[] = $line;
             }
@@ -375,84 +398,79 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // sehingga rumus kolom terstruktur akan menjadi nama yang menggantung
         // (#NAME?). Untuk keadaan itu angka diambil dari payload (nol).
         $hasRows = ($this->payload['income_detail'] ?? []) !== [];
-        $moneyRow = function (string $label, string $formula, $static, int $indent = 1) use ($hasRows, $moneyF, $money) {
+        $moneyRow = function (string $label, string $formula, $static, bool $isTotal = false) use ($hasRows, $moneyF, $money) {
             return $hasRows
-                ? $moneyF($label, $formula, $indent)
-                : $money($label, $static, $indent);
+                ? $moneyF($label, $formula, $isTotal)
+                : $money($label, $static, $isTotal);
         };
 
-        // ---- PENDAPATAN (rumus -> TabelPesanan) ----
-        $push(['', 'PENDAPATAN', '', '', '']);
+        // ---- I. PENDAPATAN PENJUALAN ----
+        $push(['I. PENDAPATAN PENJUALAN']);
         $this->groupRows[] = $r - 1;
 
-        $rowNilai = $moneyRow('Nilai produk terjual', $sum('Nilai Produk Terjual'), $fin['items_before_discount'] ?? null);
+        $rowNilai = $moneyRow('Nilai Produk Terjual', $sum('Nilai Produk Terjual'), $fin['items_before_discount'] ?? null);
         // Kolom Voucher di tabel sudah negatif; jangan dibalik lagi.
-        $rowVoucher = $moneyRow('Potongan voucher', $sum('Voucher'), -1 * $num($fin['voucher_discount'] ?? 0));
-        $rowOngkir = $moneyRow('Ongkir dibayar pelanggan', $sum('Ongkir Dibayar Pelanggan'), $fin['shipping_paid_by_customer'] ?? null);
-        $rowAsuransi = $moneyRow('Asuransi dibayar pelanggan', $sum('Asuransi'), $fin['insurance'] ?? null);
-        $rowCod = $moneyRow('Biaya COD dibayar pelanggan', $sum('Biaya COD'), $fin['cod_fee'] ?? null);
-        $rowTotalDibayar = $push(['', 'TOTAL DIBAYAR PEMBELI', '=SUM(C'.$rowNilai.':C'.$rowCod.')', '', '']);
+        $rowVoucher = $moneyRow('Potongan Voucher Toko', $sum('Voucher'), -1 * $num($fin['voucher_discount'] ?? 0));
+        $rowOngkir = $moneyRow('Ongkir Dibayar Pelanggan', $sum('Ongkir Dibayar Pelanggan'), $fin['shipping_paid_by_customer'] ?? null);
+        $rowAsuransi = $moneyRow('Asuransi Dibayar Pelanggan', $sum('Asuransi'), $fin['insurance'] ?? null);
+        $rowCod = $moneyRow('Biaya COD Dibayar Pelanggan', $sum('Biaya COD'), $fin['cod_fee'] ?? null);
+        $rowTotalDibayar = $push(['TOTAL DIBAYAR PEMBELI', '=SUM(B'.$rowNilai.':B'.$rowCod.')', 'Tidak ada data', '-']);
         $this->totalRows[] = $rowTotalDibayar;
-        $this->registerNumber($rowTotalDibayar, 3, '#,##0');
-        $this->noteRows[] = $push(['', '    Angka pada kolom Periode Ini berupa rumus yang menunjuk Tabel Pesanan. Koreksi nilai di tabel akan mengubah laporan ini.', '', '', '']);
-        $push(['']);
+        $this->registerNumber($rowTotalDibayar, 2, '#,##0');
+        $this->noteRows[] = $push(['* Nilai produk terjual sudah memakai harga promo (setelah diskon produk). Koreksi nilai di Tabel Pesanan akan mengubah baris ini.']);
 
-        // ---- BEBAN (rumus -> TabelPesanan) ----
-        $push(['', 'BEBAN YANG DITANGGUNG TOKO', '', '', '']);
+        // ---- II. BEBAN YANG DITANGGUNG TOKO ----
+        $push(['II. BEBAN YANG DITANGGUNG TOKO']);
         $this->groupRows[] = $r - 1;
 
         // Tiga kolom beban di tabel sudah bernilai negatif.
-        $rowOngkirJnt = $moneyRow('Ongkir dibayarkan ke J&T', $sum('Ongkir ke J&T'), -1 * $num($fin['shipping_raw'] ?? 0));
+        $rowOngkirJnt = $moneyRow('Ongkir Dibayarkan ke J&T', $sum('Ongkir ke J&T'), -1 * $num($fin['shipping_raw'] ?? 0));
         // Kolom Biaya COD positif (uang diterima pembeli), jadi beban
-        // ke J&T memang dibalik di sini.
-        // Negasi rumus: '=' harus tetap di depan, jika tidak Excel menyimpan
-        // sel sebagai teks dan COD hilang dari jumlah beban (bug 2026-09-12).
-        $rowCodJnt = $moneyRow('Biaya COD diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0));
-        $rowRefund = $moneyRow('Refund retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0));
-        $rowRetShip = $moneyRow('Ongkir retur ditanggung toko', $sum('Ongkir Retur Toko'), -1 * $num($fin['return_shipping_store'] ?? 0));
-        $rowBeban = $push(['', 'Jumlah beban toko', '=SUM(C'.$rowOngkirJnt.':C'.$rowRetShip.')', '', '']);
+        // ke J&T memang dibalik di sini. Negasi rumus: '=' harus tetap di
+        // depan, jika tidak Excel menyimpan sel sebagai teks dan COD hilang
+        // dari jumlah beban (bug 2026-09-12).
+        $rowCodJnt = $moneyRow('Biaya COD Diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0));
+        $rowRefund = $moneyRow('Refund Retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0));
+        $rowRetShip = $moneyRow('Ongkir Retur Ditanggung Toko', $sum('Ongkir Retur Toko'), -1 * $num($fin['return_shipping_store'] ?? 0));
+        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')', 'Tidak ada data', '-']);
         $this->totalRows[] = $rowBeban;
-        $this->registerNumber($rowBeban, 3, '#,##0');
-        $push(['']);
+        $this->registerNumber($rowBeban, 2, '#,##0');
 
-        // ---- HASIL ----
-        $push(['', 'HASIL', '', '', '']);
+        // ---- III. HASIL BERSIH ----
+        $push(['III. HASIL BERSIH']);
         $this->groupRows[] = $r - 1;
         // Penjualan bersih = total dibayar + jumlah beban (beban sudah negatif).
         // Referensi WAJIB baris Jumlah beban yang ditangkap di atas; kalkulasi
-        // offset manual ($r-2) pernah menunjuk baris pemisah kosong.
-        $push(['', 'PENJUALAN BERSIH', '=C'.$rowTotalDibayar.'+C'.$rowBeban, '', '']);
-        $this->grandTotalRows[] = $r - 1;
-        $this->registerNumber($r - 1, 3, '#,##0');
-        $this->noteRows[] = $push(['', '    Catatan: subsidi ongkir sudah termasuk dalam Ongkir ke J&T, tidak dikurangkan dua kali.', '', '', '']);
-        $push(['']);
+        // offset manual pernah menunjuk baris pemisah kosong.
+        $rowNet = $push(['PENJUALAN BERSIH', '=B'.$rowTotalDibayar.'+B'.$rowBeban, 'Tidak ada data', '-']);
+        $this->grandTotalRows[] = $rowNet;
+        $this->registerNumber($rowNet, 2, '#,##0');
+        $this->noteRows[] = $push(['* Subsidi ongkir sudah termasuk dalam Ongkir ke J&T, tidak dikurangkan dua kali.']);
 
-        // ---- ARUS KAS (angka payload: sumbernya pembayaran, bukan tabel) ----
-        $push(['', 'ARUS KAS', '', '', '']);
+        // ---- IV. STATUS ARUS KAS ----
+        $push(['IV. STATUS ARUS KAS']);
         $this->groupRows[] = $r - 1;
-        $money('Transfer bank sudah cair', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0), 1);
-        $money('COD sudah cair', $fin['cod_paid'] ?? null, 1);
-        $money('Pembayaran sudah diterima', $fin['payments_received'] ?? null, 0, true);
-        $money('COD (barang belum sampai), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null, 1);
-        $push(['']);
+        $money('Transfer Bank Sudah Cair (Lunas)', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0));
+        $money('COD Sudah Cair (Lunas)', $fin['cod_paid'] ?? null);
+        $money('Total Pembayaran Sudah Diterima', $fin['payments_received'] ?? null, true);
+        $money('COD (barang belum sampai), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null);
 
         return $rows;
     }
 }
 
-// ------ 2. KPI OPERASIONAL TOKO (dipisah dari P&L) ------
+// ------ 2. KPI OPERASIONAL TOKO ------
 
 /**
- * Metrik e-commerce yang dulu menumpuk di baris 31-75 sheet Laba Rugi:
- * penjualan, kunjungan, operasional, pembayaran, retur dan pembatalan.
- * Format sama dengan P&L (kolom C nilai, D pembanding, E perubahan).
+ * Metrik e-commerce per seksi dari payload (I. PENJUALAN s.d. V. RETUR &
+ * PEMBATALAN). Kolom B nilai, C pembanding, D perubahan.
  */
 class StorePerformanceKpiSheet extends StorePerformanceTableSheet
 {
     protected function configure(): void
     {
         $this->sheetTitle = 'KPI Operasional Toko';
-        $this->columnWidths = ['A' => 4, 'B' => 40, 'C' => 20, 'D' => 20, 'E' => 18];
+        $this->columnWidths = ['A' => 48, 'B' => 24, 'C' => 20, 'D' => 16];
         $this->useTableHeader = false;
     }
 
@@ -472,58 +490,54 @@ class StorePerformanceKpiSheet extends StorePerformanceTableSheet
             return $current;
         };
 
-        $push(['', 'KPI OPERASIONAL TOKO', '', '', '']);
-        $this->titleRows[] = $r - 1;
-        $push(['', 'Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-'), '', '', '']);
-        $this->subtitleRows[] = $r - 1;
+        $push(['INDIKATOR KINERJA UTAMA (KPI) OPERASIONAL TOKO']);
+        $this->bandRows[] = [$r - 1, 'D'];
+        $push(['Ragil Aluminium  |  Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')]);
+        $this->bandSubtitleRows[] = [$r - 1, 'D'];
         $push(['']);
 
-        $head = $push(['', 'Keterangan', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
+        $head = $push(['Keterangan Metrik', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
         $this->columnLabelRows[] = $head;
 
         $prevHasData = (bool) ($this->payload['previous_has_data'] ?? true);
-        $prevText = 'Tidak ada data';
+        $roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 
-        foreach ($this->payload['sections'] ?? [] as $section) {
-            $push(['', mb_strtoupper((string) ($section['title'] ?? 'RINCIAN')), '', '', '']);
+        foreach (($this->payload['sections'] ?? []) as $i => $section) {
+            $nomor = $roman[$i] ?? (string) ($i + 1);
+            $push([$nomor.'. '.mb_strtoupper((string) ($section['title'] ?? 'RINCIAN'))]);
             $this->groupRows[] = $r - 1;
 
             foreach ($section['kpis'] as $kpi) {
                 $change = $kpi['change_percent'];
                 $fmt = $this->kpiNumberFormat((string) ($kpi['format'] ?? 'number'));
 
-                $row = [
-                    '',
-                    $guard('    '.$kpi['label']),
+                $line = $push([
+                    $guard($kpi['label']),
                     $guard($kpi['value'] ?? 0),
-                    $prevHasData ? $guard($kpi['previous'] ?? 0) : $prevText,
-                    ! $prevHasData ? '' : ($change === null ? 'Baru pada periode ini' : $guard($change)),
-                ];
-                $line = $push($row);
-                $this->registerNumber($line, 3, $fmt);
+                    $prevHasData ? $guard($kpi['previous'] ?? 0) : 'Tidak ada data',
+                    ! $prevHasData ? '-' : ($change === null ? 'Baru pada periode ini' : $guard($change)),
+                ]);
+                $this->registerNumber($line, 2, $fmt);
                 if ($prevHasData) {
-                    $this->registerNumber($line, 4, $fmt);
+                    $this->registerNumber($line, 3, $fmt);
                     if ($change !== null) {
-                        $this->registerNumber($line, 5, '0.0"%"');
+                        $this->registerNumber($line, 4, '0.0"%"');
                     }
                 }
             }
-            $push(['']);
         }
 
         return $rows;
     }
 }
 
-// ------ 3. TABEL PESANAN (Excel Table + Total Row) ------
+// ------ 3. TABEL PESANAN (Excel Table + Total Row + identitas pembeli) ------
 
 /**
- * 1 baris = 1 pesanan. Dibungkus Excel Table "TabelPesanan" (sama dengan
- * Format Table / Ctrl+T): Total Row bawaan Excel berisi SUBTOTAL sehingga
- * baris total bukan baris data (bisa disembunyikan, ikut filter), kolom
- * Penjualan Bersih berisi rumus sel per baris. Nama kolom:
- *   - "Total Qty (Pcs)" menggantikan "Jumlah Item" (rancu dengan jenis).
- *   - "Jumlah Jenis SKU" = banyak SKU unik dalam pesanan.
+ * 1 baris = 1 pesanan (hanya pesanan dalam scope omzet; pesanan batal
+ * dilaporkan terpisah di KPI). Excel Table "TabelPesanan" dengan Total Row
+ * SUBTOTAL; kolom W-Y membawa identitas pembeli agar tabel mandiri untuk
+ * pivot per pelanggan/kota. Kolom Penjualan Bersih berupa rumus alur uang.
  */
 class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
 {
@@ -531,12 +545,13 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
     {
         $this->sheetTitle = 'Tabel Pesanan';
         $this->skipSheetAutoFilter = true;
+        $this->textColumns = ['X'];
         $this->columnWidths = [
-            'A' => 16, 'B' => 18, 'C' => 18, 'D' => 12, 'E' => 16,
-            'F' => 16, 'G' => 14, 'H' => 17, 'I' => 18, 'J' => 15,
+            'A' => 16, 'B' => 18, 'C' => 18, 'D' => 14, 'E' => 15,
+            'F' => 15, 'G' => 14, 'H' => 16, 'I' => 18, 'J' => 15,
             'K' => 16, 'L' => 12, 'M' => 15, 'N' => 19, 'O' => 17,
             'P' => 15, 'Q' => 14, 'R' => 16, 'S' => 17, 'T' => 15,
-            'U' => 30,
+            'U' => 30, 'V' => 24, 'W' => 22, 'X' => 18, 'Y' => 20,
         ];
     }
 
@@ -554,6 +569,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             'Penjualan Bersih',
             'Uang Sudah Masuk', 'Belum Cair',
             'Subsidi Ongkir Toko', 'Hemat Pembeli vs Harga Normal',
+            'Nama Pelanggan', 'Nomor HP / WA', 'Kota Pengiriman',
         ];
     }
 
@@ -594,6 +610,9 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
                 $num($row['outstanding'] ?? 0),
                 $num($row['shipping_subsidy'] ?? 0),
                 $num($row['discount'] ?? 0),
+                $guard($row['customer_name'] ?? '-'),
+                $guard($row['customer_phone'] ?? '-'),
+                $guard($row['city'] ?? '-'),
             ];
 
             $rows[] = $out;
@@ -609,13 +628,18 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
 
     public function afterSheet(AfterSheet $event): void
     {
-        // parent::afterSheet() WAJIB dipanggil di AKHIR override: loop
-        // addTable milik basis membaca $this->excelTables. Dipanggil di
-        // awal membuat tabel tidak pernah terpasang (insiden 2026-09-11).
+        // parent::afterSheet() WAJIB dipanggil sebelum pengecatan ulang: loop
+        // addTable milik basis membaca $this->excelTables (insiden 2026-09-11).
         $sheet = $event->sheet->getDelegate();
         $count = count($this->payload['income_detail'] ?? []);
 
         if ($count === 0) {
+            parent::afterSheet($event);
+            $sheet->getStyle('A1:Y1')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
+            ]);
+
             return;
         }
 
@@ -644,22 +668,37 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             $this->registerNumber($totalRow, $i + 7, '#,##0');
         }
 
-        // Excel Table: rentang A1:V{totalRow}, Total Row dihidupkan lewat
+        // Excel Table: rentang A1:Y{totalRow}, Total Row dihidupkan lewat
         // XML (setShowTotalsRow). Kolom uang diberi totalsRowFunction=sum.
-        $lastCol = 'V';
-        $table = new Table('A1:'.$lastCol.$totalRow, $this->tableName('TabelPesanan'));
+        $table = new Table('A1:Y'.$totalRow, $this->tableName('TabelPesanan'));
         $table->setShowTotalsRow(true);
 
-        foreach (range('A', 'V') as $colLetter) {
+        foreach (range('A', 'Y') as $colLetter) {
             $c = new TableColumn($colLetter, $table);
             if (in_array($colLetter, $sumCols, true)) {
                 $c->setTotalsRowFunction('sum');
             }
             $table->setColumn($c);
         }
+        // Gaya visual tabel datang dari catatan sel eksplisit (header navy +
+        // zebra manual di bawah); PhpSpreadsheet versi ini belum punya API
+        // TableStyleInfo, jadi style Table dibiarkan default Excel.
         $this->excelTables[] = $table;
 
         parent::afterSheet($event);
+
+        // Header Tabel dicat navy (gaya referensi); zebra manual per baris.
+        $sheet->getStyle('A1:Y1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
+        ]);
+        for ($row = 2; $row < $totalRow; $row++) {
+            if ($row % 2 === 0) {
+                $sheet->getStyle('A'.$row.':Y'.$row)->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
+                ]);
+            }
+        }
     }
 }
 
@@ -677,8 +716,8 @@ class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
         $this->sheetTitle = 'Tabel Item';
         $this->skipSheetAutoFilter = true;
         $this->columnWidths = [
-            'A' => 16, 'B' => 17, 'C' => 14, 'D' => 34, 'E' => 18,
-            'F' => 16, 'G' => 12, 'H' => 14, 'I' => 14,
+            'A' => 16, 'B' => 18, 'C' => 18, 'D' => 48, 'E' => 26,
+            'F' => 16, 'G' => 12, 'H' => 18, 'I' => 14,
         ];
     }
 
@@ -716,12 +755,14 @@ class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
 
     public function afterSheet(AfterSheet $event): void
     {
-        // parent::afterSheet() WAJIB dipanggil di AKHIR override (lihat
-        // catatan pada Tabel Pesanan).
+        // parent::afterSheet() WAJIB dipanggil (lihat catatan Tabel Pesanan).
         $sheet = $event->sheet->getDelegate();
         $count = count($this->payload['sold_items'] ?? []);
 
         if ($count === 0) {
+            parent::afterSheet($event);
+            $this->paintBands($sheet);
+
             return;
         }
 
@@ -754,6 +795,18 @@ class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
         $this->excelTables[] = $table;
 
         parent::afterSheet($event);
+
+        $sheet->getStyle('A1:I1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
+        ]);
+        for ($row = 2; $row < $totalRow; $row++) {
+            if ($row % 2 === 0) {
+                $sheet->getStyle('A'.$row.':I'.$row)->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
+                ]);
+            }
+        }
     }
 }
 
@@ -762,8 +815,9 @@ class StorePerformanceSoldItemsSheet extends StorePerformanceTableSheet
 /**
  * Blok yang TIDAK bisa diturunkan dari Tabel Pesanan/Tabel Item
  * (kunjungan produk, pelanggan, retur) tetap diekspor dari payload.
- * Blok yang bisa (bauran metode, produk terlaris) dihitung dengan
- * SUMIFS/COUNTIFS yang menunjuk tabel, supaya sumbernya satu.
+ * Blok yang bisa (produk terlaris, bauran metode) dihitung dengan
+ * SUMIFS/COUNTIFS yang menunjuk tabel; kriteria menunjuk sel SKU di
+ * kolom A supaya tetap hidup bila admin mengganti SKU yang dianalisis.
  * Pivot Table asli tidak didukung pustaka penulis XLSX (PhpSpreadsheet
  * tidak punya API pivot); struktur data tabel tetap pivot-ready.
  */
@@ -773,7 +827,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
     {
         $this->sheetTitle = 'Analisis';
         $this->columnWidths = [
-            'A' => 20, 'B' => 52, 'C' => 14, 'D' => 18, 'E' => 14, 'F' => 16,
+            'A' => 20, 'B' => 50, 'C' => 16, 'D' => 22, 'E' => 22,
         ];
         $this->useTableHeader = false;
     }
@@ -793,11 +847,10 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         };
 
         $range = $this->payload['range'] ?? [];
-        $push(['ANALISIS PENJUALAN']);
-        $this->titleRows[] = $r - 1;
-        $rows[$r - 2][0] = 'ANALISIS PENJUALAN';
-        $push(['Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')]);
-        $this->subtitleRows[] = $r - 1;
+        $push(['ANALISIS PENJUALAN & PERFORMA PRODUK']);
+        $this->bandRows[] = [$r - 1, 'E'];
+        $push(['Ragil Aluminium  |  Periode: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')]);
+        $this->bandSubtitleRows[] = [$r - 1, 'E'];
         $push(['']);
 
         $block = function (string $title, array $header, string $lastCol) use ($push, &$r) {
@@ -815,28 +868,32 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             }
         };
 
-        // ---- BLOK 1: PRODUK TERLARIS (Unit Terjual via SUMIFS ke TabelItem) ----
-        $block('PRODUK TERLARIS', ['SKU Induk', 'Nama Produk', 'Unit Terjual', 'Penjualan', 'Jumlah Pesanan'], 'E');
+        // ---- I. PRODUK TERLARIS (semua kolom angka berumus ke TabelItem) ----
+        $block('I. PRODUK TERLARIS', ['SKU Induk', 'Nama Produk', 'Unit Terjual', 'Total Penjualan', 'Jumlah Pesanan'], 'E');
         $topAll = $this->payload['top_products'] ?? [];
         $top = array_slice($topAll, 0, 15);
+        $firstData = $r;
         if ($top === []) {
             $push(['Tidak ada produk terjual pada periode ini.']);
             $this->noteRows[] = $r - 1;
         }
         foreach ($top as $pr) {
             $sku = (string) ($pr['parent_sku'] ?? '');
+            $itemTable = $this->tableName('TabelItem');
             $row = [
                 $guard($sku),
                 $guard($pr['name'] ?? ''),
-                '=SUMIFS('.$this->tableName('TabelItem').'[Jumlah],'.$this->tableName('TabelItem').'[SKU Induk],$A'.$r.')',
-                $guard($pr['revenue'] ?? 0),
-                '=COUNTIFS('.$this->tableName('TabelItem').'[SKU Induk],$A'.$r.')',
+                '=SUMIFS('.$itemTable.'[Jumlah],'.$itemTable.'[SKU Induk],$A'.$r.')',
+                '=SUMIFS('.$itemTable.'[Subtotal Baris],'.$itemTable.'[SKU Induk],$A'.$r.')',
+                '=COUNTIFS('.$itemTable.'[SKU Induk],$A'.$r.')',
             ];
             $line = $push($row);
-            $money($line, [4]);
             $this->registerNumber($line, 3, '#,##0');
+            $this->registerNumber($line, 4, '#,##0');
             $this->registerNumber($line, 5, '#,##0');
-            $this->trackZeroCells($row, $line);
+        }
+        if ($r - 1 >= $firstData) {
+            $this->zebraRanges[] = [$firstData, $r - 1];
         }
         if (count($topAll) > count($top)) {
             $push(['Menampilkan 15 produk teratas dari '.count($topAll).' produk yang terjual.']);
@@ -844,10 +901,11 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         }
         $push(['']);
 
-        // ---- BLOK 2: INTERAKSI PRODUK (payload: data klik bukan kolom tabel) ----
-        $block('PRODUK PALING DILIHAT', ['SKU Induk', 'Nama Produk', 'Dilihat', 'Diklik', 'Total Interaksi'], 'E');
+        // ---- II. PRODUK PALING DILIHAT (payload: data klik bukan kolom tabel) ----
+        $block('II. PRODUK PALING DILIHAT', ['SKU Induk', 'Nama Produk', 'Dilihat', 'Diklik', 'Total Interaksi'], 'E');
         $viewedAll = $this->payload['product_breakdowns']['most_viewed'] ?? [];
         $viewed = array_slice($viewedAll, 0, 15);
+        $firstData = $r;
         if ($viewed === []) {
             $push(['Belum ada data kunjungan produk pada periode ini.']);
             $this->noteRows[] = $r - 1;
@@ -864,15 +922,19 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $money($line, [3, 4, 5]);
             $this->trackZeroCells($row, $line);
         }
+        if ($r - 1 >= $firstData) {
+            $this->zebraRanges[] = [$firstData, $r - 1];
+        }
         if (count($viewedAll) > count($viewed)) {
             $push(['Menampilkan 15 produk teratas dari '.count($viewedAll).' produk yang pernah dilihat.']);
             $this->noteRows[] = $r - 1;
         }
         $push(['']);
 
-        // ---- BLOK 3: PELANGGAN (payload: gabungan beberapa pesanan) ----
-        $block('PELANGGAN TERBAIK', ['Nama Pelanggan', 'Nomor HP', 'Jumlah Pesanan', 'Total Belanja', 'Pesanan Terakhir'], 'E');
+        // ---- III. PELANGGAN TERBAIK (payload: gabungan beberapa pesanan) ----
+        $block('III. PELANGGAN TERBAIK', ['Nama Pelanggan', 'Nomor HP', 'Jumlah Pesanan', 'Total Belanja', 'Pesanan Terakhir'], 'E');
         $customers = $this->payload['customers'] ?? [];
+        $firstData = $r;
         if ($customers === []) {
             $push(['Tidak ada pelanggan pada periode ini.']);
             $this->noteRows[] = $r - 1;
@@ -901,10 +963,13 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $this->registerTextCell($line, 2);
             $this->trackZeroCells($row, $line);
         }
+        if ($r - 1 >= $firstData) {
+            $this->zebraRanges[] = [$firstData, $r - 1];
+        }
         $push(['']);
 
-        // ---- BLOK 4: BAURAN METODE (COUNTIFS/SUMIFS ke kolom Metode tabel) ----
-        $block('BAURAN METODE PEMBAYARAN', ['Metode', 'Jumlah Pesanan', 'Nilai Penjualan', 'Porsi Nilai', ''], 'D');
+        // ---- IV. BAURAN METODE PEMBAYARAN (COUNTIFS/SUMIFS kolom Metode) ----
+        $block('IV. BAURAN METODE PEMBAYARAN', ['Metode', 'Jumlah Pesanan', 'Nilai Penjualan', 'Porsi Nilai'], 'D');
         $methods = [
             'COD' => 'COD',
             'Transfer bank' => 'Transfer bank',
@@ -930,11 +995,13 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $rows[$rr - 1][3] = '=IFERROR(C'.$rr.'/SUM($C$'.$rowFirst.':$C$'.$rowLast.'),0)';
             $this->registerNumber($rr, 4, '0.00"%"');
         }
+        $this->zebraRanges[] = [$rowFirst, $rowLast];
         $push(['']);
 
-        // ---- BLOK 5: BIAYA RETUR (payload: kasus retur) ----
-        $block('BIAYA RETUR DITANGGUNG TOKO', ['Nomor Pesanan', 'Tanggal Selesai', 'Pihak Penyebab', 'Alasan', 'Ongkir Retur'], 'E');
+        // ---- V. BIAYA RETUR DITANGGUNG TOKO (payload: kasus retur) ----
+        $block('V. BIAYA RETUR DITANGGUNG TOKO', ['Nomor Pesanan', 'Tanggal Selesai', 'Pihak Penyebab', 'Alasan', 'Ongkir Retur'], 'E');
         $returns = $this->payload['return_shipping_costs'] ?? [];
+        $firstData = $r;
         if ($returns === []) {
             $push(['Tidak ada biaya retur yang ditanggung toko pada periode ini.']);
             $this->noteRows[] = $r - 1;
@@ -965,40 +1032,33 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $this->registerNumber($line, 5, '#,##0');
             $this->trackZeroCells($row, $line);
         }
+        if ($r - 1 >= $firstData) {
+            $this->zebraRanges[] = [$firstData, $r - 1];
+        }
 
         return $rows;
     }
 
     protected function styleReportRows($sheet): void
     {
-        foreach ($this->titleRows as $row) {
-            $sheet->getStyle('A'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
+        foreach ($this->columnLabelRows as $row) {
+            $sheet->getStyle('A'.$row.':E'.$row)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF334155']],
+                'borders' => ['bottom' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF94A3B8']]],
             ]);
-            $sheet->getRowDimension($row)->setRowHeight(24);
+            $sheet->getRowDimension($row)->setRowHeight(18);
         }
-        foreach ($this->subtitleRows as $row) {
-            $sheet->getStyle('A'.$row)->applyFromArray([
-                'font' => ['size' => 10, 'color' => ['argb' => 'FF666666']],
-            ]);
-        }
+
+        $this->paintZebra($sheet);
+
         foreach ($this->noteRows as $row) {
             $sheet->getStyle('A'.$row)->applyFromArray([
                 'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF666666']],
             ]);
         }
-        foreach ($this->columnLabelRows as $row) {
-            $sheet->getStyle('A'.$row.':F'.$row)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
-            ]);
-            $sheet->getRowDimension($row)->setRowHeight(18);
-        }
 
-        $this->titleRows = [];
-        $this->subtitleRows = [];
-        $this->noteRows = [];
         $this->columnLabelRows = [];
+        $this->noteRows = [];
 
         parent::styleReportRows($sheet);
     }
@@ -1017,19 +1077,22 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
         $range = $this->payload['range'] ?? [];
 
         return [
-            ['PANDUAN LAPORAN PERFORMA TOKO', 'Ragil Aluminium'],
-            ['Periode laporan: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')],
+            ['PANDUAN PENGGUNAAN LAPORAN PERFORMA TOKO'],
+            ['Ragil Aluminium  |  Periode Laporan: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')],
             [''],
-            ['ISI BERKAS', 'Ringkasan Finansial = laba rugi dan arus kas; angka pendapatan dan beban berupa rumus yang menunjuk Tabel Pesanan. KPI Operasional Toko = metrik kunjungan, operasional, retur, dan pembatalan. Tabel Pesanan = 1 baris per pesanan, Format Table dengan Total Row bawaan Excel. Tabel Item = 1 baris per item, Subtotal Baris berupa rumus Harga x Jumlah. Analisis = agregat yang tidak bisa diturunkan dari dua tabel.'],
+            ['ISI BERKAS', 'Berkas terdiri dari 6 sheet terintegrasi. Ringkasan Finansial: laba rugi bertingkat dan status arus kas, angkanya rumus yang menunjuk Tabel Pesanan. KPI Operasional Toko: metrik penjualan, kunjungan, operasional, pembayaran, retur, dan pembatalan. Tabel Pesanan dan Tabel Item: mesin hitung sekaligus basis Pivot Table (1 baris = 1 pesanan / 1 item). Analisis: agregat yang tidak bisa diturunkan dari dua tabel. Panduan: halaman ini.'],
+            ['PERAN DUA TABEL', 'Tabel Pesanan dan Tabel Item bukan duplikat laporan pesanan: keduanya sumber rumus Ringkasan Finansial dan Analisis, mengecualikan pesanan batal (dilaporkan di KPI), dan siap dipakai Pivot Table. Ubah satu sel di tabel, seluruh laporan ikut menyesuaikan.'],
             ['CARA MEMBACA', 'Mulai dari Ringkasan Finansial. Setiap angka pendapatan dan beban adalah rumus SUM kolom Tabel Pesanan; klik selnya untuk melihat asalnya. Baris JUMLAH di kedua tabel adalah Total Row bawaan Excel: nilai ikut menyesuaikan bila tabel difilter.'],
             ['ALUR UANG', 'Nilai produk terjual dikurangi voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan menghasilkan Total Dibayar Pembeli. Dari situ dikurangi ongkir ke J&T, biaya COD ke J&T, refund retur, dan ongkir retur toko menghasilkan Penjualan Bersih. Kolom Penjualan Bersih di Tabel Pesanan juga berupa rumus dengan urutan yang sama.'],
-            ['DISKON PRODUK', 'Kolom Hemat Pembeli vs Harga Normal adalah selisih harga normal dengan harga jual, bukan pengurang tagihan. Nilai produk terjual sudah memakai harga promo yang berlaku.'],
+            ['DISKON PRODUK', "Kolom 'Hemat Pembeli vs Harga Normal' adalah selisih harga normal dengan harga jual, bukan pengurang tagihan. Nilai produk terjual sudah memakai harga promo yang berlaku."],
             ['SUBSIDI ONGKIR', 'Subsidi ongkir sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah.'],
-            ['ARUS KAS', 'Pembayaran sudah diterima = transfer bank cair + COD cair pada periode. Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba, bukan dari catatan pembayaran.'],
+            ['ARUS KAS', 'Pembayaran sudah diterima = transfer bank cair + COD cair pada periode, dihitung dari tanggal pembayaran (bukan tanggal pesanan dibuat). Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba.'],
             ['PENGUNJUNG YANG MEMBELI', 'Dihitung dari jumlah pembeli unik dibagi jumlah pengunjung, bukan jumlah pesanan dibagi pengunjung.'],
-            ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya di KPI Operasional membandingkan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data.'],
-            ['ANALISIS', 'Blok Produk Terlaris menghitung Unit Terjual dan Jumlah Pesanan langsung dari Tabel Item lewat SUMIFS/COUNTIFS; blok Bauran Metode menghitung dari kolom Metode Tabel Pesanan. Untuk memutar data per SKU, metode, atau status, gunakan Pivot Table di Excel dengan sumber TabelPesanan atau TabelItem; keduanya sudah berformat tabel sehingga tinggal dipilih sebagai sumber pivot.'],
-            ['FORMAT ANGKA', 'Semua kolom uang berupa angka polos tanpa Rp. Sel yang memang tidak punya nilai dibiarkan kosong.'],
+            ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya membandingkan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data.'],
+            ['DETAIL PELANGGAN', 'Identitas pembeli (Nama, Nomor HP/WhatsApp, Kota) tersedia di kolom W sampai Y sheet Tabel Pesanan, dan agregat per pelanggan ada di blok Pelanggan Terbaik sheet Analisis. Nomor HP disimpan sebagai teks agar digit tidak berubah.'],
+            ['BAURAN PEMBAYARAN', "Metode pembayaran distandarisasi menjadi 'COD' dan 'Transfer bank'. Porsi Nilai di blok IV sheet Analisis dihitung dari Nilai Penjualan tiap metode dibagi total keduanya."],
+            ['ANALISIS', 'Blok Produk Terlaris menghitung Unit Terjual, Total Penjualan, dan Jumlah Pesanan langsung dari Tabel Item lewat SUMIFS/COUNTIFS; kriteria menunjuk kolom SKU sehingga tetap hidup bila diubah. Untuk memutar data per SKU, metode, atau status, gunakan Pivot Table dengan sumber TabelPesanan atau TabelItem.'],
+            ['FORMAT ANGKA', 'Semua kolom uang berupa angka polos tanpa Rp sehingga aman dijumlahkan. Sel yang memang tidak punya nilai dibiarkan kosong.'],
         ];
     }
 
@@ -1044,27 +1107,42 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
     {
         $sheet = $event->sheet->getDelegate();
 
-        $sheet->getStyle('A1')->applyFromArray([
-            'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FF121212']],
+        $sheet->mergeCells('A1:B1');
+        $sheet->getStyle('A1:B1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(24);
-        $sheet->getStyle('A2')->applyFromArray([
-            'font' => ['size' => 10, 'color' => ['argb' => 'FF666666']],
+
+        $sheet->mergeCells('A2:B2');
+        $sheet->getStyle('A2:B2')->applyFromArray([
+            'font' => ['size' => 9, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF2E5B88']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
+        $sheet->getRowDimension(2)->setRowHeight(18);
 
         $last = $sheet->getHighestRow();
-        $sheet->getStyle('A4:B'.$last)->applyFromArray([
-            'font' => ['size' => 10, 'color' => ['argb' => 'FF333333']],
-            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_TOP],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
-        ]);
         for ($r = 4; $r <= $last; $r++) {
-            $sheet->getStyle('A'.$r)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFC20000']],
+            $sheet->getStyle('A'.$r.':B'.$r)->applyFromArray([
+                'font' => ['size' => 10, 'color' => ['argb' => 'FF333333']],
+                'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_TOP],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCBD5E1']]],
             ]);
+            if ($r % 2 === 0) {
+                $sheet->getStyle('B'.$r)->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
+                ]);
+            }
+            $sheet->getStyle('A'.$r)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF1B365D']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF1F5F9']],
+            ]);
+            $sheet->getRowDimension($r)->setRowHeight(42);
         }
 
-        $sheet->getColumnDimension('A')->setWidth(26);
+        $sheet->getColumnDimension('A')->setWidth(28);
         $sheet->getColumnDimension('B')->setWidth(100);
     }
 }
