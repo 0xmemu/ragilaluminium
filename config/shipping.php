@@ -16,9 +16,27 @@ return [
     'default_item_weight_kg' => (float) env('SHIPPING_DEFAULT_ITEM_WEIGHT', 1.0),
 
     /*
+    | Pembagi berat volumetrik (cm3 per kg).
+    |
+    | PENTING soal asal angka ini: ini BUKAN aturan resmi yang tertulis di
+    | dokumen J&T. Endpoint tarif yang kami pakai (agingCost/get) HANYA
+    | menerima `weight`, bukan dimensi, sehingga berat tagih harus dihitung
+    | di sisi kami dan dikirim sebagai data. Endpoint dimensi resmi J&T
+    | (spmComCost/getComCost) ada, tetapi akun kami belum punya izinnya
+    | (diuji 2026-09-12: "API account has no interface permissions").
+    |
+    | Angka 5000 berasal dari pengukuran perilaku tarif J&T, jadi perlakukan
+    | sebagai INFERENSI yang bisa diuji ulang, bukan aturan resmi. Kalau izin
+    | spmComCost/getComCost sudah ada, pakai endpoint itu supaya J&T sendiri
+    | yang menghitung berat tagih dan angka ini tidak dipakai lagi.
+    */
+    'volumetric_divisor' => (float) env('SHIPPING_VOLUMETRIC_DIVISOR', 5000),
+
+    /*
     | Allowance kemasan kayu/pallet per sisi (cm).
     | Dimensi luar paket = dimensi susunan isi + (2 x allowance).
     | Dipakai ShipmentPackageCalculator; nilai per produk sudah dihapus.
+    | Ini asumsi kemasan fisik Ragil (keputusan owner), bukan aturan J&T.
     */
     'pallet_allowance_per_side_cm' => (float) env('SHIPPING_PALLET_ALLOWANCE_CM', 3.0),
 

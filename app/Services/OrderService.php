@@ -428,7 +428,7 @@ class OrderService
         }
         $calculator = new ShipmentPackageCalculator(
             ShippingPalletSettings::allowancePerSideCm(),
-            (float) config('shipping.volumetric_divisor', 5000),
+            (float) config('shipping.volumetric_divisor'),
         );
         return $calculator->calculate($items);
     }
@@ -809,7 +809,7 @@ class OrderService
 
         return (new ShipmentPackageCalculator(
             ShippingPalletSettings::allowancePerSideCm(),
-            (float) config('shipping.volumetric_divisor', 5000),
+            (float) config('shipping.volumetric_divisor'),
         ))->calculate($items);
     }
 
