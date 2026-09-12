@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ShippingRecordController;
 use App\Http\Controllers\Admin\ShippingSubsidyController;
+use App\Http\Controllers\Admin\ShippingPalletSettingsController;
 use App\Http\Controllers\Admin\StorefrontPlatformController;
 use App\Http\Controllers\Admin\TentangKamiController;
 use App\Http\Controllers\Admin\TestimonialController;
