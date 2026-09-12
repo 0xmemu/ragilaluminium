@@ -12,8 +12,13 @@ use App\Services\StorePerformanceService;
  * Kontrak:
  * - Rentang mengikuti rentang laporan performa (dari from_date s.d. to_date),
  *   banding `created_at` pesanan (rule omzet: pengakuan sejak pesanan dibuat).
- * - Hanya pesanan yang masuk scope omzet (REVENUE_STATUSES, selaras StorePerformanceService).
- * - 1 baris Income Detail = 1 pesanan; 1 baris Item Terjual = 1 item pesanan.
+ * - Pesanan scope omzet (REVENUE_STATUSES, selaras StorePerformanceService)
+ *   PLUS pesanan Dibatalkan sebagai baris konteks bernilai uang NOL semua
+ *   (keputusan owner 2026-09-13): status dan identitasnya terlihat, tetapi
+ *   tidak mengubah satu pun total Laba Rugi. Agregat pembatalan tetap di
+ *   KPI (jumlah, nilai, rasio) yang sumbernya service, bukan tabel ini.
+ * - 1 baris Income Detail = 1 pesanan; 1 baris Item Terjual = 1 item pesanan
+ *   (Tabel Item tetap scope omzet saja, tanpa baris batal).
  * - Semua nilai dari snapshot order (subtotal, diskon, voucher, ongkir, COD,
  *   asuransi), bukan perhitungan ulang.
  */
@@ -22,7 +27,11 @@ class IncomeDetailQuery
     /** @return list<array<string, mixed>> */
     public static function orders(string $fromDate, string $toDate): array
     {
-        $statuses = StorePerformanceService::REVENUE_STATUSES;
+        // Scope omzet + cancelled (konteks performa; nilainya dinolkan di bawah).
+        $statuses = array_merge(
+            StorePerformanceService::REVENUE_STATUSES,
+            ['cancelled'],
+        );
 
         $orders = Order::query()
             ->with('payments')
@@ -69,7 +78,7 @@ class IncomeDetailQuery
                 $gross = $totalPaidByCustomer;
                 $net = $gross - $shippingRaw - $codFee - $refund - $returnShippingStore;
 
-                return [
+                $row = [
                     'order_number' => $order->order_number,
                     'created_at' => $order->created_at?->toIso8601String(),
                     'paid_at' => $latestPaidAt?->toIso8601String(),
@@ -104,6 +113,27 @@ class IncomeDetailQuery
                     'customer_phone' => (string) $order->customer_phone,
                     'city' => $order->shipping_city,
                 ];
+
+                // Pesanan Dibatalkan: seluruh nilai uang dan jumlah = 0 supaya
+                // SUM/SUBTOTAL Tabel Pesanan identik dengan metrik service
+                // (KPI). Baris tetap tampil sebagai konteks pembatalan; qty
+                // dan jenis SKU ikut nol agar baris JUMLAH tidak bergeser.
+                if ($order->order_status === 'cancelled') {
+                    foreach ([
+                        'subtotal_before_discount', 'discount', 'voucher_discount',
+                        'gross_revenue', 'shipping_raw', 'jnt_ongkir_assumed',
+                        'jnt_ongkir_actual', 'jnt_ongkir_selisih', 'shipping_subsidy',
+                        'shipping_net_paid_by_customer', 'cod_fee', 'refund_amount',
+                        'return_shipping_store', 'net_revenue', 'insurance',
+                        'total_paid_by_customer', 'paid_amount', 'outstanding',
+                        'items_count', 'total_qty', 'sku_count',
+                    ] as $moneyKey) {
+                        $row[$moneyKey] = 0;
+                    }
+                    $row['paid_at'] = null;
+                }
+
+                return $row;
             })
             ->all();
     }

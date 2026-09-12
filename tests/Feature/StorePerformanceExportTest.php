@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\IncomeDetailQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -525,6 +526,91 @@ class StorePerformanceExportTest extends TestCase
         // Tabel Item Agustus juga terisi.
         $it = $ss->getSheetByName('Tabel Item (Agt 2026)');
         $this->assertSame('RA-MM-1', $it->getCell('A2')->getValue());
+    }
+
+    public function test_pesanan_dibatalkan_tampil_nol_sebagai_konteks(): void
+    {
+        // Owner 2026-09-13: pesanan batal penting untuk konteks performa.
+        // Kontraknya: baris tampil di Tabel Pesanan dengan nilai uang 0
+        // (identitas terdata), total Laba Rugi tidak berubah.
+        $order = Order::create([
+            'order_number' => 'RA-BATAL-1',
+            'customer_name' => 'Batal Konteks',
+            'customer_phone' => '628123456789',
+            'shipping_address_line1' => 'Jl C',
+            'shipping_city' => 'Solo',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '57762',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'cancelled',
+            'payment_status' => 'pending',
+            'shipping_status' => 'cancelled',
+            'subtotal_amount' => 3300000,
+            'shipping_amount' => 8500,
+            'shipping_subsidy_amount' => 8500,
+            'discount_amount' => 0,
+            'total_amount' => 3308500,
+            'payment_method' => 'cod',
+            'cod_flag' => true,
+        ]);
+        $product = Product::create([
+            'parent_sku' => 'RA-BATAL-SKU',
+            'name' => 'Produk Batal',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'status' => 'archived',
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'parent_sku' => 'RA-BATAL-SKU',
+            'name' => 'Produk Batal',
+            'unit_price' => 3300000,
+            'quantity' => 1,
+            'line_subtotal' => 3300000,
+            'line_discount' => 0,
+            'line_total' => 3300000,
+        ]);
+        Order::whereKey($order->id)->update([
+            'created_at' => '2026-08-28 12:00:00',
+            'updated_at' => '2026-08-28 12:00:00',
+        ]);
+
+        $rows = IncomeDetailQuery::orders('2026-08-26', '2026-09-01');
+        $this->assertCount(1, $rows, 'pesanan batal ikut masuk Tabel Pesanan');
+        $row = $rows[0];
+        $this->assertSame('cancelled', $row['order_status']);
+        foreach ([
+            'subtotal_before_discount', 'discount', 'voucher_discount',
+            'gross_revenue', 'shipping_raw', 'shipping_subsidy',
+            'shipping_net_paid_by_customer', 'cod_fee', 'refund_amount',
+            'return_shipping_store', 'net_revenue', 'insurance',
+            'total_paid_by_customer', 'paid_amount', 'outstanding',
+            'items_count', 'total_qty', 'sku_count',
+        ] as $key) {
+            $this->assertEquals(0, $row[$key], "kolom {$key} pesanan batal wajib 0");
+        }
+        $this->assertSame('Batal Konteks', $row['customer_name'], 'identitas tetap terdata');
+
+        $payload = $this->payload();
+        $payload['income_detail'] = $rows;
+        $payload['sold_items'] = [];
+        Excel::store(new StorePerformanceExport($payload), 'perf-batal.xlsx', 'imports');
+        $ss = IOFactory::load(Storage::disk('imports')->path('perf-batal.xlsx'));
+
+        $rp = $ss->getSheetByName('Tabel Pesanan');
+        $this->assertSame('RA-BATAL-1', $rp->getCell('A2')->getValue(), 'baris batal terender');
+        $this->assertSame('Dibatalkan', $rp->getCell('E2')->getValue());
+        foreach (['G', 'I', 'N'] as $col) {
+            $this->assertEquals(0, (float) $rp->getCell($col.'2')->getValue(), "kolom {$col} baris batal = 0");
+        }
+        $this->assertSame('=N2-M2+O2+P2+Q2', $rp->getCell('R2')->getValue(), 'rumus net tetap terpasang (hasil 0 di Excel)');
+        $this->assertSame('Batal Konteks', $rp->getCell('W2')->getValue(), 'identitas di kolom W');
+
+        // Laba Rugi tetap berumus ke tabel; totalnya tidak terganggu baris nol.
+        $lr = $ss->getSheetByName('Ringkasan Finansial');
+        $this->assertStringContainsString('SUM(TabelPesanan[', (string) $lr->getCell('B6')->getValue());
     }
 
     public function test_nomor_hp_pelanggan_disimpan_sebagai_teks(): void

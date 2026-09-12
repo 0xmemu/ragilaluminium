@@ -534,8 +534,10 @@ class StorePerformanceKpiSheet extends StorePerformanceTableSheet
 // ------ 3. TABEL PESANAN (Excel Table + Total Row + identitas pembeli) ------
 
 /**
- * 1 baris = 1 pesanan (hanya pesanan dalam scope omzet; pesanan batal
- * dilaporkan terpisah di KPI). Excel Table "TabelPesanan" dengan Total Row
+ * 1 baris = 1 pesanan dalam scope omzet, PLUS pesanan Dibatalkan sebagai
+ * baris konteks bernilai uang 0 semua (keputusan owner 2026-09-13: batal
+ * penting untuk konteks performa, tapi tidak boleh mengubah total; agregat
+ * pembatalan tetap di KPI). Excel Table "TabelPesanan" dengan Total Row
  * SUBTOTAL; kolom W-Y membawa identitas pembeli agar tabel mandiri untuk
  * pivot per pelanggan/kota. Kolom Penjualan Bersih berupa rumus alur uang.
  */
@@ -1081,7 +1083,7 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
             ['Ragil Aluminium  |  Periode Laporan: '.($range['from_date'] ?? '-').' sampai '.($range['to_date'] ?? '-')],
             [''],
             ['ISI BERKAS', 'Berkas terdiri dari 6 sheet terintegrasi. Ringkasan Finansial: laba rugi bertingkat dan status arus kas, angkanya rumus yang menunjuk Tabel Pesanan. KPI Operasional Toko: metrik penjualan, kunjungan, operasional, pembayaran, retur, dan pembatalan. Tabel Pesanan dan Tabel Item: mesin hitung sekaligus basis Pivot Table (1 baris = 1 pesanan / 1 item). Analisis: agregat yang tidak bisa diturunkan dari dua tabel. Panduan: halaman ini.'],
-            ['PERAN DUA TABEL', 'Tabel Pesanan dan Tabel Item bukan duplikat laporan pesanan: keduanya sumber rumus Ringkasan Finansial dan Analisis, mengecualikan pesanan batal (dilaporkan di KPI), dan siap dipakai Pivot Table. Ubah satu sel di tabel, seluruh laporan ikut menyesuaikan.'],
+            ['PERAN DUA TABEL', 'Tabel Pesanan dan Tabel Item bukan duplikat laporan pesanan: keduanya sumber rumus Ringkasan Finansial dan Analisis, dan siap dipakai Pivot Table. Ubah satu sel di tabel, seluruh laporan ikut menyesuaikan.'],
             ['CARA MEMBACA', 'Mulai dari Ringkasan Finansial. Setiap angka pendapatan dan beban adalah rumus SUM kolom Tabel Pesanan; klik selnya untuk melihat asalnya. Baris JUMLAH di kedua tabel adalah Total Row bawaan Excel: nilai ikut menyesuaikan bila tabel difilter.'],
             ['ALUR UANG', 'Nilai produk terjual dikurangi voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan menghasilkan Total Dibayar Pembeli. Dari situ dikurangi ongkir ke J&T, biaya COD ke J&T, refund retur, dan ongkir retur toko menghasilkan Penjualan Bersih. Kolom Penjualan Bersih di Tabel Pesanan juga berupa rumus dengan urutan yang sama.'],
             ['DISKON PRODUK', "Kolom 'Hemat Pembeli vs Harga Normal' adalah selisih harga normal dengan harga jual, bukan pengurang tagihan. Nilai produk terjual sudah memakai harga promo yang berlaku."],
@@ -1089,6 +1091,7 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
             ['ARUS KAS', 'Pembayaran sudah diterima = transfer bank cair + COD cair pada periode, dihitung dari tanggal pembayaran (bukan tanggal pesanan dibuat). Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba.'],
             ['PENGUNJUNG YANG MEMBELI', 'Dihitung dari jumlah pembeli unik dibagi jumlah pengunjung, bukan jumlah pesanan dibagi pengunjung.'],
             ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya membandingkan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data.'],
+            ['PESANAN DIBATALKAN', 'Pesanan yang dibatalkan tetap tampil di Tabel Pesanan dengan seluruh nilai uang dan jumlah 0 (nomor pesanan, tanggal, metode, status, dan pelanggan tetap terdata) supaya konteks pembatalan terlihat tanpa mengubah total. Jumlah, nilai, dan rasio pembatalan ada di KPI seksi Retur & Pembatalan; rincian transaksinya ada di Laporan Pesanan.'],
             ['DETAIL PELANGGAN', 'Identitas pembeli (Nama, Nomor HP/WhatsApp, Kota) tersedia di kolom W sampai Y sheet Tabel Pesanan, dan agregat per pelanggan ada di blok Pelanggan Terbaik sheet Analisis. Nomor HP disimpan sebagai teks agar digit tidak berubah.'],
             ['BAURAN PEMBAYARAN', "Metode pembayaran distandarisasi menjadi 'COD' dan 'Transfer bank'. Porsi Nilai di blok IV sheet Analisis dihitung dari Nilai Penjualan tiap metode dibagi total keduanya."],
             ['ANALISIS', 'Blok Produk Terlaris menghitung Unit Terjual, Total Penjualan, dan Jumlah Pesanan langsung dari Tabel Item lewat SUMIFS/COUNTIFS; kriteria menunjuk kolom SKU sehingga tetap hidup bila diubah. Untuk memutar data per SKU, metode, atau status, gunakan Pivot Table dengan sumber TabelPesanan atau TabelItem.'],
