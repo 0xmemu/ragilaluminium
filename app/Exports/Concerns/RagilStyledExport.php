@@ -30,6 +30,25 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
 {
     protected bool $skipSheetAutoFilter = false;
 
+    /**
+     * Sheet yang menggambar baris headernya sendiri (mis. laporan pesanan
+     * dengan 2 baris header: baris kelompok kolom + baris judul kolom)
+     * mematikan gaya header merah bawaan.
+     */
+    protected bool $skipDefaultHeaderStyle = false;
+
+    /**
+     * Sheet yang memakai pita warna per kelompok kolom mematikan zebra
+     * kondisional bawaan supaya tidak menimpa fill yang digambar sendiri.
+     */
+    protected bool $skipZebra = false;
+
+    /**
+     * Baris pertama data (bukan header). Sheet dengan 2 baris header
+     * menggeser ini ke 3 supaya format angka tidak kena baris judul.
+     */
+    protected int $firstBodyRow = 2;
+
     use RegistersEventListeners;
 
     protected string $sheetTitle = 'Laporan';
@@ -70,6 +89,10 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
 
     public function styles(Worksheet $sheet): array
     {
+        if ($this->skipDefaultHeaderStyle) {
+            return [];
+        }
+
         return [
             1 => [
                 'font' => [
@@ -119,7 +142,7 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
         ]);
 
         // Zebra strip pada body (baris genap) supaya mudah dibaca.
-        if ($lastRow > 1) {
+        if (! $this->skipZebra && $lastRow > 1) {
             $bodyRange = "A2:{$lastCol}{$lastRow}";
             $cond = new Conditional();
             $cond->setConditionType(Conditional::CONDITION_EXPRESSION);
@@ -131,14 +154,14 @@ abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTi
 
         // Format kolom mata uang: rata kanan + "Rp" #,##0.
         foreach ($this->currencyColumns as $col) {
-            $range = "{$col}2:{$col}{$lastRow}";
+            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
             $sheet->getStyle($range)->getNumberFormat()->setFormatCode($this->currencyFormat);
             $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
         // Format kolom kuantitas: rata kanan + #,##0.
         foreach ($this->quantityColumns as $col) {
-            $range = "{$col}2:{$col}{$lastRow}";
+            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
             $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }

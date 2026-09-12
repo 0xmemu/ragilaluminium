@@ -13,9 +13,12 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Export pesanan mengikuti TEMPLATE OWNER v3 (Laporan_Performa_Toko_Lengkap_
@@ -169,16 +172,114 @@ class OrderExport implements WithMultipleSheets
 
 // ============ SHEET 1: LAPORAN TRANSAKSI (SKEMA A) ============
 
+/**
+ * Pita warna per kelompok kolom untuk laporan lebar (template owner v3).
+ *
+ * Setiap kelompok kolom punya warna baris kelompok, warna baris judul, dan
+ * warna zebra sendiri. Inilah yang membuat tabel 35 kolom tetap bisa
+ * dipindai mata tanpa kehilangan jejak kolom saat menggeser ke kanan.
+ *
+ * Satu pita = [kolom awal, kolom akhir, fill baris kelompok, fill baris
+ * judul, warna teks kelompok, fill zebra, zebra tetap?].
+ */
+final class OrderReportBands
+{
+    /** @var list<array{0:int, 1:int, 2:string, 3:string, 4:string, 5:string, 6:bool}> */
+    public const TX = [
+        [1, 5, 'FFE2E8F0', 'FF1B365D', 'FF334155', 'FFF8FAFC', false],
+        [6, 10, 'FFE0F2FE', 'FF1B365D', 'FF0369A1', 'FFF0F9FF', false],
+        [11, 17, 'FFD1E7DD', 'FF1B365D', 'FF065F46', 'FFF0FDF4', false],
+        [18, 23, 'FFFEF3C7', 'FF1B365D', 'FF92400E', 'FFFFFBEB', false],
+        [24, 26, 'FFFEE2E2', 'FF1B365D', 'FF991B1B', 'FFFEF2F2', false],
+        [27, 27, 'FFBBF7D0', 'FF14532D', 'FF166534', 'FFDCFCE7', true],
+        [28, 35, 'FFEDE9FE', 'FF1B365D', 'FF5B21B6', 'FFF5F3FF', false],
+    ];
+
+    /** @var list<array{0:int, 1:int, 2:string, 3:string, 4:string, 5:string, 6:bool}> */
+    public const REKAP = [
+        [1, 4, 'FFE2E8F0', 'FF1B365D', 'FF334155', 'FFF8FAFC', false],
+        [5, 7, 'FFD1E7DD', 'FF1B365D', 'FF065F46', 'FFF0FDF4', false],
+        [8, 9, 'FFFEE2E2', 'FF7F1D1D', 'FF991B1B', 'FFFEF2F2', true],
+        [10, 12, 'FFFEF3C7', 'FF1B365D', 'FF92400E', 'FFFFFBEB', false],
+        [13, 15, 'FFE0E7FF', 'FF312E81', 'FF3730A3', 'FFEEF2FF', true],
+        [16, 17, 'FFFEE2E2', 'FF7F1D1D', 'FF991B1B', 'FFFEF2F2', true],
+        [18, 18, 'FFBBF7D0', 'FF14532D', 'FF166534', 'FFDCFCE7', true],
+        [19, 21, 'FFEDE9FE', 'FF1B365D', 'FF5B21B6', 'FFF5F3FF', false],
+    ];
+
+    /** Warna teks isi tabel (slate 800, sama seperti template). */
+    public const BODY_TEXT = 'FF1E293B';
+
+    /**
+     * Gambar baris kelompok kolom, baris judul kolom, dan zebra per pita.
+     *
+     * @param  list<array{0:int, 1:int, 2:string, 3:string, 4:string, 5:string, 6:bool}>  $bands
+     */
+    public static function paint(
+        Worksheet $sheet,
+        array $bands,
+        int $firstBody,
+        int $lastBody,
+        string $freeze
+    ): void {
+        $sheet->getRowDimension(1)->setRowHeight(24);
+        $sheet->getRowDimension(2)->setRowHeight(36);
+
+        if ($lastBody >= $firstBody) {
+            for ($row = $firstBody; $row <= $lastBody; $row++) {
+                $sheet->getRowDimension($row)->setRowHeight(20);
+            }
+            $sheet->getRowDimension($lastBody + 1)->setRowHeight(24);
+        }
+
+        foreach ($bands as [$from, $to, $groupFill, $headerFill, $groupText, $zebraFill, $zebraFixed]) {
+            for ($col = $from; $col <= $to; $col++) {
+                $letter = Coordinate::stringFromColumnIndex($col);
+
+                $group = $sheet->getStyle($letter.'1');
+                $group->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($groupFill);
+                $group->getFont()->setBold(true)->setSize(10)->getColor()->setARGB($groupText);
+                $group->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                    ->setVertical(Alignment::VERTICAL_CENTER);
+
+                $head = $sheet->getStyle($letter.'2');
+                $head->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($headerFill);
+                $head->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FFFFFFFF');
+                $head->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                    ->setVertical(Alignment::VERTICAL_CENTER)
+                    ->setWrapText(true);
+
+                for ($row = $firstBody; $row <= $lastBody; $row++) {
+                    if ($zebraFixed) {
+                        $fill = $zebraFill;
+                    } else {
+                        $fill = $row % 2 === 1 ? 'FFFFFFFF' : $zebraFill;
+                    }
+
+                    $body = $sheet->getStyle($letter.$row);
+                    $body->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($fill);
+                    $body->getFont()->setSize(10)->getColor()->setARGB(self::BODY_TEXT);
+                    $body->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                }
+            }
+        }
+
+        $sheet->freezePane($freeze);
+    }
+}
+
 class OrderTxSheet extends RagilStyledExport implements FromArray
 {
     protected const WIDTHS = [
-        'A' => 16, 'B' => 19, 'C' => 19, 'D' => 12, 'E' => 17,
-        'F' => 26, 'G' => 42, 'H' => 24, 'I' => 11, 'J' => 18,
-        'K' => 12, 'L' => 15, 'M' => 14, 'N' => 14, 'O' => 7,
-        'P' => 15, 'Q' => 16, 'R' => 14, 'S' => 15, 'T' => 14,
-        'U' => 14, 'V' => 17, 'W' => 17, 'X' => 20, 'Y' => 13,
-        'Z' => 13, 'AA' => 15, 'AB' => 18, 'AC' => 15, 'AD' => 30,
-        'AE' => 14, 'AF' => 14, 'AG' => 18, 'AH' => 14, 'AI' => 10,
+        'A' => 16, 'B' => 18, 'C' => 18, 'D' => 14, 'E' => 16,
+        'F' => 28, 'G' => 46, 'H' => 28, 'I' => 12, 'J' => 12,
+        'K' => 16, 'L' => 20, 'M' => 18, 'N' => 18, 'O' => 8,
+        'P' => 20, 'Q' => 24, 'R' => 20, 'S' => 22, 'T' => 20,
+        'U' => 20, 'V' => 24, 'W' => 24, 'X' => 20, 'Y' => 18,
+        'Z' => 18, 'AA' => 24, 'AB' => 22, 'AC' => 18, 'AD' => 40,
+        'AE' => 18, 'AF' => 18, 'AG' => 22, 'AH' => 18, 'AI' => 12,
     ];
 
     protected const GROUPS = [
@@ -208,6 +309,9 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
     {
         $this->sheetTitle = OrderExport::SHEET_TX;
         $this->skipSheetAutoFilter = true;
+        $this->skipDefaultHeaderStyle = true;
+        $this->skipZebra = true;
+        $this->firstBodyRow = 3;
         // Kolom uang: angka polos #,##0 (pivot-friendly). Berat (I) terpisah
         // karena memakai desimal (2 angka) sesuai berat tagih pengiriman.
         $this->currencyColumns = ['L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'Y', 'Z', 'AA'];
@@ -286,38 +390,89 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         $sheet = $event->sheet->getDelegate();
         $lastRow = $sheet->getHighestRow();
 
-        // Baris 1 + 2 merah merek, teks putih.
-        $sheet->getStyle('A1:AI2')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
-            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-        ]);
-        $sheet->getStyle('A1:A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        // Baris 1 (kelompok kolom) + baris 2 (judul kolom) mengikuti
+        // template owner v3: tiap kelompok kolom punya pitanya sendiri.
         foreach (self::GROUPS as [$a, $b]) {
             if ($a !== $b) {
                 $sheet->mergeCells("{$a}:{$b}");
             }
         }
-        $sheet->getStyle('A1:AI1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('AA1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-        // Group header lebih gelap dari header kolom.
-        $sheet->getStyle('A1:AI1')->getFill()->setStartColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF8F0000'));
+        OrderReportBands::paint($sheet, OrderReportBands::TX, 3, $lastRow - 1, 'F3');
 
-        $sheet->getStyle("A{$lastRow}:AI{$lastRow}")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['argb' => 'FF8F0000']],
+        // Garis tipis mulai baris judul; baris kelompok dibiarkan bersih.
+        $sheet->getStyle("A2:AI{$lastRow}")->getBorders()->getAllBorders()->applyFromArray([
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['argb' => 'FFCBD5E1'],
         ]);
+        $sheet->getStyle('A1:AI1')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+
+        if ($lastRow < 3) {
+            return;
+        }
+
+        // Perataan per kolom: identitas & teks tengah, nama/alamat kiri,
+        // uang kanan (persis template).
+        foreach (['B', 'C', 'D', 'E', 'F', 'I', 'J', 'K', 'O', 'X', 'AC', 'AI'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+        foreach (['G', 'H', 'AB', 'AD', 'AE', 'AF', 'AG', 'AH'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        }
+        foreach (['L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'Y', 'Z', 'AA'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+
+        // Nomor pesanan dan kolom uang kunci ditebalkan seperti template.
+        $sheet->getStyle("A3:A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("A3:A{$lastRow}")->getFont()->setBold(true);
+        foreach (['N', 'O', 'P', 'Q', 'V', 'W', 'AA'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getFont()->setBold(true);
+        }
 
         // No. Telepon / WA + Kode Pos: format teks (aturan Panduan no. 27).
-        $sheet->getStyle("AC3:AC{$lastRow}")->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
-        $sheet->getStyle("AI3:AI{$lastRow}")->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+        $sheet->getStyle("AC3:AC{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+        $sheet->getStyle("AI3:AI{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
 
         // Berat (kg): desimal bebas (22,45 tampil penuh; "-" tetap teks).
         $sheet->getStyle("I3:I{$lastRow}")->getNumberFormat()->setFormatCode('0.##');
-        $sheet->getStyle("I3:I{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
-        $sheet->freezePane('A3');
+        // Baris TOTAL: hanya angka kunci yang tebal, sisanya normal, dan
+        // kolom pesanan diisi penunjuk ke tab Rekap (persis template).
+        $totalRow = "A{$lastRow}:AI{$lastRow}";
+        $sheet->getStyle($totalRow)->getFont()->setBold(false)->setSize(11)->getColor()->setARGB('FF000000');
+        $sheet->getStyle($totalRow)->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_GENERAL)
+            ->setVertical(Alignment::VERTICAL_BOTTOM);
+        $sheet->getStyle($totalRow)->getNumberFormat()->setFormatCode('General');
+        // Per sel: penghapusan lewat rentang tidak membersihkan sisi dalam.
+        for ($col = 1; $col <= count(self::HEADERS); $col++) {
+            $sheet->getStyle(Coordinate::stringFromColumnIndex($col).$lastRow)->getBorders()->applyFromArray([
+                'left' => ['borderStyle' => Border::BORDER_NONE],
+                'right' => ['borderStyle' => Border::BORDER_NONE],
+                'top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF0F172A']],
+                'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['argb' => 'FF0F172A']],
+            ]);
+        }
+
+        foreach (['A', 'O'] as $col) {
+            $sheet->getStyle("{$col}{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
+            $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+        }
+        foreach (['P', 'Q'] as $col) {
+            $sheet->getStyle("{$col}{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
+            $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
+        }
+        $sheet->getStyle("O{$lastRow}:Q{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+        foreach (['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA'] as $col) {
+            $sheet->getStyle("{$col}{$lastRow}")->getFont()->setSize(9)->getColor()->setARGB('FF64748B');
+            $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+        }
+
+        $sheet->freezePane('F3');
     }
 }
 
@@ -326,14 +481,14 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
 class OrderRekapSheet extends RagilStyledExport implements FromArray
 {
     protected const WIDTHS = [
-        'A' => 16, 'B' => 19, 'C' => 19, 'D' => 12,
-        'E' => 16, 'F' => 16, 'G' => 18,
-        'H' => 13, 'I' => 16,
-        'J' => 18, 'K' => 18, 'L' => 20,
-        'M' => 16, 'N' => 15, 'O' => 16,
-        'P' => 16, 'Q' => 16,
-        'R' => 20,
-        'S' => 18, 'T' => 15, 'U' => 22,
+        'A' => 16, 'B' => 18, 'C' => 18, 'D' => 14,
+        'E' => 20, 'F' => 20, 'G' => 24,
+        'H' => 16, 'I' => 18,
+        'J' => 20, 'K' => 22, 'L' => 24,
+        'M' => 20, 'N' => 18, 'O' => 22,
+        'P' => 18, 'Q' => 18,
+        'R' => 26,
+        'S' => 22, 'T' => 18, 'U' => 22,
     ];
 
     protected const GROUPS = [
@@ -362,6 +517,9 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
     {
         $this->sheetTitle = OrderExport::SHEET_REKAP;
         $this->skipSheetAutoFilter = true;
+        $this->skipDefaultHeaderStyle = true;
+        $this->skipZebra = true;
+        $this->firstBodyRow = 3;
         $this->currencyColumns = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
         $this->currencyFormat = '#,##0';
         $this->columnWidths = self::WIDTHS;
@@ -428,23 +586,78 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $sheet = $event->sheet->getDelegate();
         $lastRow = $sheet->getHighestRow();
 
-        $sheet->getStyle('A1:U2')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
-            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true, 'horizontal' => Alignment::HORIZONTAL_LEFT],
-        ]);
-        $sheet->getStyle('A1:U1')->getFill()->setStartColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF8F0000'));
-        $sheet->getStyle('A1:U1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         foreach (self::GROUPS as [$a, $b]) {
             if ($a !== $b) {
                 $sheet->mergeCells("{$a}:{$b}");
             }
         }
-        $sheet->getStyle("A{$lastRow}:U{$lastRow}")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['argb' => 'FF8F0000']],
+
+        OrderReportBands::paint($sheet, OrderReportBands::REKAP, 3, $lastRow - 1, 'E3');
+
+        $sheet->getStyle("A2:U{$lastRow}")->getBorders()->getAllBorders()->applyFromArray([
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['argb' => 'FFCBD5E1'],
         ]);
-        $sheet->getStyle("T3:T{$lastRow}")->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
-        $sheet->freezePane('A3');
+        $sheet->getStyle('A1:U1')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+
+        if ($lastRow < 3) {
+            return;
+        }
+
+        // Kolom TOTAL DIBAYAR PEMBELI selalu disorot amber (uang masuk).
+        $sheet->getStyle("L3:L".($lastRow - 1))->getFill()
+            ->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFEF3C7');
+
+        foreach (['B', 'C', 'D', 'T'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+        foreach (['S', 'U'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        }
+        foreach (['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+
+        $sheet->getStyle("A3:A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("A3:A{$lastRow}")->getFont()->setBold(true);
+        foreach (['G', 'L', 'O', 'R'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getFont()->setBold(true);
+        }
+
+        $sheet->getStyle("T3:T{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+
+        // Baris TOTAL: kolom kunci disorot, angka tebal, garis bawah ganda.
+        $sheet->getStyle("G{$lastRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFA7F3D0');
+        $sheet->getStyle("L{$lastRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFDE68A');
+        $sheet->getStyle("R{$lastRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF86EFAC');
+
+        $totalRow = "A{$lastRow}:U{$lastRow}";
+        $sheet->getStyle($totalRow)->getFont()->setBold(false)->setSize(11)->getColor()->setARGB('FF000000');
+        $sheet->getStyle($totalRow)->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_GENERAL)
+            ->setVertical(Alignment::VERTICAL_BOTTOM);
+        $sheet->getStyle($totalRow)->getNumberFormat()->setFormatCode('General');
+        // Per sel: penghapusan lewat rentang tidak membersihkan sisi dalam.
+        for ($col = 1; $col <= count(self::HEADERS); $col++) {
+            $sheet->getStyle(Coordinate::stringFromColumnIndex($col).$lastRow)->getBorders()->applyFromArray([
+                'left' => ['borderStyle' => Border::BORDER_NONE],
+                'right' => ['borderStyle' => Border::BORDER_NONE],
+                'top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF0F172A']],
+                'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['argb' => 'FF0F172A']],
+            ]);
+        }
+
+        $sheet->getStyle("A{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
+        $sheet->getStyle("A{$lastRow}")->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+        foreach (['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'] as $col) {
+            $sheet->getStyle("{$col}{$lastRow}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF1E293B');
+            $sheet->getStyle("{$col}{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
+        }
+        $sheet->getStyle("E{$lastRow}:R{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+
+        $sheet->freezePane('E3');
     }
 }
 
@@ -503,25 +716,32 @@ class OrderGuideSheet implements FromArray, WithTitle, WithEvents
     {
         $sheet = $event->sheet->getDelegate();
 
+        $sheet->mergeCells('A1:B1');
+        $sheet->getRowDimension(1)->setRowHeight(28);
         $sheet->getStyle('A1')->applyFromArray([
-            'font' => ['bold' => true, 'size' => 15, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFC20000']],
+            'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
-        $sheet->getRowDimension(1)->setRowHeight(24);
 
         $last = $sheet->getHighestRow();
-        $sheet->getStyle('A3:B'.$last)->applyFromArray([
-            'font' => ['size' => 10, 'color' => ['argb' => 'FF333333']],
-            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_TOP],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFDEE3E0']]],
-        ]);
         for ($r = 3; $r <= $last; $r++) {
-            $sheet->getStyle('A'.$r)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFC20000']],
-            ]);
+            $sheet->getRowDimension($r)->setRowHeight(36);
         }
 
-        $sheet->getColumnDimension('A')->setWidth(34);
-        $sheet->getColumnDimension('B')->setWidth(100);
+        $sheet->getStyle("A3:A{$last}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF1E293B']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE2E8F0']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCBD5E1']]],
+        ]);
+        $sheet->getStyle("B3:B{$last}")->applyFromArray([
+            'font' => ['size' => 10, 'color' => ['argb' => 'FF1E293B']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCBD5E1']]],
+        ]);
+
+        $sheet->getColumnDimension('A')->setWidth(38);
+        $sheet->getColumnDimension('B')->setWidth(105);
     }
 }
