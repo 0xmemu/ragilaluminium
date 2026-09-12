@@ -62,60 +62,73 @@
              mengecatnya sebelum React selesai mount. Tanpa ini layar putih
              0,7 detik pada jaringan normal dan sampai 3,6 detik pada jaringan
              lambat setiap kali halaman dimuat ulang penuh.
+             Paddingnya mengikuti AdminShell sebenarnya: sidebar 15rem, header
+             h-14, judul px-4 pt-6 pb-5 md:px-6 lg:px-8, konten px-4 pt-4
+             md:px-6 md:pt-5 lg:px-8 lg:pb-10.
              React createRoot().render() otomatis menggantikan isi #app. --}}
         <style>
-            .admin-skel { display: flex; min-height: 100vh; }
-            .admin-skel__side { width: 15rem; flex: none; border-right: 1px solid rgba(128,128,128,.22); padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
-            .admin-skel__main { flex: 1; min-width: 0; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
-            .admin-skel__bar { border-radius: .375rem; background: rgba(128,128,128,.18); animation: admin-skel-pulse 1.4s ease-in-out infinite; }
-            .admin-skel__logo { height: 2rem; width: 65%; }
-            .admin-skel__group { height: .625rem; width: 45%; margin-top: .5rem; }
-            .admin-skel__row { height: 1.75rem; }
-            .admin-skel__head { height: 2.25rem; width: 100%; }
-            .admin-skel__title { height: 1.5rem; width: 30%; margin-top: 1.5rem; }
-            .admin-skel__sub { height: .75rem; width: 50%; }
-            .admin-skel__panel { flex: 1; min-height: 14rem; border-radius: .5rem; border: 1px solid rgba(128,128,128,.16); background: rgba(128,128,128,.08); }
-            .admin-skel__fallback { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem; text-align: center; }
-            @keyframes admin-skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
-            @media (max-width: 1023px) { .admin-skel__side { display: none } }
-            @media (prefers-reduced-motion: reduce) { .admin-skel__bar { animation: none } }
+            .skel { border-radius: .375rem; background: rgba(128,128,128,.18); animation: skel-pulse 1.4s ease-in-out infinite; }
+            .skel-flat { border-radius: 0; }
+            .skel-panel { border-radius: .5rem; border: 1px solid rgba(128,128,128,.16); background: rgba(128,128,128,.08); }
+            .skel-card { border-radius: .5rem; overflow: hidden; border: 1px solid rgba(128,128,128,.14); background: rgba(128,128,128,.06); }
+            .skel-fallback { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem; text-align: center; }
+            @keyframes skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+            @media (prefers-reduced-motion: reduce) { .skel { animation: none } }
         </style>
-        <template id="admin-skel-template">
-            <div id="app-skeleton" class="admin-skel" aria-busy="true">
-                <div class="admin-skel__side">
-                    <div class="admin-skel__bar admin-skel__logo"></div>
-                    <div class="admin-skel__bar admin-skel__group"></div>
-                    <div class="admin-skel__bar admin-skel__row"></div>
-                    <div class="admin-skel__bar admin-skel__row"></div>
-                    <div class="admin-skel__bar admin-skel__row"></div>
-                    <div class="admin-skel__bar admin-skel__group"></div>
-                    <div class="admin-skel__bar admin-skel__row"></div>
-                    <div class="admin-skel__bar admin-skel__row"></div>
-                </div>
-                <div class="admin-skel__main">
-                    <div class="admin-skel__bar admin-skel__head"></div>
-                    <div class="admin-skel__bar admin-skel__title"></div>
-                    <div class="admin-skel__bar admin-skel__sub"></div>
-                    <div class="admin-skel__panel"></div>
+        <template id="app-skel-template">
+            <div id="app-skeleton" aria-busy="true">
+                <div class="min-h-screen bg-background lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+                    <aside class="sticky top-0 hidden h-screen border-r border-border lg:block">
+                        <div class="flex h-14 shrink-0 items-center border-b border-border px-3">
+                            <div class="skel h-7 w-32"></div>
+                        </div>
+                        <div class="flex flex-col gap-1.5 px-2.5 py-3">
+                            <div class="skel h-2.5 w-20"></div>
+                            <div class="skel h-9 w-full"></div>
+                            <div class="skel h-9 w-full"></div>
+                            <div class="skel h-9 w-full"></div>
+                            <div class="skel mt-2 h-2.5 w-24"></div>
+                            <div class="skel h-9 w-full"></div>
+                            <div class="skel h-9 w-full"></div>
+                        </div>
+                    </aside>
+                    <div class="min-w-0">
+                        <header class="flex h-14 items-center gap-2 border-b border-border px-4 md:px-6">
+                            <div class="skel h-9 w-full max-w-xs"></div>
+                            <div class="ml-auto flex items-center gap-1.5">
+                                <div class="skel size-8 rounded-full"></div>
+                                <div class="skel size-8 rounded-full"></div>
+                                <div class="skel h-8 w-28 rounded-full"></div>
+                            </div>
+                        </header>
+                        <div class="px-4 pb-5 pt-6 md:px-6 lg:px-8">
+                            <div class="skel h-3 w-40"></div>
+                            <div class="skel mt-6 h-6 w-72 max-w-full"></div>
+                            <div class="skel mt-2 h-3 w-56 max-w-full"></div>
+                        </div>
+                        <div class="px-4 pb-24 pt-4 md:px-6 md:pt-5 lg:px-8 lg:pb-10">
+                            <div class="skel-panel min-h-[14rem]"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </template>
         <script>
             (function () {
                 var mount = document.getElementById('app');
-                var template = document.getElementById('admin-skel-template');
+                var template = document.getElementById('app-skel-template');
                 if (!mount || !template) return;
                 if (mount.children.length === 0) {
                     mount.appendChild(template.content.cloneNode(true));
                 }
                 // Jaring pengaman: bila bundle JS gagal dimuat (mis. 404 tepat saat
-                // deploy, karena Vite menghapus public/build tiap build), skeleton
+                // deploy karena Vite menghapus public/build tiap build), skeleton
                 // akan macet selamanya. Setelah 8 detik ganti dengan tombol muat
                 // ulang supaya admin tidak buntu di layar abu-abu.
                 window.setTimeout(function () {
                     var skeleton = document.getElementById('app-skeleton');
                     if (!skeleton) return;
-                    skeleton.className = 'admin-skel__fallback';
+                    skeleton.className = 'skel-fallback';
                     skeleton.innerHTML =
                         '<p style="margin:0;font-size:15px;font-weight:600">Panel admin gagal dimuat</p>' +
                         '<p style="margin:0;max-width:24rem;font-size:13px;opacity:.7">Koneksi terputus atau aplikasi baru saja diperbarui. Muat ulang halaman untuk melanjutkan.</p>' +
@@ -124,54 +137,240 @@
             })();
         </script>
     @else
-        {{-- Skeleton etalase publik. Sama seperti panel admin, ditulis langsung
-             di HTML supaya browser mengecatnya sebelum React mount. Terukur
-             tanpa ini: beranda putih 2,3 detik, katalog 2,0 detik, halaman
-             produk 1,5 detik. React createRoot().render() otomatis
-             menggantikan isi #app saat mount. --}}
+        {{-- Skeleton etalase publik, mengikuti halaman yang sedang dimuat.
+             Bentuk dan paddingnya memakai class yang sama dengan komponen asli
+             (container-page, grid katalog, dsb.) sehingga cocok dengan halaman
+             sebenarnya. Tanpa ini layar putih 2,3 detik di beranda dan 2,0 detik
+             di katalog. React createRoot().render() menggantikan isi #app saat
+             mount. --}}
+        @php
+            $skelComponent = is_array($page ?? null) ? (string) ($page['component'] ?? '') : '';
+            $skelKind = 'default';
+            if ($skelComponent === 'Public/Home') {
+                $skelKind = 'home';
+            } elseif ($skelComponent === 'Public/ProductDetail') {
+                $skelKind = 'product';
+            } elseif ($skelComponent === 'Public/Cart') {
+                $skelKind = 'cart';
+            } elseif (str_starts_with($skelComponent, 'Public/Catalog')
+                || in_array($skelComponent, ['Public/ModelProduk', 'Public/Installations', 'Public/Reviews'], true)) {
+                $skelKind = 'listing';
+            }
+        @endphp
         <style>
-            .pub-skel { min-height: 100vh; display: flex; flex-direction: column; }
-            .pub-skel__bar { border-radius: .375rem; background: rgba(128,128,128,.18); animation: pub-skel-pulse 1.4s ease-in-out infinite; }
-            .pub-skel__announce { height: 2rem; border-radius: 0; }
-            .pub-skel__head { height: 3.5rem; border-radius: 0; border-bottom: 1px solid rgba(128,128,128,.18); }
-            .pub-skel__wrap { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-            .pub-skel__hero { height: 11rem; border-radius: .5rem; }
-            .pub-skel__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
-            .pub-skel__card { border-radius: .5rem; overflow: hidden; border: 1px solid rgba(128,128,128,.14); background: rgba(128,128,128,.06); }
-            .pub-skel__img { aspect-ratio: 1 / 1; }
-            .pub-skel__meta { padding: .625rem; display: flex; flex-direction: column; gap: .4rem; }
-            .pub-skel__t1 { height: .75rem; width: 90%; }
-            .pub-skel__t2 { height: 1rem; width: 55%; }
-            .pub-skel__fallback { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem; text-align: center; }
-            @keyframes pub-skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
-            @media (min-width: 640px) { .pub-skel__row { grid-template-columns: repeat(4, minmax(0, 1fr)); } .pub-skel__wrap { padding: 1.5rem; } }
-            @media (prefers-reduced-motion: reduce) { .pub-skel__bar { animation: none } }
+            .skel { border-radius: .375rem; background: rgba(128,128,128,.18); animation: skel-pulse 1.4s ease-in-out infinite; }
+            .skel-flat { border-radius: 0; }
+            .skel-panel { border-radius: .5rem; border: 1px solid rgba(128,128,128,.16); background: rgba(128,128,128,.08); }
+            .skel-card { border-radius: 5px; overflow: hidden; border: 1px solid rgba(128,128,128,.14); background: rgba(128,128,128,.06); }
+            .skel-fallback { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem; text-align: center; }
+            @keyframes skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+            @media (prefers-reduced-motion: reduce) { .skel { animation: none } }
         </style>
-        <template id="pub-skel-template">
-            <div id="app-skeleton" class="pub-skel" aria-busy="true">
-                <div class="pub-skel__bar pub-skel__announce"></div>
-                <div class="pub-skel__bar pub-skel__head"></div>
-                <div class="pub-skel__wrap">
-                    <div class="pub-skel__bar pub-skel__hero"></div>
-                    <div class="pub-skel__row">
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                    </div>
-                    <div class="pub-skel__row">
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                        <div class="pub-skel__card"><div class="pub-skel__bar pub-skel__img"></div><div class="pub-skel__meta"><div class="pub-skel__bar pub-skel__t1"></div><div class="pub-skel__bar pub-skel__t2"></div></div></div>
-                    </div>
-                </div>
+        <template id="app-skel-template">
+            <div id="app-skeleton" aria-busy="true" class="min-h-screen bg-background">
+                {{-- Announcement bar (hanya beranda) + header publik --}}
+                @if ($skelKind === 'home')
+                    <div class="skel skel-flat h-8"></div>
+                @endif
+                <div class="skel skel-flat h-14"></div>
+
+                @if ($skelKind === 'home')
+                    {{-- Beranda: hero full-bleed, lalu section dengan grid 2 kolom --}}
+                    <div class="skel skel-flat h-[186px] lg:h-[420px]"></div>
+                    <section class="bg-surface py-2.5">
+                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12">
+                            <div class="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:gap-4 lg:max-w-none">
+                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
+                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="py-2.5">
+                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12">
+                            <div class="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:gap-4 lg:max-w-none">
+                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
+                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
+                            </div>
+                        </div>
+                    </section>
+                @elseif ($skelKind === 'listing')
+                    {{-- Katalog dan sejenisnya: bar filter + bar urutan + grid kartu --}}
+                    <section class="border-b border-border bg-surface">
+                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12 py-4">
+                            <div class="skel h-4 w-52 max-w-full"></div>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <div class="skel h-8 w-24"></div>
+                                <div class="skel h-8 w-28"></div>
+                                <div class="skel h-8 w-24"></div>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="bg-surface">
+                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12 py-3">
+                            <div class="skel h-3 w-40"></div>
+                        </div>
+                    </section>
+                    <section class="container-page !px-2.5 py-2.5 md:!px-8 lg:!px-12">
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        <div class="skel-card">
+                            <div class="skel skel-flat aspect-square"></div>
+                            <div class="flex flex-col gap-1.5 p-2.5">
+                                <div class="skel h-3 w-[85%]"></div>
+                                <div class="skel h-4 w-[55%]"></div>
+                            </div>
+                        </div>
+                        </div>
+                    </section>
+                @elseif ($skelKind === 'product')
+                    {{-- Halaman produk: bar breadcrumb, lalu galeri + info berdampingan --}}
+                    <section class="hidden border-b border-border bg-surface md:block">
+                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12 py-3">
+                            <div class="skel h-3 w-56"></div>
+                        </div>
+                    </section>
+                    <section class="container-page !px-2.5 pb-4 pt-0 md:!px-8 lg:!px-12 lg:pt-5 lg:pb-5">
+                        <div class="grid gap-6 lg:grid-cols-[480px_minmax(0,1fr)] lg:gap-8">
+                            <div class="flex flex-col gap-2">
+                                <div class="skel skel-flat aspect-square w-full rounded-lg"></div>
+                                <div class="grid grid-cols-5 gap-2">
+                                    <div class="skel aspect-square"></div>
+                                    <div class="skel aspect-square"></div>
+                                    <div class="skel aspect-square"></div>
+                                    <div class="skel aspect-square"></div>
+                                    <div class="skel aspect-square"></div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-3">
+                                <div class="skel h-6 w-[80%]"></div>
+                                <div class="skel h-4 w-[45%]"></div>
+                                <div class="skel mt-2 h-9 w-[55%]"></div>
+                                <div class="skel mt-2 h-10 w-full"></div>
+                                <div class="skel h-10 w-full"></div>
+                                <div class="skel mt-2 h-11 w-full"></div>
+                                <div class="skel h-11 w-full"></div>
+                            </div>
+                        </div>
+                    </section>
+                @elseif ($skelKind === 'cart')
+                    {{-- Keranjang: judul, daftar item, ringkasan --}}
+                    <section class="border-b border-border bg-surface">
+                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12 py-4">
+                            <div class="skel h-5 w-40"></div>
+                        </div>
+                    </section>
+                    <section class="container-page !px-2.5 py-2.5 md:!px-8 lg:!px-12">
+                        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
+                            <div class="flex flex-col gap-3">
+                                <div class="skel-panel flex gap-3 p-3">
+                                    <div class="skel size-20 shrink-0"></div>
+                                    <div class="flex flex-1 flex-col gap-2">
+                                        <div class="skel h-4 w-[70%]"></div>
+                                        <div class="skel h-3 w-[40%]"></div>
+                                        <div class="skel h-4 w-[30%]"></div>
+                                    </div>
+                                </div>
+                                <div class="skel-panel flex gap-3 p-3">
+                                    <div class="skel size-20 shrink-0"></div>
+                                    <div class="flex flex-1 flex-col gap-2">
+                                        <div class="skel h-4 w-[65%]"></div>
+                                        <div class="skel h-3 w-[35%]"></div>
+                                        <div class="skel h-4 w-[30%]"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="skel-panel flex flex-col gap-3 p-4">
+                                <div class="skel h-4 w-32"></div>
+                                <div class="skel h-3 w-full"></div>
+                                <div class="skel h-3 w-[80%]"></div>
+                                <div class="skel h-3 w-[60%]"></div>
+                                <div class="skel mt-2 h-10 w-full"></div>
+                            </div>
+                        </div>
+                    </section>
+                @else
+                    {{-- Halaman teks/statis: judul + paragraf --}}
+                    <section class="container-page !px-2.5 py-4 md:!px-8 lg:!px-12 lg:py-8">
+                        <div class="skel h-6 w-64 max-w-full"></div>
+                        <div class="skel mt-2 h-3 w-80 max-w-full"></div>
+                        <div class="skel-panel mt-5 flex flex-col gap-3 p-4">
+                            <div class="skel h-3 w-full"></div>
+                            <div class="skel h-3 w-[92%]"></div>
+                            <div class="skel h-3 w-[86%]"></div>
+                            <div class="skel h-3 w-[70%]"></div>
+                            <div class="skel mt-2 h-3 w-[88%]"></div>
+                            <div class="skel h-3 w-[64%]"></div>
+                        </div>
+                    </section>
+                @endif
             </div>
         </template>
         <script>
             (function () {
                 var mount = document.getElementById('app');
-                var template = document.getElementById('pub-skel-template');
+                var template = document.getElementById('app-skel-template');
                 if (!mount || !template) return;
                 if (mount.children.length === 0) {
                     mount.appendChild(template.content.cloneNode(true));
@@ -183,7 +382,7 @@
                 window.setTimeout(function () {
                     var skeleton = document.getElementById('app-skeleton');
                     if (!skeleton) return;
-                    skeleton.className = 'pub-skel__fallback';
+                    skeleton.className = 'skel-fallback';
                     skeleton.innerHTML =
                         '<p style="margin:0;font-size:15px;font-weight:600">Halaman gagal dimuat</p>' +
                         '<p style="margin:0;max-width:24rem;font-size:13px;opacity:.7">Koneksi terputus atau situs baru saja diperbarui. Muat ulang halaman untuk melanjutkan.</p>' +
