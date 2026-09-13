@@ -23,6 +23,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import type { Pagination as PaginationData } from "@/types"
 
 interface TabItem {
@@ -390,6 +391,25 @@ export default function TestimonialsIndex({
     )
   }
 
+  function reorderRows(from: number, to: number) {
+    if (from === to) return
+    const next = [...orderedRows]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
+    setOrderedRows(numbered)
+    reorderForm.setData(
+      "rows",
+      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
+    )
+  }
+
+  const dnd = useRowDragSort({
+    enabled: reorderMode,
+    count: orderedRows.length,
+    onReorder: reorderRows,
+  })
+
   const websiteRows = reorderMode || canReorder ? orderedRows : (rows as WebsiteRow[])
   const channelOptionsList = channelOptions ?? []
   const showTabs = tabs.length > 0
@@ -572,7 +592,7 @@ export default function TestimonialsIndex({
                 </thead>
                 <tbody>
                   {websiteRows.map((row, index) => (
-                    <tr key={row.id} className="border-t border-border align-top">
+                    <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
                       <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
                       {reorderMode ? (
                         <td className="px-3 py-3">

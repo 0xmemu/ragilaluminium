@@ -13,6 +13,7 @@ import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -199,6 +200,25 @@ export default function FaqIndex({
       numbered.map((row, i) => ({ id: row.id, sort_order: i })),
     )
   }
+
+  function reorderRows(from: number, to: number) {
+    if (from === to) return
+    const next = [...rows]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
+    setRows(numbered)
+    reorderForm.setData(
+      "rows",
+      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
+    )
+  }
+
+  const dnd = useRowDragSort({
+    enabled: reorderMode && !isArchivedTab,
+    count: rows.length,
+    onReorder: reorderRows,
+  })
 
   function startEdit(row: FaqRow) {
     setEditingId(row.id)
@@ -458,7 +478,7 @@ export default function FaqIndex({
               const open = openId === row.id
               const editing = editingId === row.id
               return (
-                <li key={row.id} className="p-4 sm:p-5">
+                <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode && !isArchivedTab ? dnd.rowProps(index) : {})}>
                   <div className="flex flex-wrap items-start gap-3">
                     {reorderMode && !isArchivedTab ? (
                       <div className="flex flex-col gap-1">

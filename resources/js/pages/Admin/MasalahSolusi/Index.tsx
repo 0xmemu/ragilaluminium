@@ -13,6 +13,7 @@ import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 
 interface Row {
   id: number
@@ -101,6 +102,25 @@ export default function MasalahSolusiIndex({
       numbered.map((row, i) => ({ id: row.id, sort_order: i })),
     )
   }
+
+  function reorderRows(from: number, to: number) {
+    if (from === to) return
+    const next = [...rows]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
+    setRows(numbered)
+    reorderForm.setData(
+      "rows",
+      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
+    )
+  }
+
+  const dnd = useRowDragSort({
+    enabled: reorderMode,
+    count: rows.length,
+    onReorder: reorderRows,
+  })
 
   return (
     <AdminLayout
@@ -194,7 +214,7 @@ export default function MasalahSolusiIndex({
         {rows.length ? (
           <ul className="divide-y divide-border">
             {rows.map((row, index) => (
-              <li key={row.id} className="p-4 sm:p-5">
+              <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
                 <div className="flex flex-wrap items-start gap-3">
                   {reorderMode ? (
                     <div className="flex flex-col gap-1">

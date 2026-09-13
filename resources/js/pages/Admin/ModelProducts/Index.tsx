@@ -14,6 +14,7 @@ import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { routeUrl } from "@/lib/routes"
 
 interface ModelRow {
@@ -101,6 +102,25 @@ export default function ModelProductsIndex({
     )
   }
 
+  function reorderRows(from: number, to: number) {
+    if (from === to) return
+    const next = [...rows]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
+    setRows(numbered)
+    reorderForm.setData(
+      "rows",
+      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
+    )
+  }
+
+  const dnd = useRowDragSort({
+    enabled: reorderMode,
+    count: rows.length,
+    onReorder: reorderRows,
+  })
+
   return (
     <AdminLayout
       title={title}
@@ -143,7 +163,7 @@ export default function ModelProductsIndex({
 
       {reorderMode ? (
         <div className="mb-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Atur urutan model produk dengan tombol naik/turun, lalu simpan.
+          Atur urutan dengan drag & drop atau tombol naik/turun, lalu simpan.
         </div>
       ) : null}
 
@@ -192,7 +212,7 @@ export default function ModelProductsIndex({
               </thead>
               <tbody>
                 {rows.map((row, index) => (
-                  <tr key={row.id} className="border-t border-border align-top">
+                  <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
                     <td className="px-3 py-3">
                       {reorderMode ? (
                         <div className="flex flex-col gap-1">

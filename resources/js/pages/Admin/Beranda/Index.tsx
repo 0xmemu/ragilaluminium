@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 
 interface SectionRow {
   key: string
@@ -77,6 +78,20 @@ export default function BerandaIndex({
     syncForm(next)
   }
 
+  function reorderSections(from: number, to: number) {
+    if (from === to) return
+    const next = [...sections]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    syncForm(next)
+  }
+
+  const dnd = useRowDragSort({
+    enabled: reorderMode,
+    count: sections.length,
+    onReorder: reorderSections,
+  })
+
   function toggleEnabled(index: number) {
     const next = sections.map((section, i) =>
       i === index ? { ...section, enabled: !section.enabled } : section,
@@ -116,7 +131,8 @@ export default function BerandaIndex({
         {sections.map((section, index) => (
           <article
             key={section.key}
-            className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
+            className={cn("flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm", dnd.draggingIndex === index && "opacity-40")}
+            {...(reorderMode ? dnd.rowProps(index) : {})}
           >
             {reorderMode ? (
               <div className="flex flex-col gap-1">

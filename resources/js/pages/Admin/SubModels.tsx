@@ -19,6 +19,7 @@ import {
 import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { routeUrl } from "@/lib/routes"
 
 interface SubModelRow {
@@ -79,6 +80,21 @@ export default function SubModelsIndex({
     reorderForm.setData("rows", next.map((row, rowIndex) => ({ id: row.id, sort_order: rowIndex })))
   }
 
+  function reorderRows(from: number, to: number) {
+    if (from === to) return
+    const next = [...rows]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    setRows(next)
+    reorderForm.setData("rows", next.map((row, rowIndex) => ({ id: row.id, sort_order: rowIndex })))
+  }
+
+  const dnd = useRowDragSort({
+    enabled: reorderMode,
+    count: rows.length,
+    onReorder: reorderRows,
+  })
+
   function saveOrder() {
     reorderForm.post(reorderUrl, { preserveScroll: true })
   }
@@ -111,7 +127,7 @@ export default function SubModelsIndex({
       <div className="space-y-6">
         {reorderMode ? (
           <div className="rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-            Atur urutan sub model dengan tombol naik/turun, lalu simpan.
+            Atur urutan dengan drag & drop atau tombol naik/turun, lalu simpan.
           </div>
         ) : null}
 
@@ -157,7 +173,7 @@ export default function SubModelsIndex({
               </TableHeader>
               <TableBody>
                 {rows.map((row, index) => (
-                  <TableRow key={row.id}>
+                  <TableRow key={row.id} className={cn(dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
                     <TableCell className="text-center">
                       {reorderMode ? (
                         <div className="flex flex-col">
