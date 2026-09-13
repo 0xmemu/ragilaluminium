@@ -282,6 +282,14 @@ class WhatsAppService
     protected function handleCanonicalWebhook(string $provider, array $messages, array $statuses): void
     {
         foreach ($messages as $msg) {
+            // Nomor saluran/newsletter (LID berdigit panjang) bukan penerima
+            // sah: kontrak owner, jangan disimpan, tidak buat notifikasi.
+            // Batas E.164: 7-15 digit. LID saluran berdigit 16-21.
+            $inboundDigits = preg_replace('/\D+/', '', (string) ($msg['phone'] ?? ''));
+            if ($inboundDigits !== '' && (strlen($inboundDigits) < 7 || strlen($inboundDigits) > 15)) {
+                continue;
+            }
+
             $providerId = $msg['provider_message_id'] ?? null;
             $attributes = [
                 'direction' => 'inbound',
