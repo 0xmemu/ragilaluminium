@@ -1,6 +1,8 @@
 import { Link, router } from "@inertiajs/react"
+import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/admin/ui/button"
 import {
   DropdownMenu,
@@ -76,13 +78,40 @@ export function dedupeManualShippingReviews(
   })
 }
 
+type Kategori = "semua" | "wa" | "pesanan"
+
+const KATEGORI_TABS: Array<{ key: Kategori; label: string }> = [
+  { key: "semua", label: "Semua" },
+  { key: "wa", label: "Pesan WA" },
+  { key: "pesanan", label: "Pesanan" },
+]
+
+/** Kelompokkan notifikasi: WA, pesanan, atau lainnya (media, sistem). */
+function kategoriOf(notification: NotificationItem): "wa" | "pesanan" | "lainnya" {
+  const type = notification.type.toLowerCase()
+  if (type.includes("whatsapp")) return "wa"
+  if (
+    type.includes("order") ||
+    type.includes("shipping") ||
+    (notification.href ?? "").includes("/admin/orders")
+  ) {
+    return "pesanan"
+  }
+  return "lainnya"
+}
+
 export function NotificationBell({
   notifications,
 }: {
   notifications: NotificationItem[]
 }) {
+  const [kategori, setKategori] = React.useState<Kategori>("semua")
   const visibleNotifications = dedupeManualShippingReviews(notifications)
   const unread = visibleNotifications.filter((n) => !n.read_at).length
+  const filteredNotifications =
+    kategori === "semua"
+      ? visibleNotifications
+      : visibleNotifications.filter((n) => kategoriOf(n) === kategori)
 
   function markRead(id: number) {
     router.post(routeUrl("admin.notifications.read", { notification: id }), {}, {
@@ -132,13 +161,35 @@ export function NotificationBell({
           ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <div className="flex items-center gap-1 px-3 pb-2">
+          {KATEGORI_TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setKategori(key)}
+              className={cn(
+                "rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                kategori === key
+                  ? "bg-foreground text-background shadow-xs"
+                  : "text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <DropdownMenuSeparator />
         <div className="max-h-[min(60vh,26rem)] overflow-y-auto">
-          {visibleNotifications.length === 0 ? (
+          {filteredNotifications.length === 0 ? (
             <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
-              Belum ada notifikasi.
+              {kategori === "wa"
+                ? "Belum ada pesan WhatsApp."
+                : kategori === "pesanan"
+                  ? "Belum ada notifikasi pesanan."
+                  : "Belum ada notifikasi."}
             </p>
           ) : (
-            visibleNotifications.slice(0, 12).map((n) => (
+            filteredNotifications.slice(0, 12).map((n) => (
               <Link
                 key={n.id}
                 href={n.href ?? "#"}
