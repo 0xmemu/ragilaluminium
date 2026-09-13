@@ -202,10 +202,10 @@ export default function MediaHistory({
         ))}
         </div>
         {liveActive ? (
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success px-2.5 py-1 text-[11px] font-medium text-success-foreground">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-white" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
             </span>
             Live
           </span>
