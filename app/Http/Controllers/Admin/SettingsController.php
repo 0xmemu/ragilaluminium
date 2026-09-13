@@ -16,7 +16,7 @@ class SettingsController extends Controller
 
         return Inertia::render('Admin/ResourceShow', [
             'title' => 'Pengaturan Sistem',
-            'subtitle' => 'Status integrasi dari environment server (.env / config) — read-only di admin.',
+            'subtitle' => 'Status integrasi dari environment server (.env / config), read-only di admin.',
             'fields' => [
                 ['label' => 'WhatsApp Base URL', 'value' => config('services.whatsapp.base_url')],
                 ['label' => 'WhatsApp Number ID', 'value' => config('services.whatsapp.number_id') ?: '-'],
