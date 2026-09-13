@@ -52,6 +52,7 @@ export default function SubModelsIndex({
   reorderUrl: string
 }) {
   const [rows, setRows] = React.useState(initialRows)
+  const [reorderMode, setReorderMode] = React.useState(false)
   const [busyId, setBusyId] = React.useState<number | null>(null)
   const reorderForm = useForm({
     rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
@@ -88,9 +89,14 @@ export default function SubModelsIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={saveOrder} disabled={reorderForm.processing}>
-            {reorderForm.processing ? "Menyimpan..." : "Simpan Urutan"}
+          <Button variant="secondary" onClick={() => setReorderMode((v) => !v)}>
+            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
           </Button>
+          {reorderMode ? (
+            <Button onClick={saveOrder} disabled={reorderForm.processing}>
+              {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+            </Button>
+          ) : null}
           <Button asChild>
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
@@ -103,6 +109,12 @@ export default function SubModelsIndex({
       <Head title={title} />
       <ManageProductsTabs active="subModels" />
       <div className="space-y-6">
+        {reorderMode ? (
+          <div className="rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
+            Atur urutan sub model dengan tombol naik/turun, lalu simpan.
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {modelOptions.map((option) => (
@@ -146,25 +158,29 @@ export default function SubModelsIndex({
               <TableBody>
                 {rows.map((row, index) => (
                   <TableRow key={row.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <button
-                          type="button"
-                          className={cn(rowActionTextClass, "disabled:opacity-30")}
-                          disabled={index === 0}
-                          onClick={() => move(index, -1)}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className={cn(rowActionTextClass, "disabled:opacity-30")}
-                          disabled={index === rows.length - 1}
-                          onClick={() => move(index, 1)}
-                        >
-                          ↓
-                        </button>
-                      </div>
+                    <TableCell className="text-center">
+                      {reorderMode ? (
+                        <div className="flex flex-col">
+                          <button
+                            type="button"
+                            className={cn(rowActionTextClass, "disabled:opacity-30")}
+                            disabled={index === 0}
+                            onClick={() => move(index, -1)}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(rowActionTextClass, "disabled:opacity-30")}
+                            disabled={index === rows.length - 1}
+                            onClick={() => move(index, 1)}
+                          >
+                            ↓
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">{index + 1}</span>
+                      )}
                     </TableCell>
                     <TableCell className="font-mono text-xs">{row.code}</TableCell>
                     <TableCell className="font-medium">
