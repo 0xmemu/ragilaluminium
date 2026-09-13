@@ -185,7 +185,7 @@ export default function Checkout({
       {/* Indikator langkah checkout */}
       <section className="border-b border-border bg-surface">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          <ol className="mx-auto grid w-full max-w-lg grid-cols-3 py-4 lg:py-5" aria-label="Langkah checkout">
+          <ol className="mx-auto grid w-full max-w-2xl grid-cols-3 py-5 lg:py-6" aria-label="Langkah checkout">
             {steps.map((step, idx) => {
               const active = !step.done && (idx === 0 || [0, 1].slice(0, idx).every((i) => steps[i].done))
               return (
@@ -210,7 +210,7 @@ export default function Checkout({
                   </span>
                   <span
                     className={cn(
-                      "mt-1.5 text-xs leading-tight font-semibold lg:text-sm",
+                      "mt-2 text-xs leading-tight font-semibold lg:text-sm",
                       step.done || active ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
