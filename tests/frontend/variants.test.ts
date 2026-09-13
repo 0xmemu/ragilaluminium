@@ -15,6 +15,7 @@ const variants: ProductVariant[] = [
     stock: 0,
     variation_1_name: "Warna",
     variation_1_option: "Hitam",
+    dimension_compact: "120x100",
     dimension_label: "120 × 100 cm",
     label: "Hitam · 120 × 100 cm",
   },
@@ -25,6 +26,7 @@ const variants: ProductVariant[] = [
     stock: 5,
     variation_1_name: "Warna",
     variation_1_option: "Putih",
+    dimension_compact: "140x100",
     dimension_label: "140 × 100 cm",
     label: "Putih · 140 × 100 cm",
   },
@@ -70,7 +72,8 @@ describe("product variant resolution", () => {
   it("derives option and dimension axes from backend variants", () => {
     expect(variantAxes(variants)).toEqual([
       { name: "Warna", options: ["Putih", "Hitam"] },
-      { name: "Ukuran", options: ["120 × 100 cm", "140 × 100 cm"] },
+      // Axis Ukuran memakai dimension_compact; label dipetakan resolveVariant.
+      { name: "Ukuran", options: ["120x100", "140x100"] },
     ])
   })
 
@@ -79,7 +82,7 @@ describe("product variant resolution", () => {
     expect(
       resolveVariant(variants, {
         Warna: "Putih",
-        Ukuran: "140 × 100 cm",
+        Ukuran: "140x100",
       })?.variant_sku,
     ).toBe("WIN-WHT-140")
   })
