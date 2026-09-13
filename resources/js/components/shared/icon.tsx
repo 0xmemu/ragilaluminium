@@ -51,6 +51,7 @@ import {
   Gavel,
   GitBranch,
   HandCoins,
+  Money,
   Headset,
   House,
   ImageSquare,
@@ -159,6 +160,7 @@ const iconRegistry: Record<string, ComponentType<IconProps>> = {
   house: House,
   history: ClockCounterClockwise,
   "hand-coins": HandCoins,
+  cod: Money,
   headset: Headset,
   "help-circle": Question,
   image: ImageSquare,
@@ -354,11 +356,69 @@ export interface RagilIconProps extends IconProps {
   name: string
 }
 
+/**
+ * Alias nama ikon yang tersimpan di database/setting tetapi tidak persis
+ * dengan kunci registry (kontrak owner: ikon yang tidak terdaftar dicari
+ * mandiri, bukan langsung jatuh ke Circle).
+ */
+const iconAliases: Record<string, string> = {
+  cod: "money",
+  shield: "security",
+  "shield-check": "security",
+  hand_coins: "hand-coins",
+  handcoin: "hand-coins",
+  layoutgrid: "grid-2x2",
+  layout_grid: "grid-2x2",
+  grid: "grid-2x2",
+  image: "images",
+  picture: "images",
+  photo: "media",
+  chat: "chat",
+  chats: "chat",
+  message: "chat",
+  "message-circle": "chat",
+  "message-square": "chat",
+  trash2: "trash",
+  cash: "money",
+  coin: "hand-coins",
+  coins: "hand-coins",
+  guarantee: "security",
+  warranty: "security",
+  shipping_cost: "shipping",
+}
+
+/** Cari kunci registry untuk nama ikon apa pun dari database/setting. */
+function resolveIconName(raw?: string | null): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  if (trimmed in iconRegistry) return trimmed
+
+  // Bentuk umum: spasi/underscore menjadi dash, lalu huruf kecil.
+  const dashed = trimmed.replace(/[\s_]+/g, "-").toLowerCase()
+  if (dashed in iconRegistry) return dashed
+
+  // Tanpa pemisah (mis. "handcoins", "layoutgrid").
+  const compact = dashed.replace(/-/g, "")
+  for (const key of Object.keys(iconRegistry)) {
+    if (key.replace(/-/g, "") === compact) return key
+  }
+
+  // Alias manual terakhir.
+  if (dashed in iconAliases && iconAliases[dashed] in iconRegistry) {
+    return iconAliases[dashed]
+  }
+
+  return null
+}
+
 export function Icon({ name, weight = "regular", ...props }: RagilIconProps) {
-  const IconComponent = iconRegistry[name] ?? Circle
+  const resolved = resolveIconName(name)
+  if (!resolved) return null
+  const IconComponent = iconRegistry[resolved] ?? Circle
   return <IconComponent weight={weight} {...props} />
 }
 
 export function hasIcon(name: string): boolean {
-  return name in iconRegistry
+  return resolveIconName(name) !== null
 }
