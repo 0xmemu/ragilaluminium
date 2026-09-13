@@ -253,10 +253,6 @@
     color: hsl(215 16% 47%); /* #64748b slate 500, lebih tegas dari muted/80 */
   }
 
-  html.admin-shell:not(.light) .admin-status-danger {
-    color: hsl(0 90% 72%);
-  }
-
   html.admin-shell .admin-main {
     background: hsl(var(--background));
   }

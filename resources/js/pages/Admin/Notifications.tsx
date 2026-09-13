@@ -19,9 +19,9 @@ const typeIcons: Record<string, string> = {
 }
 
 const typeColors: Record<string, string> = {
-  order_created: "bg-primary/10 text-primary",
-  order_delivered: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  order_cancelled: "bg-destructive/10 text-destructive",
+  order_created: "bg-primary text-primary-foreground",
+  order_delivered: "bg-success text-success-foreground",
+  order_cancelled: "bg-destructive text-destructive-foreground",
 }
 
 export default function Notifications({
