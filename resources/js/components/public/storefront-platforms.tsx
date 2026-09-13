@@ -90,6 +90,7 @@ export function StorefrontPlatforms({
   platforms,
   title = "Ikuti Kami",
   titleClassName,
+  titleTag: TitleTag = "h2",
   className,
   variant = "light",
   layout = "grouped",
@@ -101,6 +102,7 @@ export function StorefrontPlatforms({
   title?: string
   /** Override gaya judul (mis. footer: turun 12px + 12px). */
   titleClassName?: string
+  titleTag?: "h2" | "h3"
   className?: string
   variant?: "light" | "dark"
   /** grouped = Marketplace + Media Sosial terpisah; inline = deretan ringkas */
@@ -152,7 +154,7 @@ export function StorefrontPlatforms({
   return (
     <div className={cn("space-y-6", className, centered && "text-center")}>
       {title ? (
-        <h2
+        <TitleTag
           className={cn(
             compact ? "text-sm font-bold" : "text-lg font-semibold",
             "tracking-tight",
@@ -161,7 +163,7 @@ export function StorefrontPlatforms({
           )}
         >
           {title}
-        </h2>
+        </TitleTag>
       ) : null}
 
       {marketplaces.length ? (

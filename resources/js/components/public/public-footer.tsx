@@ -20,9 +20,9 @@ function FooterLinks({ column }: { column?: FooterColumn }) {
   return (
     <nav aria-label={column.title ?? "Tautan footer"}>
       {column.title ? (
-        <h2 className="mt-3 text-xs font-bold tracking-tight text-white">
+        <h3 className="footer-heading mt-3 text-[11px] font-bold tracking-tight text-white">
           {column.title}
-        </h2>
+        </h3>
       ) : null}
       <ul className={cn(column.title && "mt-4", "space-y-2.5")}>
         {column.links.map((link) => (
@@ -106,21 +106,21 @@ export function PublicFooter({ className }: { className?: string }) {
             </address>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 lg:mt-12">
             <FooterLinks column={footer?.products} />
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 lg:mt-12">
             <FooterLinks column={footer?.help} />
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 lg:mt-12">
             <FooterLinks column={footer?.company} />
           </div>
           {showPlatformStrip ? (
-            <div className="sm:col-span-2 lg:col-span-3">
+            <div className="sm:col-span-2 lg:col-span-3 lg:mt-12">
               <StorefrontPlatforms
                 platforms={platforms}
                 title="Ikuti Kami"
-                titleClassName="mt-3 text-xs"
+                titleClassName="footer-heading mt-3 text-[11px]" titleTag="h3"
                 variant="dark"
                 compact
                 iconsOnly
@@ -128,8 +128,8 @@ export function PublicFooter({ className }: { className?: string }) {
             </div>
           ) : null}
           {showLegacySocial ? (
-            <div className="sm:col-span-2 lg:col-span-3">
-              <p className="mt-3 text-xs font-bold tracking-tight text-white">Ikuti Kami</p>
+            <div className="sm:col-span-2 lg:col-span-3 lg:mt-12">
+              <p className="mt-3 text-[11px] font-bold tracking-tight text-white">Ikuti Kami</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {socials.map((social) => (
                   <SocialIcon key={social.key} social={social} />
