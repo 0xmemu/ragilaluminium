@@ -64,6 +64,7 @@ export function ListToolbar({
                 aria-hidden="true"
               />
               <Input
+                name="q"
                 value={search.value}
                 onChange={(event) => search.onChange(event.target.value)}
                 placeholder={search.placeholder ?? "Cari…"}
