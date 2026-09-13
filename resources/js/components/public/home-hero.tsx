@@ -349,14 +349,17 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
     <section id="promo" className="scroll-mt-20 bg-surface lg:pt-2" aria-label="Promo dan campaign">
       {/* Slider promo full-width: keluar dari container ber-padding, tanpa rounded. */}
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-4">
+        {/* Pembungkus posisi: tombol outset WAJIB di luar pembungkus
+            overflow-hidden, kalau tidak sisi menjoroknya terpotong (13-09). */}
         <div
           ref={surfaceRef}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onFocusCapture={() => setPaused(true)}
           onBlurCapture={() => setPaused(false)}
-          className="relative w-full overflow-hidden [touch-action:pan-y]"
+          className="relative"
         >
+          <div className="relative w-full overflow-hidden [touch-action:pan-y]">
           <div
             className={cn(
               // Rasio paten 1024/426 (±2.4:1): tinggi otomatis = lebar / rasio.
@@ -384,21 +387,6 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
 
           {total > 1 ? (
             <>
-              <CarouselNavButton
-                side="left"
-                label="Slide sebelumnya"
-                enabled
-                sideOffset="outset"
-                onClick={() => goTo(visibleIndex - 1)}
-              />
-              <CarouselNavButton
-                side="right"
-                label="Slide berikutnya"
-                enabled
-                sideOffset="outset"
-                onClick={() => goTo(visibleIndex + 1)}
-              />
-
               <div className="absolute inset-x-0 bottom-1 flex justify-center gap-0.5">
                 {Array.from({ length: dotCount }).map((_, index) => (
                   <button
@@ -418,6 +406,26 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
                   </button>
                 ))}
               </div>
+            </>
+          ) : null}
+          </div>
+
+          {total > 1 ? (
+            <>
+              <CarouselNavButton
+                side="left"
+                label="Slide sebelumnya"
+                enabled
+                sideOffset="outset"
+                onClick={() => goTo(visibleIndex - 1)}
+              />
+              <CarouselNavButton
+                side="right"
+                label="Slide berikutnya"
+                enabled
+                sideOffset="outset"
+                onClick={() => goTo(visibleIndex + 1)}
+              />
             </>
           ) : null}
         </div>
