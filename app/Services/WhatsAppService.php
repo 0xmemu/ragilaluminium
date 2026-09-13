@@ -4,16 +4,20 @@ namespace App\Services;
 
 use App\Events\OrderCreated;
 use App\Events\PaymentConfirmed;
+use App\Models\AdminNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
+use App\Support\AdminLiveEvents;
 use App\Support\BankTransferInstructions;
+use App\Support\OrderEta;
 use App\Support\PhoneNumber;
 use App\Support\WhatsAppSessionNotifier;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class WhatsAppService
 {
@@ -282,14 +286,6 @@ class WhatsAppService
     protected function handleCanonicalWebhook(string $provider, array $messages, array $statuses): void
     {
         foreach ($messages as $msg) {
-            // Nomor saluran/newsletter (LID berdigit panjang) bukan penerima
-            // sah: kontrak owner, jangan disimpan, tidak buat notifikasi.
-            // Batas E.164: 7-15 digit. LID saluran berdigit 16-21.
-            $inboundDigits = preg_replace('/\D+/', '', (string) ($msg['phone'] ?? ''));
-            if ($inboundDigits !== '' && (strlen($inboundDigits) < 7 || strlen($inboundDigits) > 15)) {
-                continue;
-            }
-
             $providerId = $msg['provider_message_id'] ?? null;
             $attributes = [
                 'direction' => 'inbound',
@@ -407,7 +403,7 @@ class WhatsAppService
 
         // Kontrak owner 2026-09-03: footer balasan wajib di SEMUA pesan template
         // agar sesi WhatsApp tidak ter-flag spam karena tanpa interaksi.
-        return $rendered . self::REPLY_SIGNATURE;
+        return $rendered.self::REPLY_SIGNATURE;
     }
 
     protected function toBaileysChatId(string $phone): string
@@ -477,9 +473,9 @@ class WhatsAppService
         $cleanPhone = $phone ?? $message->phone_number;
         $senderName = $order?->customer_name;
         $label = $senderName ? "{$senderName} ({$cleanPhone})" : $cleanPhone;
-        $preview = \Illuminate\Support\Str::limit((string) $message->content_text, 80);
+        $preview = Str::limit((string) $message->content_text, 80);
 
-        \App\Models\AdminNotification::create([
+        AdminNotification::create([
             'type' => 'whatsapp_inbound',
             'title' => 'Pesan WhatsApp Masuk',
             'body' => "{$label}: {$preview}",
@@ -489,7 +485,7 @@ class WhatsAppService
                 : route('admin.orders.index', ['search' => $cleanPhone]),
         ]);
 
-        \App\Support\AdminLiveEvents::whatsAppReceived($message);
+        AdminLiveEvents::whatsAppReceived($message);
     }
 
     /**
@@ -881,12 +877,11 @@ class WhatsAppService
 
     protected function formatEta(Order $order): string
     {
-        return \App\Support\OrderEta::whatsappLabel($order);
+        return OrderEta::whatsappLabel($order);
     }
 
     protected function formatTotal(Order $order): string
     {
         return number_format((float) $order->total_amount, 0, ',', '.');
     }
-
 }
