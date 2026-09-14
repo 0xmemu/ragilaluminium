@@ -35,7 +35,11 @@ class CheckoutController extends Controller
 
     public function index(Request $request): Response|RedirectResponse
     {
-        $this->prepareCheckoutIdempotencyKey($request);
+        // Setiap kunjungan halaman checkout memakai token checkout BARU bila
+        // token sebelumnya sudah terpakai order. Tanpa ini, pembeli yang
+        // alamatnya sudah tersimpan (tidak memanggil validateDetails) memakai
+        // token lama, lalu "Buat Pesanan" mengembalikan ORDER LAMA seolah
+        $this->prepareCheckoutIdempotencyKey($request, rotateCompleted: true);
 
         // Baris yang benar-benar di-checkout. Berat paket & tarif J&T WAJIB
         // memakai daftar ini, bukan seluruh isi keranjang (bug 2026-09-14:
@@ -50,10 +54,19 @@ class CheckoutController extends Controller
 
         $priced = $this->cart->pricedLines($lineIds);
 
-        // Keranjang kosong tidak boleh menampilkan halaman checkout
-        // (mis. setelah order dibuat atau sesi checkout lain sudah selesai):
-        // alihkan ke keranjang supaya pembeli memilih produk dulu.
+        // Keranjang kosong tidak boleh menampilkan halaman checkout.
+        // Bila sesi ini baru membuat pesanan, pembeli diarahkan ke DETAIL
+        // pesanan itu (konteks yang benar setelah checkout berhasil, mis. saat
+        // menekan tombol back). Tanpa pesanan, baru dialihkan ke keranjang.
         if (($priced['items'] ?? []) === []) {
+            $lastOrderNumber = collect((array) $request->session()->get('confirmed_orders', []))
+                ->filter(fn ($n) => is_string($n) && $n !== '')
+                ->last();
+
+            if ($lastOrderNumber) {
+                return redirect()->route('order.status', ['order_number' => $lastOrderNumber]);
+            }
+
             return redirect()->route('cart.index')
                 ->with('error', 'Keranjang kosong. Pilih produk terlebih dahulu sebelum checkout.');
         }
@@ -336,6 +349,13 @@ class CheckoutController extends Controller
         }
 
         $this->rememberConfirmedOrder($request, $order);
+
+        // Halaman konfirmasi hanya boleh dibuka sekali untuk order ini;
+        // bukaan berikutnya dialihkan ke detail pesanan.
+        $pending = $request->session()->get('confirmation_pending', []);
+        $pending = is_array($pending) ? array_values(array_filter($pending, 'is_string')) : [];
+        $pending[] = $order->order_number;
+        $request->session()->put('confirmation_pending', array_values(array_unique($pending)));
 
         // Hanya baris yang benar-benar dipesan yang keluar dari keranjang.
         // Tanpa seleksi (checkout seluruh keranjang) semua baris adalah pesanan,

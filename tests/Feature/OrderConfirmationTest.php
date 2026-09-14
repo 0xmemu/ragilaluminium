@@ -19,7 +19,7 @@ class OrderConfirmationTest extends TestCase
     {
         [$order] = $this->makeOrder('transfer', 'RA-CONF-TF-1', 1050000);
 
-        $this->withSession(['confirmed_orders' => [$order->order_number]])
+        $this->withSession(['confirmed_orders' => [$order->order_number], 'confirmation_pending' => [$order->order_number]])
             ->get(route('order.confirmation', $order->order_number))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -35,7 +35,7 @@ class OrderConfirmationTest extends TestCase
     {
         [$order] = $this->makeOrder('cod', 'RA-CONF-COD-1', 500000);
 
-        $this->withSession(['confirmed_orders' => [$order->order_number]])
+        $this->withSession(['confirmed_orders' => [$order->order_number], 'confirmation_pending' => [$order->order_number]])
             ->get(route('order.confirmation', $order->order_number))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -49,7 +49,7 @@ class OrderConfirmationTest extends TestCase
         [$tf] = $this->makeOrder('transfer', 'RA-CONF-TF-2', 100000);
 
         foreach (['RA-CONF-TF-2' => $tf] as $number => $order) {
-            $this->withSession(['confirmed_orders' => [$number]])
+            $this->withSession(['confirmed_orders' => [$number], 'confirmation_pending' => [$number]])
                 ->get(route('order.confirmation', $number))
                 ->assertOk()
                 ->assertInertia(fn (Assert $page) => $page
@@ -64,7 +64,7 @@ class OrderConfirmationTest extends TestCase
     {
         [$order] = $this->makeOrder('transfer', 'RA-CONF-TF-3', 100000);
 
-        $this->withSession(['confirmed_orders' => [$order->order_number]])
+        $this->withSession(['confirmed_orders' => [$order->order_number], 'confirmation_pending' => [$order->order_number]])
             ->get(route('order.confirmation', $order->order_number))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page

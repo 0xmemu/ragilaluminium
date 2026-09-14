@@ -33,7 +33,6 @@ class OrderController extends Controller
 
     public function confirmation(Request $request, string $order_number): Response|RedirectResponse
     {
-        $confirmed = $request->session()->get('confirmed_orders', []);
         $order = Order::where('order_number', $order_number)
             ->with('items')
             ->first();
@@ -42,22 +41,28 @@ class OrderController extends Controller
             abort(404);
         }
 
-        // Halaman konfirmasi adalah halaman PASCA-CHECKOUT, bukan halaman
-        // permanen. Dua syarat akses:
-        //   1. nomor order ada di sesi pembeli (bukti pernah checkout), dan
-        //   2. order baru dibuat dalam jendela konfirmasi.
-        // Order lama (mis. tautan dibuka lagi beberapa hari kemudian) atau
-        // sesi yang sudah berakhir diarahkan ke halaman detail/lacak pesanan
-        // dengan nomor order sudah terisi, supaya tidak menampilkan
-        // "Pesanan Anda berhasil dibuat!" untuk order yang sudah lampau.
-        $windowHours = (int) config('storefront.confirmation_window_hours', 24);
-        $fresh = $order->created_at !== null
-            && $order->created_at->gt(now()->subHours($windowHours));
+        // Halaman konfirmasi = halaman PASCA-CHECKOUT sekali lihat.
+        //
+        // Desain sebelumnya memakai jendela waktu 24 jam: order yang masih
+        // "muda" tetap bisa dibuka berkali-kali, dan pesan yang muncul di
+        // halaman status ("hanya berlaku sesaat setelah pesanan dibuat")
+        // bertentangan dengan kenyataan itu. Sekarang aturannya deterministik:
+        // order hanya boleh masuk halaman konfirmasi SEKALI, lalu tautannya
+        // mengarahkan pembeli ke detail/lacak pesanan.
+        $pending = $request->session()->get('confirmation_pending', []);
+        $pending = is_array($pending) ? array_values(array_filter($pending, 'is_string')) : [];
 
-        if (! in_array($order_number, $confirmed, true) || ! $fresh) {
-            return redirect()->route('order.status', ['order_number' => $order_number])
-                ->with('success', 'Halaman konfirmasi hanya berlaku sesaat setelah pesanan dibuat. Masukkan nomor HP untuk melihat detail pesanan Anda.');
+        if (! in_array($order_number, $pending, true)) {
+            // Sudah pernah dibuka, atau bukan order dari sesi ini: langsung ke
+            // detail/lacak pesanan tanpa pesan naratif yang bisa salah tafsir.
+            return redirect()->route('order.status', ['order_number' => $order_number]);
         }
+
+        // Tandai sudah dilihat: bukaan berikutnya langsung ke detail pesanan.
+        $request->session()->put(
+            'confirmation_pending',
+            array_values(array_diff($pending, [$order_number])),
+        );
 
         $whatsappUrl = null;
         $phone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
