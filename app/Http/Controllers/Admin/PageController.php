@@ -133,6 +133,8 @@ class PageController extends Controller
                 ->sync(public_path('images/site-favicon.ico'));
         }
 
-        return redirect()->route('admin.pages.index')->with('success', 'Branding berhasil diperbarui!');
+        return redirect()
+            ->route('admin.store-settings.index', ['tab' => 'brand'])
+            ->with('success', 'Branding berhasil diperbarui!');
     }
 }

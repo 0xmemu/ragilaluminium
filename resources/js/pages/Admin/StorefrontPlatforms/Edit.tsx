@@ -31,6 +31,25 @@ type KontakFields = {
   hours: string
 }
 
+type BrandAsset = {
+  path: string
+  url: string
+  bytes: number
+  updated_at: string
+}
+
+type BrandAssets = {
+  logo: BrandAsset | null
+  favicon: BrandAsset | null
+  faviconIco: BrandAsset | null
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${bytes} B`
+}
+
 export default function StorefrontPlatformsEdit({
   title = "Profil & Kontak Toko",
   description = "Kelola tautan akun toko resmi di marketplace, media sosial, serta informasi kontak dan workshop.",
@@ -41,16 +60,20 @@ export default function StorefrontPlatformsEdit({
   kontakFields = { address: "", phone: "", email: "", hours: "" },
   kontakSubmitUrl,
   previewUrl,
+  brandAssets = { logo: null, favicon: null, faviconIco: null },
+  brandSubmitUrl,
 }: {
   title?: string
   description?: string
-  tab?: "marketplace" | "kontak"
+  tab?: "marketplace" | "kontak" | "brand"
   tabs?: TabItem[]
   platforms?: PlatformRow[]
   submitUrl: string
   kontakFields?: KontakFields
   kontakSubmitUrl?: string
   previewUrl?: string
+  brandAssets?: BrandAssets
+  brandSubmitUrl: string
 }) {
   const initialLinks = Object.fromEntries(platforms.map((p) => [p.key, p.href]))
 
@@ -71,7 +94,18 @@ export default function StorefrontPlatformsEdit({
   const social = platforms.filter((p) => p.channel === "social")
 
   const isKontakTab = tab === "kontak"
-  const isProcessing = isKontakTab ? kontakForm.processing : platformForm.processing
+  const isBrandTab = tab === "brand"
+
+  // Logo dan favicon dikelola terpisah supaya admin bisa mengganti salah satu
+  // saja tanpa mengunggah ulang berkas yang tidak berubah.
+  const logoForm = useForm<{ logo: File | null }>({ logo: null })
+  const faviconForm = useForm<{ favicon: File | null }>({ favicon: null })
+
+  const isProcessing = isKontakTab
+    ? kontakForm.processing
+    : isBrandTab
+      ? logoForm.processing || faviconForm.processing
+      : platformForm.processing
 
   function submitPlatforms(event: React.FormEvent) {
     event.preventDefault()
@@ -209,8 +243,138 @@ export default function StorefrontPlatformsEdit({
         </div>
       ) : null}
 
-      {/* Tab 1: Marketplace & Media Sosial */}
-      {!isKontakTab ? (
+      {/* Tab 3: Aset Brand */}
+      {isBrandTab ? (
+        <div className="w-full space-y-6">
+          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+            Logo dan favicon adalah identitas toko yang tampil di header situs,
+            tab browser, dan ikon aplikasi di layar ponsel. Perubahan langsung
+            terlihat setelah disimpan; muat ulang halaman bila ikon tab belum
+            berganti karena browser menyimpannya cukup agresif.
+          </div>
+
+          <div className="grid items-start gap-6 lg:grid-cols-2">
+            {/* Logo */}
+            <Card className="space-y-4 p-5">
+              <div className="border-b border-border pb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Logo Toko</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Tampil di header situs. Disarankan PNG transparan lebar minimal 300px.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
+                {brandAssets.logo ? (
+                  <img
+                    src={brandAssets.logo.url}
+                    alt="Logo toko saat ini"
+                    className="max-h-20 w-auto max-w-[180px] object-contain"
+                    width={180}
+                    height={80}
+                  />
+                ) : (
+                  <span className="flex h-20 w-[180px] items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                    Belum ada logo
+                  </span>
+                )}
+                <div className="min-w-0 text-xs text-muted-foreground">
+                  {brandAssets.logo ? (
+                    <>
+                      <p className="truncate font-medium text-foreground">{brandAssets.logo.path}</p>
+                      <p className="mt-0.5">
+                        {formatBytes(brandAssets.logo.bytes)} · diubah {brandAssets.logo.updated_at}
+                      </p>
+                    </>
+                  ) : (
+                    <p>Belum ada berkas logo terunggah.</p>
+                  )}
+                </div>
+              </div>
+
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  logoForm.post(brandSubmitUrl, { forceFormData: true, preserveScroll: true })
+                }}
+                className="space-y-3"
+              >
+                <FormErrorSummary errors={logoForm.errors} />
+                <Field id="brand-logo" label="Unggah Logo Baru" error={logoForm.errors.logo} hint="JPEG, PNG, GIF, SVG, atau WebP. Maksimal 5 MB.">
+                  <Input
+                    id="brand-logo"
+                    type="file"
+                    accept=".jpeg,.jpg,.png,.gif,.svg,.webp"
+                    onChange={(event) => logoForm.setData("logo", event.target.files?.[0] ?? null)}
+                  />
+                </Field>
+                <Button type="submit" disabled={logoForm.processing || !logoForm.data.logo}>
+                  {logoForm.processing ? "Mengunggah..." : "Simpan Logo"}
+                </Button>
+              </form>
+            </Card>
+
+            {/* Favicon */}
+            <Card className="space-y-4 p-5">
+              <div className="border-b border-border pb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Favicon</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Ikon di tab browser dan layar beranda ponsel. Disarankan PNG persegi minimal 180px.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
+                {brandAssets.favicon ? (
+                  <img
+                    src={brandAssets.favicon.url}
+                    alt="Favicon saat ini"
+                    className="size-16 shrink-0 rounded-md border border-border bg-surface object-contain p-1"
+                    width={64}
+                    height={64}
+                  />
+                ) : (
+                  <span className="flex size-16 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                    Kosong
+                  </span>
+                )}
+                <div className="min-w-0 text-xs text-muted-foreground">
+                  {brandAssets.faviconIco ? (
+                    <>
+                      <p className="truncate font-medium text-foreground">{brandAssets.faviconIco.path}</p>
+                      <p className="mt-0.5">
+                        {formatBytes(brandAssets.faviconIco.bytes)} · diubah {brandAssets.faviconIco.updated_at}
+                      </p>
+                      {brandAssets.favicon ? <p className="mt-0.5">PNG 32px tersedia untuk browser modern.</p> : null}
+                    </>
+                  ) : (
+                    <p>Belum ada favicon terunggah.</p>
+                  )}
+                </div>
+              </div>
+
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  faviconForm.post(brandSubmitUrl, { forceFormData: true, preserveScroll: true })
+                }}
+                className="space-y-3"
+              >
+                <FormErrorSummary errors={faviconForm.errors} />
+                <Field id="brand-favicon" label="Unggah Favicon Baru" error={faviconForm.errors.favicon} hint="ICO atau PNG persegi. Maksimal 2 MB.">
+                  <Input
+                    id="brand-favicon"
+                    type="file"
+                    accept=".ico,.png"
+                    onChange={(event) => faviconForm.setData("favicon", event.target.files?.[0] ?? null)}
+                  />
+                </Field>
+                <Button type="submit" disabled={faviconForm.processing || !faviconForm.data.favicon}>
+                  {faviconForm.processing ? "Mengunggah..." : "Simpan Favicon"}
+                </Button>
+              </form>
+            </Card>
+          </div>
+        </div>
+      ) : !isKontakTab ? (
         <form id="platforms-form" onSubmit={submitPlatforms} className="w-full space-y-6">
           <FormErrorSummary errors={platformForm.errors} />
 

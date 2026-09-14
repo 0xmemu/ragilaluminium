@@ -124,7 +124,10 @@ class FaviconWriter
             @mkdir($directory, 0775, true);
         }
 
-        imagepng($canvas, $target);
+        if (! @imagepng($canvas, $target)) {
+            imagedestroy($canvas);
+            throw new \RuntimeException("Gagal menulis turunan favicon: {$target}. Periksa kepemilikan berkas (harus dapat ditulis www-data).");
+        }
         imagedestroy($canvas);
     }
 }

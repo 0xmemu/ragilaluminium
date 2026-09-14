@@ -1,4 +1,4 @@
-import { Link, useForm } from "@inertiajs/react"
+import { useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
@@ -107,65 +107,12 @@ function PaymentManager({ orderId, rows }: { orderId: string; rows: ResourceRow[
   )
 }
 
-function BrandingManager() {
-  const form = useForm<{ logo: File | null; favicon: File | null }>({
-    logo: null,
-    favicon: null,
-  })
-
-  return (
-    <div className="mb-6 space-y-3">
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.banners.index")}>Kelola banner beranda</Link>
-        </Button>
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.testimonials.index")}>Kelola ulasan</Link>
-        </Button>
-      </div>
-      <details className="rounded-lg border border-border bg-surface shadow-sm">
-      <summary className="cursor-pointer list-none p-5 text-lg font-semibold">
-        + Unggah aset brand resmi
-      </summary>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          form.post(routeUrl("admin.pages.branding"), {
-            forceFormData: true,
-            preserveScroll: true,
-            onSuccess: () => form.reset(),
-          })
-        }}
-        className="grid gap-4 border-t border-border p-5 sm:grid-cols-2"
-      >
-        <FormErrorSummary errors={form.errors} className="sm:col-span-2" />
-        <Field id="branding-logo" label="Logo" error={form.errors.logo} hint="JPEG, PNG, GIF, SVG, atau WebP. Maksimal 5 MB.">
-          <Input type="file" accept=".jpeg,.jpg,.png,.gif,.svg,.webp" onChange={(event) => form.setData("logo", event.target.files?.[0] ?? null)} />
-        </Field>
-        <Field id="branding-favicon" label="Favicon" error={form.errors.favicon} hint="ICO atau PNG. Maksimal 2 MB.">
-          <Input type="file" accept=".ico,.png" onChange={(event) => form.setData("favicon", event.target.files?.[0] ?? null)} />
-        </Field>
-        <div className="sm:col-span-2">
-          <Button type="submit" disabled={form.processing || (!form.data.logo && !form.data.favicon)}>
-            {form.processing ? "Mengunggah..." : "Simpan branding"}
-          </Button>
-        </div>
-      </form>
-      </details>
-    </div>
-  )
-}
-
 export function ResourceContextPanel({ rows }: { rows: ResourceRow[] }) {
   const current = route().current()
   const params = route().params as Record<string, string>
 
   if (current === "admin.orders.payments" && params.order) {
     return <PaymentManager orderId={params.order} rows={rows} />
-  }
-
-  if (current === "admin.pages.index") {
-    return <BrandingManager />
   }
 
   return null

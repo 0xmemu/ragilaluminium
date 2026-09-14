@@ -15,7 +15,8 @@ class StorefrontPlatformController extends Controller
 {
     public function edit(Request $request): Response
     {
-        $tab = $request->query('tab') === 'kontak' ? 'kontak' : 'marketplace';
+        $requested = (string) $request->query('tab', 'marketplace');
+        $tab = in_array($requested, ['marketplace', 'kontak', 'brand'], true) ? $requested : 'marketplace';
 
         $kontakPage = CmsPage::where('slug', 'kontak')->first();
         $kontakFields = $kontakPage && is_array($kontakPage->content)
@@ -37,13 +38,59 @@ class StorefrontPlatformController extends Controller
                     'label' => 'Kontak & Jam Kerja',
                     'href' => route('admin.storefront-platforms.edit', ['tab' => 'kontak']),
                 ],
+                [
+                    'key' => 'brand',
+                    'label' => 'Aset Brand',
+                    'href' => route('admin.storefront-platforms.edit', ['tab' => 'brand']),
+                ],
             ],
+            'brandAssets' => $this->brandAssetsState(),
+            'brandSubmitUrl' => route('admin.pages.branding'),
             'platforms' => StorefrontPlatformSettings::forAdmin(),
             'submitUrl' => route('admin.storefront-platforms.update'),
             'kontakFields' => $kontakFields,
             'kontakSubmitUrl' => route('admin.beranda.kontak.update'),
             'previewUrl' => route('about'),
         ]);
+    }
+
+    /**
+     * Status aset brand yang dipakai <head>: URL ber-cache-busting, ukuran, dan
+     * waktu terakhir diubah. Berkas 0 byte dianggap tidak ada, karena browser
+     * hanya menampilkan favicon kosong untuk berkas seperti itu.
+     *
+     * @return array<string, array{path: string, url: string, bytes: int, updated_at: string}|null>
+     */
+    protected function brandAssetsState(): array
+    {
+        return [
+            'logo' => $this->brandAsset('images/site-logo.png'),
+            'favicon' => $this->brandAsset('images/favicon-32.png', 'images/site-favicon.ico'),
+            'faviconIco' => $this->brandAsset('images/site-favicon.ico'),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     * @return array{path: string, url: string, bytes: int, updated_at: string}|null
+     */
+    protected function brandAsset(string ...$candidates): ?array
+    {
+        foreach ($candidates as $candidate) {
+            $path = public_path($candidate);
+            if (! is_file($path) || filesize($path) === 0) {
+                continue;
+            }
+
+            return [
+                'path' => $candidate,
+                'url' => asset($candidate).'?v='.filemtime($path),
+                'bytes' => (int) filesize($path),
+                'updated_at' => date('d M Y H:i', (int) filemtime($path)),
+            ];
+        }
+
+        return null;
     }
 
     public function update(Request $request): RedirectResponse
