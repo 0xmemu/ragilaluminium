@@ -22,7 +22,7 @@ const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-char
 const SalesAreaChart = React.lazy(() => import("@/components/admin/charts/sales-area-chart"))
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { routeUrl, withQuery } from "@/lib/routes"
+import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
 interface OmzetData {
@@ -289,10 +289,6 @@ export default function Dashboard({
   const [refreshing, setRefreshing] = React.useState(false)
   const [refreshError, setRefreshError] = React.useState(false)
   const name = greetingName || auth.user?.name || "Admin"
-  const pendingPaymentOrders = statusOrder.find((item) => item.key === "awaiting_confirmation")
-  const pendingPaymentOrdersHref =
-    pendingPaymentOrders?.href ??
-    withQuery(routeUrl("admin.orders.index"), { order_status: "awaiting_confirmation" })
   const hasOrders =
     statusOrder.reduce((sum, item) => sum + item.total, 0) > 0 || omzet.orders > 0
   const visitorsMetric = performa.metrics.find((metric) => metric.key === "visitors")
@@ -408,30 +404,7 @@ export default function Dashboard({
                     </div>
                   </div>
 
-                  {(pendingPaymentOrders?.total ?? 0) > 0 ? (
-                    <div className="max-w-md rounded-md border border-info/20 bg-info/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
-                      <div className="flex items-start gap-2">
-                        <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
-                        <div className="min-w-0">
-                          <p className="font-semibold text-foreground">
-                            {formatNumber(pendingPaymentOrders?.total ?? 0)} pesanan
-                            menunggu konfirmasi ({formatCurrency(financial.awaiting_confirmation_amount)})
-                          </p>
-                          <p>
-                            Nilai ini belum masuk omzet di samping; omzet hanya
-                            menghitung pesanan yang sudah dikonfirmasi.
-                          </p>
-                          <Link
-                            href={pendingPaymentOrdersHref}
-                            className="mt-0.5 inline-flex items-center gap-1 font-semibold text-info underline underline-offset-2 hover:no-underline"
-                          >
-                            Konfirmasi pesanan sekarang
-                            <Icon name="arrow-right" className="size-3" aria-hidden="true" />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
+
                 </div>
               </div>
 
@@ -447,7 +420,7 @@ export default function Dashboard({
                   />
                 </React.Suspense>
               </div>
-              <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-3">
+              <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
                 <div className="px-4 py-3">
                   <MetricTile
                     label="Order masuk"
@@ -460,6 +433,16 @@ export default function Dashboard({
                     label="Jumlah unit"
                     value={`${formatNumber(omzet.units)} unit`}
                     delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
+                  />
+                </div>
+                <div className="px-4 py-3">
+                  <MetricTile
+                    // Nilai pesanan yang belum dikonfirmasi, bukan nominal
+                    // belum dibayar: pesanan menunggu konfirmasi bisa saja
+                    // transfernya sudah masuk.
+                    label="Menunggu Konfirmasi"
+                    value={formatCurrency(financial.awaiting_confirmation_amount)}
+                    delta={`${formatNumber(financial.awaiting_confirmation_orders)} order belum dikonfirmasi`}
                   />
                 </div>
                 <div className="px-4 py-3">
