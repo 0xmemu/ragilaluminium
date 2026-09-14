@@ -341,10 +341,10 @@
       line-height: 1.5;
       font-weight: 600;
     }
-    /* Judul seksi footer: lebih kecil dari skala h3 standar halaman. */
+    /* Judul seksi footer: 16px (kontrak owner 14-09). */
     .public-title-case h3.footer-heading {
-      font-size: 0.6875rem;
-      line-height: 1.4;
+      font-size: 1rem;
+      line-height: 1.5;
       font-weight: 700;
     }
     .public-title-case h4 {
