@@ -77,6 +77,24 @@
 <body class="min-h-screen bg-background text-body antialiased">
     @inertia
     @if (request()->is('admin', 'admin/*'))
+        {{-- Tema admin diterapkan SEBELUM skeleton dicatat: admin dark-first,
+             localStorage 'ragil-admin-theme' (sumber: lib/admin-theme.ts).
+             Tanpa ini skeleton selalu terang lalu melompat gelap saat mount. --}}
+        <script>
+            (function () {
+                try {
+                    var t = localStorage.getItem('ragil-admin-theme') === 'light' ? 'light' : 'dark';
+                    var root = document.documentElement;
+                    root.classList.add('admin-shell');
+                    root.classList.add(t);
+                    root.classList.remove(t === 'dark' ? 'light' : 'dark');
+                    var meta = document.querySelector('meta[name="theme-color"]');
+                    if (meta) meta.setAttribute('content', t === 'light' ? '#FFFFFF' : '#0A0A0A');
+                } catch (e) {
+                    document.documentElement.classList.add('admin-shell', 'dark');
+                }
+            })();
+        </script>
         {{-- Skeleton panel admin. Ditulis langsung di HTML supaya browser
              mengecatnya sebelum React selesai mount. Tanpa ini layar putih
              0,7 detik pada jaringan normal dan sampai 3,6 detik pada jaringan
@@ -86,9 +104,18 @@
              md:px-6 md:pt-5 lg:px-8 lg:pb-10.
              React createRoot().render() otomatis menggantikan isi #app. --}}
         <style>
+            /* Admin: warna skel dari token agar mengikuti mode terang/gelap
+               (admin-shell dark-first). Nilai rgba tetap sebagai fallback. */
             .skel { border-radius: .375rem; background: rgba(128,128,128,.18); animation: skel-pulse 1.4s ease-in-out infinite; }
+            .admin-shell .skel, .dark .skel, .light .skel {
+                background: hsl(var(--muted-foreground) / .22);
+            }
             .skel-flat { border-radius: 0; }
             .skel-panel { border-radius: .5rem; border: 1px solid rgba(128,128,128,.16); background: rgba(128,128,128,.08); }
+            .admin-shell .skel-panel, .dark .skel-panel, .light .skel-panel {
+                border-color: hsl(var(--border));
+                background: hsl(var(--card) / .5);
+            }
             .skel-card { border-radius: .5rem; overflow: hidden; border: 1px solid rgba(128,128,128,.14); background: rgba(128,128,128,.06); }
             .skel-fallback { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem; text-align: center; }
             @keyframes skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
@@ -195,8 +222,13 @@
 
                 @if ($skelKind === 'home')
                     {{-- Beranda: hero full-bleed, lalu section dengan grid 2 kolom --}}
-                    {{-- Tinggi mengikuti hero carousel asli: 186px mobile, 538px lg. --}}
-                    <div class="skel skel-flat h-[186px] lg:h-[538px]"></div>
+                    {{-- Hero asli: container-page + rasio paten 1024/426.
+                         Tinggi mengikuti lebar, bukan angka tetap. --}}
+                    <section class="bg-surface lg:pt-2">
+                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12 py-4">
+                            <div class="skel skel-flat aspect-[1024/426] w-full"></div>
+                        </div>
+                    </section>
                     {{-- Section beranda asli: heading + carousel kartu menyamping.
                          Tinggi total mengikuti aslinya (343px mobile, 406px lg). --}}
                     @for ($i = 0; $i < 2; $i++)
@@ -206,8 +238,8 @@
                                     <div class="skel h-5 w-32"></div>
                                     <div class="skel h-3 w-20"></div>
                                 </div>
-                                {{-- Kartu carousel: 2 terlihat di mobile, 4 di desktop --}}
-                                <div class="mt-2 grid grid-cols-2 gap-3 overflow-hidden sm:gap-4 lg:grid-cols-4">
+                                {{-- Kartu carousel asli: 5 terlihat desktop, 2 mobile --}}
+                                <div class="mt-2 grid grid-cols-2 gap-3 overflow-hidden sm:gap-4 lg:grid-cols-5">
                                     <div class="skel-card">
                                         <div class="skel skel-flat aspect-square"></div>
                                         <div class="flex flex-col gap-1.5 p-2.5">
@@ -234,6 +266,13 @@
                                         <div class="flex flex-col gap-1.5 p-2.5">
                                             <div class="skel h-3 w-[65%]"></div>
                                             <div class="skel h-4 w-[50%]"></div>
+                                        </div>
+                                    </div>
+                                    <div class="skel-card">
+                                        <div class="skel skel-flat aspect-square"></div>
+                                        <div class="flex flex-col gap-1.5 p-2.5">
+                                            <div class="skel h-3 w-[75%]"></div>
+                                            <div class="skel h-4 w-[55%]"></div>
                                         </div>
                                     </div>
                                 </div>
