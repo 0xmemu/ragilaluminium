@@ -575,7 +575,7 @@ function SupportAction({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        "order-tracking__support rounded-[14px] border border-border bg-surface-muted/40 p-4 shadow-sm",
+        "order-tracking__support rounded-[14px] border border-border bg-surface-muted/40 p-4 shadow-sm lg:p-5",
         className,
       )}
       id="bantuan"
@@ -622,7 +622,7 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
 
       {/* 3. Bantuan & jaminan: tepat di bawah kartu penerima (kolom kiri) */}
       <SupportAction className="lg:col-start-1" />
-      <TrustAssuranceCard className="lg:col-start-1" />
+      <TrustAssuranceCard className="px-4 lg:col-start-1 lg:px-5" />
 
     </div>
   )
