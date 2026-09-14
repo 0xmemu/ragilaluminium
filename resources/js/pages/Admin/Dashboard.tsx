@@ -413,15 +413,18 @@ export default function Dashboard({
                       <div className="flex items-start gap-2">
                         <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
                         <div className="min-w-0">
-                          <p className="font-semibold text-foreground">Belum masuk omzet</p>
+                          <p className="font-semibold text-foreground">
+                            {formatNumber(pendingPaymentOrders?.total ?? 0)} pesanan menunggu konfirmasi
+                          </p>
                           <p>
-                            Order Perlu Konfirmasi, batal, atau bermasalah belum dihitung.
+                            Omzet menghitung pesanan yang sudah dikonfirmasi.
+                            Pesanan batal dan bermasalah tidak pernah dihitung.
                           </p>
                           <Link
                             href={pendingPaymentOrdersHref}
                             className="mt-0.5 inline-flex items-center gap-1 font-semibold text-info underline underline-offset-2 hover:no-underline"
                           >
-                            Lihat {formatNumber(pendingPaymentOrders?.total ?? 0)} order Perlu Konfirmasi
+                            Konfirmasi pesanan sekarang
                             <Icon name="arrow-right" className="size-3" aria-hidden="true" />
                           </Link>
                         </div>
@@ -460,9 +463,12 @@ export default function Dashboard({
                 </div>
                 <div className="px-4 py-3">
                   <MetricTile
-                    label="Belum dibayar"
+                    // Ini nilai pesanan yang belum dikonfirmasi, bukan nominal
+                    // belum dibayar: pesanan menunggu konfirmasi bisa saja
+                    // transfernya sudah masuk.
+                    label="Menunggu Konfirmasi"
                     value={formatCurrency(financial.awaiting_confirmation_amount)}
-                    delta={`${formatNumber(financial.awaiting_confirmation_orders)} order pending`}
+                    delta={`${formatNumber(financial.awaiting_confirmation_orders)} order belum dikonfirmasi`}
                   />
                 </div>
                 <div className="px-4 py-3">
