@@ -127,11 +127,12 @@ export default function BerandaIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="space-y-3">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+        <ul className="divide-y divide-border">
         {sections.map((section, index) => (
-          <article
+          <li
             key={section.key}
-            className={cn("flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm", dnd.draggingIndex === index && "opacity-40")}
+            className={cn("flex flex-wrap items-center gap-3 p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")}
             {...(reorderMode ? dnd.rowProps(index) : {})}
           >
             {reorderMode ? (
@@ -173,12 +174,6 @@ export default function BerandaIndex({
               onClick={() => toggleEnabled(index)}
               className="inline-flex items-center gap-2 text-xs font-semibold"
             >
-              <span
-                className={cn(
-                  "size-2 rounded-full",
-                  section.enabled ? "bg-success" : "bg-muted-foreground/40",
-                )}
-              />
               <StatusBadge
                 status={section.enabled ? "active" : "inactive"}
                 label={section.enabled ? "Aktif" : "Nonaktif"}
@@ -190,8 +185,9 @@ export default function BerandaIndex({
                 <Link href={section.edit_href}>Edit konten</Link>
               </Button>
             ) : null}
-          </article>
+          </li>
         ))}
+        </ul>
       </section>
     </AdminLayout>
   )
