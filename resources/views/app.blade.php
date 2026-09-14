@@ -43,12 +43,31 @@
     <meta name="twitter:title" content="{{ $metaTitle }}">
     <meta name="twitter:description" content="{{ $metaDescription }}">
     <meta name="twitter:image" content="{{ $metaImage }}">
-    @if(file_exists(public_path('images/site-favicon.ico')))
-        <link rel="icon" href="{{ asset('images/site-favicon.ico') }}?v={{ filemtime(public_path('images/site-favicon.ico')) }}">
-    @else
+    @php
+        // Guard memakai isi file, bukan sekadar keberadaan: file .ico pernah
+        // ada tetapi 0 byte, sehingga file_exists() lolos dan browser memuat
+        // favicon kosong. Ukuran 0 byte dianggap tidak ada.
+        $faviconIco = public_path('images/site-favicon.ico');
+        $faviconIco = is_file($faviconIco) && filesize($faviconIco) > 0 ? $faviconIco : null;
+        $faviconPng = public_path('images/favicon-32.png');
+        $faviconPng = is_file($faviconPng) && filesize($faviconPng) > 0 ? $faviconPng : null;
+        $appleTouch = public_path('apple-touch-icon.png');
+        $appleTouch = is_file($appleTouch) && filesize($appleTouch) > 0 ? $appleTouch : null;
+    @endphp
+    @if($faviconPng)
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon-32.png') }}?v={{ filemtime($faviconPng) }}">
+    @endif
+    @if($faviconIco)
+        <link rel="icon" href="{{ asset('images/site-favicon.ico') }}?v={{ filemtime($faviconIco) }}">
+    @endif
+    @if(! $faviconPng && ! $faviconIco)
         <link rel="icon" href="{{ asset('favicon.ico') }}">
     @endif
-    <link rel="apple-touch-icon" href="{{ asset('images/site-logo.png') }}">
+    @if($appleTouch)
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}?v={{ filemtime($appleTouch) }}">
+    @else
+        <link rel="apple-touch-icon" href="{{ asset('images/site-logo.png') }}">
+    @endif
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     @routes
     @viteReactRefresh

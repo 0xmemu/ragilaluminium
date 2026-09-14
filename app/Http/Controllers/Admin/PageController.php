@@ -126,6 +126,11 @@ class PageController extends Controller
             $file->move(public_path('images'), 'site-favicon.ico');
             $version = MediaNamer::local('favicon', $ext, public_path('images'));
             copy(public_path('images/site-favicon.ico'), public_path('images/'.$version));
+
+            // Turunan PNG dipakai <head> untuk browser modern; tanpa ini PNG
+            // lama tetap tampil walau favicon sudah diganti.
+            app(\App\Support\FaviconWriter::class)
+                ->sync(public_path('images/site-favicon.ico'));
         }
 
         return redirect()->route('admin.pages.index')->with('success', 'Branding berhasil diperbarui!');
