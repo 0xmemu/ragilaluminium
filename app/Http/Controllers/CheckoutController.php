@@ -328,7 +328,10 @@ class CheckoutController extends Controller
 
         $this->rememberConfirmedOrder($request, $order);
 
-        $this->cart->clear();
+        // Hanya baris yang benar-benar dipesan yang keluar dari keranjang.
+        // Tanpa seleksi (checkout seluruh keranjang) semua baris adalah pesanan,
+        // jadi seluruhnya keluar. Baris lain milik pembeli tetap tersimpan.
+        $this->cart->removeOrderedLines($lineIds ?? array_keys($this->cart->get()));
         // Detail pengiriman & metode bayar dipertahankan agar checkout ulang
         // (order berikutnya) tidak perlu mengisi dari nol. Voucher dan pilihan
         // asuransi dibersihkan supaya tidak terbawa ke order berikutnya.

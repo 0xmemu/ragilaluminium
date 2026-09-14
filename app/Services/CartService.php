@@ -220,6 +220,31 @@ class CartService
         $this->session->forget(self::SESSION_KEY.'_selected');
     }
 
+    /**
+     * Keluarkan baris yang baru dipesan dari keranjang, sisakan baris lain.
+     *
+     * Dipakai setelah order dibuat: pembeli bisa memesan sebagian baris
+     * (mis. "Beli Sekarang" hanya memilih satu baris) dan baris sisanya harus
+     * tetap ada di keranjang. Tidak memakai removeBatch supaya baris yang sudah
+     * dipesan tidak masuk jendela "Urungkan" (order sudah tersimpan).
+     *
+     * @param  list<string>  $lineIds
+     */
+    public function removeOrderedLines(array $lineIds): void
+    {
+        $cart = $this->get();
+        foreach (array_values(array_unique(array_map(
+            static fn ($lineId): string => (string) $lineId,
+            $lineIds,
+        ))) as $lineId) {
+            unset($cart[$lineId]);
+        }
+
+        $this->session->put(self::SESSION_KEY, $cart);
+        $this->clearSelectedLines();
+        $this->clearPendingRemovals();
+    }
+
     public function clear(): void
     {
         $this->session->forget(self::SESSION_KEY);
