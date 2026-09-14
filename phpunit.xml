@@ -27,6 +27,13 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Tes tidak boleh menulis ke log aplikasi: tanpa ini test memakai
+             LOG_STACK=daily dari .env sehingga ikut menulis
+             storage/logs/laravel-YYYY-MM-DD.log (file yang sama dengan
+             php-fpm). Bila tes dijalankan sebagai root, file log menjadi
+             milik root dan www-data gagal menulisnya - Laravel melempar
+             exception dan SELURUH situs 500 (insiden 2026-09-15). -->
+        <env name="LOG_CHANNEL" value="null"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
