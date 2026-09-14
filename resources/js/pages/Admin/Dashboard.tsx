@@ -413,10 +413,13 @@ export default function Dashboard({
                       <div className="flex items-start gap-2">
                         <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
                         <div className="min-w-0">
-                          <p className="font-semibold text-foreground">Ada pesanan menunggu konfirmasi</p>
+                          <p className="font-semibold text-foreground">
+                            {formatNumber(pendingPaymentOrders?.total ?? 0)} pesanan
+                            menunggu konfirmasi ({formatCurrency(financial.awaiting_confirmation_amount)})
+                          </p>
                           <p>
-                            Omzet hanya menghitung pesanan yang sudah dikonfirmasi.
-                            Nilai dan jumlahnya ada di tile Menunggu Konfirmasi di bawah.
+                            Nilai ini belum masuk omzet di samping; omzet hanya
+                            menghitung pesanan yang sudah dikonfirmasi.
                           </p>
                           <Link
                             href={pendingPaymentOrdersHref}
@@ -444,7 +447,7 @@ export default function Dashboard({
                   />
                 </React.Suspense>
               </div>
-              <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-3">
                 <div className="px-4 py-3">
                   <MetricTile
                     label="Order masuk"
@@ -457,16 +460,6 @@ export default function Dashboard({
                     label="Jumlah unit"
                     value={`${formatNumber(omzet.units)} unit`}
                     delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
-                  />
-                </div>
-                <div className="px-4 py-3">
-                  <MetricTile
-                    // Ini nilai pesanan yang belum dikonfirmasi, bukan nominal
-                    // belum dibayar: pesanan menunggu konfirmasi bisa saja
-                    // transfernya sudah masuk.
-                    label="Menunggu Konfirmasi"
-                    value={formatCurrency(financial.awaiting_confirmation_amount)}
-                    delta={`${formatNumber(financial.awaiting_confirmation_orders)} order belum dikonfirmasi`}
                   />
                 </div>
                 <div className="px-4 py-3">
