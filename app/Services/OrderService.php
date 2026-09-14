@@ -12,10 +12,11 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Support\CodSettings;
-use App\Support\ShippingPalletSettings;
 use App\Services\Shipping\ShipmentPackageCalculator;
+use App\Support\CodSettings;
 use App\Support\PhoneNumber;
+use App\Support\ShippingPalletSettings;
+use App\Support\StockLedger;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -109,7 +110,7 @@ class OrderService
                             if ($variant->stock < $qty) {
                                 throw new \DomainException("Stok {$variant->variant_sku} tidak cukup (tersisa {$variant->stock}).");
                             }
-                            \App\Support\StockLedger::apply(
+                            StockLedger::apply(
                                 $variant,
                                 -$qty,
                                 'order_out',
@@ -351,7 +352,7 @@ class OrderService
                         ->find((int) $variantId);
 
                     if ($variant) {
-                        \App\Support\StockLedger::apply(
+                        StockLedger::apply(
                             $variant,
                             (int) $quantity,
                             'order_cancel_in',
@@ -402,17 +403,25 @@ class OrderService
     }
 
     /** Berat tagih provisional cart, termasuk pallet dan volumetrik. */
-    public function cartWeightKg(): float
+    public function cartWeightKg(?array $lineIds = null): float
     {
-        return $this->cartPackage()['chargeable_weight_kg'];
+        return $this->cartPackage($lineIds)['chargeable_weight_kg'];
     }
 
-    /** @return array<string, float|string> */
-    public function cartPackage(): array
+    /**
+     * Berat paket dari isi keranjang. `$lineIds` membatasi ke baris yang
+     * benar-benar checkout; tanpa itu seluruh keranjang dihitung (dipakai
+     * admin/laporan). Checkout WAJIB mengirim daftar baris terpilih supaya
+     * sisa item di keranjang tidak menambah berat dan tarif J&T.
+     *
+     * @param  list<string>|null  $lineIds
+     * @return array<string, float|string>
+     */
+    public function cartPackage(?array $lineIds = null): array
     {
         $default = (float) config('shipping.default_item_weight_kg', 1.0);
         $items = [];
-        foreach ($this->cart->get() as $item) {
+        foreach ($this->cart->get($lineIds) as $item) {
             $variant = ! empty($item['variant_sku'])
                 ? ProductVariant::with('product')->where('variant_sku', $item['variant_sku'])->first()
                 : null;
@@ -430,6 +439,7 @@ class OrderService
             ShippingPalletSettings::allowancePerSideCm(),
             (float) config('shipping.volumetric_divisor'),
         );
+
         return $calculator->calculate($items);
     }
 
@@ -594,7 +604,7 @@ class OrderService
                     throw new \DomainException("Stok {$variant->variant_sku} tidak cukup (tersisa {$variant->stock}).");
                 }
                 if ($delta !== 0) {
-                    \App\Support\StockLedger::apply(
+                    StockLedger::apply(
                         $variant,
                         -$delta,
                         'order_adjust',
@@ -608,7 +618,7 @@ class OrderService
                 if ($kept || $oldItem->productVariant === null) {
                     continue;
                 }
-                \App\Support\StockLedger::apply(
+                StockLedger::apply(
                     $oldItem->productVariant,
                     (int) $oldItem->quantity,
                     'order_item_removed_in',
@@ -696,6 +706,7 @@ class OrderService
                         'line_total' => $line['lineSubtotal'],
                     ]);
                     $lineIds[] = $oldItem->id;
+
                     continue;
                 }
 
@@ -798,6 +809,7 @@ class OrderService
         $items = array_map(static function (array $line): array {
             $product = $line['product'];
             $variant = $line['variant'] ?? null;
+
             return [
                 'weight_kg' => (float) ($product->weight_kg ?? $variant?->weight_kg ?? 0),
                 'height_cm' => (float) ($product->height_cm ?? $variant?->height_cm ?? 0),
@@ -817,7 +829,7 @@ class OrderService
      * Berat kiriman pesanan dari baris terpilih, memakai calculator yang sama
      * dengan cart dan order snapshot.
      *
-     * @param list<array{product: \App\Models\Product, variant: \App\Models\ProductVariant|null, qty: int}> $lines
+     * @param  list<array{product: Product, variant: ProductVariant|null, qty: int}>  $lines
      */
     protected function cartWeightForLines(array $lines): float
     {

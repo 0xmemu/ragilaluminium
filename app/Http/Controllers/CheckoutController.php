@@ -37,6 +37,11 @@ class CheckoutController extends Controller
     {
         $this->prepareCheckoutIdempotencyKey($request);
 
+        // Baris yang benar-benar di-checkout. Berat paket & tarif J&T WAJIB
+        // memakai daftar ini, bukan seluruh isi keranjang (bug 2026-09-14:
+        // sisa item lama ikut menambah berat sehingga tarif membengkak 4x).
+        $lineIds = $this->selectedCheckoutLineIds($request);
+
         // Asuransi pengiriman WAJIB mulai tidak terpilih pada setiap
         // kunjungan checkout baru. Nilai sesi bisa tertinggal dari pemilihan
         // sebelumnya dan tidak pernah dibersihkan, sehingga kotak asuransi
@@ -85,7 +90,7 @@ class CheckoutController extends Controller
         $shippingPreview = null;
         if (is_array($details) && ! empty($details['city'])) {
             $breakdown = $this->shipping->estimateBreakdown(
-                $this->orders->cartWeightKg(),
+                $this->orders->cartWeightKg($lineIds),
                 (string) $details['city'],
                 $details['province'] ?? null,
                 $details['postal_code'] ?? null,
@@ -161,7 +166,7 @@ class CheckoutController extends Controller
                 'max_order_amount' => $cod['max_order_amount'],
             ],
             'shipping' => $shippingPreview,
-            'shippingWeightKg' => max(1.0, $this->orders->cartWeightKg()),
+            'shippingWeightKg' => max(1.0, $this->orders->cartWeightKg($lineIds)),
             'insurance' => (bool) $request->session()->get('checkout_insurance', false),
             'eta' => OrderEta::forOrder(),
             'defaultPayment' => $defaultPayment,
@@ -266,7 +271,9 @@ class CheckoutController extends Controller
                 ->withErrors(['checkout' => 'Mohon lengkapi detail pengiriman terlebih dahulu.']);
         }
 
-        if (empty($this->cart->get($this->selectedCheckoutLineIds($request)))) {
+        $lineIds = $this->selectedCheckoutLineIds($request);
+
+        if (empty($this->cart->get($lineIds))) {
             OperationalTelemetry::checkoutOutcome('empty_cart', $validated['payment_method']);
 
             return redirect()->route('cart.index')
@@ -284,7 +291,7 @@ class CheckoutController extends Controller
         $request->session()->put('checkout_insurance', $withInsurance);
 
         $shipping = $this->shipping->estimateBreakdown(
-            $this->orders->cartWeightKg(),
+            $this->orders->cartWeightKg($lineIds),
             $details['city'],
             $details['province'] ?? null,
             $details['postal_code'] ?? null,
