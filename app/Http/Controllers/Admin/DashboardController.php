@@ -512,6 +512,9 @@ class DashboardController extends Controller
                 'change_percent' => $revenueChangePercent,
                 'orders_delta' => $ordersDelta,
                 'units_delta' => $unitsDelta,
+                // Label pembanding mengikuti periode (mis. 'vs 17 Agt - 15 Sep'),
+                // bukan 'dari kemarin' yang hanya benar untuk periode today.
+                'comparison_label' => $performance['range']['compare_label'] ?? 'dari kemarin',
                 'sparkline' => $revenueSparkline,
                 'series' => $revenueChart['series'] ?? [],
                 'previous_series' => $revenueChart['previous_series'] ?? [],

@@ -31,6 +31,7 @@ interface OmzetData {
   units: number
   change_percent: number
   orders_delta: number
+  comparison_label?: string
   units_delta: number
   sparkline: number[]
   series?: Array<{ label: string; value: number }>
@@ -426,14 +427,14 @@ export default function Dashboard({
                   <MetricTile
                     label="Order masuk"
                     value={`${formatNumber(omzet.orders)} order`}
-                    delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" />}
+                    delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" comparisonLabel={omzet.comparison_label} />}
                   />
                 </div>
                 <div className="px-4 py-3">
                   <MetricTile
                     label="Jumlah unit"
                     value={`${formatNumber(omzet.units)} unit`}
-                    delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" />}
+                    delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" comparisonLabel={omzet.comparison_label} />}
                   />
                 </div>
                 <div className="px-4 py-3">
