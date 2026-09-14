@@ -88,7 +88,46 @@ class CatalogController extends Controller
                 : $designCode,
         ]);
 
+        // Sub model opsional, dan filter desain hanya bermakna bila desain itu
+        // benar-benar punya produk. Tanpa penjagaan ini tautan seperti
+        // /products/boven/zigzag/polos menampilkan halaman kosong
+        // ("0 Barang ditemukan") yang membingungkan dan tetap terindeks.
+        $effectiveModel = (string) $request->input('model', $modelCode);
+        $effectiveDesign = (string) $request->input('design', $designCode);
+        if (! $this->designHasProducts($categoryCode, $effectiveModel, $effectiveDesign)) {
+            return $this->redirectToModelWithoutDesign($category, $effectiveModel, $request);
+        }
+
         return $this->category($categoryCode, $request);
+    }
+
+    /** Apakah pasangan model+desain punya minimal satu produk yang tampil? */
+    protected function designHasProducts(string $categoryCode, string $modelCode, string $designCode): bool
+    {
+        return Product::visible()
+            ->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($categoryCode))
+            ->where('product_model', $modelCode)
+            ->where('design_variant', $designCode)
+            ->exists();
+    }
+
+    /** Alihkan filter desain kosong ke halaman model, sambil membuang sisa filter desain. */
+    protected function redirectToModelWithoutDesign(string $category, string $modelSlug, Request $request): RedirectResponse
+    {
+        // 'model' dan 'design' sudah terwakili oleh path tujuan; sisanya
+        // (sort, flash, q) tetap diteruskan agar filter lain tidak hilang.
+        $query = $request->query();
+        unset($query['design'], $query['model']);
+
+        $target = route('catalog.model', [
+            'category' => $category,
+            'model' => InstallationGallery::modelToSlug($modelSlug),
+        ]);
+        if ($query !== []) {
+            $target .= '?'.http_build_query($query);
+        }
+
+        return redirect($target, 301);
     }
 
     /** Halaman Promo — listing SKU dengan atribut promo eksplisit. */
