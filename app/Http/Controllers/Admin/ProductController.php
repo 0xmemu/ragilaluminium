@@ -503,13 +503,15 @@ class ProductController extends Controller
                 'weight_kg' => $product->weight_kg !== null ? self::cleanDimension($product->weight_kg) : '',
                 'height_cm' => $product->height_cm !== null ? self::cleanDimension($product->height_cm) : '',
                 'width_cm' => $product->width_cm !== null ? self::cleanDimension($product->width_cm) : '',
-                'depth_cm' => $product->depth_cm !== null ? self::cleanDimension($product->depth_cm) : '',                // ADR-020: media katalog umum (posisi 1..9) dimuat di form galeri utama.
-                // Media opsi varian (posisi 50+) dan video (posisi 80+) dipisahkan
-                // agar tidak tercampur ke dalam galeri foto utama.
+                'depth_cm' => $product->depth_cm !== null ? self::cleanDimension($product->depth_cm) : '',                // Galeri form: SEMUA media katalog milik produk (utama, foto
+                // yang dipakai juga sebagai hasil pemasangan, shared image).
+                // is_installation berarti "dipakai juga sebagai hasil pasang",
+                // bukan "bukan foto katalog". Video tetap dikelola di halaman
+                // Media; media per-varian (posisi 50+) ada di formulir varian.
                 'media' => $product->media
-                    ->where('is_installation', false)
-                    ->where('position', '<', 50)
                     ->whereNull('product_variant_id')
+                    ->filter(fn ($m) => $m->show_in_catalog
+                        && ($m->mediaAsset?->kind ?? 'image') === 'image')
                     ->sortBy('position')
                     ->map(fn ($m) => [
                         'media_asset_id' => $m->media_asset_id,
@@ -613,7 +615,7 @@ class ProductController extends Controller
             foreach ($sentIds as $index => $assetId) {
                 $asset = \App\Models\MediaAsset::find($assetId);
                 if (! $asset || $asset->status !== 'ready') continue;
-                $media = $product->media->first(fn ($m) => $m->media_asset_id === $assetId && ! $m->is_installation);
+                $media = $product->media->first(fn ($m) => $m->media_asset_id === $assetId);
                 if ($media) {
                     $media->update([
                         'position' => $position,
@@ -635,14 +637,12 @@ class ProductController extends Controller
             // Media katalog umum (posisi < 50) yang tidak dikirim lagi -> arsipkan.
             // Foto opsi varian (posisi 50+) dan video (posisi 80+) tidak disentuh di sini.
             $product->media()
-                ->where('is_installation', false)
-                ->where('position', '<', 50)
                 ->whereNull('product_variant_id')
+                ->where('position', '<', 80)
                 ->whereNotIn('media_asset_id', $sentIds)
                 ->update(['show_in_catalog' => false, 'visibility' => 'archived']);
             // Foto utama: pertama di urutan (query langsung, bukan relasi).
             $main = \App\Models\ProductMedia::where('product_id', $product->id)
-                ->where('is_installation', false)
                 ->where('show_in_catalog', true)
                 ->orderBy('position')
                 ->first();
