@@ -107,11 +107,14 @@ export default function OrderStatus({
   orders = [],
   has_session_orders = false,
   searched = false,
+  prefill_order_number = null,
 }: {
   order?: PublicOrder | null
   orders?: PublicOrder[]
   has_session_orders?: boolean
   searched?: boolean
+  /** Nomor order yang dibawa tautan (mis. dari halaman konfirmasi yang sesinya berakhir). */
+  prefill_order_number?: string | null
 }) {
   const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
   const serverOrders = React.useMemo(
@@ -142,7 +145,7 @@ export default function OrderStatus({
   }, [sessionList, currentOrderNumber])
 
   const form = useForm({
-    order_number: "",
+    order_number: prefill_order_number ?? "",
     customer_phone: "",
   })
   const cancelForm = useForm({

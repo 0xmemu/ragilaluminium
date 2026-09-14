@@ -30,6 +30,16 @@ class FrontendPageContractTest extends TestCase
             ->assertRedirect(route('reviews.website', absolute: false).'?sort=oldest');
     }
 
+    /**
+     * /checkout hanya boleh dirender saat ada produk yang siap di-checkout.
+     * Dengan keranjang kosong halaman ini mengalihkan ke keranjang (bukan 200).
+     */
+    public function test_checkout_requires_a_non_empty_cart(): void
+    {
+        $this->get(route('checkout.index'))
+            ->assertRedirect(route('cart.index'));
+    }
+
     public function test_public_entry_pages_render_the_contracted_inertia_components(): void
     {
         $routes = [
@@ -39,7 +49,6 @@ class FrontendPageContractTest extends TestCase
             ['reviews.website', 'Public/Reviews'],
             ['reviews.screenshots', 'Public/Reviews'],
             ['cart.index', 'Public/Cart'],
-            ['checkout.index', 'Public/Checkout'],
             ['order.status', 'Public/OrderStatus'],
             ['cara-pemesanan', 'Public/HowToOrder'],
             ['faq', 'Public/Faq'],

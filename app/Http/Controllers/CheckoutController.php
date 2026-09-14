@@ -33,7 +33,7 @@ class CheckoutController extends Controller
         protected VoucherService $vouchers,
     ) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         $this->prepareCheckoutIdempotencyKey($request);
 
@@ -48,7 +48,16 @@ class CheckoutController extends Controller
         // tampak sudah tercentang tanpa pembeli memilihnya.
         $request->session()->put('checkout_insurance', false);
 
-        $priced = $this->cart->pricedLines($this->selectedCheckoutLineIds($request));
+        $priced = $this->cart->pricedLines($lineIds);
+
+        // Keranjang kosong tidak boleh menampilkan halaman checkout
+        // (mis. setelah order dibuat atau sesi checkout lain sudah selesai):
+        // alihkan ke keranjang supaya pembeli memilih produk dulu.
+        if (($priced['items'] ?? []) === []) {
+            return redirect()->route('cart.index')
+                ->with('error', 'Keranjang kosong. Pilih produk terlebih dahulu sebelum checkout.');
+        }
+
         $applied = $request->session()->get(VoucherService::SESSION_KEY);
         $voucherDiscount = 0.0;
         $voucherPayload = null;

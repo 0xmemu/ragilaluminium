@@ -9,11 +9,13 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
 use App\Services\OrderService;
+use App\Services\ReturnService;
 use App\Services\ShippingService;
 use App\Support\BankTransferInstructions;
 use App\Support\ConsultationWhatsApp;
 use App\Support\OrderEta;
 use App\Support\OrderTrackingPresenter;
+use App\Support\OrderTrackingViewModel;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,15 +34,30 @@ class OrderController extends Controller
     public function confirmation(Request $request, string $order_number): Response|RedirectResponse
     {
         $confirmed = $request->session()->get('confirmed_orders', []);
-
-        if (! in_array($order_number, $confirmed, true)) {
-            return redirect()->route('order.status')
-                ->with('success', 'Masukkan nomor order dan nomor HP untuk melihat status pesanan.');
-        }
-
         $order = Order::where('order_number', $order_number)
             ->with('items')
-            ->firstOrFail();
+            ->first();
+
+        if (! $order) {
+            abort(404);
+        }
+
+        // Halaman konfirmasi adalah halaman PASCA-CHECKOUT, bukan halaman
+        // permanen. Dua syarat akses:
+        //   1. nomor order ada di sesi pembeli (bukti pernah checkout), dan
+        //   2. order baru dibuat dalam jendela konfirmasi.
+        // Order lama (mis. tautan dibuka lagi beberapa hari kemudian) atau
+        // sesi yang sudah berakhir diarahkan ke halaman detail/lacak pesanan
+        // dengan nomor order sudah terisi, supaya tidak menampilkan
+        // "Pesanan Anda berhasil dibuat!" untuk order yang sudah lampau.
+        $windowHours = (int) config('storefront.confirmation_window_hours', 24);
+        $fresh = $order->created_at !== null
+            && $order->created_at->gt(now()->subHours($windowHours));
+
+        if (! in_array($order_number, $confirmed, true) || ! $fresh) {
+            return redirect()->route('order.status', ['order_number' => $order_number])
+                ->with('success', 'Halaman konfirmasi hanya berlaku sesaat setelah pesanan dibuat. Masukkan nomor HP untuk melihat detail pesanan Anda.');
+        }
 
         $whatsappUrl = null;
         $phone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
@@ -147,11 +164,16 @@ class OrderController extends Controller
     {
         $orders = $this->sessionOrdersPayload($request);
 
+        // Prefill dari tautan (mis. redirect halaman konfirmasi yang sesinya
+        // sudah berakhir): pembeli tidak perlu mengetik ulang nomor order.
+        $prefill = trim((string) $request->query('order_number', ''));
+
         return Inertia::render('Public/OrderStatus', [
             'has_session_orders' => $orders !== [],
             'orders' => $orders,
             'order' => $orders[0] ?? null,
             'searched' => false,
+            'prefill_order_number' => $prefill !== '' ? $prefill : null,
         ]);
     }
 
@@ -326,7 +348,7 @@ class OrderController extends Controller
             ?? $order->shippingRecords->first();
 
         $tracking = OrderTrackingPresenter::forOrder($order, $shipping);
-        $viewModel = new \App\Support\OrderTrackingViewModel($order, $shipping);
+        $viewModel = new OrderTrackingViewModel($order, $shipping);
 
         // Phase D: blok retur customer-safe (tanpa internal reason; reason sdh
         // dirancang customer-facing di ReturnService::canCreateReturn).
@@ -339,7 +361,7 @@ class OrderController extends Controller
             ->first(fn ($r) => $r->status === 'delivered' && $r->last_status_at !== null);
         $deliveredAt = $deliveredRecord?->last_status_at;
         if ($deliveredAt) {
-            $eligibility = app(\App\Services\ReturnService::class)
+            $eligibility = app(ReturnService::class)
                 ->canCreateReturn($order, $deliveredRecord);
             $returnBlock = [
                 'eligible' => (bool) ($eligibility['allowed'] ?? false),
@@ -350,7 +372,7 @@ class OrderController extends Controller
 
         $whatsappUrl = null;
         $returnWhatsappUrl = null;
-        $businessPhone = PhoneNumber::normalize(\App\Support\ConsultationWhatsApp::businessPhone());
+        $businessPhone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
         if ($businessPhone) {
             $whatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(sprintf(
                 'Halo Ragil Aluminium, saya mau bertanya soal order %s. Mohon bantuannya.',
@@ -381,7 +403,7 @@ class OrderController extends Controller
                 'total' => (float) $order->total_amount,
             ],
             'customer_name' => $order->customer_name,
-                'created_at' => $order->created_at?->toIso8601String(),
+            'created_at' => $order->created_at?->toIso8601String(),
             'eta' => OrderEta::forOrder($order),
             'items' => $order->items->map(function ($i) {
                 $img = $i->product?->media()->first();
@@ -459,4 +481,3 @@ class OrderController extends Controller
         return $tracking;
     }
 }
-

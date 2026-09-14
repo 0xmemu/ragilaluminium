@@ -43,6 +43,19 @@ return [
     | Public WhatsApp consultation CTA
     |--------------------------------------------------------------------------
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Halaman konfirmasi pasca-checkout
+    |--------------------------------------------------------------------------
+    |
+    | Berapa jam halaman konfirmasi ("Pesanan Anda berhasil dibuat!") masih
+    | boleh diakses setelah order dibuat. Setelah jendela ini lewat, tautan
+    | konfirmasi diarahkan ke halaman detail/lacak pesanan supaya tidak
+    | menampilkan status "baru dibuat" untuk pesanan lama.
+    |
+    */
+    'confirmation_window_hours' => (int) env('STOREFRONT_CONFIRMATION_WINDOW_HOURS', 24),
+
     'consultation_template_key' => env('STOREFRONT_CONSULTATION_TEMPLATE_KEY', 'consultation_request'),
     'consultation_direct_message' => env(
         'STOREFRONT_CONSULTATION_DIRECT_MESSAGE',

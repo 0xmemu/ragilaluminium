@@ -9,8 +9,9 @@ use App\Services\Shipping\JntResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
+use Tests\TestCase;
 
-class OrderPrivacyTest extends \Tests\TestCase
+class OrderPrivacyTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -192,7 +193,10 @@ class OrderPrivacyTest extends \Tests\TestCase
     {
         $this->makeOrder();
 
-        $this->get('/order/RA-PRIV-1/confirmation')->assertRedirect(route('order.status'));
+        // Redirect membawa nomor order agar pembeli tidak mengetik ulang;
+        // tujuan tetap halaman status/detail pesanan tanpa sesi.
+        $this->get('/order/RA-PRIV-1/confirmation')
+            ->assertRedirect(route('order.status', ['order_number' => 'RA-PRIV-1']));
     }
 
     public function test_status_lookup_refreshes_jnt_and_returns_shipping(): void
