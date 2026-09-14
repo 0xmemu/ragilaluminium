@@ -1,5 +1,6 @@
 import { Head, Link } from "@inertiajs/react"
 
+import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -109,16 +110,9 @@ export default function OrderConfirmation({
             </div>
           </div>
 
-          {/* Trustline Belanja Aman (kartu abu) */}
-          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-[#dee3e0] bg-[#f7f8f7] p-4">
-            <Icon name="shield-check" className="size-6 shrink-0 text-[#333333]" aria-hidden="true" />
-            <div>
-              <p className="text-xs font-bold leading-[1.33] text-[#333333]">Belanja Aman &amp; Terpercaya</p>
-              <p className="mt-1 text-xs leading-[1.33] text-[#666666]">
-                Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
-              </p>
-            </div>
-          </div>
+          {/* Trustline Belanja Aman: komponen bersama supaya warna ikon,
+              radius, dan tokennya seragam dengan cart, checkout, dan lacak. */}
+          <TrustAssuranceCard className="mt-5" />
 
           {/* CTA: WhatsApp primer, lalu Cek Pesanan & Beranda */}
           <div className="mt-5 flex flex-col gap-3 border-t border-[#dee3e0] pt-7">

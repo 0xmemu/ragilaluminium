@@ -7,11 +7,11 @@ import {
   Copy,
   CreditCard,
   Package,
-  ShieldCheck,
   Truck,
 } from "@phosphor-icons/react"
 
 import { Icon } from "@/components/shared/icon"
+import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { CustomerReviewForm } from "@/components/public/customer-review-form"
@@ -572,22 +572,6 @@ function SupportAction() {
 /**
  * Card 5: Trust Assurance
  */
-function TrustAssurance() {
-  return (
-    <section className="order-tracking__trust rounded-[14px] border border-border bg-surface-muted p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        <ShieldCheck className="size-6 shrink-0 text-foreground" weight="regular" />
-        <div>
-          <p className="text-xs font-bold text-foreground">Belanja Aman & Terpercaya</p>
-          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
-          </p>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 /**
  * Komponen Utama OrderTrackingDetail
  */
@@ -614,8 +598,8 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
       {/* 5. Support Section */}
       <SupportAction />
 
-      {/* 6. Trust Assurance */}
-      <TrustAssurance />
+      {/* 6. Trust Assurance (komponen bersama, satu sumber) */}
+      <TrustAssuranceCard />
 
     </div>
   )
