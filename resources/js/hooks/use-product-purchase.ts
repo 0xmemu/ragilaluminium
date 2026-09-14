@@ -191,16 +191,7 @@ export function useProductPurchase({
     form.setData("variant_sku", nextVariant?.variant_sku ?? "")
     form.setData("quantity", 1)
     form.clearErrors()
-
-    if (nextVariant && typeof window !== "undefined") {
-      const url = new URL(window.location.href)
-      url.searchParams.set("variant", nextVariant.variant_sku)
-      window.history.replaceState(
-        window.history.state,
-        "",
-        url.pathname + url.search + url.hash,
-      )
-    }
+    // URL diselaraskan di ProductDetail (satu sumber), bukan di sini.
   }
 
   function requestVariant() {

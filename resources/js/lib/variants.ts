@@ -211,6 +211,22 @@ export function resolveVariant(
   return variants.find((variant) => variantMatchesSelections(variant, selections, axes)) ?? null
 }
 
+/**
+ * Selaraskan parameter `variant` di URL dengan varian yang benar-benar terpilih.
+ * Ada varian -> tulis parameternya (tautan bisa dibagikan untuk varian itu).
+ * Belum ada varian -> HAPUS parameternya, supaya tautan yang dibagikan tetap
+ * tautan produk biasa dan tidak mewarisi pilihan lama dari tautan sebelumnya.
+ */
+export function variantUrl(href: string, variantSku: string | null | undefined): string {
+  const url = new URL(href)
+  if (variantSku) {
+    url.searchParams.set("variant", variantSku)
+  } else {
+    url.searchParams.delete("variant")
+  }
+  return url.toString()
+}
+
 export function firstAvailableSelections(_variants: ProductVariant[]): VariantSelections {
   // Default: tidak ada opsi yang terpilih. Pengguna harus memilih setiap axis
   // (Warna, Kaca, dll.) secara eksplisit sebelum varian ditemukan dan

@@ -11,6 +11,7 @@ import { Icon } from "@/components/shared/icon"
 import { useProductPurchase } from "@/hooks/use-product-purchase"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
+import { variantUrl } from "@/lib/variants"
 import type {
   ProductAttribute,
   ProductCardData,
@@ -50,21 +51,32 @@ export default function ProductDetail({
   const { title, variantMedia, highlightedMediaId, productSchema, averageRating, ratingLabel, ratedReviews } = purchase
 
   const shareUrl = React.useMemo(() => {
+    const variantSku = purchase.selectedVariant?.variant_sku ?? null
     if (typeof window === "undefined") {
       const base = routeUrl("product.show", { parent_sku: product.parent_sku })
-      const variantSku = purchase.selectedVariant?.variant_sku
       const separator = base.includes("?") ? "&" : "?"
       return variantSku
         ? base + separator + "variant=" + encodeURIComponent(variantSku)
         : base
     }
 
-    const url = new URL(window.location.href)
-    if (purchase.selectedVariant?.variant_sku) {
-      url.searchParams.set("variant", purchase.selectedVariant.variant_sku)
-    }
-    return url.toString()
+    // Tautan yang dibagikan selalu mengikuti varian yang benar-benar terpilih:
+    // sudah ada varian -> tautan varian, belum ada -> tautan produk biasa.
+    return variantUrl(window.location.href, variantSku)
   }, [product.parent_sku, purchase.selectedVariant])
+
+  // URL di address bar diselaraskan dengan pilihan: begitu ada varian terpilih
+  // parameternya ditulis, dan begitu belum ada (atau pilihan jadi tidak lengkap)
+  // parameternya dibuang. Ini juga membersihkan sisa ?variant= saat halaman
+  // dibuka untuk produk lain lewat tautan lama.
+  const selectedVariantSku = purchase.selectedVariant?.variant_sku ?? null
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    const next = variantUrl(window.location.href, selectedVariantSku)
+    if (next !== window.location.href) {
+      window.history.replaceState(window.history.state, "", next)
+    }
+  }, [selectedVariantSku])
 
   const socialImage = variantMedia.find((item) => item.url)?.url ?? null
   const socialImageUrl = React.useMemo(() => {
