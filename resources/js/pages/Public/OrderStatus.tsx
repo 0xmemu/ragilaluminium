@@ -486,7 +486,7 @@ export default function OrderStatus({
         ) : (
           // Konten status dipusatkan dengan lebar baca nyaman. Grid 20rem+1fr
           // ditinggalkan dari sidebar "Pesanan tersimpan" yang sudah dihapus.
-          <div className="mx-auto w-full min-w-0 max-w-2xl lg:max-w-4xl">
+          <div className="mx-auto w-full min-w-0 max-w-2xl lg:max-w-5xl">
             {pageErrors.cancel ? (
               <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
             ) : null}

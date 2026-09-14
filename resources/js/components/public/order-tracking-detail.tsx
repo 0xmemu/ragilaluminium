@@ -89,7 +89,7 @@ function JntCargoLogo({ className }: { className?: string }) {
  * - Badge status sinkron dengan status pesanan di kanan atas
  * - Collapsible items list dengan format Total X unit & total harga
  */
-function OrderSummaryCard({ order }: { order: PublicOrder }) {
+function OrderSummaryCard({ order, className }: { order: PublicOrder; className?: string }) {
   const [expanded, setExpanded] = React.useState(true)
   const totalAmount = order.total_amount ? formatCurrency(order.total_amount) : "-"
   const totalUnits = order.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -101,7 +101,12 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
   const paymentStateSuffix = isCod ? null : (order.vm?.payment?.statusLabel ?? null)
 
   return (
-    <section className="order-tracking__summary-card rounded-[14px] border border-border bg-surface p-4 shadow-sm lg:p-5">
+    <section
+      className={cn(
+        "order-tracking__summary-card rounded-[14px] border border-border bg-surface p-4 shadow-sm lg:p-5",
+        className,
+      )}
+    >
       {/* Header Baris 1: No. Order + Copy di kiri, Status Badge di kanan */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-0.5">
@@ -495,12 +500,18 @@ function LacakPesanan({ order }: { order: PublicOrder }) {
 /**
  * Card 3: J&T Cargo + Stepper + Lacak Pesanan
  */
-function JnTCard({ order }: { order: PublicOrder }) {
+function JnTCard({ order, className }: { order: PublicOrder; className?: string }) {
   const carrier = order.vm?.carrier
   const shipment = order.vm?.shipment
 
   return (
-    <section id="lacak-pengiriman" className="order-tracking__jnt-card scroll-mt-20 rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5 lg:p-6">
+    <section
+      id="lacak-pengiriman"
+      className={cn(
+        "order-tracking__jnt-card space-y-5 rounded-[14px] border border-border bg-surface p-5 shadow-sm scroll-mt-20 lg:p-6",
+        className,
+      )}
+    >
       {/* Brand Header J&T Cargo Icon */}
       <div className="space-y-1">
         <JntCargoLogo />
@@ -552,10 +563,13 @@ function JnTCard({ order }: { order: PublicOrder }) {
 /**
  * Card 4: Support Section
  */
-function SupportAction() {
+function SupportAction({ className }: { className?: string }) {
   return (
     <section
-      className="order-tracking__support rounded-[14px] border border-border bg-surface-muted/40 p-4 shadow-sm"
+      className={cn(
+        "order-tracking__support rounded-[14px] border border-border bg-surface-muted/40 p-4 shadow-sm",
+        className,
+      )}
       id="bantuan"
     >
       <p className="text-sm font-bold text-foreground">Butuh bantuan dengan pesanan ini?</p>
@@ -578,29 +592,29 @@ function SupportAction() {
 
 export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
   return (
-    <div className="order-tracking mx-auto grid max-w-lg gap-4 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-6">
-      {/* Kolom utama: status, ringkasan, pelacakan */}
-      <div className="min-w-0 space-y-4">
-        {/* Banner delivered/completed: "sudah sampai" + CTA ulasan (paling atas) */}
-        <CustomerReviewForm
-          orderNumber={order.order_number}
-          orderStatus={order.order_status}
-          items={order.items}
-          reviews={order.reviews}
-          variant="banner"
-        />
-        {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
-        <OrderSummaryCard order={order} />
+    <div className="order-tracking mx-auto grid max-w-lg gap-4 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6">
+      {/* Urutan DOM = urutan MOBILE (tidak diubah). Di desktop kolom diatur
+          lewat col-start/row-start: kartu lacak pindah ke kolom kanan,
+          sementara bantuan & jaminan tetap di kolom kiri bawah kartu penerima. */}
 
-        {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
-        <JnTCard order={order} />
-      </div>
+      {/* Banner delivered/completed: "sudah sampai" + CTA ulasan */}
+      <CustomerReviewForm
+        orderNumber={order.order_number}
+        orderStatus={order.order_status}
+        items={order.items}
+        reviews={order.reviews}
+        variant="banner"
+      />
 
-      {/* Kolom samping desktop: bantuan & jaminan (mobile mengalir di bawah) */}
-      <div className="min-w-0 space-y-4">
-        <SupportAction />
-        <TrustAssuranceCard />
-      </div>
+      {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
+      <OrderSummaryCard order={order} className="lg:col-start-1" />
+
+      {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
+      <JnTCard order={order} className="lg:col-start-2 lg:row-start-1" />
+
+      {/* 3. Bantuan & jaminan: tepat di bawah kartu penerima (kolom kiri) */}
+      <SupportAction className="lg:col-start-1" />
+      <TrustAssuranceCard className="lg:col-start-1" />
 
     </div>
   )
