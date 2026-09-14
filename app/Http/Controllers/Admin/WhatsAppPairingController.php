@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\ActivityLogService;
 use App\Models\WhatsAppMessage;
+use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
@@ -122,6 +123,7 @@ class WhatsAppPairingController extends Controller
             if (! empty($merged['connected_phone'])) {
                 $merged['connected_phone'] = preg_replace('/[:@].*$/', '', (string) $merged['connected_phone']);
             }
+
             return response()->json($merged);
         } catch (\Throwable $e) {
             return response()->json([
@@ -134,7 +136,14 @@ class WhatsAppPairingController extends Controller
 
     public function qr(): SymfonyResponse
     {
-        $response = Http::timeout(5)->get($this->baseUrl().'/qr.png');
+        // Gateway yang tidak terjangkau harus memberi 404 yang rapi
+        // ("QR belum tersedia"), bukan 500: konsisten dengan method lain di
+        // controller ini yang semuanya memakai try/catch.
+        try {
+            $response = Http::timeout(5)->get($this->baseUrl().'/qr.png');
+        } catch (\Throwable) {
+            abort(404, 'QR belum tersedia');
+        }
 
         if ($response->failed()) {
             abort(404, 'QR belum tersedia');
@@ -147,7 +156,7 @@ class WhatsAppPairingController extends Controller
         ]);
     }
 
-    public function refreshQr(): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+    public function refreshQr(): RedirectResponse|JsonResponse
     {
         ActivityLogService::record(
             'whatsapp.refresh_qr',
@@ -172,7 +181,7 @@ class WhatsAppPairingController extends Controller
         }
     }
 
-    public function code(Request $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+    public function code(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:20'],
@@ -206,7 +215,7 @@ class WhatsAppPairingController extends Controller
         }
     }
 
-    public function disconnect(): \Illuminate\Http\RedirectResponse
+    public function disconnect(): RedirectResponse
     {
         ActivityLogService::record(
             'whatsapp.disconnect',

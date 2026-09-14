@@ -31,5 +31,12 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <!-- Gateway WhatsApp WAJIB tidak terjangkau saat test. Tanpa ini,
+             test memakai WHATSAPP_BAILEYS_BASE_URL dari .env sehingga di
+             server produksi test menembak gateway SUNGGUHAN: test
+             pairing-code memicu permintaan pairing dan test disconnect
+             benar-benar memutus sesi live (insiden 2026-09-10 dan
+             2026-09-14). Port 1 selalu ditolak koneksi. -->
+        <env name="WHATSAPP_BAILEYS_BASE_URL" value="http://127.0.0.1:1"/>
     </php>
 </phpunit>
