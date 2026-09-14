@@ -164,7 +164,7 @@ class VoucherService
 
         $eligibleBase = $this->eligibleBase($voucher, $lines);
         if (! $voucher->isGeneral() && $eligibleBase <= 0) {
-            throw new \DomainException('Voucher ini hanya berlaku untuk '.$voucher->targetLabel().' — tidak ada produk yang memenuhi di keranjang Anda.');
+            throw new \DomainException('Voucher ini hanya berlaku untuk '.$voucher->targetLabel().', tidak ada produk yang memenuhi di keranjang Anda.');
         }
         if ($eligibleBase < (float) $voucher->min_purchase) {
             $min = number_format((float) $voucher->min_purchase, 0, ',', '.');

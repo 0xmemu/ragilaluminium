@@ -59,7 +59,7 @@ class MediaDiskCheck extends Command
 
             $read = $disk->get($path);
             if ($read !== $payload) {
-                $this->error('GET mismatch — isi file berbeda.');
+                $this->error('GET mismatch, isi file berbeda.');
 
                 return self::FAILURE;
             }

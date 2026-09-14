@@ -45,7 +45,7 @@ class PrunePendingUploads extends Command
         $freedMb = round($bytes / 1048576, 2);
 
         if ($count === 0) {
-            $this->info("media:prune-pending — tidak ada objek pending/ lebih tua dari {$hours} jam.");
+            $this->info("media:prune-pending, tidak ada objek pending/ lebih tua dari {$hours} jam.");
 
             return self::SUCCESS;
         }

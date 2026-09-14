@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EventLog;
+use App\Support\OrderEventLabels;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -191,8 +192,8 @@ class ActivityLogService
             ),
             'order_status_changed' => sprintf(
                 'Status pesanan diubah dari %s menjadi %s%s',
-                \App\Support\OrderEventLabels::orderStatus(isset($payload['from']) ? (string) $payload['from'] : null),
-                \App\Support\OrderEventLabels::orderStatus(isset($payload['order_status']) ? (string) $payload['order_status'] : (isset($payload['to']) ? (string) $payload['to'] : null)),
+                OrderEventLabels::orderStatus(isset($payload['from']) ? (string) $payload['from'] : null),
+                OrderEventLabels::orderStatus(isset($payload['order_status']) ? (string) $payload['order_status'] : (isset($payload['to']) ? (string) $payload['to'] : null)),
                 filled($payload['reason'] ?? null) ? ' · alasan: '.$payload['reason'] : ''
             ),
             'payment.confirmed' => sprintf(
@@ -324,11 +325,22 @@ class ActivityLogService
 
         // Format nilai biar mudah dibaca
         $fmt = function (mixed $v, string $field): string {
-            if (is_array($v)) return json_encode($v, JSON_UNESCAPED_UNICODE);
-            if ($field === 'enabled') return $v ? 'aktif' : 'nonaktif';
-            if ($field === 'fee_value') return is_numeric($v) ? number_format((float) $v, 0, ',', '.').'%' : (string) $v;
-            if ($field === 'max_order_amount') return ($v === null || $v === '') ? 'tanpa batas' : 'Rp '.number_format((float) $v, 0, ',', '.');
-            if ($field === 'subsidy_value') return is_numeric($v) ? number_format((float) $v, 2, ',', '.') : (string) $v;
+            if (is_array($v)) {
+                return json_encode($v, JSON_UNESCAPED_UNICODE);
+            }
+            if ($field === 'enabled') {
+                return $v ? 'aktif' : 'nonaktif';
+            }
+            if ($field === 'fee_value') {
+                return is_numeric($v) ? number_format((float) $v, 0, ',', '.').'%' : (string) $v;
+            }
+            if ($field === 'max_order_amount') {
+                return ($v === null || $v === '') ? 'tanpa batas' : 'Rp '.number_format((float) $v, 0, ',', '.');
+            }
+            if ($field === 'subsidy_value') {
+                return is_numeric($v) ? number_format((float) $v, 2, ',', '.') : (string) $v;
+            }
+
             return $v === null ? '-' : (string) $v;
         };
 
@@ -356,17 +368,22 @@ class ActivityLogService
         if ($changes) {
             return $base.' · '.implode('; ', $changes);
         }
+
         return $base;
     }
 
-    protected function fmtLog(string $v): string { return $v; }
+    protected function fmtLog(string $v): string
+    {
+        return $v;
+    }
+
     protected function paymentStatusLabel(?string $code): string
     {
         return match ($code) {
             'pending' => 'Menunggu',
             'paid' => 'Lunas',
             'refunded' => 'Dikembalikan',
-            null, '' => '—',
+            null, '' => '-',
             default => str_replace('_', ' ', $code),
         };
     }

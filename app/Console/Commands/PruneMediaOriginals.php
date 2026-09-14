@@ -22,7 +22,7 @@ class PruneMediaOriginals extends Command
     public function handle(MediaDerivativeService $derivatives): int
     {
         if ($derivatives->keepOriginal()) {
-            $this->warn('MEDIA_KEEP_ORIGINAL=true — prune dibatalkan. Set false untuk menghapus original.');
+            $this->warn('MEDIA_KEEP_ORIGINAL=true, prune dibatalkan. Set false untuk menghapus original.');
 
             return self::SUCCESS;
         }

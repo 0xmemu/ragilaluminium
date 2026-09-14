@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Support\PhoneNumber;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -152,7 +153,7 @@ class CustomerService
     /**
      * @return array{key: string, label: string}
      */
-    public function statusFor(Customer $customer, int $orderCount, ?\Carbon\Carbon $lastOrderAt): array
+    public function statusFor(Customer $customer, int $orderCount, ?Carbon $lastOrderAt): array
     {
         if ($orderCount === 0) {
             return ['key' => 'baru', 'label' => 'Baru'];
@@ -174,7 +175,7 @@ class CustomerService
         $orderCount = (clone $orders)->count();
         $totalSpent = (float) (clone $orders)->whereIn('order_status', self::REVENUE_STATUSES)->sum('total_amount');
         $lastOrderAt = (clone $orders)->max('created_at');
-        $lastAt = $lastOrderAt ? \Carbon\Carbon::parse($lastOrderAt) : null;
+        $lastAt = $lastOrderAt ? Carbon::parse($lastOrderAt) : null;
         $fraud = $this->fraudAssessment($customer);
         $status = $this->statusFor($customer, $orderCount, $lastAt);
         $nameVariants = (clone $orders)->distinct()->pluck('customer_name')->filter()->unique()->values();
@@ -247,7 +248,7 @@ class CustomerService
 
         return [
             'top_province' => [
-                'name' => $topProvince?->default_province ?? '—',
+                'name' => $topProvince?->default_province ?? '-',
                 'share_percent' => $total > 0 && $topProvince
                     ? round(((int) $topProvince->total / $total) * 100)
                     : 0,
