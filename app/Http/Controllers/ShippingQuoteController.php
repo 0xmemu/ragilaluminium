@@ -26,6 +26,10 @@ class ShippingQuoteController extends Controller
         // boleh 422 di frontend; quote() melakukan clamp >= 1 kg sendiri.
         $weightKg = max(0.01, (float) $validated['weight_kg']);
 
+        // Nilai pertanggungan asuransi = subtotal baris yang dipilih, bukan
+        // seluruh keranjang (bug 2026-09-14: asuransi ikut membengkak).
+        $selectedLines = $this->cart->getSelectedLines();
+
         return response()->json([
             'data' => $this->shipping->quote(
                 $weightKg,
@@ -34,7 +38,7 @@ class ShippingQuoteController extends Controller
                 $validated['postal_code'] ?? null,
                 $validated['destination_area'] ?? null,
                 $withInsurance,
-                $this->cart->subtotal(),
+                $this->cart->subtotal($selectedLines !== [] ? $selectedLines : null),
             ),
         ]);
     }

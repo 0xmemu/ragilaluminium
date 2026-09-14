@@ -9,13 +9,14 @@ use Illuminate\Session\Store;
 class CartService
 {
     protected const SESSION_KEY = 'ragil_cart';
+
     protected const PENDING_KEY = 'ragil_cart_pending';
+
     protected const PENDING_UNTIL = 'ragil_cart_pending_until';
+
     protected const UNDO_TTL = 5;
 
-    public function __construct(protected Store $session)
-    {
-    }
+    public function __construct(protected Store $session) {}
 
     public function get(?array $onlyLineIds = null): array
     {
@@ -200,12 +201,12 @@ class CartService
             $lineIds,
         )))));
 
-        $this->session->put(self::SESSION_KEY . '_selected', $selected);
+        $this->session->put(self::SESSION_KEY.'_selected', $selected);
     }
 
     public function getSelectedLines(): array
     {
-        $selected = $this->session->get(self::SESSION_KEY . '_selected', []);
+        $selected = $this->session->get(self::SESSION_KEY.'_selected', []);
 
         if (! is_array($selected)) {
             return [];
@@ -213,9 +214,10 @@ class CartService
 
         return array_values(array_intersect(array_keys($this->get()), $selected));
     }
+
     public function clearSelectedLines(): void
     {
-        $this->session->forget(self::SESSION_KEY . '_selected');
+        $this->session->forget(self::SESSION_KEY.'_selected');
     }
 
     public function clear(): void
@@ -232,9 +234,16 @@ class CartService
         return count($this->get());
     }
 
-    public function subtotal(): float
+    /**
+     * Subtotal keranjang. `$onlyLineIds` membatasi ke baris tertentu supaya
+     * nilai pertanggungan asuransi & ringkasan checkout mengikuti baris yang
+     * benar-benar dipesan, bukan seluruh isi keranjang.
+     *
+     * @param  list<string>|null  $onlyLineIds
+     */
+    public function subtotal(?array $onlyLineIds = null): float
     {
-        return (float) $this->pricedLines()['subtotal'];
+        return (float) $this->pricedLines($onlyLineIds)['subtotal'];
     }
 
     /**
@@ -376,7 +385,7 @@ class CartService
             $product->load('mainImage');
         }
 
-        $priceService = app(\App\Services\PriceService::class);
+        $priceService = app(PriceService::class);
 
         if ($variant) {
             $priced = $priceService->forVariant($variant, $product);

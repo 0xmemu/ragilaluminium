@@ -96,7 +96,7 @@ class CheckoutController extends Controller
                 $details['postal_code'] ?? null,
                 $details['district'] ?? null,
                 (bool) $request->session()->get('checkout_insurance', false),
-                $this->cart->subtotal(),
+                $this->cart->subtotal($lineIds),
             );
             $shippingPreview = [
                 'gross' => $breakdown['gross'],
@@ -297,7 +297,7 @@ class CheckoutController extends Controller
             $details['postal_code'] ?? null,
             $details['district'] ?? null,
             $withInsurance,
-            $this->cart->subtotal(),
+            $this->cart->subtotal($lineIds),
         );
 
         $sessionVoucher = $request->session()->get(VoucherService::SESSION_KEY);
