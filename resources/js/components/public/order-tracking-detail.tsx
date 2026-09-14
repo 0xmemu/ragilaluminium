@@ -101,7 +101,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
   const paymentStateSuffix = isCod ? null : (order.vm?.payment?.statusLabel ?? null)
 
   return (
-    <section className="order-tracking__summary-card rounded-[14px] border border-border bg-surface p-4 shadow-sm">
+    <section className="order-tracking__summary-card rounded-[14px] border border-border bg-surface p-4 shadow-sm lg:p-5">
       {/* Header Baris 1: No. Order + Copy di kiri, Status Badge di kanan */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-0.5">
@@ -191,7 +191,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
                 key={`item-${item.product_name ?? item.name}-${index}`}
                 className="flex items-center gap-3 py-2.5"
               >
-                <span className="relative flex size-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted">
+                <span className="relative flex size-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted lg:size-14">
                   <ResponsiveImage
                     src={item.image ?? null}
                     alt={title}
@@ -214,12 +214,12 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
                     </span>
                   )}
                   {item.variant_label ? (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground lg:text-xs">
                       {item.variant_label?.replace(/ · /g, " / ")}
                     </p>
                   ) : null}
                   {item.note ? (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground lg:text-xs">
                       Catatan: {item.note}
                     </p>
                   ) : null}
@@ -254,7 +254,7 @@ function OrderSummaryCard({ order }: { order: PublicOrder }) {
             { label: "Asuransi", value: b.insurance },
           ]
           return (
-            <dl className="mt-1 space-y-1.5 border-t border-border pt-3 text-[11px]">
+            <dl className="mt-1 space-y-1.5 border-t border-border pt-3 text-[11px] lg:text-xs">
               {rows.map((row) => (
                 <div key={row.label} className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">{row.label}</dt>
@@ -500,7 +500,7 @@ function JnTCard({ order }: { order: PublicOrder }) {
   const shipment = order.vm?.shipment
 
   return (
-    <section id="lacak-pengiriman" className="order-tracking__jnt-card scroll-mt-20 rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5">
+    <section id="lacak-pengiriman" className="order-tracking__jnt-card scroll-mt-20 rounded-[14px] border border-border bg-surface p-5 shadow-sm space-y-5 lg:p-6">
       {/* Brand Header J&T Cargo Icon */}
       <div className="space-y-1">
         <JntCargoLogo />
@@ -578,28 +578,29 @@ function SupportAction() {
 
 export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
   return (
-    <div className="order-tracking space-y-4 max-w-lg mx-auto lg:max-w-none lg:mx-0">
-      {/* Banner delivered/completed: "sudah sampai" + CTA ulasan (paling atas) */}
-      <CustomerReviewForm
-        orderNumber={order.order_number}
-        orderStatus={order.order_status}
-        items={order.items}
-        reviews={order.reviews}
-        variant="banner"
-      />
-      {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
-      <OrderSummaryCard order={order} />
+    <div className="order-tracking mx-auto grid max-w-lg gap-4 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-6">
+      {/* Kolom utama: status, ringkasan, pelacakan */}
+      <div className="min-w-0 space-y-4">
+        {/* Banner delivered/completed: "sudah sampai" + CTA ulasan (paling atas) */}
+        <CustomerReviewForm
+          orderNumber={order.order_number}
+          orderStatus={order.order_status}
+          items={order.items}
+          reviews={order.reviews}
+          variant="banner"
+        />
+        {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
+        <OrderSummaryCard order={order} />
 
-      {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
-      <JnTCard order={order} />
+        {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
+        <JnTCard order={order} />
+      </div>
 
-      {/* 4b. Retur & Penyelesaian (delivered only) */}
-
-      {/* 5. Support Section */}
-      <SupportAction />
-
-      {/* 6. Trust Assurance (komponen bersama, satu sumber) */}
-      <TrustAssuranceCard />
+      {/* Kolom samping desktop: bantuan & jaminan (mobile mengalir di bawah) */}
+      <div className="min-w-0 space-y-4">
+        <SupportAction />
+        <TrustAssuranceCard />
+      </div>
 
     </div>
   )

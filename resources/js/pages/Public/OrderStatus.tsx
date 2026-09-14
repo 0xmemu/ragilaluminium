@@ -484,18 +484,13 @@ export default function OrderStatus({
             </div>
           </div>
         ) : (
-          <div
-            className={cn(
-              "grid gap-6 lg:items-start lg:gap-8",
-              sessionList.length > 1 && "lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]",
-            )}
-          >
+          // Konten status dipusatkan dengan lebar baca nyaman. Grid 20rem+1fr
+          // ditinggalkan dari sidebar "Pesanan tersimpan" yang sudah dihapus.
+          <div className="mx-auto w-full min-w-0 max-w-2xl lg:max-w-4xl">
             {pageErrors.cancel ? (
-              <Alert tone="danger" title={pageErrors.cancel} className="mb-4 lg:col-span-2" />
+              <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
             ) : null}
 
-
-            {null}
 
             <div className="min-w-0">
               {storedLoading ? (
