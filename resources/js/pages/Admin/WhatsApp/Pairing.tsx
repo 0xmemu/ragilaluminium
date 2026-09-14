@@ -387,14 +387,8 @@ export default function Pairing({
                   QR belum tersedia.
                   <br />
                   Status gateway: <b>{statusText}</b>
-                  <div className="mt-3 flex justify-center">
-                    <form method="post" action={refreshQrUrl} onSubmit={confirmRefreshQr}>
-                      <Button type="submit" size="sm">
-                        <Icon name="qr" className="size-4" aria-hidden="true" />
-                        <span>Generate QR</span>
-                      </Button>
-                    </form>
-                  </div>
+                  <br />
+                  Tekan tombol Generate QR di bawah untuk memulai pairing.
                 </div>
               )}
             </div>
