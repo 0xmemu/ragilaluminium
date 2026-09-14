@@ -392,8 +392,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('beranda', [BerandaController::class, 'index'])->name('beranda.index');
     Route::put('beranda', [BerandaController::class, 'update'])->name('beranda.update');
-    Route::get('beranda/service-highlights', [BerandaController::class, 'editServiceHighlights'])->name('beranda.service-highlights.edit');
-    Route::put('beranda/service-highlights', [BerandaController::class, 'updateServiceHighlights'])->name('beranda.service-highlights.update');
     Route::get('beranda/how-to-order', [BerandaController::class, 'editHowToOrder'])->name('beranda.how-to-order.edit');
     Route::put('beranda/how-to-order', [BerandaController::class, 'updateHowToOrder'])->name('beranda.how-to-order.update');
 

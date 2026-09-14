@@ -22,8 +22,9 @@ class BerandaLayoutAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Beranda/Index')
-                ->has('sections', 3)
-                ->where('sections.0.key', 'category_menu'));
+                ->has('sections', 2)
+                ->where('sections.0.key', 'banner')
+                ->where('sections.1.key', 'how_to_order'));
 
         $this->actingAs($admin)
             ->put(route('admin.beranda.update'), [
@@ -48,20 +49,9 @@ class BerandaLayoutAdminTest extends TestCase
         $this->assertTrue((bool) $sections->firstWhere('key', 'how_to_order')['enabled']);
     }
 
-    public function test_admin_can_update_service_highlights_and_how_to_order(): void
+    public function test_admin_can_update_how_to_order(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-
-        $this->actingAs($admin)
-            ->put(route('admin.beranda.service-highlights.update'), [
-                'title' => 'Keunggulan Ragil',
-                'subtitle' => 'Alasan pelanggan percaya',
-                'items' => [
-                    ['icon' => 'shield', 'title' => 'Garansi Resmi', 'description' => '1 tahun'],
-                    ['icon' => 'cod', 'title' => 'Bisa COD', 'description' => 'Bayar ditempat'],
-                ],
-            ])
-            ->assertRedirect(route('admin.beranda.index'));
 
         $this->actingAs($admin)
             ->put(route('admin.beranda.how-to-order.update'), [
@@ -75,7 +65,6 @@ class BerandaLayoutAdminTest extends TestCase
             ->assertRedirect(route('admin.beranda.index'));
 
         $layout = HomepageLayoutSettings::forStorefront();
-        $this->assertSame('Keunggulan Ragil', $layout['service_highlights']['title']);
         $this->assertSame('Cara pesan cepat', $layout['how_to_order']['title']);
         $this->assertSame('01', $layout['how_to_order']['steps'][0]['step']);
     }

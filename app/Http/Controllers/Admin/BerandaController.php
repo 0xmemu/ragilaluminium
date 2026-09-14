@@ -53,44 +53,6 @@ class BerandaController extends Controller
             ->with('success', 'Tata letak beranda disimpan.');
     }
 
-    public function editServiceHighlights(): Response
-    {
-        $data = HomepageLayoutSettings::get();
-
-        return Inertia::render('Admin/Beranda/ServiceHighlightsForm', [
-            'highlights' => $data['service_highlights'],
-            'iconOptions' => ['cod', 'shield', 'truck', 'check', 'package', 'star', 'whatsapp'],
-            'submitUrl' => route('admin.beranda.service-highlights.update'),
-            'indexUrl' => route('admin.beranda.index'),
-        ]);
-    }
-
-    public function updateServiceHighlights(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:120'],
-            'subtitle' => ['nullable', 'string', 'max:240'],
-            'items' => ['required', 'array', 'min:1', 'max:8'],
-            'items.*.icon' => ['required', 'string', 'max:32'],
-            'items.*.title' => ['required', 'string', 'max:80'],
-            'items.*.description' => ['nullable', 'string', 'max:160'],
-        ]);
-
-        HomepageLayoutSettings::updateServiceHighlights($validated, $request->user()?->id);
-
-        ActivityLogService::record(
-            'cms.beranda_service_highlights_updated',
-            'cms_page',
-            $this->berandaPageId(),
-            ['item_count' => count($validated['items'])],
-            $request->user()?->id,
-        );
-
-        return redirect()
-            ->route('admin.beranda.index')
-            ->with('success', 'Sorotan layanan disimpan.');
-    }
-
     public function editHowToOrder(): Response
     {
         $data = HomepageLayoutSettings::get();

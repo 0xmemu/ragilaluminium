@@ -89,6 +89,15 @@ class HomepageLayoutSettings
      */
     public static function presentSections(array $sections): array
     {
+        // Kontrol 'category_menu' tidak lagi ditampilkan di admin: seksi ini
+        // tidak pernah dirender beranda (renderManagedSection hanya menangani
+        // banner), jadi on/off-nya tidak berpengaruh apa pun. Data tetap
+        // disimpan di DB demi kompatibilitas payload lama.
+        $sections = array_values(array_filter(
+            $sections,
+            static fn (array $section): bool => ($section['key'] ?? '') !== 'category_menu',
+        ));
+
         return array_map(function (array $section) {
             $meta = self::SECTION_META[$section['key']] ?? [
                 'label' => $section['key'],
