@@ -370,6 +370,14 @@ class DashboardController extends Controller
         // metrics. SATU SUMBER: kartu Penjualan (Gross) mengikuti filter
         // performa_period (owner 2026-09-04) - tanpa perhitungan terpisah.
         $performance = $this->performance->build($performaPeriod);
+
+        // Count untuk tile Pembayaran Diterima mengikuti periode performa yang
+        // dipilih - bukan hari ini. Count hari ini dicampur nilai 30 hari
+        // menghasilkan 'Rp 20 juta - 0 pembayaran' yang mustahil.
+        $paymentsReceivedPeriodCount = Payment::query()
+            ->where('status', 'completed')
+            ->whereBetween('paid_at', [$performance['range']['from'], $performance['range']['to']])
+            ->count();
         $salesKpis = collect($performance['sections'] ?? [])
             ->firstWhere('key', 'sales')['kpis'] ?? [];
         $sales = collect($salesKpis)->keyBy('key');
@@ -516,6 +524,7 @@ class DashboardController extends Controller
                 'received_today_amount' => (float) $paymentsReceivedTodayQuery->sum('amount'),
                 'received_today_count' => (int) $paymentsReceivedTodayQuery->count(),
                 'received_period_amount' => (float) (collect(collect($performance['sections'] ?? [])->firstWhere('key', 'payments')['kpis'] ?? [])->firstWhere('key', 'payments_received')['value'] ?? $paymentsReceivedTodayQuery->sum('amount')),
+                'received_period_count' => $paymentsReceivedPeriodCount,
                 'received_period_label' => 'Pembayaran Diterima (' . ($performaPeriod === 'today' ? 'Hari ini' : ($performance['range']['label'] ?? 'Periode ini')) . ')',
             ],
             'performa' => [

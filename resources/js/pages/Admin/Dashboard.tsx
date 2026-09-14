@@ -70,6 +70,7 @@ interface FinancialData {
   active_order_count: number
   received_today_amount: number
   received_today_count: number
+  received_period_count: number
   received_period_amount?: number
   received_period_label?: string
 }
@@ -449,7 +450,7 @@ export default function Dashboard({
                   <MetricTile
                     label={financial.received_period_label || "Pembayaran Diterima"}
                     value={formatCurrency(financial.received_period_amount ?? financial.received_today_amount)}
-                    delta={`${formatNumber(financial.received_today_count)} pembayaran`}
+                    delta={`${formatNumber(financial.received_period_count)} pembayaran`}
                   />
                 </div>
               </div>
