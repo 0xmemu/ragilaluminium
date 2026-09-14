@@ -12,6 +12,8 @@ export type PickedMedia = {
   label: string
   thumbUrl: string
   kind: "image" | "video"
+  /** Sumber video (kind video): file video untuk pratinjau. */
+  videoUrl?: string | null
   folderName?: string | null
   productNames?: string[]
 }

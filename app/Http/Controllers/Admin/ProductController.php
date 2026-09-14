@@ -510,13 +510,17 @@ class ProductController extends Controller
                 // Media; media per-varian (posisi 50+) ada di formulir varian.
                 'media' => $product->media
                     ->whereNull('product_variant_id')
-                    ->filter(fn ($m) => $m->show_in_catalog
-                        && ($m->mediaAsset?->kind ?? 'image') === 'image')
+                    ->filter(fn ($m) => $m->show_in_catalog)
                     ->sortBy('position')
                     ->map(fn ($m) => [
                         'media_asset_id' => $m->media_asset_id,
                         'media_asset_label' => $m->mediaAsset?->label,
+                        'kind' => $m->mediaAsset?->kind ?? 'image',
                         'url' => $m->mediaAsset?->urlFor('thumb'),
+                        // Video: file sumber untuk pratinjau PDP.
+                        'video_url' => $m->mediaAsset?->kind === 'video'
+                            ? $m->mediaAsset?->urlFor('video')
+                            : null,
                     ])->values()->all(),
             ],
             'submitUrl' => route('admin.products.update', $product),

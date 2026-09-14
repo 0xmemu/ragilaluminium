@@ -60,7 +60,7 @@ interface ProductFormData {
 interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"> {
   id: number
   parent_sku: string
-  media?: Array<{ media_asset_id: number; media_asset_label?: string | null; url?: string | null }>
+  media?: Array<{ media_asset_id: number; media_asset_label?: string | null; url?: string | null; kind?: string | null; video_url?: string | null }>
 }
 
 type WizardStep = "identity" | "variants" | "media" | "review" | null
@@ -185,7 +185,8 @@ export default function ProductForm({
       assetId: m.media_asset_id,
       label: m.media_asset_label ?? "",
       thumbUrl: m.url ?? "",
-      kind: "image" as const,
+      kind: (m.kind === "video" ? "video" : "image") as PickedMedia["kind"],
+      videoUrl: m.video_url ?? null,
     })))
   }, [editing])
 
@@ -696,7 +697,16 @@ export default function ProductForm({
                       onDragEnd={() => setDragMediaIndex(null)}
                     >
                       <span className="pointer-events-none relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
-                        {media.thumbUrl ? (
+                        {media.kind === "video" ? (
+                          <video
+                            src={media.videoUrl ?? media.thumbUrl}
+                            poster={media.thumbUrl || undefined}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="pointer-events-none size-full object-cover select-none"
+                          />
+                        ) : media.thumbUrl ? (
                           <img
                             src={media.thumbUrl}
                             alt=""
@@ -708,6 +718,9 @@ export default function ProductForm({
                             <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
                           </span>
                         )}
+                        {media.kind === "video" ? (
+                          <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">Video</span>
+                        ) : null}
                         {index === 0 ? (
                           <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">Utama</span>
                         ) : null}
