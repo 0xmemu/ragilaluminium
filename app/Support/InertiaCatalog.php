@@ -64,8 +64,6 @@ class InertiaCatalog
             $card['flash_sale'] = $priced['flash_sale'];
             $card['variant_sku'] = $variant->variant_sku;
             $card['card_key'] = $product->parent_sku.'-'.$variant->id;
-            $card['href'] = route('product.show', $product->parent_sku, absolute: false)
-                .'?'.http_build_query(['variant' => $variant->variant_sku]);
 
         }
 
@@ -129,11 +127,6 @@ class InertiaCatalog
         $card['flash_sale'] = $priced['flash_sale'];
         $card['variant_sku'] = $variant->variant_sku;
         $card['card_key'] = $product->parent_sku.'-'.$variant->id;
-
-        $baseHref = route('product.show', $product->parent_sku, absolute: false);
-        $card['href'] = filled($variant->variant_sku)
-            ? $baseHref.'?'.http_build_query(['variant' => $variant->variant_sku])
-            : $baseHref;
 
         return $card;
     }
