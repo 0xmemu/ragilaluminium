@@ -195,23 +195,51 @@
 
                 @if ($skelKind === 'home')
                     {{-- Beranda: hero full-bleed, lalu section dengan grid 2 kolom --}}
-                    <div class="skel skel-flat h-[186px] lg:h-[420px]"></div>
-                    <section class="bg-surface py-2.5">
-                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12">
-                            <div class="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:gap-4 lg:max-w-none">
-                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
-                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
+                    {{-- Tinggi mengikuti hero carousel asli: 186px mobile, 538px lg. --}}
+                    <div class="skel skel-flat h-[186px] lg:h-[538px]"></div>
+                    {{-- Section beranda asli: heading + carousel kartu menyamping.
+                         Tinggi total mengikuti aslinya (343px mobile, 406px lg). --}}
+                    @for ($i = 0; $i < 2; $i++)
+                        <section class="{{ $i % 2 === 0 ? 'bg-surface' : '' }} py-2.5">
+                            <div class="container-page !px-2.5 md:!px-8 lg:!px-12">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="skel h-5 w-32"></div>
+                                    <div class="skel h-3 w-20"></div>
+                                </div>
+                                {{-- Kartu carousel: 2 terlihat di mobile, 4 di desktop --}}
+                                <div class="mt-2 grid grid-cols-2 gap-3 overflow-hidden sm:gap-4 lg:grid-cols-4">
+                                    <div class="skel-card">
+                                        <div class="skel skel-flat aspect-square"></div>
+                                        <div class="flex flex-col gap-1.5 p-2.5">
+                                            <div class="skel h-3 w-[85%]"></div>
+                                            <div class="skel h-4 w-[55%]"></div>
+                                        </div>
+                                    </div>
+                                    <div class="skel-card">
+                                        <div class="skel skel-flat aspect-square"></div>
+                                        <div class="flex flex-col gap-1.5 p-2.5">
+                                            <div class="skel h-3 w-[70%]"></div>
+                                            <div class="skel h-4 w-[45%]"></div>
+                                        </div>
+                                    </div>
+                                    <div class="skel-card">
+                                        <div class="skel skel-flat aspect-square"></div>
+                                        <div class="flex flex-col gap-1.5 p-2.5">
+                                            <div class="skel h-3 w-[80%]"></div>
+                                            <div class="skel h-4 w-[60%]"></div>
+                                        </div>
+                                    </div>
+                                    <div class="skel-card">
+                                        <div class="skel skel-flat aspect-square"></div>
+                                        <div class="flex flex-col gap-1.5 p-2.5">
+                                            <div class="skel h-3 w-[65%]"></div>
+                                            <div class="skel h-4 w-[50%]"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </section>
-                    <section class="py-2.5">
-                        <div class="container-page !px-2.5 md:!px-8 lg:!px-12">
-                            <div class="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:gap-4 lg:max-w-none">
-                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
-                                <div class="skel-panel h-[182px] lg:h-[204px]"></div>
-                            </div>
-                        </div>
-                    </section>
+                        </section>
+                    @endfor
                 @elseif ($skelKind === 'listing')
                     {{-- Katalog dan sejenisnya: bar filter + bar urutan + grid kartu --}}
                     <section class="border-b border-border bg-surface">
