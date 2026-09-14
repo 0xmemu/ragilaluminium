@@ -37,6 +37,12 @@ class CheckoutController extends Controller
     {
         $this->prepareCheckoutIdempotencyKey($request);
 
+        // Asuransi pengiriman WAJIB mulai tidak terpilih pada setiap
+        // kunjungan checkout baru. Nilai sesi bisa tertinggal dari pemilihan
+        // sebelumnya dan tidak pernah dibersihkan, sehingga kotak asuransi
+        // tampak sudah tercentang tanpa pembeli memilihnya.
+        $request->session()->put('checkout_insurance', false);
+
         $priced = $this->cart->pricedLines($this->selectedCheckoutLineIds($request));
         $applied = $request->session()->get(VoucherService::SESSION_KEY);
         $voucherDiscount = 0.0;
@@ -317,8 +323,9 @@ class CheckoutController extends Controller
 
         $this->cart->clear();
         // Detail pengiriman & metode bayar dipertahankan agar checkout ulang
-        // (order berikutnya) tidak perlu mengisi dari nol. Voucher dibersihkan.
-        $request->session()->forget(VoucherService::SESSION_KEY);
+        // (order berikutnya) tidak perlu mengisi dari nol. Voucher dan pilihan
+        // asuransi dibersihkan supaya tidak terbawa ke order berikutnya.
+        $request->session()->forget([VoucherService::SESSION_KEY, 'checkout_insurance']);
 
         return redirect()->route('order.confirmation', $order->order_number);
     }
