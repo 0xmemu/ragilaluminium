@@ -10,7 +10,7 @@
             : config('sitemap.brand.name', config('app.name'));
         $metaDescription = $isPdp
             ? \Illuminate\Support\Str::limit((string) ($pdpProduct['description'] ?? $pdpProduct['subtitle'] ?? $metaTitle), 200)
-            : config('sitemap.brand.name', config('app.name')).' — jendela & boven aluminium berkualitas untuk rumah dan bangunan Anda. Lihat katalog, harga, dan promo terbaru.';
+            : config('sitemap.brand.name', config('app.name')).' - jendela & boven aluminium berkualitas untuk rumah dan bangunan Anda. Lihat katalog, harga, dan promo terbaru.';
         $pdpImage = is_array($pageProps['media'] ?? null) ? (($pageProps['media'][0]['url'] ?? null) ?: null) : null;
         $metaImage = $pdpImage
             ? (preg_match('/^https?:\/\//i', $pdpImage) ? $pdpImage : asset(ltrim($pdpImage, '/')))
@@ -392,7 +392,7 @@
         </script>
     @endif
     <script>
-      // Service Worker (PWA) — hanya production & bila didukung
+      // Service Worker (PWA): hanya production & bila didukung
       if ("serviceWorker" in navigator && location.hostname !== "localhost") {
         window.addEventListener("load", function () {
           navigator.serviceWorker.register("{{ asset('sw.js') }}").catch(function () {});
