@@ -592,15 +592,14 @@ protected function category(?string $category, Request $request, string $mode = 
                 fn (Product $product) => strtoupper((string) $product->product_category) === strtoupper($categoryCode)
                     && strtoupper((string) $product->product_model) === strtoupper($modelCode)
             )
-            ->map(function (Product $product) {
-                $code = CatalogLabels::normalizeDesign($product->design_variant);
-                // Tanpa design_variant → anggap Polos (desain default katalog).
-                if ($code === null || $code === '') {
-                    $code = 'POLOS';
-                }
-
-                return ['code' => $code, 'product' => $product];
-            })
+            ->map(fn (Product $product) => [
+                'code' => CatalogLabels::normalizeDesign($product->design_variant),
+                'product' => $product,
+            ])
+            // Sub model opsional: produk tanpa sub model tidak punya desain
+            // untuk difilter, jadi tidak dibuatkan rail. Produknya tetap
+            // tampil pada daftar produk halaman model.
+            ->filter(fn (array $row) => $row['code'] !== null)
             ->groupBy('code');
 
         if ($grouped->isEmpty()) {

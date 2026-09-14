@@ -350,7 +350,10 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                         'depth_cm' => $this->number($data, ['depth_cm', 'depth', 'length', 'packing_depth', 'packing_length']),
                     'product_category' => $productCategory,
                     'product_model' => \App\Support\CatalogLabels::normalizeModel($data['product_model'] ?? 'SLIDING') ?? 'SLIDING',
-                    'design_variant' => \App\Support\CatalogLabels::normalizeDesign($data['design_variant'] ?? 'POLOS') ?? 'POLOS',
+                    // Sub model opsional: sel kosong tetap kosong. Memaksa
+                    // 'POLOS' membuat model tanpa variasi desain seolah punya
+                    // sub model yang tidak pernah dipilih siapa pun.
+                    'design_variant' => \App\Support\CatalogLabels::normalizeDesign($data['design_variant'] ?? null),
                     'status' => 'archived',
                 ]
             );

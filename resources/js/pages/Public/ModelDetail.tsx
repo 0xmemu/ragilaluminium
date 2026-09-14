@@ -213,7 +213,9 @@ export default function ModelDetail({
             highlights={highlights}
             thumbs={heroThumbs}
             stats={[
-              { value: rails.length, label: "Varian Model" },
+              // Model tanpa sub model (mis. Boven Zigzag) tidak punya varian
+              // desain, jadi statistiknya tidak ditampilkan daripada menulis 0.
+              ...(rails.length > 0 ? [{ value: rails.length, label: "Varian Model" }] : []),
               { value: model.count ?? 0, label: "Produk" },
               { value: "100%", label: "Garansi" },
             ]}
@@ -254,6 +256,17 @@ export default function ModelDetail({
                   <DesignProductRail key={variant.value} variant={variant} />
                 ))}
               </div>
+            ) : products.length ? (
+              // Model tanpa sub model tetap menampilkan produknya, tanpa judul rail.
+              <ProductCardGrid>
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.card_key ?? `${product.parent_sku}-${product.short_name ?? product.id}`}
+                    product={product}
+                    titleStyle="model"
+                  />
+                ))}
+              </ProductCardGrid>
             ) : (
               <EmptyState
                 icon="package"

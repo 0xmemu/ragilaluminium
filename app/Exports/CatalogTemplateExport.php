@@ -124,7 +124,17 @@ class CatalogDataSheet implements FromArray, WithTitle, WithEvents
             'KACA_MATI', 'ZIGZAG',
         ];
         $this->listValidation($sheet, 'E', $models, $last);
-        $this->listValidation($sheet, 'F', ['POLOS', 'ORNAMEN', 'KOMBINASI'], $last);
+        // Kolom F = sub model. Daftar diambil dari sub model yang benar-benar
+        // ada, supaya model tanpa sub model tidak dipaksa memilih POLOS.
+        $designCodes = \App\Models\SubModel::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->pluck('code')
+            ->unique()
+            ->values()
+            ->all();
+        $this->listValidation($sheet, 'F', $designCodes, $last);
         
     }
 
