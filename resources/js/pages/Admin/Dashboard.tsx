@@ -413,12 +413,10 @@ export default function Dashboard({
                       <div className="flex items-start gap-2">
                         <Icon name="info" className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden="true" />
                         <div className="min-w-0">
-                          <p className="font-semibold text-foreground">
-                            {formatNumber(pendingPaymentOrders?.total ?? 0)} pesanan menunggu konfirmasi
-                          </p>
+                          <p className="font-semibold text-foreground">Ada pesanan menunggu konfirmasi</p>
                           <p>
-                            Omzet menghitung pesanan yang sudah dikonfirmasi.
-                            Pesanan batal dan bermasalah tidak pernah dihitung.
+                            Omzet hanya menghitung pesanan yang sudah dikonfirmasi.
+                            Nilai dan jumlahnya ada di tile Menunggu Konfirmasi di bawah.
                           </p>
                           <Link
                             href={pendingPaymentOrdersHref}
