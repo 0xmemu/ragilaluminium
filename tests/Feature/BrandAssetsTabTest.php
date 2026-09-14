@@ -45,7 +45,7 @@ class BrandAssetsTabTest extends TestCase
             ->get(route('admin.store-settings.index', ['tab' => 'brand']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('brandAssets.logo.path', 'images/site-logo.png')
+                ->where('brandAssets.logo.path', 'images/brand/light-logo.png')
                 ->where('brandAssets.faviconIco.path', 'images/site-favicon.ico')
             );
     }

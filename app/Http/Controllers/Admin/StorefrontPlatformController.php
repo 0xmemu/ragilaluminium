@@ -64,7 +64,7 @@ class StorefrontPlatformController extends Controller
     protected function brandAssetsState(): array
     {
         return [
-            'logo' => $this->brandAsset('images/site-logo.png'),
+            'logo' => $this->brandAsset('images/brand/light-logo.png'),
             'favicon' => $this->brandAsset('images/favicon-32.png', 'images/site-favicon.ico'),
             'faviconIco' => $this->brandAsset('images/site-favicon.ico'),
         ];

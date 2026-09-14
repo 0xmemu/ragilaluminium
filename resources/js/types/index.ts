@@ -16,6 +16,8 @@ export interface Brand {
   name: string
   short_name: string
   tagline: string
+  /** filemtime brand logo untuk cache-busting; null bila berkas tidak ada. */
+  logo_version?: number | null
   email: string
   phone: string
   address: string

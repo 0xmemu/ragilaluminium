@@ -259,7 +259,9 @@ export default function StorefrontPlatformsEdit({
               <div className="border-b border-border pb-3">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Logo Toko</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Tampil di header situs. Disarankan PNG transparan lebar minimal 300px.
+                  Tampil di header situs (tema terang dan gelap) dan footer. PNG
+                  transparan lebar minimal 300px paling aman, karena dipakai
+                  untuk kedua tema.
                 </p>
               </div>
 

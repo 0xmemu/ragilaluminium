@@ -118,6 +118,19 @@ class PageController extends Controller
             $file->move(public_path('images'), 'site-logo.png');
             $version = MediaNamer::local('logo', $file->getClientOriginalExtension() ?: 'png', public_path('images'));
             copy(public_path('images/site-logo.png'), public_path('images/'.$version));
+
+            // Logo yang dipakai situs ada di images/brand/ (header desktop,
+            // mobile, dan footer). Satu unggahan dipakai untuk kedua varian
+            // tema; PNG transparan cocok untuk keduanya.
+            foreach (['light-logo.png', 'dark-logo.png'] as $brandLogo) {
+                $target = public_path('images/brand/'.$brandLogo);
+                if (is_file($target)) {
+                    @unlink($target);
+                }
+                if (! @copy(public_path('images/site-logo.png'), $target)) {
+                    throw new \RuntimeException("Gagal memasang logo: {$target}. Periksa kepemilikan berkas (harus dapat ditulis www-data).");
+                }
+            }
         }
 
         if ($request->hasFile('favicon')) {

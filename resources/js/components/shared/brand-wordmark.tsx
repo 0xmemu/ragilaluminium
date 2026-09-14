@@ -1,6 +1,7 @@
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 
 import { cn } from "@/lib/utils"
+import type { SharedPageProps } from "@/types"
 import { routeUrl } from "@/lib/routes"
 
 const LOGO = {
@@ -30,6 +31,9 @@ export function BrandWordmark({
   href?: string
   onClick?: () => void
 }) {
+  const { brand } = usePage<SharedPageProps>().props
+  const logoVersion = brand?.logo_version ?? null
+
   return (
     <Link
       href={href ?? routeUrl("home")}
@@ -43,7 +47,7 @@ export function BrandWordmark({
       prefetch={false}
     >
       <img
-        src={mark ? MARK[variant] : LOGO[variant]}
+        src={`${mark ? MARK[variant] : LOGO[variant]}${logoVersion ? `?v=${logoVersion}` : ""}`}
         alt="Ragil Aluminium"
         width={mark ? 36 : compact ? 185 : 200}
         height={mark ? 36 : compact ? 48 : 52}

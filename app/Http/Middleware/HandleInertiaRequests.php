@@ -71,9 +71,14 @@ class HandleInertiaRequests extends Middleware
                 $contact = \App\Support\StoreContactSettings::get();
                 $address = $contact['address'];
 
+                $logoPath = public_path('images/brand/light-logo.png');
+
                 return [
                     'name' => config('sitemap.brand.name', config('app.name')),
                     'short_name' => config('sitemap.brand.short_name', 'Ragil Aluminium'),
+                    // Versi berkas untuk cache-busting: logo hasil unggahan
+                    // admin langsung terlihat tanpa cache browser lama.
+                    'logo_version' => is_file($logoPath) ? filemtime($logoPath) : null,
                     'tagline' => config('sitemap.brand.tagline', ''),
                     'email' => $contact['email'],
                     'phone' => $contact['phone'],
