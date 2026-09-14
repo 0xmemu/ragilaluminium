@@ -87,10 +87,9 @@ function JntCargoLogo({ className }: { className?: string }) {
  * - Resi status + CopyButton independen
  * - Metode Pembayaran (COD / Transfer)
  * - Badge status sinkron dengan status pesanan di kanan atas
- * - Collapsible items list dengan format Total X unit & total harga
+ * - Daftar item selalu tampil dengan format Total X unit & total harga
  */
 function OrderSummaryCard({ order, className }: { order: PublicOrder; className?: string }) {
-  const [expanded, setExpanded] = React.useState(true)
   const totalAmount = order.total_amount ? formatCurrency(order.total_amount) : "-"
   const totalUnits = order.items.reduce((sum, item) => sum + item.quantity, 0)
   const isCod = order.payment_method === "cod"
@@ -164,119 +163,105 @@ function OrderSummaryCard({ order, className }: { order: PublicOrder; className?
       {/* Divider */}
       <div className="mt-3.5 border-t border-border" />
 
-      {/* Collapsible Trigger: Total X unit & Total Harga */}
-      <button
-        type="button"
-        className="flex w-full items-center justify-between py-2.5 text-left transition hover:opacity-80"
-        onClick={() => setExpanded((prev) => !prev)}
-        aria-expanded={expanded}
-      >
-        <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+      {/* Baris ringkasan Total X unit & Total Harga (statis, tidak bisa dilipat) */}
+      <div className="flex w-full items-center justify-between py-2.5">
+        <span className="text-xs font-semibold text-foreground">
           Total {totalUnits} unit
-          <Icon
-            name={expanded ? "chevron-up" : "chevron-down"}
-            className="size-3.5 text-muted-foreground"
-            aria-hidden="true"
-          />
         </span>
         <span className="tabular-nums text-sm sm:text-base font-bold text-foreground">
           {totalAmount}
         </span>
-      </button>
+      </div>
 
-      {/* Daftar Item Pesanan */}
-      {expanded ? (
-        <>
-        <ul className="divide-y divide-border border-t border-border pt-1">
-          {order.items.map((item, index) => {
-            const unitPrice = item.line_total ? Number(item.line_total) / item.quantity : null
-            const title = item.product_name ?? item.name ?? "Produk"
-            return (
-              <li
-                key={`item-${item.product_name ?? item.name}-${index}`}
-                className="flex items-center gap-3 py-2.5"
-              >
-                <span className="relative flex size-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted lg:size-14">
-                  <ResponsiveImage
-                    src={item.image ?? null}
-                    alt={title}
-                    wrapperClassName="size-full"
-                    className="size-full object-cover"
-                  />
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  {item.parent_sku ? (
-                    <Link
-                      href={routeUrl("product.show", { parent_sku: item.parent_sku })}
-                      className="block text-xs font-semibold text-foreground hover:text-primary leading-snug"
-                    >
-                      {title}
-                    </Link>
-                  ) : (
-                    <span className="block text-xs font-semibold text-foreground leading-snug">
-                      {title}
-                    </span>
-                  )}
-                  {item.variant_label ? (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground lg:text-xs">
-                      {item.variant_label?.replace(/ · /g, " / ")}
-                    </p>
-                  ) : null}
-                  {item.note ? (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground lg:text-xs">
-                      Catatan: {item.note}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="block tabular-nums text-xs font-semibold text-foreground">
-                    {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
-                  </p>
-                  {unitPrice ? (
-                    <p className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
-                      {item.quantity} × {formatCurrency(unitPrice)}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-
-        {(() => {
-          const b = order.billing
-          if (!b) return null
-          const rows: Array<{ label: string; value: number; tone?: "sub" | "sale" }> = [
-            { label: "Subtotal Produk", value: b.subtotal },
-            { label: "Hemat", value: b.discount, tone: "sale" },
-            { label: "Hemat Voucher", value: b.voucher_discount, tone: "sale" },
-            { label: "Ongkir asli (tarif kurir)", value: b.shipping_gross },
-            { label: "Hemat Subsidi Ongkir", value: b.shipping_subsidy, tone: "sale" },
-            { label: "Ongkir dibayar", value: b.shipping_net },
-            { label: "Biaya COD", value: b.cod_fee },
-            { label: "Asuransi", value: b.insurance },
-          ]
+      {/* Daftar Item Pesanan (selalu tampil) */}
+      <ul className="divide-y divide-border border-t border-border pt-1">
+        {order.items.map((item, index) => {
+          const unitPrice = item.line_total ? Number(item.line_total) / item.quantity : null
+          const title = item.product_name ?? item.name ?? "Produk"
           return (
-            <dl className="mt-1 space-y-1.5 border-t border-border pt-3 text-[11px] lg:text-xs">
-              {rows.map((row) => (
-                <div key={row.label} className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">{row.label}</dt>
-                  <dd className={cn("tabular-nums font-semibold", row.tone === "sale" ? "text-sale" : "text-foreground")}>
-                    {formatCurrency(row.value)}
-                  </dd>
-                </div>
-              ))}
-              <div className="flex items-center justify-between gap-4 border-t border-border pt-1.5">
-                <dt className="font-bold text-foreground">Total Pembayaran</dt>
-                <dd className="tabular-nums font-bold text-primary">{formatCurrency(b.total)}</dd>
+            <li
+              key={`item-${item.product_name ?? item.name}-${index}`}
+              className="flex items-center gap-3 py-2.5"
+            >
+              <span className="relative flex size-12 flex-none items-center justify-center overflow-hidden rounded-[5px] border border-border bg-surface-muted lg:size-14">
+                <ResponsiveImage
+                  src={item.image ?? null}
+                  alt={title}
+                  wrapperClassName="size-full"
+                  className="size-full object-cover"
+                />
+              </span>
+
+              <div className="min-w-0 flex-1">
+                {item.parent_sku ? (
+                  <Link
+                    href={routeUrl("product.show", { parent_sku: item.parent_sku })}
+                    className="block text-xs font-semibold text-foreground hover:text-primary leading-snug"
+                  >
+                    {title}
+                  </Link>
+                ) : (
+                  <span className="block text-xs font-semibold text-foreground leading-snug">
+                    {title}
+                  </span>
+                )}
+                {item.variant_label ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground lg:text-xs">
+                    {item.variant_label?.replace(/ · /g, " / ")}
+                  </p>
+                ) : null}
+                {item.note ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground lg:text-xs">
+                    Catatan: {item.note}
+                  </p>
+                ) : null}
               </div>
-            </dl>
+
+              <div className="shrink-0 text-right">
+                <p className="block tabular-nums text-xs font-semibold text-foreground">
+                  {item.line_total ? formatCurrency(item.line_total) : `${item.quantity} item`}
+                </p>
+                {unitPrice ? (
+                  <p className="mt-0.5 block tabular-nums text-[11px] text-muted-foreground">
+                    {item.quantity} × {formatCurrency(unitPrice)}
+                  </p>
+                ) : null}
+              </div>
+            </li>
           )
-        })()}
-        </>
-      ) : null}
+        })}
+      </ul>
+
+      {(() => {
+        const b = order.billing
+        if (!b) return null
+        const rows: Array<{ label: string; value: number; tone?: "sub" | "sale" }> = [
+          { label: "Subtotal Produk", value: b.subtotal },
+          { label: "Hemat", value: b.discount, tone: "sale" },
+          { label: "Hemat Voucher", value: b.voucher_discount, tone: "sale" },
+          { label: "Ongkir asli (tarif kurir)", value: b.shipping_gross },
+          { label: "Hemat Subsidi Ongkir", value: b.shipping_subsidy, tone: "sale" },
+          { label: "Ongkir dibayar", value: b.shipping_net },
+          { label: "Biaya COD", value: b.cod_fee },
+          { label: "Asuransi", value: b.insurance },
+        ]
+        return (
+          <dl className="mt-1 space-y-1.5 border-t border-border pt-3 text-[11px] lg:text-xs">
+            {rows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-4">
+                <dt className="text-muted-foreground">{row.label}</dt>
+                <dd className={cn("tabular-nums font-semibold", row.tone === "sale" ? "text-sale" : "text-foreground")}>
+                  {formatCurrency(row.value)}
+                </dd>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-1.5">
+              <dt className="font-bold text-foreground">Total Pembayaran</dt>
+              <dd className="tabular-nums font-bold text-primary">{formatCurrency(b.total)}</dd>
+            </div>
+          </dl>
+        )
+      })()}
 
       {/* Detail Pengiriman (revisi final 4: di dalam kartu ringkasan) */}
       <DetailPengiriman order={order} />
