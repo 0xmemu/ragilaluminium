@@ -14,6 +14,9 @@ export type PickedMedia = {
   kind: "image" | "video"
   /** Sumber video (kind video): file video untuk pratinjau. */
   videoUrl?: string | null
+  /** Pemilik varian (null = media katalog untuk semua varian). */
+  productVariantId?: number | null
+  variantLabel?: string | null
   folderName?: string | null
   productNames?: string[]
 }

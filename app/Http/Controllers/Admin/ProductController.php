@@ -426,7 +426,7 @@ class ProductController extends Controller
 
     public function edit(Product $product): Response
     {
-        $product->load(['variants', 'attributes', 'media.mediaAsset']);
+        $product->load(['variants', 'attributes', 'media.mediaAsset', 'media.productVariant']);
 
         // ADR-021: rekonstruksi definisi varian utk form (nama+opsi unik urut slot,
         // plus gambar per opsi dari media varian).
@@ -509,7 +509,6 @@ class ProductController extends Controller
                 // bukan "bukan foto katalog". Video tetap dikelola di halaman
                 // Media; media per-varian (posisi 50+) ada di formulir varian.
                 'media' => $product->media
-                    ->whereNull('product_variant_id')
                     ->filter(fn ($m) => $m->show_in_catalog)
                     ->sortBy('position')
                     ->map(fn ($m) => [
@@ -520,6 +519,14 @@ class ProductController extends Controller
                         // Video: file sumber untuk pratinjau PDP.
                         'video_url' => $m->mediaAsset?->kind === 'video'
                             ? $m->mediaAsset?->urlFor('video')
+                            : null,
+                        // Pemilik media: null = katalog (semua varian).
+                        'product_variant_id' => $m->product_variant_id,
+                        'variant_label' => $m->productVariant
+                            ? trim(implode(' / ', array_filter([
+                                $m->productVariant->variation_1_option,
+                                $m->productVariant->variation_2_option,
+                            ]))) ?: $m->productVariant->variant_sku
                             : null,
                     ])->values()->all(),
             ],
@@ -622,8 +629,10 @@ class ProductController extends Controller
                 $media = $product->media->first(fn ($m) => $m->media_asset_id === $assetId);
                 if ($media) {
                     $media->update([
-                        'position' => $position,
-                        'is_main_image' => $index === 0,
+                        // Baris varian tetap milik variannya; foto utama hanya
+                        // berlaku untuk media katalog (tanpa varian).
+                        'position' => $media->product_variant_id !== null ? $media->position : $position,
+                        'is_main_image' => $media->product_variant_id === null && $index === 0,
                         'show_in_catalog' => true,
                         'visibility' => 'visible',
                     ]);
@@ -643,6 +652,10 @@ class ProductController extends Controller
             $product->media()
                 ->whereNull('product_variant_id')
                 ->where('position', '<', 80)
+                ->whereNotIn('media_asset_id', $sentIds)
+                ->update(['show_in_catalog' => false, 'visibility' => 'archived']);
+            $product->media()
+                ->whereNotNull('product_variant_id')
                 ->whereNotIn('media_asset_id', $sentIds)
                 ->update(['show_in_catalog' => false, 'visibility' => 'archived']);
             // Foto utama: pertama di urutan (query langsung, bukan relasi).

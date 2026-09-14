@@ -60,7 +60,15 @@ interface ProductFormData {
 interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"> {
   id: number
   parent_sku: string
-  media?: Array<{ media_asset_id: number; media_asset_label?: string | null; url?: string | null; kind?: string | null; video_url?: string | null }>
+  media?: Array<{
+    media_asset_id: number
+    media_asset_label?: string | null
+    url?: string | null
+    kind?: string | null
+    video_url?: string | null
+    product_variant_id?: number | null
+    variant_label?: string | null
+  }>
 }
 
 type WizardStep = "identity" | "variants" | "media" | "review" | null
@@ -187,6 +195,8 @@ export default function ProductForm({
       thumbUrl: m.url ?? "",
       kind: (m.kind === "video" ? "video" : "image") as PickedMedia["kind"],
       videoUrl: m.video_url ?? null,
+      variantLabel: m.variant_label ?? null,
+      productVariantId: m.product_variant_id ?? null,
     })))
   }, [editing])
 
@@ -721,8 +731,13 @@ export default function ProductForm({
                         {media.kind === "video" ? (
                           <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">Video</span>
                         ) : null}
-                        {index === 0 ? (
+                        {index === 0 && media.kind !== "video" ? (
                           <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">Utama</span>
+                        ) : null}
+                        {media.variantLabel ? (
+                          <span className="absolute inset-x-1 bottom-1 truncate rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">
+                            {media.variantLabel}
+                          </span>
                         ) : null}
                       </span>
 
