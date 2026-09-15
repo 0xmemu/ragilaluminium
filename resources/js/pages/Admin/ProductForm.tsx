@@ -216,6 +216,52 @@ export default function ProductForm({
   }).library) ?? []
 
   const [pickerOpen, setPickerOpen] = React.useState(false)
+  // Media hasil pemasangan: tambah via MediaPicker (simpan instan lewat
+  // admin.products.media.store dgn is_installation), geser urutan lokal,
+  // lepas via endpoint arsip instan.
+  const [pickerInstOpen, setPickerInstOpen] = React.useState(false)
+  const [instRows, setInstRows] = React.useState(installationMedia)
+  React.useEffect(() => {
+    setInstRows(installationMedia)
+  }, [installationMedia])
+
+  function moveInst(from: number, to: number) {
+    if (to < 0 || to >= instRows.length || from === to) return
+    setInstRows((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next.map((row, i) => ({ ...row, position: i + 1 }))
+    })
+  }
+
+  function removeInst(rowId: number, archiveUrl: string) {
+    router.post(
+      archiveUrl,
+      {},
+      {
+        preserveScroll: true,
+        onSuccess: () => setInstRows((prev) => prev.filter((r) => r.id !== rowId)),
+      },
+    )
+  }
+
+  function attachInst(media: PickedMedia) {
+    if (!mediaActionUrls) return
+    router.post(
+      mediaActionUrls.storeUrl,
+      {
+        media_asset_id: media.assetId,
+        kind: media.kind,
+        position: instRows.length + 1,
+        is_main_image: false,
+        show_in_catalog: false,
+        is_installation: true,
+        visibility: "visible",
+      },
+      { preserveScroll: true },
+    )
+  }
   const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>([])
   const [optionPicker, setOptionPicker] = React.useState<{ defIndex: number; optionIndex: number } | null>(null)
   const [dragMediaIndex, setDragMediaIndex] = React.useState<number | null>(null)
@@ -880,15 +926,40 @@ export default function ProductForm({
                 <h2 className="text-sm font-bold text-foreground">Hasil Pemasangan ({installationMedia.length} media)</h2>
                 <p className="text-xs text-muted-foreground">Tampil di seksi Hasil Pemasangan pada halaman produk dan galeri hasil pemasangan.</p>
               </div>
-              <Button asChild type="button" variant="secondary" size="xs">
-                <a href={mediaHref ?? undefined}>Kelola media</a>
+              <Button type="button" variant="secondary" size="xs" onClick={() => setPickerInstOpen(true)}>
+                + Tambah hasil pemasangan
               </Button>
+              {mediaHref ? (
+                <Button asChild type="button" variant="ghost" size="xs">
+                  <a href={mediaHref}>Kelola media</a>
+                </Button>
+              ) : null}
             </div>
             <div className="p-4">
-              {installationMedia.length ? (
+              {instRows.length ? (
                 <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-                  {installationMedia.map((media) => (
-                    <li key={media.id} className="group relative select-none">
+                  {instRows.map((media, index) => (
+                    <li
+                      key={media.id}
+                      className={cn(
+                        "group relative cursor-grab select-none active:cursor-grabbing transition-transform",
+                        dragMediaIndex === index ? "opacity-40 scale-95" : "opacity-100",
+                      )}
+                      draggable
+                      onDragStart={(event) => {
+                        setDragMediaIndex(index)
+                        event.dataTransfer.effectAllowed = "move"
+                        event.dataTransfer.setData("text/plain", String(index))
+                      }}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault()
+                        const fromIdx = dragMediaIndex
+                        if (fromIdx !== null && fromIdx !== index) moveInst(fromIdx, index)
+                        setDragMediaIndex(null)
+                      }}
+                      onDragEnd={() => setDragMediaIndex(null)}
+                    >
                       <span className="pointer-events-none relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
                         {media.url ? (
                           <img src={media.url} alt="" className="pointer-events-none size-full object-cover select-none" />
@@ -899,16 +970,49 @@ export default function ProductForm({
                         )}
                         <span className="absolute left-1 top-1 rounded bg-info/90 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">Hasil pasang</span>
                       </span>
-                      <p className="mt-1.5 truncate text-[11px] text-muted-foreground" title={media.installation_caption ?? ""}>
-                        {media.installation_caption || media.label || ("Media #" + media.id)}
-                      </p>
+
+                      <div className="absolute inset-x-1 bottom-1 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={(e) => { e.stopPropagation(); moveInst(index, index - 1) }}
+                          className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
+                          title="Geser ke kiri"
+                        >
+                          <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === instRows.length - 1}
+                          onClick={(e) => { e.stopPropagation(); moveInst(index, index + 1) }}
+                          className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
+                          title="Geser ke kanan"
+                        >
+                          <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeInst(media.id, media.archive_url)}
+                        className="absolute -right-1.5 -top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
+                        aria-label={`Lepas ${media.label || "media"}`}
+                        title="Lepas dari hasil pemasangan"
+                      >
+                        <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                      </button>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="rounded-lg border-2 border-dashed border-border bg-surface-muted/30 p-6 text-center text-xs text-muted-foreground">
-                  Belum ada media hasil pemasangan. Tambahkan lewat tombol Kelola media - tandai media sebagai Hasil pemasangan.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setPickerInstOpen(true)}
+                  className="flex h-28 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-surface-muted/30 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                >
+                  <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                  <span className="text-xs font-medium">Pilih media dari Media Library sebagai hasil pemasangan</span>
+                </button>
               )}
             </div>
           </section>
@@ -963,6 +1067,16 @@ export default function ProductForm({
           const picked = media[0]
           setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? { ...o, media_asset_id: picked.assetId, thumb_url: picked.thumbUrl } : o)) } : d)))
           setOptionPicker(null)
+        }}
+      />
+      <MediaPicker
+        open={pickerInstOpen}
+        onClose={() => setPickerInstOpen(false)}
+        multiple
+        title="Pilih media hasil pemasangan"
+        onPick={(media) => {
+          media.forEach((m) => attachInst(m))
+          setPickerInstOpen(false)
         }}
       />
       <MediaPicker

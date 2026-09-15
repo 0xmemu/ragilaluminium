@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CmsGalleryItem;
+use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Services\ActivityLogService;
 use App\Support\InertiaAdmin;
@@ -20,6 +21,117 @@ use Inertia\Response;
 class InstallationGalleryController extends Controller
 {
     public function index(Request $request): Response
+    {
+        // Penggabungan e2e: tingkat 1 = kartu per model produk (mengikuti
+        // storefront /hasil-pemasangan), bukan daftar media datar.
+        $manualPublished = CmsGalleryItem::query()->where('published', true)->count();
+        $manualTotal = CmsGalleryItem::query()->count();
+
+        $groups = \App\Support\InstallationGallery::modelCards(0);
+
+        return Inertia::render('Admin/InstallationGallery/Index', [
+            'title' => 'Hasil Pemasangan Kami',
+            'description' => 'Foto dari import produk (is_installation) + galeri manual, dikelompokkan per model produk seperti storefront.',
+            'previewUrl' => route('installation.index'),
+            'groups' => array_map(function (array $card) {
+                $card['manage_url'] = route('admin.hasil-pemasangan.model', [
+                    'category' => \App\Support\InstallationGallery::categoryToSlug($card['category']),
+                    'model' => \App\Support\InstallationGallery::modelToSlug($card['model']),
+                ]);
+                $card['category_label'] = \App\Support\CatalogLabels::category($card['category']);
+
+                return $card;
+            }, $groups),
+            'manualGroup' => [
+                'manage_url' => route('admin.hasil-pemasangan.model', [
+                    'category' => 'lainnya',
+                    'model' => 'manual',
+                ]),
+                'published' => $manualPublished,
+                'total' => $manualTotal,
+            ],
+        ]);
+    }
+
+    /** Tingkat 2: kelola media hasil pemasangan satu model produk. */
+    public function model(Request $request): Response
+    {
+        $category = (string) $request->query('category', '');
+        $model = (string) $request->query('model', '');
+        $categoryCode = \App\Support\InstallationGallery::categoryFromSlug($category);
+        $modelCode = \App\Support\InstallationGallery::modelFromSlug($model);
+
+        $isManual = $categoryCode === 'LAINNYA';
+        $products = collect();
+        $mediaRows = collect();
+
+        if (! $isManual) {
+            if ($categoryCode === null || $modelCode === '') {
+                abort(404);
+            }
+
+            $products = Product::query()
+                ->where('status', 'active')
+                ->where('product_category', $categoryCode)
+                ->where('product_model', $modelCode)
+                ->orderBy('name')
+                ->get(['id', 'parent_sku', 'name', 'short_name']);
+
+            $mediaRows = ProductMedia::query()
+                ->installation()
+                ->visible()
+                ->with(['mediaAsset', 'product:id,parent_sku,name,short_name'])
+                ->whereHas('product', fn ($q) => $q
+                    ->where('product_category', $categoryCode)
+                    ->where('product_model', $modelCode))
+                ->orderBy('product_id')
+                ->orderBy('position')
+                ->get()
+                ->map(fn (ProductMedia $m) => [
+                    'id' => $m->id,
+                    'product_id' => $m->product_id,
+                    'product_label' => $m->product
+                        ? trim((string) ($m->product->short_name ?: $m->product->name)).' ('.$m->product->parent_sku.')'
+                        : 'Import media #'.$m->id,
+                    'position' => $m->position,
+                    'status' => $m->status,
+                    'error_reason' => $m->error_reason,
+                    'media_kind' => $m->mediaAsset?->kind ?? 'image',
+                    'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->stored_url,
+                    'media_url' => $m->mediaAsset?->urlFor($m->mediaAsset?->kind === 'video' ? 'video' : 'pdp') ?? $m->stored_url,
+                    'update_url' => route('admin.media.update', $m),
+                    'archive_url' => route('admin.media.archive', $m),
+                    'redownload_url' => route('admin.media.redownload', $m),
+                    'destroy_url' => $m->status === 'failed'
+                        ? route('admin.media.destroy', $m)
+                        : null,
+                ]);
+        }
+
+        return Inertia::render('Admin/InstallationGallery/Model', [
+            'title' => $isManual
+                ? 'Hasil Pemasangan Manual'
+                : \App\Support\CatalogLabels::modelCardTitle($categoryCode ?? '', $modelCode),
+            'description' => $isManual
+                ? 'Galeri manual hasil pemasangan (di luar media produk import).'
+                : 'Kelola media hasil pemasangan untuk model produk ini.',
+            'categorySlug' => $category,
+            'modelSlug' => $model,
+            'isManual' => $isManual,
+            'backUrl' => route('admin.hasil-pemasangan.index'),
+            'products' => $products->map(fn ($p) => [
+                'id' => $p->id,
+                'parent_sku' => $p->parent_sku,
+                'name' => $p->name,
+            ])->values()->all(),
+            'mediaRows' => $mediaRows->all(),
+            'mediaStoreUrl' => url('/admin/kelola/produk/{productId}/media'),
+            'pickerUrl' => route('admin.media.picker'),
+        ]);
+    }
+
+    /** Legacy: query flat manual (dipakai LAINNYA drill-down di masa depan). */
+    protected function manualRows(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
         $sort = (string) $request->query('sort', 'newest');
@@ -44,7 +156,7 @@ class InstallationGalleryController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        $rows = $query->paginate(20)->withQueryString();
+        return $query->paginate(20)->withQueryString();
 
         $importedQuery = ProductMedia::query()
             ->installation()

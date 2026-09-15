@@ -406,6 +406,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('promotions', [PromotionController::class, 'index'])->name('promotions.index');
     Route::get('promotions/create', [PromotionController::class, 'create'])->name('promotions.create');
     Route::post('promotions', [PromotionController::class, 'store'])->name('promotions.store');
+    Route::get('promotions/{promotion}', [PromotionController::class, 'show'])->name('promotions.show');
     Route::get('promotions/{promotion}/edit', [PromotionController::class, 'edit'])->name('promotions.edit');
     Route::put('promotions/{promotion}', [PromotionController::class, 'update'])->name('promotions.update');
     Route::post('promotions/{promotion}/end', [PromotionController::class, 'end'])->name('promotions.end');
@@ -465,6 +466,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('apa-kata-pelanggan/meta', [ApaKataController::class, 'updateMeta'])->name('apa-kata-pelanggan.meta.update');
     Route::put('apa-kata-pelanggan/reorder', [ApaKataController::class, 'reorder'])->name('apa-kata-pelanggan.reorder');
     Route::get('hasil-pemasangan', [InstallationGalleryController::class, 'index'])->name('hasil-pemasangan.index');
+    Route::get('hasil-pemasangan/kelola', [InstallationGalleryController::class, 'model'])->name('hasil-pemasangan.model');
     Route::put('hasil-pemasangan/meta', [InstallationGalleryController::class, 'updateMeta'])->name('hasil-pemasangan.meta.update');
 
     Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
