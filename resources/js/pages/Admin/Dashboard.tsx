@@ -397,8 +397,8 @@ export default function Dashboard({
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {performa.period_label}
                     </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode; bukan pembayaran diterima atau laba.">
-                      Nilai pesanan yang masuk alur fulfillment · bukan pembayaran diterima atau laba
+                    <p className="mt-1 text-[11px] text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode.">
+                      Nilai pesanan yang masuk alur fulfillment
                     </p>
                     <div className="mt-3 flex flex-wrap items-baseline gap-3">
                       <span className="tabular-nums text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
