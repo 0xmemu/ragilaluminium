@@ -699,32 +699,32 @@ export default function StorePerformance({
 
       {/* LAYER 1: HEADLINE METRICS (4 KARTU EKSEKUTIF BERPRIORITAS TINGGI) */}
       <section aria-label="Ringkasan utama" className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        {/* KARTU 1: Penjualan Bersih */}
+        {/* KARTU 1: Penjualan Gross (nilai utama) */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
             <div>
               <HoverHint
-                label="Penjualan Bersih"
-                hint="Pendapatan bersih hak toko setelah dikurangi ongkir J&T, biaya COD, subsidi, dan retur."
+                label="Penjualan Gross"
+                hint="Total nilai transaksi pembeli pada periode (sebelum dikurangi ongkir J&T, biaya COD, subsidi, dan retur)."
                 className="text-xs font-medium text-muted-foreground"
               />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatCurrency(report.financial.net_revenue)}
+              {formatCurrency(report.financial.gross_revenue)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Gross: {formatCurrency(report.financial.gross_revenue)}
+              Bersih: {formatCurrency(report.financial.net_revenue)}
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
             <span className="text-xs text-muted-foreground">vs periode lalu</span>
             <span className={cn(
               "font-semibold",
-              (kpiMap["net_revenue"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["net_revenue"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["net_revenue"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+              (kpiMap["omzet"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["omzet"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["omzet"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["net_revenue"]?.change_percent === null ? "Baru" : (kpiMap["net_revenue"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["net_revenue"].change_percent} />}
+              {kpiMap["omzet"]?.change_percent === null ? "Baru" : (kpiMap["omzet"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["omzet"].change_percent} />}
             </span>
           </div>
         </div>
@@ -789,33 +789,6 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {/* KARTU 3b: Jumlah Unit Terjual */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
-          <div>
-            <div>
-              <HoverHint
-                label="Jumlah Unit Terjual"
-                hint="Total unit fisik terjual pada periode (dari pesanan fulfillment)."
-                className="text-xs font-medium text-muted-foreground"
-              />
-            </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatNumber(kpiMap["units"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">unit</span>
-            </p>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
-            <span className={cn(
-              "font-semibold",
-              (kpiMap["units"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["units"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["units"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
-            )}>
-              {kpiMap["units"]?.change_percent === null ? "Baru" : (kpiMap["units"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["units"].change_percent} />}
-            </span>
-          </div>
-        </div>
-
         {/* KARTU 3c: Jumlah Produk Terjual */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
@@ -843,29 +816,29 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {/* KARTU 3d: Pesanan Selesai */}
+        {/* KARTU 3b: Jumlah Unit Terjual */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
             <div>
               <HoverHint
-                label="Pesanan Selesai"
-                hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
+                label="Jumlah Unit Terjual"
+                hint="Total unit fisik terjual pada periode (dari pesanan fulfillment)."
                 className="text-xs font-medium text-muted-foreground"
               />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatNumber(kpiMap["completed_orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
+              {formatNumber(kpiMap["units"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">unit</span>
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
             <span className="text-xs text-muted-foreground">vs periode lalu</span>
             <span className={cn(
               "font-semibold",
-              (kpiMap["completed_orders"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["completed_orders"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["completed_orders"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+              (kpiMap["units"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["units"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["units"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["completed_orders"]?.change_percent === null ? "Baru" : (kpiMap["completed_orders"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["completed_orders"].change_percent} />}
+              {kpiMap["units"]?.change_percent === null ? "Baru" : (kpiMap["units"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["units"].change_percent} />}
             </span>
           </div>
         </div>
@@ -1326,8 +1299,8 @@ export default function StorePerformance({
           <div>
             <div className="border-b border-border pb-3">
               <HoverHint
-                label="Kunjungan & Bauran Pembayaran"
-                hint="Loyalitas pengunjung serta preferensi pembayaran pesanan."
+                label="Kunjungan & Pelayanan"
+                hint="Loyalitas pengunjung, pelayanan pesanan, serta preferensi pembayaran."
                 className="text-sm font-semibold tracking-tight text-foreground"
               />
             </div>
@@ -1365,6 +1338,14 @@ export default function StorePerformance({
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
+              </div>
+              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
+                <HoverHint
+                  label="Pesanan Selesai"
+                  hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
+                  className="text-xs font-medium text-muted-foreground"
+                />
+                <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["completed_orders"]?.value ?? 0)}</p>
               </div>
             </div>
 
