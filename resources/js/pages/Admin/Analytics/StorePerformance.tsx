@@ -929,9 +929,8 @@ export default function StorePerformance({
               </div>
 
               {[
-                { label: "Titipan Ongkir J&T Cargo", hint: "Ongkir dibayar pembeli yang diteruskan ke ekspedisi J&T Cargo.", val: report.financial.shipping_raw ?? 0 },
+                { label: "Titipan Ongkir J&T Cargo", hint: "Ongkir dasar yang diteruskan ke J&T Cargo, sudah termasuk subsidi ongkir yang ditanggung toko.", val: report.financial.shipping_raw ?? 0 },
                 { label: "Titipan Biaya Layanan COD J&T", hint: "Biaya administrasi COD yang dipotong oleh pihak kurir J&T Cargo.", val: report.financial.cod_fee ?? 0 },
-                { label: "Subsidi Ongkir Toko", hint: "Potongan ongkir yang ditanggung toko sebagai promo belanja.", val: report.financial.shipping_subsidy ?? 0 },
                 { label: "Refund Kasus Retur", hint: "Pengembalian dana kepada pembeli atas kasus retur yang selesai.", val: report.financial.refund_adjustments ?? 0 },
                 { label: "Ongkir Retur Toko", hint: "Biaya pengiriman barang retur yang ditanggung oleh pihak toko.", val: report.financial.return_shipping_store ?? 0 },
               ].map((row, idx) => (
