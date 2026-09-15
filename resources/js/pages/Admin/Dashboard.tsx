@@ -446,13 +446,7 @@ export default function Dashboard({
                     // admin: nilai bisnis, bukan pencatatan pembayaran.
                     label="Penjualan Bersih"
                     value={formatCurrency(financial.net_revenue)}
-                  />
-                </div>
-                <div className="px-4 py-3">
-                  <MetricTile
-                    label={financial.received_period_label || "Pembayaran Diterima"}
-                    value={formatCurrency(financial.received_period_amount ?? financial.received_today_amount)}
-                    delta={`${formatNumber(financial.received_period_count)} pembayaran \u00b7 ${formatCurrency(financial.cod_running_amount)} COD berjalan`}
+                    delta={`${formatCurrency(financial.cod_running_amount)} COD berjalan`}
                   />
                 </div>
               </div>
