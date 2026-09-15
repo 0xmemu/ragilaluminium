@@ -422,7 +422,7 @@ export default function Dashboard({
                   />
                 </React.Suspense>
               </div>
-              <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-3">
                 <div className="px-4 py-3">
                   <MetricTile
                     label="Order masuk"
@@ -435,16 +435,6 @@ export default function Dashboard({
                     label="Jumlah unit"
                     value={`${formatNumber(omzet.units)} unit`}
                     delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" comparisonLabel={omzet.comparison_label} />}
-                  />
-                </div>
-                <div className="px-4 py-3">
-                  <MetricTile
-                    // Nilai pesanan yang belum dikonfirmasi, bukan nominal
-                    // belum dibayar: pesanan menunggu konfirmasi bisa saja
-                    // transfernya sudah masuk.
-                    label="Menunggu Konfirmasi"
-                    value={formatCurrency(financial.awaiting_confirmation_amount)}
-                    delta={`${formatNumber(financial.awaiting_confirmation_orders)} order belum dikonfirmasi`}
                   />
                 </div>
                 <div className="px-4 py-3">
