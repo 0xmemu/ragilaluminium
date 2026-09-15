@@ -73,6 +73,7 @@ interface FinancialData {
   received_today_count: number
   received_period_count: number
   net_revenue: number
+  net_revenue_change_percent: number | null
   cod_running_amount: number
   received_period_amount?: number
   received_period_label?: string
@@ -446,7 +447,7 @@ export default function Dashboard({
                     // admin: nilai bisnis, bukan pencatatan pembayaran.
                     label="Penjualan Bersih"
                     value={formatCurrency(financial.net_revenue)}
-                    delta={`${formatCurrency(financial.cod_running_amount)} COD berjalan`}
+                    delta={<DeltaBadge percent={financial.net_revenue_change_percent} />}
                   />
                 </div>
               </div>
