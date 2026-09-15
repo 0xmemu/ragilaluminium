@@ -138,7 +138,20 @@ class InstallationGalleryController extends Controller
                 ['value' => '0', 'label' => 'Draft'],
             ],
             'createHref' => route('admin.gallery-items.create'),
-            'createLabel' => 'Tambah Foto Pemasangan',
+            'createLabel' => 'Tambah galeri manual',
+            'pickerUrl' => route('admin.media.picker'),
+            'mediaStoreUrl' => url('/admin/kelola/produk/{productId}/media'),
+            'products' => \App\Models\Product::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'parent_sku', 'name', 'short_name', 'product_model', 'design_variant'])
+                ->map(fn ($p) => [
+                    'id' => $p->id,
+                    'parent_sku' => $p->parent_sku,
+                    'name' => $p->name,
+                    'product_model' => $p->product_model,
+                    'design_variant' => $p->design_variant,
+                ])->values()->all(),
             'pageMeta' => InstallationPageSettings::pageMeta(),
             'metaUrl' => route('admin.hasil-pemasangan.meta.update'),
             'metaHint' => 'Meta halaman /hasil-pemasangan',

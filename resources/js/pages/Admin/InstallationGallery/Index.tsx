@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
+import { MediaPicker } from "@/components/admin/media-picker"
 import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
@@ -234,8 +235,9 @@ export default function InstallationGalleryIndex({
   filters,
   sortOptions,
   publishedOptions,
-  createHref,
-  createLabel,
+  pickerUrl,
+  mediaStoreUrl,
+  products = [],
   rows = [],
   importedRows = [],
   pagination,
@@ -249,8 +251,9 @@ export default function InstallationGalleryIndex({
   filters: { q: string; sort: string; published: string }
   sortOptions: Array<{ value: string; label: string }>
   publishedOptions: Array<{ value: string; label: string }>
-  createHref: string
-  createLabel: string
+  pickerUrl: string
+  mediaStoreUrl: string
+  products: Array<{ id: number; parent_sku: string; name: string; product_model: string; design_variant: string }>
   rows?: FotoRow[]
   importedRows?: FotoRow[]
   pagination: PaginationData | null
@@ -263,6 +266,42 @@ export default function InstallationGalleryIndex({
   const [sort, setSort] = React.useState(filters.sort)
   const [published, setPublished] = React.useState(filters.published)
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
+  // Tambah hasil pemasangan: MediaPicker -> pilih produk pemilik -> simpan
+  // instan sebagai product_media is_installation (endpoint admin.products.media.store).
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const [pickedMedia, setPickedMedia] = React.useState<
+    Array<{ assetId: number; label: string; thumbUrl: string; kind: "image" | "video" }>
+  >([])
+  const [ownerProductId, setOwnerProductId] = React.useState<string>("")
+  const [adding, setAdding] = React.useState(false)
+
+  function addPickedAsInstallation() {
+    if (!pickedMedia.length || !ownerProductId || !mediaStoreUrl) return
+    setAdding(true)
+    // Urutan dikirim berurutan; position dihitung server per produk.
+    pickedMedia.forEach((m, index) => {
+      router.post(mediaStoreUrl.replace(":productId", ownerProductId), {
+        media_asset_id: m.assetId,
+        kind: m.kind,
+        position: 100 + index + 1,
+        is_main_image: false,
+        show_in_catalog: false,
+        is_installation: true,
+        visibility: "visible",
+      }, {
+        preserveScroll: true,
+        onFinish: () => {
+          if (index === pickedMedia.length - 1) {
+            setAdding(false)
+            setPickedMedia([])
+            setOwnerProductId("")
+            setPickerOpen(false)
+            router.reload({ only: ["importedRows", "rows", "pagination"] })
+          }
+        },
+      })
+    })
+  }
   const metaForm = useForm({
     title: pageMeta?.title ?? "",
     heading: pageMeta?.heading ?? "",
@@ -309,11 +348,9 @@ export default function InstallationGalleryIndex({
               </a>
             </Button>
           ) : null}
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              {createLabel}
-            </Link>
+          <Button type="button" onClick={() => setPickerOpen(true)}>
+            <Icon name="plus" className="size-4" aria-hidden="true" />
+            Tambah hasil pemasangan
           </Button>
         </div>
       }
@@ -409,6 +446,83 @@ export default function InstallationGalleryIndex({
           </Select>
         ) : null}
       </ListToolbar>
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <div>
+            <DialogTitle>Tambah hasil pemasangan</DialogTitle>
+            <DialogDescription className="mt-1.5">
+              Pilih produk pemilik, lalu pilih media dari Media Library. Tersimpan instan sebagai
+              foto hasil pemasangan produk tersebut (muncul di seksi Hasil Pemasangan produk dan di
+              daftar bawah).
+            </DialogDescription>
+          </div>
+          <div className="space-y-4">
+            <Field id="ig-owner-product" label="Produk pemilik" hint="Pilih model produk yang hasil pemasangannya ini.">
+              <Select value={ownerProductId} onChange={(event) => setOwnerProductId(event.target.value)}>
+                <option value="">- Pilih produk -</option>
+                {products.map((product) => (
+                  <option key={product.id} value={String(product.id)}>
+                    {product.name} ({product.parent_sku})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            {ownerProductId ? (
+              <MediaPicker
+                open
+                onClose={() => setPickedMedia([])}
+                multiple
+                title="Media hasil pemasangan"
+                onPick={setPickedMedia}
+              />
+            ) : (
+              <p className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                Pilih produk terlebih dahulu untuk mengaktifkan pemilihan media.
+              </p>
+            )}
+
+            {pickedMedia.length ? (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <p className="text-xs font-semibold text-foreground">
+                  {pickedMedia.length} media dipilih
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {pickedMedia.map((m) => (
+                    <img
+                      key={m.assetId}
+                      src={m.thumbUrl}
+                      alt={m.label}
+                      className="h-12 w-12 rounded border border-border object-cover"
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setPickerOpen(false)
+                  setPickedMedia([])
+                }}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                disabled={!pickedMedia.length || !ownerProductId || adding}
+                onClick={addPickedAsInstallation}
+              >
+                {adding ? "Menyimpan..." : `Simpan ${pickedMedia.length || ""} media`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {rows.length + importedRows.length > 0 ? (
