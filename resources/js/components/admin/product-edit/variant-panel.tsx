@@ -1,11 +1,9 @@
+
 import { Link, useForm } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
-import { Input } from "@/components/admin/ui/input"
-import { StatusSelect } from "@/components/admin/ui/status-select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { formatCurrency } from "@/lib/format"
 
@@ -118,61 +116,6 @@ export function VariantRowsPanel({
         )}
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
-        <h2 className="text-xl font-semibold">Tambah varian</h2>
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          SKU varian dibuat otomatis. Harga dan stok wajib diisi. Tersimpan instan.
-        </p>
-        <form id="variant-create-form" onSubmit={submit} className="mt-4 space-y-4">
-          <FormErrorSummary errors={form.errors} />
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Field id="variant-name-1" label="Nama opsi 1" error={form.errors.variation_1_name}>
-              <Input value={form.data.variation_1_name} onChange={(event) => form.setData("variation_1_name", event.target.value)} />
-            </Field>
-            <Field id="variant-option-1" label="Nilai opsi 1" error={form.errors.variation_1_option}>
-              <Input value={form.data.variation_1_option} onChange={(event) => form.setData("variation_1_option", event.target.value)} />
-            </Field>
-            <Field id="variant-name-2" label="Nama opsi 2" error={form.errors.variation_2_name}>
-              <Input value={form.data.variation_2_name} onChange={(event) => form.setData("variation_2_name", event.target.value)} />
-            </Field>
-            <Field id="variant-option-2" label="Nilai opsi 2" error={form.errors.variation_2_option}>
-              <Input value={form.data.variation_2_option} onChange={(event) => form.setData("variation_2_option", event.target.value)} />
-            </Field>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Field id="variant-price" label="Harga" required error={form.errors.price}>
-              <Input type="number" min="0" value={form.data.price} onChange={(event) => form.setData("price", event.target.value)} />
-            </Field>
-            <Field id="variant-stock" label="Stok" required error={form.errors.stock}>
-              <Input type="number" min="0" value={form.data.stock} onChange={(event) => form.setData("stock", event.target.value)} />
-            </Field>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {[
-              ["weight_kg", "Berat (kg)"],
-              ["width_cm", "Lebar (cm)"],
-              ["height_cm", "Tinggi (cm)"],
-              ["depth_cm", "Tebal (cm)"],
-            ].map(([key, label]) => (
-              <Field key={key} id={`variant-${key}`} label={label} error={form.errors[key as keyof typeof form.errors]}>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.data[key as keyof typeof form.data] as string}
-                  onChange={(event) => form.setData(key as keyof typeof form.data, event.target.value)}
-                />
-              </Field>
-            ))}
-          </div>
-          <Field id="variant-status" label="Status" required error={form.errors.status}>
-            <StatusSelect statuses={VARIANT_STATUSES} value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} />
-          </Field>
-          <Button type="submit" className="w-full" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Tambah varian"}
-          </Button>
-        </form>
-      </section>
     </div>
   )
 }
