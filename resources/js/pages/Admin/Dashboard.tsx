@@ -72,6 +72,8 @@ interface FinancialData {
   received_today_amount: number
   received_today_count: number
   received_period_count: number
+  net_revenue: number
+  cod_running_amount: number
   received_period_amount?: number
   received_period_label?: string
 }
@@ -441,7 +443,15 @@ export default function Dashboard({
                   <MetricTile
                     label={financial.received_period_label || "Pembayaran Diterima"}
                     value={formatCurrency(financial.received_period_amount ?? financial.received_today_amount)}
-                    delta={`${formatNumber(financial.received_period_count)} pembayaran`}
+                    delta={`${formatNumber(financial.received_period_count)} pembayaran \u00b7 ${formatCurrency(financial.cod_running_amount)} COD berjalan`}
+                  />
+                </div>
+                <div className="px-4 py-3">
+                  <MetricTile
+                    // Gross dikurangi refund retur yang benar-benar selesai -
+                    // satu periode dengan KPI omzet di atas.
+                    label="Penjualan Bersih"
+                    value={formatCurrency(financial.net_revenue)}
                   />
                 </div>
               </div>

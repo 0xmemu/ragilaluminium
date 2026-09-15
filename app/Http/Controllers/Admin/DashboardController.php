@@ -529,6 +529,14 @@ class DashboardController extends Controller
                 'received_period_amount' => (float) (collect(collect($performance['sections'] ?? [])->firstWhere('key', 'payments')['kpis'] ?? [])->firstWhere('key', 'payments_received')['value'] ?? $paymentsReceivedTodayQuery->sum('amount')),
                 'received_period_count' => $paymentsReceivedPeriodCount,
                 'received_period_label' => 'Pembayaran Diterima (' . ($performaPeriod === 'today' ? 'Hari ini' : ($performance['range']['label'] ?? 'Periode ini')) . ')',
+                // Penjualan bersih: gross dikurangi refund retur selesai (periode sama dengan KPI omzet).
+                'net_revenue' => (float) (collect($salesKpis)->firstWhere('key', 'net_revenue')['value'] ?? 0),
+                // COD berjalan: pesanan COD aktif yang uangnya belum dicatat lunas
+                // (baru masuk saat paket tiba). Konteks untuk tile Pembayaran Diterima.
+                'cod_running_amount' => (float) Order::query()
+                    ->whereIn('order_status', ['awaiting_confirmation', 'processing', 'shipped', 'delivered'])
+                    ->where('payment_method', 'cod')
+                    ->sum('total_amount'),
             ],
             'performa' => [
                 'period' => $performaPeriod,
