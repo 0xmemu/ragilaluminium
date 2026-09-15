@@ -126,6 +126,8 @@ export default function ProductForm({
   activeTab = 'identitas',
   mediaRows = [],
   variantsDetail = [],
+  installationMedia = [],
+  mediaHref,
   mediaActionUrls,
   variantStoreUrl,
 }: {
@@ -144,6 +146,20 @@ export default function ProductForm({
   mediaRows?: import("@/components/admin/product-edit/media-panel").MediaRow[]
   /** Daftar varian dgn harga/stok/status + URL aksi. */
   variantsDetail?: import("@/components/admin/product-edit/variant-panel").VariantDetail[]
+  /** Tautan ke halaman pengelolaan media produk. */
+  mediaHref?: string
+  /** Media hasil pemasangan (dikelola terpisah dari galeri katalog). */
+  installationMedia?: Array<{
+    id: number
+    media_asset_id: number
+    label?: string | null
+    url?: string | null
+    position: number
+    show_in_catalog: boolean
+    installation_caption?: string | null
+    update_url: string
+    archive_url: string
+  }>
   /** URL aksi instan panel media. */
   mediaActionUrls?: import("@/components/admin/product-edit/types").MediaPanelUrls
   /** Endpoint tambah varian tunggal. */
@@ -853,6 +869,46 @@ export default function ProductForm({
                   <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
                   <span className="text-xs font-medium">Unggah atau pilih media dari Media Library</span>
                 </button>
+              )}
+            </div>
+          </section>
+
+          {/* 3b. HASIL PEMASANGAN (terpisah dari galeri katalog; simpan instan per baris) */}
+          <section className={cn("overflow-hidden rounded-lg border border-border bg-card", isVariantTab && "hidden")}>
+            <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Hasil Pemasangan ({installationMedia.length} media)</h2>
+                <p className="text-xs text-muted-foreground">Tampil di seksi Hasil Pemasangan pada halaman produk dan galeri hasil pemasangan.</p>
+              </div>
+              <Button asChild type="button" variant="secondary" size="xs">
+                <a href={mediaHref ?? undefined}>Kelola media</a>
+              </Button>
+            </div>
+            <div className="p-4">
+              {installationMedia.length ? (
+                <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
+                  {installationMedia.map((media) => (
+                    <li key={media.id} className="group relative select-none">
+                      <span className="pointer-events-none relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
+                        {media.url ? (
+                          <img src={media.url} alt="" className="pointer-events-none size-full object-cover select-none" />
+                        ) : (
+                          <span className="flex size-full items-center justify-center text-muted-foreground">
+                            <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                          </span>
+                        )}
+                        <span className="absolute left-1 top-1 rounded bg-info/90 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">Hasil pasang</span>
+                      </span>
+                      <p className="mt-1.5 truncate text-[11px] text-muted-foreground" title={media.installation_caption ?? ""}>
+                        {media.installation_caption || media.label || ("Media #" + media.id)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="rounded-lg border-2 border-dashed border-border bg-surface-muted/30 p-6 text-center text-xs text-muted-foreground">
+                  Belum ada media hasil pemasangan. Tambahkan lewat tombol Kelola media - tandai media sebagai Hasil pemasangan.
+                </p>
               )}
             </div>
           </section>

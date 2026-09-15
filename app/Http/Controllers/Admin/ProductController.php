@@ -428,7 +428,7 @@ class ProductController extends Controller
     {
         $product->load(['variants' => fn ($q) => $q->withCount([
             'media as media_count' => fn ($mq) => $mq->where('visibility', '!=', 'archived'),
-        ]), 'attributes', 'media.mediaAsset', 'media.productVariant']);
+        ]), 'attributes', 'media.mediaAsset', 'media.productVariant', 'media.product:id,parent_sku']);
 
         $requestedTab = (string) $request->query('tab', 'identitas');
         $activeTab = in_array($requestedTab, ['identitas', 'varian', 'media'], true)
@@ -516,7 +516,7 @@ class ProductController extends Controller
                 // bukan "bukan foto katalog". Video tetap dikelola di halaman
                 // Media; media per-varian (posisi 50+) ada di formulir varian.
                 'media' => $product->media
-                    ->filter(fn ($m) => $m->show_in_catalog)
+                    ->filter(fn ($m) => $m->show_in_catalog && ! $m->is_installation)
                     ->sortBy('position')
                     ->map(fn ($m) => [
                         'media_asset_id' => $m->media_asset_id,
@@ -593,6 +593,20 @@ class ProductController extends Controller
                     'destroy_url' => $m->status === 'failed'
                         ? route('admin.media.destroy', $m)
                         : null,
+                ])->values()->all(),
+            'installationMedia' => $product->media
+                ->where('is_installation', true)
+                ->sortBy('position')
+                ->map(fn ($m) => [
+                    'id' => $m->id,
+                    'media_asset_id' => $m->media_asset_id,
+                    'label' => $m->mediaAsset?->label,
+                    'url' => $m->mediaAsset?->urlFor('thumb'),
+                    'position' => $m->position,
+                    'show_in_catalog' => (bool) $m->show_in_catalog,
+                    'installation_caption' => $m->installation_caption,
+                    'update_url' => route('admin.media.update', $m),
+                    'archive_url' => route('admin.media.archive', $m),
                 ])->values()->all(),
             'variantsDetail' => $product->variants->map(fn ($v) => [
                 'id' => $v->id,

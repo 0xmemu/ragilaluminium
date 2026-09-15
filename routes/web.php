@@ -464,7 +464,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('apa-kata-pelanggan', fn () => redirect()->route('admin.testimonials.index', ['tab' => 'eksternal']))->name('apa-kata-pelanggan.index');
     Route::put('apa-kata-pelanggan/meta', [ApaKataController::class, 'updateMeta'])->name('apa-kata-pelanggan.meta.update');
     Route::put('apa-kata-pelanggan/reorder', [ApaKataController::class, 'reorder'])->name('apa-kata-pelanggan.reorder');
-    Route::get('hasil-pemasangan', fn () => redirect()->route('admin.testimonials.index', ['tab' => 'foto']))->name('hasil-pemasangan.index');
+    Route::get('hasil-pemasangan', [InstallationGalleryController::class, 'index'])->name('hasil-pemasangan.index');
     Route::put('hasil-pemasangan/meta', [InstallationGalleryController::class, 'updateMeta'])->name('hasil-pemasangan.meta.update');
 
     Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');

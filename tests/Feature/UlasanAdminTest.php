@@ -306,9 +306,11 @@ class UlasanAdminTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        // Penggabungan e2e: menu Hasil Pemasangan dipulihkan sebagai halaman galeri penuh.
         $this->actingAs($admin)
             ->get(route('admin.hasil-pemasangan.index'))
-            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'foto']));
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Admin/InstallationGallery/Index'));
 
         $this->actingAs($admin)
             ->get(route('admin.testimonials.index', ['tab' => 'foto']))

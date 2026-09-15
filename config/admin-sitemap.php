@@ -116,7 +116,8 @@ return [
             'title' => 'Pelanggan & Komunikasi',
             'items' => [
                 ['label' => 'Customer', 'route' => 'admin.customers.index', 'capability' => 'customers.view', 'icon' => 'users', 'active' => ['admin.customers.*']],
-                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*', 'admin.apa-kata-pelanggan.*', 'admin.hasil-pemasangan.*']],
+                ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*', 'admin.apa-kata-pelanggan.*']],
+                ['label' => 'Hasil Pemasangan', 'route' => 'admin.hasil-pemasangan.index', 'capability' => 'testimonials.view', 'icon' => 'image', 'active' => ['admin.hasil-pemasangan.*', 'admin.installation-gallery.*']],
                 [
                     'label' => 'WhatsApp',
                     'route' => 'admin.whatsapp.dashboard', 'capability' => 'whatsapp.view',
