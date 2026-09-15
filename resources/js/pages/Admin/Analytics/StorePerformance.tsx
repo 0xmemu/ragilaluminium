@@ -71,6 +71,8 @@ interface Report {
   financial: {
     gross_revenue: number
     shipping_raw?: number
+    product_discount?: number
+    voucher_discount?: number
     shipping_paid_by_customer?: number
     shipping_subsidy?: number
     cod_fee?: number
@@ -929,6 +931,32 @@ export default function StorePerformance({
                 <span className="font-bold tabular-nums text-foreground">{formatCurrency(report.financial.gross_revenue)}</span>
               </div>
 
+              {/* Promo ditanggung toko: SUDAH tercakup dalam Gross (pelanggan
+                  membayar lebih murah), jadi TIDAK dikurangkan lagi di sini -
+                  ditampilkan agar beban promo toko tetap terdata. */}
+              <div className="border-t border-border pt-3">
+                <p className="text-xs font-semibold text-foreground mb-2">Promo Ditanggung Toko (tercakup dalam Gross)</p>
+                <div className="space-y-1">
+                  {[
+                    { label: "Potongan Harga Produk", hint: "Diskon harga produk yang ditanggung toko.", val: report.financial.product_discount ?? 0 },
+                    { label: "Potongan Voucher", hint: "Potongan voucher yang ditanggung toko.", val: report.financial.voucher_discount ?? 0 },
+                    { label: "Subsidi Ongkir", hint: "Ongkir yang disubsidi toko; sudah masuk dalam Titipan Ongkir J&T di bawah, tidak dihitung dua kali.", val: report.financial.shipping_subsidy ?? 0 },
+                  ].map((row, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-1.5 text-muted-foreground">
+                      <span className="pl-2">
+                        <HoverHint label={row.label} hint={row.hint} className="text-muted-foreground" />
+                      </span>
+                      <span className={cn("tabular-nums", row.val > 0 ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                        {formatCurrency(row.val)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <p className="text-xs font-semibold text-foreground mb-2">Dikurangkan dari dana pembeli (dana titipan & biaya retur)</p>
+              </div>
               {[
                 { label: "Titipan Ongkir J&T Cargo", hint: "Ongkir dasar yang diteruskan ke J&T Cargo, sudah termasuk subsidi ongkir yang ditanggung toko.", val: report.financial.shipping_raw ?? 0 },
                 { label: "Titipan Biaya Layanan COD J&T", hint: "Biaya administrasi COD yang dipotong oleh pihak kurir J&T Cargo.", val: report.financial.cod_fee ?? 0 },
