@@ -329,13 +329,13 @@ class StorePerformanceService
                     'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'visitors'),
                 ],
                 [
-                    'key' => 'conversion_rate',
-                    'title' => 'Tren Konversi',
-                    'total' => $current['conversion_rate'],
-                    'previous_total' => $previous['conversion_rate'] ?? 0.0,
+                    'key' => 'orders',
+                    'title' => 'Tren Pesanan',
+                    'total' => $current['orders'],
+                    'previous_total' => $previous['orders'] ?? 0.0,
                     'total_format' => 'number',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'conversion_rate'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'conversion_rate'),
+                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'orders'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'orders'),
                 ],
                 [
                     'key' => 'units',
@@ -755,6 +755,7 @@ class StorePerformanceService
                 ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
                 ->selectRaw('COUNT(*) as value')
                 ->whereBetween('created_at', [$from, $to])
+                ->whereRaw($this->paidRevenueStatusSql())
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
         }

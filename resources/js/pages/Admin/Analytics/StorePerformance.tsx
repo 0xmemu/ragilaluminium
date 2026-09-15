@@ -743,7 +743,7 @@ export default function StorePerformance({
               {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {formatNumber(kpiMap["units"]?.value ?? 0)} unit terjual
+              {formatNumber(kpiMap["units"]?.value ?? 0)} unit terjual · {formatNumber(kpiMap["products"]?.value ?? 0)} produk
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -764,27 +764,27 @@ export default function StorePerformance({
           <div>
             <div>
               <HoverHint
-                label="Rata-rata Nilai Pesanan"
-                hint="Rata-rata nilai belanja kotor (gross) per transaksi pesanan pelanggan."
+                label="Harga Rata-rata per Unit"
+                hint="Range harga yang paling sering dibeli pelanggan, dihitung dari nilai pesanan dibagi jumlah unit terjual."
                 className="text-xs font-medium text-muted-foreground"
               />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatCurrency(kpiMap["aov"]?.value ?? 0)}
+              {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)} per unit
+              AOV {formatCurrency(kpiMap["aov"]?.value ?? 0)} per pesanan
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
             <span className="text-xs text-muted-foreground">vs periode lalu</span>
             <span className={cn(
               "font-semibold",
-              (kpiMap["aov"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["aov"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["aov"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+              (kpiMap["avg_unit_price"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["avg_unit_price"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["avg_unit_price"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["aov"]?.change_percent === null ? "Baru" : (kpiMap["aov"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["aov"].change_percent} />}
+              {kpiMap["avg_unit_price"]?.change_percent === null ? "Baru" : (kpiMap["avg_unit_price"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["avg_unit_price"].change_percent} />}
             </span>
           </div>
         </div>
