@@ -150,9 +150,9 @@ class FrontendPageContractTest extends TestCase
         $this->get(route('admin.products.show', $product))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Admin/Products/Show'));
+        // Penggabungan e2e: index varian dialihkan ke tab Varian di halaman edit.
         $this->get(route('admin.products.variants.index', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/Variants'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
         $this->get(route('admin.variants.edit', $variant))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Admin/VariantEdit'));
@@ -160,8 +160,7 @@ class FrontendPageContractTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Admin/Attributes'));
         $this->get(route('admin.products.media.byProduct', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/Products/Media'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'media']));
     }
 
     public function test_every_controller_inertia_component_has_a_typescript_page(): void

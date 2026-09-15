@@ -27,8 +27,19 @@ use Inertia\Response;
 class ProductMediaController extends Controller
 {
 
-    public function byProduct(Request $request, Product $product): Response
+    public function byProduct(Request $request, Product $product): \Illuminate\Http\RedirectResponse|Response
     {
+        // GET dialihkan ke tab Media di halaman edit (penggabungan e2e).
+        // POST store dan Inertia partial request tetap menekan method ini.
+        if (! $request->inertia()) {
+            $params = ['product' => $product, 'tab' => 'media'];
+            if (filled($request->query('variant'))) {
+                $params['variant'] = $request->query('variant');
+            }
+
+            return redirect()->route('admin.products.edit', $params);
+        }
+
         $product->load(['variants' => fn ($q) => $q->orderBy('id'), 'media.productVariant', 'media.mediaAsset']);
 
         $filterVariant = $request->query('variant');

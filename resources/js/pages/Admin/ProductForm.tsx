@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
@@ -7,6 +7,9 @@ import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import type { SharedPageProps } from "@/types"
+import { MediaRowsPanel } from "@/components/admin/product-edit/media-panel"
+import { VariantRowsPanel } from "@/components/admin/product-edit/variant-panel"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency } from "@/lib/format"
@@ -120,6 +123,11 @@ export default function ProductForm({
   submitUrl,
   publishUrl,
   options,
+  activeTab = 'identitas',
+  mediaRows = [],
+  variantsDetail = [],
+  mediaActionUrls,
+  variantStoreUrl,
 }: {
   backUrl?: string | null
   product: ProductRecord | null
@@ -127,8 +135,19 @@ export default function ProductForm({
   "variant_defs"?: Array<{ name: string; options: Array<{ value: string; media_asset_id?: number | null; thumb_url?: string | null }> }>
   /** Daftar varian eksisting (SKU, opsi, harga, stok). */
   "variants"?: Array<{ id: number; variant_sku: string; variation_1_name: string | null; variation_1_option: string | null; variation_2_name: string | null; variation_2_option: string | null; price: number; stock: number; status: string }>
+  library?: Array<{ id: number; label: string; kind: string; status: string; usage_count: number; thumb_url?: string | null; media_url?: string | null }>
   submitUrl: string
   publishUrl?: string
+  /** Tab aktif (hanya edit mode): identitas | varian | media. */
+  activeTab?: string
+  /** Baris media lengkap utk panel media (edit mode). */
+  mediaRows?: import("@/components/admin/product-edit/media-panel").MediaRow[]
+  /** Daftar varian dgn harga/stok/status + URL aksi. */
+  variantsDetail?: import("@/components/admin/product-edit/variant-panel").VariantDetail[]
+  /** URL aksi instan panel media. */
+  mediaActionUrls?: import("@/components/admin/product-edit/types").MediaPanelUrls
+  /** Endpoint tambah varian tunggal. */
+  variantStoreUrl?: string
   options: {
     categories: SelectOption[]
     models: SelectOption[]
@@ -155,6 +174,31 @@ export default function ProductForm({
 
   // ADR-021: media dipilih/diunggah langsung di form (upload atau Media Library),
   // dikirim bersama submit sebagai media_asset_ids. Foto pertama = gambar utama.
+  // Tab penggabungan e2e: identitas | varian | media (hanya edit mode).
+  const validTabs = ["identitas", "varian", "media"] as const
+  const initialTab = validTabs.includes((activeTab as typeof validTabs[number]))
+    ? (activeTab as typeof validTabs[number])
+    : "identitas"
+  const [activeTabState, setActiveTabState] = React.useState<
+    (typeof validTabs)[number]
+  >(initialTab)
+
+  function switchTab(next: (typeof validTabs)[number]) {
+    setActiveTabState(next)
+    if (editing) {
+      const url = new URL(window.location.href)
+      url.searchParams.set("tab", next)
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash)
+    }
+  }
+
+  const isIdentityTab = !editing || activeTabState === "identitas"
+  const isVariantTab = editing && activeTabState === "varian"
+  const isMediaTab = editing && activeTabState === "media"
+  const libraryAssets = ((usePage<SharedPageProps>().props as unknown as {
+    library?: Array<{ id: number; label: string; kind: string; status: string; usage_count: number; thumb_url?: string | null; media_url?: string | null }>
+  }).library) ?? []
+
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>([])
   const [optionPicker, setOptionPicker] = React.useState<{ defIndex: number; optionIndex: number } | null>(null)
@@ -342,11 +386,30 @@ export default function ProductForm({
       <Head title={`${editing ? "Edit" : "Tambah"} Produk | Admin`} />
 
       <div className="w-full space-y-6">
+        {editing ? (
+          <div className="inline-flex rounded-lg border border-border bg-muted/60 p-1">
+            {(["identitas", "varian", "media"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => switchTab(item)}
+                className={cn(
+                  "rounded-md px-3.5 py-1.5 text-xs font-semibold capitalize transition-all",
+                  activeTabState === item
+                    ? "bg-card text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <FormErrorSummary errors={form.errors} />
 
         <form id="product-edit-form" onSubmit={(event) => submit(preserveStatus, event)} className="space-y-6">
           {/* 1. IDENTITAS + TAKSONOMI + DIMENSI J&T (Table-First) */}
-          <section className="overflow-hidden rounded-lg border border-border bg-card">
+          <section className={cn("overflow-hidden rounded-lg border border-border bg-card", !isIdentityTab && "hidden")}>
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Identitas & Taksonomi Produk</h2>
@@ -520,7 +583,7 @@ export default function ProductForm({
           </section>
 
           {/* 2. DEFINISI VARIAN & MATRIKS KOMBINASI (Table-First) */}
-          <section className="overflow-hidden rounded-lg border border-border bg-card">
+          <section className={cn("overflow-hidden rounded-lg border border-border bg-card", !isVariantTab && "hidden")}>
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Definisi Varian & Kombinasi</h2>
@@ -664,8 +727,8 @@ export default function ProductForm({
             ) : null}
           </section>
 
-          {/* 3. FOTO PRODUK */}
-          <section className="overflow-hidden rounded-lg border border-border bg-card">
+          {/* 3. FOTO PRODUK (galeri urutan, tersimpan via Simpan) */}
+          <section className={cn("overflow-hidden rounded-lg border border-border bg-card", isVariantTab && "hidden")}>
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Foto Produk ({pickedMedia.length} foto)</h2>
@@ -795,8 +858,29 @@ export default function ProductForm({
           </section>
         </form>
 
+        {/* Tab Varian: daftar varian eksisting + tambah varian (simpan instan) */}
+        {isVariantTab ? (
+          <VariantRowsPanel variants={variantsDetail} storeUrl={variantStoreUrl ?? ""} />
+        ) : null}
+
+        {/* Tab Media: panel baris media lengkap (simpan instan) */}
+        {isMediaTab && mediaActionUrls ? (
+          <MediaRowsPanel
+            product={{ id: product?.id ?? 0, parent_sku: product?.parent_sku ?? "" }}
+            rows={mediaRows}
+            library={libraryAssets}
+            variants={variantsDetail.map((v) => ({
+              id: v.id,
+              label: [v.variation_1_option, v.variation_2_option].filter(Boolean).join(" / ") || v.variant_sku,
+              variant_sku: v.variant_sku,
+              status: v.status,
+            }))}
+            urls={mediaActionUrls}
+          />
+        ) : null}
+
         {/* 4. SYARAT AKTIVASI (Checklist Edit Mode) */}
-        {editing ? (
+        {editing && isIdentityTab ? (
           <section className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="border-b border-border bg-muted/40 px-4 py-3">
               <h2 className="text-sm font-bold text-foreground">Syarat Publikasi &amp; Aktivasi Produk</h2>

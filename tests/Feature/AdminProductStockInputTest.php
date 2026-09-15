@@ -95,7 +95,7 @@ class AdminProductStockInputTest extends TestCase
             'price' => 2000000,
             'stock' => 10,
             'status' => 'active',
-        ])->assertRedirect(route('admin.products.variants.index', $product));
+        ])->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
 
         $this->actingAs($admin)->post(route('admin.products.variants.store', $product), [
             'variation_1_name' => 'Ukuran',
@@ -103,7 +103,7 @@ class AdminProductStockInputTest extends TestCase
             'price' => 2500000,
             'stock' => 5,
             'status' => 'active',
-        ])->assertRedirect(route('admin.products.variants.index', $product));
+        ])->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
 
         // Setiap varian: SKU opak independen RA + 6..8 acak (tanpa dash), tidak ada
         // yang sama dengan parent, asosiasi via product_id (bukan parse SKU).

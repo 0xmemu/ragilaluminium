@@ -52,12 +52,10 @@ class AdminProductMediaVariantTest extends TestCase
             'status' => 'active',
         ]);
 
+        // Penggabungan e2e: GET media kini dialihkan ke tab Media di halaman edit.
         $this->actingAs($admin)
             ->get(route('admin.products.media.byProduct', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Products/Media')
-                ->has('variants', 2));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'media']));
 
         $this->actingAs($admin)
             ->post(route('admin.products.media.store', $product), [

@@ -424,9 +424,16 @@ class ProductController extends Controller
         ]);
     }
 
-    public function edit(Product $product): Response
+    public function edit(Request $request, Product $product): Response
     {
-        $product->load(['variants', 'attributes', 'media.mediaAsset', 'media.productVariant']);
+        $product->load(['variants' => fn ($q) => $q->withCount([
+            'media as media_count' => fn ($mq) => $mq->where('visibility', '!=', 'archived'),
+        ]), 'attributes', 'media.mediaAsset', 'media.productVariant']);
+
+        $requestedTab = (string) $request->query('tab', 'identitas');
+        $activeTab = in_array($requestedTab, ['identitas', 'varian', 'media'], true)
+            ? $requestedTab
+            : 'identitas';
 
         // ADR-021: rekonstruksi definisi varian utk form (nama+opsi unik urut slot,
         // plus gambar per opsi dari media varian).
@@ -533,7 +540,7 @@ class ProductController extends Controller
             'submitUrl' => route('admin.products.update', $product),
             'publishUrl' => route('admin.products.publish', $product),
             'variantBulkUrl' => route('admin.products.variants.bulk', $product),
-            'mediaHref' => route('admin.products.media.byProduct', $product),
+            'mediaHref' => route('admin.products.edit', ['product' => $product, 'tab' => 'media']),
                 'attributesHref' => route('admin.products.attributes.index', $product),
             'wizardStep' => in_array($requestStep = request()->query('step'), ['identity', 'variants', 'media', 'review'], true)
                 ? $requestStep
@@ -552,6 +559,94 @@ class ProductController extends Controller
             ])->values()->all(),
             'completion' => app(ProductPublicationService::class)->completion($product),
             'options' => $this->formOptions(),
+            // ===== Data panel Media & Varian (penggabungan e2e) =====
+            'activeTab' => $activeTab,
+            'mediaRows' => $product->media
+                ->sortBy('position')
+                ->map(fn ($m) => [
+                    'id' => $m->id,
+                    'position' => $m->position,
+                    'status' => $m->status,
+                    'error_reason' => $m->error_reason,
+                    'visibility' => $m->visibility,
+                    'is_main_image' => (bool) $m->is_main_image,
+                    'show_in_catalog' => (bool) $m->show_in_catalog,
+                    'is_installation' => (bool) $m->is_installation,
+                    'installation_caption' => $m->installation_caption,
+                    'product_variant_id' => $m->product_variant_id,
+                    'variant_label' => $m->productVariant
+                        ? trim(implode(' / ', array_filter([
+                            $m->productVariant->variation_1_option,
+                            $m->productVariant->variation_2_option,
+                        ]))) ?: $m->productVariant->variant_sku
+                        : 'Semua (produk)',
+                    'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->stored_url,
+                    'media_kind' => $m->mediaAsset?->kind ?? 'image',
+                    'media_url' => $m->mediaAsset?->kind === 'video'
+                        ? ($m->mediaAsset?->urlFor('video') ?? $m->stored_url)
+                        : ($m->mediaAsset?->urlFor('pdp') ?? $m->stored_url),
+                    'update_url' => route('admin.media.update', $m),
+                    'set_main_url' => route('admin.media.set-main', $m),
+                    'archive_url' => route('admin.media.archive', $m),
+                    'restore_url' => route('admin.media.restore', $m),
+                    'redownload_url' => route('admin.media.redownload', $m),
+                    'destroy_url' => $m->status === 'failed'
+                        ? route('admin.media.destroy', $m)
+                        : null,
+                ])->values()->all(),
+            'variantsDetail' => $product->variants->map(fn ($v) => [
+                'id' => $v->id,
+                'variant_sku' => $v->variant_sku,
+                'variation_1_option' => $v->variation_1_option,
+                'variation_2_option' => $v->variation_2_option,
+                'price' => (float) $v->price,
+                'stock' => (int) $v->stock,
+                'status' => $v->status,
+                'media_count' => (int) ($v->media_count ?? 0),
+                'update_url' => route('admin.variants.update', $v),
+                'archive_url' => route('admin.variants.archive', $v),
+                'edit_url' => route('admin.variants.edit', $v),
+            ])->values()->all(),
+            'mediaActionUrls' => [
+                'store' => route('admin.products.media.store', $product),
+                'bulk' => route('admin.products.media.bulk', $product),
+                'presign' => route('admin.media.presign'),
+                'finalize' => route('admin.media.finalize'),
+                'status' => route('admin.media.status'),
+                'picker' => route('admin.media.picker'),
+                'upload' => route('admin.media.upload'),
+            ],
+            'variantStoreUrl' => route('admin.products.variants.store', $product),
+            'productLibrary' => \App\Models\MediaAsset::query()
+                ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
+                ->where('visibility', '!=', 'archived')
+                ->latest()
+                ->limit(30)
+                ->get()
+                ->map(fn ($asset) => [
+                    'id' => $asset->id,
+                    'label' => $asset->label ?: 'Media #'.$asset->id,
+                    'kind' => $asset->kind,
+                    'status' => $asset->status,
+                    'usage_count' => (int) $asset->usage_count,
+                    'thumb_url' => $asset->urlFor('thumb'),
+                    'media_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
+                ])->values()->all(),
+            'library' => \App\Models\MediaAsset::query()
+                ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
+                ->where('visibility', '!=', 'archived')
+                ->latest()
+                ->limit(30)
+                ->get()
+                ->map(fn ($asset) => [
+                    'id' => $asset->id,
+                    'label' => $asset->label ?: 'Media #'.$asset->id,
+                    'kind' => $asset->kind,
+                    'status' => $asset->status,
+                    'usage_count' => (int) $asset->usage_count,
+                    'thumb_url' => $asset->urlFor('thumb'),
+                    'media_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
+                ])->values()->all(),
         ]);
     }
 
@@ -957,7 +1052,7 @@ class ProductController extends Controller
             'updated_at' => optional($product->updated_at)?->toIso8601String(),
             'href' => route('admin.products.edit', $product),
             'edit_href' => route('admin.products.edit', $product),
-            'variants_href' => route('admin.products.variants.index', $product),
+            'variants_href' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']),
             'media_href' => route('admin.products.media.byProduct', $product),
             'archive_url' => route('admin.products.archive', $product),
             'unarchive_url' => route('admin.products.unarchive', $product),

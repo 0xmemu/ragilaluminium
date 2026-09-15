@@ -15,8 +15,13 @@ use Inertia\Response;
 
 class ProductVariantController extends Controller
 {
-    public function index(Product $product): Response
+    public function index(Request $request, Product $product): \Illuminate\Http\RedirectResponse|Response
     {
+        // GET dialihkan ke tab Varian di halaman edit (penggabungan e2e).
+        if (! $request->inertia()) {
+            return redirect()->route('admin.products.edit', ['product' => $product, 'tab' => 'varian']);
+        }
+
         $product->load(['variants' => fn ($q) => $q->withCount([
             'media as media_count' => fn ($mq) => $mq->where('visibility', '!=', 'archived'),
         ])]);
@@ -76,7 +81,7 @@ class ProductVariantController extends Controller
 
         ProductVariant::create($validated);
 
-        return redirect()->route('admin.products.variants.index', $product)
+        return redirect()->route('admin.products.edit', ['product' => $product, 'tab' => 'varian'])
             ->with('success', 'Varian dibuat dengan SKU '.$validated['variant_sku'].'.');
     }
 
@@ -227,7 +232,7 @@ class ProductVariantController extends Controller
         $variant->update($validated);
         $this->syncPromoPrice($variant, $promoPrice);
 
-        return redirect()->route('admin.products.variants.index', $variant->product_id)
+        return redirect()->route('admin.products.edit', ['product' => $variant->product_id, 'tab' => 'varian'])
             ->with('success', 'Varian diperbarui.');
     }
 
