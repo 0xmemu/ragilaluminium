@@ -302,15 +302,6 @@ class StorePerformanceService
             'return_shipping_costs' => $current['return_shipping_cost_list'],
             'charts' => [
                 [
-                    'key' => 'net_revenue',
-                    'title' => 'Tren Penjualan Bersih',
-                    'total' => $current['net_revenue'],
-                    'previous_total' => $previous['net_revenue'] ?? 0.0,
-                    'total_format' => 'currency',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'net_revenue'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'net_revenue'),
-                ],
-                [
                     'key' => 'revenue',
                     'title' => 'Tren Penjualan Gross',
                     'total' => $current['gross_revenue'],
@@ -320,13 +311,13 @@ class StorePerformanceService
                     'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'revenue'),
                 ],
                 [
-                    'key' => 'visitors',
-                    'title' => 'Tren Pengunjung',
-                    'total' => $current['visitors'],
-                    'previous_total' => $previous['visitors'] ?? 0.0,
-                    'total_format' => 'number',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'visitors'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'visitors'),
+                    'key' => 'net_revenue',
+                    'title' => 'Tren Penjualan Bersih',
+                    'total' => $current['net_revenue'],
+                    'previous_total' => $previous['net_revenue'] ?? 0.0,
+                    'total_format' => 'currency',
+                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'net_revenue'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'net_revenue'),
                 ],
                 [
                     'key' => 'orders',
@@ -346,6 +337,16 @@ class StorePerformanceService
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'units'),
                     'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'units'),
                 ],
+                [
+                    'key' => 'visitors',
+                    'title' => 'Tren Pengunjung',
+                    'total' => $current['visitors'],
+                    'previous_total' => $previous['visitors'] ?? 0.0,
+                    'total_format' => 'number',
+                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'visitors'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'visitors'),
+                ],
+
             ],
             'top_products' => $this->topProducts($range['from'], $range['to']),
             'product_breakdowns' => $this->productPerformanceBreakdowns($range['from'], $range['to']),
