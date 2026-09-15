@@ -446,6 +446,7 @@ export default function StorePerformance({
     return map
   }, [report, sparklineBy])
 
+  const compareLabel = report.range.compare_label?.replace(/^vs\s+/, "") || "periode lalu"
   const [chartTab, setChartTab] = React.useState(0)
   const [chartModel, setChartModel] = React.useState<"line" | "bar">("line")
 
@@ -717,7 +718,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["omzet"]?.change_percent ?? 0) > 0 && "text-success",
@@ -747,7 +748,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["orders"]?.change_percent ?? 0) > 0 && "text-success",
@@ -774,7 +775,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["products"]?.change_percent ?? 0) > 0 && "text-success",
@@ -801,7 +802,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["units"]?.change_percent ?? 0) > 0 && "text-success",
@@ -831,7 +832,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["conversion"]?.change_percent ?? 0) > 0 && "text-success",
@@ -860,7 +861,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["avg_unit_price"]?.change_percent ?? 0) > 0 && "text-success",
@@ -887,7 +888,7 @@ export default function StorePerformance({
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
             <span className={cn(
               "font-semibold",
               (kpiMap["products"]?.change_percent ?? 0) > 0 && "text-success",
