@@ -698,7 +698,7 @@ export default function StorePerformance({
       </section>
 
       {/* LAYER 1: HEADLINE METRICS (4 KARTU EKSEKUTIF BERPRIORITAS TINGGI) */}
-      <section aria-label="Ringkasan utama" className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Ringkasan utama" className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {/* KARTU 1: Penjualan Bersih */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
@@ -743,7 +743,7 @@ export default function StorePerformance({
               {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {formatNumber(kpiMap["units"]?.value ?? 0)} unit terjual · {formatNumber(kpiMap["products"]?.value ?? 0)} produk
+              {formatNumber(kpiMap["units"]?.value ?? 0)} unit terjual
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -785,6 +785,87 @@ export default function StorePerformance({
               (kpiMap["avg_unit_price"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
               {kpiMap["avg_unit_price"]?.change_percent === null ? "Baru" : (kpiMap["avg_unit_price"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["avg_unit_price"].change_percent} />}
+            </span>
+          </div>
+        </div>
+
+        {/* KARTU 3b: Jumlah Unit Terjual */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div>
+            <div>
+              <HoverHint
+                label="Jumlah Unit Terjual"
+                hint="Total unit fisik terjual pada periode (dari pesanan fulfillment)."
+                className="text-xs font-medium text-muted-foreground"
+              />
+            </div>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatNumber(kpiMap["units"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">unit</span>
+            </p>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
+            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["units"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["units"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["units"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              {kpiMap["units"]?.change_percent === null ? "Baru" : (kpiMap["units"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["units"].change_percent} />}
+            </span>
+          </div>
+        </div>
+
+        {/* KARTU 3c: Jumlah Produk Terjual */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div>
+            <div>
+              <HoverHint
+                label="Jumlah Produk Terjual"
+                hint="Jumlah produk unik yang terjual pada periode."
+                className="text-xs font-medium text-muted-foreground"
+              />
+            </div>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatNumber(kpiMap["products"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">produk</span>
+            </p>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
+            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["products"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["products"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["products"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              {kpiMap["products"]?.change_percent === null ? "Baru" : (kpiMap["products"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["products"].change_percent} />}
+            </span>
+          </div>
+        </div>
+
+        {/* KARTU 3d: Pesanan Selesai */}
+        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div>
+            <div>
+              <HoverHint
+                label="Pesanan Selesai"
+                hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
+                className="text-xs font-medium text-muted-foreground"
+              />
+            </div>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatNumber(kpiMap["completed_orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
+            </p>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
+            <span className="text-xs text-muted-foreground">vs periode lalu</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["completed_orders"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["completed_orders"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["completed_orders"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              {kpiMap["completed_orders"]?.change_percent === null ? "Baru" : (kpiMap["completed_orders"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["completed_orders"].change_percent} />}
             </span>
           </div>
         </div>
@@ -956,7 +1037,7 @@ export default function StorePerformance({
           </Button>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Link
             href={`${routeUrl("admin.orders.index")}?order_status=processing`}
             className="group rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
@@ -1019,6 +1100,20 @@ export default function StorePerformance({
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <div className="flex items-center justify-between">
+              <HoverHint
+                label="Rata-rata Waktu Proses"
+                hint="Waktu dari dikonfirmasi sampai disiapkan/siap kirim."
+                className="text-xs font-semibold text-muted-foreground"
+              />
+              <Icon name="clock" className="size-4 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
+              {formatDuration(kpiMap["avg_process_days"]?.value ?? 0)}
             </p>
           </div>
         </div>
