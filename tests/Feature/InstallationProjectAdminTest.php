@@ -76,8 +76,9 @@ class InstallationProjectAdminTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Index')
                 ->has('projects.data', 1)
-                ->where('projects.data.0.product_sku', 'RA-TEST-001')
-                ->where('projects.data.0.placement', 'product')
+                ->where('projects.data.0.kind', 'model')
+                ->where('projects.data.0.media_count', 1)
+                ->where('projects.data.0.sku_count', 1)
                 ->has('tabs', 4)
                 ->where('activeStatus', 'all')
             );
@@ -105,22 +106,24 @@ class InstallationProjectAdminTest extends TestCase
             'status' => 'downloaded',
         ]);
 
+        // Grup mengikuti visibility media pertamanya (visible); tab hidden
+        // tidak menampilkan grup ini.
         $this->actingAs($admin)
             ->get(route('admin.hasil-pemasangan.index', ['status' => 'hidden']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Index')
-                ->has('projects.data', 1)
-                ->where('projects.data.0.visibility', 'hidden')
+                ->has('projects.data', 0)
             );
 
-        // Pencarian berdasarkan SKU
+        // Pencarian berdasarkan nama model
         $this->actingAs($admin)
-            ->get(route('admin.hasil-pemasangan.index', ['q' => 'RA-TEST']))
+            ->get(route('admin.hasil-pemasangan.index', ['q' => 'Kaca Mati']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Index')
-                ->has('projects.data', 2)
+                ->has('projects.data', 1)
+                ->where('projects.data.0.media_count', 2)
             );
     }
 
@@ -222,11 +225,13 @@ class InstallationProjectAdminTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.hasil-pemasangan.show', $media->id))
+            ->get(route('admin.hasil-pemasangan.show', ['group' => 'JENDELA|KACA_MATI']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Show')
-                ->where('project.product_sku', 'RA-TEST-001')
+                ->where('group.label', 'Jendela Aluminium Kaca Mati')
+                ->has('group.media', 1)
+                ->where('group.media.0.product_sku', 'RA-TEST-001')
             );
     }
 

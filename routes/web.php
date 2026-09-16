@@ -233,6 +233,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Media
     Route::get('media/library', [ProductMediaController::class, 'library'])->name('media.library');
     Route::get('media/picker', [MediaPickerController::class, 'index'])->name('media.picker');
+    Route::get('media/suggest-folder', [MediaPickerController::class, 'suggestFolder'])->name('media.suggest-folder');
     Route::get('media/folders/tree', [MediaFolderController::class, 'tree'])->name('media.folders.tree');
     Route::post('media/folders', [MediaFolderController::class, 'store'])->name('media.folders.store');
     Route::post('media/folders/{folder}/rename', [MediaFolderController::class, 'rename'])->name('media.folders.rename');
@@ -375,15 +376,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('announcements/{announcement}/unpublish', [AnnouncementController::class, 'unpublish'])->name('announcements.unpublish');
 
 
-    Route::get('vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
-    Route::get('vouchers/create', [VoucherController::class, 'create'])->name('vouchers.create');
-    Route::post('vouchers', [VoucherController::class, 'store'])->name('vouchers.store');
-    Route::get('vouchers/{voucher}/edit', [VoucherController::class, 'edit'])->name('vouchers.edit');
-    Route::put('vouchers/{voucher}', [VoucherController::class, 'update'])->name('vouchers.update');
-    Route::post('vouchers/{voucher}/publish', [VoucherController::class, 'publish'])->name('vouchers.publish');
-    Route::post('vouchers/{voucher}/unpublish', [VoucherController::class, 'unpublish'])->name('vouchers.unpublish');
-    Route::post('vouchers/{voucher}/duplicate', [VoucherController::class, 'duplicate'])->name('vouchers.duplicate');
-    Route::post('vouchers/{voucher}/end', [VoucherController::class, 'end'])->name('vouchers.end');
 
     Route::get('cod-settings', [CodSettingsController::class, 'edit'])->name('cod-settings.edit');
     Route::put('cod-settings', [CodSettingsController::class, 'update'])->name('cod-settings.update');
@@ -407,7 +399,21 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('promotions', [PromotionController::class, 'index'])->name('promotions.index');
     Route::get('promotions/create', [PromotionController::class, 'create'])->name('promotions.create');
     Route::post('promotions', [PromotionController::class, 'store'])->name('promotions.store');
+    // Vouchers: bagian dari menu Promo Toko (slug /admin/promotions/vouchers),
+    // nama route admin.vouchers.* dipertahankan agar pemanggil lama tidak rusak.
+    Route::get('promotions/vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('promotions/vouchers/create', [VoucherController::class, 'create'])->name('vouchers.create');
+    Route::post('promotions/vouchers', [VoucherController::class, 'store'])->name('vouchers.store');
+    Route::get('promotions/vouchers/{voucher}/edit', [VoucherController::class, 'edit'])->name('vouchers.edit');
+    Route::put('promotions/vouchers/{voucher}', [VoucherController::class, 'update'])->name('vouchers.update');
+    Route::post('promotions/vouchers/{voucher}/publish', [VoucherController::class, 'publish'])->name('vouchers.publish');
+    Route::post('promotions/vouchers/{voucher}/unpublish', [VoucherController::class, 'unpublish'])->name('vouchers.unpublish');
+    Route::post('promotions/vouchers/{voucher}/duplicate', [VoucherController::class, 'duplicate'])->name('vouchers.duplicate');
+    Route::post('promotions/vouchers/{voucher}/end', [VoucherController::class, 'end'])->name('vouchers.end');
     Route::get('promotions/{promotion}', [PromotionController::class, 'show'])->name('promotions.show');
+    // Slug lama /admin/vouchers dialihkan ke submenu Promo Toko.
+    Route::get('vouchers', fn () => redirect()->route('admin.vouchers.index', [], 301))->name('vouchers.legacy-redirect');
+    Route::get('vouchers/{any}', fn (string $any) => redirect()->route('admin.vouchers.index', [], 301))->where('any', '.*')->name('vouchers.legacy-redirect-any');
     Route::get('promotions/{promotion}/edit', [PromotionController::class, 'edit'])->name('promotions.edit');
     Route::put('promotions/{promotion}', [PromotionController::class, 'update'])->name('promotions.update');
     Route::post('promotions/{promotion}/end', [PromotionController::class, 'end'])->name('promotions.end');
@@ -472,7 +478,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('hasil-pemasangan/reorder', [InstallationGalleryController::class, 'reorder'])->name('hasil-pemasangan.reorder');
     Route::put('hasil-pemasangan/meta', [InstallationGalleryController::class, 'updateMeta'])->name('hasil-pemasangan.meta.update');
     Route::get('hasil-pemasangan/kelola', [InstallationGalleryController::class, 'model'])->name('hasil-pemasangan.model');
-    Route::get('hasil-pemasangan/{media}', [InstallationGalleryController::class, 'show'])->whereNumber('media')->name('hasil-pemasangan.show');
+    Route::get('hasil-pemasangan/detail', [InstallationGalleryController::class, 'show'])->name('hasil-pemasangan.show');
     Route::patch('hasil-pemasangan/{media}/toggle-status', [InstallationGalleryController::class, 'toggleStatus'])->whereNumber('media')->name('hasil-pemasangan.toggle-status');
     Route::post('hasil-pemasangan/{media}/archive', [InstallationGalleryController::class, 'archive'])->whereNumber('media')->name('hasil-pemasangan.archive');
     Route::delete('hasil-pemasangan/{media}', [InstallationGalleryController::class, 'destroy'])->whereNumber('media')->name('hasil-pemasangan.destroy');

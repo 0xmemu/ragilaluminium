@@ -31,16 +31,65 @@ class InstallationGalleryController extends Controller
         $sort = (string) $request->query('sort', 'order');
         $view = (string) $request->query('view', 'list');
 
-        // Sumber tunggal: product_media.is_installation, dilihat per model
-        // (Kasus A+B) dan bucket Lainnya (Kasus C + CmsGalleryItem) — sama
-        // dengan yang dibaca storefront.
         $media = \App\Support\InstallationGallery::installationMedia();
 
+        // Grouping: satu baris per model produk (Kasus A+B) + satu grup
+        // mandiri (Kasus C) — bukan per media agar daftar tetap ringkas.
+        $groups = collect();
+
+        // Grup terhitung aktif bila minimal satu medianya visible; grup masuk
+        // tab Nonaktif/Diarsipkan hanya bila SEMUA medianya dalam status itu.
+        $groupVisibility = function ($rows): string {
+            if ($rows->contains('visibility', 'visible')) {
+                return 'visible';
+            }
+            if ($rows->contains('visibility', 'hidden')) {
+                return 'hidden';
+            }
+
+            return 'archived';
+        };
+
+        foreach ($media->where('placement', 'product')->groupBy('model_label') as $modelLabel => $rows) {
+            $groups->push([
+                'key' => 'model|'.$rows->first()['category'].'|'.$rows->first()['model'],
+                'kind' => 'model',
+                'label' => $modelLabel,
+                'category' => $rows->first()['category'],
+                'model' => $rows->first()['model'],
+                'media_count' => $rows->count(),
+                'video_count' => $rows->where('is_video', true)->count(),
+                'sku_count' => $rows->where('product_sku', '!==', '')->unique('product_sku')->count(),
+                'cover' => $rows->first()['thumb'],
+                'visibility' => $groupVisibility($rows),
+                'detailUrl' => route('admin.hasil-pemasangan.show', [
+                    'group' => $rows->first()['category'].'|'.$rows->first()['model'],
+                ]),
+            ]);
+        }
+
+        $standalone = $media->where('placement', 'standalone');
+        if ($standalone->isNotEmpty()) {
+            $groups->push([
+                'key' => 'standalone',
+                'kind' => 'standalone',
+                'label' => 'Grup mandiri',
+                'category' => 'LAINNYA',
+                'model' => 'STANDALONE',
+                'media_count' => $standalone->count(),
+                'video_count' => $standalone->where('is_video', true)->count(),
+                'sku_count' => 0,
+                'cover' => $standalone->first()['thumb'],
+                'visibility' => $groupVisibility($standalone),
+                'detailUrl' => route('admin.hasil-pemasangan.show', ['group' => 'standalone']),
+            ]);
+        }
+
         $tabCounts = [
-            'all' => $media->count(),
-            'active' => $media->where('visibility', 'visible')->count(),
-            'inactive' => $media->where('visibility', 'hidden')->count(),
-            'archived' => $media->where('visibility', 'archived')->count(),
+            'all' => $groups->count(),
+            'active' => $groups->where('visibility', 'visible')->count(),
+            'inactive' => $groups->where('visibility', 'hidden')->count(),
+            'archived' => $groups->where('visibility', 'archived')->count(),
         ];
 
         $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts) {
@@ -51,57 +100,33 @@ class InstallationGalleryController extends Controller
             ];
         })->values()->all();
 
-        $rows = $media
+        $rows = $groups
             ->when($status !== 'all', fn ($collection) => $collection->filter(
                 fn ($item) => $item['visibility'] === $status,
             ))
             ->when($q !== '', fn ($collection) => $collection->filter(function ($item) use ($q) {
                 $needle = mb_strtolower($q);
 
-                return str_contains(mb_strtolower((string) $item['caption']), $needle)
-                    || str_contains(mb_strtolower((string) $item['model_label']), $needle)
-                    || str_contains(mb_strtolower((string) $item['product_sku']), $needle)
-                    || str_contains(mb_strtolower((string) $item['product_name']), $needle);
+                return str_contains(mb_strtolower((string) $item['label']), $needle)
+                    || str_contains(mb_strtolower((string) $item['category']), $needle);
             }))
-            ->when($sort === 'latest', fn ($collection) => $collection->sortByDesc('id')->values())
-            ->when($sort !== 'latest', fn ($collection) => $collection->sortBy(
-                fn ($row) => sprintf('%s|%s|%s', $row['model_label'], $row['product_sku'], str_pad((string) (999999 - (int) $row['id']), 6, '0', STR_PAD_LEFT)),
-            )->values())
+            ->when($sort === 'latest', fn ($collection) => $collection->sortByDesc('label')->values())
+            ->when($sort !== 'latest', fn ($collection) => $collection->sortBy('label')->values())
             ->values();
-
-        $page = max(1, (int) $request->query('page', '1'));
-        $perPage = 24;
-        $paged = $rows->slice(($page - 1) * $perPage, $perPage)->values();
-
-        // Bentuk pagination laravel standar agar kompatibel dengan tipe
-        // Pagination<MediaRow> + komponen <Pagination> di frontend.
-        $lastPage = max(1, (int) ceil($rows->count() / $perPage));
-        $links = [];
-        for ($i = 1; $i <= $lastPage; $i++) {
-            $links[] = [
-                'url' => $i === 1
-                    ? route('admin.hasil-pemasangan.index')
-                    : route('admin.hasil-pemasangan.index', ['page' => $i]),
-                'label' => (string) $i,
-                'active' => $i === $page,
-            ];
-        }
-
-        $projects = [
-            'data' => $paged->all(),
-            'current_page' => $page,
-            'last_page' => $lastPage,
-            'per_page' => $perPage,
-            'total' => $rows->count(),
-            'from' => $rows->count() ? (($page - 1) * $perPage) + 1 : null,
-            'to' => $rows->count() ? min($page * $perPage, $rows->count()) : null,
-            'links' => $links,
-        ];
 
         return Inertia::render('Admin/InstallationGallery/Index', [
             'title' => 'Hasil Pemasangan',
-            'description' => 'Semua media hasil pemasangan (sumber tunggal product_media), dilihat per model dan produk.',
-            'projects' => $projects,
+            'description' => 'Grup hasil pemasangan per model produk dan grup mandiri. Klik Detail untuk melihat media di dalamnya.',
+            'projects' => [
+                'data' => $rows->all(),
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => max(1, $rows->count()),
+                'total' => $rows->count(),
+                'from' => $rows->count() ? 1 : null,
+                'to' => $rows->count(),
+                'links' => [],
+            ],
             'tabs' => $tabs,
             'activeStatus' => $status,
             'viewMode' => in_array($view, ['list', 'grid'], true) ? $view : 'list',
@@ -110,6 +135,57 @@ class InstallationGalleryController extends Controller
             'createUrl' => route('admin.hasil-pemasangan.create'),
             'reorderUrl' => route('admin.hasil-pemasangan.reorder'),
             'previewUrl' => route('installation.index'),
+        ]);
+    }
+
+    /** Detail satu grup: daftar media hasil pemasangan di dalamnya. */
+    public function show(Request $request): Response
+    {
+        $group = (string) $request->query('group', '');
+
+        if ($group === 'standalone') {
+            $media = \App\Support\InstallationGallery::installationMedia()
+                ->where('placement', 'standalone')
+                ->values();
+            $label = 'Grup mandiri';
+        } else {
+            $parts = explode('|', $group);
+            $category = strtoupper($parts[0] ?? '');
+            $modelCode = strtoupper($parts[1] ?? '');
+            $media = \App\Support\InstallationGallery::installationMedia()
+                ->where('category', $category)
+                ->where('model', $modelCode)
+                ->sortByDesc('id')
+                ->values();
+            $label = filled($modelCode) && $modelCode !== 'STANDALONE'
+                ? \App\Support\CatalogLabels::modelCardTitle($category, $modelCode)
+                : 'Lainnya';
+        }
+
+        $rows = $media->map(fn (array $m) => [
+            'id' => $m['id'],
+            'media_id' => $m['media_id'],
+            'url' => $m['url'],
+            'thumb' => $m['thumb'],
+            'is_video' => $m['is_video'],
+            'caption' => $m['caption'],
+            'visibility' => $m['visibility'],
+            'product_sku' => $m['product_sku'],
+            'product_name' => $m['product_name'],
+            'created_at' => $m['created_at'],
+            'toggleStatusUrl' => route('admin.hasil-pemasangan.toggle-status', $m['media_id']),
+            'archiveUrl' => route('admin.hasil-pemasangan.archive', $m['media_id']),
+            'destroyUrl' => route('admin.hasil-pemasangan.destroy', $m['media_id']),
+        ])->values()->all();
+
+        return Inertia::render('Admin/InstallationGallery/Show', [
+            'title' => $label,
+            'group' => [
+                'label' => $label,
+                'group' => $group,
+                'media' => $rows,
+            ],
+            'backUrl' => route('admin.hasil-pemasangan.index'),
         ]);
     }
 
@@ -240,38 +316,6 @@ class InstallationGalleryController extends Controller
 
         return redirect()->route('admin.hasil-pemasangan.index')
             ->with('success', "Hasil pemasangan untuk {$targetLabel} berhasil ditambahkan.");
-    }
-
-    /** Detail satu media hasil pemasangan. */
-    public function show(ProductMedia $media): Response
-    {
-        abort_unless($media->is_installation, 404);
-
-        $media->load(['mediaAsset', 'product:id,parent_sku,name', 'modelProduct:id,name,product_category,product_model']);
-
-        $model = $media->modelProduct;
-        $categoryCode = strtoupper((string) ($media->product?->product_category ?? $model?->product_category ?? ''));
-        $modelCode = strtoupper((string) ($media->product?->product_model ?? $model?->product_model ?? 'MANUAL'));
-
-        return Inertia::render('Admin/InstallationGallery/Show', [
-            'title' => 'Detail Media Hasil Pemasangan',
-            'project' => [
-                'id' => $media->id,
-                'title' => (string) ($media->installation_caption ?: $media->product?->name ?: $model?->name ?: 'Hasil pemasangan'),
-                'image_url' => $media->urlFor('card') ?? $media->urlFor('thumb') ?? '',
-                'is_video' => \App\Support\InstallationGallery::isVideoMedia($media),
-                'visibility' => (string) $media->visibility,
-                'caption' => (string) ($media->installation_caption ?? ''),
-                'product_sku' => (string) ($media->product?->parent_sku ?? ''),
-                'product_name' => (string) ($media->product?->name ?? ''),
-                'model_label' => filled($modelCode) ? \App\Support\CatalogLabels::modelCardTitle($categoryCode, $modelCode) : 'Lainnya',
-                'created_at' => $media->created_at?->format('d M Y H:i'),
-                'toggleStatusUrl' => route('admin.hasil-pemasangan.toggle-status', $media->id),
-                'archiveUrl' => route('admin.hasil-pemasangan.archive', $media->id),
-                'destroyUrl' => route('admin.hasil-pemasangan.destroy', $media->id),
-            ],
-            'backUrl' => route('admin.hasil-pemasangan.index'),
-        ]);
     }
 
     /** Toggle visibilitas satu media hasil pemasangan (visible <-> hidden). */
