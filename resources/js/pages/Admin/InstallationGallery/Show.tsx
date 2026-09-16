@@ -82,12 +82,11 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px] table-fixed text-left text-xs">
                 <colgroup>
-                  <col className="w-20" />
-                  <col className="w-56" />
-                  <col />
                   <col className="w-24" />
+                  <col className="w-64" />
+                  <col className="w-72" />
                   <col className="w-28" />
-                  <col className="w-40" />
+                  <col className="w-36" />
                 </colgroup>
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
@@ -95,7 +94,6 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                     <th className="px-3 py-3">Keterangan</th>
                     <th className="px-3 py-3">Produk (SKU)</th>
                     <th className="px-3 py-3 text-center">Status</th>
-                    <th className="px-3 py-3 text-center">Ditambahkan</th>
                     <th className="py-3 pl-2 pr-4 text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -125,10 +123,18 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                         </div>
                       </td>
 
-                      {/* Keterangan */}
+                      {/* Keterangan + meta tanggal */}
                       <td className="px-3 py-3">
                         <p className="line-clamp-2 font-medium text-foreground">
                           {row.caption || "Tanpa keterangan"}
+                        </p>
+                        <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Icon
+                            name={row.is_video ? "video-camera" : "image"}
+                            className="size-3"
+                            aria-hidden="true"
+                          />
+                          {row.is_video ? "Video" : "Foto"} · {row.created_at ?? "—"}
                         </p>
                       </td>
 
@@ -136,11 +142,11 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                       <td className="px-3 py-3">
                         {row.product_sku ? (
                           <>
-                            <p className="truncate font-medium text-foreground">{row.product_name}</p>
+                            <p className="line-clamp-2 font-medium text-foreground">{row.product_name}</p>
                             <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{row.product_sku}</p>
                           </>
                         ) : (
-                          <span className="text-muted-foreground italic">—</span>
+                          <span className="text-muted-foreground italic">Media grup</span>
                         )}
                       </td>
 
@@ -160,36 +166,36 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                         </span>
                       </td>
 
-                      {/* Tanggal */}
-                      <td className="px-3 py-3 text-center text-muted-foreground">
-                        {row.created_at ?? "—"}
-                      </td>
-
-                      {/* Aksi */}
-                      <td className="py-3 pl-2 pr-4 text-right">
-                        <div className="inline-flex items-center gap-1">
+                      {/* Aksi: ikon ringkas dengan title */}
+                      <td className="py-3 pl-2 pr-4">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
+                            size="icon"
+                            className="size-8"
+                            title={row.visibility === "visible" ? "Sembunyikan dari publik" : "Tampilkan di publik"}
+                            aria-label={row.visibility === "visible" ? `Sembunyikan media ${index + 1}` : `Tampilkan media ${index + 1}`}
                             onClick={() =>
                               router.patch(row.toggleStatusUrl, {}, { preserveScroll: true })
                             }
                           >
                             <Icon
                               name={row.visibility === "visible" ? "eye-slash" : "eye"}
-                              className="size-3.5"
+                              className="size-4"
                             />
-                            {row.visibility === "visible" ? "Sembunyikan" : "Tampilkan"}
                           </Button>
 
                           {row.visibility !== "archived" ? (
                             <ConfirmAction
                               trigger={
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-amber-700">
-                                  <Icon name="archive" className="size-3.5" />
-                                  Arsip
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 text-amber-700"
+                                  aria-label={`Arsipkan media ${index + 1}`}
+                                >
+                                  <Icon name="archive" className="size-4" />
                                 </Button>
                               }
                               title="Arsipkan media?"
@@ -203,11 +209,11 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                             trigger={
                               <Button
                                 variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-destructive"
+                                size="icon"
+                                className="size-8 text-destructive"
                                 aria-label={`Hapus media ${index + 1}`}
                               >
-                                <Icon name="trash-2" className="size-3.5" />
+                                <Icon name="trash-2" className="size-4" />
                               </Button>
                             }
                             title="Hapus media?"
