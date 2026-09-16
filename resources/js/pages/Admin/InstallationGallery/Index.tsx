@@ -36,6 +36,11 @@ interface ProjectRow {
     category: string
     model: string
   } | null
+  product?: {
+    id: number
+    name: string
+    parent_sku: string
+  } | null
   specifications: Array<{ name: string; value: string }>
   created_at?: string | null
   showUrl: string
@@ -469,11 +474,18 @@ export default function InstallationGalleryIndex({
                         {/* Tautan Model Produk */}
                         <td className="px-3 py-3">
                           {project.model_product ? (
-                            <div className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground">
-                              <Icon name="layers" className="size-3.5 shrink-0 text-muted-foreground" />
-                              <span className="truncate font-medium text-foreground">
-                                {project.model_product.name}
-                              </span>
+                            <div className="flex flex-col gap-1 max-w-full">
+                              <div className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                <Icon name="layers" className="size-3 shrink-0 text-muted-foreground" />
+                                <span className="truncate font-medium text-foreground">
+                                  {project.model_product.name}
+                                </span>
+                              </div>
+                              {project.product && (
+                                <div className="text-[10px] text-muted-foreground font-mono truncate">
+                                  SKU: {project.product.parent_sku}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground italic text-[11px]">Tidak terikat</span>

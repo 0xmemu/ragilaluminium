@@ -22,6 +22,7 @@ class InstallationProject extends Model
         'status',
         'sort_order',
         'model_product_id',
+        'product_id',
         'main_image_url',
         'main_image_asset_id',
         'main_video_url',
@@ -41,6 +42,11 @@ class InstallationProject extends Model
     public function modelProduct(): BelongsTo
     {
         return $this->belongsTo(CmsModelProduct::class, 'model_product_id');
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'product_id');
     }
 
     public function mainImageAsset(): BelongsTo

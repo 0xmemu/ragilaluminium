@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\CmsGalleryItem;
 use App\Models\CmsModelProduct;
 use App\Models\CmsPage;
 use App\Models\InstallationProject;
+use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Services\ActivityLogService;
 use App\Support\InstallationPageSettings;
 use Illuminate\Http\RedirectResponse;
@@ -47,7 +48,7 @@ class InstallationGalleryController extends Controller
         })->values()->all();
 
         $query = InstallationProject::query()
-            ->with(['modelProduct', 'mainImageAsset', 'mainVideoAsset']);
+            ->with(['modelProduct', 'product:id,parent_sku,name', 'mainImageAsset', 'mainVideoAsset']);
 
         if ($status !== 'all' && in_array($status, ['active', 'inactive', 'archived'], true)) {
             $query->where('status', $status);
@@ -85,6 +86,11 @@ class InstallationGalleryController extends Controller
                     'category' => $p->modelProduct->product_category,
                     'model' => $p->modelProduct->product_model,
                 ] : null,
+                'product' => $p->product ? [
+                    'id' => $p->product->id,
+                    'name' => $p->product->name,
+                    'parent_sku' => $p->product->parent_sku,
+                ] : null,
                 'specifications' => $p->specifications ?? [],
                 'created_at' => $p->created_at?->format('d M Y'),
                 'showUrl' => route('admin.hasil-pemasangan.show', $p->id),
@@ -112,11 +118,31 @@ class InstallationGalleryController extends Controller
 
     public function create(): Response
     {
+        $allProducts = Product::visible()
+            ->get(['id', 'name', 'parent_sku', 'product_category', 'product_model'])
+            ->groupBy(fn ($p) => strtoupper((string) $p->product_category) . '|' . strtoupper((string) $p->product_model));
+
         $modelProducts = CmsModelProduct::query()
             ->active()
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'product_category', 'product_model']);
+            ->get(['id', 'name', 'product_category', 'product_model'])
+            ->map(function ($model) use ($allProducts) {
+                $key = strtoupper((string) $model->product_category) . '|' . strtoupper((string) $model->product_model);
+                $products = $allProducts->get($key, collect())->values()->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'parent_sku' => $p->parent_sku,
+                ]);
+
+                return [
+                    'id' => $model->id,
+                    'name' => $model->name,
+                    'category' => $model->product_category,
+                    'model' => $model->product_model,
+                    'products' => $products,
+                ];
+            });
 
         return Inertia::render('Admin/InstallationGallery/Form', [
             'title' => 'Tambah Hasil Pemasangan',
@@ -130,11 +156,12 @@ class InstallationGalleryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
             'category_label' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'in:active,inactive,archived'],
             'description' => ['nullable', 'string'],
             'model_product_id' => ['nullable', 'integer', 'exists:cms_model_products,id'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'main_image_url' => ['nullable', 'string', 'max:1024'],
             'main_image_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'main_video_url' => ['nullable', 'string', 'max:1024'],
@@ -152,22 +179,64 @@ class InstallationGalleryController extends Controller
             return back()->withErrors(['main_image_url' => 'Foto utama wajib diunggah atau dipilih.'])->withInput();
         }
 
+        $product = !empty($validated['product_id']) ? Product::find($validated['product_id']) : null;
+        $modelProduct = !empty($validated['model_product_id']) ? CmsModelProduct::find($validated['model_product_id']) : null;
+
+        // Auto-resolve title & category
+        $title = filled($validated['title'])
+            ? $validated['title']
+            : ($product ? $product->name : ($modelProduct ? $modelProduct->name : 'Hasil Pemasangan'));
+
+        $categoryLabel = filled($validated['category_label'])
+            ? $validated['category_label']
+            : ($modelProduct ? ($modelProduct->product_category === 'BOVEN' ? 'Boven & Ventilasi' : 'Jendela & Kaca') : 'Proyek Khusus');
+
         $maxSort = (int) InstallationProject::max('sort_order');
-        $slug = InstallationProject::generateUniqueSlug($validated['title']);
+        $slug = InstallationProject::generateUniqueSlug($title);
 
         $specs = collect($validated['specifications'] ?? [])
             ->filter(fn ($s) => !empty($s['name']) || !empty($s['value']))
             ->values()
             ->all();
 
+        // Jika terikat ke produk katalog, simpan juga media ke product_media agar langsung tampil di storefront model & PDP
+        if ($product) {
+            ProductMedia::create([
+                'product_id' => $product->id,
+                'media_asset_id' => $validated['main_image_asset_id'] ?? null,
+                'stored_url' => $validated['main_image_url'] ?? null,
+                'source_url' => $validated['main_image_url'] ?? null,
+                'position' => 100,
+                'is_installation' => true,
+                'installation_caption' => $validated['description'] ?: "Hasil pemasangan {$product->name}",
+                'visibility' => 'visible',
+                'status' => 'downloaded',
+            ]);
+
+            foreach ($validated['gallery_images'] ?? [] as $idx => $g) {
+                ProductMedia::create([
+                    'product_id' => $product->id,
+                    'media_asset_id' => $g['asset_id'] ?? null,
+                    'stored_url' => $g['url'] ?? null,
+                    'source_url' => $g['url'] ?? null,
+                    'position' => 101 + $idx,
+                    'is_installation' => true,
+                    'installation_caption' => $g['caption'] ?? "Hasil pemasangan {$product->name}",
+                    'visibility' => 'visible',
+                    'status' => 'downloaded',
+                ]);
+            }
+        }
+
         $project = InstallationProject::create([
-            'title' => $validated['title'],
+            'title' => $title,
             'slug' => $slug,
-            'category_label' => $validated['category_label'] ?? null,
+            'category_label' => $categoryLabel,
             'status' => $validated['status'],
             'sort_order' => $maxSort + 1,
-            'description' => $validated['description'] ?? null,
-            'model_product_id' => $validated['model_product_id'] ?? null,
+            'description' => $validated['description'] ?? ($product ? "Dokumentasi hasil pemasangan {$product->name}." : null),
+            'model_product_id' => $modelProduct?->id,
+            'product_id' => $product?->id,
             'main_image_url' => $validated['main_image_url'] ?? null,
             'main_image_asset_id' => $validated['main_image_asset_id'] ?? null,
             'main_video_url' => $validated['main_video_url'] ?? null,
@@ -179,12 +248,12 @@ class InstallationGalleryController extends Controller
         ActivityLogService::record('installation_project.created', 'installation_project', $project->id, ['title' => $project->title], $request->user()?->id);
 
         return redirect()->route('admin.hasil-pemasangan.index')
-            ->with('success', "Proyek pemasangan \"{$project->title}\" berhasil dibuat.");
+            ->with('success', "Hasil pemasangan \"{$project->title}\" berhasil disimpan.");
     }
 
     public function show(InstallationProject $project): Response
     {
-        $project->load(['modelProduct', 'mainImageAsset', 'mainVideoAsset']);
+        $project->load(['modelProduct', 'product:id,parent_sku,name', 'mainImageAsset', 'mainVideoAsset']);
 
         return Inertia::render('Admin/InstallationGallery/Show', [
             'title' => $project->title,
@@ -205,6 +274,11 @@ class InstallationGalleryController extends Controller
                     'category' => $project->modelProduct->product_category,
                     'model' => $project->modelProduct->product_model,
                 ] : null,
+                'product' => $project->product ? [
+                    'id' => $project->product->id,
+                    'name' => $project->product->name,
+                    'parent_sku' => $project->product->parent_sku,
+                ] : null,
                 'specifications' => $project->specifications ?? [],
                 'created_at' => $project->created_at?->format('d M Y H:i'),
                 'updated_at' => $project->updated_at?->format('d M Y H:i'),
@@ -219,11 +293,31 @@ class InstallationGalleryController extends Controller
 
     public function edit(InstallationProject $project): Response
     {
+        $allProducts = Product::visible()
+            ->get(['id', 'name', 'parent_sku', 'product_category', 'product_model'])
+            ->groupBy(fn ($p) => strtoupper((string) $p->product_category) . '|' . strtoupper((string) $p->product_model));
+
         $modelProducts = CmsModelProduct::query()
             ->active()
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'product_category', 'product_model']);
+            ->get(['id', 'name', 'product_category', 'product_model'])
+            ->map(function ($model) use ($allProducts) {
+                $key = strtoupper((string) $model->product_category) . '|' . strtoupper((string) $model->product_model);
+                $products = $allProducts->get($key, collect())->values()->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'parent_sku' => $p->parent_sku,
+                ]);
+
+                return [
+                    'id' => $model->id,
+                    'name' => $model->name,
+                    'category' => $model->product_category,
+                    'model' => $model->product_model,
+                    'products' => $products,
+                ];
+            });
 
         return Inertia::render('Admin/InstallationGallery/Form', [
             'title' => "Edit {$project->title}",
@@ -235,6 +329,7 @@ class InstallationGalleryController extends Controller
                 'status' => $project->status,
                 'description' => $project->description,
                 'model_product_id' => $project->model_product_id,
+                'product_id' => $project->product_id,
                 'main_image_url' => $project->resolvedMainImage('pdp'),
                 'main_image_asset_id' => $project->main_image_asset_id,
                 'main_video_url' => $project->resolvedMainVideo(),
@@ -256,6 +351,7 @@ class InstallationGalleryController extends Controller
             'status' => ['required', 'in:active,inactive,archived'],
             'description' => ['nullable', 'string'],
             'model_product_id' => ['nullable', 'integer', 'exists:cms_model_products,id'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'main_image_url' => ['nullable', 'string', 'max:1024'],
             'main_image_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'main_video_url' => ['nullable', 'string', 'max:1024'],
@@ -284,6 +380,7 @@ class InstallationGalleryController extends Controller
             'status' => $validated['status'],
             'description' => $validated['description'] ?? null,
             'model_product_id' => $validated['model_product_id'] ?? null,
+            'product_id' => $validated['product_id'] ?? null,
             'main_image_url' => $validated['main_image_url'] ?? null,
             'main_image_asset_id' => $validated['main_image_asset_id'] ?? null,
             'main_video_url' => $validated['main_video_url'] ?? null,

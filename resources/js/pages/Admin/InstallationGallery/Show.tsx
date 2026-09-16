@@ -24,6 +24,11 @@ interface ShowProject {
     category: string
     model: string
   } | null
+  product?: {
+    id: number
+    name: string
+    parent_sku: string
+  } | null
   specifications: Array<{ name: string; value: string }>
   created_at?: string | null
   updated_at?: string | null
@@ -255,6 +260,16 @@ export default function InstallationGalleryShow({ title, project, backUrl }: Sho
                   <div className="mt-2 text-[11px] text-muted-foreground">
                     Model: <code className="font-mono">{project.model_product.model}</code>
                   </div>
+                  {project.product && (
+                    <div className="mt-2.5 rounded border border-border bg-background p-2">
+                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                        Produk / SKU Terkait:
+                      </div>
+                      <div className="font-semibold text-xs text-foreground mt-0.5">
+                        [{project.product.parent_sku}] {project.product.name}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground italic">

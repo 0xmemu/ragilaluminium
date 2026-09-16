@@ -10,11 +10,18 @@ import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 
+interface ProductOption {
+  id: number
+  name: string
+  parent_sku: string
+}
+
 interface ModelProductOption {
   id: number
   name: string
-  product_category?: string | null
-  product_model?: string | null
+  category?: string | null
+  model?: string | null
+  products?: ProductOption[]
 }
 
 interface FormProject {
@@ -25,6 +32,7 @@ interface FormProject {
   status: "active" | "inactive" | "archived"
   description?: string | null
   model_product_id?: number | null
+  product_id?: number | null
   main_image_url?: string | null
   main_image_asset_id?: number | null
   main_video_url?: string | null
@@ -52,6 +60,7 @@ export default function InstallationGalleryForm({
 
   const form = useForm({
     model_product_id: project?.model_product_id ? String(project.model_product_id) : "",
+    product_id: project?.product_id ? String(project.product_id) : "",
     title: project?.title ?? "",
     category_label: project?.category_label ?? "",
     status: project?.status ?? "active",
@@ -74,8 +83,11 @@ export default function InstallationGalleryForm({
 
   // State MediaPicker
   const [pickerMode, setPickerMode] = React.useState<"main_image" | "main_video" | "gallery" | null>(null)
-  // State Pencarian Model
+
+  // State Filter Model
   const [modelQuery, setModelQuery] = React.useState("")
+  // State Filter Produk
+  const [productQuery, setProductQuery] = React.useState("")
 
   const filteredModelProducts = React.useMemo(() => {
     if (!modelQuery.trim()) return modelProducts
@@ -83,14 +95,40 @@ export default function InstallationGalleryForm({
     return modelProducts.filter(
       (m) =>
         m.name.toLowerCase().includes(lower) ||
-        (m.product_category && m.product_category.toLowerCase().includes(lower)) ||
-        (m.product_model && m.product_model.toLowerCase().includes(lower)),
+        (m.category && m.category.toLowerCase().includes(lower)) ||
+        (m.model && m.model.toLowerCase().includes(lower)),
     )
   }, [modelProducts, modelQuery])
 
-  const selectedModelInfo = React.useMemo(() => {
+  const selectedModel = React.useMemo(() => {
     return modelProducts.find((m) => String(m.id) === form.data.model_product_id)
   }, [modelProducts, form.data.model_product_id])
+
+  const availableProductsInModel = React.useMemo(() => {
+    return selectedModel?.products ?? []
+  }, [selectedModel])
+
+  const filteredProducts = React.useMemo(() => {
+    if (!productQuery.trim()) return availableProductsInModel
+    const lower = productQuery.toLowerCase()
+    return availableProductsInModel.filter(
+      (p) =>
+        p.name.toLowerCase().includes(lower) ||
+        p.parent_sku.toLowerCase().includes(lower),
+    )
+  }, [availableProductsInModel, productQuery])
+
+  const selectedProduct = React.useMemo(() => {
+    return availableProductsInModel.find((p) => String(p.id) === form.data.product_id)
+  }, [availableProductsInModel, form.data.product_id])
+
+  // Mode alur formulir:
+  // 1. "product_linked" -> Terikat SKU produk spesifik di model
+  // 2. "model_general"  -> Terikat model tapi tanpa SKU spesifik (dokumentasi umum model)
+  // 3. "standalone"     -> Tanpa model (portofolio mandiri level atas)
+  const isProductLinked = Boolean(form.data.product_id && selectedProduct)
+  const isModelGeneral = Boolean(form.data.model_product_id && !form.data.product_id)
+  const isStandalone = !form.data.model_product_id
 
   function handleMainImagePick(picked: PickedMedia[]) {
     const first = picked[0]
@@ -175,7 +213,7 @@ export default function InstallationGalleryForm({
   return (
     <AdminLayout
       title={title}
-      description="Kelola portofolio instalasi proyek dengan informasi visual, spesifikasi unit, dan tautan katalog."
+      description="Kelola dokumentasi hasil pemasangan untuk model produk, SKU produk katalog, atau portofolio mandiri."
       actions={
         <div className="flex items-center gap-2">
           <Button asChild variant="outline">
@@ -211,23 +249,23 @@ export default function InstallationGalleryForm({
       >
         <FormErrorSummary errors={form.errors} />
 
-        {/* 1. TAUTAN MODEL PRODUK (TAMPIL PERTAMA DENGAN PENCARIAN DI SAMPING) */}
+        {/* 1. PENENTUAN TARGET (MODEL PRODUK & SKU PRODUK) */}
         <section className="rounded-xl border border-primary/30 bg-card p-5 shadow-xs sm:p-6 ring-1 ring-primary/20">
           <div className="mb-5 border-b border-border pb-3">
             <div className="flex items-center gap-2">
               <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
                 1
               </span>
-              <h3 className="text-base font-semibold text-foreground">Tautan Model Produk</h3>
+              <h3 className="text-base font-semibold text-foreground">Target Model &amp; Produk Katalog</h3>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Pilih model produk di katalog yang menjadi dasar dokumentasi hasil pemasangan ini (misalnya <strong>Jendela Swing Satu Daun</strong>).
+              Pilih apakah hasil pemasangan ini ditujukan untuk <strong>Model Produk</strong> (mis. Jendela Kaca Mati), <strong>Produk/SKU spesifik</strong> di model tersebut, atau sebagai <strong>Portofolio Mandiri</strong>.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Level 1: Pilih Model Produk */}
             <div className="grid gap-4 sm:grid-cols-2">
-              {/* Kolom Pencarian Cepat Model di Samping Dropdown */}
               <div>
                 <label className="text-[13px] font-medium text-foreground">
                   Cari Model Produk
@@ -237,7 +275,7 @@ export default function InstallationGalleryForm({
                     type="search"
                     value={modelQuery}
                     onChange={(e) => setModelQuery(e.target.value)}
-                    placeholder="Ketik nama model (mis. Swing, Jungkit)..."
+                    placeholder="Ketik nama model (mis. Kaca Mati, Swing)..."
                     className="pl-8 pr-7 text-xs"
                   />
                   <Icon
@@ -250,176 +288,170 @@ export default function InstallationGalleryForm({
                       type="button"
                       onClick={() => setModelQuery("")}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label="Bersihkan pencarian model"
                     >
                       <Icon name="x" className="size-3" />
                     </button>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {modelQuery
-                    ? `Menemukan ${filteredModelProducts.length} model cocok.`
-                    : "Ketik kata kunci untuk menyaring opsi pilihan model di samping."}
-                </p>
               </div>
 
-              {/* Dropdown Pilihan Model Produk */}
               <div>
                 <label htmlFor="model_product_id" className="text-[13px] font-medium text-foreground">
-                  Pilih Model Produk Katalog ({filteredModelProducts.length} model)
+                  Pilih Model Produk ({filteredModelProducts.length} model)
                 </label>
                 <select
                   id="model_product_id"
                   value={form.data.model_product_id}
                   onChange={(e) => {
                     const val = e.target.value
-                    const selectedModel = modelProducts.find((m) => String(m.id) === val)
-                    if (selectedModel && !form.data.title) {
-                      form.setData({
-                        ...form.data,
-                        model_product_id: val,
-                        title: selectedModel.name,
-                        category_label:
-                          selectedModel.product_category === "BOVEN"
-                            ? "Boven & Ventilasi"
-                            : "Jendela & Kaca",
-                      })
-                    } else {
-                      form.setData("model_product_id", val)
-                    }
+                    const mod = modelProducts.find((m) => String(m.id) === val)
+                    form.setData({
+                      ...form.data,
+                      model_product_id: val,
+                      product_id: "", // reset produk saat ganti model
+                      title: mod ? mod.name : "",
+                      category_label: mod
+                        ? mod.category === "BOVEN"
+                          ? "Boven & Ventilasi"
+                          : "Jendela & Kaca"
+                        : "Proyek Khusus",
+                    })
                   }}
                   className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <option value="">— Tidak terikat produk tertentu (Umum/Lainnya) —</option>
-                  {filteredModelProducts.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name} {model.product_category ? `(${model.product_category})` : ""}
+                  <option value="">— Portofolio Mandiri (Tanpa Model Produk) —</option>
+                  {filteredModelProducts.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} {m.category ? `(${m.category})` : ""}
                     </option>
                   ))}
                 </select>
-                {form.errors.model_product_id && (
-                  <p className="mt-1 text-[11px] text-destructive">{form.errors.model_product_id}</p>
-                )}
               </div>
             </div>
 
-            {/* Badge Model Terpilih */}
-            {selectedModelInfo && (
-              <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <Icon name="layers" className="size-4 text-primary" />
-                  <span>
-                    Model terpilih: <strong>{selectedModelInfo.name}</strong>{" "}
-                    <span className="text-muted-foreground">({selectedModelInfo.product_category})</span>
-                  </span>
+            {/* Level 2: Jika Model Dipilih, Pilih Produk/SKU Spesifik di Model Ini */}
+            {selectedModel && (
+              <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-semibold text-foreground">
+                      Tautkan ke Produk / SKU Spesifik di Model Ini?
+                    </label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Pilih produk yang sesuai jika Anda ingin foto hasil pemasangan tampil pada halaman produk tersebut.
+                    </p>
+                  </div>
+                  {form.data.product_id && (
+                    <button
+                      type="button"
+                      onClick={() => form.setData("product_id", "")}
+                      className="text-xs text-muted-foreground hover:text-destructive underline"
+                    >
+                      Batal tautkan SKU
+                    </button>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => form.setData("model_product_id", "")}
-                  className="text-xs text-muted-foreground hover:text-destructive underline"
-                >
-                  Lepas tautan
-                </button>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Input
+                      type="search"
+                      value={productQuery}
+                      onChange={(e) => setProductQuery(e.target.value)}
+                      placeholder="Cari SKU / nama produk di model ini..."
+                      className="text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <select
+                      id="product_id"
+                      value={form.data.product_id}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        const prod = availableProductsInModel.find((p) => String(p.id) === val)
+                        if (prod) {
+                          form.setData({
+                            ...form.data,
+                            product_id: val,
+                            title: prod.name,
+                          })
+                        } else {
+                          form.setData({
+                            ...form.data,
+                            product_id: "",
+                            title: selectedModel?.name || "",
+                          })
+                        }
+                      }}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">— Tanpa Produk Spesifik (Dokumentasi Umum Model) —</option>
+                      {filteredProducts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [{p.parent_sku}] {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* Indikator Status Target */}
+            <div className="rounded-lg border p-3 text-xs">
+              {isProductLinked ? (
+                <div className="flex items-start gap-2 text-emerald-800 dark:text-emerald-300">
+                  <Icon name="check-circle" className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+                  <div>
+                    <div className="font-semibold">
+                      Terikat ke Produk Katalog: [{selectedProduct?.parent_sku}] {selectedProduct?.name}
+                    </div>
+                    <p className="mt-0.5 text-[11px] opacity-90">
+                      Foto dan video yang Anda masukkan di bawah akan otomatis terhubung ke produk ini di katalog dan tampil di halaman model storefront.
+                    </p>
+                  </div>
+                </div>
+              ) : isModelGeneral ? (
+                <div className="flex items-start gap-2 text-sky-800 dark:text-sky-300">
+                  <Icon name="layers" className="size-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
+                  <div>
+                    <div className="font-semibold">
+                      Dokumentasi Umum Model: {selectedModel?.name}
+                    </div>
+                    <p className="mt-0.5 text-[11px] opacity-90">
+                      Hasil pemasangan ini mewakili model produk secara umum (tanpa terikat SKU tertentu) dan tampil di halaman model storefront.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 text-zinc-700 dark:text-zinc-300">
+                  <Icon name="info" className="size-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <div className="font-semibold">
+                      Portofolio Mandiri (Level Atas / Lainnya)
+                    </div>
+                    <p className="mt-0.5 text-[11px] opacity-90">
+                      Portofolio independen yang tidak terikat pada model produk katalog, memiliki hierarki selevel model produk di beranda storefront.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
-        {/* 2. INFORMASI DASAR */}
+        {/* 2. GALERI MEDIA (FOKUS UTAMA) */}
         <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
+          <div className="mb-5 border-b border-border pb-3">
             <div className="flex items-center gap-2">
               <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
                 2
               </span>
               <div>
-                <h3 className="text-base font-semibold text-foreground">Informasi Dasar</h3>
+                <h3 className="text-base font-semibold text-foreground">Galeri Media Pemasangan</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Judul utama portofolio, sub-judul kategori, dan status publikasi.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                id="title"
-                label="Judul Proyek"
-                required
-                error={form.errors.title}
-                description="Contoh: Kaca Mati Polos, Jendela Swing Satu Daun"
-              >
-                <Input
-                  id="title"
-                  value={form.data.title}
-                  onChange={(e) => form.setData("title", e.target.value)}
-                  placeholder="Masukkan judul proyek"
-                  required
-                />
-              </Field>
-
-              <Field
-                id="category_label"
-                label="Sub-judul atau Kategori"
-                error={form.errors.category_label}
-                description="Contoh: Timeless & Minimalis, Jendela & Kaca"
-              >
-                <Input
-                  id="category_label"
-                  value={form.data.category_label}
-                  onChange={(e) => form.setData("category_label", e.target.value)}
-                  placeholder="Masukkan sub-judul atau kategori"
-                />
-              </Field>
-            </div>
-
-            {/* Status Publikasi */}
-            <div className="rounded-lg border border-border bg-muted/20 p-4">
-              <label className="text-xs font-semibold text-foreground">Status Publikasi</label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Status publikasi menentukan apakah proyek langsung ditampilkan pada halaman publik toko.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {[
-                  { value: "active", label: "Aktif", desc: "Tampil di halaman publik" },
-                  { value: "inactive", label: "Nonaktif", desc: "Disembunyikan sementara" },
-                  { value: "archived", label: "Diarsipkan", desc: "Tidak lagi aktif" },
-                ].map((s) => {
-                  const isSelected = form.data.status === s.value
-                  return (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => form.setData("status", s.value as any)}
-                      className={cn(
-                        "flex flex-col items-start rounded-lg border p-2.5 text-left text-xs transition",
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
-                          : "border-border bg-background text-muted-foreground hover:bg-muted/50",
-                      )}
-                    >
-                      <span>{s.label}</span>
-                      <span className="mt-0.5 text-[10px] opacity-80">{s.desc}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. GALERI MEDIA */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <div className="mb-5 border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
-                3
-              </span>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">Galeri Media</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Dokumentasi visual proyek mencakup foto utama, video utama, serta hingga 3 foto tambahan. Format: JPG, PNG, MP4, MOV.
+                  Foto utama hasil pemasangan, video dokumentasi (opsional), serta hingga 3 foto tambahan.
                 </p>
               </div>
             </div>
@@ -429,10 +461,10 @@ export default function InstallationGalleryForm({
             {/* Foto Utama */}
             <div>
               <label className="text-xs font-semibold text-foreground">
-                Foto Utama <span className="text-destructive">*</span>
+                Foto Utama Hasil Pemasangan <span className="text-destructive">*</span>
               </label>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Foto utama digunakan sebagai visual utama (cover) proyek di halaman katalog &amp; daftar portofolio.
+                Foto utama yang menjadi tampilan cover hasil instalasi di halaman katalog dan storefront.
               </p>
 
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -502,9 +534,9 @@ export default function InstallationGalleryForm({
 
             {/* Video Utama */}
             <div className="border-t border-border pt-4">
-              <label className="text-xs font-semibold text-foreground">Video Utama (Opsional)</label>
+              <label className="text-xs font-semibold text-foreground">Video Dokumentasi Lapangan (Opsional)</label>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Tampilkan rekaman video hasil pengerjaan atau ulasan di lapangan (MP4, WebM, MOV).
+                Video proses pemasangan atau pengetesan fungsi di lokasi (MP4, WebM, MOV).
               </p>
 
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -579,7 +611,7 @@ export default function InstallationGalleryForm({
                     Foto Tambahan (Maksimal 3 Foto)
                   </label>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Sudut pandang atau detail pengerjaan lebih lengkap ({form.data.gallery_images.length}/3 foto).
+                    Detail sudut pengerjaan atau tampak interior/eksterior ({form.data.gallery_images.length}/3 foto).
                   </p>
                 </div>
                 {form.data.gallery_images.length < 3 && (
@@ -639,7 +671,93 @@ export default function InstallationGalleryForm({
           </div>
         </section>
 
-        {/* 4. DESKRIPSI PROYEK */}
+        {/* 3. INFORMASI DASAR & STATUS */}
+        <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
+          <div className="mb-5 border-b border-border pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
+                3
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Informasi Dasar &amp; Status</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Judul dokumentasi, kategori, dan status publikasi.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                id="title"
+                label="Judul Hasil Pemasangan"
+                error={form.errors.title}
+                description={
+                  isProductLinked
+                    ? "Otomatis mengikuti nama produk katalog terpilih (bisa diubah jika perlu)."
+                    : "Judul portofolio atau label dokumentasi pemasangan."
+                }
+              >
+                <Input
+                  id="title"
+                  value={form.data.title}
+                  onChange={(e) => form.setData("title", e.target.value)}
+                  placeholder="Masukkan judul hasil pemasangan"
+                />
+              </Field>
+
+              <Field
+                id="category_label"
+                label="Label Kategori"
+                error={form.errors.category_label}
+                description="Contoh: Jendela & Kaca, Boven & Ventilasi, Proyek Khusus"
+              >
+                <Input
+                  id="category_label"
+                  value={form.data.category_label}
+                  onChange={(e) => form.setData("category_label", e.target.value)}
+                  placeholder="Masukkan label kategori"
+                />
+              </Field>
+            </div>
+
+            {/* Status Publikasi */}
+            <div className="rounded-lg border border-border bg-muted/20 p-4">
+              <label className="text-xs font-semibold text-foreground">Status Publikasi</label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Status publikasi menentukan apakah dokumentasi ini langsung tampil di halaman publik storefront.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[
+                  { value: "active", label: "Aktif", desc: "Tampil di halaman publik" },
+                  { value: "inactive", label: "Nonaktif", desc: "Disembunyikan sementara" },
+                  { value: "archived", label: "Diarsipkan", desc: "Tidak lagi aktif" },
+                ].map((s) => {
+                  const isSelected = form.data.status === s.value
+                  return (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => form.setData("status", s.value as any)}
+                      className={cn(
+                        "flex flex-col items-start rounded-lg border p-2.5 text-left text-xs transition",
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted/50",
+                      )}
+                    >
+                      <span>{s.label}</span>
+                      <span className="mt-0.5 text-[10px] opacity-80">{s.desc}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. DETAIL DESKRIPSI (OPSIONAL / JIKA BUKAN HANYA MEDIA) */}
         <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
           <div className="mb-5 border-b border-border pb-3">
             <div className="flex items-center gap-2">
@@ -647,9 +765,9 @@ export default function InstallationGalleryForm({
                 4
               </span>
               <div>
-                <h3 className="text-base font-semibold text-foreground">Deskripsi Proyek</h3>
+                <h3 className="text-base font-semibold text-foreground">Deskripsi / Keterangan Pemasangan</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Jelaskan detail pekerjaan pemasangan, material yang digunakan, kondisi teknis, dan keunggulan.
+                  Catatan pengerjaan lapangan, kondisi lokasi, atau material yang dipasang (opsional).
                 </p>
               </div>
             </div>
@@ -657,68 +775,70 @@ export default function InstallationGalleryForm({
 
           <Field
             id="description"
-            label="Detail Deskripsi Pekerjaan"
+            label="Keterangan Pemasangan"
             error={form.errors.description}
           >
             <Textarea
               id="description"
-              rows={5}
+              rows={4}
               value={form.data.description}
               onChange={(e) => form.setData("description", e.target.value)}
-              placeholder="Ceritakan detail pemasangan, tantangan di lokasi, solusi teknis yang diterapkan, dan material yang dipasang..."
+              placeholder="Tuliskan keterangan hasil pemasangan atau catatan teknis di lapangan..."
             />
           </Field>
         </section>
 
-        {/* 5. SPESIFIKASI UNIT */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
-                5
-              </span>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">Spesifikasi Unit</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Detail teknis instalasi dalam format nama dan nilai spesifikasi.
-                </p>
+        {/* 5. SPESIFIKASI UNIT (HANYA MUNCUL JIKA TANPA PRODUK SPESIFIK) */}
+        {!isProductLinked && (
+          <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
+            <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
+                  5
+                </span>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Spesifikasi Unit (Opsional)</h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Detail teknis instalasi berupa nama dan nilai spesifikasi.
+                  </p>
+                </div>
               </div>
+              <Button type="button" variant="outline" size="sm" onClick={addSpecificationRow}>
+                <Icon name="plus" className="size-3.5" />
+                Tambah Baris
+              </Button>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={addSpecificationRow}>
-              <Icon name="plus" className="size-3.5" />
-              Tambah Baris
-            </Button>
-          </div>
 
-          <div className="space-y-2.5">
-            {form.data.specifications.map((row, index) => (
-              <div key={index} className="grid grid-cols-[1fr_1.5fr_auto] items-center gap-2">
-                <Input
-                  value={row.name}
-                  onChange={(e) => updateSpecification(index, "name", e.target.value)}
-                  placeholder="Nama spesifikasi (mis. Tipe Kaca)"
-                  className="text-xs"
-                />
-                <Input
-                  value={row.value}
-                  onChange={(e) => updateSpecification(index, "value", e.target.value)}
-                  placeholder="Nilai spesifikasi (mis. Tempered 8mm)"
-                  className="text-xs"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-destructive hover:bg-destructive/10"
-                  onClick={() => removeSpecificationRow(index)}
-                  title="Hapus baris spesifikasi"
-                >
-                  <Icon name="trash" className="size-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </section>
+            <div className="space-y-2.5">
+              {form.data.specifications.map((row, index) => (
+                <div key={index} className="grid grid-cols-[1fr_1.5fr_auto] items-center gap-2">
+                  <Input
+                    value={row.name}
+                    onChange={(e) => updateSpecification(index, "name", e.target.value)}
+                    placeholder="Nama spesifikasi (mis. Tipe Kaca)"
+                    className="text-xs"
+                  />
+                  <Input
+                    value={row.value}
+                    onChange={(e) => updateSpecification(index, "value", e.target.value)}
+                    placeholder="Nilai spesifikasi (mis. Tempered 8mm)"
+                    className="text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => removeSpecificationRow(index)}
+                    title="Hapus baris spesifikasi"
+                  >
+                    <Icon name="trash" className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* FOOTER ACTIONS */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
@@ -739,7 +859,13 @@ export default function InstallationGalleryForm({
               </Button>
             )}
             <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan"}
+              {form.processing
+                ? "Menyimpan..."
+                : isProductLinked
+                  ? "Simpan Media Produk"
+                  : isEdit
+                    ? "Simpan Perubahan"
+                    : "Simpan"}
             </Button>
           </div>
         </div>
