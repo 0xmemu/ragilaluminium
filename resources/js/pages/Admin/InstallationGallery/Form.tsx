@@ -212,7 +212,7 @@ export default function InstallationGalleryForm({
                     <div className="mt-2 rounded-md border border-border bg-surface-muted px-3 py-2">
                       <p className="text-[13px] font-medium text-foreground">Portofolio mandiri</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Grup independen di halaman /hasil-pemasangan, selevel kartu model (grup Lainnya).
+                        Grup independen di halaman /hasil-pemasangan, selevel dengan model produk.
                       </p>
                     </div>
                   )}
