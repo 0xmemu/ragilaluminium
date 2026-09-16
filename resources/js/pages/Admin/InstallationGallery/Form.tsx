@@ -123,12 +123,12 @@ export default function InstallationGalleryForm({
   function submit(event: React.FormEvent) {
     event.preventDefault()
     // "standalone" hanyalah penanda mode UI; jangan ikut terkirim ke server.
-    const payload = isStandalone
-      ? { ...form.data, model_product_id: "" }
-      : form.data
-    form.submit(payload, {
-      preserveScroll: true,
-    })
+    if (isStandalone) {
+      const { model_product_id, ...rest } = form.data
+      void model_product_id
+      form.transform(() => ({ ...rest, model_product_id: "" }))
+    }
+    form.post(submitUrl, { preserveScroll: true })
   }
 
   const mainPreview = form.data.main_image_url || ""
