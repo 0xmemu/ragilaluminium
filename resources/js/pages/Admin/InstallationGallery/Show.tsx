@@ -1,14 +1,16 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { cn } from "@/lib/utils"
 
 interface MediaRow {
   id: number
@@ -81,7 +83,7 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
 
       <SectionCard
         title="Media dalam grup"
-        description={`${rows.length} media${videoCount ? ` · ${videoCount} video` : ""}. Klik ikon pensil untuk mengubah keterangan.`}
+        description={`${rows.length} media${videoCount ? ` · ${videoCount} video` : ""}. Tombol Edit mengubah keterangan; aksi lain ada di menu Lainnya.`}
         icon="image"
         contentClassName="p-0"
       >
@@ -203,70 +205,55 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                       </div>
                     </td>
 
-                    {/* Aksi */}
+                    {/* Aksi: satu tombol teks + dropdown sekunder (pola halaman Produk) */}
                     <td className="w-[1%] whitespace-nowrap px-4 py-3 text-right align-middle">
-                      <RowActions>
+                      <RowActions className="flex-nowrap">
                         <Button
                           type="button"
                           variant="secondary"
                           size="xs"
-                          title="Edit keterangan"
-                          aria-label={`Edit keterangan media ${index + 1}`}
                           onClick={() => startEdit(row)}
                         >
-                          <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+                          Edit
                         </Button>
 
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="xs"
-                          title={row.visibility === "visible" ? "Sembunyikan dari publik" : "Tampilkan di publik"}
-                          aria-label={row.visibility === "visible" ? `Sembunyikan media ${index + 1}` : `Tampilkan media ${index + 1}`}
-                          onClick={() => router.patch(row.toggleStatusUrl, {}, { preserveScroll: true })}
-                        >
-                          <Icon
-                            name={row.visibility === "visible" ? "eye-slash" : "eye"}
-                            className="size-3.5"
-                            aria-hidden="true"
-                          />
-                        </Button>
+                        <RowActionsMenu>
+                          <DropdownMenuItem
+                            onSelect={() => router.patch(row.toggleStatusUrl, {}, { preserveScroll: true })}
+                          >
+                            {row.visibility === "visible" ? "Sembunyikan dari publik" : "Tampilkan di publik"}
+                          </DropdownMenuItem>
 
-                        {row.visibility !== "archived" ? (
+                          {row.visibility !== "archived" ? (
+                            <ConfirmAction
+                              trigger={
+                                <button type="button" className={cn("w-full text-left", rowActionTextClass)}>
+                                  Arsipkan
+                                </button>
+                              }
+                              title="Arsipkan media?"
+                              description="Media ini akan keluar dari halaman publik hasil pemasangan."
+                              confirmLabel="Arsipkan"
+                              onConfirm={() => router.post(row.archiveUrl, {}, { preserveScroll: true })}
+                            />
+                          ) : null}
+
                           <ConfirmAction
                             trigger={
-                              <Button
-                                variant="secondary"
-                                size="xs"
-                                aria-label={`Arsipkan media ${index + 1}`}
+                              <button
+                                type="button"
+                                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
                               >
-                                <Icon name="archive" className="size-3.5" aria-hidden="true" />
-                              </Button>
+                                Hapus Permanen
+                              </button>
                             }
-                            title="Arsipkan media?"
-                            description="Media ini akan keluar dari halaman publik hasil pemasangan."
-                            confirmLabel="Arsipkan"
-                            onConfirm={() => router.post(row.archiveUrl, {}, { preserveScroll: true })}
+                            title="Hapus media?"
+                            description="Hapus media ini secara permanen? Tindakan tidak dapat dibatalkan."
+                            confirmLabel="Hapus Permanen"
+                            variant="destructive"
+                            onConfirm={() => router.delete(row.destroyUrl, { preserveScroll: true })}
                           />
-                        ) : null}
-
-                        <ConfirmAction
-                          trigger={
-                            <Button
-                              variant="secondary"
-                              size="xs"
-                              className="text-destructive"
-                              aria-label={`Hapus media ${index + 1}`}
-                            >
-                              <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
-                            </Button>
-                          }
-                          title="Hapus media?"
-                          description="Hapus media ini secara permanen? Tindakan tidak dapat dibatalkan."
-                          confirmLabel="Hapus"
-                          variant="destructive"
-                          onConfirm={() => router.delete(row.destroyUrl, { preserveScroll: true })}
-                        />
+                        </RowActionsMenu>
                       </RowActions>
                     </td>
                   </tr>
