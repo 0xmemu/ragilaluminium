@@ -36,9 +36,11 @@ import {
   Cube,
   DoorOpen,
   DotsThree,
+  DotsThreeVertical,
   DownloadSimple,
   EnvelopeSimple,
   Eye,
+  EyeSlash,
   File,
   FileText,
   Folder,
@@ -140,12 +142,14 @@ const iconRegistry: Record<string, ComponentType<IconProps>> = {
   "door-open": DoorOpen,
   download: DownloadSimple,
   "dots-three": DotsThree,
+  "dots-three-vertical": DotsThreeVertical,
   more: DotsThree,
   email: EnvelopeSimple,
   envelope: EnvelopeSimple,
   expand: ArrowsOutSimple,
   mail: EnvelopeSimple,
   eye: Eye,
+  "eye-slash": EyeSlash,
   file: File,
   "file-text": FileText,
   folder: Folder,
@@ -412,13 +416,14 @@ function resolveIconName(raw?: string | null): string | null {
   return null
 }
 
+/** Benar bila nama ikon dikenali registry (dipakai test kontrak ikon). */
+export function hasIcon(name: string): boolean {
+  return resolveIconName(name) !== null
+}
+
 export function Icon({ name, weight = "regular", ...props }: RagilIconProps) {
   const resolved = resolveIconName(name)
   if (!resolved) return null
   const IconComponent = iconRegistry[resolved] ?? Circle
   return <IconComponent weight={weight} {...props} />
-}
-
-export function hasIcon(name: string): boolean {
-  return resolveIconName(name) !== null
 }

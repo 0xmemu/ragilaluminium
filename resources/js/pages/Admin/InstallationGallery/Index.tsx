@@ -353,12 +353,12 @@ export default function InstallationGalleryIndex({
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
                     <th className="w-12 py-3 pl-4 pr-2 text-center">No</th>
-                    <th className="w-24 px-3 py-3">Media</th>
-                    <th className="min-w-[16rem] px-3 py-3">Nama Proyek</th>
-                    <th className="min-w-[14rem] px-3 py-3">Deskripsi</th>
-                    <th className="w-40 px-3 py-3">Model Produk</th>
-                    <th className="w-28 px-3 py-3">Status</th>
-                    <th className="w-16 py-3 pl-2 pr-4 text-right">Aksi</th>
+                    <th className="w-20 px-3 py-3">Media</th>
+                    <th className="min-w-[12rem] px-3 py-3">Nama Proyek</th>
+                    <th className="w-56 max-w-[14rem] px-3 py-3">Deskripsi</th>
+                    <th className="w-48 min-w-[12rem] px-3 py-3">Model Produk</th>
+                    <th className="w-24 px-3 py-3">Status</th>
+                    <th className="w-28 py-3 pl-2 pr-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -452,23 +452,23 @@ export default function InstallationGalleryIndex({
                         </td>
 
                         {/* Deskripsi */}
-                        <td className="px-3 py-3">
-                          <p className="line-clamp-2 text-muted-foreground leading-relaxed">
+                        <td className="w-56 max-w-[14rem] px-3 py-3">
+                          <p className="line-clamp-2 text-muted-foreground leading-relaxed text-[11px] break-words">
                             {project.description || "—"}
                           </p>
                         </td>
 
                         {/* Tautan Model Produk */}
-                        <td className="px-3 py-3">
+                        <td className="w-48 min-w-[12rem] px-3 py-3">
                           {project.model_product ? (
-                            <div className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground">
-                              <Icon name="layers" className="size-3 text-muted-foreground" />
-                              <span className="truncate max-w-[10rem]">
+                            <div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground">
+                              <Icon name="layers" className="size-3.5 shrink-0 text-muted-foreground" />
+                              <span className="font-medium text-foreground">
                                 {project.model_product.name}
                               </span>
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground italic text-[11px]">Tidak terikat</span>
                           )}
                         </td>
 
@@ -478,16 +478,17 @@ export default function InstallationGalleryIndex({
                         </td>
 
                         {/* Aksi Dropdown */}
-                        <td className="py-3 pl-2 pr-4 text-right">
+                        <td className="w-28 py-3 pl-2 pr-4 text-right whitespace-nowrap">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-7"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1 px-2.5 text-xs font-medium border-border hover:bg-muted text-foreground"
                                 aria-label={`Aksi untuk ${project.title}`}
                               >
-                                <Icon name="dots-three-vertical" className="size-4" />
+                                <span>Aksi</span>
+                                <Icon name="dots-three-vertical" className="size-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44 text-xs">
