@@ -57,6 +57,9 @@ export default function InstallationGalleryForm({
   })
 
   const [picker, setPicker] = React.useState<"main" | "video" | "gallery" | null>(null)
+  // Drag-and-drop galeri foto tambahan (langsung aktif, tanpa mode).
+  const [dragIndex, setDragIndex] = React.useState<number | null>(null)
+  const [dragTarget, setDragTarget] = React.useState<number | null>(null)
 
   const modelOptions = React.useMemo(
     () => modelProducts.map((m) => ({ value: String(m.id), label: m.label })),
@@ -109,12 +112,11 @@ export default function InstallationGalleryForm({
     })
   }
 
-  function moveGallery(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= galleryMedia.length) return
+  function moveGallery(from: number, to: number) {
+    if (to < 0 || to >= galleryMedia.length || from === to) return
     const next = [...galleryMedia]
-    const [moved] = next.splice(index, 1)
-    next.splice(target, 0, moved)
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
     setGalleryMedia(next)
   }
 
@@ -407,7 +409,44 @@ export default function InstallationGalleryForm({
               ) : (
                 <ul className="space-y-3">
                   {galleryMedia.map((item, index) => (
-                    <li key={`${item.assetId}-${index}`} className="flex gap-3 rounded-md border border-border p-2.5">
+                    <li
+                      key={`${item.assetId}-${index}`}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move"
+                        event.dataTransfer.setData("text/plain", String(index))
+                        setDragIndex(index)
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault()
+                        if (dragIndex !== null && dragIndex !== index) setDragTarget(index)
+                      }}
+                      onDragLeave={() => setDragTarget((current) => (current === index ? null : current))}
+                      onDrop={(event) => {
+                        event.preventDefault()
+                        const from = dragIndex
+                        setDragIndex(null)
+                        setDragTarget(null)
+                        if (from === null) return
+                        moveGallery(from, index)
+                      }}
+                      onDragEnd={() => {
+                        setDragIndex(null)
+                        setDragTarget(null)
+                      }}
+                      className={cn(
+                        "flex gap-3 rounded-md border border-border bg-card p-2.5",
+                        dragIndex === index && "opacity-40",
+                        dragTarget === index && dragIndex !== index && "border-primary ring-1 ring-primary/40",
+                      )}
+                    >
+                      <span
+                        className="flex w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground active:cursor-grabbing"
+                        title="Seret untuk mengubah urutan"
+                        aria-hidden="true"
+                      >
+                        <Icon name="dots-six-vertical" className="size-4" />
+                      </span>
                       <div className="relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-surface-muted">
                         {item.thumbUrl ? (
                           <img src={item.thumbUrl} alt={item.label || `Foto ${index + 1}`} className="size-full object-cover" />
@@ -429,28 +468,7 @@ export default function InstallationGalleryForm({
                           placeholder={`Keterangan foto ${index + 1} (mis. Tampak depan ruang tamu)`}
                           className="h-8 text-xs"
                         />
-                        <div className="flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => moveGallery(index, -1)}
-                              disabled={index === 0}
-                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                              aria-label={`Geser foto ${index + 1} ke kiri`}
-                            >
-                              <Icon name="caret-left" className="size-3.5" aria-hidden="true" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moveGallery(index, 1)}
-                              disabled={index === galleryMedia.length - 1}
-                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                              aria-label={`Geser foto ${index + 1} ke kanan`}
-                            >
-                              <Icon name="caret-right" className="size-3.5" aria-hidden="true" />
-                            </button>
-                            <span className="ml-1 text-[11px] text-muted-foreground">Urutan {index + 1}</span>
-                          </div>
+                        <div className="flex items-center justify-end">
                           <button
                             type="button"
                             onClick={() => setGalleryMedia(galleryMedia.filter((_, i) => i !== index))}
@@ -500,7 +518,9 @@ export default function InstallationGalleryForm({
           const seen = new Set(galleryMedia.map((item) => item.assetId))
           const next = [...galleryMedia]
           for (const item of picked) {
-            if (!seen.has(item.assetId) && next.length < 3) next.push(item)
+            if (!seen.has(item.assetId) && next.length < 3) {
+              next.push({ ...item, label: "" })
+            }
           }
           setGalleryMedia(next)
           setPicker(null)
