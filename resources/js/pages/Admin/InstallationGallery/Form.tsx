@@ -74,6 +74,23 @@ export default function InstallationGalleryForm({
 
   // State MediaPicker
   const [pickerMode, setPickerMode] = React.useState<"main_image" | "main_video" | "gallery" | null>(null)
+  // State Pencarian Model
+  const [modelQuery, setModelQuery] = React.useState("")
+
+  const filteredModelProducts = React.useMemo(() => {
+    if (!modelQuery.trim()) return modelProducts
+    const lower = modelQuery.toLowerCase()
+    return modelProducts.filter(
+      (m) =>
+        m.name.toLowerCase().includes(lower) ||
+        (m.product_category && m.product_category.toLowerCase().includes(lower)) ||
+        (m.product_model && m.product_model.toLowerCase().includes(lower)),
+    )
+  }, [modelProducts, modelQuery])
+
+  const selectedModelInfo = React.useMemo(() => {
+    return modelProducts.find((m) => String(m.id) === form.data.model_product_id)
+  }, [modelProducts, form.data.model_product_id])
 
   function handleMainImagePick(picked: PickedMedia[]) {
     const first = picked[0]
@@ -194,7 +211,7 @@ export default function InstallationGalleryForm({
       >
         <FormErrorSummary errors={form.errors} />
 
-        {/* 1. TAUTAN MODEL PRODUK (TAMPIL PERTAMA) */}
+        {/* 1. TAUTAN MODEL PRODUK (TAMPIL PERTAMA DENGAN PENCARIAN DI SAMPING) */}
         <section className="rounded-xl border border-primary/30 bg-card p-5 shadow-xs sm:p-6 ring-1 ring-primary/20">
           <div className="mb-5 border-b border-border pb-3">
             <div className="flex items-center gap-2">
@@ -208,42 +225,104 @@ export default function InstallationGalleryForm({
             </p>
           </div>
 
-          <Field
-            id="model_product_id"
-            label="Model Produk Terkait"
-            error={form.errors.model_product_id}
-            description="Pilih salah satu model produk katalog untuk menghubungkan proyek ini dengan halaman katalog toko."
-          >
-            <select
-              id="model_product_id"
-              value={form.data.model_product_id}
-              onChange={(e) => {
-                const val = e.target.value
-                const selectedModel = modelProducts.find((m) => String(m.id) === val)
-                if (selectedModel && !form.data.title) {
-                  form.setData({
-                    ...form.data,
-                    model_product_id: val,
-                    title: selectedModel.name,
-                    category_label:
-                      selectedModel.product_category === "BOVEN"
-                        ? "Boven & Ventilasi"
-                        : "Jendela & Kaca",
-                  })
-                } else {
-                  form.setData("model_product_id", val)
-                }
-              }}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="">— Tidak terikat produk tertentu (Umum/Lainnya) —</option>
-              {modelProducts.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} {model.product_category ? `(${model.product_category})` : ""}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Kolom Pencarian Cepat Model di Samping Dropdown */}
+              <div>
+                <label className="text-[13px] font-medium text-foreground">
+                  Cari Model Produk
+                </label>
+                <div className="relative mt-1.5">
+                  <Input
+                    type="search"
+                    value={modelQuery}
+                    onChange={(e) => setModelQuery(e.target.value)}
+                    placeholder="Ketik nama model (mis. Swing, Jungkit)..."
+                    className="pl-8 pr-7 text-xs"
+                  />
+                  <Icon
+                    name="search"
+                    className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  {modelQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setModelQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label="Bersihkan pencarian model"
+                    >
+                      <Icon name="x" className="size-3" />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {modelQuery
+                    ? `Menemukan ${filteredModelProducts.length} model cocok.`
+                    : "Ketik kata kunci untuk menyaring opsi pilihan model di samping."}
+                </p>
+              </div>
+
+              {/* Dropdown Pilihan Model Produk */}
+              <div>
+                <label htmlFor="model_product_id" className="text-[13px] font-medium text-foreground">
+                  Pilih Model Produk Katalog ({filteredModelProducts.length} model)
+                </label>
+                <select
+                  id="model_product_id"
+                  value={form.data.model_product_id}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const selectedModel = modelProducts.find((m) => String(m.id) === val)
+                    if (selectedModel && !form.data.title) {
+                      form.setData({
+                        ...form.data,
+                        model_product_id: val,
+                        title: selectedModel.name,
+                        category_label:
+                          selectedModel.product_category === "BOVEN"
+                            ? "Boven & Ventilasi"
+                            : "Jendela & Kaca",
+                      })
+                    } else {
+                      form.setData("model_product_id", val)
+                    }
+                  }}
+                  className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— Tidak terikat produk tertentu (Umum/Lainnya) —</option>
+                  {filteredModelProducts.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name} {model.product_category ? `(${model.product_category})` : ""}
+                    </option>
+                  ))}
+                </select>
+                {form.errors.model_product_id && (
+                  <p className="mt-1 text-[11px] text-destructive">{form.errors.model_product_id}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Badge Model Terpilih */}
+            {selectedModelInfo && (
+              <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <Icon name="layers" className="size-4 text-primary" />
+                  <span>
+                    Model terpilih: <strong>{selectedModelInfo.name}</strong>{" "}
+                    <span className="text-muted-foreground">({selectedModelInfo.product_category})</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => form.setData("model_product_id", "")}
+                  className="text-xs text-muted-foreground hover:text-destructive underline"
+                >
+                  Lepas tautan
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* 2. INFORMASI DASAR */}
