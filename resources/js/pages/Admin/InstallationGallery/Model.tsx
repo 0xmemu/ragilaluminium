@@ -14,7 +14,7 @@ import { routeUrl } from "@/lib/routes"
 interface MediaRow {
   id: number
   product_id: number
-  product_label: string
+  label: string
   position: number
   status: string
   error_reason?: string | null
@@ -75,27 +75,13 @@ export default function InstallationGalleryModel({
     setRows(mediaRows)
   }, [mediaRows])
 
-  function moveRow(from: number, to: number) {
-    if (to < 0 || to >= rows.length || from === to) return
-    setRows((prev) => {
-      const next = [...prev]
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
-      return next.map((row, i) => ({ ...row, position: i + 1 }))
-    })
-  }
-
-  function removeRow(row: MediaRow) {
-    router.post(row.archive_url, {}, { preserveScroll: true, onSuccess: () => {
-      setRows((prev) => prev.filter((r) => r.id !== row.id))
-    } })
-  }
-
   function addPicked() {
-    if (!pickedMedia.length || !ownerProductId || !mediaStoreUrl) return
+    if (!mediaStoreUrl) return
+    const storeUrl = mediaStoreUrl.replace("{productId}", ownerProductId)
+    if (!pickedMedia.length || !ownerProductId) return
     setAdding(true)
     pickedMedia.forEach((m, index) => {
-      router.post(mediaStoreUrl.replace("{productId}", ownerProductId), {
+      router.post(storeUrl, {
         media_asset_id: m.assetId,
         kind: m.kind,
         position: 100 + index + 1,
@@ -164,8 +150,8 @@ export default function InstallationGalleryModel({
                   </span>
                 </div>
                 <div className="space-y-1 p-3">
-                  <p className="truncate text-xs font-semibold text-foreground" title={row.product_label}>
-                    {row.product_label}
+                  <p className="truncate text-xs font-semibold text-foreground" title={row.label}>
+                    {row.label}
                   </p>
                   {row.status === "failed" && row.error_reason ? (
                     <p className="text-xs leading-4 text-destructive">{row.error_reason}</p>
@@ -194,15 +180,6 @@ export default function InstallationGalleryModel({
                         Hapus
                       </Button>
                     ) : null}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => removeRow(row)}
-                      disabled={actionForm.processing}
-                    >
-                      Lepas
-                    </Button>
                   </div>
                 </div>
               </article>

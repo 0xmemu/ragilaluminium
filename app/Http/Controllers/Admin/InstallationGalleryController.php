@@ -80,19 +80,14 @@ class InstallationGalleryController extends Controller
             $mediaRows = ProductMedia::query()
                 ->installation()
                 ->visible()
-                ->with(['mediaAsset', 'product:id,parent_sku,name,short_name'])
-                ->whereHas('product', fn ($q) => $q
-                    ->where('product_category', $categoryCode)
-                    ->where('product_model', $modelCode))
-                ->orderBy('product_id')
+                ->with(['mediaAsset'])
+                ->whereNull('product_id')
+                ->where('position', '>=', 100)
                 ->orderBy('position')
                 ->get()
                 ->map(fn (ProductMedia $m) => [
                     'id' => $m->id,
-                    'product_id' => $m->product_id,
-                    'product_label' => $m->product
-                        ? trim((string) ($m->product->short_name ?: $m->product->name)).' ('.$m->product->parent_sku.')'
-                        : 'Import media #'.$m->id,
+                    'label' => $m->mediaAsset?->label ?: 'Media #'.$m->id,
                     'position' => $m->position,
                     'status' => $m->status,
                     'error_reason' => $m->error_reason,
