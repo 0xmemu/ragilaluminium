@@ -266,7 +266,7 @@ class InstallationGallery
         $category = strtoupper(trim($category));
         $model = strtoupper(trim($model));
 
-        return ProductMedia::query()
+        $items = ProductMedia::query()
             ->visible()
             ->installation()
             ->whereHas('product', fn ($q) => $q->visible()
@@ -286,12 +286,50 @@ class InstallationGallery
                     'is_video' => self::isVideoMedia($m),
                     'product_sku' => (string) ($m->product?->parent_sku ?? ''),
                     'product_name' => (string) ($m->product?->name ?? ''),
-                    'caption' => (string) ($m->product?->name ?? ''),
+                    'caption' => (string) ($m->installation_caption ?: ($m->product?->name ?? '')),
                 ];
             })
             ->filter(fn (array $i) => filled($i['url']))
             ->values()
             ->all();
+
+        // Tambahkan juga media hasil pemasangan umum model (tanpa SKU spesifik) dari InstallationProject
+        $cmsModel = \App\Models\CmsModelProduct::where('product_category', $category)->where('product_model', $model)->first();
+        if ($cmsModel) {
+            $generalProjects = \App\Models\InstallationProject::where('model_product_id', $cmsModel->id)
+                ->whereNull('product_id')
+                ->active()
+                ->get();
+
+            foreach ($generalProjects as $gp) {
+                if (filled($gp->main_image_url)) {
+                    $items[] = [
+                        'id' => 100000 + $gp->id,
+                        'url' => $gp->resolvedMainImage(),
+                        'thumb' => $gp->resolvedMainImage('thumb') ?: $gp->resolvedMainImage(),
+                        'is_video' => false,
+                        'product_sku' => '',
+                        'product_name' => $gp->title,
+                        'caption' => $gp->title,
+                    ];
+                }
+                foreach ($gp->gallery_images ?? [] as $gIdx => $g) {
+                    if (!empty($g['url'])) {
+                        $items[] = [
+                            'id' => 200000 + ($gp->id * 10) + $gIdx,
+                            'url' => $g['url'],
+                            'thumb' => $g['url'],
+                            'is_video' => false,
+                            'product_sku' => '',
+                            'product_name' => $gp->title,
+                            'caption' => $g['caption'] ?? $gp->title,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $items;
     }
 
     public static function categoryToSlug(string $category): string
@@ -472,7 +510,7 @@ class InstallationGallery
      */
     public static function manualProductCards(int $limit = 48): array
     {
-        return CmsGalleryItem::query()
+        $cmsCards = CmsGalleryItem::query()
             ->where('published', true)
             ->whereNotNull('image_url')
             ->where('image_url', '!=', '')
@@ -494,6 +532,29 @@ class InstallationGallery
                 'href' => $item->image_url,
             ])
             ->all();
+
+        // Tambahkan portofolio mandiri (tanpa model produk)
+        $standalone = \App\Models\InstallationProject::whereNull('model_product_id')
+            ->active()
+            ->ordered()
+            ->limit($limit)
+            ->get()
+            ->map(fn (\App\Models\InstallationProject $item) => [
+                'id' => 'project-'.$item->id,
+                'image_url' => $item->resolvedMainImage(),
+                'label' => $item->title,
+                'product_count' => 0,
+                'photo_count' => 1 + count($item->gallery_images ?? []),
+                'video_count' => filled($item->main_video_url) ? 1 : 0,
+                'category' => 'LAINNYA',
+                'model' => 'MANUAL',
+                'source' => 'standalone',
+                'product_sku' => null,
+                'href' => $item->resolvedMainImage(),
+            ])
+            ->all();
+
+        return array_merge($cmsCards, $standalone);
     }
 
     public static function isVideoMedia(ProductMedia $item): bool
