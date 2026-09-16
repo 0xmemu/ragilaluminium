@@ -254,6 +254,9 @@ export default function InstallationGalleryForm({
                 <tr>
                   <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
                     Judul grup <span className="text-destructive">*</span>
+                    <p className="mt-1 text-[11px] font-normal leading-4 text-muted-foreground">
+                      Tampil sebagai nama grup di /hasil-pemasangan.
+                    </p>
                   </th>
                   <td className="px-4 py-2.5">
                     <Input
@@ -265,9 +268,6 @@ export default function InstallationGalleryForm({
                     {form.errors.title ? (
                       <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
                     ) : null}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Judul ini tampil sebagai nama grup di halaman /hasil-pemasangan.
-                    </p>
                   </td>
                 </tr>
               ) : null}
@@ -395,10 +395,10 @@ export default function InstallationGalleryForm({
                   </p>
                 </div>
               ) : (
-                <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+                <ul className="space-y-3">
                   {galleryMedia.map((item, index) => (
-                    <li key={`${item.assetId}-${index}`} className="group relative">
-                      <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
+                    <li key={`${item.assetId}-${index}`} className="flex gap-3 rounded-md border border-border p-2.5">
+                      <div className="relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-surface-muted">
                         {item.thumbUrl ? (
                           <img src={item.thumbUrl} alt={item.label || `Foto ${index + 1}`} className="size-full object-cover" />
                         ) : (
@@ -407,35 +407,49 @@ export default function InstallationGalleryForm({
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-0.5">
+                      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <Input
+                          value={item.label}
+                          onChange={(event) => {
+                            const next = galleryMedia.map((row, i) =>
+                              i === index ? { ...row, label: event.target.value } : row,
+                            )
+                            setGalleryMedia(next)
+                          }}
+                          placeholder={`Keterangan foto ${index + 1} (mis. Tampak depan ruang tamu)`}
+                          className="h-8 text-xs"
+                        />
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => moveGallery(index, -1)}
+                              disabled={index === 0}
+                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+                              aria-label={`Geser foto ${index + 1} ke kiri`}
+                            >
+                              <Icon name="caret-left" className="size-3.5" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveGallery(index, 1)}
+                              disabled={index === galleryMedia.length - 1}
+                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+                              aria-label={`Geser foto ${index + 1} ke kanan`}
+                            >
+                              <Icon name="caret-right" className="size-3.5" aria-hidden="true" />
+                            </button>
+                            <span className="ml-1 text-[11px] text-muted-foreground">Urutan {index + 1}</span>
+                          </div>
                           <button
                             type="button"
-                            onClick={() => moveGallery(index, -1)}
-                            disabled={index === 0}
-                            className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                            aria-label={`Geser foto ${index + 1} ke kiri`}
+                            onClick={() => setGalleryMedia(galleryMedia.filter((_, i) => i !== index))}
+                            className="rounded p-1 text-muted-foreground transition hover:text-destructive"
+                            aria-label={`Hapus foto ${index + 1}`}
                           >
-                            <Icon name="caret-left" className="size-3.5" aria-hidden="true" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveGallery(index, 1)}
-                            disabled={index === galleryMedia.length - 1}
-                            className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                            aria-label={`Geser foto ${index + 1} ke kanan`}
-                          >
-                            <Icon name="caret-right" className="size-3.5" aria-hidden="true" />
+                            <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
                           </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setGalleryMedia(galleryMedia.filter((_, i) => i !== index))}
-                          className="rounded p-0.5 text-muted-foreground transition hover:text-destructive"
-                          aria-label={`Hapus foto ${index + 1}`}
-                        >
-                          <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
-                        </button>
                       </div>
                     </li>
                   ))}
