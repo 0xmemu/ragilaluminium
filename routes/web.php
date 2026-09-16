@@ -296,6 +296,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('orders/{order}/payments', [PaymentController::class, 'byOrder'])->name('orders.payments');
     Route::post('orders/{order}/payments', [PaymentController::class, 'store'])->name('payments.store');
     Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
+    Route::put('payments/bank-details', [PaymentController::class, 'updateBank'])->name('payments.bank-update');
 
     // Shipping
     Route::get('shipping', [ShippingRecordController::class, 'index'])->name('shipping.index');
@@ -466,8 +467,17 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('apa-kata-pelanggan/meta', [ApaKataController::class, 'updateMeta'])->name('apa-kata-pelanggan.meta.update');
     Route::put('apa-kata-pelanggan/reorder', [ApaKataController::class, 'reorder'])->name('apa-kata-pelanggan.reorder');
     Route::get('hasil-pemasangan', [InstallationGalleryController::class, 'index'])->name('hasil-pemasangan.index');
-    Route::get('hasil-pemasangan/kelola', [InstallationGalleryController::class, 'model'])->name('hasil-pemasangan.model');
+    Route::get('hasil-pemasangan/tambah', [InstallationGalleryController::class, 'create'])->name('hasil-pemasangan.create');
+    Route::post('hasil-pemasangan', [InstallationGalleryController::class, 'store'])->name('hasil-pemasangan.store');
+    Route::put('hasil-pemasangan/reorder', [InstallationGalleryController::class, 'reorder'])->name('hasil-pemasangan.reorder');
     Route::put('hasil-pemasangan/meta', [InstallationGalleryController::class, 'updateMeta'])->name('hasil-pemasangan.meta.update');
+    Route::get('hasil-pemasangan/kelola', [InstallationGalleryController::class, 'model'])->name('hasil-pemasangan.model');
+    Route::get('hasil-pemasangan/{project}', [InstallationGalleryController::class, 'show'])->whereNumber('project')->name('hasil-pemasangan.show');
+    Route::get('hasil-pemasangan/{project}/edit', [InstallationGalleryController::class, 'edit'])->whereNumber('project')->name('hasil-pemasangan.edit');
+    Route::put('hasil-pemasangan/{project}', [InstallationGalleryController::class, 'update'])->whereNumber('project')->name('hasil-pemasangan.update');
+    Route::patch('hasil-pemasangan/{project}/toggle-status', [InstallationGalleryController::class, 'toggleStatus'])->whereNumber('project')->name('hasil-pemasangan.toggle-status');
+    Route::post('hasil-pemasangan/{project}/archive', [InstallationGalleryController::class, 'archive'])->whereNumber('project')->name('hasil-pemasangan.archive');
+    Route::delete('hasil-pemasangan/{project}', [InstallationGalleryController::class, 'destroy'])->whereNumber('project')->name('hasil-pemasangan.destroy');
 
     Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
     Route::get('testimonials/create', [TestimonialController::class, 'create'])->name('testimonials.create');

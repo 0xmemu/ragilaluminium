@@ -4,293 +4,390 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CmsGalleryItem;
-use App\Models\Product;
-use App\Models\ProductMedia;
+use App\Models\CmsModelProduct;
+use App\Models\CmsPage;
+use App\Models\InstallationProject;
 use App\Services\ActivityLogService;
-use App\Support\InertiaAdmin;
 use App\Support\InstallationPageSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/**
- * Pengaturan Website -> Hasil Pemasangan Kami.
- * Scope terpisah dari menu core Ulasan (TestimonialController).
- */
 class InstallationGalleryController extends Controller
 {
+    public const STATUS_TABS = [
+        ['key' => 'all', 'label' => 'Semua Hasil Pemasangan'],
+        ['key' => 'active', 'label' => 'Hasil Pemasangan Aktif'],
+        ['key' => 'inactive', 'label' => 'Hasil Pemasangan Nonaktif'],
+        ['key' => 'archived', 'label' => 'Hasil Pemasangan Diarsipkan'],
+    ];
+
     public function index(Request $request): Response
     {
-        // Penggabungan e2e: tingkat 1 = kartu per model produk (mengikuti
-        // storefront /hasil-pemasangan), bukan daftar media datar.
-        $manualPublished = CmsGalleryItem::query()->where('published', true)->count();
-        $manualTotal = CmsGalleryItem::query()->count();
+        $status = (string) $request->query('status', 'all');
+        $q = trim((string) $request->query('q', ''));
+        $sort = (string) $request->query('sort', 'order');
+        $view = (string) $request->query('view', 'list');
 
-        $groups = \App\Support\InstallationGallery::modelCards(0);
+        $tabCounts = [
+            'all' => InstallationProject::count(),
+            'active' => InstallationProject::where('status', 'active')->count(),
+            'inactive' => InstallationProject::where('status', 'inactive')->count(),
+            'archived' => InstallationProject::where('status', 'archived')->count(),
+        ];
+
+        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts) {
+            return [
+                'key' => $tab['key'],
+                'label' => $tab['label'],
+                'count' => $tabCounts[$tab['key']] ?? 0,
+            ];
+        })->values()->all();
+
+        $query = InstallationProject::query()
+            ->with(['modelProduct', 'mainImageAsset', 'mainVideoAsset']);
+
+        if ($status !== 'all' && in_array($status, ['active', 'inactive', 'archived'], true)) {
+            $query->where('status', $status);
+        }
+
+        if ($q !== '') {
+            $query->where(function ($b) use ($q) {
+                $b->where('title', 'like', "%{$q}%")
+                    ->orWhere('category_label', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%");
+            });
+        }
+
+        if ($sort === 'latest') {
+            $query->orderByDesc('created_at')->orderByDesc('id');
+        } else {
+            $query->orderBy('sort_order')->orderByDesc('id');
+        }
+
+        $projects = $query->paginate(15)->withQueryString()->through(function (InstallationProject $p) {
+            return [
+                'id' => $p->id,
+                'title' => $p->title,
+                'slug' => $p->slug,
+                'category_label' => $p->category_label,
+                'description' => $p->description,
+                'status' => $p->status,
+                'sort_order' => $p->sort_order,
+                'main_image_url' => $p->resolvedMainImage(),
+                'main_video_url' => $p->resolvedMainVideo(),
+                'gallery_count' => is_array($p->gallery_images) ? count($p->gallery_images) : 0,
+                'model_product' => $p->modelProduct ? [
+                    'id' => $p->modelProduct->id,
+                    'name' => $p->modelProduct->name,
+                    'category' => $p->modelProduct->product_category,
+                    'model' => $p->modelProduct->product_model,
+                ] : null,
+                'specifications' => $p->specifications ?? [],
+                'features' => $p->features ?? [],
+                'created_at' => $p->created_at?->format('d M Y'),
+                'showUrl' => route('admin.hasil-pemasangan.show', $p->id),
+                'editUrl' => route('admin.hasil-pemasangan.edit', $p->id),
+                'toggleStatusUrl' => route('admin.hasil-pemasangan.toggle-status', $p->id),
+                'archiveUrl' => route('admin.hasil-pemasangan.archive', $p->id),
+                'destroyUrl' => route('admin.hasil-pemasangan.destroy', $p->id),
+            ];
+        });
 
         return Inertia::render('Admin/InstallationGallery/Index', [
-            'title' => 'Hasil Pemasangan Kami',
-            'description' => 'Foto dari import produk (is_installation) + galeri manual, dikelompokkan per model produk seperti storefront.',
+            'title' => 'Hasil Pemasangan',
+            'description' => 'Portofolio proyek instalasi dan dokumentasi pemasangan produk di lokasi pelanggan.',
+            'projects' => $projects,
+            'tabs' => $tabs,
+            'activeStatus' => $status,
+            'viewMode' => in_array($view, ['list', 'grid'], true) ? $view : 'list',
+            'sort' => $sort,
+            'q' => $q,
+            'createUrl' => route('admin.hasil-pemasangan.create'),
+            'reorderUrl' => route('admin.hasil-pemasangan.reorder'),
             'previewUrl' => route('installation.index'),
-            'groups' => array_map(function (array $card) {
-                $card['manage_url'] = route('admin.hasil-pemasangan.model', [
-                    'category' => \App\Support\InstallationGallery::categoryToSlug($card['category']),
-                    'model' => \App\Support\InstallationGallery::modelToSlug($card['model']),
-                ]);
-                $card['category_label'] = \App\Support\CatalogLabels::category($card['category']);
-
-                return $card;
-            }, $groups),
-            'manualGroup' => [
-                'manage_url' => route('admin.hasil-pemasangan.model', [
-                    'category' => 'lainnya',
-                    'model' => 'manual',
-                ]),
-                'published' => $manualPublished,
-                'total' => $manualTotal,
-            ],
         ]);
     }
 
-    /** Tingkat 2: kelola media hasil pemasangan satu model produk. */
-    public function model(Request $request): Response
+    public function create(): Response
     {
-        $category = (string) $request->query('category', '');
-        $model = (string) $request->query('model', '');
-        $categoryCode = \App\Support\InstallationGallery::categoryFromSlug($category);
-        $modelCode = \App\Support\InstallationGallery::modelFromSlug($model);
+        $modelProducts = CmsModelProduct::query()
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'product_category', 'product_model']);
 
-        $isManual = $categoryCode === 'LAINNYA';
-        $products = collect();
-        $mediaRows = collect();
-
-        if (! $isManual) {
-            if ($categoryCode === null || $modelCode === '') {
-                abort(404);
-            }
-
-            $products = Product::query()
-                ->where('status', 'active')
-                ->where('product_category', $categoryCode)
-                ->where('product_model', $modelCode)
-                ->orderBy('name')
-                ->get(['id', 'parent_sku', 'name', 'short_name']);
-
-            $mediaRows = ProductMedia::query()
-                ->installation()
-                ->visible()
-                ->with(['mediaAsset'])
-                ->whereNull('product_id')
-                ->where('position', '>=', 100)
-                ->orderBy('position')
-                ->get()
-                ->map(fn (ProductMedia $m) => [
-                    'id' => $m->id,
-                    'label' => $m->mediaAsset?->label ?: 'Media #'.$m->id,
-                    'position' => $m->position,
-                    'status' => $m->status,
-                    'error_reason' => $m->error_reason,
-                    'media_kind' => $m->mediaAsset?->kind ?? 'image',
-                    'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->stored_url,
-                    'media_url' => $m->mediaAsset?->urlFor($m->mediaAsset?->kind === 'video' ? 'video' : 'pdp') ?? $m->stored_url,
-                    'update_url' => route('admin.media.update', $m),
-                    'archive_url' => route('admin.media.archive', $m),
-                    'redownload_url' => route('admin.media.redownload', $m),
-                    'destroy_url' => $m->status === 'failed'
-                        ? route('admin.media.destroy', $m)
-                        : null,
-                ]);
-        }
-
-        return Inertia::render('Admin/InstallationGallery/Model', [
-            'title' => $isManual
-                ? 'Hasil Pemasangan Manual'
-                : \App\Support\CatalogLabels::modelCardTitle($categoryCode ?? '', $modelCode),
-            'description' => $isManual
-                ? 'Galeri manual hasil pemasangan (di luar media produk import).'
-                : 'Kelola media hasil pemasangan untuk model produk ini.',
-            'categorySlug' => $category,
-            'modelSlug' => $model,
-            'isManual' => $isManual,
+        return Inertia::render('Admin/InstallationGallery/Form', [
+            'title' => 'Tambah Hasil Pemasangan',
+            'project' => null,
+            'modelProducts' => $modelProducts,
+            'submitUrl' => route('admin.hasil-pemasangan.store'),
             'backUrl' => route('admin.hasil-pemasangan.index'),
-            'products' => $products->map(fn ($p) => [
-                'id' => $p->id,
-                'parent_sku' => $p->parent_sku,
-                'name' => $p->name,
-            ])->values()->all(),
-            'mediaRows' => $mediaRows->all(),
-            'mediaStoreUrl' => url('/admin/kelola/produk/{productId}/media'),
-            'pickerUrl' => route('admin.media.picker'),
         ]);
     }
 
-    /** Legacy: query flat manual (dipakai LAINNYA drill-down di masa depan). */
-    protected function manualRows(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $q = trim((string) $request->query('q', ''));
-        $sort = (string) $request->query('sort', 'newest');
-        $published = $request->query('published');
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'category_label' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'in:active,inactive,archived'],
+            'description' => ['nullable', 'string'],
+            'model_product_id' => ['nullable', 'integer', 'exists:cms_model_products,id'],
+            'main_image_url' => ['nullable', 'string', 'max:1024'],
+            'main_image_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'main_video_url' => ['nullable', 'string', 'max:1024'],
+            'main_video_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'gallery_images' => ['nullable', 'array', 'max:3'],
+            'gallery_images.*.url' => ['required', 'string', 'max:1024'],
+            'gallery_images.*.asset_id' => ['nullable', 'integer'],
+            'gallery_images.*.caption' => ['nullable', 'string', 'max:255'],
+            'specifications' => ['nullable', 'array'],
+            'specifications.*.name' => ['nullable', 'string', 'max:100'],
+            'specifications.*.value' => ['nullable', 'string', 'max:255'],
+            'features' => ['nullable', 'array'],
+            'features.*' => ['nullable', 'string', 'max:255'],
+        ]);
 
-        $query = CmsGalleryItem::query();
-
-        if ($q !== '') {
-            $query->where(function ($builder) use ($q) {
-                $builder->where('label', 'like', '%'.$q.'%')
-                    ->orWhere('image_url', 'like', '%'.$q.'%');
-            });
+        if (empty($validated['main_image_url']) && empty($validated['main_image_asset_id'])) {
+            return back()->withErrors(['main_image_url' => 'Foto utama wajib diunggah atau dipilih.'])->withInput();
         }
 
-        if ($published === '1' || $published === '0') {
-            $query->where('published', $published === '1');
-        }
+        $maxSort = (int) InstallationProject::max('sort_order');
+        $slug = InstallationProject::generateUniqueSlug($validated['title']);
 
-        match ($sort) {
-            'oldest' => $query->orderBy('id'),
-            'sort_order' => $query->orderBy('sort_order')->orderByDesc('id'),
-            default => $query->orderByDesc('id'),
-        };
-
-        return $query->paginate(20)->withQueryString();
-
-        $importedQuery = ProductMedia::query()
-            ->installation()
-            ->visible()
-            ->with(['product:id,parent_sku,name,short_name', 'mediaAsset']);
-
-        if ($q !== '') {
-            $importedQuery->where(function ($builder) use ($q) {
-                $builder->where('source_url', 'like', '%'.$q.'%')
-                    ->orWhere('stored_url', 'like', '%'.$q.'%')
-                    ->orWhereHas('product', function ($productQuery) use ($q) {
-                        $productQuery->where('parent_sku', 'like', '%'.$q.'%')
-                            ->orWhere('name', 'like', '%'.$q.'%')
-                            ->orWhere('short_name', 'like', '%'.$q.'%');
-                    });
-            });
-        }
-
-        $imported = $importedQuery
-            ->orderByDesc('id')
-            ->limit(50)
-            ->get()
-            ->map(function (ProductMedia $media, int $index) {
-                $url = $media->urlFor('card') ?? $media->urlFor('thumb') ?? $media->source_url;
-                $product = $media->product;
-                $label = $product
-                    ? trim((string) ($product->short_name ?: $product->name)).' ('.$product->parent_sku.')'
-                    : 'Import media #'.$media->id;
-
-                return [
-                    'id' => 'import-'.$media->id,
-                    'no' => $index + 1,
-                    'label' => $label !== '' ? $label : 'Hasil pemasangan (import)',
-                    'image_url' => $url ?: '',
-                    'published' => true,
-                    'sort_order' => $media->position,
-                    'created_at' => optional($media->created_at)?->toIso8601String(),
-                    'source' => 'import',
-                    'readonly' => true,
-                    'media_asset_id' => $media->media_asset_id,
-                    'attach_url' => $media->media_asset_id
-                        ? route('admin.media.attach', $media->media_asset_id)
-                        : null,
-                    'edit_href' => $product
-                        ? route('admin.products.media.byProduct', $product)
-                        : route('admin.media.library'),
-                    'publish_url' => null,
-                    'unpublish_url' => null,
-                ];
-            })
-            ->filter(fn (array $row) => filled($row['image_url']))
+        $specs = collect($validated['specifications'] ?? [])
+            ->filter(fn ($s) => !empty($s['name']) || !empty($s['value']))
             ->values()
             ->all();
 
-        $manualStart = count($imported);
-        $manualRows = $rows->getCollection()->values()->map(function (CmsGalleryItem $item, int $index) use ($rows, $manualStart) {
-            $no = $manualStart + (($rows->currentPage() - 1) * $rows->perPage()) + $index + 1;
+        $features = collect($validated['features'] ?? [])
+            ->filter(fn ($f) => !empty(trim((string) $f)))
+            ->values()
+            ->all();
 
-            return [
-                'id' => $item->id,
-                'no' => $no,
-                'label' => $item->label ?: '(tanpa label)',
-                'image_url' => $item->image_url,
-                'published' => $item->published,
-                'sort_order' => $item->sort_order,
-                'created_at' => optional($item->created_at)?->toIso8601String(),
-                'source' => 'manual',
-                'readonly' => false,
-                'edit_href' => route('admin.gallery-items.edit', $item),
-                'publish_url' => route('admin.gallery-items.publish', $item),
-                'unpublish_url' => route('admin.gallery-items.unpublish', $item),
-            ];
-        })->all();
-
-        return Inertia::render('Admin/InstallationGallery/Index', [
-            'title' => 'Hasil Pemasangan Kami',
-            'description' => 'Foto dari import produk (is_installation) + galeri manual untuk beranda dan /hasil-pemasangan.',
-            'filters' => [
-                'q' => $q,
-                'sort' => in_array($sort, ['newest', 'oldest', 'sort_order'], true) ? $sort : 'newest',
-                'published' => in_array($published, ['1', '0'], true) ? $published : '',
-            ],
-            'sortOptions' => [
-                ['value' => 'newest', 'label' => 'Terbaru'],
-                ['value' => 'oldest', 'label' => 'Terlama'],
-                ['value' => 'sort_order', 'label' => 'Urutan tampil'],
-            ],
-            'publishedOptions' => [
-                ['value' => '', 'label' => 'Semua status'],
-                ['value' => '1', 'label' => 'Published'],
-                ['value' => '0', 'label' => 'Draft'],
-            ],
-            'createHref' => route('admin.gallery-items.create'),
-            'createLabel' => 'Tambah galeri manual',
-            'pickerUrl' => route('admin.media.picker'),
-            'mediaStoreUrl' => url('/admin/kelola/produk/{productId}/media'),
-            'products' => \App\Models\Product::query()
-                ->where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'parent_sku', 'name', 'short_name', 'product_model', 'design_variant'])
-                ->map(fn ($p) => [
-                    'id' => $p->id,
-                    'parent_sku' => $p->parent_sku,
-                    'name' => $p->name,
-                    'product_model' => $p->product_model,
-                    'design_variant' => $p->design_variant,
-                ])->values()->all(),
-            'pageMeta' => InstallationPageSettings::pageMeta(),
-            'metaUrl' => route('admin.hasil-pemasangan.meta.update'),
-            'metaHint' => 'Meta halaman /hasil-pemasangan',
-            'previewUrl' => route('installation.index'),
-            'importedRows' => $imported,
-            'rows' => $manualRows,
-            'pagination' => InertiaAdmin::pagination($rows),
+        $project = InstallationProject::create([
+            'title' => $validated['title'],
+            'slug' => $slug,
+            'category_label' => $validated['category_label'] ?? null,
+            'status' => $validated['status'],
+            'sort_order' => $maxSort + 1,
+            'description' => $validated['description'] ?? null,
+            'model_product_id' => $validated['model_product_id'] ?? null,
+            'main_image_url' => $validated['main_image_url'] ?? null,
+            'main_image_asset_id' => $validated['main_image_asset_id'] ?? null,
+            'main_video_url' => $validated['main_video_url'] ?? null,
+            'main_video_asset_id' => $validated['main_video_asset_id'] ?? null,
+            'gallery_images' => $validated['gallery_images'] ?? [],
+            'specifications' => $specs,
+            'features' => $features,
         ]);
+
+        ActivityLogService::record('installation_project.created', 'installation_project', $project->id, ['title' => $project->title], $request->user()?->id);
+
+        return redirect()->route('admin.hasil-pemasangan.index')
+            ->with('success', "Proyek pemasangan \"{$project->title}\" berhasil dibuat.");
+    }
+
+    public function show(InstallationProject $project): Response
+    {
+        $project->load(['modelProduct', 'mainImageAsset', 'mainVideoAsset']);
+
+        return Inertia::render('Admin/InstallationGallery/Show', [
+            'title' => $project->title,
+            'project' => [
+                'id' => $project->id,
+                'title' => $project->title,
+                'slug' => $project->slug,
+                'category_label' => $project->category_label,
+                'description' => $project->description,
+                'status' => $project->status,
+                'sort_order' => $project->sort_order,
+                'main_image_url' => $project->resolvedMainImage('pdp'),
+                'main_video_url' => $project->resolvedMainVideo(),
+                'gallery_images' => $project->gallery_images ?? [],
+                'model_product' => $project->modelProduct ? [
+                    'id' => $project->modelProduct->id,
+                    'name' => $project->modelProduct->name,
+                    'category' => $project->modelProduct->product_category,
+                    'model' => $project->modelProduct->product_model,
+                ] : null,
+                'specifications' => $project->specifications ?? [],
+                'features' => $project->features ?? [],
+                'created_at' => $project->created_at?->format('d M Y H:i'),
+                'updated_at' => $project->updated_at?->format('d M Y H:i'),
+                'editUrl' => route('admin.hasil-pemasangan.edit', $project->id),
+                'toggleStatusUrl' => route('admin.hasil-pemasangan.toggle-status', $project->id),
+                'archiveUrl' => route('admin.hasil-pemasangan.archive', $project->id),
+                'destroyUrl' => route('admin.hasil-pemasangan.destroy', $project->id),
+            ],
+            'backUrl' => route('admin.hasil-pemasangan.index'),
+        ]);
+    }
+
+    public function edit(InstallationProject $project): Response
+    {
+        $modelProducts = CmsModelProduct::query()
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'product_category', 'product_model']);
+
+        return Inertia::render('Admin/InstallationGallery/Form', [
+            'title' => "Edit {$project->title}",
+            'project' => [
+                'id' => $project->id,
+                'title' => $project->title,
+                'slug' => $project->slug,
+                'category_label' => $project->category_label,
+                'status' => $project->status,
+                'description' => $project->description,
+                'model_product_id' => $project->model_product_id,
+                'main_image_url' => $project->resolvedMainImage('pdp'),
+                'main_image_asset_id' => $project->main_image_asset_id,
+                'main_video_url' => $project->resolvedMainVideo(),
+                'main_video_asset_id' => $project->main_video_asset_id,
+                'gallery_images' => $project->gallery_images ?? [],
+                'specifications' => $project->specifications ?? [],
+                'features' => $project->features ?? [],
+            ],
+            'modelProducts' => $modelProducts,
+            'submitUrl' => route('admin.hasil-pemasangan.update', $project->id),
+            'backUrl' => route('admin.hasil-pemasangan.index'),
+        ]);
+    }
+
+    public function update(Request $request, InstallationProject $project): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'category_label' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'in:active,inactive,archived'],
+            'description' => ['nullable', 'string'],
+            'model_product_id' => ['nullable', 'integer', 'exists:cms_model_products,id'],
+            'main_image_url' => ['nullable', 'string', 'max:1024'],
+            'main_image_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'main_video_url' => ['nullable', 'string', 'max:1024'],
+            'main_video_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'gallery_images' => ['nullable', 'array', 'max:3'],
+            'gallery_images.*.url' => ['required', 'string', 'max:1024'],
+            'gallery_images.*.asset_id' => ['nullable', 'integer'],
+            'gallery_images.*.caption' => ['nullable', 'string', 'max:255'],
+            'specifications' => ['nullable', 'array'],
+            'specifications.*.name' => ['nullable', 'string', 'max:100'],
+            'specifications.*.value' => ['nullable', 'string', 'max:255'],
+            'features' => ['nullable', 'array'],
+            'features.*' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (empty($validated['main_image_url']) && empty($validated['main_image_asset_id'])) {
+            return back()->withErrors(['main_image_url' => 'Foto utama wajib diunggah atau dipilih.'])->withInput();
+        }
+
+        $specs = collect($validated['specifications'] ?? [])
+            ->filter(fn ($s) => !empty($s['name']) || !empty($s['value']))
+            ->values()
+            ->all();
+
+        $features = collect($validated['features'] ?? [])
+            ->filter(fn ($f) => !empty(trim((string) $f)))
+            ->values()
+            ->all();
+
+        $project->update([
+            'title' => $validated['title'],
+            'category_label' => $validated['category_label'] ?? null,
+            'status' => $validated['status'],
+            'description' => $validated['description'] ?? null,
+            'model_product_id' => $validated['model_product_id'] ?? null,
+            'main_image_url' => $validated['main_image_url'] ?? null,
+            'main_image_asset_id' => $validated['main_image_asset_id'] ?? null,
+            'main_video_url' => $validated['main_video_url'] ?? null,
+            'main_video_asset_id' => $validated['main_video_asset_id'] ?? null,
+            'gallery_images' => $validated['gallery_images'] ?? [],
+            'specifications' => $specs,
+            'features' => $features,
+        ]);
+
+        ActivityLogService::record('installation_project.updated', 'installation_project', $project->id, ['title' => $project->title], $request->user()?->id);
+
+        return redirect()->route('admin.hasil-pemasangan.index')
+            ->with('success', "Proyek pemasangan \"{$project->title}\" berhasil diperbarui.");
+    }
+
+    public function toggleStatus(Request $request, InstallationProject $project): RedirectResponse
+    {
+        $newStatus = $project->status === 'active' ? 'inactive' : 'active';
+        $project->update(['status' => $newStatus]);
+
+        ActivityLogService::record('installation_project.status_toggled', 'installation_project', $project->id, ['status' => $newStatus], $request->user()?->id);
+
+        $label = $newStatus === 'active' ? 'diaktifkan' : 'dinonaktifkan';
+        return back()->with('success', "Proyek \"{$project->title}\" berhasil {$label}.");
+    }
+
+    public function archive(Request $request, InstallationProject $project): RedirectResponse
+    {
+        $project->update(['status' => 'archived']);
+
+        ActivityLogService::record('installation_project.archived', 'installation_project', $project->id, ['status' => 'archived'], $request->user()?->id);
+
+        return back()->with('success', "Proyek \"{$project->title}\" berhasil diarsipkan.");
+    }
+
+    public function destroy(Request $request, InstallationProject $project): RedirectResponse
+    {
+        $title = $project->title;
+        $project->delete();
+
+        ActivityLogService::record('installation_project.deleted', 'installation_project', $project->id, ['title' => $title], $request->user()?->id);
+
+        return redirect()->route('admin.hasil-pemasangan.index')
+            ->with('success', "Proyek \"{$title}\" berhasil dihapus.");
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rows' => ['required', 'array', 'min:1'],
+            'rows.*.id' => ['required', 'integer', 'exists:installation_projects,id'],
+            'rows.*.sort_order' => ['required', 'integer', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['rows'] as $row) {
+                InstallationProject::where('id', $row['id'])->update([
+                    'sort_order' => $row['sort_order'],
+                ]);
+            }
+        });
+
+        ActivityLogService::record('installation_project.reordered', 'installation_project', (int) $validated['rows'][0]['id'], ['count' => count($validated['rows'])], $request->user()?->id);
+
+        return back()->with('success', 'Urutan proyek hasil pemasangan berhasil disimpan.');
+    }
+
+    public function model(Request $request): RedirectResponse
+    {
+        return redirect()->route('admin.hasil-pemasangan.index');
     }
 
     public function updateMeta(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'heading' => ['required', 'string', 'max:120'],
-            'subtitle' => ['nullable', 'string', 'max:320'],
-            'published' => ['boolean'],
+            'heading' => ['nullable', 'string', 'max:255'],
+            'subtitle' => ['nullable', 'string', 'max:1000'],
+            'published' => ['required', 'boolean'],
         ]);
-        $validated['published'] = $validated['published'] ?? false;
 
-        InstallationPageSettings::updatePageMeta($validated, $request->user()?->id);
+        InstallationPageSettings::updatePageMeta($validated);
 
-        ActivityLogService::record(
-            'cms.hasil_pemasangan_meta_updated',
-            'cms_page',
-            InstallationPageSettings::pageId(),
-            ['heading' => $validated['heading']],
-            $request->user()?->id,
-        );
+        ActivityLogService::record('installation_gallery.meta_updated', 'cms_page', 1, ['title' => $validated['title']], $request->user()?->id);
 
-        return redirect()
-            ->route('admin.hasil-pemasangan.index')
-            ->with('success', 'Meta halaman Hasil Pemasangan disimpan.');
+        return redirect()->route('admin.hasil-pemasangan.index')
+            ->with('success', 'Pengaturan halaman hasil pemasangan diperbarui.');
     }
 }
