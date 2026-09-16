@@ -106,14 +106,24 @@ class InstallationProjectAdminTest extends TestCase
             'status' => 'downloaded',
         ]);
 
-        // Grup mengikuti visibility media pertamanya (visible); tab hidden
-        // tidak menampilkan grup ini.
+        // Key tab mengikuti STATUS_TABS: Nonaktif = "inactive" (bukan "hidden").
+        // Grup aktif bila minimal satu medianya visible; media hidden ada di
+        // grup yang sama dengan media visible, jadi tab inactive tetap 0 grup.
         $this->actingAs($admin)
-            ->get(route('admin.hasil-pemasangan.index', ['status' => 'hidden']))
+            ->get(route('admin.hasil-pemasangan.index', ['status' => 'inactive']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Index')
                 ->has('projects.data', 0)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.hasil-pemasangan.index', ['status' => 'active']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/InstallationGallery/Index')
+                ->has('projects.data', 1)
+                ->where('projects.data.0.media_count', 2)
             );
 
         // Pencarian berdasarkan nama model

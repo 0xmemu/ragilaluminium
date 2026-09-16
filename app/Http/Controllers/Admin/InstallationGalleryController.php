@@ -120,7 +120,13 @@ class InstallationGalleryController extends Controller
         })->values()->all();
 
         // Map tab key -> nilai visibility sebenarnya (tab "active" = visible).
-        $statusMap = ['all' => 'all', 'active' => 'visible', 'inactive' => 'hidden', 'archived' => 'archived'];
+        $statusMap = [
+            'all' => 'all',
+            'active' => 'visible',
+            'inactive' => 'hidden',
+            'archived' => 'archived',
+            // Guard: tab lama/other key fallback aman
+        ];
         $visibilityFilter = $statusMap[$status] ?? 'all';
 
         $rows = $groups
