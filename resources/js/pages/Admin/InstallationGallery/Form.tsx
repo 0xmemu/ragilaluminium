@@ -10,6 +10,7 @@ import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { cn } from "@/lib/utils"
 
 interface ProductOption {
   id: number
@@ -149,31 +150,72 @@ export default function InstallationGalleryForm({
             <tbody className="divide-y divide-border">
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Model produk <span className="text-destructive">*</span>
+                  Penempatan <span className="text-destructive">*</span>
                 </th>
                 <td className="px-4 py-2.5">
-                  <SearchSelect
-                    id="model_product_id"
-                    options={[...modelOptions, STANDALONE_OPTION]}
-                    value={form.data.model_product_id}
-                    onValueChange={(value) => {
-                      if (value === STANDALONE_OPTION.value) {
-                        form.setData({ ...form.data, model_product_id: value, product_id: "" })
-                        return
-                      }
-                      const mod = modelProducts.find((m) => String(m.id) === value)
-                      form.setData({ ...form.data, model_product_id: value, product_id: "" })
-                      void mod
-                    }}
-                    placeholder="Pilih model"
-                    searchPlaceholder="Cari model"
-                    emptyMessage="Model tidak ditemukan."
-                    error={form.errors.model_product_id}
-                    className="w-72"
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Pilih opsi terakhir untuk portofolio tanpa model produk (tampil di grup Lainnya).
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={!isStandalone ? "default" : "secondary"}
+                      size="sm"
+                      className={cn("h-8 text-xs", isStandalone && "opacity-60")}
+                      onClick={() => {
+                        if (isStandalone) {
+                          const first = modelOptions[0]
+                          form.setData({
+                            ...form.data,
+                            model_product_id: first ? first.value : "",
+                            product_id: "",
+                          })
+                        }
+                      }}
+                      disabled={modelOptions.length === 0}
+                    >
+                      <Icon name="layers" className="size-3.5" aria-hidden="true" />
+                      Gunakan model produk
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={isStandalone ? "default" : "secondary"}
+                      size="sm"
+                      className={cn("h-8 text-xs", !isStandalone && "opacity-60")}
+                      onClick={() => {
+                        form.setData({
+                          ...form.data,
+                          model_product_id: STANDALONE_OPTION.value,
+                          product_id: "",
+                        })
+                      }}
+                    >
+                      <Icon name="cube" className="size-3.5" aria-hidden="true" />
+                      Buat grup baru
+                    </Button>
+                  </div>
+
+                  {!isStandalone ? (
+                    <div className="mt-2">
+                      <SearchSelect
+                        id="model_product_id"
+                        options={modelOptions}
+                        value={form.data.model_product_id}
+                        onValueChange={(value) => {
+                          form.setData({ ...form.data, model_product_id: value, product_id: "" })
+                        }}
+                        placeholder="Pilih model"
+                        searchPlaceholder="Cari model"
+                        emptyMessage="Model tidak ditemukan."
+                        error={form.errors.model_product_id}
+                        className="w-72"
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-2 rounded-md border border-border bg-surface-muted px-3 py-2">
+                      <p className="text-[13px] font-medium text-foreground">Portofolio mandiri</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Grup independen di halaman /hasil-pemasangan, selevel kartu model (grup Lainnya).
+                      </p>
+                    </div>
+                  )}
                 </td>
               </tr>
               {!isStandalone ? (
