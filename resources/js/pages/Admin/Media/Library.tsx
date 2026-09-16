@@ -211,11 +211,11 @@ function FolderTreeList({
                   setDragIndex(null)
                   setDragTarget(null)
                 }}
-                className="flex size-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground/70 transition hover:text-foreground active:cursor-grabbing"
+                className="flex size-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground transition hover:bg-card-hover hover:text-foreground active:cursor-grabbing"
                 title="Seret untuk mengurutkan folder"
                 aria-label={`Urutkan folder ${node.name}`}
               >
-                <Icon name="dots-six-vertical" className="size-3" aria-hidden="true" />
+                <Icon name="dots-six-vertical" className="size-3.5" aria-hidden="true" />
               </span>
 
               {hasChildren ? (
