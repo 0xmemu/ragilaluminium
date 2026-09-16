@@ -73,14 +73,29 @@ class InstallationGalleryController extends Controller
         $perPage = 24;
         $paged = $rows->slice(($page - 1) * $perPage, $perPage)->values();
 
+        // Bentuk pagination laravel standar agar kompatibel dengan tipe
+        // Pagination<MediaRow> + komponen <Pagination> di frontend.
+        $lastPage = max(1, (int) ceil($rows->count() / $perPage));
+        $links = [];
+        for ($i = 1; $i <= $lastPage; $i++) {
+            $links[] = [
+                'url' => $i === 1
+                    ? route('admin.hasil-pemasangan.index')
+                    : route('admin.hasil-pemasangan.index', ['page' => $i]),
+                'label' => (string) $i,
+                'active' => $i === $page,
+            ];
+        }
+
         $projects = [
             'data' => $paged->all(),
             'current_page' => $page,
-            'last_page' => max(1, (int) ceil($rows->count() / $perPage)),
+            'last_page' => $lastPage,
             'per_page' => $perPage,
             'total' => $rows->count(),
             'from' => $rows->count() ? (($page - 1) * $perPage) + 1 : null,
             'to' => $rows->count() ? min($page * $perPage, $rows->count()) : null,
+            'links' => $links,
         ];
 
         return Inertia::render('Admin/InstallationGallery/Index', [
