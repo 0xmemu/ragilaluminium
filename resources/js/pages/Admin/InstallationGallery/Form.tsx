@@ -2,25 +2,25 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { SearchSelect } from "@/components/admin/ui/search-select"
+import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 
 interface ProductOption {
-  id: number
-  name: string
-  parent_sku: string
+  value: string
+  label: string
 }
 
 interface ModelProductOption {
-  id: number
-  name: string
-  category?: string | null
-  model?: string | null
+  value: string
+  label: string
   products?: ProductOption[]
 }
 
@@ -56,20 +56,19 @@ export default function InstallationGalleryForm({
   submitUrl,
   backUrl,
 }: FormProps) {
-  const isEdit = Boolean(project?.id)
+  const editing = Boolean(project?.id)
 
-  // Mode penempatan: "model" (default) atau "standalone"
+  // Mode penempatan: "model" (di model produk katalog) atau "standalone" (mandiri).
   const [placementMode, setPlacementMode] = React.useState<"model" | "standalone">(
     project ? (project.model_product_id ? "model" : "standalone") : "model",
   )
-
-  // Apakah ingin ditautkan ke produk spesifik di dalam model: "product" atau "general"
+  // Scope di dalam model: "product" (terikat SKU) atau "general" (umum model).
   const [modelScope, setModelScope] = React.useState<"product" | "general">(
     project?.product_id ? "product" : "general",
   )
 
   const form = useForm({
-    model_product_id: project?.model_product_id ? String(project.model_product_id) : (modelProducts[0]?.id ? String(modelProducts[0].id) : ""),
+    model_product_id: project?.model_product_id ? String(project.model_product_id) : "",
     product_id: project?.product_id ? String(project.product_id) : "",
     title: project?.title ?? "",
     category_label: project?.category_label ?? "",
@@ -83,908 +82,548 @@ export default function InstallationGalleryForm({
     specifications:
       project?.specifications && project.specifications.length > 0
         ? project.specifications
-        : [
-            { name: "Tipe Kaca", value: "" },
-            { name: "Framer", value: "" },
-            { name: "Warna", value: "" },
-            { name: "Lokasi", value: "" },
-          ],
+        : [{ name: "", value: "" }],
   })
 
-  // State MediaPicker
-  const [pickerMode, setPickerMode] = React.useState<"main_image" | "main_video" | "gallery" | null>(null)
+  const [picker, setPicker] = React.useState<"main" | "video" | "gallery" | null>(null)
 
-  // Search states
-  const [modelQuery, setModelQuery] = React.useState("")
-  const [productQuery, setProductQuery] = React.useState("")
+  const selectedModel = React.useMemo(
+    () => (placementMode === "model" ? modelProducts.find((m) => m.value === form.data.model_product_id) : undefined),
+    [modelProducts, form.data.model_product_id, placementMode],
+  )
 
-  const filteredModelProducts = React.useMemo(() => {
-    if (!modelQuery.trim()) return modelProducts
-    const lower = modelQuery.toLowerCase()
-    return modelProducts.filter(
-      (m) =>
-        m.name.toLowerCase().includes(lower) ||
-        (m.category && m.category.toLowerCase().includes(lower)) ||
-        (m.model && m.model.toLowerCase().includes(lower)),
-    )
-  }, [modelProducts, modelQuery])
+  const productOptions = React.useMemo<ProductOption[]>(
+    () =>
+      (selectedModel?.products ?? []).map((p) => ({
+        value: String(p.id),
+        label: `[${p.parent_sku}] ${p.name}`,
+      })),
+    [selectedModel],
+  )
 
-  const selectedModel = React.useMemo(() => {
-    if (placementMode === "standalone") return null
-    return modelProducts.find((m) => String(m.id) === form.data.model_product_id)
-  }, [modelProducts, form.data.model_product_id, placementMode])
+  const selectedProduct = React.useMemo(
+    () =>
+      modelScope === "product"
+        ? productOptions.find((p) => p.value === form.data.product_id)
+        : undefined,
+    [productOptions, form.data.product_id, modelScope],
+  )
 
-  const availableProductsInModel = React.useMemo(() => {
-    return selectedModel?.products ?? []
-  }, [selectedModel])
-
-  const filteredProducts = React.useMemo(() => {
-    if (!productQuery.trim()) return availableProductsInModel
-    const lower = productQuery.toLowerCase()
-    return availableProductsInModel.filter(
-      (p) =>
-        p.name.toLowerCase().includes(lower) ||
-        p.parent_sku.toLowerCase().includes(lower),
-    )
-  }, [availableProductsInModel, productQuery])
-
-  const selectedProduct = React.useMemo(() => {
-    if (placementMode === "standalone" || modelScope === "general") return null
-    return availableProductsInModel.find((p) => String(p.id) === form.data.product_id)
-  }, [availableProductsInModel, form.data.product_id, placementMode, modelScope])
-
-  // Flag aktif untuk skenario
   const isProductLinked = placementMode === "model" && modelScope === "product" && Boolean(selectedProduct)
   const isModelGeneral = placementMode === "model" && modelScope === "general"
   const isStandalone = placementMode === "standalone"
 
-  function handleMainImagePick(picked: PickedMedia[]) {
-    const first = picked[0]
-    if (first) {
-      form.setData({
-        ...form.data,
-        main_image_url: first.thumbUrl || first.videoUrl || "",
-        main_image_asset_id: first.assetId,
-      })
-    }
-    setPickerMode(null)
-  }
+  const [galleryMedia, setGalleryMedia] = React.useState<PickedMedia[]>(
+    (project?.gallery_images ?? []).map((g, i) => ({
+      assetId: g.asset_id ?? -1 - i,
+      label: g.caption ?? "",
+      thumbUrl: g.url,
+      kind: "image" as const,
+      videoUrl: null,
+    })),
+  )
 
-  function handleMainVideoPick(picked: PickedMedia[]) {
-    const first = picked[0]
-    if (first) {
-      form.setData({
-        ...form.data,
-        main_video_url: first.videoUrl || first.thumbUrl || "",
-        main_video_asset_id: first.assetId,
-      })
-    }
-    setPickerMode(null)
-  }
-
-  function handleGalleryPick(picked: PickedMedia[]) {
-    const current = form.data.gallery_images ?? []
-    const availableSlots = 3 - current.length
-    if (availableSlots <= 0) {
-      setPickerMode(null)
-      return
-    }
-
-    const toAdd = picked.slice(0, availableSlots).map((p) => ({
-      url: p.thumbUrl || "",
-      asset_id: p.assetId,
-      caption: p.label || "",
-    }))
-
-    form.setData("gallery_images", [...current, ...toAdd])
-    setPickerMode(null)
-  }
-
-  function removeGalleryImage(index: number) {
+  React.useEffect(() => {
     form.setData(
       "gallery_images",
-      form.data.gallery_images.filter((_, i) => i !== index),
+      galleryMedia.map((g) => ({ url: g.thumbUrl, asset_id: g.assetId > 0 ? g.assetId : null, caption: g.label })),
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [galleryMedia])
+
+  function applyMain(picked: PickedMedia | null) {
+    form.setData({
+      ...form.data,
+      main_image_url: picked?.thumbUrl ?? "",
+      main_image_asset_id: picked?.assetId ?? null,
+    })
   }
 
-  function updateSpecification(index: number, key: "name" | "value", value: string) {
-    const next = [...form.data.specifications]
-    next[index] = { ...next[index], [key]: value }
+  function moveGallery(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= galleryMedia.length) return
+    const next = [...galleryMedia]
+    const [moved] = next.splice(index, 1)
+    next.splice(target, 0, moved)
+    setGalleryMedia(next)
+  }
+
+  function updateSpec(index: number, key: "name" | "value", value: string) {
+    const next = form.data.specifications.map((row, i) => (i === index ? { ...row, [key]: value } : row))
     form.setData("specifications", next)
   }
 
-  function addSpecificationRow() {
-    form.setData("specifications", [...form.data.specifications, { name: "", value: "" }])
-  }
-
-  function removeSpecificationRow(index: number) {
-    form.setData(
-      "specifications",
-      form.data.specifications.filter((_, i) => i !== index),
-    )
-  }
-
-  function handleSubmit(event: React.FormEvent, forceActive = false) {
+  function submit(event: React.FormEvent) {
     event.preventDefault()
-    if (forceActive) {
-      form.setData("status", "active")
-    }
-
-    if (isEdit) {
-      form.put(submitUrl, { preserveScroll: true })
-    } else {
-      form.post(submitUrl, { preserveScroll: true })
-    }
+    if (editing) form.put(submitUrl)
+    else form.post(submitUrl)
   }
+
+  const mainPreview = form.data.main_image_url || ""
 
   return (
     <AdminLayout
-      title={title}
-      description="Tambah dan kelola hasil pemasangan yang selaras dengan halaman storefront (level model, produk katalog, atau portofolio mandiri)."
+      backUrl={backUrl}
+      title={editing ? "Edit hasil pemasangan" : "Tambah hasil pemasangan"}
+      description="Kelola dokumentasi hasil pemasangan sesuai hierarki storefront: model produk, produk katalog, atau portofolio mandiri."
       actions={
         <div className="flex items-center gap-2">
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link href={backUrl}>Batal</Link>
           </Button>
-          {!isEdit && (
-            <Button
-              type="button"
-              variant="default"
-              disabled={form.processing}
-              onClick={(e) => handleSubmit(e, true)}
-            >
-              <Icon name="check" className="size-4" aria-hidden="true" />
-              Simpan &amp; Terbitkan
-            </Button>
-          )}
-          <Button
-            type="submit"
-            form="installation-project-form"
-            disabled={form.processing}
-          >
-            {form.processing
-              ? "Menyimpan..."
-              : isProductLinked
-                ? "Simpan Media Produk"
-                : isEdit
-                  ? "Simpan Perubahan"
-                  : "Simpan"}
+          <Button type="submit" form="installation-project-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : editing ? "Simpan perubahan" : "Tambah hasil pemasangan"}
           </Button>
         </div>
       }
     >
-      <Head title={`${title} | Admin`} />
-
-      <form
-        id="installation-project-form"
-        onSubmit={(e) => handleSubmit(e, false)}
-        className="mx-auto max-w-4xl space-y-8"
-      >
+      <Head title={`${editing ? "Edit" : "Tambah"} Hasil Pemasangan | Admin`} />
+      <form id="installation-project-form" className="w-full space-y-5" onSubmit={submit}>
         <FormErrorSummary errors={form.errors} />
 
-        {/* 1. TARGET PENEMPATAN HASIL PEMASANGAN */}
-        <section className="rounded-xl border border-primary/30 bg-card p-5 shadow-xs sm:p-6 ring-1 ring-primary/20">
-          <div className="mb-5 border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
-                1
+        {/* Penempatan: model produk vs portofolio mandiri */}
+        <SectionCard
+          title="Penempatan hasil pemasangan"
+          description="Tentukan di mana media ini tampil di storefront."
+          icon="layers"
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPlacementMode("model")
+                if (!form.data.model_product_id && modelProducts[0]) {
+                  form.setData("model_product_id", modelProducts[0].value)
+                }
+              }}
+              className={cn(
+                "flex items-start gap-2.5 rounded-md border p-3 text-left transition",
+                placementMode === "model"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-surface-muted",
+              )}
+            >
+              <span className={cn(
+                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+                placementMode === "model" ? "border-primary bg-primary" : "border-input",
+              )}>
+                {placementMode === "model" ? <span className="size-1.5 rounded-full bg-primary-foreground" /> : null}
               </span>
-              <h3 className="text-base font-semibold text-foreground">Target Penempatan Hasil Pemasangan</h3>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Tentukan apakah hasil pemasangan ini ditujukan untuk <strong>Model Produk Katalog</strong> (tampil di halaman model storefront) atau sebagai <strong>Portofolio Mandiri</strong>.
-            </p>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium text-foreground">
+                  Di halaman model produk
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Tampil di /hasil-pemasangan/[kategori]/[model] bersama produk model itu.
+                </span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPlacementMode("standalone")
+                form.setData({ ...form.data, model_product_id: "", product_id: "" })
+              }}
+              className={cn(
+                "flex items-start gap-2.5 rounded-md border p-3 text-left transition",
+                placementMode === "standalone"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-surface-muted",
+              )}
+            >
+              <span className={cn(
+                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+                placementMode === "standalone" ? "border-primary bg-primary" : "border-input",
+              )}>
+                {placementMode === "standalone" ? <span className="size-1.5 rounded-full bg-primary-foreground" /> : null}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium text-foreground">
+                  Portofolio mandiri
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Tampil di halaman utama /hasil-pemasangan selevel kartu model (grup Lainnya).
+                </span>
+              </span>
+            </button>
           </div>
 
-          <div className="space-y-5">
-            {/* Pilihan Mode Penempatan: Model Produk vs Portofolio Mandiri */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setPlacementMode("model")
-                  if (!form.data.model_product_id && modelProducts[0]) {
-                    form.setData({
-                      ...form.data,
-                      model_product_id: String(modelProducts[0].id),
-                      category_label: modelProducts[0].category === "BOVEN" ? "Boven & Ventilasi" : "Jendela & Kaca",
-                    })
-                  }
-                }}
-                className={cn(
-                  "flex flex-col items-start rounded-xl border p-4 text-left transition",
-                  placementMode === "model"
-                    ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/30 shadow-xs"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                <div className="flex items-center gap-2 font-semibold text-xs sm:text-sm text-foreground">
-                  <Icon name="layers" className="size-4 text-primary" />
-                  Di Model Produk Katalog
+          {placementMode === "model" ? (
+            <div className="mt-4 space-y-4 rounded-md border border-border bg-surface/50 p-4">
+              {/* Pilih model produk */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="model_product_id" className="text-[13px] font-medium text-foreground">
+                    Model produk <span className="text-destructive">*</span>
+                  </label>
+                  <SearchSelect
+                    id="model_product_id"
+                    options={modelProducts.map((m) => ({ value: m.value, label: m.label }))}
+                    value={form.data.model_product_id}
+                    onValueChange={(value) => {
+                      const mod = modelProducts.find((m) => m.value === value)
+                      form.setData({
+                        ...form.data,
+                        model_product_id: value,
+                        product_id: "",
+                        title: mod ? mod.label.replace(/\s*\([^)]*\)\s*$/, "") : "",
+                      })
+                    }}
+                    placeholder="Pilih model"
+                    searchPlaceholder="Cari model"
+                    emptyMessage="Model tidak ditemukan."
+                    error={form.errors.model_product_id}
+                    className="mt-1 w-72"
+                  />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Foto akan tampil di halaman model storefront (misal: <code>/hasil-pemasangan/jendela/kaca-mati</code>).
-                </p>
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setPlacementMode("standalone")
-                  setModelScope("general")
-                  form.setData({
-                    ...form.data,
-                    model_product_id: "",
-                    product_id: "",
-                    category_label: "Proyek Khusus",
-                  })
-                }}
-                className={cn(
-                  "flex flex-col items-start rounded-xl border p-4 text-left transition",
-                  placementMode === "standalone"
-                    ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/30 shadow-xs"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                <div className="flex items-center gap-2 font-semibold text-xs sm:text-sm text-foreground">
-                  <Icon name="cube" className="size-4 text-primary" />
-                  Portofolio Mandiri (Tanpa Model Produk)
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Tampil sebagai kartu tersendiri di halaman utama <code>/hasil-pemasangan</code> selevel dengan kartu model produk.
-                </p>
-              </button>
-            </div>
-
-            {/* JIKA MEMILIH MODEL PRODUK */}
-            {placementMode === "model" && (
-              <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-4">
-                {/* Pilih Model */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="text-[13px] font-medium text-foreground">
-                      Cari Model Produk
-                    </label>
-                    <div className="relative mt-1">
-                      <Input
-                        type="search"
-                        value={modelQuery}
-                        onChange={(e) => setModelQuery(e.target.value)}
-                        placeholder="Ketik nama model (mis. Kaca Mati, Swing)..."
-                        className="pl-8 pr-7 text-xs"
-                      />
-                      <Icon
-                        name="search"
-                        className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      {modelQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setModelQuery("")}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          <Icon name="x" className="size-3" />
-                        </button>
+              {/* Scope: terikat SKU atau umum */}
+              {selectedModel ? (
+                <div className="border-t border-border pt-3">
+                  <label className="text-[13px] font-medium text-foreground">
+                    Tautan produk katalog
+                  </label>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Tautkan ke satu SKU agar foto juga tampil di halaman produk itu, atau biarkan umum untuk dokumentasi model.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setModelScope("general")}
+                      className={cn(
+                        "rounded-md border px-3 py-1.5 text-xs font-medium transition",
+                        modelScope === "general"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-surface-muted",
                       )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="model_product_id" className="text-[13px] font-medium text-foreground">
-                      Pilih Model Produk Katalog ({filteredModelProducts.length} model)
-                    </label>
-                    <select
-                      id="model_product_id"
-                      value={form.data.model_product_id}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        const mod = modelProducts.find((m) => String(m.id) === val)
-                        form.setData({
-                          ...form.data,
-                          model_product_id: val,
-                          product_id: "", // reset produk spesifik saat ganti model
-                          title: mod ? mod.name : "",
-                          category_label: mod
-                            ? mod.category === "BOVEN"
-                              ? "Boven & Ventilasi"
-                              : "Jendela & Kaca"
-                            : "Jendela & Kaca",
-                        })
-                      }}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
-                      {filteredModelProducts.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} {m.category ? `(${m.category})` : ""}
-                        </option>
-                      ))}
-                    </select>
+                      Umum (tanpa SKU)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModelScope("product")}
+                      disabled={productOptions.length === 0}
+                      className={cn(
+                        "rounded-md border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40",
+                        modelScope === "product"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-surface-muted",
+                      )}
+                    >
+                      Produk spesifik ({productOptions.length})
+                    </button>
                   </div>
-                </div>
 
-                {/* Sub-pilihan: Tautkan ke Produk Spesifik vs Umum */}
-                {selectedModel && (
-                  <div className="border-t border-border pt-3 space-y-3">
-                    <label className="text-xs font-semibold text-foreground">
-                      Apakah ingin ditautkan ke Produk / SKU tertentu di model ini?
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setModelScope("product")}
-                        className={cn(
-                          "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
-                          modelScope === "product"
-                            ? "border-primary bg-primary text-primary-foreground font-semibold shadow-xs"
-                            : "border-border bg-background text-muted-foreground hover:bg-muted",
-                        )}
-                      >
-                        ✓ Ya, tautkan ke Produk/SKU spesifik ({availableProductsInModel.length} produk tersedia)
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModelScope("general")
-                          form.setData({
-                            ...form.data,
-                            product_id: "",
-                            title: selectedModel.name,
-                          })
-                        }}
-                        className={cn(
-                          "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
-                          modelScope === "general"
-                            ? "border-primary bg-primary text-primary-foreground font-semibold shadow-xs"
-                            : "border-border bg-background text-muted-foreground hover:bg-muted",
-                        )}
-                      >
-                        Tidak, buat dokumentasi umum model (tanpa SKU)
-                      </button>
+                  {modelScope === "product" ? (
+                    <div className="mt-3">
+                      <SearchSelect
+                        id="product_id"
+                        options={productOptions}
+                        value={form.data.product_id}
+                        onValueChange={(value) => form.setData("product_id", value)}
+                        placeholder="Pilih produk / SKU"
+                        searchPlaceholder="Cari SKU atau nama produk"
+                        emptyMessage="Produk tidak ditemukan."
+                        error={form.errors.product_id}
+                        className="w-80"
+                      />
                     </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </SectionCard>
 
-                    {/* Jika memilih tautkan ke produk spesifik */}
-                    {modelScope === "product" && (
-                      <div className="grid gap-3 sm:grid-cols-2 pt-2">
-                        <div>
-                          <Input
-                            type="search"
-                            value={productQuery}
-                            onChange={(e) => setProductQuery(e.target.value)}
-                            placeholder="Cari SKU atau nama produk..."
-                            className="text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <select
-                            id="product_id"
-                            value={form.data.product_id}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              const prod = availableProductsInModel.find((p) => String(p.id) === val)
-                              if (prod) {
-                                form.setData({
-                                  ...form.data,
-                                  product_id: val,
-                                  title: prod.name,
-                                })
-                              } else {
-                                form.setData({
-                                  ...form.data,
-                                  product_id: "",
-                                  title: selectedModel.name,
-                                })
-                              }
-                            }}
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          >
-                            <option value="">— Pilih salah satu produk katalog —</option>
-                            {filteredProducts.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                [{p.parent_sku}] {p.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
+        {/* Media hasil pemasangan */}
+        <SectionCard
+          title="Media hasil pemasangan"
+          description="Foto utama wajib. Tambahkan video dan hingga 3 foto tambahan; ambil dari Media Library (otomatis WebP)."
+          icon="image"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setPicker("main")}>
+              <Icon name="upload" className="size-4" aria-hidden="true" />
+              {mainPreview ? "Ganti foto utama" : "Pilih foto utama"}
+            </Button>
+          }
+        >
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
+                {mainPreview ? (
+                  <img src={mainPreview} alt="Pratinjau foto utama" className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+                    <Icon name="image" className="size-7" aria-hidden="true" />
+                    <span className="text-[11px]">Belum ada foto utama</span>
                   </div>
                 )}
               </div>
-            )}
+              {form.errors.main_image_url ? (
+                <p className="text-xs text-destructive">{form.errors.main_image_url}</p>
+              ) : null}
+            </div>
 
-            {/* Banner Status Konfirmasi Alur */}
-            <div className="rounded-lg border p-3 text-xs">
-              {isProductLinked ? (
-                <div className="flex items-start gap-2.5 text-emerald-800 dark:text-emerald-300">
-                  <Icon name="check-circle" className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-                  <div>
-                    <div className="font-semibold text-sm">
-                      Terikat ke Produk Katalog: [{selectedProduct?.parent_sku}] {selectedProduct?.name}
-                    </div>
-                    <p className="mt-0.5 text-xs opacity-90 leading-relaxed">
-                      Anda hanya perlu menambahkan foto/video hasil pemasangan di bawah. Media ini otomatis terhubung ke produk ini dan langsung tampil di halaman storefront model <code>{selectedModel?.name}</code>.
-                    </p>
-                  </div>
+            <div className="space-y-4">
+              {/* Video utama */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-[13px] font-semibold text-foreground">Video dokumentasi</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {form.data.main_video_url ? "1 video terpasang." : "Opsional. MP4, WebM, atau MOV."}
+                  </p>
                 </div>
-              ) : isModelGeneral ? (
-                <div className="flex items-start gap-2.5 text-sky-800 dark:text-sky-300">
-                  <Icon name="layers" className="size-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
-                  <div>
-                    <div className="font-semibold text-sm">
-                      Dokumentasi Umum Model: {selectedModel?.name}
-                    </div>
-                    <p className="mt-0.5 text-xs opacity-90 leading-relaxed">
-                      Hasil pemasangan ini mewakili model produk secara umum (tanpa terikat SKU tertentu) dan akan tampil di halaman inspirasi pemasangan model ini.
-                    </p>
-                  </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {form.data.main_video_url ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => form.setData("main_video_url", "")}>
+                      Lepas
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setPicker("video")}>
+                    <Icon name="video-camera" className="size-4" aria-hidden="true" />
+                    {form.data.main_video_url ? "Ganti video" : "Pilih video"}
+                  </Button>
+                </div>
+              </div>
+              {form.data.main_video_url ? (
+                <video
+                  src={form.data.main_video_url}
+                  controls
+                  muted
+                  preload="metadata"
+                  className="aspect-video w-full max-w-sm rounded-md border border-border bg-black object-contain"
+                />
+              ) : null}
+
+              {/* Foto tambahan */}
+              <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                <div className="min-w-0">
+                  <h3 className="text-[13px] font-semibold text-foreground">Foto tambahan</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {galleryMedia.length} dari 3 foto. Urutan menentukan tampilan di galeri.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={galleryMedia.length >= 3}
+                  onClick={() => setPicker("gallery")}
+                >
+                  <Icon name="plus" className="size-4" aria-hidden="true" />
+                  Tambah foto
+                </Button>
+              </div>
+
+              {galleryMedia.length === 0 ? (
+                <div className="rounded-md border border-dashed border-border py-8 text-center">
+                  <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Belum ada foto tambahan.
+                  </p>
                 </div>
               ) : (
-                <div className="flex items-start gap-2.5 text-purple-800 dark:text-purple-300">
-                  <Icon name="cube" className="size-4 shrink-0 mt-0.5 text-purple-600 dark:text-purple-400" />
-                  <div>
-                    <div className="font-semibold text-sm">
-                      Portofolio Mandiri (Level Atas / Lainnya)
-                    </div>
-                    <p className="mt-0.5 text-xs opacity-90 leading-relaxed">
-                      Portofolio independen yang tidak terikat pada model produk katalog, memiliki hierarki selevel dengan kartu model produk di halaman utama Hasil Pemasangan.
-                    </p>
-                  </div>
-                </div>
+                <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+                  {galleryMedia.map((item, index) => (
+                    <li key={`${item.assetId}-${index}`} className="group relative">
+                      <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
+                        {item.thumbUrl ? (
+                          <img src={item.thumbUrl} alt={item.label || `Foto ${index + 1}`} className="size-full object-cover" />
+                        ) : (
+                          <span className="flex size-full items-center justify-center text-muted-foreground">
+                            <Icon name="image" className="size-5" aria-hidden="true" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => moveGallery(index, -1)}
+                            disabled={index === 0}
+                            className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+                            aria-label={`Geser foto ${index + 1} ke kiri`}
+                          >
+                            <Icon name="caret-left" className="size-3.5" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveGallery(index, 1)}
+                            disabled={index === galleryMedia.length - 1}
+                            className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+                            aria-label={`Geser foto ${index + 1} ke kanan`}
+                          >
+                            <Icon name="caret-right" className="size-3.5" aria-hidden="true" />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGalleryMedia(galleryMedia.filter((_, i) => i !== index))}
+                          className="rounded p-0.5 text-muted-foreground transition hover:text-destructive"
+                          aria-label={`Hapus foto ${index + 1}`}
+                        >
+                          <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </div>
-        </section>
+        </SectionCard>
 
-        {/* 2. GALERI MEDIA (FOKUS UTAMA) */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <div className="mb-5 border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
-                2
-              </span>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">Media Hasil Pemasangan</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Foto utama hasil pemasangan, video dokumentasi (opsional), serta hingga 3 foto tambahan. Format: JPG, PNG, MP4, MOV.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {/* Foto Utama */}
-            <div>
-              <label className="text-xs font-semibold text-foreground">
-                Foto Utama Hasil Pemasangan <span className="text-destructive">*</span>
-              </label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Foto utama yang menjadi tampilan cover hasil instalasi di halaman katalog dan storefront.
-              </p>
-
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative aspect-video w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                  {form.data.main_image_url ? (
-                    <img
-                      src={form.data.main_image_url}
-                      alt="Preview Foto Utama"
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-full flex-col items-center justify-center text-muted-foreground">
-                      <Icon name="image" className="size-8" />
-                      <span className="mt-1 text-[11px]">Belum ada foto utama</span>
+        {/* Informasi dasar (table-first) */}
+        <div className="rounded-lg border border-border">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              {isProductLinked ? (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Produk terkait</th>
+                  <td className="px-4 py-2.5">
+                    <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
+                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.label}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Media tersimpan ke produk ini dan otomatis tampil di halaman model serta halaman produk di storefront.
+                      </p>
                     </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPickerMode("main_image")}
-                    >
-                      <Icon name="image" className="size-3.5" />
-                      Pilih dari Media Library
-                    </Button>
-                    {form.data.main_image_url && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() =>
-                          form.setData({
-                            ...form.data,
-                            main_image_url: "",
-                            main_image_asset_id: null,
-                          })
-                        }
-                      >
-                        Hapus
-                      </Button>
-                    )}
-                  </div>
-                  <Input
-                    type="url"
-                    placeholder="Atau masukkan URL foto langsung..."
-                    value={form.data.main_image_url}
-                    onChange={(e) =>
-                      form.setData({
-                        ...form.data,
-                        main_image_url: e.target.value,
-                        main_image_asset_id: null,
-                      })
-                    }
+                  </td>
+                </tr>
+              ) : (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                    Judul <span className="text-destructive">*</span>
+                  </th>
+                  <td className="px-4 py-2.5">
+                    <Input
+                      value={form.data.title}
+                      onChange={(event) => form.setData("title", event.target.value)}
+                      placeholder={isModelGeneral ? selectedModel?.label ?? "Judul dokumentasi" : "contoh: Pemasangan Partisi Kantor Kudus"}
+                      className="h-8 w-72 text-xs"
+                    />
+                    {form.errors.title ? (
+                      <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
+                    ) : null}
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Keterangan pemasangan</th>
+                <td className="px-4 py-2.5">
+                  <Textarea
+                    rows={2}
+                    value={form.data.description ?? ""}
+                    onChange={(event) => form.setData("description", event.target.value)}
+                    placeholder="Catatan pengerjaan lapangan, material, atau lokasi (opsional)."
                     className="text-xs"
                   />
-                  {form.errors.main_image_url && (
-                    <p className="text-[11px] text-destructive">{form.errors.main_image_url}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Video Utama */}
-            <div className="border-t border-border pt-4">
-              <label className="text-xs font-semibold text-foreground">Video Dokumentasi Lapangan (Opsional)</label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Video proses pemasangan atau pengetesan fungsi di lokasi (MP4, WebM, MOV).
-              </p>
-
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative aspect-video w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-black">
-                  {form.data.main_video_url ? (
-                    <video
-                      src={form.data.main_video_url}
-                      controls
-                      muted
-                      preload="metadata"
-                      className="size-full object-contain"
-                    />
-                  ) : (
-                    <div className="flex size-full flex-col items-center justify-center text-muted-foreground bg-muted">
-                      <Icon name="play" className="size-8" />
-                      <span className="mt-1 text-[11px]">Tidak ada video</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPickerMode("main_video")}
-                    >
-                      <Icon name="video-camera" className="size-3.5" />
-                      Pilih Video Library
-                    </Button>
-                    {form.data.main_video_url && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() =>
-                          form.setData({
-                            ...form.data,
-                            main_video_url: "",
-                            main_video_asset_id: null,
-                          })
-                        }
-                      >
-                        Hapus
-                      </Button>
-                    )}
-                  </div>
-                  <Input
-                    type="url"
-                    placeholder="Atau URL video langsung (MP4/MOV)..."
-                    value={form.data.main_video_url}
-                    onChange={(e) =>
-                      form.setData({
-                        ...form.data,
-                        main_video_url: e.target.value,
-                        main_video_asset_id: null,
-                      })
-                    }
-                    className="text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Foto Tambahan (Hingga 3 Foto) */}
-            <div className="border-t border-border pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-xs font-semibold text-foreground">
-                    Foto Tambahan (Maksimal 3 Foto)
-                  </label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Detail sudut pengerjaan atau tampak interior/eksterior ({form.data.gallery_images.length}/3 foto).
-                  </p>
-                </div>
-                {form.data.gallery_images.length < 3 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPickerMode("gallery")}
+                  {form.errors.description ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status publikasi</th>
+                <td className="px-4 py-2.5">
+                  <Select
+                    value={form.data.status}
+                    onChange={(event) => form.setData("status", event.target.value)}
+                    className="h-8 w-40 text-xs"
                   >
-                    <Icon name="plus" className="size-3.5" />
-                    Tambah Foto
-                  </Button>
-                )}
-              </div>
+                    <option value="active">Aktif - tampil di toko</option>
+                    <option value="inactive">Nonaktif - disembunyikan</option>
+                    <option value="archived">Diarsipkan</option>
+                  </Select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                {[0, 1, 2].map((slotIndex) => {
-                  const image = form.data.gallery_images[slotIndex]
-                  return (
-                    <div
-                      key={slotIndex}
-                      className="relative flex aspect-4/3 flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted/30"
-                    >
-                      {image ? (
-                        <>
-                          <img
-                            src={image.url}
-                            alt={`Foto Tambahan ${slotIndex + 1}`}
-                            className="size-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeGalleryImage(slotIndex)}
-                            className="absolute right-2 top-2 rounded-full bg-black/70 p-1 text-white hover:bg-destructive shadow-xs"
-                            title="Hapus foto"
-                          >
-                            <Icon name="trash" className="size-3.5" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setPickerMode("gallery")}
-                          className="flex size-full flex-col items-center justify-center p-3 text-muted-foreground hover:bg-muted/60 transition"
-                        >
-                          <Icon name="image" className="size-6" />
-                          <span className="mt-1 text-[11px] font-medium">
-                            + Slot Foto {slotIndex + 1}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. KETERANGAN & STATUS PUBLIKASI */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <div className="mb-5 border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
-                3
-              </span>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">
-                  {isProductLinked ? "Keterangan Pemasangan & Status" : "Informasi Proyek & Status"}
-                </h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isProductLinked
-                    ? "Keterangan pengerjaan foto untuk produk ini serta status tampil di storefront."
-                    : "Judul, kategori, deskripsi pengerjaan, dan status publikasi."}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {/* Hanya tampilkan input Judul & Kategori jika BUKAN terikat produk spesifik */}
-            {!isProductLinked ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field
-                  id="title"
-                  label="Judul Hasil Pemasangan"
-                  required
-                  error={form.errors.title}
-                  description={
-                    isModelGeneral
-                      ? `Default mengikuti nama model (${selectedModel?.name}).`
-                      : "Contoh: Pemasangan Partisi Kantor Kudus"
-                  }
-                >
-                  <Input
-                    id="title"
-                    value={form.data.title}
-                    onChange={(e) => form.setData("title", e.target.value)}
-                    placeholder="Masukkan judul hasil pemasangan"
-                    required
-                  />
-                </Field>
-
-                <Field
-                  id="category_label"
-                  label="Label Kategori"
-                  error={form.errors.category_label}
-                  description="Contoh: Jendela & Kaca, Boven & Ventilasi, Proyek Khusus"
-                >
-                  <Input
-                    id="category_label"
-                    value={form.data.category_label}
-                    onChange={(e) => form.setData("category_label", e.target.value)}
-                    placeholder="Masukkan label kategori"
-                  />
-                </Field>
-              </div>
-            ) : null}
-
-            {/* Deskripsi / Catatan Pengerjaan */}
-            <Field
-              id="description"
-              label={isProductLinked ? "Catatan / Keterangan Foto Pemasangan" : "Deskripsi Pemasangan"}
-              error={form.errors.description}
-            >
-              <Textarea
-                id="description"
-                rows={3}
-                value={form.data.description}
-                onChange={(e) => form.setData("description", e.target.value)}
-                placeholder={
-                  isProductLinked
-                    ? `Contoh: Pemasangan jendela kaca mati di rumah pelanggan Kudus dengan kaca tempered 8mm...`
-                    : "Ceritakan detail pemasangan, tantangan di lokasi, solusi teknis yang diterapkan, dan material yang dipasang..."
-                }
-              />
-            </Field>
-
-            {/* Status Publikasi */}
-            <div className="rounded-lg border border-border bg-muted/20 p-4">
-              <label className="text-xs font-semibold text-foreground">Status Publikasi</label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Status publikasi menentukan apakah foto ini langsung ditampilkan pada halaman publik toko.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {[
-                  { value: "active", label: "Aktif", desc: "Tampil di halaman publik" },
-                  { value: "inactive", label: "Nonaktif", desc: "Disembunyikan sementara" },
-                  { value: "archived", label: "Diarsipkan", desc: "Tidak lagi aktif" },
-                ].map((s) => {
-                  const isSelected = form.data.status === s.value
-                  return (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => form.setData("status", s.value as any)}
-                      className={cn(
-                        "flex flex-col items-start rounded-lg border p-2.5 text-left text-xs transition",
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
-                          : "border-border bg-background text-muted-foreground hover:bg-muted/50",
-                      )}
-                    >
-                      <span>{s.label}</span>
-                      <span className="mt-0.5 text-[10px] opacity-80">{s.desc}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. SPESIFIKASI UNIT (HANYA MUNCUL JIKA PORTOFOLIO MANDIRI / UMUM) */}
-        {!isProductLinked && (
-          <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-            <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
-                  4
-                </span>
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">Spesifikasi Unit (Opsional)</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Detail teknis instalasi berupa nama dan nilai spesifikasi.
-                  </p>
-                </div>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addSpecificationRow}>
-                <Icon name="plus" className="size-3.5" />
-                Tambah Baris
-              </Button>
-            </div>
-
-            <div className="space-y-2.5">
+        {/* Spesifikasi unit: hanya untuk placement tanpa SKU spesifik */}
+        {!isProductLinked ? (
+          <SectionCard
+            title="Spesifikasi unit"
+            description="Baris nama-nilai detail teknis instalasi (opsional), mis. Tipe Kaca → Tempered 8mm."
+            icon="ruler"
+          >
+            <div className="max-w-2xl space-y-2">
               {form.data.specifications.map((row, index) => (
-                <div key={index} className="grid grid-cols-[1fr_1.5fr_auto] items-center gap-2">
+                <div key={index} className="grid grid-cols-[1fr_1.4fr_auto] items-center gap-2">
                   <Input
                     value={row.name}
-                    onChange={(e) => updateSpecification(index, "name", e.target.value)}
-                    placeholder="Nama spesifikasi (mis. Tipe Kaca)"
-                    className="text-xs"
+                    onChange={(event) => updateSpec(index, "name", event.target.value)}
+                    placeholder="Nama (mis. Tipe Kaca)"
+                    className="h-8 text-xs"
                   />
                   <Input
                     value={row.value}
-                    onChange={(e) => updateSpecification(index, "value", e.target.value)}
-                    placeholder="Nilai spesifikasi (mis. Tempered 8mm)"
-                    className="text-xs"
+                    onChange={(event) => updateSpec(index, "value", event.target.value)}
+                    placeholder="Nilai (mis. Tempered 8mm)"
+                    className="h-8 text-xs"
                   />
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="size-8 text-destructive hover:bg-destructive/10"
-                    onClick={() => removeSpecificationRow(index)}
-                    title="Hapus baris spesifikasi"
+                    size="sm"
+                    onClick={() => form.setData("specifications", form.data.specifications.filter((_, i) => i !== index))}
                   >
-                    <Icon name="trash" className="size-3.5" />
+                    Hapus
                   </Button>
                 </div>
               ))}
-            </div>
-          </section>
-        )}
-
-        {/* FOOTER ACTIONS */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
-          <Button asChild variant="outline">
-            <Link href={backUrl}>Batal</Link>
-          </Button>
-
-          <div className="flex items-center gap-2">
-            {!isEdit && (
               <Button
                 type="button"
-                variant="default"
-                disabled={form.processing}
-                onClick={(e) => handleSubmit(e, true)}
+                variant="secondary"
+                size="sm"
+                onClick={() => form.setData("specifications", [...form.data.specifications, { name: "", value: "" }])}
               >
-                <Icon name="check" className="size-4" aria-hidden="true" />
-                Simpan &amp; Terbitkan
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                Tambah baris spesifikasi
               </Button>
-            )}
-            <Button type="submit" disabled={form.processing}>
-              {form.processing
-                ? "Menyimpan..."
-                : isProductLinked
-                  ? "Simpan Media Produk"
-                  : isEdit
-                    ? "Simpan Perubahan"
-                    : "Simpan"}
-            </Button>
-          </div>
-        </div>
+            </div>
+          </SectionCard>
+        ) : null}
       </form>
 
-      {/* MediaPicker Modal */}
-      {pickerMode && (
-        <MediaPicker
-          open={Boolean(pickerMode)}
-          onClose={() => setPickerMode(null)}
-          multiple={pickerMode === "gallery"}
-          title={
-            pickerMode === "main_image"
-              ? "Pilih Foto Utama Pemasangan"
-              : pickerMode === "main_video"
-                ? "Pilih Video Utama Pemasangan"
-                : "Pilih Foto Tambahan Galeri"
+      <MediaPicker
+        open={picker === "main"}
+        onClose={() => setPicker(null)}
+        multiple={false}
+        title="Foto utama hasil pemasangan"
+        onPick={(picked) => {
+          applyMain(picked[0] ?? null)
+          setPicker(null)
+        }}
+      />
+      <MediaPicker
+        open={picker === "video"}
+        onClose={() => setPicker(null)}
+        multiple={false}
+        title="Video dokumentasi pemasangan"
+        onPick={(picked) => {
+          const first = picked[0]
+          form.setData("main_video_url", first?.videoUrl || first?.thumbUrl || "")
+          setPicker(null)
+        }}
+      />
+      <MediaPicker
+        open={picker === "gallery"}
+        onClose={() => setPicker(null)}
+        multiple
+        title="Foto tambahan hasil pemasangan"
+        onPick={(picked) => {
+          const seen = new Set(galleryMedia.map((item) => item.assetId))
+          const next = [...galleryMedia]
+          for (const item of picked) {
+            if (!seen.has(item.assetId) && next.length < 3) next.push(item)
           }
-          onPick={(picked) => {
-            if (pickerMode === "main_image") handleMainImagePick(picked)
-            else if (pickerMode === "main_video") handleMainVideoPick(picked)
-            else if (pickerMode === "gallery") handleGalleryPick(picked)
-          }}
-        />
-      )}
+          setGalleryMedia(next)
+          setPicker(null)
+        }}
+      />
     </AdminLayout>
   )
 }

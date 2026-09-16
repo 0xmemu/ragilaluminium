@@ -135,9 +135,12 @@ class InstallationGalleryController extends Controller
                     'parent_sku' => $p->parent_sku,
                 ]);
 
+                $label = $model->name . ($model->product_category ? ' (' . $model->product_category . ')' : '');
+
                 return [
                     'id' => $model->id,
                     'name' => $model->name,
+                    'label' => $label,
                     'category' => $model->product_category,
                     'model' => $model->product_model,
                     'products' => $products,
@@ -310,9 +313,12 @@ class InstallationGalleryController extends Controller
                     'parent_sku' => $p->parent_sku,
                 ]);
 
+                $label = $model->name . ($model->product_category ? ' (' . $model->product_category . ')' : '');
+
                 return [
                     'id' => $model->id,
                     'name' => $model->name,
+                    'label' => $label,
                     'category' => $model->product_category,
                     'model' => $model->product_model,
                     'products' => $products,
