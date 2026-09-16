@@ -3,6 +3,12 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/admin/ui/dialog"
 import { Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
@@ -84,6 +90,8 @@ function FolderTreeList({
   expandedIds,
   onToggleExpand,
   parentId,
+  onRequestCreate,
+  onRequestRename,
 }: {
   nodes: FolderNode[]
   currentFolderId: string
@@ -92,6 +100,10 @@ function FolderTreeList({
   onToggleExpand: (id: number) => void
   /** Parent dari level ini; null = folder root. Dipakai untuk reorder sibling. */
   parentId: number | null
+  /** Buka dialog buat subfolder (parentId = folder tempat subfolder dibuat). */
+  onRequestCreate: (parentId: number | null) => void
+  /** Buka dialog ubah nama folder. */
+  onRequestRename: (folderId: number, currentName: string) => void
 }) {
   const [menuFor, setMenuFor] = React.useState<number | null>(null)
   const [order, setOrder] = React.useState<FolderNode[]>(nodes)
@@ -151,21 +163,11 @@ function FolderTreeList({
   }
 
   function createSubfolder(parentId: number) {
-    const name = window.prompt("Nama subfolder baru:")
-    if (name?.trim()) {
-      const fd = new FormData()
-      fd.append("name", name.trim())
-      fd.append("parent_id", String(parentId))
-      router.post(routeUrl("admin.media.folders.store"), fd, {
-        preserveState: true,
-        onSuccess: () => {
-          if (!expandedIds[parentId]) {
-            onToggleExpand(parentId)
-          }
-        },
-      })
-    }
     setMenuFor(null)
+    if (!expandedIds[parentId]) {
+      onToggleExpand(parentId)
+    }
+    window.setTimeout(() => onRequestCreate(parentId), 0)
   }
 
   return (
@@ -287,8 +289,10 @@ function FolderTreeList({
                 <button
                   type="button"
                   onClick={() => {
-                    const name = window.prompt("Nama folder baru:", node.name)
-                    if (name?.trim()) submitFolderAction(node.id, "rename", name)
+                    setMenuFor(null)
+                    // Tunda satu tick: klik yang sama tidak boleh dianggap
+                    // interaksi luar oleh Radix Dialog (dialog langsung tertutup).
+                    window.setTimeout(() => onRequestRename(node.id, node.name), 0)
                   }}
                   className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
                 >
@@ -334,6 +338,8 @@ function FolderTreeList({
                   expandedIds={expandedIds}
                   onToggleExpand={onToggleExpand}
                   parentId={node.id}
+                  onRequestCreate={onRequestCreate}
+                  onRequestRename={onRequestRename}
                 />
               </div>
             ) : null}
@@ -344,14 +350,85 @@ function FolderTreeList({
   )
 }
 
+/**
+ * Dialog nama folder (buat / ubah nama). window.prompt diblokir di browser
+ * in-app sehingga tombol tidak bereaksi; dialog UI ini menggantikannya.
+ */
+function FolderNameDialog({
+  mode,
+  open,
+  initialName = "",
+  onClose,
+  onSubmit,
+  processing,
+}: {
+  mode: "create" | "rename"
+  open: boolean
+  initialName?: string
+  onClose: () => void
+  onSubmit: (name: string) => void
+  processing?: boolean
+}) {
+  const [value, setValue] = React.useState(initialName)
+
+  React.useEffect(() => {
+    if (open) setValue(initialName)
+  }, [open, initialName])
+
+  const isCreate = mode === "create"
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
+      <DialogContent className="max-w-sm">
+        <DialogTitle>{isCreate ? "Folder baru" : "Ubah nama folder"}</DialogTitle>
+        <DialogDescription>
+          {isCreate
+            ? "Folder baru dibuat di dalam folder yang sedang dibuka (atau di tingkat utama)."
+            : "Nama folder hanya label organisasi; berkas media tidak berubah."}
+        </DialogDescription>
+        <form
+          className="mt-4 space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!value.trim() || processing) return
+            onSubmit(value.trim())
+          }}
+        >
+          <Field id="folder-name-dialog" label="Nama folder">
+            <Input
+              id="folder-name-dialog"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder="mis. Hasil Pemasangan"
+              autoFocus
+            />
+          </Field>
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={processing || !value.trim()}>
+              {processing ? "Menyimpan..." : isCreate ? "Buat folder" : "Simpan nama"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function FolderTree({
   nodes,
   currentFolderId,
   onSelect,
+  onRequestCreate,
+  onRequestRename,
 }: {
   nodes: FolderNode[]
   currentFolderId: string
   onSelect: (id: string) => void
+  onRequestCreate: (parentId: number | null) => void
+  onRequestRename: (folderId: number, currentName: string) => void
 }) {
   const [expandedIds, setExpandedIds] = React.useState<Record<number, boolean>>(() => {
     const init: Record<number, boolean> = {}
@@ -412,6 +489,8 @@ function FolderTree({
       expandedIds={expandedIds}
       onToggleExpand={handleToggleExpand}
       parentId={null}
+      onRequestCreate={onRequestCreate}
+      onRequestRename={onRequestRename}
     />
   )
 }
@@ -624,6 +703,11 @@ export default function MediaLibrary({
   const [visibility, setVisibility] = React.useState(filters.visibility)
   const [folderId, setFolderId] = React.useState(filters.folder_id)
   const [showSidebar, setShowSidebar] = React.useState(true)
+  // Dialog nama folder (pengganti window.prompt yang diblokir di browser in-app).
+  const [folderDialog, setFolderDialog] = React.useState<
+    { mode: "create"; parentId: number | null; name: string } | { mode: "rename"; folderId: number; name: string } | null
+  >(null)
+  const [folderSaving, setFolderSaving] = React.useState(false)
   const [selectedIds, setSelectedIds] = React.useState<number[]>([])
   const [showUploadModal, setShowUploadModal] = React.useState(false)
   const [copiedId, setCopiedId] = React.useState<number | null>(null)
@@ -632,6 +716,41 @@ export default function MediaLibrary({
   // Upload tracking (persisten walau modal ditutup)
   const [uploads, setUploads] = React.useState<UploadItem[]>([])
   const uploadIdRef = React.useRef(0)
+
+  /** Buat folder (root atau subfolder) memakai dialog. */
+  function submitFolderDialog(name: string) {
+    if (!folderDialog) return
+    setFolderSaving(true)
+    const fd = new FormData()
+    fd.append("name", name)
+
+    if (folderDialog.mode === "create") {
+      const parentId = folderDialog.parentId
+      if (parentId !== null) fd.append("parent_id", String(parentId))
+      router.post(routeUrl("admin.media.folders.store"), fd, {
+        preserveState: true,
+        preserveScroll: true,
+        onFinish: () => setFolderSaving(false),
+        onSuccess: () => {
+          setFolderDialog(null)
+          // Muat ulang props folders agar pohon folder langsung menampilkan
+          // folder baru (preserveState menahan render props baru).
+          router.reload({ only: ["folders"], preserveScroll: true })
+        },
+      })
+      return
+    }
+
+    router.post(routeUrl("admin.media.folders.rename", { folder: folderDialog.folderId }), fd, {
+      preserveState: true,
+      preserveScroll: true,
+      onFinish: () => setFolderSaving(false),
+      onSuccess: () => {
+        setFolderDialog(null)
+        router.reload({ only: ["folders"], preserveScroll: true })
+      },
+    })
+  }
 
   function patchUpload(id: number, patch: Partial<Omit<UploadItem, "id" | "name">>): void {
     setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)))
@@ -831,21 +950,25 @@ export default function MediaLibrary({
             <span className="text-xs font-semibold text-muted-foreground">Folder</span>
             <button
               type="button"
-              onClick={() => {
-                const name = window.prompt("Nama folder baru:")
-                if (name?.trim()) {
-                  const fd = new FormData()
-                  fd.append("name", name.trim())
-                  if (folderId && folderId !== "0") fd.append("parent_id", folderId)
-                  router.post(routeUrl("admin.media.folders.store"), fd, { preserveState: true })
-                }
-              }}
+              onClick={() =>
+                setFolderDialog({
+                  mode: "create",
+                  parentId: folderId && folderId !== "0" ? Number(folderId) : null,
+                  name: "",
+                })
+              }
               className="text-xs font-medium text-primary hover:underline"
             >
               + Baru
             </button>
           </div>
-          <FolderTree nodes={folders} currentFolderId={folderId} onSelect={(id) => { setFolderId(id); runSearch({ folder_id: id }) }} />
+          <FolderTree
+            nodes={folders}
+            currentFolderId={folderId}
+            onSelect={(id) => { setFolderId(id); runSearch({ folder_id: id }) }}
+            onRequestCreate={(parentId) => setFolderDialog({ mode: "create", parentId, name: "" })}
+            onRequestRename={(id, currentName) => setFolderDialog({ mode: "rename", folderId: id, name: currentName })}
+          />
         </aside>
         ) : null}
 
@@ -1118,6 +1241,15 @@ export default function MediaLibrary({
           </div>
         </div>
       ) : null}
+
+      <FolderNameDialog
+        mode={folderDialog?.mode ?? "create"}
+        open={folderDialog !== null}
+        initialName={folderDialog?.name ?? ""}
+        processing={folderSaving}
+        onClose={() => setFolderDialog(null)}
+        onSubmit={submitFolderDialog}
+      />
     </AdminLayout>
   )
 }
