@@ -3,7 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\CmsModelProduct;
-use App\Models\InstallationProject;
+use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -21,17 +22,52 @@ class InstallationProjectAdminTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_view_installation_projects_index(): void
+    protected function model(): CmsModelProduct
     {
-        $admin = $this->admin();
-
-        InstallationProject::create([
-            'title' => 'Kaca Mati Polos',
-            'slug' => 'kaca-mati-polos',
-            'category_label' => 'Jendela & Kaca',
+        return CmsModelProduct::create([
+            'name' => 'Jendela Aluminium Kaca Mati',
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
             'status' => 'active',
             'sort_order' => 1,
-            'main_image_url' => 'https://example.com/foto1.jpg',
+        ]);
+    }
+
+    protected function product(CmsModelProduct $model): Product
+    {
+        $product = Product::create([
+            'name' => 'Tinggi 70cm Jendela Kaca Mati',
+            'parent_sku' => 'RA-TEST-001',
+            'product_category' => $model->product_category,
+            'product_model' => $model->product_model,
+            'status' => 'active',
+        ]);
+
+        // Product::visible() menuntut minimal satu varian aktif.
+        \App\Models\ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'RA-TEST-001-V1',
+            'price' => 500000,
+            'stock' => 10,
+            'status' => 'active',
+        ]);
+
+        return $product;
+    }
+
+    public function test_admin_can_view_installation_media_index(): void
+    {
+        $admin = $this->admin();
+        $model = $this->model();
+        $product = $this->product($model);
+
+        ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/foto1.jpg',
+            'position' => 100,
+            'visibility' => 'visible',
+            'status' => 'downloaded',
         ]);
 
         $this->actingAs($admin)
@@ -40,268 +76,226 @@ class InstallationProjectAdminTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Index')
                 ->has('projects.data', 1)
-                ->where('projects.data.0.title', 'Kaca Mati Polos')
+                ->where('projects.data.0.product_sku', 'RA-TEST-001')
+                ->where('projects.data.0.placement', 'product')
                 ->has('tabs', 4)
                 ->where('activeStatus', 'all')
             );
     }
 
-    public function test_admin_can_filter_by_status_and_search(): void
+    public function test_admin_can_filter_by_visibility_and_search(): void
     {
         $admin = $this->admin();
+        $model = $this->model();
+        $product = $this->product($model);
 
-        InstallationProject::create([
-            'title' => 'Pintu Sliding Hitam',
-            'slug' => 'pintu-sliding-hitam',
-            'status' => 'active',
-            'sort_order' => 1,
-            'main_image_url' => 'https://example.com/sliding.jpg',
+        ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/visible.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
         ]);
 
-        InstallationProject::create([
-            'title' => 'Kusen Minimalis Silver',
-            'slug' => 'kusen-minimalis-silver',
-            'status' => 'inactive',
-            'sort_order' => 2,
-            'main_image_url' => 'https://example.com/kusen.jpg',
+        ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/hidden.jpg',
+            'visibility' => 'hidden',
+            'status' => 'downloaded',
         ]);
 
-        // Filter status inactive
         $this->actingAs($admin)
-            ->get(route('admin.hasil-pemasangan.index', ['status' => 'inactive']))
+            ->get(route('admin.hasil-pemasangan.index', ['status' => 'hidden']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Index')
                 ->has('projects.data', 1)
-                ->where('projects.data.0.title', 'Kusen Minimalis Silver')
+                ->where('projects.data.0.visibility', 'hidden')
             );
 
-        // Search q=Sliding
+        // Pencarian berdasarkan SKU
         $this->actingAs($admin)
-            ->get(route('admin.hasil-pemasangan.index', ['q' => 'Sliding']))
+            ->get(route('admin.hasil-pemasangan.index', ['q' => 'RA-TEST']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Index')
-                ->has('projects.data', 1)
-                ->where('projects.data.0.title', 'Pintu Sliding Hitam')
+                ->has('projects.data', 2)
             );
     }
 
     public function test_admin_can_view_create_form(): void
     {
         $admin = $this->admin();
+        $model = $this->model();
+        $this->product($model);
 
         $this->actingAs($admin)
             ->get(route('admin.hasil-pemasangan.create'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Form')
-                ->where('project', null)
-                ->has('modelProducts')
+                ->has('modelProducts', 1)
+                ->where('modelProducts.0.products.0.parent_sku', 'RA-TEST-001')
             );
     }
 
-    public function test_admin_can_store_new_installation_project(): void
+    public function test_store_creates_product_media_bound_to_sku(): void
     {
         $admin = $this->admin();
-
-        $modelProduct = CmsModelProduct::create([
-            'name' => 'Kaca Mati Standard',
-            'product_category' => 'JENDELA',
-            'product_model' => 'KACA_MATI',
-            'status' => 'active',
-            'sort_order' => 1,
-        ]);
-
-        $payload = [
-            'title' => 'Kaca Mati Minimalis Living Room',
-            'category_label' => 'Timeless & Minimalis',
-            'status' => 'active',
-            'description' => 'Pemasangan kaca mati di area living room dengan pencahayaan maksimal.',
-            'model_product_id' => $modelProduct->id,
-            'main_image_url' => 'https://example.com/main.jpg',
-            'main_video_url' => 'https://example.com/video.mp4',
-            'gallery_images' => [
-                ['url' => 'https://example.com/gallery1.jpg', 'caption' => 'Tampak depan'],
-            ],
-            'specifications' => [
-                ['name' => 'Tipe Kaca', 'value' => 'Tempered 8mm'],
-                ['name' => 'Framer', 'value' => 'Aluminium 4"'],
-            ],
-
-        ];
+        $model = $this->model();
+        $product = $this->product($model);
 
         $this->actingAs($admin)
-            ->post(route('admin.hasil-pemasangan.store'), $payload)
+            ->post(route('admin.hasil-pemasangan.store'), [
+                'model_product_id' => $model->id,
+                'product_id' => $product->id,
+                'description' => 'Pemasangan di rumah pelanggan Kudus',
+                'main_image_url' => 'https://example.com/main.jpg',
+            ])
             ->assertRedirect(route('admin.hasil-pemasangan.index'))
             ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('installation_projects', [
-            'title' => 'Kaca Mati Minimalis Living Room',
-            'category_label' => 'Timeless & Minimalis',
-            'status' => 'active',
-            'model_product_id' => $modelProduct->id,
-        ]);
-
-        $project = InstallationProject::where('title', 'Kaca Mati Minimalis Living Room')->first();
-        $this->assertNotNull($project);
-        $this->assertCount(1, $project->gallery_images);
-        $this->assertCount(2, $project->specifications);
-
+        $media = ProductMedia::where('is_installation', true)->get();
+        $this->assertCount(1, $media);
+        $this->assertSame($product->id, $media[0]->product_id);
+        $this->assertNull($media[0]->model_product_id);
+        $this->assertSame('visible', $media[0]->visibility);
     }
 
-    public function test_admin_can_view_installation_project_detail(): void
+    public function test_store_creates_model_level_media_without_sku(): void
     {
         $admin = $this->admin();
+        $model = $this->model();
 
-        $project = InstallationProject::create([
-            'title' => 'Proyek Jendela Casement',
-            'slug' => 'proyek-jendela-casement',
+        $this->actingAs($admin)
+            ->post(route('admin.hasil-pemasangan.store'), [
+                'model_product_id' => $model->id,
+                'description' => 'Dokumentasi umum model',
+                'main_image_url' => 'https://example.com/model.jpg',
+            ])
+            ->assertRedirect(route('admin.hasil-pemasangan.index'))
+            ->assertSessionHas('success');
+
+        $media = ProductMedia::where('is_installation', true)->first();
+        $this->assertNotNull($media);
+        $this->assertNull($media->product_id);
+        $this->assertSame($model->id, $media->model_product_id);
+    }
+
+    public function test_store_rejects_sku_from_different_model(): void
+    {
+        $admin = $this->admin();
+        $model = $this->model();
+        $otherModel = CmsModelProduct::create([
+            'name' => 'Boven Jungkit',
+            'product_category' => 'BOVEN',
+            'product_model' => 'JUNGKIT_1_DAUN',
             'status' => 'active',
-            'sort_order' => 1,
-            'main_image_url' => 'https://example.com/casement.jpg',
-            'specifications' => [['name' => 'Warna', 'value' => 'Hitam Matt']],
+            'sort_order' => 2,
+        ]);
+        $product = $this->product($model);
 
+        $this->actingAs($admin)
+            ->from(route('admin.hasil-pemasangan.create'))
+            ->post(route('admin.hasil-pemasangan.store'), [
+                'model_product_id' => $otherModel->id,
+                'product_id' => $product->id,
+                'main_image_url' => 'https://example.com/main.jpg',
+            ])
+            ->assertRedirect(route('admin.hasil-pemasangan.create'))
+            ->assertSessionHasErrors('product_id');
+    }
+
+    public function test_admin_can_view_media_detail(): void
+    {
+        $admin = $this->admin();
+        $model = $this->model();
+        $product = $this->product($model);
+
+        $media = ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/foto.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.hasil-pemasangan.show', $project->id))
+            ->get(route('admin.hasil-pemasangan.show', $media->id))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Show')
-                ->where('project.title', 'Proyek Jendela Casement')
-                ->where('project.specifications.0.value', 'Hitam Matt')
+                ->where('project.product_sku', 'RA-TEST-001')
             );
     }
 
-    public function test_admin_can_update_installation_project(): void
+    public function test_admin_can_toggle_media_visibility(): void
     {
         $admin = $this->admin();
+        $model = $this->model();
+        $product = $this->product($model);
 
-        $project = InstallationProject::create([
-            'title' => 'Judul Lama',
-            'slug' => 'judul-lama',
-            'status' => 'active',
-            'sort_order' => 1,
-            'main_image_url' => 'https://example.com/lama.jpg',
+        $media = ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/foto.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
         ]);
 
         $this->actingAs($admin)
-            ->put(route('admin.hasil-pemasangan.update', $project->id), [
-                'title' => 'Judul Baru Diperbarui',
-                'category_label' => 'Kategori Baru',
-                'status' => 'inactive',
-                'description' => 'Deskripsi baru',
-                'main_image_url' => 'https://example.com/baru.jpg',
-                'specifications' => [['name' => 'Lokasi', 'value' => 'Lantai 2']],
-
-            ])
-            ->assertRedirect(route('admin.hasil-pemasangan.index'))
-            ->assertSessionHas('success');
-
-        $this->assertDatabaseHas('installation_projects', [
-            'id' => $project->id,
-            'title' => 'Judul Baru Diperbarui',
-            'status' => 'inactive',
-            'category_label' => 'Kategori Baru',
-        ]);
-    }
-
-    public function test_admin_can_toggle_status(): void
-    {
-        $admin = $this->admin();
-
-        $project = InstallationProject::create([
-            'title' => 'Toggle Project',
-            'slug' => 'toggle-project',
-            'status' => 'active',
-            'sort_order' => 1,
-            'main_image_url' => 'https://example.com/img.jpg',
-        ]);
-
-        $this->actingAs($admin)
-            ->patch(route('admin.hasil-pemasangan.toggle-status', $project->id))
+            ->patch(route('admin.hasil-pemasangan.toggle-status', $media->id))
             ->assertRedirect();
 
-        $this->assertSame('inactive', $project->fresh()->status);
+        $this->assertSame('hidden', $media->fresh()->visibility);
 
         $this->actingAs($admin)
-            ->patch(route('admin.hasil-pemasangan.toggle-status', $project->id))
+            ->patch(route('admin.hasil-pemasangan.toggle-status', $media->id))
             ->assertRedirect();
 
-        $this->assertSame('active', $project->fresh()->status);
+        $this->assertSame('visible', $media->fresh()->visibility);
     }
 
-    public function test_admin_can_archive_installation_project(): void
+    public function test_admin_can_archive_media(): void
     {
         $admin = $this->admin();
+        $model = $this->model();
+        $product = $this->product($model);
 
-        $project = InstallationProject::create([
-            'title' => 'Archive Project',
-            'slug' => 'archive-project',
-            'status' => 'active',
-            'sort_order' => 1,
-            'main_image_url' => 'https://example.com/img.jpg',
+        $media = ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/foto.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
         ]);
 
         $this->actingAs($admin)
-            ->post(route('admin.hasil-pemasangan.archive', $project->id))
+            ->post(route('admin.hasil-pemasangan.archive', $media->id))
             ->assertRedirect();
 
-        $this->assertSame('archived', $project->fresh()->status);
+        $this->assertSame('archived', $media->fresh()->visibility);
     }
 
-    public function test_admin_can_reorder_installation_projects(): void
+    public function test_admin_can_delete_media(): void
     {
         $admin = $this->admin();
+        $model = $this->model();
+        $product = $this->product($model);
 
-        $p1 = InstallationProject::create([
-            'title' => 'Proyek 1',
-            'slug' => 'proyek-1',
-            'status' => 'active',
-            'sort_order' => 1,
-            'main_image_url' => 'https://example.com/1.jpg',
-        ]);
-
-        $p2 = InstallationProject::create([
-            'title' => 'Proyek 2',
-            'slug' => 'proyek-2',
-            'status' => 'active',
-            'sort_order' => 2,
-            'main_image_url' => 'https://example.com/2.jpg',
+        $media = ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/foto.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
         ]);
 
         $this->actingAs($admin)
-            ->put(route('admin.hasil-pemasangan.reorder'), [
-                'rows' => [
-                    ['id' => $p1->id, 'sort_order' => 10],
-                    ['id' => $p2->id, 'sort_order' => 5],
-                ],
-            ])
-            ->assertRedirect();
-
-        $this->assertSame(10, $p1->fresh()->sort_order);
-        $this->assertSame(5, $p2->fresh()->sort_order);
-    }
-
-    public function test_admin_can_destroy_installation_project(): void
-    {
-        $admin = $this->admin();
-
-        $project = InstallationProject::create([
-            'title' => 'Hapus Saya',
-            'slug' => 'hapus-saya',
-            'status' => 'active',
-            'sort_order' => 1,
-            'main_image_url' => 'https://example.com/del.jpg',
-        ]);
-
-        $this->actingAs($admin)
-            ->delete(route('admin.hasil-pemasangan.destroy', $project->id))
+            ->delete(route('admin.hasil-pemasangan.destroy', $media->id))
             ->assertRedirect(route('admin.hasil-pemasangan.index'));
 
-        $this->assertDatabaseMissing('installation_projects', [
-            'id' => $project->id,
-        ]);
+        $this->assertDatabaseMissing('product_media', ['id' => $media->id]);
     }
 }

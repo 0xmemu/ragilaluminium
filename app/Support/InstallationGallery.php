@@ -17,6 +17,47 @@ use Illuminate\Support\Collection;
 class InstallationGallery
 {
     /**
+     * Flat media rows untuk admin index: satu baris per media hasil
+     * pemasangan (Kasus A per SKU, Kasus B per model, Kasus C manual).
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public static function installationMedia(): Collection
+    {
+        // Admin index melihat semua media instalasi, termasuk hidden/archived
+        // agar bisa dikelola (ditampilkan kembali / diarsipkan).
+        return self::installationMediaWithProduct(visibleOnly: false)
+            ->map(function (ProductMedia $item) {
+                $model = $item->modelProduct;
+                $product = $item->product;
+
+                $category = strtoupper((string) ($product?->product_category ?? $model?->product_category ?? ''));
+                $modelCode = strtoupper((string) ($product?->product_model ?? $model?->product_model ?? 'MANUAL'));
+
+                return [
+                    'id' => $item->id,
+                    'media_id' => $item->id,
+                    'url' => $item->urlFor('card') ?? $item->urlFor('thumb') ?? '',
+                    'thumb' => $item->urlFor('thumb') ?? $item->urlFor('card') ?? '',
+                    'is_video' => self::isVideoMedia($item),
+                    'caption' => (string) ($item->installation_caption ?? ''),
+                    'visibility' => (string) $item->visibility,
+                    'product_sku' => (string) ($product?->parent_sku ?? ''),
+                    'product_name' => (string) ($product?->name ?? ''),
+                    'model_label' => filled($modelCode)
+                        ? CatalogLabels::modelCardTitle($category, $modelCode)
+                        : 'Lainnya',
+                    'category' => $category,
+                    'model' => $modelCode,
+                    'placement' => $product ? 'product' : ($model ? 'model' : 'standalone'),
+                    'created_at' => $item->created_at?->format('d M Y'),
+                ];
+            })
+            ->filter(fn (array $row) => filled($row['url']))
+            ->values();
+    }
+
+    /**
      * One card per catalog model that has installation media or catalog products.
      * The order follows the active CMS model list.
      *
@@ -259,6 +300,10 @@ class InstallationGallery
     /**
      * All media items for a model (photo + video grid on model page).
      *
+     * Sumber tunggal product_media.is_installation:
+     * - Kasus A: media terikat SKU (product_id terisi, produk visible di model itu)
+     * - Kasus B: media milik model saja (product_id NULL, model_product_id terisi)
+     *
      * @return list<array{id: int, url: string, thumb: string, is_video: bool, product_sku: string, product_name: string}>
      */
     public static function mediaForModel(string $category, string $model, int $limit = 60): array
@@ -266,9 +311,15 @@ class InstallationGallery
         $category = strtoupper(trim($category));
         $model = strtoupper(trim($model));
 
+        $cmsModel = \App\Models\CmsModelProduct::where('product_category', $category)
+            ->where('product_model', $model)
+            ->first();
+
+        // Kasus A: media milik produk katalog di model ini.
         $items = ProductMedia::query()
             ->visible()
             ->installation()
+            ->whereNotNull('product_id')
             ->whereHas('product', fn ($q) => $q->visible()
                 ->where('product_category', $category)
                 ->where('product_model', $model))
@@ -290,46 +341,39 @@ class InstallationGallery
                 ];
             })
             ->filter(fn (array $i) => filled($i['url']))
-            ->values()
-            ->all();
+            ->values();
 
-        // Tambahkan juga media hasil pemasangan umum model (tanpa SKU spesifik) dari InstallationProject
-        $cmsModel = \App\Models\CmsModelProduct::where('product_category', $category)->where('product_model', $model)->first();
+        // Kasus B: media milik model tanpa SKU (product_id NULL).
         if ($cmsModel) {
-            $generalProjects = \App\Models\InstallationProject::where('model_product_id', $cmsModel->id)
+            $modelMedia = ProductMedia::query()
+                ->visible()
+                ->installation()
                 ->whereNull('product_id')
-                ->active()
-                ->get();
+                ->where('model_product_id', $cmsModel->id)
+                ->with('mediaAsset')
+                ->orderByDesc('id')
+                ->limit(max(0, $limit - $items->count()))
+                ->get()
+                ->map(function (ProductMedia $m) use ($cmsModel) {
+                    $url = $m->urlFor('card') ?? $m->urlFor('thumb') ?? '';
 
-            foreach ($generalProjects as $gp) {
-                if (filled($gp->main_image_url)) {
-                    $items[] = [
-                        'id' => 100000 + $gp->id,
-                        'url' => $gp->resolvedMainImage(),
-                        'thumb' => $gp->resolvedMainImage('thumb') ?: $gp->resolvedMainImage(),
-                        'is_video' => false,
+                    return [
+                        'id' => $m->id,
+                        'url' => $url,
+                        'thumb' => $m->urlFor('thumb') ?? $url,
+                        'is_video' => self::isVideoMedia($m),
                         'product_sku' => '',
-                        'product_name' => $gp->title,
-                        'caption' => $gp->title,
+                        'product_name' => (string) ($m->installation_caption ?: $cmsModel->name),
+                        'caption' => (string) ($m->installation_caption ?: $cmsModel->name),
                     ];
-                }
-                foreach ($gp->gallery_images ?? [] as $gIdx => $g) {
-                    if (!empty($g['url'])) {
-                        $items[] = [
-                            'id' => 200000 + ($gp->id * 10) + $gIdx,
-                            'url' => $g['url'],
-                            'thumb' => $g['url'],
-                            'is_video' => false,
-                            'product_sku' => '',
-                            'product_name' => $gp->title,
-                            'caption' => $g['caption'] ?? $gp->title,
-                        ];
-                    }
-                }
-            }
+                })
+                ->filter(fn (array $i) => filled($i['url']))
+                ->values();
+
+            $items = $items->merge($modelMedia)->values();
         }
 
-        return $items;
+        return $items->all();
     }
 
     public static function categoryToSlug(string $category): string
@@ -395,15 +439,31 @@ class InstallationGallery
     /**
      * @return Collection<int, ProductMedia>
      */
-    protected static function installationMediaWithProduct(): Collection
+    /**
+     * @return Collection<int, ProductMedia>
+     */
+    protected static function installationMediaWithProduct(bool $visibleOnly = true): Collection
     {
-        return ProductMedia::query()
-            ->visible()
+        $query = ProductMedia::query()
             ->installation()
-            ->with(['mediaAsset', 'product:id,parent_sku,name,short_name,product_category,product_model,status'])
+            ->when($visibleOnly, fn ($q) => $q->visible())
+            ->with(['mediaAsset', 'product:id,parent_sku,name,short_name,product_category,product_model,status', 'modelProduct:id,name,product_category,product_model'])
             ->orderByDesc('id')
             ->get()
             ->filter(function (ProductMedia $item) {
+                if ($item->urlFor('card') === null && $item->urlFor('thumb') === null) {
+                    return false;
+                }
+
+                // Kasus B: media milik model, tanpa SKU.
+                if ($item->product_id === null) {
+                    return filled($item->model_product_id)
+                        && $item->modelProduct instanceof \App\Models\CmsModelProduct
+                        && filled($item->modelProduct->product_category)
+                        && filled($item->modelProduct->product_model);
+                }
+
+                // Kasus A: media milik produk katalog.
                 $product = $item->product;
                 if (! $product instanceof Product || $product->status !== 'active') {
                     return false;
@@ -411,10 +471,11 @@ class InstallationGallery
 
                 return filled($product->parent_sku)
                     && filled($product->product_category)
-                    && filled($product->product_model)
-                    && ($item->urlFor('card') !== null || $item->urlFor('thumb') !== null);
+                    && filled($product->product_model);
             })
             ->values();
+
+        return $query;
     }
 
     /**

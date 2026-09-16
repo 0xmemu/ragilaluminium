@@ -12,39 +12,28 @@ import {
 } from "@/components/admin/ui/dropdown-menu"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
-import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationType } from "@/types"
 
-interface ProjectRow {
+interface MediaRow {
   id: number
-  title: string
-  slug: string
-  category_label?: string | null
-  description?: string | null
-  status: "active" | "inactive" | "archived"
-  sort_order: number
-  main_image_url?: string | null
-  main_video_url?: string | null
-  gallery_count: number
-  model_product?: {
-    id: number
-    name: string
-    category: string
-    model: string
-  } | null
-  product?: {
-    id: number
-    name: string
-    parent_sku: string
-  } | null
-  specifications: Array<{ name: string; value: string }>
+  media_id: number
+  url: string
+  thumb: string
+  is_video: boolean
+  caption: string
+  visibility: "visible" | "hidden" | "archived"
+  product_sku: string
+  product_name: string
+  model_label: string
+  category: string
+  model: string
+  placement: "product" | "model" | "standalone"
   created_at?: string | null
   showUrl: string
-  editUrl: string
   toggleStatusUrl: string
   archiveUrl: string
   destroyUrl: string
@@ -59,7 +48,7 @@ interface StatusTab {
 interface IndexProps {
   title: string
   description: string
-  projects: PaginationType<ProjectRow>
+  projects: PaginationType<MediaRow>
   tabs: StatusTab[]
   activeStatus: string
   viewMode: "list" | "grid"
@@ -68,6 +57,12 @@ interface IndexProps {
   createUrl: string
   reorderUrl: string
   previewUrl: string
+}
+
+const VISIBILITY_LABEL: Record<MediaRow["visibility"], string> = {
+  visible: "Aktif",
+  hidden: "Disembunyikan",
+  archived: "Diarsipkan",
 }
 
 export default function InstallationGalleryIndex({
@@ -88,14 +83,14 @@ export default function InstallationGalleryIndex({
   const [reorderMode, setReorderMode] = React.useState(false)
 
   const initialRows = projects.data ?? []
-  const [rows, setRows] = React.useState<ProjectRow[]>(initialRows)
+  const [rows, setRows] = React.useState<MediaRow[]>(initialRows)
 
   React.useEffect(() => {
     setRows(projects.data ?? [])
   }, [projects.data])
 
   const reorderForm = useForm({
-    rows: initialRows.map((r, i) => ({ id: r.id, sort_order: i + 1 })),
+    rows: initialRows.map((r) => ({ id: r.media_id })),
   })
 
   const dnd = useRowDragSort({
@@ -106,10 +101,7 @@ export default function InstallationGalleryIndex({
         const next = [...prev]
         const [moved] = next.splice(from, 1)
         next.splice(to, 0, moved)
-        reorderForm.setData(
-          "rows",
-          next.map((r, i) => ({ id: r.id, sort_order: i + 1 })),
-        )
+        reorderForm.setData("rows", next.map((r) => ({ id: r.media_id })))
         return next
       })
     },
@@ -172,7 +164,7 @@ export default function InstallationGalleryIndex({
               <Button
                 variant="outline"
                 onClick={() => setReorderMode(true)}
-                title="Atur urutan proyek dengan drag and drop"
+                title="Atur urutan media dengan drag and drop"
               >
                 <Icon name="arrows-down-up" className="size-4" aria-hidden="true" />
                 Mode Geser
@@ -237,7 +229,7 @@ export default function InstallationGalleryIndex({
           <form onSubmit={submitSearch} className="relative w-full max-w-sm">
             <Input
               type="search"
-              placeholder="Cari nama proyek, kategori, deskripsi..."
+              placeholder="Cari SKU, nama model, keterangan..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-8"
@@ -263,7 +255,6 @@ export default function InstallationGalleryIndex({
           </form>
 
           <div className="flex items-center gap-2">
-            {/* Sort Selector */}
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>Urutan:</span>
               <select
@@ -272,11 +263,10 @@ export default function InstallationGalleryIndex({
                 className="h-8 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="order">Urutan Tampil (Manual)</option>
-                <option value="latest">Proyek Terbaru</option>
+                <option value="latest">Media Terbaru</option>
               </select>
             </div>
 
-            {/* View Mode Switcher */}
             <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/30">
               <button
                 type="button"
@@ -320,7 +310,7 @@ export default function InstallationGalleryIndex({
           <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
             <Icon name="info" className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <span>
-              Mode Geser aktif: Seret baris untuk mengubah urutan nomor hasil pemasangan. Klik{" "}
+              Mode Geser aktif: seret baris untuk mengubah urutan tampil media. Klik{" "}
               <strong>Simpan urutan</strong> di kanan atas setelah selesai.
             </span>
           </div>
@@ -333,12 +323,12 @@ export default function InstallationGalleryIndex({
               <Icon name="image" className="size-6 text-muted-foreground" />
             </div>
             <h3 className="mt-4 text-sm font-semibold text-foreground">
-              Belum ada data hasil pemasangan
+              Belum ada media hasil pemasangan
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {q
-                ? `Tidak ditemukan proyek yang cocok dengan "${q}".`
-                : "Mulai tambahkan portofolio hasil pemasangan untuk menampilkan karya Anda."}
+                ? `Tidak ditemukan media yang cocok dengan "${q}".`
+                : "Tambahkan media hasil pemasangan untuk model, produk, atau portofolio mandiri."}
             </p>
             <div className="mt-5">
               <Button asChild size="sm">
@@ -367,22 +357,22 @@ export default function InstallationGalleryIndex({
                   <tr>
                     <th className="py-3 pl-4 pr-2 text-center">No</th>
                     <th className="px-3 py-3">Media</th>
-                    <th className="px-3 py-3">Nama Proyek</th>
-                    <th className="px-3 py-3">Deskripsi</th>
-                    <th className="px-3 py-3">Model Produk</th>
+                    <th className="px-3 py-3">Keterangan</th>
+                    <th className="px-3 py-3">Model / Produk</th>
+                    <th className="px-3 py-3">Penempatan</th>
                     <th className="px-3 py-3 text-center">Status</th>
                     <th className="py-3 pl-2 pr-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {rows.map((project, index) => {
+                  {rows.map((row, index) => {
                     const rowDrag = reorderMode ? dnd.rowProps(index) : {}
                     const isDragging = dnd.draggingIndex === index
                     const isTarget = dnd.targetIndex === index
 
                     return (
                       <tr
-                        key={project.id}
+                        key={row.id}
                         {...rowDrag}
                         className={cn(
                           "transition-colors hover:bg-muted/30",
@@ -399,17 +389,17 @@ export default function InstallationGalleryIndex({
                               {index + 1}
                             </span>
                           ) : (
-                            project.sort_order || index + 1
+                            index + 1
                           )}
                         </td>
 
                         {/* Thumbnail Media */}
                         <td className="px-3 py-3">
                           <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                            {project.main_image_url ? (
+                            {row.thumb ? (
                               <img
-                                src={project.main_image_url}
-                                alt={project.title}
+                                src={row.thumb}
+                                alt={row.caption || "Media pemasangan"}
                                 className="size-full object-cover"
                                 loading="lazy"
                               />
@@ -418,83 +408,78 @@ export default function InstallationGalleryIndex({
                                 <Icon name="image" className="size-5" />
                               </div>
                             )}
-                            {project.main_video_url && (
+                            {row.is_video && (
                               <span
                                 className="absolute bottom-1 right-1 flex size-4 items-center justify-center rounded-full bg-black/70 text-white shadow-xs"
-                                title="Memiliki video"
+                                title="Video"
                               >
                                 <Icon name="play" className="size-2.5 fill-current" />
                               </span>
                             )}
-                            {project.gallery_count > 0 && (
-                              <span
-                                className="absolute left-1 top-1 rounded bg-black/60 px-1 text-[9px] font-semibold text-white"
-                                title={`${project.gallery_count} foto tambahan`}
-                              >
-                                +{project.gallery_count}
+                          </div>
+                        </td>
+
+                        {/* Keterangan */}
+                        <td className="px-3 py-3">
+                          <p className="line-clamp-2 font-medium text-foreground">
+                            {row.caption || "Tanpa keterangan"}
+                          </p>
+                          <div className="mt-0.5 text-[11px] text-muted-foreground">
+                            {row.created_at}
+                          </div>
+                        </td>
+
+                        {/* Model / Produk */}
+                        <td className="px-3 py-3">
+                          <div className="flex flex-col gap-1 max-w-full">
+                            <div className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground">
+                              <Icon name="layers" className="size-3 shrink-0 text-muted-foreground" />
+                              <span className="truncate font-medium text-foreground">
+                                {row.model_label}
                               </span>
+                            </div>
+                            {row.product_sku && (
+                              <div className="text-[10px] text-muted-foreground font-mono truncate">
+                                SKU: {row.product_sku}
+                              </div>
                             )}
                           </div>
                         </td>
 
-                        {/* Nama & Sub-judul */}
+                        {/* Penempatan */}
                         <td className="px-3 py-3">
-                          <div className="font-semibold text-foreground">
-                            <Link
-                              href={project.showUrl}
-                              className="hover:text-primary transition-colors"
-                            >
-                              {project.title}
-                            </Link>
-                          </div>
-                          {project.category_label && (
-                            <div className="mt-0.5 text-[11px] text-muted-foreground font-medium">
-                              {project.category_label}
-                            </div>
-                          )}
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {project.specifications?.slice(0, 2).map((s, i) => (
-                              <span
-                                key={i}
-                                className="inline-block rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                              >
-                                {s.name}: {s.value}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-
-                        {/* Deskripsi */}
-                        <td className="px-3 py-3">
-                          <p className="line-clamp-2 text-muted-foreground leading-relaxed text-xs">
-                            {project.description || "—"}
-                          </p>
-                        </td>
-
-                        {/* Tautan Model Produk */}
-                        <td className="px-3 py-3">
-                          {project.model_product ? (
-                            <div className="flex flex-col gap-1 max-w-full">
-                              <div className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                <Icon name="layers" className="size-3 shrink-0 text-muted-foreground" />
-                                <span className="truncate font-medium text-foreground">
-                                  {project.model_product.name}
-                                </span>
-                              </div>
-                              {project.product && (
-                                <div className="text-[10px] text-muted-foreground font-mono truncate">
-                                  SKU: {project.product.parent_sku}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground italic text-[11px]">Tidak terikat</span>
-                          )}
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                              row.placement === "product"
+                                ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                                : row.placement === "model"
+                                  ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
+                                  : "bg-purple-500/15 text-purple-800 dark:text-purple-300",
+                            )}
+                          >
+                            {row.placement === "product"
+                              ? "Produk (SKU)"
+                              : row.placement === "model"
+                                ? "Model saja"
+                                : "Mandiri"}
+                          </span>
                         </td>
 
                         {/* Status */}
                         <td className="px-3 py-3 text-center">
-                          <StatusBadge status={project.status} />
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                              row.visibility === "visible"
+                                ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                                : row.visibility === "hidden"
+                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                                  : "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300",
+                            )}
+                          >
+                            {VISIBILITY_LABEL[row.visibility]}
+                          </span>
                         </td>
 
                         {/* Aksi Dropdown */}
@@ -505,29 +490,17 @@ export default function InstallationGalleryIndex({
                                 variant="outline"
                                 size="sm"
                                 className="h-7 gap-1 px-2.5 text-xs font-medium border-border hover:bg-muted text-foreground"
-                                aria-label={`Aksi untuk ${project.title}`}
+                                aria-label={`Aksi untuk media #${row.media_id}`}
                               >
                                 <span>Aksi</span>
                                 <Icon name="dots-three-vertical" className="size-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44 text-xs">
-                              <DropdownMenuItem asChild>
-                                <Link href={project.showUrl} className="cursor-pointer">
-                                  <Icon name="eye" className="mr-2 size-3.5" />
-                                  Lihat detail
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={project.editUrl} className="cursor-pointer">
-                                  <Icon name="pencil" className="mr-2 size-3.5" />
-                                  Edit proyek
-                                </Link>
-                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() =>
                                   router.patch(
-                                    project.toggleStatusUrl,
+                                    row.toggleStatusUrl,
                                     {},
                                     { preserveScroll: true },
                                   )
@@ -535,12 +508,12 @@ export default function InstallationGalleryIndex({
                                 className="cursor-pointer"
                               >
                                 <Icon
-                                  name={project.status === "active" ? "eye-slash" : "eye"}
+                                  name={row.visibility === "visible" ? "eye-slash" : "eye"}
                                   className="mr-2 size-3.5"
                                 />
-                                {project.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                                {row.visibility === "visible" ? "Sembunyikan" : "Tampilkan"}
                               </DropdownMenuItem>
-                              {project.status !== "archived" && (
+                              {row.visibility !== "archived" && (
                                 <DropdownMenuItem asChild>
                                   <ConfirmAction
                                     trigger={
@@ -549,14 +522,14 @@ export default function InstallationGalleryIndex({
                                         className="flex w-full items-center px-2 py-1.5 text-xs text-amber-700 hover:bg-muted"
                                       >
                                         <Icon name="archive" className="mr-2 size-3.5" />
-                                        Arsipkan proyek
+                                        Arsipkan media
                                       </button>
                                     }
-                                    title="Arsipkan proyek?"
-                                    description={`Proyek "${project.title}" akan disembunyikan dari publik.`}
+                                    title="Arsipkan media?"
+                                    description="Media ini akan keluar dari halaman publik hasil pemasangan."
                                     confirmLabel="Arsipkan"
                                     onConfirm={() =>
-                                      router.post(project.archiveUrl, {}, { preserveScroll: true })
+                                      router.post(row.archiveUrl, {}, { preserveScroll: true })
                                     }
                                   />
                                 </DropdownMenuItem>
@@ -570,15 +543,15 @@ export default function InstallationGalleryIndex({
                                       className="flex w-full items-center px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10"
                                     >
                                       <Icon name="trash" className="mr-2 size-3.5" />
-                                      Hapus proyek
+                                      Hapus media
                                     </button>
                                   }
-                                  title="Hapus proyek?"
-                                  description={`Hapus portofolio "${project.title}" secara permanen? Tindakan ini tidak dapat dibatalkan.`}
+                                  title="Hapus media?"
+                                  description="Hapus media ini secara permanen? Tindakan tidak dapat dibatalkan."
                                   confirmLabel="Hapus"
                                   variant="destructive"
                                   onConfirm={() =>
-                                    router.delete(project.destroyUrl, { preserveScroll: true })
+                                    router.delete(row.destroyUrl, { preserveScroll: true })
                                   }
                                 />
                               </DropdownMenuItem>
@@ -595,17 +568,16 @@ export default function InstallationGalleryIndex({
         ) : (
           /* Mode Tampilan Grid */
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {rows.map((project) => (
+            {rows.map((row) => (
               <article
-                key={project.id}
+                key={row.id}
                 className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs transition hover:shadow-md"
               >
-                {/* Media Card Top */}
                 <div className="relative aspect-video w-full overflow-hidden bg-muted">
-                  {project.main_image_url ? (
+                  {row.thumb ? (
                     <img
-                      src={project.main_image_url}
-                      alt={project.title}
+                      src={row.thumb}
+                      alt={row.caption || "Media pemasangan"}
                       className="size-full object-cover transition duration-300 group-hover:scale-105"
                       loading="lazy"
                     />
@@ -615,75 +587,59 @@ export default function InstallationGalleryIndex({
                     </div>
                   )}
 
-                  {/* Status Overlay */}
                   <div className="absolute right-2.5 top-2.5">
-                    <StatusBadge status={project.status} />
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium backdrop-blur-xs",
+                        row.visibility === "visible"
+                          ? "bg-emerald-600/80 text-white"
+                          : "bg-zinc-700/80 text-white",
+                      )}
+                    >
+                      {VISIBILITY_LABEL[row.visibility]}
+                    </span>
                   </div>
 
-                  {/* Video Badge */}
-                  {project.main_video_url && (
+                  {row.is_video && (
                     <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-xs">
                       <Icon name="play" className="size-3 fill-current" />
                       Video
                     </span>
                   )}
-
-                  {project.gallery_count > 0 && (
-                    <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-xs">
-                      <Icon name="images" className="size-3" />+{project.gallery_count}
-                    </span>
-                  )}
                 </div>
 
-                {/* Content */}
                 <div className="flex flex-1 flex-col p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      {project.category_label && (
-                        <span className="inline-block rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          {project.category_label}
-                        </span>
-                      )}
-                      <h4 className="mt-1.5 font-semibold text-foreground line-clamp-1">
-                        <Link
-                          href={project.showUrl}
-                          className="hover:text-primary transition-colors"
-                        >
-                          {project.title}
-                        </Link>
-                      </h4>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      #{project.sort_order}
-                    </span>
-                  </div>
-
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">
-                    {project.description || "Tidak ada deskripsi."}
+                  <p className="text-sm font-semibold text-foreground line-clamp-2">
+                    {row.caption || "Tanpa keterangan"}
                   </p>
 
-                  {/* Model & Specs */}
-                  {project.model_product && (
-                    <div className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Icon name="layers" className="size-3" />
-                      <span className="truncate">{project.model_product.name}</span>
+                  <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Icon name="layers" className="size-3" />
+                    <span className="truncate">{row.model_label}</span>
+                  </div>
+                  {row.product_sku && (
+                    <div className="mt-0.5 text-[10px] text-muted-foreground font-mono truncate">
+                      SKU: {row.product_sku}
                     </div>
                   )}
 
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <Button asChild variant="outline" size="sm" className="h-7 text-xs">
-                      <Link href={project.editUrl}>
-                        <Icon name="pencil" className="size-3 mr-1" />
-                        Edit
-                      </Link>
-                    </Button>
-
-                    <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                      <Link href={project.showUrl}>
-                        Detail
-                        <Icon name="arrow-right" className="size-3 ml-1" />
-                      </Link>
-                    </Button>
+                  <div className="mt-auto flex items-center justify-between border-t border-border pt-3 mt-3">
+                    <span
+                      className={cn(
+                        "text-[11px] font-medium",
+                        row.placement === "product"
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : row.placement === "model"
+                            ? "text-sky-700 dark:text-sky-400"
+                            : "text-purple-700 dark:text-purple-400",
+                      )}
+                    >
+                      {row.placement === "product"
+                        ? "Produk (SKU)"
+                        : row.placement === "model"
+                          ? "Model saja"
+                          : "Mandiri"}
+                    </span>
                   </div>
                 </div>
               </article>

@@ -472,12 +472,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('hasil-pemasangan/reorder', [InstallationGalleryController::class, 'reorder'])->name('hasil-pemasangan.reorder');
     Route::put('hasil-pemasangan/meta', [InstallationGalleryController::class, 'updateMeta'])->name('hasil-pemasangan.meta.update');
     Route::get('hasil-pemasangan/kelola', [InstallationGalleryController::class, 'model'])->name('hasil-pemasangan.model');
-    Route::get('hasil-pemasangan/{project}', [InstallationGalleryController::class, 'show'])->whereNumber('project')->name('hasil-pemasangan.show');
-    Route::get('hasil-pemasangan/{project}/edit', [InstallationGalleryController::class, 'edit'])->whereNumber('project')->name('hasil-pemasangan.edit');
-    Route::put('hasil-pemasangan/{project}', [InstallationGalleryController::class, 'update'])->whereNumber('project')->name('hasil-pemasangan.update');
-    Route::patch('hasil-pemasangan/{project}/toggle-status', [InstallationGalleryController::class, 'toggleStatus'])->whereNumber('project')->name('hasil-pemasangan.toggle-status');
-    Route::post('hasil-pemasangan/{project}/archive', [InstallationGalleryController::class, 'archive'])->whereNumber('project')->name('hasil-pemasangan.archive');
-    Route::delete('hasil-pemasangan/{project}', [InstallationGalleryController::class, 'destroy'])->whereNumber('project')->name('hasil-pemasangan.destroy');
+    Route::get('hasil-pemasangan/{media}', [InstallationGalleryController::class, 'show'])->whereNumber('media')->name('hasil-pemasangan.show');
+    Route::patch('hasil-pemasangan/{media}/toggle-status', [InstallationGalleryController::class, 'toggleStatus'])->whereNumber('media')->name('hasil-pemasangan.toggle-status');
+    Route::post('hasil-pemasangan/{media}/archive', [InstallationGalleryController::class, 'archive'])->whereNumber('media')->name('hasil-pemasangan.archive');
+    Route::delete('hasil-pemasangan/{media}', [InstallationGalleryController::class, 'destroy'])->whereNumber('media')->name('hasil-pemasangan.destroy');
 
     Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
     Route::get('testimonials/create', [TestimonialController::class, 'create'])->name('testimonials.create');
@@ -512,6 +510,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Settings
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('settings/run', [SettingsController::class, 'run'])->name('settings.run');
 
     // Redirect 301: URL lama -> /admin/kelola/* (restruktur sitemap admin 2026-08-20)
     Route::redirect('products', 'kelola/produk')->name('products.legacy-redirect');

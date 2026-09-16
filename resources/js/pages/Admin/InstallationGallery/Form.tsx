@@ -7,7 +7,6 @@ import { Button } from "@/components/admin/ui/button"
 import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SearchSelect } from "@/components/admin/ui/search-select"
-import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -27,59 +26,32 @@ interface ModelProductOption {
   products?: ProductOption[]
 }
 
-interface FormProject {
-  id: number
-  title: string
-  slug: string
-  category_label?: string | null
-  status: "active" | "inactive" | "archived"
-  description?: string | null
-  model_product_id?: number | null
-  product_id?: number | null
-  main_image_url?: string | null
-  main_image_asset_id?: number | null
-  main_video_url?: string | null
-  main_video_asset_id?: number | null
-  gallery_images?: Array<{ url: string; asset_id?: number | null; caption?: string | null }>
-  specifications?: Array<{ name: string; value: string }>
-}
-
 interface FormProps {
   title: string
-  project?: FormProject | null
+  project?: null
   modelProducts: ModelProductOption[]
   submitUrl: string
   backUrl: string
 }
 
-const UMUM_OPTION = { value: "", label: "Umum (tanpa SKU)" }
 const STANDALONE_OPTION = { value: "standalone", label: "Portofolio mandiri (tanpa model produk)" }
+const UMUM_OPTION = { value: "", label: "Umum (tanpa SKU)" }
 
 export default function InstallationGalleryForm({
   title,
-  project,
   modelProducts = [],
   submitUrl,
   backUrl,
 }: FormProps) {
-  const editing = Boolean(project?.id)
-
   const form = useForm({
-    model_product_id: project?.model_product_id ? String(project.model_product_id) : "",
-    product_id: project?.product_id ? String(project.product_id) : "",
-    title: project?.title ?? "",
-    category_label: project?.category_label ?? "",
-    status: project?.status ?? "active",
-    description: project?.description ?? "",
-    main_image_url: project?.main_image_url ?? "",
-    main_image_asset_id: project?.main_image_asset_id ?? null,
-    main_video_url: project?.main_video_url ?? "",
-    main_video_asset_id: project?.main_video_asset_id ?? null,
-    gallery_images: project?.gallery_images ?? [],
-    specifications:
-      project?.specifications && project.specifications.length > 0
-        ? project.specifications
-        : [{ name: "", value: "" }],
+    model_product_id: "",
+    product_id: "",
+    description: "",
+    main_image_url: "",
+    main_image_asset_id: null as number | null,
+    main_video_url: "",
+    main_video_asset_id: null as number | null,
+    gallery_images: [] as Array<{ url: string; asset_id: number | null; caption: string }>,
   })
 
   const [picker, setPicker] = React.useState<"main" | "video" | "gallery" | null>(null)
@@ -106,23 +78,14 @@ export default function InstallationGalleryForm({
   )
 
   const selectedProduct = React.useMemo(
-    () =>
-      (selectedModel?.products ?? []).find((p) => String(p.id) === form.data.product_id),
+    () => (selectedModel?.products ?? []).find((p) => String(p.id) === form.data.product_id),
     [selectedModel, form.data.product_id],
   )
 
-  const isStandalone = !form.data.model_product_id
+  const isStandalone = form.data.model_product_id === STANDALONE_OPTION.value
   const isProductLinked = Boolean(selectedProduct)
 
-  const [galleryMedia, setGalleryMedia] = React.useState<PickedMedia[]>(
-    (project?.gallery_images ?? []).map((g, i) => ({
-      assetId: g.asset_id ?? -1 - i,
-      label: g.caption ?? "",
-      thumbUrl: g.url,
-      kind: "image" as const,
-      videoUrl: null,
-    })),
-  )
+  const [galleryMedia, setGalleryMedia] = React.useState<PickedMedia[]>([])
 
   React.useEffect(() => {
     form.setData(
@@ -153,17 +116,9 @@ export default function InstallationGalleryForm({
     setGalleryMedia(next)
   }
 
-  function updateSpec(index: number, key: "name" | "value", value: string) {
-    const next = form.data.specifications.map((row, i) =>
-      i === index ? { ...row, [key]: value } : row,
-    )
-    form.setData("specifications", next)
-  }
-
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    if (editing) form.put(submitUrl)
-    else form.post(submitUrl)
+    form.post(submitUrl)
   }
 
   const mainPreview = form.data.main_image_url || ""
@@ -171,20 +126,20 @@ export default function InstallationGalleryForm({
   return (
     <AdminLayout
       backUrl={backUrl}
-      title={editing ? "Edit hasil pemasangan" : "Tambah hasil pemasangan"}
-      description="Kelola dokumentasi hasil pemasangan sesuai hierarki storefront: model produk, produk katalog, atau portofolio mandiri."
+      title={title}
+      description="Tambah media hasil pemasangan untuk model produk, produk katalog (SKU), atau portofolio mandiri."
       actions={
         <div className="flex items-center gap-2">
           <Button asChild variant="secondary">
             <Link href={backUrl}>Batal</Link>
           </Button>
           <Button type="submit" form="installation-project-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : editing ? "Simpan perubahan" : "Tambah hasil pemasangan"}
+            {form.processing ? "Menyimpan..." : "Tambah hasil pemasangan"}
           </Button>
         </div>
       }
     >
-      <Head title={`${editing ? "Edit" : "Tambah"} Hasil Pemasangan | Admin`} />
+      <Head title={`Tambah Hasil Pemasangan | Admin`} />
       <form id="installation-project-form" className="w-full space-y-5" onSubmit={submit}>
         <FormErrorSummary errors={form.errors} />
 
@@ -203,16 +158,12 @@ export default function InstallationGalleryForm({
                     value={form.data.model_product_id}
                     onValueChange={(value) => {
                       if (value === STANDALONE_OPTION.value) {
-                        form.setData({ ...form.data, model_product_id: "", product_id: "" })
+                        form.setData({ ...form.data, model_product_id: value, product_id: "" })
                         return
                       }
                       const mod = modelProducts.find((m) => String(m.id) === value)
-                      form.setData({
-                        ...form.data,
-                        model_product_id: value,
-                        product_id: "",
-                        title: form.data.title || mod?.name || "",
-                      })
+                      form.setData({ ...form.data, model_product_id: value, product_id: "" })
+                      void mod
                     }}
                     placeholder="Pilih model"
                     searchPlaceholder="Cari model"
@@ -237,16 +188,7 @@ export default function InstallationGalleryForm({
                           id="product_id"
                           options={productOptions}
                           value={form.data.product_id}
-                          onValueChange={(value) => {
-                            const prod = (selectedModel.products ?? []).find(
-                              (p) => String(p.id) === value,
-                            )
-                            form.setData({
-                              ...form.data,
-                              product_id: value,
-                              title: prod ? prod.name : selectedModel.name,
-                            })
-                          }}
+                          onValueChange={(value) => form.setData("product_id", value)}
                           placeholder={UMUM_OPTION.label}
                           searchPlaceholder="Cari SKU atau nama produk"
                           emptyMessage="Produk tidak ditemukan."
@@ -255,8 +197,8 @@ export default function InstallationGalleryForm({
                         />
                         <p className="mt-1 text-xs text-muted-foreground">
                           {isProductLinked
-                            ? "Foto otomatis tampil juga di halaman produk ini di storefront."
-                            : "Biarkan Umum untuk dokumentasi model, atau pilih SKU agar foto tampil di halaman produknya."}
+                            ? "Media tampil di halaman model ini dan di halaman produk tersebut."
+                            : "Biarkan Umum untuk media milik model saja, atau pilih SKU agar media juga tampil di halaman produknya."}
                         </p>
                       </>
                     ) : (
@@ -268,62 +210,39 @@ export default function InstallationGalleryForm({
               {!isProductLinked ? (
                 <tr>
                   <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                    Judul <span className="text-destructive">*</span>
+                    Keterangan media
                   </th>
                   <td className="px-4 py-2.5">
-                    <Input
-                      value={form.data.title}
-                      onChange={(event) => form.setData("title", event.target.value)}
-                      placeholder={selectedModel ? selectedModel.name : "contoh: Pemasangan Partisi Kantor Kudus"}
-                      className="h-8 w-72 text-xs"
+                    <Textarea
+                      rows={2}
+                      value={form.data.description}
+                      onChange={(event) => form.setData("description", event.target.value)}
+                      placeholder={
+                        isStandalone
+                          ? "Judul proyek / keterangan hasil pemasangan (mis. Partisi kantor Kudus)."
+                          : "Keterangan foto pemasangan (opsional)."
+                      }
+                      className="text-xs"
                     />
-                    {form.errors.title ? (
-                      <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
+                    {form.errors.description ? (
+                      <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
                     ) : null}
                   </td>
                 </tr>
-              ) : (
+              ) : null}
+              {isProductLinked ? (
                 <tr>
                   <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Produk terkait</th>
                   <td className="px-4 py-2.5">
                     <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
-                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.label ?? selectedProduct?.name}</p>
+                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.label}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Judul mengikuti nama produk. Media tersimpan ke produk ini dan tampil di halaman model serta halaman produk.
+                        Media tersimpan ke produk ini dan otomatis tampil di halaman model serta halaman produk di storefront.
                       </p>
                     </div>
                   </td>
                 </tr>
-              )}
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Keterangan pemasangan</th>
-                <td className="px-4 py-2.5">
-                  <Textarea
-                    rows={2}
-                    value={form.data.description ?? ""}
-                    onChange={(event) => form.setData("description", event.target.value)}
-                    placeholder="Catatan pengerjaan lapangan, material, atau lokasi (opsional)."
-                    className="text-xs"
-                  />
-                  {form.errors.description ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status publikasi</th>
-                <td className="px-4 py-2.5">
-                  <Select
-                    value={form.data.status}
-                    onChange={(event) => form.setData("status", event.target.value)}
-                    className="h-8 w-40 text-xs"
-                  >
-                    <option value="active">Aktif - tampil di toko</option>
-                    <option value="inactive">Nonaktif - disembunyikan</option>
-                    <option value="archived">Diarsipkan</option>
-                  </Select>
-                </td>
-              </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
@@ -465,51 +384,6 @@ export default function InstallationGalleryForm({
             </div>
           </div>
         </SectionCard>
-
-        {/* Spesifikasi unit: hanya untuk placement tanpa SKU spesifik */}
-        {!isProductLinked ? (
-          <SectionCard
-            title="Spesifikasi unit"
-            description="Baris nama-nilai detail teknis instalasi (opsional), mis. Tipe Kaca → Tempered 8mm."
-            icon="ruler"
-          >
-            <div className="max-w-2xl space-y-2">
-              {form.data.specifications.map((row, index) => (
-                <div key={index} className="grid grid-cols-[1fr_1.4fr_auto] items-center gap-2">
-                  <Input
-                    value={row.name}
-                    onChange={(event) => updateSpec(index, "name", event.target.value)}
-                    placeholder="Nama (mis. Tipe Kaca)"
-                    className="h-8 text-xs"
-                  />
-                  <Input
-                    value={row.value}
-                    onChange={(event) => updateSpec(index, "value", event.target.value)}
-                    placeholder="Nilai (mis. Tempered 8mm)"
-                    className="h-8 text-xs"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => form.setData("specifications", form.data.specifications.filter((_, i) => i !== index))}
-                  >
-                    Hapus
-                  </Button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => form.setData("specifications", [...form.data.specifications, { name: "", value: "" }])}
-              >
-                <Icon name="plus" className="size-4" aria-hidden="true" />
-                Tambah baris spesifikasi
-              </Button>
-            </div>
-          </SectionCard>
-        ) : null}
       </form>
 
       <MediaPicker

@@ -11,6 +11,7 @@ class ProductMedia extends Model
 {
     protected $fillable = [
         'product_id',
+        'model_product_id',
         'product_variant_id',
         'media_asset_id',
         'position',
@@ -54,6 +55,12 @@ class ProductMedia extends Model
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    /** Pemilik level model (media pemasangan tanpa SKU). */
+    public function modelProduct(): BelongsTo
+    {
+        return $this->belongsTo(CmsModelProduct::class, 'model_product_id');
     }
 
     public function mediaAsset(): BelongsTo
