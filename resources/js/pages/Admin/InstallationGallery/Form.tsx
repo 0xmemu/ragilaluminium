@@ -472,10 +472,10 @@ export default function InstallationGalleryForm({
                           <button
                             type="button"
                             onClick={() => setGalleryMedia(galleryMedia.filter((_, i) => i !== index))}
-                            className="rounded p-1 text-muted-foreground transition hover:text-destructive"
+                            className="flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
                             aria-label={`Hapus foto ${index + 1}`}
                           >
-                            <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
+                            <Icon name="trash-2" className="size-4" aria-hidden="true" />
                           </button>
                         </div>
                       </div>
