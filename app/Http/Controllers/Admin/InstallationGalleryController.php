@@ -86,7 +86,6 @@ class InstallationGalleryController extends Controller
                     'model' => $p->modelProduct->product_model,
                 ] : null,
                 'specifications' => $p->specifications ?? [],
-                'features' => $p->features ?? [],
                 'created_at' => $p->created_at?->format('d M Y'),
                 'showUrl' => route('admin.hasil-pemasangan.show', $p->id),
                 'editUrl' => route('admin.hasil-pemasangan.edit', $p->id),
@@ -147,8 +146,6 @@ class InstallationGalleryController extends Controller
             'specifications' => ['nullable', 'array'],
             'specifications.*.name' => ['nullable', 'string', 'max:100'],
             'specifications.*.value' => ['nullable', 'string', 'max:255'],
-            'features' => ['nullable', 'array'],
-            'features.*' => ['nullable', 'string', 'max:255'],
         ]);
 
         if (empty($validated['main_image_url']) && empty($validated['main_image_asset_id'])) {
@@ -160,11 +157,6 @@ class InstallationGalleryController extends Controller
 
         $specs = collect($validated['specifications'] ?? [])
             ->filter(fn ($s) => !empty($s['name']) || !empty($s['value']))
-            ->values()
-            ->all();
-
-        $features = collect($validated['features'] ?? [])
-            ->filter(fn ($f) => !empty(trim((string) $f)))
             ->values()
             ->all();
 
@@ -182,7 +174,6 @@ class InstallationGalleryController extends Controller
             'main_video_asset_id' => $validated['main_video_asset_id'] ?? null,
             'gallery_images' => $validated['gallery_images'] ?? [],
             'specifications' => $specs,
-            'features' => $features,
         ]);
 
         ActivityLogService::record('installation_project.created', 'installation_project', $project->id, ['title' => $project->title], $request->user()?->id);
@@ -215,7 +206,6 @@ class InstallationGalleryController extends Controller
                     'model' => $project->modelProduct->product_model,
                 ] : null,
                 'specifications' => $project->specifications ?? [],
-                'features' => $project->features ?? [],
                 'created_at' => $project->created_at?->format('d M Y H:i'),
                 'updated_at' => $project->updated_at?->format('d M Y H:i'),
                 'editUrl' => route('admin.hasil-pemasangan.edit', $project->id),
@@ -251,7 +241,6 @@ class InstallationGalleryController extends Controller
                 'main_video_asset_id' => $project->main_video_asset_id,
                 'gallery_images' => $project->gallery_images ?? [],
                 'specifications' => $project->specifications ?? [],
-                'features' => $project->features ?? [],
             ],
             'modelProducts' => $modelProducts,
             'submitUrl' => route('admin.hasil-pemasangan.update', $project->id),
@@ -278,8 +267,6 @@ class InstallationGalleryController extends Controller
             'specifications' => ['nullable', 'array'],
             'specifications.*.name' => ['nullable', 'string', 'max:100'],
             'specifications.*.value' => ['nullable', 'string', 'max:255'],
-            'features' => ['nullable', 'array'],
-            'features.*' => ['nullable', 'string', 'max:255'],
         ]);
 
         if (empty($validated['main_image_url']) && empty($validated['main_image_asset_id'])) {
@@ -288,11 +275,6 @@ class InstallationGalleryController extends Controller
 
         $specs = collect($validated['specifications'] ?? [])
             ->filter(fn ($s) => !empty($s['name']) || !empty($s['value']))
-            ->values()
-            ->all();
-
-        $features = collect($validated['features'] ?? [])
-            ->filter(fn ($f) => !empty(trim((string) $f)))
             ->values()
             ->all();
 
@@ -308,7 +290,6 @@ class InstallationGalleryController extends Controller
             'main_video_asset_id' => $validated['main_video_asset_id'] ?? null,
             'gallery_images' => $validated['gallery_images'] ?? [],
             'specifications' => $specs,
-            'features' => $features,
         ]);
 
         ActivityLogService::record('installation_project.updated', 'installation_project', $project->id, ['title' => $project->title], $request->user()?->id);

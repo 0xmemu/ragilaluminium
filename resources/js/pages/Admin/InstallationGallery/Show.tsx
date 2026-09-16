@@ -25,7 +25,6 @@ interface ShowProject {
     model: string
   } | null
   specifications: Array<{ name: string; value: string }>
-  features: string[]
   created_at?: string | null
   updated_at?: string | null
   editUrl: string
@@ -236,22 +235,6 @@ export default function InstallationGalleryShow({ title, project, backUrl }: Sho
               </div>
             </div>
 
-            {/* Fitur & Keunggulan */}
-            {project.features && project.features.length > 0 && (
-              <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
-                <h3 className="text-sm font-semibold text-foreground border-b border-border pb-3 mb-3">
-                  Fitur &amp; Nilai Jual Keunggulan
-                </h3>
-                <ul className="space-y-2 text-xs">
-                  {project.features.map((feat, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-foreground">
-                      <Icon name="check" className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
 
           <div className="space-y-6">

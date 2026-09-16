@@ -128,10 +128,7 @@ class InstallationProjectAdminTest extends TestCase
                 ['name' => 'Tipe Kaca', 'value' => 'Tempered 8mm'],
                 ['name' => 'Framer', 'value' => 'Aluminium 4"'],
             ],
-            'features' => [
-                'Tampilan bersih',
-                'Maksimal pencahayaan',
-            ],
+
         ];
 
         $this->actingAs($admin)
@@ -150,7 +147,7 @@ class InstallationProjectAdminTest extends TestCase
         $this->assertNotNull($project);
         $this->assertCount(1, $project->gallery_images);
         $this->assertCount(2, $project->specifications);
-        $this->assertCount(2, $project->features);
+
     }
 
     public function test_admin_can_view_installation_project_detail(): void
@@ -164,7 +161,7 @@ class InstallationProjectAdminTest extends TestCase
             'sort_order' => 1,
             'main_image_url' => 'https://example.com/casement.jpg',
             'specifications' => [['name' => 'Warna', 'value' => 'Hitam Matt']],
-            'features' => ['Kedap suara'],
+
         ]);
 
         $this->actingAs($admin)
@@ -197,7 +194,7 @@ class InstallationProjectAdminTest extends TestCase
                 'description' => 'Deskripsi baru',
                 'main_image_url' => 'https://example.com/baru.jpg',
                 'specifications' => [['name' => 'Lokasi', 'value' => 'Lantai 2']],
-                'features' => ['Fitur Baru'],
+
             ])
             ->assertRedirect(route('admin.hasil-pemasangan.index'))
             ->assertSessionHas('success');

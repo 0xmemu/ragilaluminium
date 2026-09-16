@@ -37,7 +37,6 @@ interface ProjectRow {
     model: string
   } | null
   specifications: Array<{ name: string; value: string }>
-  features: string[]
   created_at?: string | null
   showUrl: string
   editUrl: string

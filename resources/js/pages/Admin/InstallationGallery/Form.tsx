@@ -31,7 +31,6 @@ interface FormProject {
   main_video_asset_id?: number | null
   gallery_images?: Array<{ url: string; asset_id?: number | null; caption?: string | null }>
   specifications?: Array<{ name: string; value: string }>
-  features?: string[]
 }
 
 interface FormProps {
@@ -52,11 +51,11 @@ export default function InstallationGalleryForm({
   const isEdit = Boolean(project?.id)
 
   const form = useForm({
+    model_product_id: project?.model_product_id ? String(project.model_product_id) : "",
     title: project?.title ?? "",
     category_label: project?.category_label ?? "",
     status: project?.status ?? "active",
     description: project?.description ?? "",
-    model_product_id: project?.model_product_id ? String(project.model_product_id) : "",
     main_image_url: project?.main_image_url ?? "",
     main_image_asset_id: project?.main_image_asset_id ?? null,
     main_video_url: project?.main_video_url ?? "",
@@ -71,10 +70,6 @@ export default function InstallationGalleryForm({
             { name: "Warna", value: "" },
             { name: "Lokasi", value: "" },
           ],
-    features:
-      project?.features && project.features.length > 0
-        ? project.features
-        : [""],
   })
 
   // State MediaPicker
@@ -147,24 +142,6 @@ export default function InstallationGalleryForm({
     )
   }
 
-  // Fitur & Keunggulan Dinamis
-  function updateFeature(index: number, value: string) {
-    const next = [...form.data.features]
-    next[index] = value
-    form.setData("features", next)
-  }
-
-  function addFeatureRow() {
-    form.setData("features", [...form.data.features, ""])
-  }
-
-  function removeFeatureRow(index: number) {
-    form.setData(
-      "features",
-      form.data.features.filter((_, i) => i !== index),
-    )
-  }
-
   function handleSubmit(event: React.FormEvent, forceActive = false) {
     event.preventDefault()
     if (forceActive) {
@@ -217,14 +194,71 @@ export default function InstallationGalleryForm({
       >
         <FormErrorSummary errors={form.errors} />
 
-        {/* 1. INFORMASI DASAR */}
+        {/* 1. TAUTAN MODEL PRODUK (TAMPIL PERTAMA) */}
+        <section className="rounded-xl border border-primary/30 bg-card p-5 shadow-xs sm:p-6 ring-1 ring-primary/20">
+          <div className="mb-5 border-b border-border pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                1
+              </span>
+              <h3 className="text-base font-semibold text-foreground">Tautan Model Produk</h3>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pilih model produk di katalog yang menjadi dasar dokumentasi hasil pemasangan ini (misalnya <strong>Jendela Swing Satu Daun</strong>).
+            </p>
+          </div>
+
+          <Field
+            id="model_product_id"
+            label="Model Produk Terkait"
+            error={form.errors.model_product_id}
+            description="Pilih salah satu model produk katalog untuk menghubungkan proyek ini dengan halaman katalog toko."
+          >
+            <select
+              id="model_product_id"
+              value={form.data.model_product_id}
+              onChange={(e) => {
+                const val = e.target.value
+                const selectedModel = modelProducts.find((m) => String(m.id) === val)
+                if (selectedModel && !form.data.title) {
+                  form.setData({
+                    ...form.data,
+                    model_product_id: val,
+                    title: selectedModel.name,
+                    category_label:
+                      selectedModel.product_category === "BOVEN"
+                        ? "Boven & Ventilasi"
+                        : "Jendela & Kaca",
+                  })
+                } else {
+                  form.setData("model_product_id", val)
+                }
+              }}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">— Tidak terikat produk tertentu (Umum/Lainnya) —</option>
+              {modelProducts.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} {model.product_category ? `(${model.product_category})` : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </section>
+
+        {/* 2. INFORMASI DASAR */}
         <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
           <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">1. Informasi Dasar</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Judul utama portofolio, sub-judul kategori, dan status publikasi.
-              </p>
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
+                2
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Informasi Dasar</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Judul utama portofolio, sub-judul kategori, dan status publikasi.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -235,7 +269,7 @@ export default function InstallationGalleryForm({
                 label="Judul Proyek"
                 required
                 error={form.errors.title}
-                description="Contoh: Kaca Mati Polos, Pintu Lipat Aluminium 4 Daun"
+                description="Contoh: Kaca Mati Polos, Jendela Swing Satu Daun"
               >
                 <Input
                   id="title"
@@ -296,37 +330,20 @@ export default function InstallationGalleryForm({
           </div>
         </section>
 
-        {/* 2. DESKRIPSI PROYEK */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <div className="mb-5 border-b border-border pb-3">
-            <h3 className="text-base font-semibold text-foreground">2. Deskripsi Proyek</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Jelaskan detail pekerjaan pemasangan, material yang digunakan, kondisi teknis, dan keunggulan.
-            </p>
-          </div>
-
-          <Field
-            id="description"
-            label="Detail Deskripsi Pekerjaan"
-            error={form.errors.description}
-          >
-            <Textarea
-              id="description"
-              rows={5}
-              value={form.data.description}
-              onChange={(e) => form.setData("description", e.target.value)}
-              placeholder="Ceritakan detail pemasangan, tantangan di lokasi, solusi teknis yang diterapkan, dan material yang dipasang..."
-            />
-          </Field>
-        </section>
-
         {/* 3. GALERI MEDIA */}
         <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
           <div className="mb-5 border-b border-border pb-3">
-            <h3 className="text-base font-semibold text-foreground">3. Galeri Media</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Dokumentasi visual proyek mencakup foto utama, video utama, serta hingga 3 foto tambahan. Format: JPG, PNG, MP4, MOV.
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
+                3
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Galeri Media</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Dokumentasi visual proyek mencakup foto utama, video utama, serta hingga 3 foto tambahan. Format: JPG, PNG, MP4, MOV.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -543,45 +560,50 @@ export default function InstallationGalleryForm({
           </div>
         </section>
 
-        {/* 4. TAUTAN PRODUK KATALOG */}
+        {/* 4. DESKRIPSI PROYEK */}
         <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
           <div className="mb-5 border-b border-border pb-3">
-            <h3 className="text-base font-semibold text-foreground">4. Tautan Model Produk</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Hubungkan proyek pemasangan ini dengan model produk di katalog (misalnya <strong>Kaca Mati Standard</strong>) untuk membantu navigasi pelanggan.
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
+                4
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Deskripsi Proyek</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Jelaskan detail pekerjaan pemasangan, material yang digunakan, kondisi teknis, dan keunggulan.
+                </p>
+              </div>
+            </div>
           </div>
 
           <Field
-            id="model_product_id"
-            label="Model Produk Terkait"
-            error={form.errors.model_product_id}
-            description="Pilih salah satu model produk katalog jika instalasi ini menggunakan produk tersebut."
+            id="description"
+            label="Detail Deskripsi Pekerjaan"
+            error={form.errors.description}
           >
-            <select
-              id="model_product_id"
-              value={form.data.model_product_id}
-              onChange={(e) => form.setData("model_product_id", e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="">— Tidak terikat produk tertentu (Umum/Lainnya) —</option>
-              {modelProducts.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} {model.product_category ? `(${model.product_category})` : ""}
-                </option>
-              ))}
-            </select>
+            <Textarea
+              id="description"
+              rows={5}
+              value={form.data.description}
+              onChange={(e) => form.setData("description", e.target.value)}
+              placeholder="Ceritakan detail pemasangan, tantangan di lokasi, solusi teknis yang diterapkan, dan material yang dipasang..."
+            />
           </Field>
         </section>
 
         {/* 5. SPESIFIKASI UNIT */}
         <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
           <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">5. Spesifikasi Unit</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Detail teknis instalasi dalam format nama dan nilai spesifikasi.
-              </p>
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground">
+                5
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Spesifikasi Unit</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Detail teknis instalasi dalam format nama dan nilai spesifikasi.
+                </p>
+              </div>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={addSpecificationRow}>
               <Icon name="plus" className="size-3.5" />
@@ -611,48 +633,6 @@ export default function InstallationGalleryForm({
                   className="size-8 text-destructive hover:bg-destructive/10"
                   onClick={() => removeSpecificationRow(index)}
                   title="Hapus baris spesifikasi"
-                >
-                  <Icon name="trash" className="size-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 6. FITUR DAN KEUNGGULAN */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">6. Fitur &amp; Keunggulan</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Manfaat atau nilai jual utama hasil pemasangan proyek ini (poin-poin bullet).
-              </p>
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={addFeatureRow}>
-              <Icon name="plus" className="size-3.5" />
-              Tambah Poin
-            </Button>
-          </div>
-
-          <div className="space-y-2.5">
-            {form.data.features.map((feature, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
-                  {index + 1}
-                </span>
-                <Input
-                  value={feature}
-                  onChange={(e) => updateFeature(index, e.target.value)}
-                  placeholder="Contoh: Tampilan bersih, Maksimal pencahayaan, Ketahanan material..."
-                  className="text-xs flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-destructive hover:bg-destructive/10"
-                  onClick={() => removeFeatureRow(index)}
-                  title="Hapus poin keunggulan"
                 >
                   <Icon name="trash" className="size-3.5" />
                 </Button>
