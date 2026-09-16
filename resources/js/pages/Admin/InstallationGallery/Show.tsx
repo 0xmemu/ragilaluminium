@@ -1,12 +1,14 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { RowActions } from "@/components/admin/row-actions"
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { Input } from "@/components/admin/ui/input"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
-import { cn } from "@/lib/utils"
 
 interface MediaRow {
   id: number
@@ -20,6 +22,7 @@ interface MediaRow {
   product_name: string
   created_at?: string | null
   toggleStatusUrl: string
+  updateMediaUrl: string
   archiveUrl: string
   destroyUrl: string
 }
@@ -34,12 +37,6 @@ interface ShowProps {
   backUrl: string
 }
 
-const VISIBILITY_LABEL: Record<MediaRow["visibility"], string> = {
-  visible: "Aktif",
-  hidden: "Disembunyikan",
-  archived: "Diarsipkan",
-}
-
 export default function InstallationGalleryShow({ title, group, backUrl }: ShowProps) {
   const [rows, setRows] = React.useState<MediaRow[]>(group.media ?? [])
   const [editingId, setEditingId] = React.useState<number | null>(null)
@@ -49,266 +46,244 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
     installation_caption: "",
   })
 
+  React.useEffect(() => {
+    setRows(group.media ?? [])
+  }, [group.media])
+
   function startEdit(row: MediaRow) {
     setEditingId(row.media_id)
     setEditValue(row.caption)
   }
 
   function submitEdit(row: MediaRow) {
+    editForm.setData("installation_caption", editValue)
     editForm.patch(row.updateMediaUrl, {
       preserveScroll: true,
       onSuccess: () => {
         setEditingId(null)
         setRows((prev) =>
-          prev.map((r) =>
-            r.media_id === row.media_id ? { ...r, caption: editValue } : r,
-          ),
+          prev.map((r) => (r.media_id === row.media_id ? { ...r, caption: editValue } : r)),
         )
       },
     })
   }
 
-  function reload() {
-    router.reload({ only: ["group"] })
-  }
+  const hasSku = rows.some((row) => Boolean(row.product_sku))
+  const videoCount = rows.filter((row) => row.is_video).length
 
   return (
     <AdminLayout
       title={title}
-      description={`Daftar media hasil pemasangan di grup "${group.label}".`}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline">
-            <Link href={backUrl}>
-              <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-              Kembali
-            </Link>
-          </Button>
-        </div>
-      }
+      description="Kelola media hasil pemasangan di grup ini: keterangan, visibilitas, dan arsip."
+      backUrl={backUrl}
     >
       <Head title={`${title} | Media Hasil Pemasangan`} />
 
-      <div className="space-y-5">
+      <SectionCard
+        title="Media dalam grup"
+        description={`${rows.length} media${videoCount ? ` · ${videoCount} video` : ""}. Klik ikon pensil untuk mengubah keterangan.`}
+        icon="image"
+        contentClassName="p-0"
+      >
         {rows.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-12 text-center">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-              <Icon name="image" className="size-6 text-muted-foreground" />
-            </div>
-            <h3 className="mt-4 text-sm font-semibold text-foreground">
-              Belum ada media di grup ini
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Tambahkan media lewat tombol "Tambah Pemasangan" di halaman daftar.
+          <div className="px-5 py-10 text-center">
+            <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Belum ada media di grup ini.
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] table-fixed text-left text-xs">
-                <colgroup>
-                  <col className="w-24" />
-                  <col className="w-64" />
-                  <col className="w-72" />
-                  <col className="w-28" />
-                  <col className="w-36" />
-                </colgroup>
-                <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-3">Media</th>
-                    <th className="px-3 py-3">Keterangan</th>
-                    <th className="px-3 py-3">Produk (SKU)</th>
-                    <th className="px-3 py-3 text-center">Status</th>
-                    <th className="py-3 pl-2 pr-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {rows.map((row, index) => (
-                    <tr key={row.id} className="transition-colors hover:bg-muted/30">
-                      {/* Thumbnail */}
-                      <td className="px-3 py-3">
-                        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                          {row.thumb ? (
-                            <img
-                              src={row.thumb}
-                              alt={row.caption || "Media pemasangan"}
-                              className="size-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="flex size-full items-center justify-center text-muted-foreground">
-                              <Icon name="image" className="size-5" />
-                            </div>
-                          )}
-                          {row.is_video && (
-                            <span className="absolute bottom-1 right-1 flex size-4 items-center justify-center rounded-full bg-black/70 text-white">
-                              <Icon name="play" className="size-2.5 fill-current" />
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Keterangan + meta tanggal (inline edit) */}
-                      <td className="px-3 py-3">
-                        {editingId === row.media_id ? (
-                          <form
-                            onSubmit={(event) => {
-                              event.preventDefault()
-                              editForm.setData("installation_caption", editValue)
-                              submitEdit(row)
-                            }}
-                            className="flex flex-col gap-1.5"
-                          >
-                            <Input
-                              value={editValue}
-                              onChange={(event) => setEditValue(event.target.value)}
-                              placeholder="Keterangan media"
-                              className="h-8 text-xs"
-                              autoFocus
-                            />
-                            <div className="flex items-center gap-1">
-                              <Button type="submit" size="sm" className="h-7 text-xs" disabled={editForm.processing}>
-                                Simpan
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Batal
-                              </Button>
-                            </div>
-                            {editForm.errors.installation_caption ? (
-                              <p className="text-[11px] text-destructive">{editForm.errors.installation_caption}</p>
-                            ) : null}
-                          </form>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
+                  <th className="px-4 py-3 text-left">Media</th>
+                  <th className="px-3 py-3 text-left">Keterangan</th>
+                  {hasSku ? <th className="px-3 py-3 text-left">Produk (SKU)</th> : null}
+                  <th className="px-3 py-3 text-center">Status</th>
+                  <th className="w-[1%] whitespace-nowrap px-4 py-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((row, index) => (
+                  <tr key={row.id} className="transition-colors hover:bg-muted/40">
+                    {/* Thumbnail */}
+                    <td className="px-4 py-3 align-middle">
+                      <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                        {row.thumb ? (
+                          <img
+                            src={row.thumb}
+                            alt={row.caption || "Media pemasangan"}
+                            className="size-full object-cover"
+                            loading="lazy"
+                          />
                         ) : (
-                          <>
-                            <p className="line-clamp-2 font-medium text-foreground">
-                              {row.caption || "Tanpa keterangan"}
-                            </p>
-                            <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <Icon
-                                name={row.is_video ? "video-camera" : "image"}
-                                className="size-3"
-                                aria-hidden="true"
-                              />
-                              {row.is_video ? "Video" : "Foto"} · {row.created_at ?? "—"}
-                            </p>
-                          </>
+                          <div className="flex size-full items-center justify-center text-muted-foreground">
+                            <Icon name="image" className="size-5" />
+                          </div>
                         )}
-                      </td>
-
-                      {/* SKU */}
-                      <td className="px-3 py-3">
-                        {row.product_sku ? (
-                          <>
-                            <p className="line-clamp-2 font-medium text-foreground">{row.product_name}</p>
-                            <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{row.product_sku}</p>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground italic">Media grup</span>
+                        {row.is_video && (
+                          <span className="absolute bottom-1 right-1 flex size-4 items-center justify-center rounded-full bg-black/70 text-white">
+                            <Icon name="play" className="size-2.5 fill-current" />
+                          </span>
                         )}
-                      </td>
+                      </div>
+                    </td>
 
-                      {/* Status */}
-                      <td className="px-3 py-3 text-center">
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                            row.visibility === "visible"
-                              ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
-                              : row.visibility === "hidden"
-                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                                : "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300",
-                          )}
+                    {/* Keterangan + meta */}
+                    <td className="px-3 py-3 align-middle">
+                      {editingId === row.media_id ? (
+                        <form
+                          onSubmit={(event) => {
+                            event.preventDefault()
+                            submitEdit(row)
+                          }}
+                          className="min-w-56 space-y-1.5"
                         >
-                          {VISIBILITY_LABEL[row.visibility]}
-                        </span>
-                      </td>
-
-                      {/* Aksi: ikon ringkas dengan title */}
-                      <td className="py-3 pl-2 pr-4">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            title="Edit keterangan"
-                            aria-label={`Edit keterangan media ${index + 1}`}
-                            onClick={() => {
-                              setEditingId(row.media_id)
-                              setEditValue(row.caption)
-                            }}
-                          >
-                            <Icon name="pencil" className="size-4" />
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            title={row.visibility === "visible" ? "Sembunyikan dari publik" : "Tampilkan di publik"}
-                            aria-label={row.visibility === "visible" ? `Sembunyikan media ${index + 1}` : `Tampilkan media ${index + 1}`}
-                            onClick={() =>
-                              router.patch(row.toggleStatusUrl, {}, { preserveScroll: true })
-                            }
-                          >
-                            <Icon
-                              name={row.visibility === "visible" ? "eye-slash" : "eye"}
-                              className="size-4"
-                            />
-                          </Button>
-
-                          {row.visibility !== "archived" ? (
-                            <ConfirmAction
-                              trigger={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-8 text-amber-700"
-                                  aria-label={`Arsipkan media ${index + 1}`}
-                                >
-                                  <Icon name="archive" className="size-4" />
-                                </Button>
-                              }
-                              title="Arsipkan media?"
-                              description="Media ini akan keluar dari halaman publik hasil pemasangan."
-                              confirmLabel="Arsipkan"
-                              onConfirm={() => router.post(row.archiveUrl, {}, { preserveScroll: true })}
-                            />
+                          <Input
+                            value={editValue}
+                            onChange={(event) => setEditValue(event.target.value)}
+                            placeholder="Keterangan media"
+                            className="h-8 text-xs"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-1">
+                            <Button type="submit" size="sm" className="h-7 text-xs" disabled={editForm.processing}>
+                              Simpan
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => setEditingId(null)}
+                            >
+                              Batal
+                            </Button>
+                          </div>
+                          {editForm.errors.installation_caption ? (
+                            <p className="text-[11px] text-destructive">{editForm.errors.installation_caption}</p>
                           ) : null}
+                        </form>
+                      ) : (
+                        <div className="space-y-0.5">
+                          <p className="font-medium text-foreground">
+                            {row.caption || <span className="italic text-muted-foreground">Tanpa keterangan</span>}
+                          </p>
+                          <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <Icon
+                              name={row.is_video ? "video-camera" : "image"}
+                              className="size-3"
+                              aria-hidden="true"
+                            />
+                            {row.is_video ? "Video" : "Foto"} · {row.created_at ?? "—"}
+                          </p>
+                        </div>
+                      )}
+                    </td>
 
+                    {/* SKU */}
+                    {hasSku ? (
+                      <td className="px-3 py-3 align-middle">
+                        {row.product_sku ? (
+                          <div className="space-y-0.5">
+                            <p className="font-medium text-foreground">{row.product_name}</p>
+                            <p className="font-mono text-[11px] text-muted-foreground">{row.product_sku}</p>
+                          </div>
+                        ) : (
+                          <span className="italic text-muted-foreground">Media grup</span>
+                        )}
+                      </td>
+                    ) : null}
+
+                    {/* Status */}
+                    <td className="px-3 py-3 text-center align-middle">
+                      <div className="inline-flex items-center justify-center">
+                        <StatusBadge status={row.visibility} />
+                      </div>
+                    </td>
+
+                    {/* Aksi */}
+                    <td className="w-[1%] whitespace-nowrap px-4 py-3 text-right align-middle">
+                      <RowActions>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="xs"
+                          title="Edit keterangan"
+                          aria-label={`Edit keterangan media ${index + 1}`}
+                          onClick={() => startEdit(row)}
+                        >
+                          <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="xs"
+                          title={row.visibility === "visible" ? "Sembunyikan dari publik" : "Tampilkan di publik"}
+                          aria-label={row.visibility === "visible" ? `Sembunyikan media ${index + 1}` : `Tampilkan media ${index + 1}`}
+                          onClick={() => router.patch(row.toggleStatusUrl, {}, { preserveScroll: true })}
+                        >
+                          <Icon
+                            name={row.visibility === "visible" ? "eye-slash" : "eye"}
+                            className="size-3.5"
+                            aria-hidden="true"
+                          />
+                        </Button>
+
+                        {row.visibility !== "archived" ? (
                           <ConfirmAction
                             trigger={
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-8 text-destructive"
-                                aria-label={`Hapus media ${index + 1}`}
+                                variant="secondary"
+                                size="xs"
+                                aria-label={`Arsipkan media ${index + 1}`}
                               >
-                                <Icon name="trash-2" className="size-4" />
+                                <Icon name="archive" className="size-3.5" aria-hidden="true" />
                               </Button>
                             }
-                            title="Hapus media?"
-                            description="Hapus media ini secara permanen? Tindakan tidak dapat dibatalkan."
-                            confirmLabel="Hapus"
-                            variant="destructive"
-                            onConfirm={() => router.delete(row.destroyUrl, { preserveScroll: true })}
+                            title="Arsipkan media?"
+                            description="Media ini akan keluar dari halaman publik hasil pemasangan."
+                            confirmLabel="Arsipkan"
+                            onConfirm={() => router.post(row.archiveUrl, {}, { preserveScroll: true })}
                           />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        ) : null}
+
+                        <ConfirmAction
+                          trigger={
+                            <Button
+                              variant="secondary"
+                              size="xs"
+                              className="text-destructive"
+                              aria-label={`Hapus media ${index + 1}`}
+                            >
+                              <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          }
+                          title="Hapus media?"
+                          description="Hapus media ini secara permanen? Tindakan tidak dapat dibatalkan."
+                          confirmLabel="Hapus"
+                          variant="destructive"
+                          onConfirm={() => router.delete(row.destroyUrl, { preserveScroll: true })}
+                        />
+                      </RowActions>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
+      </SectionCard>
+
+      <div className="mt-5">
+        <Button asChild variant="secondary">
+          <Link href={backUrl}>
+            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
+            Kembali ke daftar grup
+          </Link>
+        </Button>
       </div>
     </AdminLayout>
   )
