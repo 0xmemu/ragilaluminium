@@ -58,6 +58,8 @@ class WorkflowAuditP2Test extends TestCase
         $this->assertContains('admin.shipping.index', $coreRoutes);
         $this->assertContains('admin.analytics.store-performance', $coreRoutes);
         $this->assertContains('admin.imports.index', $productRoutes);
+        $this->assertContains('admin.hasil-pemasangan.index', $productRoutes);
+        $this->assertNotContains('admin.hasil-pemasangan.index', $komunikasiRoutes);
         $this->assertNotContains('admin.analytics.import-performance', $productRoutes); // Fase 13: Import Performance hidup di halaman Import, bukan nav terpisah.
         // Menu WhatsApp membuka halaman pilihan (Live Chat, Template Pesan, Sambungkan Nomor).
         $this->assertContains('admin.whatsapp.dashboard', $komunikasiRoutes);

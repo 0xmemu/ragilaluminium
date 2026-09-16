@@ -88,6 +88,7 @@ return [
                 ['label' => 'Kategori', 'route' => 'admin.categories.index', 'capability' => 'products.view', 'icon' => 'tags', 'active' => ['admin.categories.*']],
                 ['label' => 'Model Produk', 'route' => 'admin.model-products.index', 'capability' => 'products.view', 'icon' => 'layers', 'active' => ['admin.model-products.*']],
                 ['label' => 'Sub Model', 'route' => 'admin.sub-models.index', 'capability' => 'products.view', 'icon' => 'git-branch', 'active' => ['admin.sub-models.*']],
+                ['label' => 'Hasil Pemasangan', 'route' => 'admin.hasil-pemasangan.index', 'capability' => 'products.view', 'icon' => 'image', 'active' => ['admin.hasil-pemasangan.*', 'admin.installation-gallery.*']],
                 ['label' => 'Import', 'route' => 'admin.imports.index', 'capability' => 'products.view', 'icon' => 'upload', 'active' => ['admin.imports.*']],
                 ['label' => 'Teruskan Popularitas', 'route' => 'admin.products.popularity-boosts.index', 'capability' => 'products.view', 'icon' => 'trending-up', 'active' => ['admin.products.popularity-boosts.*']],
                 ['label' => 'Media Library', 'route' => 'admin.media.library', 'capability' => 'products.view', 'icon' => 'image', 'active' => ['admin.media.library', 'admin.media.history']],
@@ -117,7 +118,6 @@ return [
             'items' => [
                 ['label' => 'Customer', 'route' => 'admin.customers.index', 'capability' => 'customers.view', 'icon' => 'users', 'active' => ['admin.customers.*']],
                 ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*', 'admin.apa-kata-pelanggan.*']],
-                ['label' => 'Hasil Pemasangan', 'route' => 'admin.hasil-pemasangan.index', 'capability' => 'testimonials.view', 'icon' => 'image', 'active' => ['admin.hasil-pemasangan.*', 'admin.installation-gallery.*']],
                 [
                     'label' => 'WhatsApp',
                     'route' => 'admin.whatsapp.dashboard', 'capability' => 'whatsapp.view',

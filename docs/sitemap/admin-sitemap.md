@@ -27,7 +27,7 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 
 ### 3. Produk (Catalog)
 Satu menu nav **Kelola Produk** (submenu inline, pola Ant Design) memayungi seluruh domain katalog:
-Produk | Kategori | Model Produk | Sub Model | Import | Teruskan Popularitas | Media Library | Riwayat Media.
+Produk | Kategori | Model Produk | Sub Model | Hasil Pemasangan | Import | Teruskan Popularitas | Media Library | Riwayat Media.
 URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/categories`,
 `/admin/model-products`, `/admin/sub-models`, `/admin/variants`, `/admin/attributes`) redirect 301.
 
@@ -39,9 +39,14 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
   - CRUD kategori katalog (aktif/nonaktif).
 - **Model Produk** (Tipe: `Content/CMS` showcase katalog) — `/admin/kelola/model-produk`
   - Showcase/kurasi model katalog (`cms_model_products`): list + stats, reorder, sync dari produk, CRUD, aktif/draft.
+  - Media setting (2026-09-15): gambar utama + galeri foto diambil dari Media Library (upload/pilih), urutan galeri disimpan, plus setelan tampil/tidaknya foto produk di hero model. Kolom `image_url` hanya fallback legacy.
   - Route: `admin.model-products.*` → `Admin/ModelProducts/{Index,Form}`. **Bukan** `admin.products.*` (katalog SKU).
 - **Sub Model** (Tipe: Operational) — `/admin/kelola/sub-model`
   - CRUD sub model + urutan per model produk. Route: `admin.sub-models.*`.
+  - Kontrak 2026-09-16: form tambah SELALU kosong (tanpa prefill model), pemilih model bercari, daftar tanpa parameter menampilkan semua sub model dikelompokkan per model dengan mode geser terkunci. Kolom image_url dihapus (tidak dipakai storefront).
+- **Hasil Pemasangan** (Tipe: `Content/CMS` & `Operational`) — `/admin/hasil-pemasangan`
+  - Galeri hasil pemasangan terstruktur per model produk (mirror storefront); drill-down `/admin/hasil-pemasangan/kelola` khusus mengelola media unassigned (tanpa terikat produk manapun) dan upload foto/video manual. Media terikat produk dikelola langsung di form produk.
+  - Route: `admin.hasil-pemasangan.*` → `Admin/InstallationGallery/{Index,Model}`.
 - **Import** (Tipe: Operational) — submenu Kelola Produk
   - Daftar job impor Shopee/Internal.
   - Sub-view: Job Detail (Summary, Statistik Bar, Failed Rows Table, Download Correction).
@@ -63,12 +68,18 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
   - Daftar rekaman pembayaran, verifikasi bukti transfer.
 
 ### 5. Promo (Harga & Promo)
-Satu menu nav **Promo** (submenu inline) memayungi semua jenis promosi:
-Promo Toko | Flash Sale | Voucher Toko | Diskon Ongkir | Banner Promo | Bar Promo.
+Satu menu nav **Promo Toko** (submenu inline) memayungi semua jenis promosi:
+Promo Toko | Flash Sale | Voucher Toko | Banner Promo | Bar Promo.
 Biaya COD tetap item flat di grup yang sama.
 
-- **Promo Toko** — kampanye diskon reguler toko (type=store).
+- **Promo Toko** (tab di dalamnya bernama **Diskon Reguler**, type=store) — kampanye
+  diskon reguler toko untuk produk terpilih.
 - **Flash Sale** — diskon menit terbatas (type=flash_sale).
+- **Detail kampanye** — `admin.promotions.show` untuk kedua tipe: target kampanye,
+  ringkasan penjualan (unit terjual, nilai, pesanan, nilai diskon), dan tabel
+  produk yang diurutkan dari paling banyak terjual; produk tanpa penjualan tetap
+  tampil dengan angka nol. Rentang dapat diganti antara periode kampanye dan semua waktu.
+  Hanya pesanan scope omzet (`StorePerformanceService::REVENUE_STATUSES`) yang dihitung.
 - **Voucher Toko** — kode voucher diskon.
 - **Diskon Ongkir** — pengaturan subsidi ongkos kirim.
 - **Banner Promo** — banner promosi di halaman.
@@ -116,9 +127,6 @@ Biaya COD tetap item flat di grup yang sama.
   - Meta hero `/reviews` (`cms_pages.testimoni`: `title`, `heading`, `subtitle`, `published`) + daftar ulasan website (`cms_testimonials`).
   - Route: `admin.apa-kata-pelanggan.*` → `Admin/Testimonials/Index` (surface Pengaturan; CRUD item tetap `admin.testimonials.*`).
   - Monitoring → Ulasan tetap entry dual-tab (website + foto).
-- **Hasil Pemasangan Kami** (Tipe: `Content/CMS`)
-  - Meta section `/hasil-pemasangan` + beranda (`cms_pages.hasil-pemasangan`) + galeri `cms_gallery_items`; detail publik `/hasil-pemasangan/{parent_sku}`.
-  - Route: `admin.hasil-pemasangan.*` → `Admin/Testimonials/Index` (tab foto + meta; CRUD item tetap `admin.gallery-items.*`).
 - **Pages** (Tipe: `Content/CMS`)
   - Editor halaman publik generik.
 - **Banners / Promo** (Tipe: `Content/CMS`)

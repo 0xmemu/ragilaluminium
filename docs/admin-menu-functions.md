@@ -30,12 +30,13 @@ Status release: **BELUM PRODUCTION** — dokumen ini deskriptif-praktis untuk na
 | **Teruskan Popularitas** | `admin.products.popularity-boosts.index` | `ProductPopularityBoostController@index` | `Admin/Products` | Konfigurasi produk sumber→target: snapshot penjualan sumber jadi seed target; bisa dinonaktifkan dgn alasan; audit + notifikasi ambang masuk Akun & Sistem. | Operational |
 | **Media Library** | `admin.media.library` | `ProductMediaController@library` | `Admin/Media` | Global shared asset (browse/filter/attach lintas produk, upload langsung). | Operational |
 | **Riwayat Media** | `admin.media.history` | `ProductMediaController@history` | `Admin/Media` | Histori pekerjaan/upload media (status, retry, log). | Operational |
+| **Hasil Pemasangan** | `admin.hasil-pemasangan.index` | `InstallationGalleryController@index` | `Admin/InstallationGallery/{Index,Model}` | Galeri hasil pemasangan terstruktur per model produk + drill-down media unassigned (`/admin/hasil-pemasangan/kelola`); foto per produk dikelola di form produk. | Operational/Content |
 
 ## 3. Harga & Promo
 
 | Menu | Route (verified) | Controller | View | Fungsi (spec) | Tipe |
 |---|---|---|---|---|---|
-| **Promo Toko** | `admin.promotions.index` | `PromotionController@index` | `Admin/Promotions` | CRUD/status/duplikasi/akhiri promo; aturan harga efektif (promo → voucher → subsidi ongkir → biaya COD). | Operational/Content |
+| **Promo Toko** | `admin.promotions.index` | `PromotionController@index` | `Admin/Promotions` | CRUD/status/aktivasi/akhiri kampanye (tab Diskon Reguler & Flash Sale); aturan harga efektif (promo → voucher → subsidi ongkir → biaya COD). Detail kampanye di `admin.promotions.show` (`Admin/PromotionDetail`) menampilkan produk terjual + nilai penjualan per kampanye. | Operational/Content |
 | **Banner Promo** | `admin.banners.index` | `BannerController@index` | `Admin/Banners` | Aset hero banner & promo di beranda publik; hapus dgn cleanup media (dishare → archived). | Content/CMS |
 | **Bar Promo** | `admin.announcements.index` | `AnnouncementController@index` | `Admin/Announcements` | Bar pengumuman (slide) di storefront. | Content/CMS |
 | **Flash Sale** | `admin.promotions.index?type=flash_sale` | `PromotionController` | `Admin/FlashSale` | Menandai produk peserta via `product_attributes` (`promo_flash_sale`, `promo_compare_price`); diskon PER VARIASI (Fase 12). | Operational/Content |
@@ -64,7 +65,6 @@ Status release: **BELUM PRODUCTION** — dokumen ini deskriptif-praktis untuk na
 | **Dokumen Halaman** | `admin.documents.index` (+ tentang-kami, ketentuan-layanan, kebijakan-privasi) | `DocumentPagesController@index` | `Admin/CmsDocument/Edit` | Editor dokumen panjang: Tentang Kami (/about), Ketentuan Layanan (/policy/terms), Kebijakan Privasi (/policy/privacy). | Content/CMS |
 | **Marketplace & Media Sosial** | `admin.storefront-platforms.edit` | `StorefrontPlatformController@edit` | `Admin/StorefrontPlatforms/Edit` | Editor tautan eksternal toko/akun (`cms_pages.storefront-platforms`); katalog key/label/icon di `config/sitemap.php → platforms`; tampil di Info Toko + footer. | Settings |
 | **Apa Kata Pelanggan Kami** | `admin.apa-kata-pelanggan.index` | `TestimonialController@apaKata` | `Admin/Testimonials/Index` | Meta hero `/reviews` (`cms_pages.testimoni`) + daftar ulasan website (CRUD tetap `admin.testimonials.*`). | Content/CMS |
-| **Hasil Pemasangan Kami** | `admin.hasil-pemasangan.index` | `TestimonialController@hasilPemasangan` | `Admin/Testimonials/Index` | Meta section `/hasil-pemasangan` + galeri (`cms_gallery_items`); detail publik `/hasil-pemasangan/{parent_sku}`; CRUD item tetap `admin.gallery-items.*`. | Content/CMS |
 
 ## 6. Akun & Sistem
 
