@@ -83,11 +83,11 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
               <table className="w-full min-w-[860px] table-fixed text-left text-xs">
                 <colgroup>
                   <col className="w-20" />
+                  <col className="w-56" />
                   <col />
-                  <col className="w-48" />
                   <col className="w-24" />
                   <col className="w-28" />
-                  <col className="w-24" />
+                  <col className="w-40" />
                 </colgroup>
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
