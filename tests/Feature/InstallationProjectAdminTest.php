@@ -210,6 +210,43 @@ class InstallationProjectAdminTest extends TestCase
             ->assertSessionHasErrors('product_id');
     }
 
+    public function test_store_creates_standalone_group_with_title(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->post(route('admin.hasil-pemasangan.store'), [
+                'title' => 'Kanopi Cafe Semarang',
+                'main_image_url' => 'https://example.com/kanopi.jpg',
+                'gallery_images' => [
+                    ['url' => 'https://example.com/kanopi2.jpg', 'caption' => 'Tampak samping'],
+                ],
+            ])
+            ->assertRedirect(route('admin.hasil-pemasangan.index'))
+            ->assertSessionHas('success');
+
+        $group = \App\Models\InstallationGroup::where('title', 'Kanopi Cafe Semarang')->first();
+        $this->assertNotNull($group);
+
+        $media = ProductMedia::where('installation_group_id', $group->id)->get();
+        $this->assertCount(2, $media);
+        $this->assertNull($media[0]->product_id);
+        $this->assertNull($media[0]->model_product_id);
+    }
+
+    public function test_store_requires_title_for_standalone(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->from(route('admin.hasil-pemasangan.create'))
+            ->post(route('admin.hasil-pemasangan.store'), [
+                'main_image_url' => 'https://example.com/x.jpg',
+            ])
+            ->assertRedirect(route('admin.hasil-pemasangan.create'))
+            ->assertSessionHasErrors('title');
+    }
+
     public function test_admin_can_view_media_detail(): void
     {
         $admin = $this->admin();

@@ -68,20 +68,26 @@ class InstallationGalleryController extends Controller
             ]);
         }
 
+        // Grup mandiri: satu baris per installation_groups (judul admin),
+        // bukan satu baris generik "Grup mandiri" untuk semuanya.
         $standalone = $media->where('placement', 'standalone');
-        if ($standalone->isNotEmpty()) {
+        $standaloneByGroup = $standalone->groupBy('installation_group_id');
+        foreach ($standaloneByGroup as $groupId => $rows) {
+            $groupTitle = \App\Models\InstallationGroup::find($groupId)?->title
+                ?: ($rows->first()['caption'] ?: 'Grup mandiri');
+
             $groups->push([
-                'key' => 'standalone',
+                'key' => 'group|'.$groupId,
                 'kind' => 'standalone',
-                'label' => 'Grup mandiri',
+                'label' => $groupTitle,
                 'category' => 'LAINNYA',
                 'model' => 'STANDALONE',
-                'media_count' => $standalone->count(),
-                'video_count' => $standalone->where('is_video', true)->count(),
+                'media_count' => $rows->count(),
+                'video_count' => $rows->where('is_video', true)->count(),
                 'sku_count' => 0,
-                'cover' => $standalone->first()['thumb'],
-                'visibility' => $groupVisibility($standalone),
-                'detailUrl' => route('admin.hasil-pemasangan.show', ['group' => 'standalone']),
+                'cover' => $rows->first()['thumb'],
+                'visibility' => $groupVisibility($rows),
+                'detailUrl' => route('admin.hasil-pemasangan.show', ['group' => 'group|'.$groupId]),
             ]);
         }
 
@@ -143,11 +149,15 @@ class InstallationGalleryController extends Controller
     {
         $group = (string) $request->query('group', '');
 
-        if ($group === 'standalone') {
+        if (str_starts_with($group, 'group|')) {
+            // Grup mandiri berdasarkan installation_groups.
+            $groupId = (int) substr($group, strlen('group|'));
+            $groupTitle = \App\Models\InstallationGroup::find($groupId)?->title ?? 'Grup mandiri';
             $media = \App\Support\InstallationGallery::installationMedia()
                 ->where('placement', 'standalone')
+                ->filter(fn (array $m) => ($m['installation_group_id'] ?? null) === $groupId)
                 ->values();
-            $label = 'Grup mandiri';
+            $label = $groupTitle;
         } else {
             $parts = explode('|', $group);
             $category = strtoupper($parts[0] ?? '');
@@ -268,17 +278,27 @@ class InstallationGalleryController extends Controller
 
         $title = $validated['title'] ?? null;
 
-        if ($isStandalone && !filled($title)) {
-            return back()->withErrors(['title' => 'Judul grup wajib diisi untuk portofolio mandiri.'])->withInput();
+        // Grup mandiri: judul wajib, buat/pakai installation_groups.
+        $installationGroupId = null;
+        if ($isStandalone) {
+            if (!filled($title)) {
+                return back()->withErrors(['title' => 'Judul grup wajib diisi untuk portofolio mandiri.'])->withInput();
+            }
+
+            $installationGroupId = \App\Models\InstallationGroup::query()
+                ->where('title', $title)
+                ->value('id')
+                ?? \App\Models\InstallationGroup::create(['title' => $title])->id;
         }
 
-        $caption = filled($title)
-            ? $title
-            : ($product ? "Hasil pemasangan {$product->name}" : ($modelProduct ? "Hasil pemasangan {$modelProduct->name}" : 'Hasil pemasangan'));
+        $caption = filled($title) && ! $isStandalone
+            ? null
+            : ($product ? "Hasil pemasangan {$product->name}" : ($modelProduct ? "Hasil pemasangan {$modelProduct->name}" : null));
 
         $mainMedia = ProductMedia::create([
             'product_id' => $product?->id,
             'model_product_id' => $product ? null : $modelProduct?->id,
+            'installation_group_id' => $installationGroupId,
             'media_asset_id' => $validated['main_image_asset_id'] ?? null,
             'stored_url' => $validated['main_image_url'] ?? null,
             'source_url' => $validated['main_image_url'] ?? null,
@@ -294,6 +314,7 @@ class InstallationGalleryController extends Controller
             ProductMedia::create([
                 'product_id' => $product?->id,
                 'model_product_id' => $product ? null : $modelProduct?->id,
+                'installation_group_id' => $installationGroupId,
                 'media_asset_id' => $g['asset_id'] ?? null,
                 'stored_url' => $g['url'] ?? null,
                 'source_url' => $g['url'] ?? null,
@@ -306,7 +327,9 @@ class InstallationGalleryController extends Controller
             ]);
         }
 
-        $targetLabel = $product ? $product->name : ($modelProduct ? $modelProduct->name : 'portofolio mandiri');
+        $targetLabel = $product
+            ? $product->name
+            : ($modelProduct ? $modelProduct->name : ($title ?? 'portofolio mandiri'));
 
         ActivityLogService::record('installation_media.created', 'product_media', $mainMedia->id, [
             'title' => $targetLabel,

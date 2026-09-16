@@ -48,6 +48,7 @@ class InstallationGallery
                     'visibility' => (string) $item->visibility,
                     'product_sku' => (string) ($product?->parent_sku ?? ''),
                     'product_name' => (string) ($product?->name ?? ''),
+                    'installation_group_id' => $item->installation_group_id,
                     'model_label' => $modelCode === 'STANDALONE'
                         ? 'Grup mandiri'
                         : (filled($modelCode) ? CatalogLabels::modelCardTitle($category, $modelCode) : 'Lainnya'),
