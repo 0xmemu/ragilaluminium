@@ -321,16 +321,26 @@ export default function InstallationGalleryForm({
         >
           <div className="grid gap-5 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
             <div className="space-y-2">
-              <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
+              <button
+                type="button"
+                onClick={() => setPicker("main")}
+                className="group relative block aspect-square w-full cursor-pointer overflow-hidden rounded-md border border-border bg-surface-muted transition hover:border-primary"
+                aria-label={mainPreview ? "Ganti foto utama" : "Pilih foto utama"}
+              >
                 {mainPreview ? (
-                  <img src={mainPreview} alt="Pratinjau foto utama" className="size-full object-cover" />
+                  <>
+                    <img src={mainPreview} alt="Pratinjau foto utama" className="size-full object-cover" />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-xs font-medium text-transparent transition group-hover:bg-black/40 group-hover:text-white">
+                      Ganti foto
+                    </span>
+                  </>
                 ) : (
-                  <div className="flex size-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+                  <span className="flex size-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
                     <Icon name="image" className="size-7" aria-hidden="true" />
-                    <span className="text-[11px]">Belum ada foto utama</span>
-                  </div>
+                    <span className="text-[11px]">Klik untuk pilih foto utama</span>
+                  </span>
                 )}
-              </div>
+              </button>
               {form.errors.main_image_url ? (
                 <p className="text-xs text-destructive">{form.errors.main_image_url}</p>
               ) : null}
