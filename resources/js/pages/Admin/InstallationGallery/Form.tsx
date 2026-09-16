@@ -470,7 +470,7 @@ export default function InstallationGalleryForm({
                             )
                             setGalleryMedia(next)
                           }}
-                          placeholder={`Keterangan foto ${index + 1} (mis. Tampak depan ruang tamu)`}
+                          placeholder={`Keterangan pemasangan ${index + 1} (mis. Pemasangan jendela 100x100 di Bogor)`}
                           className="h-8 text-xs"
                         />
                         <div className="flex items-center justify-end">
