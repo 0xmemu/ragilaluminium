@@ -140,6 +140,7 @@ class InstallationGalleryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:500'],
             'model_product_id' => ['nullable', 'integer', 'exists:cms_model_products,id'],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
@@ -171,9 +172,17 @@ class InstallationGalleryController extends Controller
         // Sumber tunggal: semua media disimpan ke product_media.is_installation.
         // - product_id terisi            -> Kasus A (tampil di model + PDP)
         // - product_id NULL + model_id   -> Kasus B (tampil di model saja)
-        // - keduanya NULL                -> Kasus C (kartu "Lainnya")
-        $caption = filled($validated['description'])
-            ? $validated['description']
+        // - keduanya NULL                -> Kasus C (grup mandiri, judul wajib)
+        $isStandalone = $product === null && $modelProduct === null;
+
+        $title = $validated['title'] ?? null;
+
+        if ($isStandalone && !filled($title)) {
+            return back()->withErrors(['title' => 'Judul grup wajib diisi untuk portofolio mandiri.'])->withInput();
+        }
+
+        $caption = filled($title)
+            ? $title
             : ($product ? "Hasil pemasangan {$product->name}" : ($modelProduct ? "Hasil pemasangan {$modelProduct->name}" : 'Hasil pemasangan'));
 
         $mainMedia = ProductMedia::create([

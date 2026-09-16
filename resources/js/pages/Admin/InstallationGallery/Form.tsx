@@ -47,6 +47,7 @@ export default function InstallationGalleryForm({
   const form = useForm({
     model_product_id: "",
     product_id: "",
+    title: "",
     description: "",
     main_image_url: "",
     main_image_asset_id: null as number | null,
@@ -249,6 +250,27 @@ export default function InstallationGalleryForm({
                   </td>
                 </tr>
               ) : null}
+              {isStandalone ? (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                    Judul grup <span className="text-destructive">*</span>
+                  </th>
+                  <td className="px-4 py-2.5">
+                    <Input
+                      value={form.data.title}
+                      onChange={(event) => form.setData("title", event.target.value)}
+                      placeholder="contoh: Partisi Kantor Kudus, Kanopi Cafe Semarang"
+                      className="h-8 w-72 text-xs"
+                    />
+                    {form.errors.title ? (
+                      <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Judul ini tampil sebagai nama grup di halaman /hasil-pemasangan.
+                    </p>
+                  </td>
+                </tr>
+              ) : null}
               {!isProductLinked ? (
                 <tr>
                   <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
@@ -259,11 +281,7 @@ export default function InstallationGalleryForm({
                       rows={2}
                       value={form.data.description}
                       onChange={(event) => form.setData("description", event.target.value)}
-                      placeholder={
-                        isStandalone
-                          ? "Judul proyek / keterangan hasil pemasangan (mis. Partisi kantor Kudus)."
-                          : "Keterangan foto pemasangan (opsional)."
-                      }
+                      placeholder="Keterangan foto pemasangan (opsional)."
                       className="text-xs"
                     />
                     {form.errors.description ? (
