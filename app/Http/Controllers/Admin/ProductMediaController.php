@@ -27,112 +27,16 @@ use Inertia\Response;
 class ProductMediaController extends Controller
 {
 
-    public function byProduct(Request $request, Product $product): \Illuminate\Http\RedirectResponse|Response
+    public function byProduct(Request $request, Product $product): \Illuminate\Http\RedirectResponse
     {
-        // GET dialihkan ke tab Media di halaman edit (penggabungan e2e).
-        // POST store dan Inertia partial request tetap menekan method ini.
-        if (! $request->inertia()) {
-            $params = ['product' => $product, 'tab' => 'media'];
-            if (filled($request->query('variant'))) {
-                $params['variant'] = $request->query('variant');
-            }
-
-            return redirect()->route('admin.products.edit', $params);
+        // Halaman media khusus dihapus (redundan dgn tab Media di halaman edit).
+        // GET browser dan Inertia sama-sama dialihkan ke tab Media.
+        $params = ['product' => $product, 'tab' => 'media'];
+        if (filled($request->query('variant'))) {
+            $params['variant'] = $request->query('variant');
         }
 
-        $product->load(['variants' => fn ($q) => $q->orderBy('id'), 'media.productVariant', 'media.mediaAsset']);
-
-        $filterVariant = $request->query('variant');
-        $filterVariantId = is_numeric($filterVariant) ? (int) $filterVariant : null;
-
-        $mediaQuery = $product->media->sortBy('position')->values();
-        if ($filterVariantId) {
-            $mediaQuery = $mediaQuery->where('product_variant_id', $filterVariantId)->values();
-        } elseif ($filterVariant === 'shared') {
-            $mediaQuery = $mediaQuery->whereNull('product_variant_id')->values();
-        }
-
-        $assetQuery = MediaAsset::query()
-            ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
-            ->where('visibility', '!=', 'archived')
-            ->when($request->filled('kind'), fn ($query) => $query->where('kind', $request->query('kind')))
-            ->when($request->filled('asset_status'), fn ($query) => $query->where('status', $request->query('asset_status')))
-            ->when($request->filled('q'), function ($query) use ($request) {
-                $q = trim((string) $request->query('q'));
-                $query->where(function ($inner) use ($q) {
-                    LikeSearch::whereLike($inner, 'label', $q);
-                    LikeSearch::orWhereLike($inner, 'source_url', $q);
-                });
-            })
-            ->latest()
-            ->limit(30)
-            ->get();
-
-        return Inertia::render('Admin/Products/Media', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'parent_sku' => $product->parent_sku,
-                'show_href' => route('admin.products.show', $product),
-                'variants_href' => route('admin.products.variants.index', $product),
-            ],
-            'variants' => $product->variants->map(fn (ProductVariant $variant) => [
-                'id' => $variant->id,
-                'label' => $this->variantLabel($variant),
-                'variant_sku' => $variant->variant_sku,
-                'status' => $variant->status,
-            ])->values()->all(),
-            'filters' => [
-                'variant' => $filterVariantId
-                    ? (string) $filterVariantId
-                    : ($filterVariant === 'shared' ? 'shared' : ''),
-            ],
-            'assetSearch' => (string) $request->query('q', ''),
-            'assetFilters' => [
-                'kind' => (string) $request->query('kind', ''),
-                'status' => (string) $request->query('asset_status', ''),
-            ],
-            'library' => $assetQuery->map(fn (MediaAsset $asset) => [
-                'id' => $asset->id,
-                'label' => $asset->label ?: 'Media #'.$asset->id,
-                'kind' => $asset->kind,
-                'status' => $asset->status,
-                'usage_count' => (int) $asset->usage_count,
-                'thumb_url' => $asset->urlFor('thumb'),
-                'media_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
-            ])->values()->all(),
-            'storeUrl' => route('admin.products.media.store', $product),
-            'indexUrl' => route('admin.products.media.byProduct', $product),
-            'presignUrl' => route('admin.media.presign'),
-            'finalizeUrl' => route('admin.media.finalize'),
-            'bulkUrl' => route('admin.products.media.bulk', $product),
-            'rows' => $mediaQuery->map(fn (ProductMedia $m) => [
-                'id' => $m->id,
-                'position' => $m->position,
-                'status' => $m->status,
-                'error_reason' => $m->error_reason,
-                'visibility' => $m->visibility,
-                'is_main_image' => (bool) $m->is_main_image,
-                'show_in_catalog' => (bool) $m->show_in_catalog,
-                'is_installation' => (bool) $m->is_installation,
-                'installation_caption' => $m->installation_caption,
-                'product_variant_id' => $m->product_variant_id,
-                'variant_label' => $m->productVariant
-                    ? $this->variantLabel($m->productVariant)
-                    : 'Semua (produk)',
-                'thumb_url' => $m->urlFor('thumb') ?? $m->stored_url,
-                'media_kind' => $m->mediaAsset?->kind ?? (str_starts_with((string) $m->mime_type, 'video/') ? 'video' : 'image'),
-                'media_url' => $m->urlFor('video') ?? $m->urlFor('pdp') ?? $m->stored_url,
-                'update_url' => route('admin.media.update', $m),
-                'set_main_url' => route('admin.media.set-main', $m),
-                'archive_url' => route('admin.media.archive', $m),
-                'restore_url' => route('admin.media.restore', $m),
-                'redownload_url' => route('admin.media.redownload', $m),
-                'destroy_url' => $m->status === 'failed'
-                    ? route('admin.media.destroy', $m)
-                    : null,
-            ])->values()->all(),
-        ]);
+        return redirect()->route('admin.products.edit', $params);
     }
 
     /**
@@ -152,6 +56,9 @@ class ProductMediaController extends Controller
                 }
             })
             ->when(! $request->filled('visibility'), fn ($query) => $query->where('visibility', '!=', 'archived'))
+            // Status arsip (duplikat dedup) tidak punya file/derivatives; sembunyikan
+            // kecuali filter status dipilih eksplisit.
+            ->when(! $request->filled('status'), fn ($query) => $query->where('status', '!=', 'archived'))
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $q = trim((string) $request->query('q'));
                 $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'label', $q)->orWhereRaw('source_url LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
@@ -196,7 +103,11 @@ class ProductMediaController extends Controller
 
     protected function folderTree(): array
     {
-        $folders = \App\Models\MediaFolder::query()->withCount('assets')->orderBy('name')->get();
+        $folders = \App\Models\MediaFolder::query()
+            ->withCount('assets')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
         $build = function (?int $parentId) use ($folders, &$build): array {
             return $folders->where('parent_id', $parentId)->values()->map(fn ($f) => [
                 'id' => $f->id,
@@ -332,6 +243,8 @@ class ProductMediaController extends Controller
                 'show_in_catalog' => (bool) $m->show_in_catalog,
                 'visibility' => $m->visibility,
             ])->all(),
+            // Owner 2026-09-16: form pasang-ke-produk langsung dari halaman detail media.
+            'attachUrl' => route('media.attach', $asset),
             'libraryHref' => route('admin.media.library'),
             'destroyUrl' => route('media.assets.destroy', $asset),
         ]);

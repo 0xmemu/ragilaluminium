@@ -83,14 +83,48 @@ function FolderTreeList({
   onSelect,
   expandedIds,
   onToggleExpand,
+  parentId,
 }: {
   nodes: FolderNode[]
   currentFolderId: string
   onSelect: (id: string) => void
   expandedIds: Record<number, boolean>
   onToggleExpand: (id: number) => void
+  /** Parent dari level ini; null = folder root. Dipakai untuk reorder sibling. */
+  parentId: number | null
 }) {
   const [menuFor, setMenuFor] = React.useState<number | null>(null)
+  const [order, setOrder] = React.useState<FolderNode[]>(nodes)
+  const [dragIndex, setDragIndex] = React.useState<number | null>(null)
+  const [dragTarget, setDragTarget] = React.useState<number | null>(null)
+
+  React.useEffect(() => {
+    setOrder(nodes)
+  }, [nodes])
+
+  /**
+   * Urutkan hanya ANTAR-SIBLING di level ini (folder tidak bisa pindah ke
+   * dalam folder lain lewat drag). Simpan langsung setelah drop.
+   */
+  function persistOrder(next: FolderNode[]) {
+    setOrder(next)
+    router.put(
+      routeUrl("admin.media.folders.reorder"),
+      { parent_id: parentId, ids: next.map((n) => n.id) },
+      { preserveState: true, preserveScroll: true },
+    )
+  }
+
+  function dropOn(targetIndex: number) {
+    const from = dragIndex
+    setDragIndex(null)
+    setDragTarget(null)
+    if (from === null || from === targetIndex) return
+    const next = [...order]
+    const [moved] = next.splice(from, 1)
+    next.splice(targetIndex, 0, moved)
+    persistOrder(next)
+  }
 
   function submitFolderAction(folderId: number, action: "rename" | "archive" | "delete", name?: string) {
     if (action === "delete") {
@@ -136,15 +170,54 @@ function FolderTreeList({
 
   return (
     <ul className="space-y-0.5">
-      {nodes.map((node) => {
+      {order.map((node, index) => {
         const isActive = String(node.id) === currentFolderId
         const hasChildren = node.children.length > 0
         const isExpanded = Boolean(expandedIds[node.id])
         const isOpen = menuFor === node.id
 
         return (
-          <li key={node.id} className="relative">
+          <li
+            key={node.id}
+            className={cn(
+              "relative rounded-md",
+              dragIndex === index && "opacity-40",
+              dragTarget === index && dragIndex !== null && dragIndex !== index && "ring-1 ring-primary",
+            )}
+            onDragOver={(event) => {
+              if (dragIndex === null) return
+              event.preventDefault()
+              if (dragTarget !== index) setDragTarget(index)
+            }}
+            onDragLeave={() => setDragTarget((cur) => (cur === index ? null : cur))}
+            onDrop={(event) => {
+              if (dragIndex === null) return
+              event.preventDefault()
+              event.stopPropagation()
+              dropOn(index)
+            }}
+          >
             <div className={cn("group/folder flex items-center gap-0.5 rounded-md", isActive && "bg-primary/10")}>
+              {/* Ikon grab: seret untuk mengurutkan antar-folder sejajar */}
+              <span
+                draggable
+                onDragStart={(event) => {
+                  event.stopPropagation()
+                  event.dataTransfer.effectAllowed = "move"
+                  event.dataTransfer.setData("text/plain", String(node.id))
+                  setDragIndex(index)
+                }}
+                onDragEnd={() => {
+                  setDragIndex(null)
+                  setDragTarget(null)
+                }}
+                className="flex size-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground/70 transition hover:text-foreground active:cursor-grabbing"
+                title="Seret untuk mengurutkan folder"
+                aria-label={`Urutkan folder ${node.name}`}
+              >
+                <Icon name="dots-six-vertical" className="size-3" aria-hidden="true" />
+              </span>
+
               {hasChildren ? (
                 <button
                   type="button"
@@ -260,6 +333,7 @@ function FolderTreeList({
                   onSelect={onSelect}
                   expandedIds={expandedIds}
                   onToggleExpand={onToggleExpand}
+                  parentId={node.id}
                 />
               </div>
             ) : null}
@@ -337,6 +411,7 @@ function FolderTree({
       onSelect={onSelect}
       expandedIds={expandedIds}
       onToggleExpand={handleToggleExpand}
+      parentId={null}
     />
   )
 }

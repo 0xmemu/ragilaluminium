@@ -212,6 +212,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('kelola/produk/{product}/duplicate', [AdminProductController::class, 'duplicate'])->name('products.duplicate');
     Route::post('kelola/produk/popularity-boosts/{boost}/disable', [ProductPopularityBoostController::class, 'disable'])->name('products.popularity-boosts.disable');
     Route::post('kelola/produk/popularity-boosts/{boost}/enable', [ProductPopularityBoostController::class, 'enable'])->name('products.popularity-boosts.enable');
+    Route::put('kelola/produk/popularity-boosts/{boost}', [ProductPopularityBoostController::class, 'update'])->name('products.popularity-boosts.update');
+    Route::delete('kelola/produk/popularity-boosts/{boost}', [ProductPopularityBoostController::class, 'destroy'])->name('products.popularity-boosts.destroy');
 
     // Variants
     Route::get('kelola/produk/{product}/variants', [ProductVariantController::class, 'index'])->name('products.variants.index');
@@ -239,6 +241,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('media/folders/{folder}/rename', [MediaFolderController::class, 'rename'])->name('media.folders.rename');
     Route::post('media/folders/{folder}/move', [MediaFolderController::class, 'move'])->name('media.folders.move');
     Route::post('media/folders/move-assets', [MediaFolderController::class, 'moveAssets'])->name('media.folders.move-assets');
+    Route::put('media/folders/reorder', [MediaFolderController::class, 'reorder'])->name('media.folders.reorder');
     Route::post('media/folders/{folder}/archive', [MediaFolderController::class, 'archive'])->name('media.folders.archive');
     Route::delete('media/folders/{folder}', [MediaFolderController::class, 'destroy'])->name('media.folders.destroy');
     Route::post('media/upload', [MediaLibraryUploadController::class, 'upload'])->name('media.upload');
@@ -492,6 +495,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('testimonials/{testimonial}/publish', [TestimonialController::class, 'publish'])->name('testimonials.publish');
     Route::post('testimonials/{testimonial}/unpublish', [TestimonialController::class, 'unpublish'])->name('testimonials.unpublish');
     Route::post('testimonials/{testimonial}/moderate', [TestimonialController::class, 'moderate'])->name('testimonials.moderate');
+    Route::post('testimonials/{testimonial}/source', [TestimonialController::class, 'updateSource'])->name('testimonials.source');
     Route::post('testimonials/{testimonial}/media', [TestimonialController::class, 'addMedia'])->name('testimonials.media');
     Route::post('testimonials/admin-review', [TestimonialController::class, 'storeAdminReview'])->name('testimonials.admin-review.store');
 

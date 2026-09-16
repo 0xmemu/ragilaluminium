@@ -22,10 +22,56 @@ class MediaFolderController extends Controller
     {
         $folders = MediaFolder::query()
             ->withCount('assets')
+            ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
 
         return response()->json(['folders' => self::buildTree($folders)]);
+    }
+
+    /**
+     * Simpan urutan folder. Hanya mengubah urutan ANTAR-SIBLING: setiap id
+     * wajib punya parent_id yang sama dengan parent_id yang dikirim, sehingga
+     * folder tidak bisa berpindah ke dalam folder lain lewat drag.
+     */
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'parent_id' => ['nullable', 'integer', Rule::exists('media_folders', 'id')],
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids.*' => ['integer', 'distinct', Rule::exists('media_folders', 'id')],
+        ]);
+
+        $parentId = $validated['parent_id'] ?? null;
+
+        // Tolak bila ada folder yang bukan sibling dari parent yang dikirim.
+        $mismatch = MediaFolder::query()
+            ->whereIn('id', $validated['ids'])
+            ->where(function ($query) use ($parentId) {
+                $parentId === null
+                    ? $query->whereNotNull('parent_id')
+                    : $query->where('parent_id', '!=', $parentId)->orWhereNull('parent_id');
+            })
+            ->exists();
+
+        if ($mismatch) {
+            return redirect()->back()->withErrors([
+                'ids' => 'Folder hanya bisa diurutkan antar-folder sejajar (tidak bisa pindah ke dalam folder lain).',
+            ]);
+        }
+
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['ids'] as $index => $id) {
+                MediaFolder::where('id', $id)->update(['sort_order' => $index + 1]);
+            }
+        });
+
+        ActivityLogService::record('media.folders_reordered', 'media_folder', (int) $validated['ids'][0], [
+            'parent_id' => $validated['parent_id'] ?? null,
+            'count' => count($validated['ids']),
+        ], (int) $request->user()->id);
+
+        return redirect()->back()->with('success', 'Urutan folder disimpan.');
     }
 
     public function store(Request $request): RedirectResponse

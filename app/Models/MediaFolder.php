@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class MediaFolder extends Model
 {
-    protected $fillable = ['parent_id', 'name', 'archived_at'];
+    protected $fillable = ['parent_id', 'name', 'sort_order', 'archived_at'];
 
     protected $casts = [
         'archived_at' => 'datetime',
@@ -28,7 +28,9 @@ class MediaFolder extends Model
 
     public function children(): HasMany
     {
-        return $this->hasMany(self::class, 'parent_id')->orderBy('name');
+        return $this->hasMany(self::class, 'parent_id')
+            ->orderBy('sort_order')
+            ->orderBy('name');
     }
 
     public function assets(): HasMany

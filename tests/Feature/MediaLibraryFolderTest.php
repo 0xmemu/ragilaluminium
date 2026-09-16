@@ -140,4 +140,43 @@ class MediaLibraryFolderTest extends TestCase
         ])->assertStatus(422);
         $this->assertSame(0, MediaAsset::count());
     }
+
+    public function test_folder_reorder_only_among_siblings(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin);
+
+        // Dua folder root dan satu subfolder di bawah root pertama.
+        $a = MediaFolder::create(['name' => 'Alpha']);
+        $b = MediaFolder::create(['name' => 'Beta']);
+        $child = MediaFolder::create(['name' => 'Child', 'parent_id' => $a->id]);
+
+        // Urutkan root: Beta dulu, lalu Alpha.
+        $this->put(route('admin.media.folders.reorder'), [
+            'parent_id' => null,
+            'ids' => [$b->id, $a->id],
+        ])->assertRedirect();
+
+        $this->assertSame(1, (int) $b->fresh()->sort_order);
+        $this->assertSame(2, (int) $a->fresh()->sort_order);
+
+        // Subfolder tidak boleh ikut di urutan root (bukan sibling).
+        $this->put(route('admin.media.folders.reorder'), [
+            'parent_id' => null,
+            'ids' => [$child->id],
+        ])->assertSessionHasErrors('ids');
+
+        // Subfolder juga tidak boleh masuk ke urutan root, dan parent-nya tetap.
+        $this->assertSame($a->id, $child->fresh()->parent_id);
+
+        // Reorder antar-subfolder di parent yang sama sah.
+        $child2 = MediaFolder::create(['name' => 'Child 2', 'parent_id' => $a->id]);
+        $this->put(route('admin.media.folders.reorder'), [
+            'parent_id' => $a->id,
+            'ids' => [$child2->id, $child->id],
+        ])->assertRedirect();
+
+        $this->assertSame(1, (int) $child2->fresh()->sort_order);
+        $this->assertSame(2, (int) $child->fresh()->sort_order);
+    }
 }
