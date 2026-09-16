@@ -390,14 +390,13 @@ export default function InstallationGalleryForm({
                 <div className="min-w-0">
                   <h3 className="text-[13px] font-semibold text-foreground">Foto tambahan</h3>
                   <p className="text-xs text-muted-foreground">
-                    {galleryMedia.length} dari 3 foto. Urutan menentukan tampilan di galeri.
+                    {galleryMedia.length} foto. Urutan menentukan tampilan di galeri.
                   </p>
                 </div>
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={galleryMedia.length >= 3}
                   onClick={() => setPicker("gallery")}
                 >
                   <Icon name="plus" className="size-4" aria-hidden="true" />
@@ -524,7 +523,7 @@ export default function InstallationGalleryForm({
           const seen = new Set(galleryMedia.map((item) => item.assetId))
           const next = [...galleryMedia]
           for (const item of picked) {
-            if (!seen.has(item.assetId) && next.length < 3) {
+            if (!seen.has(item.assetId)) {
               next.push({ ...item, label: "" })
             }
           }

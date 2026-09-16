@@ -148,7 +148,7 @@ class InstallationGalleryController extends Controller
             'main_image_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'main_video_url' => ['nullable', 'string', 'max:1024'],
             'main_video_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
-            'gallery_images' => ['nullable', 'array', 'max:3'],
+            'gallery_images' => ['nullable', 'array', 'max:60'],
             'gallery_images.*.url' => ['required', 'string', 'max:1024'],
             'gallery_images.*.asset_id' => ['nullable', 'integer'],
             'gallery_images.*.caption' => ['nullable', 'string', 'max:255'],
