@@ -480,6 +480,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('hasil-pemasangan/kelola', [InstallationGalleryController::class, 'model'])->name('hasil-pemasangan.model');
     Route::get('hasil-pemasangan/detail', [InstallationGalleryController::class, 'show'])->name('hasil-pemasangan.show');
     Route::patch('hasil-pemasangan/{media}/toggle-status', [InstallationGalleryController::class, 'toggleStatus'])->whereNumber('media')->name('hasil-pemasangan.toggle-status');
+    Route::patch('hasil-pemasangan/{media}/update-media', [InstallationGalleryController::class, 'updateMedia'])->whereNumber('media')->name('hasil-pemasangan.update-media');
     Route::post('hasil-pemasangan/{media}/archive', [InstallationGalleryController::class, 'archive'])->whereNumber('media')->name('hasil-pemasangan.archive');
     Route::delete('hasil-pemasangan/{media}', [InstallationGalleryController::class, 'destroy'])->whereNumber('media')->name('hasil-pemasangan.destroy');
 

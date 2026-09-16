@@ -1,4 +1,4 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
@@ -42,6 +42,31 @@ const VISIBILITY_LABEL: Record<MediaRow["visibility"], string> = {
 
 export default function InstallationGalleryShow({ title, group, backUrl }: ShowProps) {
   const [rows, setRows] = React.useState<MediaRow[]>(group.media ?? [])
+  const [editingId, setEditingId] = React.useState<number | null>(null)
+  const [editValue, setEditValue] = React.useState("")
+
+  const editForm = useForm({
+    installation_caption: "",
+  })
+
+  function startEdit(row: MediaRow) {
+    setEditingId(row.media_id)
+    setEditValue(row.caption)
+  }
+
+  function submitEdit(row: MediaRow) {
+    editForm.patch(row.updateMediaUrl, {
+      preserveScroll: true,
+      onSuccess: () => {
+        setEditingId(null)
+        setRows((prev) =>
+          prev.map((r) =>
+            r.media_id === row.media_id ? { ...r, caption: editValue } : r,
+          ),
+        )
+      },
+    })
+  }
 
   function reload() {
     router.reload({ only: ["group"] })
@@ -123,19 +148,57 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                         </div>
                       </td>
 
-                      {/* Keterangan + meta tanggal */}
+                      {/* Keterangan + meta tanggal (inline edit) */}
                       <td className="px-3 py-3">
-                        <p className="line-clamp-2 font-medium text-foreground">
-                          {row.caption || "Tanpa keterangan"}
-                        </p>
-                        <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Icon
-                            name={row.is_video ? "video-camera" : "image"}
-                            className="size-3"
-                            aria-hidden="true"
-                          />
-                          {row.is_video ? "Video" : "Foto"} · {row.created_at ?? "—"}
-                        </p>
+                        {editingId === row.media_id ? (
+                          <form
+                            onSubmit={(event) => {
+                              event.preventDefault()
+                              editForm.setData("installation_caption", editValue)
+                              submitEdit(row)
+                            }}
+                            className="flex flex-col gap-1.5"
+                          >
+                            <Input
+                              value={editValue}
+                              onChange={(event) => setEditValue(event.target.value)}
+                              placeholder="Keterangan media"
+                              className="h-8 text-xs"
+                              autoFocus
+                            />
+                            <div className="flex items-center gap-1">
+                              <Button type="submit" size="sm" className="h-7 text-xs" disabled={editForm.processing}>
+                                Simpan
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => setEditingId(null)}
+                              >
+                                Batal
+                              </Button>
+                            </div>
+                            {editForm.errors.installation_caption ? (
+                              <p className="text-[11px] text-destructive">{editForm.errors.installation_caption}</p>
+                            ) : null}
+                          </form>
+                        ) : (
+                          <>
+                            <p className="line-clamp-2 font-medium text-foreground">
+                              {row.caption || "Tanpa keterangan"}
+                            </p>
+                            <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <Icon
+                                name={row.is_video ? "video-camera" : "image"}
+                                className="size-3"
+                                aria-hidden="true"
+                              />
+                              {row.is_video ? "Video" : "Foto"} · {row.created_at ?? "—"}
+                            </p>
+                          </>
+                        )}
                       </td>
 
                       {/* SKU */}
@@ -169,6 +232,21 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                       {/* Aksi: ikon ringkas dengan title */}
                       <td className="py-3 pl-2 pr-4">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            title="Edit keterangan"
+                            aria-label={`Edit keterangan media ${index + 1}`}
+                            onClick={() => {
+                              setEditingId(row.media_id)
+                              setEditValue(row.caption)
+                            }}
+                          >
+                            <Icon name="pencil" className="size-4" />
+                          </Button>
+
                           <Button
                             type="button"
                             variant="ghost"

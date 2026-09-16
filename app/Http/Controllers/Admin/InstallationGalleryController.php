@@ -207,6 +207,7 @@ class InstallationGalleryController extends Controller
             'product_name' => $m['product_name'],
             'created_at' => $m['created_at'],
             'toggleStatusUrl' => route('admin.hasil-pemasangan.toggle-status', $m['media_id']),
+            'updateMediaUrl' => route('admin.hasil-pemasangan.update-media', $m['media_id']),
             'archiveUrl' => route('admin.hasil-pemasangan.archive', $m['media_id']),
             'destroyUrl' => route('admin.hasil-pemasangan.destroy', $m['media_id']),
         ])->values()->all();
@@ -362,6 +363,22 @@ class InstallationGalleryController extends Controller
 
         return redirect()->route('admin.hasil-pemasangan.index')
             ->with('success', "Hasil pemasangan untuk {$targetLabel} berhasil ditambahkan.");
+    }
+
+    /** Perbarui keterangan satu media hasil pemasangan. */
+    public function updateMedia(Request $request, ProductMedia $media): RedirectResponse
+    {
+        abort_unless($media->is_installation, 404);
+
+        $validated = $request->validate([
+            'installation_caption' => ['nullable', 'string', 'max:280'],
+        ]);
+
+        $media->update(['installation_caption' => $validated['installation_caption'] ?? null]);
+
+        ActivityLogService::record('installation_media.caption_updated', 'product_media', $media->id, ['caption' => $validated['installation_caption'] ?? null], $request->user()?->id);
+
+        return back()->with('success', 'Keterangan media berhasil diperbarui.');
     }
 
     /** Toggle visibilitas satu media hasil pemasangan (visible <-> hidden). */
