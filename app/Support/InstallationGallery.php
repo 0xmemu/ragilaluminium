@@ -34,13 +34,17 @@ class InstallationGallery
                 $category = strtoupper((string) ($product?->product_category ?? $model?->product_category ?? ''));
                 $modelCode = strtoupper((string) ($product?->product_model ?? $model?->product_model ?? 'MANUAL'));
 
+                $fallbackLabel = filled($product?->name)
+                    ? $product->name
+                    : ($model ? CatalogLabels::modelCardTitle($category, $modelCode) : 'Hasil pemasangan');
+
                 return [
                     'id' => $item->id,
                     'media_id' => $item->id,
                     'url' => $item->urlFor('card') ?? $item->urlFor('thumb') ?? '',
                     'thumb' => $item->urlFor('thumb') ?? $item->urlFor('card') ?? '',
                     'is_video' => self::isVideoMedia($item),
-                    'caption' => (string) ($item->installation_caption ?? ''),
+                    'caption' => filled($item->installation_caption) ? (string) $item->installation_caption : $fallbackLabel,
                     'visibility' => (string) $item->visibility,
                     'product_sku' => (string) ($product?->parent_sku ?? ''),
                     'product_name' => (string) ($product?->name ?? ''),
