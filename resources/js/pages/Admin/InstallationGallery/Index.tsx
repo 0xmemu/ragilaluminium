@@ -348,16 +348,25 @@ export default function InstallationGalleryIndex({
           /* Mode Tampilan Tabel */
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full min-w-[960px] table-fixed text-left text-xs">
+                <colgroup>
+                  <col className="w-14" />
+                  <col className="w-20" />
+                  <col className="w-64" />
+                  <col />
+                  <col className="w-56" />
+                  <col className="w-28" />
+                  <col className="w-24" />
+                </colgroup>
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
-                    <th className="w-12 py-3 pl-4 pr-2 text-center">No</th>
-                    <th className="w-20 px-3 py-3">Media</th>
-                    <th className="min-w-[12rem] px-3 py-3">Nama Proyek</th>
-                    <th className="w-56 max-w-[14rem] px-3 py-3">Deskripsi</th>
-                    <th className="w-48 min-w-[12rem] px-3 py-3">Model Produk</th>
-                    <th className="w-24 px-3 py-3">Status</th>
-                    <th className="w-28 py-3 pl-2 pr-4 text-right">Aksi</th>
+                    <th className="py-3 pl-4 pr-2 text-center">No</th>
+                    <th className="px-3 py-3">Media</th>
+                    <th className="px-3 py-3">Nama Proyek</th>
+                    <th className="px-3 py-3">Deskripsi</th>
+                    <th className="px-3 py-3">Model Produk</th>
+                    <th className="px-3 py-3 text-center">Status</th>
+                    <th className="py-3 pl-2 pr-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -451,18 +460,18 @@ export default function InstallationGalleryIndex({
                         </td>
 
                         {/* Deskripsi */}
-                        <td className="w-56 max-w-[14rem] px-3 py-3">
-                          <p className="line-clamp-2 text-muted-foreground leading-relaxed text-[11px] break-words">
+                        <td className="px-3 py-3">
+                          <p className="line-clamp-2 text-muted-foreground leading-relaxed text-xs">
                             {project.description || "—"}
                           </p>
                         </td>
 
                         {/* Tautan Model Produk */}
-                        <td className="w-48 min-w-[12rem] px-3 py-3">
+                        <td className="px-3 py-3">
                           {project.model_product ? (
-                            <div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground">
+                            <div className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground">
                               <Icon name="layers" className="size-3.5 shrink-0 text-muted-foreground" />
-                              <span className="font-medium text-foreground">
+                              <span className="truncate font-medium text-foreground">
                                 {project.model_product.name}
                               </span>
                             </div>
@@ -472,12 +481,12 @@ export default function InstallationGalleryIndex({
                         </td>
 
                         {/* Status */}
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 text-center">
                           <StatusBadge status={project.status} />
                         </td>
 
                         {/* Aksi Dropdown */}
-                        <td className="w-28 py-3 pl-2 pr-4 text-right whitespace-nowrap">
+                        <td className="py-3 pl-2 pr-4 text-right whitespace-nowrap">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
