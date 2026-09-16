@@ -1,4 +1,4 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
@@ -18,6 +18,7 @@ interface GroupRow {
   sku_count: number
   cover: string
   visibility: "visible" | "hidden" | "archived"
+  sort_order: number
   detailUrl: string
 }
 
@@ -54,12 +55,43 @@ export default function InstallationGalleryIndex({
   sort = "order",
   q = "",
   createUrl,
+  reorderUrl,
   previewUrl,
 }: IndexProps) {
   const [search, setSearch] = React.useState(q)
   const [currentView, setCurrentView] = React.useState<"list" | "grid">(viewMode)
+  const [reorderMode, setReorderMode] = React.useState(false)
 
-  const rows: GroupRow[] = projects.data ?? []
+  const initialRows = projects.data ?? []
+  const [rows, setRows] = React.useState<GroupRow[]>(initialRows)
+
+  React.useEffect(() => {
+    setRows(projects.data ?? [])
+  }, [projects.data])
+
+  // Drag-and-drop grup (mode geser).
+  const [dragIndex, setDragIndex] = React.useState<number | null>(null)
+  const [dragTarget, setDragTarget] = React.useState<number | null>(null)
+
+  const reorderForm = useForm({
+    rows: initialRows.map((r) => ({ key: r.key })),
+  })
+
+  function moveRow(from: number, to: number) {
+    if (to < 0 || to >= rows.length || from === to) return
+    const next = [...rows]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    setRows(next)
+    reorderForm.setData("rows", next.map((r) => ({ key: r.key })))
+  }
+
+  function handleReorderSubmit() {
+    reorderForm.put(reorderUrl, {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
 
   function handleFilter(newParams: Record<string, string | number | null | undefined>) {
     router.get(
@@ -86,18 +118,50 @@ export default function InstallationGalleryIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline">
-            <a href={previewUrl} target="_blank" rel="noopener noreferrer">
-              <Icon name="external-link" className="size-4" aria-hidden="true" />
-              Lihat Publik
-            </a>
-          </Button>
-          <Button asChild>
-            <Link href={createUrl}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah Pemasangan
-            </Link>
-          </Button>
+          {reorderMode ? (
+            <>
+              <Button
+                variant="default"
+                disabled={reorderForm.processing}
+                onClick={handleReorderSubmit}
+              >
+                <Icon name="check" className="size-4" aria-hidden="true" />
+                Simpan urutan
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setReorderMode(false)
+                  setRows(projects.data ?? [])
+                }}
+              >
+                Batal geser
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setReorderMode(true)}
+                title="Atur urutan tampil grup dengan drag and drop"
+              >
+                <Icon name="arrows-down-up" className="size-4" aria-hidden="true" />
+                Mode Geser
+              </Button>
+              <Button asChild variant="outline">
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+                  <Icon name="external-link" className="size-4" aria-hidden="true" />
+                  Lihat Publik
+                </a>
+              </Button>
+              <Button asChild>
+                <Link href={createUrl}>
+                  <Icon name="plus" className="size-4" aria-hidden="true" />
+                  Tambah Pemasangan
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -250,6 +314,7 @@ export default function InstallationGalleryIndex({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px] table-fixed text-left text-xs">
                 <colgroup>
+                  {reorderMode ? <col className="w-8" /> : null}
                   <col className="w-20" />
                   <col />
                   <col className="w-24" />
@@ -259,6 +324,7 @@ export default function InstallationGalleryIndex({
                 </colgroup>
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
+                    {reorderMode ? <th className="px-1 py-3" aria-label="Seret" /> : null}
                     <th className="px-3 py-3">Cover</th>
                     <th className="px-3 py-3">Grup</th>
                     <th className="px-3 py-3 text-center">Media</th>
@@ -268,8 +334,50 @@ export default function InstallationGalleryIndex({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {rows.map((group) => (
-                    <tr key={group.key} className="transition-colors hover:bg-muted/30">
+                  {rows.map((group, index) => (
+                    <tr
+                      key={group.key}
+                      draggable={reorderMode}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move"
+                        event.dataTransfer.setData("text/plain", String(index))
+                        setDragIndex(index)
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault()
+                        if (reorderMode && dragIndex !== null && dragIndex !== index) setDragTarget(index)
+                      }}
+                      onDragLeave={() => setDragTarget((current) => (current === index ? null : current))}
+                      onDrop={(event) => {
+                        event.preventDefault()
+                        const from = dragIndex
+                        setDragIndex(null)
+                        setDragTarget(null)
+                        if (from === null) return
+                        moveRow(from, index)
+                      }}
+                      onDragEnd={() => {
+                        setDragIndex(null)
+                        setDragTarget(null)
+                      }}
+                      className={cn(
+                        "transition-colors hover:bg-muted/30",
+                        reorderMode && "cursor-grab active:cursor-grabbing",
+                        dragIndex === index && "opacity-40",
+                        dragTarget === index && dragIndex !== index && "border-t-2 border-primary bg-primary/5",
+                      )}
+                    >
+                      {reorderMode ? (
+                        <td className="px-1 py-3">
+                          <span
+                            className="flex size-6 items-center justify-center rounded text-muted-foreground"
+                            title="Seret untuk mengubah urutan"
+                            aria-hidden="true"
+                          >
+                            <Icon name="dots-six-vertical" className="size-4" />
+                          </span>
+                        </td>
+                      ) : null}
                       {/* Cover */}
                       <td className="px-3 py-3">
                         <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">

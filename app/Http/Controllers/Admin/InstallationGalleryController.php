@@ -50,7 +50,18 @@ class InstallationGalleryController extends Controller
             return 'archived';
         };
 
+        // Urutan tampil grup: cms_model_products.installation_sort_order utk
+        // grup model, installation_groups.sort_order utk grup mandiri.
+        // Urut default = urutan storefront (sort_order model / judul mandiri).
+        $standaloneGroups = \App\Models\InstallationGroup::pluck('sort_order', 'id');
+        $modelSortOrders = \App\Models\CmsModelProduct::query()
+            ->get(['id', 'product_category', 'product_model', 'installation_sort_order'])
+            ->keyBy(fn ($m) => strtoupper((string) $m->product_category) . '|' . strtoupper((string) $m->product_model));
+
         foreach ($media->where('placement', 'product')->groupBy('model_label') as $modelLabel => $rows) {
+            $pairKey = strtoupper((string) $rows->first()['category']) . '|' . strtoupper((string) $rows->first()['model']);
+            $modelRow = $modelSortOrders->get($pairKey);
+
             $groups->push([
                 'key' => 'model|'.$rows->first()['category'].'|'.$rows->first()['model'],
                 'kind' => 'model',
@@ -62,6 +73,7 @@ class InstallationGalleryController extends Controller
                 'sku_count' => $rows->where('product_sku', '!==', '')->unique('product_sku')->count(),
                 'cover' => $rows->first()['thumb'],
                 'visibility' => $groupVisibility($rows),
+                'sort_order' => $modelRow?->installation_sort_order ?? 0,
                 'detailUrl' => route('admin.hasil-pemasangan.show', [
                     'group' => $rows->first()['category'].'|'.$rows->first()['model'],
                 ]),
@@ -87,6 +99,7 @@ class InstallationGalleryController extends Controller
                 'sku_count' => 0,
                 'cover' => $rows->first()['thumb'],
                 'visibility' => $groupVisibility($rows),
+                'sort_order' => (int) ($standaloneGroups[(int) $groupId] ?? 0),
                 'detailUrl' => route('admin.hasil-pemasangan.show', ['group' => 'group|'.$groupId]),
             ]);
         }
@@ -106,9 +119,13 @@ class InstallationGalleryController extends Controller
             ];
         })->values()->all();
 
+        // Map tab key -> nilai visibility sebenarnya (tab "active" = visible).
+        $statusMap = ['all' => 'all', 'active' => 'visible', 'inactive' => 'hidden', 'archived' => 'archived'];
+        $visibilityFilter = $statusMap[$status] ?? 'all';
+
         $rows = $groups
-            ->when($status !== 'all', fn ($collection) => $collection->filter(
-                fn ($item) => $item['visibility'] === $status,
+            ->when($visibilityFilter !== 'all', fn ($collection) => $collection->filter(
+                fn ($item) => $item['visibility'] === $visibilityFilter,
             ))
             ->when($q !== '', fn ($collection) => $collection->filter(function ($item) use ($q) {
                 $needle = mb_strtolower($q);
@@ -117,7 +134,7 @@ class InstallationGalleryController extends Controller
                     || str_contains(mb_strtolower((string) $item['category']), $needle);
             }))
             ->when($sort === 'latest', fn ($collection) => $collection->sortByDesc('label')->values())
-            ->when($sort !== 'latest', fn ($collection) => $collection->sortBy('label')->values())
+            ->when($sort !== 'latest', fn ($collection) => $collection->sortBy([['sort_order'], ['label']])->values())
             ->values();
 
         return Inertia::render('Admin/InstallationGallery/Index', [
@@ -385,20 +402,29 @@ class InstallationGalleryController extends Controller
     {
         $validated = $request->validate([
             'rows' => ['required', 'array', 'min:1'],
-            'rows.*.id' => ['required', 'integer', 'exists:product_media,id'],
+            'rows.*.key' => ['required', 'string'],
         ]);
 
+        // Key format: "model|{CATEGORY}|{MODEL}" atau "group|{installation_group_id}".
         DB::transaction(function () use ($validated) {
             foreach ($validated['rows'] as $index => $row) {
-                ProductMedia::where('id', $row['id'])->update([
-                    'position' => 100 + $index,
-                ]);
+                $key = (string) $row['key'];
+                if (str_starts_with($key, 'model|')) {
+                    $parts = explode('|', $key);
+                    \App\Models\CmsModelProduct::query()
+                        ->where('product_category', strtoupper($parts[1] ?? ''))
+                        ->where('product_model', strtoupper($parts[2] ?? ''))
+                        ->update(['installation_sort_order' => $index + 1]);
+                } elseif (str_starts_with($key, 'group|')) {
+                    \App\Models\InstallationGroup::where('id', (int) substr($key, strlen('group|')))
+                        ->update(['sort_order' => $index + 1]);
+                }
             }
         });
 
-        ActivityLogService::record('installation_media.reordered', 'product_media', (int) $validated['rows'][0]['id'], ['count' => count($validated['rows'])], $request->user()?->id);
+        ActivityLogService::record('installation_group.reordered', 'product_media', null, ['count' => count($validated['rows'])], $request->user()?->id);
 
-        return back()->with('success', 'Urutan media hasil pemasangan berhasil disimpan.');
+        return back()->with('success', 'Urutan grup hasil pemasangan berhasil disimpan.');
     }
 
     public function model(Request $request): RedirectResponse
