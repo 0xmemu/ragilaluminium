@@ -74,18 +74,29 @@ class ProductController extends Controller
 
         // Ukuran dikunci oleh URL kartu, tetapi opsi non-ukuran (warna/kaca/arah buka)
         // tetap tersedia untuk ukuran tersebut.
-        if ($selectedVariant && $selectedVariant->height_cm !== null && $selectedVariant->width_cm !== null) {
-            $selectedHeight = (float) $selectedVariant->height_cm;
-            $selectedWidth = (float) $selectedVariant->width_cm;
-            $detailVariants = $activeVariants
-                ->filter(
-                    fn ($variant) => abs((float) $variant->height_cm - $selectedHeight) < 0.001
-                        && abs((float) $variant->width_cm - $selectedWidth) < 0.001
-                )
-                ->sortBy(fn ($variant) => $variant->id === $selectedVariant->id ? 0 : 1)
+        $selectedHeight = $selectedVariant?->height_cm !== null
+            ? (float) $selectedVariant->height_cm
+            : ($product->height_cm !== null ? (float) $product->height_cm : null);
+        $selectedWidth = $selectedVariant?->width_cm !== null
+            ? (float) $selectedVariant->width_cm
+            : ($product->width_cm !== null ? (float) $product->width_cm : null);
+
+        if ($selectedHeight !== null && $selectedWidth !== null) {
+            $matchingVariants = $activeVariants->filter(function ($variant) use ($selectedHeight, $selectedWidth, $product) {
+                $vh = $variant->height_cm !== null ? (float) $variant->height_cm : ($product->height_cm !== null ? (float) $product->height_cm : null);
+                $vw = $variant->width_cm !== null ? (float) $variant->width_cm : ($product->width_cm !== null ? (float) $product->width_cm : null);
+                return $vh !== null && $vw !== null
+                    && abs($vh - $selectedHeight) < 0.001
+                    && abs($vw - $selectedWidth) < 0.001;
+            });
+
+            $detailVariants = ($matchingVariants->isNotEmpty() ? $matchingVariants : $activeVariants)
+                ->sortBy(fn ($variant) => $variant->id === $selectedVariant?->id ? 0 : 1)
                 ->values();
         } else {
-            $detailVariants = $selectedVariant ? collect([$selectedVariant]) : collect();
+            $detailVariants = $activeVariants
+                ->sortBy(fn ($variant) => $variant->id === $selectedVariant?->id ? 0 : 1)
+                ->values();
         }
 
         $categorySlug = CategoryUrl::categoryToSlug((string) $product->product_category);
@@ -118,16 +129,22 @@ class ProductController extends Controller
             ? 'Ukuran '.$formatDimension((float) $breadcrumbVariant->height_cm).' × '.$formatDimension((float) $breadcrumbVariant->width_cm).' cm'
             : 'SKU '.$product->parent_sku;
 
+        // Kontrak naming (2026-09-17): nama produk dari admin adalah nama
+        // tampil dan tidak ditimpa. Ukuran varian terpilih dikirim terpisah
+        // sebagai size_label/size_dimension (metadata), bukan mengganti nama.
         $detailName = $product->name;
         $detailShortName = $product->short_name;
+        $detailSizeLabel = null;
+        $detailSizeDimension = null;
         if ($selectedVariant && $selectedVariant->height_cm !== null && $selectedVariant->width_cm !== null) {
-            $detailName = sprintf(
+            $variantLabel = $isiModelLabel !== '' ? $isiModelLabel : $categoryLabel;
+            $detailSizeLabel = trim(sprintf(
                 'Tinggi %scm × Panjang %scm %s',
                 $formatDimension((float) $selectedVariant->height_cm),
                 $formatDimension((float) $selectedVariant->width_cm),
-                $isiModelLabel !== '' ? $isiModelLabel : $categoryLabel,
-            );
-            $detailShortName = $formatDimension((float) $selectedVariant->height_cm)
+                $variantLabel,
+            ));
+            $detailSizeDimension = $formatDimension((float) $selectedVariant->height_cm)
                 .'x'.$formatDimension((float) $selectedVariant->width_cm);
         }
 
@@ -137,6 +154,8 @@ class ProductController extends Controller
                 'parent_sku' => $product->parent_sku,
                 'name' => $detailName,
                 'short_name' => $detailShortName,
+                'size_label' => $detailSizeLabel,
+                'size_dimension' => $detailSizeDimension,
                 'description' => $product->description,
                 'product_category' => $product->product_category,
                 'product_model' => $product->product_model,
@@ -172,8 +191,8 @@ class ProductController extends Controller
                 ->all(),
             'variants' => $detailVariants->map(function ($v) use ($product) {
                 $priced = app(\App\Services\PriceService::class)->forVariant($v, $product);
-                $h = $v->height_cm !== null ? (float) $v->height_cm : null;
-                $w = $v->width_cm !== null ? (float) $v->width_cm : null;
+                $h = $v->height_cm !== null ? (float) $v->height_cm : ($product->height_cm !== null ? (float) $product->height_cm : null);
+                $w = $v->width_cm !== null ? (float) $v->width_cm : ($product->width_cm !== null ? (float) $product->width_cm : null);
                 $compact = ($h !== null && $w !== null)
                     ? rtrim(rtrim(number_format($h, 2, '.', ''), '0'), '.').'x'.rtrim(rtrim(number_format($w, 2, '.', ''), '0'), '.')
                     : null;
@@ -203,19 +222,22 @@ class ProductController extends Controller
                     ]))) ?: $v->variant_sku,
                 ];
             })->values()->all(),
-            'media' => $product->media->map(fn ($m) => [
-                'id' => $m->id,
-                'is_video' => $m->mediaAsset?->kind === 'video',
-                // Video: url = file video, thumb = poster frame; gambar: pdp/card.
-                'url' => $m->mediaAsset?->kind === 'video'
-                    ? ($m->urlFor('video') ?? $m->urlFor('card'))
-                    : ($m->urlFor('pdp') ?? $m->urlFor('card')),
-                'thumb' => $m->mediaAsset?->kind === 'video'
-                    ? ($m->urlFor('poster') ?? $m->urlFor('thumb'))
-                    : ($m->urlFor('thumb') ?? $m->urlFor('card')),
-                'is_main_image' => (bool) $m->is_main_image,
-                'product_variant_id' => $m->product_variant_id,
-            ])->values()->all(),
+            'media' => $product->media
+                ->unique(fn ($m) => $m->media_asset_id ?: $m->stored_url ?: $m->id)
+                ->values()
+                ->map(fn ($m) => [
+                    'id' => $m->id,
+                    'is_video' => $m->mediaAsset?->kind === 'video',
+                    // Video: url = file video, thumb = poster frame; gambar: pdp/card.
+                    'url' => $m->mediaAsset?->kind === 'video'
+                        ? ($m->urlFor('video') ?? $m->urlFor('card'))
+                        : ($m->urlFor('pdp') ?? $m->urlFor('card')),
+                    'thumb' => $m->mediaAsset?->kind === 'video'
+                        ? ($m->urlFor('poster') ?? $m->urlFor('thumb'))
+                        : ($m->urlFor('thumb') ?? $m->urlFor('card')),
+                    'is_main_image' => (bool) $m->is_main_image,
+                    'product_variant_id' => $m->product_variant_id,
+                ])->values()->all(),
             'installationMedia' => $product->installationMedia->map(fn ($m) => [
                 'id' => $m->id,
                 'url' => $m->urlFor('pdp') ?? $m->urlFor('card') ?? $m->source_url,

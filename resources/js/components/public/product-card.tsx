@@ -109,6 +109,7 @@ export function ProductCard({
   onWishlistChange?: (next: boolean) => void
 }) {
   const title = productName(product.name, product.short_name)
+  const sizeLabel = product.size_label?.trim() || null
   const priceValue =
     product.min_price !== null && product.min_price !== undefined
       ? Number(product.min_price)
@@ -209,6 +210,12 @@ export function ProductCard({
           <h3 data-slot="product-item-name" className="product-card__title">
             {title}
           </h3>
+
+          {/* Ukuran varian sebagai metadata terpisah - nama produk dari admin
+              tidak pernah ditimpa oleh dimensi/bobot/model. */}
+          {sizeLabel ? (
+            <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{sizeLabel}</p>
+          ) : null}
 
           {/* Harga bertumpuk: compare + diskon wajib satu baris (mengecil bila sempit). */}
           <div className="product-card__pricing">

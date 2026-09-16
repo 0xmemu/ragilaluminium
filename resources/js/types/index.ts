@@ -190,6 +190,10 @@ export interface ProductCardData {
   parent_sku: string
   name: string
   short_name?: string | null
+  /** Ukuran varian sebagai metadata (nama produk tidak pernah ditimpa). */
+  size_label?: string | null
+  size_dimension?: string | null
+  variant_label?: string | null
   card_key?: string | null
   product_category?: string | null
   product_model?: string | null
@@ -229,6 +233,10 @@ export interface ModelCardData {
   /** Halaman detail model (bukan popup). */
   detail_href?: string | null
   image?: string | null
+  /** Galeri foto model dari Media Library (hero halaman detail model). */
+  gallery?: Array<{ id: number; url: string | null; label: string | null; kind: string }>
+  /** Setelan media: tampilkan foto produk di hero model (default true). */
+  show_product_photos?: boolean
   href: string
   model: string
   category: string

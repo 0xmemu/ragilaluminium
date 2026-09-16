@@ -44,19 +44,17 @@ class InertiaCatalog
         if ($variant) {
             $heightLabel = rtrim(rtrim(number_format((float) $variant->height_cm, 2, '.', ''), '0'), '.');
             $widthLabel = rtrim(rtrim(number_format((float) $variant->width_cm, 2, '.', ''), '0'), '.');
-            $line = trim(implode(' ', array_filter([
+            // Kontrak naming produk (2026-09-17): nama yang diisi admin adalah
+            // nama tampil dan TIDAK boleh ditimpa oleh dimensi, bobot, model,
+            // maupun sub model. Ukuran varian disajikan terpisah sebagai
+            // metadata (size_label) agar informasinya tetap tersedia.
+            $card['size_label'] = 'Tinggi '.$heightLabel.'cm × Panjang '.$widthLabel.'cm';
+            $card['size_dimension'] = $heightLabel.'x'.$widthLabel;
+            $card['variant_label'] = trim(implode(' ', array_filter([
                 CatalogLabels::category($product->product_category),
                 CatalogLabels::model($product->product_model),
                 CatalogLabels::designSuffix($product->design_variant),
             ])));
-
-            $card['name'] = trim(sprintf(
-                'Tinggi %scm × Panjang %scm%s',
-                $heightLabel,
-                $widthLabel,
-                $line !== '' ? ' '.$line : '',
-            ));
-            $card['short_name'] = $heightLabel.'x'.$widthLabel;
             $priced = app(\App\Services\PriceService::class)->forVariant($variant, $product);
             $card['min_price'] = $priced['sale'];
             $card['compare_price'] = $priced['compare'];
@@ -107,19 +105,15 @@ class InertiaCatalog
         $heightLabel = rtrim(rtrim(number_format($height, 2, '.', ''), '0'), '.');
         $widthLabel = rtrim(rtrim(number_format($width, 2, '.', ''), '0'), '.');
 
-        $line = trim(implode(' ', array_filter([
+        // Sama seperti productCard(): nama admin tidak ditimpa; ukuran jadi
+        // metadata terpisah supaya kartu per-ukuran tetap bisa dibedakan.
+        $card['size_label'] = 'Tinggi '.$heightLabel.'cm × Panjang '.$widthLabel.'cm';
+        $card['size_dimension'] = $heightLabel.'x'.$widthLabel;
+        $card['variant_label'] = trim(implode(' ', array_filter([
             CatalogLabels::category($product->product_category),
             CatalogLabels::model($product->product_model),
             CatalogLabels::designSuffix($product->design_variant),
         ])));
-
-        $card['name'] = trim(sprintf(
-            'Tinggi %scm × Panjang %scm%s',
-            $heightLabel,
-            $widthLabel,
-            $line !== '' ? ' '.$line : '',
-        ));
-        $card['short_name'] = $heightLabel.'x'.$widthLabel;
         $priced = app(\App\Services\PriceService::class)->forVariant($variant, $product);
         $card['min_price'] = $priced['sale'];
         $card['compare_price'] = $priced['compare'];
