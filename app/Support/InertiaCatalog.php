@@ -68,6 +68,14 @@ class InertiaCatalog
         return $card;
     }
 
+    /**
+     * Gambar cover katalog.
+     *
+     * Urutan: gambar utama (relasi mainImage) -> foto katalog lain ->
+     * placeholder. Fallback WAJIB menyaring media varian (product_variant_id
+     * NULL) dan bukan hasil pemasangan: tanpa itu foto varian/acak bisa
+     * muncul sebagai cover ketika flag is_main_image bermasalah.
+     */
     public static function cardImage(Product $product): string
     {
         $placeholder = '/'.ltrim((string) config('media.placeholder', 'images/home/product-flash.png'), '/');
@@ -78,7 +86,13 @@ class InertiaCatalog
 
         if ($product->relationLoaded('media')) {
             $fallback = $product->media
-                ->first(fn ($m) => $m->show_in_catalog && $m->visibility === 'visible' && $m->status === 'downloaded');
+                ->filter(fn ($m) => $m->show_in_catalog
+                    && $m->visibility === 'visible'
+                    && $m->status === 'downloaded'
+                    && $m->product_variant_id === null
+                    && ! $m->is_installation)
+                ->sortBy(fn ($m) => sprintf('%06d-%06d', (int) $m->position, (int) $m->id))
+                ->first();
 
             if ($fallback) {
                 return $fallback->urlFor('card') ?? $placeholder;

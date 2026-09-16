@@ -171,6 +171,9 @@ class ProductController extends Controller
             // ADR-020: media dipilih/diunggah langsung di form, dilampirkan setelah produk dibuat.
             'media_asset_ids' => ['nullable', 'array', 'max:20'],
             'media_asset_ids.*' => ['integer', Rule::exists('media_assets', 'id')->where('status', 'ready')],
+            // Hasil pemasangan dari form create: ditempel sebagai media is_installation.
+            'installation_media_asset_ids' => ['nullable', 'array', 'max:20'],
+            'installation_media_asset_ids.*' => ['integer', Rule::exists('media_assets', 'id')->where('status', 'ready')],
             // ADR-021: dimensi/berat milik produk (kontrak J&T: kg + cm kubikasi).
             'weight_kg' => ['nullable', 'numeric', 'min:0'],
             'width_cm' => ['nullable', 'numeric', 'min:0'],
@@ -193,7 +196,6 @@ class ProductController extends Controller
         ], [], [
             'name' => 'Nama produk',
         ]);
-        $wizard = $request->input('workflow') === 'wizard';
         $createInitialVariant = $request->boolean('create_initial_variant');
         $stockSettings = OperationalSettings::get(OperationalSettings::STOCK_RANDOMIZATION);
         $randomizeStock = $request->has('randomize_stock') ? $request->boolean('randomize_stock') : (bool) $stockSettings['default_enabled'];
@@ -218,7 +220,10 @@ class ProductController extends Controller
         $validated['short_name'] = \App\Support\CatalogLabels::titleCaseIndonesia(trim((string) $validated['name']))
             ?: $validated['name'];
         $validated['homepage_popular'] = $request->boolean('homepage_popular');
-        $validated['homepage_popular_sort'] = (int) ($validated['homepage_popular_sort'] ?? 0);
+        // Produk baru masuk ke urutan paling belakang daftar Paling Banyak Dipesan
+        // supaya tidak menyalip produk yang sudah dikurasi admin.
+        $validated['homepage_popular_sort'] = (int) ($validated['homepage_popular_sort']
+            ?? ((int) Product::query()->max('homepage_popular_sort') + 1));
         $validated['created_by_user_id'] = $request->user()->id;
         $validated['updated_by_user_id'] = $request->user()->id;
 
@@ -277,7 +282,13 @@ class ProductController extends Controller
                     if ($price <= 0) {
                         continue;
                     }
-                    $row = ['product_id' => $product->id];
+                    $row = [
+                        'product_id' => $product->id,
+                        'height_cm' => $product->height_cm,
+                        'width_cm' => $product->width_cm,
+                        'depth_cm' => $product->depth_cm,
+                        'weight_kg' => $product->weight_kg,
+                    ];
                     foreach ($defs as $defIndex => $def) {
                         $slot = $defIndex + 1;
                         $row['variation_'.$slot.'_name'] = $def['name'];
@@ -290,35 +301,38 @@ class ProductController extends Controller
                     $row['status'] = 'active';
                     $row['created_by_user_id'] = $request->user()->id;
                     $row['updated_by_user_id'] = $request->user()->id;
-                    $variant = ProductVariant::create($row);
+                    ProductVariant::create($row);
+                }
 
-                    // ADR-021: gambar per opsi -> media varian. Varian harus
-                    // sudah dibuat lebih dulu agar product_variant_id valid.
-                    $resolverForVariant = app(\App\Services\MediaAssetResolver::class);
-                    $optionMediaAttached = 0;
-                    foreach ($defs as $defIndex => $def) {
-                        $optionValueKey = mb_strtolower(trim((string) $options[$defIndex]));
-                        foreach ($def['options'] as $defOption) {
-                            if (mb_strtolower(trim((string) $defOption['value'])) !== $optionValueKey) {
-                                continue;
-                            }
-                            $assetId = $defOption['media_asset_id'] ?? null;
-                            if (! $assetId || $optionMediaAttached > 0) {
-                                continue;
-                            }
-                            $asset = \App\Models\MediaAsset::find((int) $assetId);
-                            if (! $asset || $asset->status !== 'ready') {
-                                continue;
-                            }
+                // ADR-021: simpan foto per opsi varian ke varian perwakilan (posisi 50+),
+                // satu attachment per opsi agar tidak terduplikasi ke setiap kombinasi.
+                $resolverForVariant = app(\App\Services\MediaAssetResolver::class);
+                foreach ($defs as $defIndex => $def) {
+                    $slotNo = $defIndex + 1;
+                    if ($slotNo > 5) break;
+                    foreach ($def['options'] ?? [] as $opt) {
+                        $optVal = trim((string) ($opt['value'] ?? ''));
+                        $assetId = ! empty($opt['media_asset_id']) ? (int) $opt['media_asset_id'] : null;
+                        if ($optVal === '' || ! $assetId) {
+                            continue;
+                        }
+                        $asset = \App\Models\MediaAsset::find($assetId);
+                        if (! $asset || $asset->status !== 'ready') {
+                            continue;
+                        }
+                        $repVariant = $product->variants()
+                            ->where('variation_'.$slotNo.'_option', $optVal)
+                            ->orderBy('id')
+                            ->first();
+                        if ($repVariant) {
                             $resolverForVariant->attach($product, $asset, [
-                                'product_variant_id' => $variant->id,
-                                'position' => 1,
-                                'is_main_image' => true,
+                                'product_variant_id' => $repVariant->id,
+                                'position' => 50 + ($slotNo - 1) * 10,
+                                'is_main_image' => false,
                                 'show_in_catalog' => true,
                                 'is_installation' => false,
                                 'visibility' => 'visible',
                             ], (int) $request->user()->id);
-                            $optionMediaAttached++;
                         }
                     }
                 }
@@ -340,6 +354,22 @@ class ProductController extends Controller
                 ], (int) $request->user()->id);
             }
 
+            // Hasil pemasangan dari form create: lampirkan dengan flag
+            // is_installation (urutan mengikuti urutan array dari form).
+            foreach ($request->input('installation_media_asset_ids', []) as $index => $assetId) {
+                $asset = \App\Models\MediaAsset::find((int) $assetId);
+                if (! $asset || $asset->status !== 'ready') {
+                    continue;
+                }
+                $resolver->attach($product, $asset, [
+                    'position' => ((int) $index) + 1,
+                    'is_main_image' => false,
+                    'show_in_catalog' => false,
+                    'is_installation' => true,
+                    'visibility' => 'visible',
+                ], (int) $request->user()->id);
+            }
+
             // Tombol "Simpan & aktifkan" pada halaman create langsung menjalankan
             // gate publikasi. Karena masih di dalam transaksi, produk tidak akan
             // tersimpan setengah aktif bila checklist belum lengkap.
@@ -348,17 +378,12 @@ class ProductController extends Controller
             }
         });
 
-        if ($wizard) {
-            // Satu halaman penuh. Tombol "Simpan & aktifkan" sudah menjalankan
-            // publication gate di transaksi create; tombol biasa tetap draf.
-            return redirect()->route('admin.products.edit', ['product' => $product])
-                ->with('success', $product->status === 'active'
-                    ? 'Produk berhasil dibuat dan diaktifkan.'
-                    : 'Produk draf tersimpan. Lengkapi checklist lalu aktifkan.');
-        }
-
+        // Simpan sukses = keluar dari form, kembali ke daftar produk
+        // (kontrak global: halaman edit/create tidak menahan admin).
         return redirect()->route('admin.products.index')
-            ->with('success', 'Produk berhasil dibuat dengan SKU '.$product->parent_sku.'.');
+            ->with('success', $product->status === 'active'
+                ? 'Produk berhasil dibuat dan diaktifkan.'
+                : 'Produk draf tersimpan dengan SKU '.$product->parent_sku.'. Lengkapi checklist lalu aktifkan.');
     }
 
     /**
@@ -517,7 +542,15 @@ class ProductController extends Controller
                 // Media; media per-varian (posisi 50+) ada di formulir varian.
                 'media' => $product->media
                     ->filter(fn ($m) => $m->show_in_catalog && ! $m->is_installation)
-                    ->sortBy('position')
+                    // Foto katalog (tanpa varian) tampil lebih dulu agar slot
+                    // pertama di form = gambar utama; tiebreak id supaya urutan
+                    // tidak acak saat position seri (bug 2026-09-17).
+                    ->sortBy(fn ($m) => sprintf(
+                        '%d-%06d-%06d',
+                        $m->product_variant_id === null ? 0 : 1,
+                        (int) $m->position,
+                        (int) $m->id,
+                    ))
                     ->map(fn ($m) => [
                         'media_asset_id' => $m->media_asset_id,
                         'media_asset_label' => $m->mediaAsset?->label,
@@ -559,68 +592,6 @@ class ProductController extends Controller
             ])->values()->all(),
             'completion' => app(ProductPublicationService::class)->completion($product),
             'options' => $this->formOptions(),
-            // ===== Data panel Media & Varian (penggabungan e2e) =====
-            'activeTab' => $activeTab,
-            'mediaRows' => $product->media
-                ->sortBy('position')
-                ->map(fn ($m) => [
-                    'id' => $m->id,
-                    'position' => $m->position,
-                    'status' => $m->status,
-                    'error_reason' => $m->error_reason,
-                    'visibility' => $m->visibility,
-                    'is_main_image' => (bool) $m->is_main_image,
-                    'show_in_catalog' => (bool) $m->show_in_catalog,
-                    'is_installation' => (bool) $m->is_installation,
-                    'installation_caption' => $m->installation_caption,
-                    'product_variant_id' => $m->product_variant_id,
-                    'variant_label' => $m->productVariant
-                        ? trim(implode(' / ', array_filter([
-                            $m->productVariant->variation_1_option,
-                            $m->productVariant->variation_2_option,
-                        ]))) ?: $m->productVariant->variant_sku
-                        : 'Semua (produk)',
-                    'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->stored_url,
-                    'media_kind' => $m->mediaAsset?->kind ?? 'image',
-                    'media_url' => $m->mediaAsset?->kind === 'video'
-                        ? ($m->mediaAsset?->urlFor('video') ?? $m->stored_url)
-                        : ($m->mediaAsset?->urlFor('pdp') ?? $m->stored_url),
-                    'update_url' => route('admin.media.update', $m),
-                    'set_main_url' => route('admin.media.set-main', $m),
-                    'archive_url' => route('admin.media.archive', $m),
-                    'restore_url' => route('admin.media.restore', $m),
-                    'redownload_url' => route('admin.media.redownload', $m),
-                    'destroy_url' => $m->status === 'failed'
-                        ? route('admin.media.destroy', $m)
-                        : null,
-                ])->values()->all(),
-            'installationMedia' => $product->media
-                ->where('is_installation', true)
-                ->sortBy('position')
-                ->map(fn ($m) => [
-                    'id' => $m->id,
-                    'media_asset_id' => $m->media_asset_id,
-                    'label' => $m->mediaAsset?->label,
-                    'url' => $m->mediaAsset?->urlFor('thumb'),
-                    'position' => $m->position,
-                    'show_in_catalog' => (bool) $m->show_in_catalog,
-                    'installation_caption' => $m->installation_caption,
-                    'update_url' => route('admin.media.update', $m),
-                    'archive_url' => route('admin.media.archive', $m),
-                ])->values()->all(),
-            'variantsDetail' => $product->variants->map(fn ($v) => [
-                'id' => $v->id,
-                'variant_sku' => $v->variant_sku,
-                'variation_1_option' => $v->variation_1_option,
-                'variation_2_option' => $v->variation_2_option,
-                'price' => (float) $v->price,
-                'stock' => (int) $v->stock,
-                'status' => $v->status,
-                'media_count' => (int) ($v->media_count ?? 0),
-                'update_url' => route('admin.variants.update', $v),
-                'archive_url' => route('admin.variants.archive', $v),
-                'edit_url' => route('admin.variants.edit', $v),
-            ])->values()->all(),
             'mediaActionUrls' => [
                 'store' => route('admin.products.media.store', $product),
                 'bulk' => route('admin.products.media.bulk', $product),
@@ -630,10 +601,10 @@ class ProductController extends Controller
                 'picker' => route('admin.media.picker'),
                 'upload' => route('admin.media.upload'),
             ],
-            'variantStoreUrl' => route('admin.products.variants.store', $product),
             'productLibrary' => \App\Models\MediaAsset::query()
                 ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
                 ->where('visibility', '!=', 'archived')
+                ->where('status', 'ready')
                 ->latest()
                 ->limit(30)
                 ->get()
@@ -721,8 +692,15 @@ class ProductController extends Controller
         unset($validated['wizard_step']);
         // Status mengikuti tombol yang ditekan (Simpan mempertahankan status
         // sekarang); tidak dipaksa archived.
-        $validated['homepage_popular'] = $request->boolean('homepage_popular');
-        $validated['homepage_popular_sort'] = (int) ($validated['homepage_popular_sort'] ?? 0);
+        // Flag kurasi "Paling Banyak Dipesan" hanya ditulis bila form benar-benar
+        // mengirimnya; form produk tidak punya input ini, dan boolean() atas field
+        // yang absen selalu false sehingga kurasi admin ter-reset tiap Simpan.
+        if ($request->has('homepage_popular')) {
+            $validated['homepage_popular'] = $request->boolean('homepage_popular');
+        }
+        if ($request->has('homepage_popular_sort')) {
+            $validated['homepage_popular_sort'] = (int) $validated['homepage_popular_sort'];
+        }
         $validated['updated_by_user_id'] = $request->user()->id;
         $product->update($validated);
 
@@ -730,25 +708,38 @@ class ProductController extends Controller
         if ($request->filled('media_asset_ids')) {
             $resolver = app(\App\Services\MediaAssetResolver::class);
             $sentIds = collect($request->input('media_asset_ids', []))->map(fn ($v) => (int) $v)->all();
-            $sentSet = array_fill_keys($sentIds, true);
+
+            // Foto utama = media KATALOG (bukan varian) paling awal di urutan
+            // form. Menentukan ini lebih dulu (bukan dari $index) supaya media
+            // varian di urutan awal tidak pernah jadi cover storefront.
+            $catalogRow = $product->media()->whereNull('product_variant_id')->get(['media_asset_id'])
+                ->pluck('media_asset_id')->all();
+            $mainAssetId = null;
+            foreach ($sentIds as $assetId) {
+                if (in_array($assetId, $catalogRow, true)) {
+                    $mainAssetId = $assetId;
+                    break;
+                }
+            }
+
             $position = 1;
-            foreach ($sentIds as $index => $assetId) {
+            foreach ($sentIds as $assetId) {
                 $asset = \App\Models\MediaAsset::find($assetId);
                 if (! $asset || $asset->status !== 'ready') continue;
                 $media = $product->media->first(fn ($m) => $m->media_asset_id === $assetId);
                 if ($media) {
                     $media->update([
-                        // Baris varian tetap milik variannya; foto utama hanya
-                        // berlaku untuk media katalog (tanpa varian).
+                        // Baris varian tetap di band 50-79 (posisinya sendiri);
+                        // foto utama hanya berlaku untuk media katalog.
                         'position' => $media->product_variant_id !== null ? $media->position : $position,
-                        'is_main_image' => $media->product_variant_id === null && $index === 0,
+                        'is_main_image' => $media->product_variant_id === null && $assetId === $mainAssetId,
                         'show_in_catalog' => true,
                         'visibility' => 'visible',
                     ]);
                 } else {
                     $resolver->attach($product, $asset, [
                         'position' => $position,
-                        'is_main_image' => $index === 0,
+                        'is_main_image' => $assetId === $mainAssetId,
                         'show_in_catalog' => true,
                         'is_installation' => false,
                         'visibility' => 'visible',
@@ -767,14 +758,32 @@ class ProductController extends Controller
                 ->whereNotNull('product_variant_id')
                 ->whereNotIn('media_asset_id', $sentIds)
                 ->update(['show_in_catalog' => false, 'visibility' => 'archived']);
-            // Foto utama: pertama di urutan (query langsung, bukan relasi).
-            $main = \App\Models\ProductMedia::where('product_id', $product->id)
-                ->where('show_in_catalog', true)
-                ->orderBy('position')
-                ->first();
+            // Penegakan gambar utama: tepat satu, hanya dari media katalog,
+            // dipilih deterministik (position lalu id) - bukan query tanpa
+            // tiebreak yang bisa mengambil baris varian.
+            $main = null;
+            if ($mainAssetId !== null) {
+                $main = \App\Models\ProductMedia::where('product_id', $product->id)
+                    ->whereNull('product_variant_id')
+                    ->where('media_asset_id', $mainAssetId)
+                    ->where('show_in_catalog', true)
+                    ->where('visibility', 'visible')
+                    ->orderBy('position')
+                    ->orderBy('id')
+                    ->first();
+            }
+            if ($main === null) {
+                $main = \App\Models\ProductMedia::where('product_id', $product->id)
+                    ->whereNull('product_variant_id')
+                    ->where('show_in_catalog', true)
+                    ->where('visibility', 'visible')
+                    ->orderBy('position')
+                    ->orderBy('id')
+                    ->first();
+            }
+            \App\Models\ProductMedia::where('product_id', $product->id)
+                ->update(['is_main_image' => false]);
             if ($main) {
-                \App\Models\ProductMedia::where('product_id', $product->id)
-                    ->update(['is_main_image' => false]);
                 \App\Models\ProductMedia::where('id', $main->id)
                     ->update(['is_main_image' => true]);
             }
@@ -887,6 +896,29 @@ class ProductController extends Controller
             }
         }
 
+        // Normalisasi media: satu baris per asset. Foto opsi varian (posisi 50+,
+        // dibuat di atas) menang; duplikat lama per kombinasi diarsipkan. Foto
+        // katalog (tanpa varian) menyisakan baris utama/first per asset.
+        $variantSeen = [];
+        foreach ($product->media()->whereNotNull('product_variant_id')
+            ->orderByDesc('position')->orderBy('id')->get() as $m) {
+            if (isset($variantSeen[$m->media_asset_id])) {
+                $m->update(['visibility' => 'archived', 'show_in_catalog' => false, 'is_main_image' => false]);
+                continue;
+            }
+            $variantSeen[$m->media_asset_id] = true;
+            $m->update(['visibility' => 'visible', 'show_in_catalog' => true]);
+        }
+        $catalogSeen = [];
+        foreach ($product->media()->whereNull('product_variant_id')
+            ->orderByDesc('is_main_image')->orderBy('position')->orderBy('id')->get() as $m) {
+            if (isset($catalogSeen[$m->media_asset_id])) {
+                $m->update(['visibility' => 'archived', 'show_in_catalog' => false, 'is_main_image' => false]);
+                continue;
+            }
+            $catalogSeen[$m->media_asset_id] = true;
+        }
+
         if ($requestedStatus === 'active' && $wizardStep === null && $product->status === 'archived') {
             $publication->publish($product->fresh(), (int) $request->user()->id);
         }
@@ -898,8 +930,9 @@ class ProductController extends Controller
             ])->with('success', 'Perubahan tersimpan.');
         }
 
-        return redirect()->route('admin.products.edit', ['product' => $product, 'step' => 'review'])
-            ->with('success', 'Produk berhasil diperbarui.');
+        // Simpan sukses = keluar dari form, kembali ke daftar produk.
+        return redirect()->route('admin.products.index')
+            ->with('success', 'Produk '.$product->parent_sku.' berhasil diperbarui.');
     }
     public function duplicate(Request $request, Product $product): RedirectResponse
     {
@@ -987,8 +1020,8 @@ class ProductController extends Controller
     {
         $publication->publish($product, (int) $request->user()->id);
 
-        return redirect()->route('admin.products.edit', ['product' => $product, 'step' => 'review'])
-            ->with('success', 'Produk dipublikasikan.');
+        return redirect()->route('admin.products.index')
+            ->with('success', 'Produk '.$product->parent_sku.' dipublikasikan.');
     }
 
     public function archive(Product $product): RedirectResponse
@@ -1025,6 +1058,15 @@ class ProductController extends Controller
         // Guard rail 2: Hanya boleh hapus jika statusnya archived (mencegah penghapusan produk aktif secara keliru)
         if ($product->status === 'active') {
             return redirect()->back()->with('error', 'Arsipkan produk terlebih dahulu sebelum menghapus permanen.');
+        }
+
+        // Guard rail 3: produk masih terikat konfigurasi Teruskan Popularitas;
+        // tanpa ini FK restrict melempar QueryException dan halaman 500.
+        $hasBoost = $product->popularityBoostsAsSource()->exists()
+            || $product->popularityBoostsAsTarget()->exists();
+
+        if ($hasBoost) {
+            return redirect()->back()->with('error', 'Produk tidak dapat dihapus permanen karena masih terdaftar di Teruskan Popularitas. Nonaktifkan konfigurasinya terlebih dahulu.');
         }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($product): void {

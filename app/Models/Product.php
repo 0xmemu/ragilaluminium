@@ -104,14 +104,20 @@ class Product extends Model
         return $this->hasMany(ProductPopularityBoost::class, 'target_product_id');
     }
 
+    /**
+     * Gambar utama katalog.
+     *
+     * Kontrak (2026-09-17): gambar utama HANYA boleh berasal dari media katalog
+     * (product_variant_id NULL). Media milik varian tidak pernah jadi gambar
+     * utama produk, jadi baris itu wajib disaring - kalau tidak, foto varian
+     * bisa muncul sebagai cover storefront (bug position seri).
+     */
     public function mainImage()
     {
-        // oldestOfMany('position') menghasilkan agregat MAX(id)+MIN(position): jika dua media
-        // bernomor position sama (main + duplikat), MAX(id) bisa memilih yang BUKAN main image
-        // lalu filter is_main_image mengosongkan hasil. Pakai orderBy deterministik saja.
         return $this->hasOne(ProductMedia::class)
             ->with('mediaAsset')
             ->where('is_main_image', true)
+            ->whereNull('product_variant_id')
             ->where('show_in_catalog', true)
             ->where('visibility', 'visible')
             ->orderBy('position')

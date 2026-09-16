@@ -238,11 +238,28 @@ final class MediaAssetResolver
             'created_by_import_job_id' => $jobId,
         ]);
 
+        // Band posisi (kontrak): 1-49 katalog, 50-79 media varian, 80-99
+        // shared/video, 100+ hasil pemasangan. Media varian yang masuk band
+        // katalog membuat position-nya SERI dengan foto katalog, sehingga
+        // urutan jadi acak dan foto varian bisa muncul sebagai cover
+        // storefront (bug 2026-09-17). Paksa media varian ke band 50-79.
+        $isVariantMedia = ($attributes['product_variant_id'] ?? $media->product_variant_id) !== null;
+        $rawPosition = (int) ($attributes['position'] ?? ($media->position ?: 1));
+        $position = $isVariantMedia && ($rawPosition < 50 || $rawPosition > 79)
+            ? 50
+            : $rawPosition;
+
+        // Gambar utama produk hanya milik media katalog.
+        $isMain = (bool) ($attributes['is_main_image'] ?? $media->is_main_image);
+        if ($isVariantMedia) {
+            $isMain = false;
+        }
+
         $media->fill([
             'media_asset_id' => $asset->id,
             'source_url' => $asset->source_url,
-            'position' => $attributes['position'] ?? ($media->position ?: 1),
-            'is_main_image' => (bool) ($attributes['is_main_image'] ?? $media->is_main_image),
+            'position' => $position,
+            'is_main_image' => $isMain,
             'show_in_catalog' => (bool) ($attributes['show_in_catalog'] ?? true),
             'is_installation' => (bool) ($attributes['is_installation'] ?? false),
             'installation_caption' => $attributes['installation_caption'] ?? $media->installation_caption,
