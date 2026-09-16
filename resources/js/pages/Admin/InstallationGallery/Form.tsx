@@ -53,6 +53,7 @@ interface FormProps {
 }
 
 const UMUM_OPTION = { value: "", label: "Umum (tanpa SKU)" }
+const STANDALONE_OPTION = { value: "standalone", label: "Portofolio mandiri (tanpa model produk)" }
 
 export default function InstallationGalleryForm({
   title,
@@ -193,59 +194,37 @@ export default function InstallationGalleryForm({
             <tbody className="divide-y divide-border">
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Penempatan <span className="text-destructive">*</span>
+                  Model produk <span className="text-destructive">*</span>
                 </th>
                 <td className="px-4 py-2.5">
-                  <Select
-                    value={isStandalone ? "standalone" : "model"}
-                    onChange={(event) => {
-                      const mode = event.target.value
-                      if (mode === "standalone") {
+                  <SearchSelect
+                    id="model_product_id"
+                    options={[...modelOptions, STANDALONE_OPTION]}
+                    value={form.data.model_product_id}
+                    onValueChange={(value) => {
+                      if (value === STANDALONE_OPTION.value) {
                         form.setData({ ...form.data, model_product_id: "", product_id: "" })
-                      } else if (!form.data.model_product_id && modelOptions[0]) {
-                        form.setData("model_product_id", modelOptions[0].value)
+                        return
                       }
+                      const mod = modelProducts.find((m) => String(m.id) === value)
+                      form.setData({
+                        ...form.data,
+                        model_product_id: value,
+                        product_id: "",
+                        title: form.data.title || mod?.name || "",
+                      })
                     }}
-                    className="h-8 w-72 text-xs"
-                  >
-                    <option value="model">Di halaman model produk</option>
-                    <option value="standalone">Portofolio mandiri (Lainnya)</option>
-                  </Select>
+                    placeholder="Pilih model"
+                    searchPlaceholder="Cari model"
+                    emptyMessage="Model tidak ditemukan."
+                    error={form.errors.model_product_id}
+                    className="w-72"
+                  />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {isStandalone
-                      ? "Tampil di halaman utama /hasil-pemasangan selevel kartu model (grup Lainnya)."
-                      : "Tampil di /hasil-pemasangan/[kategori]/[model] bersama produk model itu."}
+                    Pilih opsi terakhir untuk portofolio tanpa model produk (tampil di grup Lainnya).
                   </p>
                 </td>
               </tr>
-              {!isStandalone ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                    Model produk <span className="text-destructive">*</span>
-                  </th>
-                  <td className="px-4 py-2.5">
-                    <SearchSelect
-                      id="model_product_id"
-                      options={modelOptions}
-                      value={form.data.model_product_id}
-                      onValueChange={(value) => {
-                        const mod = modelProducts.find((m) => String(m.id) === value)
-                        form.setData({
-                          ...form.data,
-                          model_product_id: value,
-                          product_id: "",
-                          title: form.data.title && !editing ? mod?.name ?? form.data.title : form.data.title || mod?.name || "",
-                        })
-                      }}
-                      placeholder="Pilih model"
-                      searchPlaceholder="Cari model"
-                      emptyMessage="Model tidak ditemukan."
-                      error={form.errors.model_product_id}
-                      className="w-72"
-                    />
-                  </td>
-                </tr>
-              ) : null}
               {!isStandalone ? (
                 <tr>
                   <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
