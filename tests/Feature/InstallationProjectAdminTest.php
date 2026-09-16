@@ -79,7 +79,7 @@ class InstallationProjectAdminTest extends TestCase
                 ->where('projects.data.0.kind', 'model')
                 ->where('projects.data.0.media_count', 1)
                 ->where('projects.data.0.sku_count', 1)
-                ->has('tabs', 4)
+                ->has('tabs', 3)
                 ->where('activeStatus', 'all')
             );
     }
@@ -106,17 +106,9 @@ class InstallationProjectAdminTest extends TestCase
             'status' => 'downloaded',
         ]);
 
-        // Key tab mengikuti STATUS_TABS: Nonaktif = "inactive" (bukan "hidden").
-        // Grup aktif bila minimal satu medianya visible; media hidden ada di
-        // grup yang sama dengan media visible, jadi tab inactive tetap 0 grup.
-        $this->actingAs($admin)
-            ->get(route('admin.hasil-pemasangan.index', ['status' => 'inactive']))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/InstallationGallery/Index')
-                ->has('projects.data', 0)
-            );
-
+        // Kontrak dua status: tab hanya Semua / Aktif / Diarsipkan.
+        // Grup aktif bila minimal satu medianya visible (media arsip di grup
+        // yang sama tidak memindahkannya ke tab arsip).
         $this->actingAs($admin)
             ->get(route('admin.hasil-pemasangan.index', ['status' => 'active']))
             ->assertOk()
@@ -124,6 +116,14 @@ class InstallationProjectAdminTest extends TestCase
                 ->component('Admin/InstallationGallery/Index')
                 ->has('projects.data', 1)
                 ->where('projects.data.0.media_count', 2)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.hasil-pemasangan.index', ['status' => 'archived']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/InstallationGallery/Index')
+                ->has('projects.data', 0)
             );
 
         // Pencarian berdasarkan nama model
@@ -300,7 +300,7 @@ class InstallationProjectAdminTest extends TestCase
             ->patch(route('admin.hasil-pemasangan.toggle-status', $media->id))
             ->assertRedirect();
 
-        $this->assertSame('hidden', $media->fresh()->visibility);
+        $this->assertSame('archived', $media->fresh()->visibility);
 
         $this->actingAs($admin)
             ->patch(route('admin.hasil-pemasangan.toggle-status', $media->id))

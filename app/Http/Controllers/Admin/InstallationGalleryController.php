@@ -20,7 +20,6 @@ class InstallationGalleryController extends Controller
     public const STATUS_TABS = [
         ['key' => 'all', 'label' => 'Semua Hasil Pemasangan'],
         ['key' => 'active', 'label' => 'Hasil Pemasangan Aktif'],
-        ['key' => 'inactive', 'label' => 'Hasil Pemasangan Nonaktif'],
         ['key' => 'archived', 'label' => 'Hasil Pemasangan Diarsipkan'],
     ];
 
@@ -37,17 +36,10 @@ class InstallationGalleryController extends Controller
         // mandiri (Kasus C) — bukan per media agar daftar tetap ringkas.
         $groups = collect();
 
-        // Grup terhitung aktif bila minimal satu medianya visible; grup masuk
-        // tab Nonaktif/Diarsipkan hanya bila SEMUA medianya dalam status itu.
+        // Kontrak dua status: grup Aktif bila minimal satu medianya visible,
+        // selain itu grup dianggap Diarsipkan (status hidden legacy ikut arsip).
         $groupVisibility = function ($rows): string {
-            if ($rows->contains('visibility', 'visible')) {
-                return 'visible';
-            }
-            if ($rows->contains('visibility', 'hidden')) {
-                return 'hidden';
-            }
-
-            return 'archived';
+            return $rows->contains('visibility', 'visible') ? 'visible' : 'archived';
         };
 
         // Urutan tampil grup: cms_model_products.installation_sort_order utk
@@ -107,7 +99,6 @@ class InstallationGalleryController extends Controller
         $tabCounts = [
             'all' => $groups->count(),
             'active' => $groups->where('visibility', 'visible')->count(),
-            'inactive' => $groups->where('visibility', 'hidden')->count(),
             'archived' => $groups->where('visibility', 'archived')->count(),
         ];
 
@@ -123,7 +114,6 @@ class InstallationGalleryController extends Controller
         $statusMap = [
             'all' => 'all',
             'active' => 'visible',
-            'inactive' => 'hidden',
             'archived' => 'archived',
             // Guard: tab lama/other key fallback aman
         ];
@@ -386,12 +376,13 @@ class InstallationGalleryController extends Controller
     {
         abort_unless($media->is_installation, 404);
 
-        $newVisibility = $media->visibility === 'visible' ? 'hidden' : 'visible';
+        // Kontrak dua status: Aktif (visible) <-> Diarsipkan (archived).
+        $newVisibility = $media->visibility === 'visible' ? 'archived' : 'visible';
         $media->update(['visibility' => $newVisibility]);
 
         ActivityLogService::record('installation_media.visibility_toggled', 'product_media', $media->id, ['visibility' => $newVisibility], $request->user()?->id);
 
-        $label = $newVisibility === 'visible' ? 'diaktifkan' : 'disembunyikan';
+        $label = $newVisibility === 'visible' ? 'diaktifkan' : 'diarsipkan';
         return back()->with('success', "Media berhasil {$label}.");
     }
 

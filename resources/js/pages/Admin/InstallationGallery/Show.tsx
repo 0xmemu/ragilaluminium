@@ -198,10 +198,10 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                       </td>
                     ) : null}
 
-                    {/* Status */}
+                    {/* Status: dua status saja (Aktif / Diarsipkan) */}
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="inline-flex items-center justify-center">
-                        <StatusBadge status={row.visibility} />
+                        <StatusBadge status={row.visibility === "visible" ? "active" : "archived"} />
                       </div>
                     </td>
 
@@ -218,13 +218,7 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                         </Button>
 
                         <RowActionsMenu>
-                          <DropdownMenuItem
-                            onSelect={() => router.patch(row.toggleStatusUrl, {}, { preserveScroll: true })}
-                          >
-                            {row.visibility === "visible" ? "Sembunyikan dari publik" : "Tampilkan di publik"}
-                          </DropdownMenuItem>
-
-                          {row.visibility !== "archived" ? (
+                          {row.visibility === "visible" ? (
                             <ConfirmAction
                               trigger={
                                 <button type="button" className={cn("w-full text-left", rowActionTextClass)}>
@@ -236,7 +230,13 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                               confirmLabel="Arsipkan"
                               onConfirm={() => router.post(row.archiveUrl, {}, { preserveScroll: true })}
                             />
-                          ) : null}
+                          ) : (
+                            <DropdownMenuItem
+                              onSelect={() => router.patch(row.toggleStatusUrl, {}, { preserveScroll: true })}
+                            >
+                              Aktifkan kembali
+                            </DropdownMenuItem>
+                          )}
 
                           <ConfirmAction
                             trigger={
