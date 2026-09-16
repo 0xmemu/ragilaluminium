@@ -11,16 +11,19 @@ import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
-import { cn } from "@/lib/utils"
 
 interface ProductOption {
-  value: string
-  label: string
+  id: number
+  name: string
+  parent_sku: string
 }
 
 interface ModelProductOption {
-  value: string
+  id: number
+  name: string
   label: string
+  category?: string | null
+  model?: string | null
   products?: ProductOption[]
 }
 
@@ -49,6 +52,8 @@ interface FormProps {
   backUrl: string
 }
 
+const UMUM_OPTION = { value: "", label: "Umum (tanpa SKU)" }
+
 export default function InstallationGalleryForm({
   title,
   project,
@@ -57,15 +62,6 @@ export default function InstallationGalleryForm({
   backUrl,
 }: FormProps) {
   const editing = Boolean(project?.id)
-
-  // Mode penempatan: "model" (di model produk katalog) atau "standalone" (mandiri).
-  const [placementMode, setPlacementMode] = React.useState<"model" | "standalone">(
-    project ? (project.model_product_id ? "model" : "standalone") : "model",
-  )
-  // Scope di dalam model: "product" (terikat SKU) atau "general" (umum model).
-  const [modelScope, setModelScope] = React.useState<"product" | "general">(
-    project?.product_id ? "product" : "general",
-  )
 
   const form = useForm({
     model_product_id: project?.model_product_id ? String(project.model_product_id) : "",
@@ -87,31 +83,35 @@ export default function InstallationGalleryForm({
 
   const [picker, setPicker] = React.useState<"main" | "video" | "gallery" | null>(null)
 
-  const selectedModel = React.useMemo(
-    () => (placementMode === "model" ? modelProducts.find((m) => m.value === form.data.model_product_id) : undefined),
-    [modelProducts, form.data.model_product_id, placementMode],
+  const modelOptions = React.useMemo(
+    () => modelProducts.map((m) => ({ value: String(m.id), label: m.label })),
+    [modelProducts],
   )
 
-  const productOptions = React.useMemo<ProductOption[]>(
-    () =>
-      (selectedModel?.products ?? []).map((p) => ({
+  const selectedModel = React.useMemo(
+    () => modelProducts.find((m) => String(m.id) === form.data.model_product_id),
+    [modelProducts, form.data.model_product_id],
+  )
+
+  const productOptions = React.useMemo(
+    () => [
+      UMUM_OPTION,
+      ...(selectedModel?.products ?? []).map((p) => ({
         value: String(p.id),
         label: `[${p.parent_sku}] ${p.name}`,
       })),
+    ],
     [selectedModel],
   )
 
   const selectedProduct = React.useMemo(
     () =>
-      modelScope === "product"
-        ? productOptions.find((p) => p.value === form.data.product_id)
-        : undefined,
-    [productOptions, form.data.product_id, modelScope],
+      (selectedModel?.products ?? []).find((p) => String(p.id) === form.data.product_id),
+    [selectedModel, form.data.product_id],
   )
 
-  const isProductLinked = placementMode === "model" && modelScope === "product" && Boolean(selectedProduct)
-  const isModelGeneral = placementMode === "model" && modelScope === "general"
-  const isStandalone = placementMode === "standalone"
+  const isStandalone = !form.data.model_product_id
+  const isProductLinked = Boolean(selectedProduct)
 
   const [galleryMedia, setGalleryMedia] = React.useState<PickedMedia[]>(
     (project?.gallery_images ?? []).map((g, i) => ({
@@ -126,7 +126,11 @@ export default function InstallationGalleryForm({
   React.useEffect(() => {
     form.setData(
       "gallery_images",
-      galleryMedia.map((g) => ({ url: g.thumbUrl, asset_id: g.assetId > 0 ? g.assetId : null, caption: g.label })),
+      galleryMedia.map((g) => ({
+        url: g.thumbUrl,
+        asset_id: g.assetId > 0 ? g.assetId : null,
+        caption: g.label,
+      })),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [galleryMedia])
@@ -149,7 +153,9 @@ export default function InstallationGalleryForm({
   }
 
   function updateSpec(index: number, key: "name" | "value", value: string) {
-    const next = form.data.specifications.map((row, i) => (i === index ? { ...row, [key]: value } : row))
+    const next = form.data.specifications.map((row, i) =>
+      i === index ? { ...row, [key]: value } : row,
+    )
     form.setData("specifications", next)
   }
 
@@ -181,161 +187,167 @@ export default function InstallationGalleryForm({
       <form id="installation-project-form" className="w-full space-y-5" onSubmit={submit}>
         <FormErrorSummary errors={form.errors} />
 
-        {/* Penempatan: model produk vs portofolio mandiri */}
-        <SectionCard
-          title="Penempatan hasil pemasangan"
-          description="Tentukan di mana media ini tampil di storefront."
-          icon="layers"
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => {
-                setPlacementMode("model")
-                if (!form.data.model_product_id && modelProducts[0]) {
-                  form.setData("model_product_id", modelProducts[0].value)
-                }
-              }}
-              className={cn(
-                "flex items-start gap-2.5 rounded-md border p-3 text-left transition",
-                placementMode === "model"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:bg-surface-muted",
-              )}
-            >
-              <span className={cn(
-                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-                placementMode === "model" ? "border-primary bg-primary" : "border-input",
-              )}>
-                {placementMode === "model" ? <span className="size-1.5 rounded-full bg-primary-foreground" /> : null}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[13px] font-medium text-foreground">
-                  Di halaman model produk
-                </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Tampil di /hasil-pemasangan/[kategori]/[model] bersama produk model itu.
-                </span>
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPlacementMode("standalone")
-                form.setData({ ...form.data, model_product_id: "", product_id: "" })
-              }}
-              className={cn(
-                "flex items-start gap-2.5 rounded-md border p-3 text-left transition",
-                placementMode === "standalone"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:bg-surface-muted",
-              )}
-            >
-              <span className={cn(
-                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-                placementMode === "standalone" ? "border-primary bg-primary" : "border-input",
-              )}>
-                {placementMode === "standalone" ? <span className="size-1.5 rounded-full bg-primary-foreground" /> : null}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[13px] font-medium text-foreground">
-                  Portofolio mandiri
-                </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Tampil di halaman utama /hasil-pemasangan selevel kartu model (grup Lainnya).
-                </span>
-              </span>
-            </button>
-          </div>
-
-          {placementMode === "model" ? (
-            <div className="mt-4 space-y-4 rounded-md border border-border bg-surface/50 p-4">
-              {/* Pilih model produk */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="model_product_id" className="text-[13px] font-medium text-foreground">
-                    Model produk <span className="text-destructive">*</span>
-                  </label>
-                  <SearchSelect
-                    id="model_product_id"
-                    options={modelProducts.map((m) => ({ value: m.value, label: m.label }))}
-                    value={form.data.model_product_id}
-                    onValueChange={(value) => {
-                      const mod = modelProducts.find((m) => m.value === value)
-                      form.setData({
-                        ...form.data,
-                        model_product_id: value,
-                        product_id: "",
-                        title: mod ? mod.label.replace(/\s*\([^)]*\)\s*$/, "") : "",
-                      })
+        {/* Table-first: satu baris per field */}
+        <div className="rounded-lg border border-border">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Penempatan <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Select
+                    value={isStandalone ? "standalone" : "model"}
+                    onChange={(event) => {
+                      const mode = event.target.value
+                      if (mode === "standalone") {
+                        form.setData({ ...form.data, model_product_id: "", product_id: "" })
+                      } else if (!form.data.model_product_id && modelOptions[0]) {
+                        form.setData("model_product_id", modelOptions[0].value)
+                      }
                     }}
-                    placeholder="Pilih model"
-                    searchPlaceholder="Cari model"
-                    emptyMessage="Model tidak ditemukan."
-                    error={form.errors.model_product_id}
-                    className="mt-1 w-72"
-                  />
-                </div>
-              </div>
-
-              {/* Scope: terikat SKU atau umum */}
-              {selectedModel ? (
-                <div className="border-t border-border pt-3">
-                  <label className="text-[13px] font-medium text-foreground">
-                    Tautan produk katalog
-                  </label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Tautkan ke satu SKU agar foto juga tampil di halaman produk itu, atau biarkan umum untuk dokumentasi model.
+                    className="h-8 w-72 text-xs"
+                  >
+                    <option value="model">Di halaman model produk</option>
+                    <option value="standalone">Portofolio mandiri (Lainnya)</option>
+                  </Select>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {isStandalone
+                      ? "Tampil di halaman utama /hasil-pemasangan selevel kartu model (grup Lainnya)."
+                      : "Tampil di /hasil-pemasangan/[kategori]/[model] bersama produk model itu."}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setModelScope("general")}
-                      className={cn(
-                        "rounded-md border px-3 py-1.5 text-xs font-medium transition",
-                        modelScope === "general"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:bg-surface-muted",
-                      )}
-                    >
-                      Umum (tanpa SKU)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setModelScope("product")}
-                      disabled={productOptions.length === 0}
-                      className={cn(
-                        "rounded-md border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40",
-                        modelScope === "product"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:bg-surface-muted",
-                      )}
-                    >
-                      Produk spesifik ({productOptions.length})
-                    </button>
-                  </div>
-
-                  {modelScope === "product" ? (
-                    <div className="mt-3">
-                      <SearchSelect
-                        id="product_id"
-                        options={productOptions}
-                        value={form.data.product_id}
-                        onValueChange={(value) => form.setData("product_id", value)}
-                        placeholder="Pilih produk / SKU"
-                        searchPlaceholder="Cari SKU atau nama produk"
-                        emptyMessage="Produk tidak ditemukan."
-                        error={form.errors.product_id}
-                        className="w-80"
-                      />
-                    </div>
-                  ) : null}
-                </div>
+                </td>
+              </tr>
+              {!isStandalone ? (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                    Model produk <span className="text-destructive">*</span>
+                  </th>
+                  <td className="px-4 py-2.5">
+                    <SearchSelect
+                      id="model_product_id"
+                      options={modelOptions}
+                      value={form.data.model_product_id}
+                      onValueChange={(value) => {
+                        const mod = modelProducts.find((m) => String(m.id) === value)
+                        form.setData({
+                          ...form.data,
+                          model_product_id: value,
+                          product_id: "",
+                          title: form.data.title && !editing ? mod?.name ?? form.data.title : form.data.title || mod?.name || "",
+                        })
+                      }}
+                      placeholder="Pilih model"
+                      searchPlaceholder="Cari model"
+                      emptyMessage="Model tidak ditemukan."
+                      error={form.errors.model_product_id}
+                      className="w-72"
+                    />
+                  </td>
+                </tr>
               ) : null}
-            </div>
-          ) : null}
-        </SectionCard>
+              {!isStandalone ? (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                    Tautan produk katalog
+                  </th>
+                  <td className="px-4 py-2.5">
+                    {selectedModel ? (
+                      <>
+                        <SearchSelect
+                          id="product_id"
+                          options={productOptions}
+                          value={form.data.product_id}
+                          onValueChange={(value) => {
+                            const prod = (selectedModel.products ?? []).find(
+                              (p) => String(p.id) === value,
+                            )
+                            form.setData({
+                              ...form.data,
+                              product_id: value,
+                              title: prod ? prod.name : selectedModel.name,
+                            })
+                          }}
+                          placeholder={UMUM_OPTION.label}
+                          searchPlaceholder="Cari SKU atau nama produk"
+                          emptyMessage="Produk tidak ditemukan."
+                          error={form.errors.product_id}
+                          className="w-80"
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {isProductLinked
+                            ? "Foto otomatis tampil juga di halaman produk ini di storefront."
+                            : "Biarkan Umum untuk dokumentasi model, atau pilih SKU agar foto tampil di halaman produknya."}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Pilih model produk dahulu.</p>
+                    )}
+                  </td>
+                </tr>
+              ) : null}
+              {!isProductLinked ? (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                    Judul <span className="text-destructive">*</span>
+                  </th>
+                  <td className="px-4 py-2.5">
+                    <Input
+                      value={form.data.title}
+                      onChange={(event) => form.setData("title", event.target.value)}
+                      placeholder={selectedModel ? selectedModel.name : "contoh: Pemasangan Partisi Kantor Kudus"}
+                      className="h-8 w-72 text-xs"
+                    />
+                    {form.errors.title ? (
+                      <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
+                    ) : null}
+                  </td>
+                </tr>
+              ) : (
+                <tr>
+                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Produk terkait</th>
+                  <td className="px-4 py-2.5">
+                    <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
+                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.label ?? selectedProduct?.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Judul mengikuti nama produk. Media tersimpan ke produk ini dan tampil di halaman model serta halaman produk.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Keterangan pemasangan</th>
+                <td className="px-4 py-2.5">
+                  <Textarea
+                    rows={2}
+                    value={form.data.description ?? ""}
+                    onChange={(event) => form.setData("description", event.target.value)}
+                    placeholder="Catatan pengerjaan lapangan, material, atau lokasi (opsional)."
+                    className="text-xs"
+                  />
+                  {form.errors.description ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status publikasi</th>
+                <td className="px-4 py-2.5">
+                  <Select
+                    value={form.data.status}
+                    onChange={(event) => form.setData("status", event.target.value)}
+                    className="h-8 w-40 text-xs"
+                  >
+                    <option value="active">Aktif - tampil di toko</option>
+                    <option value="inactive">Nonaktif - disembunyikan</option>
+                    <option value="archived">Diarsipkan</option>
+                  </Select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         {/* Media hasil pemasangan */}
         <SectionCard
@@ -474,73 +486,6 @@ export default function InstallationGalleryForm({
             </div>
           </div>
         </SectionCard>
-
-        {/* Informasi dasar (table-first) */}
-        <div className="rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              {isProductLinked ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Produk terkait</th>
-                  <td className="px-4 py-2.5">
-                    <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
-                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.label}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Media tersimpan ke produk ini dan otomatis tampil di halaman model serta halaman produk di storefront.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                    Judul <span className="text-destructive">*</span>
-                  </th>
-                  <td className="px-4 py-2.5">
-                    <Input
-                      value={form.data.title}
-                      onChange={(event) => form.setData("title", event.target.value)}
-                      placeholder={isModelGeneral ? selectedModel?.label ?? "Judul dokumentasi" : "contoh: Pemasangan Partisi Kantor Kudus"}
-                      className="h-8 w-72 text-xs"
-                    />
-                    {form.errors.title ? (
-                      <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
-                    ) : null}
-                  </td>
-                </tr>
-              )}
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Keterangan pemasangan</th>
-                <td className="px-4 py-2.5">
-                  <Textarea
-                    rows={2}
-                    value={form.data.description ?? ""}
-                    onChange={(event) => form.setData("description", event.target.value)}
-                    placeholder="Catatan pengerjaan lapangan, material, atau lokasi (opsional)."
-                    className="text-xs"
-                  />
-                  {form.errors.description ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status publikasi</th>
-                <td className="px-4 py-2.5">
-                  <Select
-                    value={form.data.status}
-                    onChange={(event) => form.setData("status", event.target.value)}
-                    className="h-8 w-40 text-xs"
-                  >
-                    <option value="active">Aktif - tampil di toko</option>
-                    <option value="inactive">Nonaktif - disembunyikan</option>
-                    <option value="archived">Diarsipkan</option>
-                  </Select>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
 
         {/* Spesifikasi unit: hanya untuk placement tanpa SKU spesifik */}
         {!isProductLinked ? (
