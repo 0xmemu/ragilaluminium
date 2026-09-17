@@ -5,32 +5,13 @@ import { Lightning } from "@phosphor-icons/react"
 import { MobileEndActionReveal, useEndActionReveal } from "@/components/public/home-carousels"
 import { Icon } from "@/components/shared/icon"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
+import { useFlashSaleCountdown, splitCountdown } from "@/hooks/use-flash-sale-countdown"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import type { FlashSalePeriod, ProductCardData, SharedPageProps } from "@/types"
+import type { ProductCardData, SharedPageProps } from "@/types"
 
 const pad = (n: number) => String(n).padStart(2, "0")
-
-function useCountdown(period: FlashSalePeriod | null | undefined) {
-  const [remaining, setRemaining] = React.useState<number | null>(null)
-
-  React.useEffect(() => {
-    if (!period?.live) return
-    const total = period.seconds_remaining ?? period.daily_seconds_remaining ?? 0
-    // Anchor absolut: countdown tidak melompat saat komponen re-render.
-    const deadline = Date.now() + total * 1000
-    const tick = () => {
-      setRemaining(Math.max(0, Math.floor((deadline - Date.now()) / 1000)))
-    }
-    tick()
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [period?.live, period?.seconds_remaining, period?.daily_seconds_remaining])
-
-  if (!period?.live || remaining === null) return null
-  return { h: Math.floor(remaining / 3600), m: Math.floor((remaining % 3600) / 60), s: Math.floor(remaining % 60) }
-}
 
 function FlashSaleCarouselCard({ product }: { product: ProductCardData }) {
   const price =
@@ -137,7 +118,9 @@ function useFlashSaleNav(itemCount: number) {
  */
 export function FlashSaleCarouselSection({ products }: { products: ProductCardData[] }) {
   const { flashSalePeriod } = usePage<SharedPageProps>().props
-  const countdown = useCountdown(flashSalePeriod ?? null)
+  // Sumber sama dengan countdown di nav header (harian, bergulir tengah malam).
+  const remaining = useFlashSaleCountdown(flashSalePeriod ?? null)
+  const countdown = remaining === null ? null : splitCountdown(remaining)
   const { trackRef, canGoBack, canGoNext, move } = useFlashSaleNav(products.length)
   const reveal = useEndActionReveal(trackRef)
 
