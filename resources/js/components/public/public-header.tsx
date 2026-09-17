@@ -321,7 +321,7 @@ export function PublicHeader() {
 
   return (
     <>
-    <header className="sticky top-0 z-header border-b border-white/10 bg-header-bg text-background shadow-[0_2px_16px_rgba(0,0,0,0.22)]">
+    <header className="sticky top-0 z-header bg-header-bg text-background shadow-[0_2px_16px_rgba(0,0,0,0.22)]">
       <div className="container-page relative flex h-12 md:h-12 items-center gap-2 py-0 md:gap-3 !px-2.5 md:!px-8 lg:!px-12">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
@@ -707,7 +707,7 @@ export function PublicHeader() {
     </header>
 
     {desktopItems.length ? (
-      <nav className="hidden border-b border-white/10 bg-header-bg text-background md:block" aria-label="Navigasi utama">
+      <nav className="hidden bg-header-bg text-background md:block" aria-label="Navigasi utama">
         <div className="container-page flex min-h-11 items-center justify-center gap-7 lg:gap-10 !px-2.5 md:!px-8 lg:!px-12">
           {desktopItems.map((item) => {
             const listingActive =
