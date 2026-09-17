@@ -29,23 +29,23 @@ php artisan queue:work --queue=media,default
 Buat user admin via CLI (tidak ada UI pendaftaran admin):
 
 ```bash
-# Interaktif (prompt nama, username, email, role, password)
+# Interaktif (prompt nama, username, role, password)
 php artisan admin:create
 
 # Non-interaktif
 php artisan admin:create \
   --name="Owner" \
   --username="owner" \
-  --email="owner@ragilaluminium.com" \
   --password="<min-8-karakter>" \
-  --role="super_admin"
+  --role="admin"
 
 # Output sukses
 Admin user 'owner' created successfully!
 ```
 
-- Validasi: username unik, email unik (bila diisi), role enum
-  (`super_admin`, `admin`, `staff`, `viewer`), password min 8 karakter.
+- Validasi: username unik, role enum
+  (`admin`, `staff`, `viewer`), password min 8 karakter.
+- Akun admin tidak memakai email: login memakai username.
 - Password di-hash bcrypt; user dibuat dengan status `active`.
 - Best practice: password kuat, minimalkan jumlah `super_admin`.
 - Detail lanjutan: `docs/admin-management.md` (di repo lokal workspace).

@@ -19,7 +19,6 @@ interface UserRow {
   no: number
   name: string
   username: string
-  email: string
   status: string
   is_self: boolean
   created_at?: string | null
@@ -93,7 +92,7 @@ export default function UsersIndex({
           value: q,
           onChange: setQ,
           onSubmit: () => apply({ q }),
-          placeholder: "Cari nama, username, atau email",
+          placeholder: "Cari nama atau username",
         }}
         sort={
           <Select
@@ -140,7 +139,6 @@ export default function UsersIndex({
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Nama</th>
                     <th className="px-3 py-3 font-semibold">Username</th>
-                    <th className="px-3 py-3 font-semibold">Email penerima</th>
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
                   </tr>
@@ -158,7 +156,6 @@ export default function UsersIndex({
                         ) : null}
                       </td>
                       <td className="px-3 py-3 font-mono text-xs font-semibold text-foreground">{row.username}</td>
-                      <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{row.email}</td>
                       <td className="px-3 py-3">
                         <StatusBadge status={row.status} />
                       </td>
@@ -243,10 +240,6 @@ export default function UsersIndex({
                     <div>
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Username</dt>
                       <dd className="mt-1 font-mono text-xs font-semibold text-foreground">{row.username}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Email penerima</dt>
-                      <dd className="mt-1 truncate font-mono text-xs text-muted-foreground">{row.email}</dd>
                     </div>
                   </dl>
                   <div className="mt-4">

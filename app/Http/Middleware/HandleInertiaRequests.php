@@ -50,7 +50,7 @@ class HandleInertiaRequests extends Middleware
                     ? [
                         'id' => $request->user()->id,
                         'name' => $request->user()->name,
-                        'email' => $request->user()->email,
+                        'username' => $request->user()->username,
                     ]
                     : null,
                 // Capability contract (Foundation Track A): hanya utk authenticated admin,

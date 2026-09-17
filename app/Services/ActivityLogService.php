@@ -44,7 +44,7 @@ class ActivityLogService
         $q = trim((string) $request->input('q', ''));
         $sort = (string) $request->input('sort', 'newest');
 
-        $query = EventLog::query()->with('createdBy:id,name,email');
+        $query = EventLog::query()->with('createdBy:id,name,username');
 
         $this->applyCategoryFilter($query, $category);
 
@@ -55,7 +55,7 @@ class ActivityLogService
                     ->orWhere('payload', 'like', '%'.$q.'%')
                     ->orWhereHas('createdBy', function (Builder $user) use ($q) {
                         $user->where('name', 'like', '%'.$q.'%')
-                            ->orWhere('email', 'like', '%'.$q.'%');
+                            ->orWhere('username', 'like', '%'.$q.'%');
                     });
             });
         }
@@ -108,7 +108,7 @@ class ActivityLogService
         $category = $this->normalizeCategory((string) $request->input('category', 'all'));
         $q = trim((string) $request->input('q', ''));
 
-        $query = EventLog::query()->with('createdBy:id,name,email');
+        $query = EventLog::query()->with('createdBy:id,name,username');
         $this->applyCategoryFilter($query, $category);
 
         if ($q !== '') {
@@ -118,7 +118,7 @@ class ActivityLogService
                     ->orWhere('payload', 'like', '%'.$q.'%')
                     ->orWhereHas('createdBy', function (Builder $user) use ($q) {
                         $user->where('name', 'like', '%'.$q.'%')
-                            ->orWhere('email', 'like', '%'.$q.'%');
+                            ->orWhere('username', 'like', '%'.$q.'%');
                     });
             });
         }
@@ -171,19 +171,19 @@ class ActivityLogService
             'auth.logout' => sprintf('%s logout dari sistem', $actor),
             'auth.user_created' => sprintf(
                 'Akun admin dibuat%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'auth.user_updated' => sprintf(
                 'Akun admin diperbarui%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'auth.user_activated' => sprintf(
                 'Akun admin diaktifkan%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'auth.user_deactivated' => sprintf(
                 'Akun admin dinonaktifkan%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'order.created' => sprintf(
                 'Pesanan %s dibuat%s',
@@ -413,7 +413,11 @@ class ActivityLogService
     public function actorLabel(EventLog $log): string
     {
         if ($log->createdBy) {
-            return $log->createdBy->name ?: $log->createdBy->email;
+            $label = trim((string) ($log->createdBy->name ?: $log->createdBy->username));
+
+            if ($label !== '') {
+                return $label;
+            }
         }
 
         return 'Sistem';

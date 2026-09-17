@@ -16,14 +16,13 @@ class CreateAdminUserCommandTest extends TestCase
         $this->artisan('admin:create')
             ->expectsQuestion('Nama lengkap', 'Owner')
             ->expectsQuestion('Username', 'owner')
-            ->expectsQuestion('Email (opsional)', 'owner@ragilaluminium.com')
             ->expectsQuestion('Password (minimal 8 karakter)', 'rahasia123')
             ->expectsOutput("Admin user 'owner' created successfully!")
             ->assertExitCode(0);
 
         $this->assertDatabaseHas('users', [
             'username' => 'owner',
-            'email' => 'owner@ragilaluminium.com',
+            'email' => null,
             'role' => 'admin',
             'status' => 'active',
         ]);
@@ -37,13 +36,13 @@ class CreateAdminUserCommandTest extends TestCase
         $this->artisan('admin:create', [
             '--name' => 'Staff Satu',
             '--username' => 'staff1',
-            '--email' => 'staff1@ragilaluminium.com',
             '--password' => 'rahasia123',
             '--role' => 'staff',
         ])->assertExitCode(0);
 
         $this->assertDatabaseHas('users', [
             'username' => 'staff1',
+            'email' => null,
             'role' => 'staff',
             'status' => 'active',
         ]);
@@ -54,7 +53,6 @@ class CreateAdminUserCommandTest extends TestCase
         User::create([
             'name' => 'Existing',
             'username' => 'febrian',
-            'email' => 'febrian@ragilaluminium.com',
             'password' => Hash::make('rahasia123'),
             'role' => 'admin',
             'status' => 'active',

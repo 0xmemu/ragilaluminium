@@ -11,17 +11,19 @@ use Illuminate\Support\Facades\Hash;
  *
  * Mode interaktif:            php artisan admin:create
  * Mode non-interaktif:        php artisan admin:create --name="Owner" --username="owner" \
- *                                 --email="owner@ragilaluminium.com" --password="..." --role="admin"
+ *                                 --password="..." --role="admin"
  *
- * Validasi: username unik, email unik (bila diisi), role enum valid,
- * password min 8 karakter. Password di-hash bcrypt; status default active.
+ * Akun admin tidak memakai email: login memakai username, jadi kolom
+ * users.email dibiarkan kosong untuk akun baru.
+ *
+ * Validasi: username unik, role enum valid, password min 8 karakter.
+ * Password di-hash bcrypt; status default active.
  */
 class CreateAdminUser extends Command
 {
     protected $signature = 'admin:create
         {--name= : Nama lengkap admin}
         {--username= : Username (unik, dipakai login)}
-        {--email= : Email admin (opsional)}
         {--password= : Password minimal 8 karakter}
         {--role=admin : Role kanonik admin (staff|viewer tidak punya akses panel)}';
 
@@ -29,30 +31,12 @@ class CreateAdminUser extends Command
 
     public function handle(): int
     {
-        // Mode interaktif penuh hanya bila nama/username/password TIDAK
-        // diberikan sebagai opsi (email & role menyusul secara interaktif).
-        $providedAll = $this->option('name') !== null
-            && $this->option('username') !== null
-            && $this->option('password') !== null;
-
         $name = $this->option('name')
             ?? $this->ask('Nama lengkap');
         $username = $this->option('username')
             ?? $this->ask('Username');
 
-        if (! $providedAll) {
-            $emailOpt = trim((string) ($this->option('email') ?? ''));
-            if ($emailOpt === '') {
-                $emailOpt = trim((string) ($this->ask('Email (opsional)') ?? ''));
-            }
-            $email = $emailOpt;
-
-            $role = $this->option('role')
-                ?: $this->choice('Role', ['admin', 'staff', 'viewer'], 0);
-        } else {
-            $email = trim((string) ($this->option('email') ?? ''));
-            $role = $this->option('role') ?: 'admin';
-        }
+        $role = $this->option('role') ?: 'admin';
 
         $password = $this->option('password')
             ?? $this->secret('Password (minimal 8 karakter)');
@@ -83,16 +67,9 @@ class CreateAdminUser extends Command
             return self::FAILURE;
         }
 
-        if ($email !== '' && User::query()->where('email', $email)->exists()) {
-            $this->error("Email '{$email}' sudah terdaftar!");
-
-            return self::FAILURE;
-        }
-
         User::create([
             'name' => $name,
             'username' => $username,
-            'email' => $email,
             'password' => Hash::make($password),
             'role' => $role,
             'status' => 'active',

@@ -5,10 +5,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Admin baru dibuat lewat /admin/users/create tanpa email (field tidak ada di
- * form), tetapi kolom users.email NOT NULL membuat INSERT gagal 500. Email
- * tidak dipakai untuk login admin (login pakai username), jadi kolom dibuat
- * nullable dan form menambah field email opsional untuk pengiriman kredensial.
+ * Akun admin tidak memakai email: login memakai username, dan form admin
+ * (/admin/users/create, /admin/profile) tidak lagi menyediakan kolom email.
+ * Kolom users.email NOT NULL membuat INSERT gagal 500, jadi kolom dibuat
+ * nullable. Kolomnya tetap ada untuk login legacy (email unik lama).
  */
 return new class extends Migration
 {

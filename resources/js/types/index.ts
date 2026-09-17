@@ -3,7 +3,7 @@ export type Nullable<T> = T | null
 export interface AuthUser {
   id: number
   name: string
-  email: string
+  username: string | null
 }
 
 export interface FlashMessages {

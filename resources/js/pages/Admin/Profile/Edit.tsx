@@ -9,7 +9,6 @@ import AdminLayout from "@/layouts/admin-layout"
 interface ProfileRecord {
   name: string
   username: string
-  email: string
   role_label: string
   status: string
 }
@@ -24,7 +23,6 @@ export default function ProfileEdit({
   const form = useForm({
     name: profile.name,
     username: profile.username,
-    email: profile.email,
     current_password: "",
     password: "",
     password_confirmation: "",
@@ -33,7 +31,7 @@ export default function ProfileEdit({
   return (
     <AdminLayout
       title="Profil Saya"
-      description="Perbarui nama, username, email penerima, dan password akun yang sedang login."
+      description="Perbarui nama, username, dan password akun yang sedang login."
       actions={
         <Button type="submit" form="profile-form" disabled={form.processing}>
           {form.processing ? "Menyimpan..." : "Simpan profil"}
@@ -85,20 +83,6 @@ export default function ProfileEdit({
                 value={form.data.username}
                 onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
                 autoComplete="username"
-              />
-            </Field>
-            <Field
-              id="profile-email"
-              label="Email penerima"
-              required
-              error={form.errors.email}
-              hint="Email dapat dipakai oleh lebih dari satu akun."
-            >
-              <Input
-                type="email"
-                value={form.data.email}
-                onChange={(event) => form.setData("email", event.target.value)}
-                autoComplete="email"
               />
             </Field>
           </div>

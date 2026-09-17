@@ -125,7 +125,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   const userName = auth.user?.name ?? "Administrator"
-  const userEmail = auth.user?.email ?? ""
+  const userHandle = auth.user?.username ?? ""
 
   return (
     <AdminShellContext.Provider value={true}>
@@ -207,9 +207,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     <span className="block truncate text-[13px] font-semibold text-foreground">
                       {userName}
                     </span>
-                    {userEmail ? (
-                      <span className="block truncate text-xs font-normal text-muted-foreground">
-                        {userEmail}
+                    {userHandle ? (
+                      <span className="block truncate font-mono text-xs font-normal text-muted-foreground">
+                        {userHandle}
                       </span>
                     ) : null}
                   </DropdownMenuLabel>
