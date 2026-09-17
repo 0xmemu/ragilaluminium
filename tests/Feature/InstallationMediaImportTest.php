@@ -307,4 +307,68 @@ class InstallationMediaImportTest extends TestCase
                 ->has('gallery', 0)
                 ->where('modelMeta.model', 'JUNGKIT'));
     }
+
+    /**
+     * Regresi 2026-09-17: media hasil pemasangan bisa tanpa produk (Kasus B
+     * milik model, Kasus C grup mandiri). Sebelumnya modelCards() mengakses
+     * $item->product->product_category tanpa penjagaan sehingga halaman
+     * /hasil-pemasangan gagal 500 begitu ada media tanpa produk.
+     */
+    public function test_installation_gallery_survives_media_without_product(): void
+    {
+        $model = \App\Models\CmsModelProduct::create([
+            'name' => 'Jendela Kaca Mati',
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        // Produk katalog pada model ini (kartu model hanya tampil bila model
+        // punya produk aktif - kontrak storefront yang sudah ada).
+        $this->createVisibleProduct([
+            'parent_sku' => 'WIN-KM-INSTALL',
+            'name' => 'Jendela Kaca Mati',
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
+            'design_variant' => 'POLOS',
+        ]);
+
+        // Kasus B: media milik model, tanpa produk.
+        \App\Models\ProductMedia::create([
+            'product_id' => null,
+            'model_product_id' => $model->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/model-only.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
+        ]);
+
+        // Kasus C: media grup mandiri, tanpa produk & tanpa model.
+        \App\Models\ProductMedia::create([
+            'product_id' => null,
+            'model_product_id' => null,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/standalone.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
+        ]);
+
+        $this->get(route('installation.index'))->assertOk();
+
+        $cards = InstallationGallery::modelCards(10);
+        $this->assertNotEmpty($cards, 'Kartu model tetap tampil walau ada media tanpa produk.');
+        $this->assertSame('JENDELA', $cards[0]['category']);
+        $this->assertSame('KACA_MATI', $cards[0]['model']);
+
+        // Media tanpa produk tidak boleh membuat kartu model palsu.
+        $categories = array_column($cards, 'category');
+        $this->assertNotContains('', $categories);
+
+        // Halaman model tetap bisa dibuka.
+        $this->get(route('installation.model', ['category' => 'jendela', 'model' => 'kaca-mati']))->assertOk();
+
+        // productCardsForModel() tidak boleh error saat memfilter media tanpa produk.
+        $this->assertIsArray(InstallationGallery::productCardsForModel('JENDELA', 'KACA_MATI'));
+    }
 }

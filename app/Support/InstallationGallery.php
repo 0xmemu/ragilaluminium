@@ -70,11 +70,17 @@ class InstallationGallery
      */
     public static function modelCards(int $limit = 24): array
     {
+        // Media hasil pemasangan bisa tanpa produk (Kasus B: milik model,
+        // Kasus C: grup mandiri), jadi kategori/model diambil dari produk
+        // ATAU model produk. Baris tanpa keduanya tidak punya kartu model.
         $media = self::installationMediaWithProduct();
-        $grouped = $media->groupBy(
-            fn (ProductMedia $item) => strtoupper((string) $item->product->product_category)
-                .'|'.strtoupper((string) $item->product->product_model)
-        );
+        $grouped = $media
+            ->filter(fn (ProductMedia $item) => self::mediaCategoryModel($item) !== null)
+            ->groupBy(function (ProductMedia $item): string {
+                [$category, $modelCode] = self::mediaCategoryModel($item);
+
+                return $category.'|'.$modelCode;
+            });
 
         $catalogModels = app(ModelProductService::class)->storefrontCards();
         $cards = [];
@@ -134,8 +140,11 @@ class InstallationGallery
         $model = strtoupper(trim($model));
 
         $media = self::installationMediaWithProduct()
-            ->filter(fn (ProductMedia $item) => strtoupper((string) $item->product->product_category) === $category
-                && strtoupper((string) $item->product->product_model) === $model);
+            ->filter(function (ProductMedia $item) use ($category, $model): bool {
+                $pair = self::mediaCategoryModel($item);
+
+                return $pair !== null && $pair[0] === $category && $pair[1] === $model;
+            });
 
         if ($media->isNotEmpty()) {
             return self::productCardsFromMedia($media, $limit);
@@ -346,6 +355,10 @@ class InstallationGallery
                 ];
             })
             ->filter(fn (array $i) => filled($i['url']))
+            // toBase(): hasil map berisi array, bukan model. merge() Eloquent
+            // memanggil getKey() pada tiap item sehingga array akan memicu
+            // "Call to a member function getKey() on array" (bug 2026-09-17).
+            ->toBase()
             ->values();
 
         // Kasus B: media milik model tanpa SKU (product_id NULL).
@@ -373,6 +386,7 @@ class InstallationGallery
                     ];
                 })
                 ->filter(fn (array $i) => filled($i['url']))
+                ->toBase()
                 ->values();
 
             $items = $items->merge($modelMedia)->values();
@@ -485,6 +499,27 @@ class InstallationGallery
             ->values();
 
         return $query;
+    }
+
+    /**
+     * Pasangan (kategori, model) dari sebuah media instalasi.
+     *
+     * Sumbernya produk katalog (Kasus A) atau model produk (Kasus B). Media
+     * grup mandiri (Kasus C) tidak punya pasangan -> null, sehingga tidak
+     * pernah masuk kartu model.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    protected static function mediaCategoryModel(ProductMedia $item): ?array
+    {
+        $category = strtoupper((string) ($item->product?->product_category ?? $item->modelProduct?->product_category ?? ''));
+        $modelCode = strtoupper((string) ($item->product?->product_model ?? $item->modelProduct?->product_model ?? ''));
+
+        if ($category === '' || $modelCode === '') {
+            return null;
+        }
+
+        return [$category, $modelCode];
     }
 
     /**
