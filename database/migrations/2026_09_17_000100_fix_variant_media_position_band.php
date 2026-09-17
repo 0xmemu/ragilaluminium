@@ -44,13 +44,19 @@ return new class extends Migration
                 ->orderBy('id')
                 ->first();
 
+            // Produk yang seluruh medianya arsip/tidak tampil tidak punya
+            // kandidat gambar utama. Jangan sentuh flag lamanya: produk seperti
+            // itu sengaja nonaktif, dan flag yang diset admin harus tetap utuh
+            // supaya tidak perlu diatur ulang saat produk diaktifkan kembali.
+            if ($main === null) {
+                continue;
+            }
+
             DB::table('product_media')->where('product_id', $productId)
                 ->update(['is_main_image' => false]);
 
-            if ($main) {
-                DB::table('product_media')->where('id', $main->id)
-                    ->update(['is_main_image' => true]);
-            }
+            DB::table('product_media')->where('id', $main->id)
+                ->update(['is_main_image' => true]);
         }
     }
 
